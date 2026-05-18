@@ -100,6 +100,27 @@ describe("clinicalDraftStorage", () => {
     expect(buildClinicalDraftKey(handoffScope)).not.toBe(buildClinicalDraftKey({ ...handoffScope, userId: "provider-2" }));
   });
 
+  it("scopes orders drafting and discharge documentation drafts separately", () => {
+    const ordersScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "ORDERS_DRAFTING",
+      userId: "provider-1",
+      version: "orders-drafting-v1",
+    };
+    const dischargeScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "DISCHARGE_DOCUMENTATION",
+      userId: "provider-1",
+      version: "discharge-documentation-v1",
+    };
+
+    expect(buildClinicalDraftKey(ordersScope)).not.toBe(buildClinicalDraftKey(dischargeScope));
+    expect(buildClinicalDraftKey(ordersScope)).not.toBe(buildClinicalDraftKey({ ...ordersScope, encounterId: "enc-2" }));
+    expect(buildClinicalDraftKey(dischargeScope)).not.toBe(
+      buildClinicalDraftKey({ ...dischargeScope, facilityId: "facility-2" })
+    );
+  });
+
   it("round-trips and removes a typed local clinical draft", () => {
     const storage = makeMemoryStorage();
     const key = buildClinicalDraftKey(scope);
@@ -233,6 +254,65 @@ describe("clinicalDraftStorage", () => {
     ).toBe(false);
   });
 
+  it("restores order drafts only when local content is newer and encounter is open", () => {
+    const ordersScope: ClinicalDraftScope = { ...scope, workflowType: "ORDERS_DRAFTING", version: "orders-drafting-v1" };
+    const placeOrder = vi.fn();
+    const draft = createClinicalDraft({
+      scope: ordersScope,
+      payload: { formData: { type: "LAB", items: [{ manualLabel: "CBC" }] } },
+      savedLocallyAt: "2026-05-17T12:10:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: ordersScope,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+        hasPayloadContent: (payload) => JSON.stringify(payload).includes("CBC"),
+      })
+    ).toBe(true);
+    expect(placeOrder).not.toHaveBeenCalled();
+  });
+
+  it("blocks stale or closed discharge documentation restore", () => {
+    const dischargeScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "DISCHARGE_DOCUMENTATION",
+      version: "discharge-documentation-v1",
+    };
+    const closeEncounter = vi.fn();
+    const staleDraft = createClinicalDraft({
+      scope: dischargeScope,
+      payload: { dischargeForm: { disposition: "Home" } },
+      savedLocallyAt: "2026-05-17T12:00:00.000Z",
+      lastServerSavedAt: "2026-05-17T11:55:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: staleDraft,
+        scope: dischargeScope,
+        serverSavedAt: "2026-05-17T12:05:00.000Z",
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: createClinicalDraft({
+          scope: dischargeScope,
+          payload: { dischargeForm: { disposition: "Home" } },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        }),
+        scope: dischargeScope,
+        workflowEditable: true,
+        encounterStatus: "CLOSED",
+      })
+    ).toBe(false);
+    expect(closeEncounter).not.toHaveBeenCalled();
+  });
+
   it("manual save cleanup removes local ED triage and nursing assessment drafts", () => {
     const storage = makeMemoryStorage();
     const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
@@ -283,6 +363,28 @@ describe("clinicalDraftStorage", () => {
         createClinicalDraft({
           scope: s,
           payload: { note: "Local only" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        })
+      );
+    }
+
+    for (const s of scopes) removeClinicalDraft(storage, buildClinicalDraftKey(s));
+    for (const s of scopes) expect(readClinicalDraft(storage, buildClinicalDraftKey(s))).toBeNull();
+  });
+
+  it("manual submit cleanup removes orders and discharge local drafts", () => {
+    const storage = makeMemoryStorage();
+    const scopes: ClinicalDraftScope[] = [
+      { ...scope, workflowType: "ORDERS_DRAFTING", version: "orders-drafting-v1" },
+      { ...scope, workflowType: "DISCHARGE_DOCUMENTATION", version: "discharge-documentation-v1" },
+    ];
+    for (const s of scopes) {
+      writeClinicalDraft(
+        storage,
+        buildClinicalDraftKey(s),
+        createClinicalDraft({
+          scope: s,
+          payload: { note: "Manual action pending" },
           savedLocallyAt: "2026-05-17T12:10:00.000Z",
         })
       );
@@ -354,6 +456,45 @@ describe("clinicalDraftStorage", () => {
     expect(serverSubmit).not.toHaveBeenCalled();
     expect(clinicalEventCreate).not.toHaveBeenCalled();
     expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|diagnosisId|orderId|dischargeStatus/i);
+  });
+
+  it("local orders and discharge draft writes do not place orders, close encounters, or create side effects", () => {
+    const storage = makeMemoryStorage();
+    const postOrder = vi.fn();
+    const closeEncounter = vi.fn();
+    const clinicalEventCreate = vi.fn();
+    const billingCreate = vi.fn();
+    const ordersScope: ClinicalDraftScope = { ...scope, workflowType: "ORDERS_DRAFTING", version: "orders-drafting-v1" };
+    const dischargeScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "DISCHARGE_DOCUMENTATION",
+      version: "discharge-documentation-v1",
+    };
+
+    writeClinicalDraft(
+      storage,
+      buildClinicalDraftKey(ordersScope),
+      createClinicalDraft({
+        scope: ordersScope,
+        payload: { formData: { type: "LAB", items: [{ manualLabel: "CBC" }] } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+    writeClinicalDraft(
+      storage,
+      buildClinicalDraftKey(dischargeScope),
+      createClinicalDraft({
+        scope: dischargeScope,
+        payload: { dischargeForm: { disposition: "Home with follow-up" } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+
+    expect(postOrder).not.toHaveBeenCalled();
+    expect(closeEncounter).not.toHaveBeenCalled();
+    expect(clinicalEventCreate).not.toHaveBeenCalled();
+    expect(billingCreate).not.toHaveBeenCalled();
+    expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|dischargeStatus|clinicalEvent/i);
   });
 
   it("allows local-only medication/MAR and lab/radiology draft scopes without executing clinical actions", () => {

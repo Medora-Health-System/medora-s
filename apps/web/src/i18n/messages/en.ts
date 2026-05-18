@@ -6556,6 +6556,8 @@ export default {
       dischargeTitleObservation: "Observation discharge packet",
       dischargeIntro:
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
+      localDraftRestored: "Local draft restored on this device.",
+      localDraftSaved: "Draft saved locally on this device.",
       observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
       observationDischargeReminderFootnote:
         "Reminder only. Confirm LOS, reassessments, vitals, pending results, active medications, MAR completion, PRN documentation, IV/infusions, and observation course in your authored documentation before discharge.",
@@ -9069,6 +9071,8 @@ export default {
     carePickerTransferPreparation: "Transfer preparation",
     carePresets:
       "Peripheral IV placement\nOxygen therapy\nNebulizer treatment\nUrinary catheter insertion\nSuctioning\nMonitoring",
+    localDraftRestored: "Order draft restored on this device.",
+    localDraftSaved: "Order draft saved locally on this device.",
     mapOrderCreateError: "Unable to create the order.",
     titleOrderCreated: "Order created",
     titlePrescription: "Prescription",

@@ -142,6 +142,17 @@ import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { EncounterResultsTab } from "@/components/encounters/EncounterResultsTab";
 import { MedicationAdministrationTab } from "@/components/encounters/MedicationAdministrationTab";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
@@ -272,6 +283,37 @@ function documentationDeficiencyNavigateButtonLabel(
   }
 }
 
+const DISCHARGE_DOCUMENTATION_DRAFT_VERSION = "discharge-documentation-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type DischargeDocumentationDraftPayload = {
+  dischargeForm: DischargeFormState;
+  obsDischargeOutcomeUi: ErDispositionOutcomeUi;
+  obsDispositionSupplement: ErDispositionSupplementForm;
+};
+
+function dischargeDocumentationDraftSignature(payload: DischargeDocumentationDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function dischargeDocumentationDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<DischargeDocumentationDraftPayload>;
+  const form = p.dischargeForm;
+  const supplement = p.obsDispositionSupplement;
+  const formHasContent = Boolean(
+    form &&
+      Object.values(form).some((value) =>
+        typeof value === "boolean" ? value : typeof value === "string" ? value.trim().length > 0 : false
+      )
+  );
+  const supplementHasContent = Boolean(
+    supplement &&
+      Object.values(supplement).some((value) => (typeof value === "string" ? value.trim().length > 0 : Boolean(value)))
+  );
+  return formHasContent || supplementHasContent;
+}
+
 export default function EncounterDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -319,6 +361,10 @@ export default function EncounterDetailPage() {
   const [obsDispositionSupplement, setObsDispositionSupplement] = useState<ErDispositionSupplementForm>(() =>
     emptyErDispositionSupplementForm()
   );
+  const [dischargeDraftRestoredAt, setDischargeDraftRestoredAt] = useState<string | null>(null);
+  const [dischargeDraftSavedLocallyAt, setDischargeDraftSavedLocallyAt] = useState<string | null>(null);
+  const dischargeServerSignatureRef = useRef<string>("");
+  const dischargeRestoringRef = useRef(false);
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
   const [admissionForm, setAdmissionForm] = useState<AdmissionFormState>(() => emptyAdmissionForm());
   const [savingAdmission, setSavingAdmission] = useState(false);
@@ -453,11 +499,26 @@ export default function EncounterDetailPage() {
       const sup = erDispositionSupplementFromEncounter(encounter.nursingAssessment);
       const inferred = inferOutcomeUiFromForms(base.dischargeMode, sup);
       const mode = base.dischargeMode.trim() ? base.dischargeMode : outcomeUiToDischargeMode(inferred);
+      const hydratedPayload = {
+        dischargeForm: { ...base, dischargeMode: mode },
+        obsDischargeOutcomeUi: inferred,
+        obsDispositionSupplement: sup,
+      };
+      dischargeServerSignatureRef.current = dischargeDocumentationDraftSignature(hydratedPayload);
       setObsDispositionSupplement(sup);
       setObsDischargeOutcomeUi(inferred);
-      setDischargeForm({ ...base, dischargeMode: mode });
+      setDischargeForm(hydratedPayload.dischargeForm);
     } else {
+      const defaultOutcomeUi: ErDispositionOutcomeUi = "HOME";
+      const defaultSupplement = emptyErDispositionSupplementForm();
+      dischargeServerSignatureRef.current = dischargeDocumentationDraftSignature({
+        dischargeForm: base,
+        obsDischargeOutcomeUi: defaultOutcomeUi,
+        obsDispositionSupplement: defaultSupplement,
+      });
       setDischargeForm(base);
+      setObsDischargeOutcomeUi(defaultOutcomeUi);
+      setObsDispositionSupplement(defaultSupplement);
     }
   }, [
     showDischargeModal,
@@ -469,6 +530,99 @@ export default function EncounterDetailPage() {
     encounter?.dischargeSummaryJson,
     encounter?.nursingAssessment,
   ]);
+
+  const dischargeDraftScope = useMemo<ClinicalDraftScope | null>(() => {
+    if (!encounter?.id || !facilityId) return null;
+    return {
+      workflowType: "DISCHARGE_DOCUMENTATION",
+      encounterId: encounter.id,
+      patientId: encounter.patient?.id ?? null,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: DISCHARGE_DOCUMENTATION_DRAFT_VERSION,
+    };
+  }, [encounter?.id, encounter?.patient?.id, facilityId]);
+  const dischargeDraftKey = useMemo(
+    () => (dischargeDraftScope ? buildClinicalDraftKey(dischargeDraftScope) : null),
+    [dischargeDraftScope]
+  );
+  const dischargeDraftPayload = useMemo<DischargeDocumentationDraftPayload>(
+    () => ({ dischargeForm, obsDischargeOutcomeUi, obsDispositionSupplement }),
+    [dischargeForm, obsDischargeOutcomeUi, obsDispositionSupplement]
+  );
+  const dischargeDraftDirty =
+    showDischargeModal &&
+    dischargeDocumentationDraftSignature(dischargeDraftPayload) !== dischargeServerSignatureRef.current;
+  const dischargeDraftEditable =
+    showDischargeModal && Boolean(encounter) && encounter?.status === "OPEN" && !isEncounterLocked(encounter);
+
+  useEffect(() => {
+    if (!showDischargeModal || !dischargeDraftKey || !dischargeDraftScope) return;
+    setDischargeDraftRestoredAt(null);
+    setDischargeDraftSavedLocallyAt(null);
+
+    if (typeof window === "undefined") return;
+    const draft = readClinicalDraft<DischargeDocumentationDraftPayload>(window.localStorage, dischargeDraftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: dischargeDraftScope,
+      workflowEditable: dischargeDraftEditable,
+      encounterStatus: typeof encounter?.status === "string" ? encounter.status : null,
+      serverSavedAt: typeof encounter?.updatedAt === "string" ? encounter.updatedAt : null,
+      hasPayloadContent: dischargeDocumentationDraftHasContent,
+    });
+    if (canRestore && draft) {
+      dischargeRestoringRef.current = true;
+      setDischargeForm(draft.payload.dischargeForm);
+      setObsDischargeOutcomeUi(draft.payload.obsDischargeOutcomeUi);
+      setObsDispositionSupplement(draft.payload.obsDispositionSupplement);
+      setDischargeDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDischargeDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+      queueMicrotask(() => {
+        dischargeRestoringRef.current = false;
+      });
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, dischargeDraftKey);
+    }
+    // Restore exactly once each time the discharge modal opens for the current encounter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDischargeModal, dischargeDraftKey]);
+
+  useEffect(() => {
+    if (!showDischargeModal || !dischargeDraftKey || !dischargeDraftScope || dischargeRestoringRef.current) return;
+    if (!dischargeDraftEditable) return;
+    if (!dischargeDraftDirty || !dischargeDocumentationDraftHasContent(dischargeDraftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, dischargeDraftKey);
+      setDischargeDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      dischargeDraftKey,
+      createClinicalDraft({
+        scope: dischargeDraftScope,
+        payload: dischargeDraftPayload,
+        savedLocallyAt,
+        lastServerSavedAt: typeof encounter?.updatedAt === "string" ? encounter.updatedAt : null,
+      })
+    );
+    setDischargeDraftSavedLocallyAt(savedLocallyAt);
+  }, [
+    dischargeDraftDirty,
+    dischargeDraftEditable,
+    dischargeDraftKey,
+    dischargeDraftPayload,
+    dischargeDraftScope,
+    encounter?.updatedAt,
+    showDischargeModal,
+  ]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: dischargeDraftDirty && Boolean(dischargeDraftSavedLocallyAt),
+    workflowEditable: dischargeDraftEditable,
+  });
 
   useEffect(() => {
     if (!showAdmissionModal || !encounter) return;
@@ -901,6 +1055,11 @@ export default function EncounterDetailPage() {
           res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
         setQueuedDischargeSaveNotice(queued);
         await refreshObservationClinicalSurfaces();
+        if (!queued && dischargeDraftKey && typeof window !== "undefined") {
+          removeClinicalDraft(window.localStorage, dischargeDraftKey);
+          setDischargeDraftRestoredAt(null);
+          setDischargeDraftSavedLocallyAt(null);
+        }
         const pending: Record<string, unknown> | null =
           merged ??
           (dischargeForm.dischargeMode.trim() ? { dischargeMode: dischargeForm.dischargeMode.trim() } : null);
@@ -927,8 +1086,18 @@ export default function EncounterDetailPage() {
           res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
         setQueuedDischargeSaveNotice(queued);
         await refreshObservationClinicalSurfaces();
+        if (!queued && dischargeDraftKey && typeof window !== "undefined") {
+          removeClinicalDraft(window.localStorage, dischargeDraftKey);
+          setDischargeDraftRestoredAt(null);
+          setDischargeDraftSavedLocallyAt(null);
+        }
       } else {
         setQueuedDischargeSaveNotice(false);
+        if (dischargeDraftKey && typeof window !== "undefined") {
+          removeClinicalDraft(window.localStorage, dischargeDraftKey);
+          setDischargeDraftRestoredAt(null);
+          setDischargeDraftSavedLocallyAt(null);
+        }
       }
       setPendingDischarge(merged);
       setShowDischargeModal(false);
@@ -994,6 +1163,11 @@ export default function EncounterDetailPage() {
       setQueuedClosePendingSync(false);
       setPendingDischarge(null);
       setQueuedDischargeSaveNotice(false);
+      if (dischargeDraftKey && typeof window !== "undefined") {
+        removeClinicalDraft(window.localStorage, dischargeDraftKey);
+        setDischargeDraftRestoredAt(null);
+        setDischargeDraftSavedLocallyAt(null);
+      }
       if (acknowledgeDeficiencies) {
         alert(t("encounterChrome.modals.closeSuccessDespiteDeficiencies"));
       }
@@ -2524,6 +2698,16 @@ export default function EncounterDetailPage() {
                   {t("encounterChrome.modals.dischargeIntro")}
                 </p>
               </div>
+              {dischargeDraftRestoredAt ? (
+                <p style={{ margin: "0 0 10px", color: "#0369a1", fontSize: 12, fontWeight: 600 }}>
+                  {t("encounterChrome.modals.localDraftRestored")}
+                </p>
+              ) : null}
+              {dischargeDraftSavedLocallyAt ? (
+                <p style={{ margin: "0 0 10px", color: "#64748b", fontSize: 12 }}>
+                  {t("encounterChrome.modals.localDraftSaved")}
+                </p>
+              ) : null}
             </div>
             <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0 24px 8px" }}>
             {observationWorkflowActive ? (

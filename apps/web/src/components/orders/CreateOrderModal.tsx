@@ -28,6 +28,17 @@ import {
 } from "@/lib/advancedMedicationSafetyLineMappers";
 import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedMedicationSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
 type OrderSetItemType = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
@@ -53,6 +64,51 @@ type OrderAuthorityPayloadFields = {
   protocolName?: string;
 };
 type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY";
+const ORDER_DRAFT_VERSION = "orders-drafting-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type CreateOrderDraftPayload = {
+  activeTab: CreateOrderModalTab;
+  selectedOrderSet: OrderSetKey;
+  selectedOrderSetItemKeys: string[];
+  orderSetReviewActive: boolean;
+  stagedItems: Record<OrderTypeKey, CreateOrderLineItem[]>;
+  formData: {
+    type: OrderTypeKey;
+    priority: "ROUTINE" | "URGENT" | "STAT";
+    notes: string;
+    prescriberName: string;
+    prescriberLicense: string;
+    prescriberContact: string;
+    orderSource: OrderAuthorityFormSource;
+    readbackConfirmed: boolean;
+    protocolName: string;
+    items: CreateOrderLineItem[];
+  };
+};
+
+function createOrderDraftSignature(payload: CreateOrderDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function createOrderDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<CreateOrderDraftPayload>;
+  const staged = p.stagedItems ?? {};
+  const stagedHasItems = Object.values(staged).some((items) => Array.isArray(items) && items.length > 0);
+  const form = p.formData;
+  return Boolean(
+    stagedHasItems ||
+      (Array.isArray(form?.items) && form.items.length > 0) ||
+      form?.notes?.trim() ||
+      form?.prescriberName?.trim() ||
+      form?.prescriberLicense?.trim() ||
+      form?.prescriberContact?.trim() ||
+      form?.protocolName?.trim() ||
+      form?.readbackConfirmed ||
+      p.orderSetReviewActive
+  );
+}
 
 const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
 
@@ -597,6 +653,8 @@ export function CreateOrderModal({
   canUseRnOrderAuthority?: boolean;
   isRn?: boolean;
   encounter?: {
+    id?: string;
+    status?: string | null;
     patient?: { firstName?: string; lastName?: string; mrn?: string };
     vitals?: unknown;
     nursingAssessment?: unknown;
@@ -705,7 +763,60 @@ export function CreateOrderModal({
   const [encounterOrdersSnapshot, setEncounterOrdersSnapshot] = useState<unknown[]>([]);
   const [customCareTaskDraft, setCustomCareTaskDraft] = useState("");
   const [careDuplicateHint, setCareDuplicateHint] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const prescriberPrefilled = useRef(false);
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "ORDERS_DRAFTING",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: ORDER_DRAFT_VERSION,
+    }),
+    [encounterId, facilityId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
+  const draftPayload = useMemo<CreateOrderDraftPayload>(
+    () => ({
+      activeTab,
+      selectedOrderSet,
+      selectedOrderSetItemKeys,
+      orderSetReviewActive,
+      stagedItems,
+      formData,
+    }),
+    [activeTab, formData, orderSetReviewActive, selectedOrderSet, selectedOrderSetItemKeys, stagedItems]
+  );
+  const initialDraftPayload = useMemo<CreateOrderDraftPayload>(
+    () => ({
+      activeTab: firstTab,
+      selectedOrderSet: "chestPain",
+      selectedOrderSetItemKeys: checkedOrderSetItemKeys("chestPain"),
+      orderSetReviewActive: false,
+      stagedItems: {
+        LAB: [],
+        IMAGING: [],
+        MEDICATION: [],
+        CARE: firstTab === "CARE" ? initialOrderItems : [],
+      },
+      formData: {
+        type: firstTab,
+        priority: "ROUTINE",
+        notes: "",
+        prescriberName: "",
+        prescriberLicense: "",
+        prescriberContact: "",
+        orderSource: canPrescribe ? "PROVIDER_ORDER" : "",
+        readbackConfirmed: false,
+        protocolName: "",
+        items: initialOrderItems,
+      },
+    }),
+    [canPrescribe, firstTab, initialOrderItems]
+  );
+  const draftDirty = createOrderDraftSignature(draftPayload) !== createOrderDraftSignature(initialDraftPayload);
+  const workflowEditable = encounter?.status == null || encounter.status === "OPEN";
 
   /** Préremplir le prescripteur pour le flux ordonnance (médecin / admin connecté). */
   useEffect(() => {
@@ -774,6 +885,58 @@ export function CreateOrderModal({
         : domainLabel(tab);
     return orderSetReviewActive && isOrderTypeKey(tab) ? `${base} (${stagedCounts[tab]})` : base;
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const draft = readClinicalDraft<CreateOrderDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      workflowEditable,
+      encounterStatus: encounter?.status ?? null,
+      hasPayloadContent: createOrderDraftHasContent,
+    });
+    if (canRestore && draft) {
+      setActiveTab(draft.payload.activeTab);
+      setSelectedOrderSet(draft.payload.selectedOrderSet);
+      setSelectedOrderSetItemKeys(draft.payload.selectedOrderSetItemKeys);
+      setOrderSetReviewActive(draft.payload.orderSetReviewActive);
+      setStagedItems(draft.payload.stagedItems);
+      setFormData({ ...draft.payload.formData, type: draft.payload.formData.type });
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+    // Restore once on modal mount; subsequent state changes write new local drafts only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!workflowEditable) return;
+    if (!draftDirty || !createOrderDraftHasContent(draftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: draftPayload,
+        savedLocallyAt,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [draftDirty, draftKey, draftPayload, draftScope, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: draftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable,
+  });
   const orderSetReviewSections = ORDER_TYPE_REVIEW_ORDER.map((tab) => ({
     tab,
     icon: ORDER_TYPE_REVIEW_ICON[tab],
@@ -1453,6 +1616,9 @@ export function CreateOrderModal({
       setNextStagedTabAfterSuccess(nextReviewTab);
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
+        if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+        setDraftRestoredAt(null);
+        setDraftSavedLocallyAt(null);
       }
 
       setRxIntentDisplayItems(null);
@@ -1616,6 +1782,9 @@ export function CreateOrderModal({
       setNextStagedTabAfterSuccess(nextReviewTab);
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
+        if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+        setDraftRestoredAt(null);
+        setDraftSavedLocallyAt(null);
       }
 
       setLastBatchAllStagedSuccess(true);
@@ -1704,6 +1873,17 @@ export function CreateOrderModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 style={{ margin: "0 0 14px", fontSize: 18, fontWeight: 700 }}>{title}</h2>
+
+        {draftRestoredAt ? (
+          <p style={{ margin: "0 0 10px", color: "#0369a1", fontSize: 12, fontWeight: 600 }}>
+            {t("createOrderModal.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt && !orderSuccess && !rxSuccess ? (
+          <p style={{ margin: "0 0 10px", color: "#64748b", fontSize: 12 }}>
+            {t("createOrderModal.localDraftSaved")}
+          </p>
+        ) : null}
 
         {orderSuccess && (
           <div style={{ marginBottom: 20 }}>
