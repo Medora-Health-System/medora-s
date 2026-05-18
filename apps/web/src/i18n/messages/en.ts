@@ -7629,6 +7629,8 @@ export default {
     resultPlaceholderRad: "Enter the report…",
     submitAddResultLab: "Add result",
     submitAddResultRad: "Add report",
+    localDraftRestored: "Draft restored on this device.",
+    localDraftSaved: "Draft saved locally.",
     loadError: "Unable to load.",
     saveDispenseFailed: "Unable to record dispensation.",
     facilityRequired: "Facility required.",

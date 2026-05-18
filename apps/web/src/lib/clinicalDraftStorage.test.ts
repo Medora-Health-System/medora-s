@@ -156,6 +156,47 @@ describe("clinicalDraftStorage", () => {
     expect(buildClinicalDraftKey(infusionStartScope)).not.toBe(buildClinicalDraftKey(infusionStopScope));
   });
 
+  it("scopes lab/radiology documentation and effective-time drafts by encounter, facility, user, row, and department", () => {
+    const labDocScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      version: "lab-radiology-documentation-v1:lab",
+      subjectId: "lab-item-1",
+    };
+    const radDocScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      version: "lab-radiology-documentation-v1:radiology",
+      subjectId: "rad-item-1",
+    };
+    const labEffectiveScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_EFFECTIVE_TIME_CORRECTION",
+      version: "lab-radiology-effective-time-correction-v1:lab:resulted:0:2026-05-17T12:00:00.000Z",
+      subjectId: "lab-item-1",
+    };
+    const radEffectiveScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "RADIOLOGY_EFFECTIVE_TIME_CORRECTION",
+      version: "lab-radiology-effective-time-correction-v1:radiology:finalized:0:2026-05-17T12:00:00.000Z",
+      subjectId: "rad-item-1",
+    };
+
+    expect(buildClinicalDraftKey(labDocScope)).toContain("lab-item-1");
+    expect(buildClinicalDraftKey(labDocScope)).toContain("lab-radiology-documentation-v1%3Alab");
+    expect(buildClinicalDraftKey(labDocScope)).not.toBe(buildClinicalDraftKey(radDocScope));
+    expect(buildClinicalDraftKey(labDocScope)).not.toBe(
+      buildClinicalDraftKey({ ...labDocScope, subjectId: "lab-item-2" })
+    );
+    expect(buildClinicalDraftKey(labDocScope)).not.toBe(
+      buildClinicalDraftKey({ ...labDocScope, facilityId: "facility-2" })
+    );
+    expect(buildClinicalDraftKey(labEffectiveScope)).not.toBe(buildClinicalDraftKey(radEffectiveScope));
+    expect(buildClinicalDraftKey(labEffectiveScope)).not.toBe(
+      buildClinicalDraftKey({ ...labEffectiveScope, subjectId: "lab-item-2" })
+    );
+  });
+
   it("round-trips and removes a typed local clinical draft", () => {
     const storage = makeMemoryStorage();
     const key = buildClinicalDraftKey(scope);
@@ -411,6 +452,67 @@ describe("clinicalDraftStorage", () => {
     ).toBe(false);
   });
 
+  it("rejects stale lab/radiology drafts and blocks cancelled or finalized result restore", () => {
+    const labScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      version: "lab-radiology-documentation-v1:lab",
+      subjectId: "lab-item-1",
+    };
+    const draft = createClinicalDraft({
+      scope: labScope,
+      payload: { resultText: "WBC 12.1" },
+      savedLocallyAt: "2026-05-17T12:00:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: labScope,
+        serverSavedAt: "2026-05-17T12:05:00.000Z",
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+        hasPayloadContent: (payload) => Boolean((payload as { resultText?: string }).resultText?.trim()),
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: createClinicalDraft({
+          scope: labScope,
+          payload: { resultText: "WBC 12.1" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        }),
+        scope: labScope,
+        workflowEditable: false,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: createClinicalDraft({
+          scope: labScope,
+          payload: { resultText: "WBC 12.1" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        }),
+        scope: labScope,
+        workflowEditable: true,
+        encounterStatus: "CLOSED",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: createClinicalDraft({
+          scope: labScope,
+          payload: { resultText: "WBC 12.1" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        }),
+        scope: { ...labScope, version: "lab-radiology-documentation-v1:radiology", subjectId: "rad-item-1" },
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
+
   it("manual save cleanup removes local ED triage and nursing assessment drafts", () => {
     const storage = makeMemoryStorage();
     const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
@@ -527,6 +629,50 @@ describe("clinicalDraftStorage", () => {
         createClinicalDraft({
           scope: s,
           payload: { note: "Manual action pending", reason: "Late charting" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        })
+      );
+    }
+
+    for (const s of scopes) removeClinicalDraft(storage, buildClinicalDraftKey(s));
+    for (const s of scopes) expect(readClinicalDraft(storage, buildClinicalDraftKey(s))).toBeNull();
+  });
+
+  it("manual save/finalize/correct cleanup removes lab/radiology local drafts", () => {
+    const storage = makeMemoryStorage();
+    const scopes: ClinicalDraftScope[] = [
+      {
+        ...scope,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:lab",
+        subjectId: "lab-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:radiology",
+        subjectId: "rad-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "LAB_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:lab:resulted:0:2026-05-17T12:00:00.000Z",
+        subjectId: "lab-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "RADIOLOGY_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:radiology:finalized:0:2026-05-17T12:00:00.000Z",
+        subjectId: "rad-item-1",
+      },
+    ];
+    for (const s of scopes) {
+      writeClinicalDraft(
+        storage,
+        buildClinicalDraftKey(s),
+        createClinicalDraft({
+          scope: s,
+          payload: { resultText: "Local result", reason: "Late correction" },
           savedLocallyAt: "2026-05-17T12:10:00.000Z",
         })
       );
@@ -691,6 +837,66 @@ describe("clinicalDraftStorage", () => {
     expect(correctTime).not.toHaveBeenCalled();
     expect(billingCreate).not.toHaveBeenCalled();
     expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|diagnosisId|orderEvent|administeredAt/i);
+  });
+
+  it("local lab/radiology draft writes do not call result, finalize, acknowledge, correct, order, or billing endpoints", () => {
+    const storage = makeMemoryStorage();
+    const saveResult = vi.fn();
+    const finalizeResult = vi.fn();
+    const acknowledgeResult = vi.fn();
+    const correctTime = vi.fn();
+    const updateOrder = vi.fn();
+    const billingCreate = vi.fn();
+    const diagnosisCreate = vi.fn();
+    const scopes: ClinicalDraftScope[] = [
+      {
+        ...scope,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:lab",
+        subjectId: "lab-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:radiology",
+        subjectId: "rad-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "LAB_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:lab:collected:0:2026-05-17T12:00:00.000Z",
+        subjectId: "lab-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "RADIOLOGY_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:radiology:performed:0:2026-05-17T12:00:00.000Z",
+        subjectId: "rad-item-1",
+      },
+    ];
+
+    for (const s of scopes) {
+      writeClinicalDraft(
+        storage,
+        buildClinicalDraftKey(s),
+        createClinicalDraft({
+          scope: s,
+          payload: { resultText: "Local-only interpretation", reason: "Late documentation" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        })
+      );
+    }
+
+    expect(saveResult).not.toHaveBeenCalled();
+    expect(finalizeResult).not.toHaveBeenCalled();
+    expect(acknowledgeResult).not.toHaveBeenCalled();
+    expect(correctTime).not.toHaveBeenCalled();
+    expect(updateOrder).not.toHaveBeenCalled();
+    expect(billingCreate).not.toHaveBeenCalled();
+    expect(diagnosisCreate).not.toHaveBeenCalled();
+    expect(JSON.stringify([...storage.data.values()])).not.toMatch(
+      /billing|diagnosisId|orderEvent|acknowledgedAt|finalizedAt|resultedAt|performedBy|resultedBy/i
+    );
   });
 
   it("allows local-only medication/MAR and lab/radiology draft scopes without executing clinical actions", () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
@@ -30,6 +30,17 @@ import { LabRadiologyEffectiveTimeModal } from "@/components/worklists/LabRadiol
 import { LabRadiologyOperationalBadges } from "@/components/worklists/LabRadiologyOperationalBadges";
 import { analyzeLabRadWorklistOperationalRow } from "@/features/orders/labRadiologyOperationalEscalationUi";
 import { isEncounterLocked } from "@/lib/encounterLock";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -72,6 +83,23 @@ function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
 }
 
+const LAB_RAD_RESULT_DRAFT_VERSION = "lab-radiology-documentation-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type LabRadiologyResultDraftPayload = {
+  resultText: string;
+};
+
+function labRadiologyResultDraftSignature(payload: LabRadiologyResultDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function labRadiologyResultDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<LabRadiologyResultDraftPayload>;
+  return Boolean(p.resultText?.trim());
+}
+
 function readFileAsAttachment(file: File, readErr: string): Promise<AttachmentMeta> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
@@ -101,7 +129,7 @@ export default function DepartmentOrderDetail({
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
-  const { roles, allowRnLabResultSubmission } = useFacilityAndRoles();
+  const { roles, userId, allowRnLabResultSubmission } = useFacilityAndRoles();
 
   /**
    * Acteur autorisé à exécuter les actions worklist du département (accusé / démarrage /
@@ -413,6 +441,7 @@ export default function DepartmentOrderDetail({
             facilityId={facilityId}
             order={order}
             parentOrderCancelled={parentOrderCancelled}
+            currentUserId={userId}
             viewerIsDeptActor={viewerIsDeptActor}
             rnCanSubmitLabResult={rnCanSubmitLabResult}
             onReload={load}
@@ -576,6 +605,7 @@ function LineCard({
   facilityId,
   order,
   parentOrderCancelled,
+  currentUserId,
   viewerIsDeptActor,
   rnCanSubmitLabResult,
   onReload,
@@ -597,6 +627,7 @@ function LineCard({
   facilityId: string;
   order: any;
   parentOrderCancelled: boolean;
+  currentUserId: string | null | undefined;
   /** false pour RN consultant la file labo (lecture seule) ; backend rejette quoi qu'il en soit. */
   viewerIsDeptActor: boolean;
   /**
@@ -618,6 +649,8 @@ function LineCard({
   const [pdfFiles, setPdfFiles] = useState<FileList | null>(null);
   const [imgFiles, setImgFiles] = useState<FileList | null>(null);
   const [feedback, setFeedback] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const [timeAdjustSaving, setTimeAdjustSaving] = useState(false);
   const [timeAdjustTarget, setTimeAdjustTarget] = useState<{
     milestone: "received" | "collected" | "performed" | "resulted" | "finalized";
@@ -627,10 +660,34 @@ function LineCard({
     effectiveAt: string | null;
     version: number;
   } | null>(null);
+  const restoringDraftRef = useRef(false);
 
   const dateLocale = encounterBcp47(language);
   const encounterLocked = isEncounterLocked(order?.encounter);
   const canAdjustClinicalTime = viewerIsDeptActor && !encounterLocked;
+  const encounterEditable = !parentOrderCancelled && !encounterLocked && order?.encounter?.status === "OPEN";
+  const resultDraftScope = useMemo<ClinicalDraftScope | null>(() => {
+    if (kind !== "lab" && kind !== "radiology") return null;
+    return {
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      encounterId: String(order?.encounterId ?? ""),
+      facilityId,
+      userId: currentUserId || UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: `${LAB_RAD_RESULT_DRAFT_VERSION}:${kind}`,
+      subjectId: item.id,
+    };
+  }, [currentUserId, facilityId, item.id, kind, order?.encounterId]);
+  const resultDraftKey = useMemo(
+    () => (resultDraftScope ? buildClinicalDraftKey(resultDraftScope) : null),
+    [resultDraftScope]
+  );
+  const resultDraftPayload = useMemo<LabRadiologyResultDraftPayload>(() => ({ resultText }), [resultText]);
+  const serverResultSignature = useMemo(
+    () => labRadiologyResultDraftSignature({ resultText: item.result?.resultText ?? "" }),
+    [item.result?.resultText]
+  );
+  const resultDraftDirty =
+    Boolean(resultDraftKey) && labRadiologyResultDraftSignature(resultDraftPayload) !== serverResultSignature;
 
   const operational = useMemo(() => {
     if (kind !== "lab" && kind !== "radiology") return null;
@@ -668,11 +725,6 @@ function LineCard({
     [timeAdjustTarget, facilityId, onReload]
   );
 
-  useEffect(() => {
-    setResultText(item.result?.resultText ?? "");
-    setCritical(!!item.result?.criticalValue);
-  }, [item.id, item.result?.resultText, item.result?.criticalValue]);
-
   /**
    * Saisie de résultat autorisée :
    * - LAB / RADIOLOGY / ADMIN sur leur file (existant) ; ou
@@ -698,6 +750,84 @@ function LineCard({
       : hasText || hasNewFiles;
 
   const substantiveBlocked = (hasText || hasNewFiles) && !statusAllowsSubstantiveResult;
+  const resultDraftEditable = canResult && encounterEditable && statusAllowsSubstantiveResult;
+
+  useEffect(() => {
+    setResultText(item.result?.resultText ?? "");
+    setCritical(!!item.result?.criticalValue);
+    setDraftRestoredAt(null);
+    setDraftSavedLocallyAt(null);
+  }, [item.id, item.result?.resultText, item.result?.criticalValue]);
+
+  useEffect(() => {
+    if (!resultDraftKey || !resultDraftScope || restoringDraftRef.current) return;
+    if (typeof window === "undefined") return;
+    const draft = readClinicalDraft<LabRadiologyResultDraftPayload>(window.localStorage, resultDraftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: resultDraftScope,
+      workflowEditable: resultDraftEditable,
+      encounterStatus: order?.encounter?.status ?? null,
+      serverSavedAt: item.result?.verifiedAt ?? item.updatedAt ?? order?.updatedAt ?? null,
+      hasPayloadContent: labRadiologyResultDraftHasContent,
+    });
+    if (canRestore && draft) {
+      restoringDraftRef.current = true;
+      setResultText(draft.payload.resultText ?? "");
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+      queueMicrotask(() => {
+        restoringDraftRef.current = false;
+      });
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, resultDraftKey);
+    }
+  }, [
+    item.result?.verifiedAt,
+    item.updatedAt,
+    order?.encounter?.status,
+    order?.updatedAt,
+    resultDraftEditable,
+    resultDraftKey,
+    resultDraftScope,
+  ]);
+
+  useEffect(() => {
+    if (!resultDraftKey || !resultDraftScope || restoringDraftRef.current) return;
+    if (!resultDraftEditable) return;
+    if (!resultDraftDirty || !labRadiologyResultDraftHasContent(resultDraftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, resultDraftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      resultDraftKey,
+      createClinicalDraft({
+        scope: resultDraftScope,
+        payload: resultDraftPayload,
+        savedLocallyAt,
+        lastServerSavedAt: item.result?.verifiedAt ?? item.updatedAt ?? order?.updatedAt ?? null,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [
+    item.result?.verifiedAt,
+    item.updatedAt,
+    order?.updatedAt,
+    resultDraftDirty,
+    resultDraftEditable,
+    resultDraftKey,
+    resultDraftPayload,
+    resultDraftScope,
+  ]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: resultDraftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable: resultDraftEditable,
+  });
 
   const workflowButtons = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -802,6 +932,11 @@ function LineCard({
         facilityId,
         body: JSON.stringify(body),
       });
+      if (resultDraftKey && typeof window !== "undefined") {
+        removeClinicalDraft(window.localStorage, resultDraftKey);
+      }
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
       if (res && typeof res === "object" && (res as { queued?: boolean }).queued === true) {
         setPdfFiles(null);
         setImgFiles(null);
@@ -1108,6 +1243,16 @@ function LineCard({
           ) : null}
           <label style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
             {labels.resultLabel}
+            {draftRestoredAt ? (
+              <span style={{ display: "block", marginTop: 6, fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+                {t("orderDetail.localDraftRestored")}
+              </span>
+            ) : null}
+            {draftSavedLocallyAt ? (
+              <span style={{ display: "block", marginTop: 6, fontSize: 12, color: "#64748b", fontWeight: 500 }}>
+                {t("orderDetail.localDraftSaved")}
+              </span>
+            ) : null}
             <textarea
               value={resultText}
               onChange={(e) => setResultText(e.target.value)}
@@ -1158,6 +1303,13 @@ function LineCard({
       {timeAdjustTarget ? (
         <LabRadiologyEffectiveTimeModal
           open
+          encounterId={String(order?.encounterId ?? "")}
+          facilityId={facilityId}
+          userId={currentUserId}
+          orderItemId={item.id}
+          departmentKind={kind === "lab" ? "lab" : "radiology"}
+          milestone={timeAdjustTarget.milestone}
+          workflowEditable={canAdjustClinicalTime && encounterEditable}
           lineLabel={getOrderItemDisplayLabelFromLocale(item, language)}
           milestoneLabel={t(timeAdjustTarget.titleKey)}
           defaultEffectiveIso={

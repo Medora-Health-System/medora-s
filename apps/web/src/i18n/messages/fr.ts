@@ -7631,6 +7631,8 @@ export default {
     resultPlaceholderRad: "Saisir le compte rendu…",
     submitAddResultLab: "Ajouter un résultat",
     submitAddResultRad: "Ajouter un compte rendu",
+    localDraftRestored: "Brouillon restauré sur cet appareil.",
+    localDraftSaved: "Brouillon enregistré localement.",
     loadError: "Chargement impossible.",
     saveDispenseFailed: "Impossible d'enregistrer la dispensation.",
     facilityRequired: "Établissement requis.",

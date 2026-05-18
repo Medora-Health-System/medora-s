@@ -5,6 +5,16 @@ import { parseLabRadiologyEffectiveClinicalTimeIso } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
+  buildClinicalDraftKey,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
+import {
   datetimeLocalValueToUtcIso,
   labRadModalIsLargeBackdate,
   labRadModalRequiresDetailedReason,
@@ -18,8 +28,28 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const LAB_RAD_EFFECTIVE_TIME_DRAFT_VERSION = "lab-radiology-effective-time-correction-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type LabRadiologyEffectiveTimeDraftPayload = {
+  reason: string;
+};
+
+function effectiveTimeDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<LabRadiologyEffectiveTimeDraftPayload>;
+  return Boolean(p.reason?.trim());
+}
+
 export function LabRadiologyEffectiveTimeModal({
   open,
+  encounterId,
+  facilityId,
+  userId,
+  orderItemId,
+  departmentKind,
+  milestone,
+  workflowEditable,
   lineLabel,
   milestoneLabel,
   defaultEffectiveIso,
@@ -32,6 +62,13 @@ export function LabRadiologyEffectiveTimeModal({
   saving,
 }: {
   open: boolean;
+  encounterId: string;
+  facilityId: string;
+  userId: string | null | undefined;
+  orderItemId: string;
+  departmentKind: "lab" | "radiology";
+  milestone: "received" | "collected" | "performed" | "resulted" | "finalized";
+  workflowEditable: boolean;
   lineLabel: string;
   milestoneLabel: string;
   defaultEffectiveIso: string;
@@ -47,14 +84,81 @@ export function LabRadiologyEffectiveTimeModal({
   const [clinicalLocal, setClinicalLocal] = useState(() => toDatetimeLocalValue(defaultEffectiveIso));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const restoringDraftRef = React.useRef(false);
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: departmentKind === "lab" ? "LAB_EFFECTIVE_TIME_CORRECTION" : "RADIOLOGY_EFFECTIVE_TIME_CORRECTION",
+      encounterId,
+      facilityId,
+      userId: userId || UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: `${LAB_RAD_EFFECTIVE_TIME_DRAFT_VERSION}:${departmentKind}:${milestone}:${adjustmentVersion}:${defaultEffectiveIso}`,
+      subjectId: orderItemId,
+    }),
+    [adjustmentVersion, defaultEffectiveIso, departmentKind, encounterId, facilityId, milestone, orderItemId, userId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
 
   useEffect(() => {
     if (open) {
       setClinicalLocal(toDatetimeLocalValue(defaultEffectiveIso));
       setReason("");
       setError(null);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
     }
   }, [open, defaultEffectiveIso]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    const draft = readClinicalDraft<LabRadiologyEffectiveTimeDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      workflowEditable,
+      encounterStatus: workflowEditable ? "OPEN" : "CLOSED",
+      hasPayloadContent: effectiveTimeDraftHasContent,
+    });
+    if (canRestore && draft) {
+      restoringDraftRef.current = true;
+      setReason(draft.payload.reason ?? "");
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+      queueMicrotask(() => {
+        restoringDraftRef.current = false;
+      });
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+  }, [draftKey, draftScope, open, workflowEditable]);
+
+  useEffect(() => {
+    if (restoringDraftRef.current) return;
+    if (!open || !workflowEditable) return;
+    if (!reason.trim()) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: { reason },
+        savedLocallyAt,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [draftKey, draftScope, open, reason, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: Boolean(open && workflowEditable && reason.trim() && draftSavedLocallyAt),
+    workflowEditable,
+  });
 
   const effectiveIso = useMemo(() => datetimeLocalValueToUtcIso(clinicalLocal), [clinicalLocal]);
 
@@ -106,6 +210,9 @@ export function LabRadiologyEffectiveTimeModal({
         effectiveClinicalTime: iso,
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
       setError(
@@ -177,6 +284,16 @@ export function LabRadiologyEffectiveTimeModal({
           {t("labRadTime.reasonLabel")}
           {reasonRequired ? " *" : null}
         </label>
+        {draftRestoredAt ? (
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+            {t("orderDetail.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt ? (
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("orderDetail.localDraftSaved")}
+          </p>
+        ) : null}
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}
