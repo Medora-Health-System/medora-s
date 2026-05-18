@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -42,6 +42,17 @@ import {
   type ProviderDocumentationTemplateId,
   type ProviderDocumentationWorkspaceState,
 } from "@/lib/providerDocumentationModel";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 /** HPI quick chips — fragments only; appended to `hpiNarrative` via `appendIfNotPresent`. */
 const HPI_CHIP_ROWS: readonly { categoryKey: string; fragmentKeys: readonly string[] }[] = [
@@ -267,6 +278,40 @@ const MDM_CHIP_GROUPS: readonly {
   },
 ] as const;
 
+type ProviderHandoffDraftPayload = {
+  handoffToId: string | null;
+  handoffToDisplay: string;
+  handoffReportAtLocal: string;
+  handoffNotes: string;
+};
+
+const PROVIDER_HANDOFF_DRAFT_VERSION = "provider-handoff-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+function providerHandoffDraftSignature(payload: ProviderHandoffDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function emptyProviderHandoffDraftPayload(): ProviderHandoffDraftPayload {
+  return {
+    handoffToId: null,
+    handoffToDisplay: "",
+    handoffReportAtLocal: "",
+    handoffNotes: "",
+  };
+}
+
+function providerHandoffDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<ProviderHandoffDraftPayload>;
+  return Boolean(
+    p.handoffToId ||
+      p.handoffToDisplay?.trim() ||
+      p.handoffReportAtLocal?.trim() ||
+      p.handoffNotes?.trim()
+  );
+}
+
 type EncounterLite = {
   id: string;
   status?: string | null;
@@ -386,10 +431,36 @@ export function EmergencyProviderMsePanel({
   const [handoffNotes, setHandoffNotes] = useState("");
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [handoffFeedback, setHandoffFeedback] = useState<{ variant: "success" | "error"; message: string } | null>(null);
+  const [handoffDraftRestoredAt, setHandoffDraftRestoredAt] = useState<string | null>(null);
+  const [handoffDraftSavedLocallyAt, setHandoffDraftSavedLocallyAt] = useState<string | null>(null);
+  const handoffServerSignatureRef = useRef(providerHandoffDraftSignature(emptyProviderHandoffDraftPayload()));
+  const handoffRestoredDraftKeyRef = useRef<string | null>(null);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
   const handoffLockedReason: "closed" | "signed" | null = isReadOnly ? "closed" : isLocked ? "signed" : null;
+  const handoffDraftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "PROVIDER_HANDOFF",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: PROVIDER_HANDOFF_DRAFT_VERSION,
+    }),
+    [encounterId, facilityId]
+  );
+  const handoffDraftKey = useMemo(() => buildClinicalDraftKey(handoffDraftScope), [handoffDraftScope]);
+  const handoffDraftPayload = useMemo<ProviderHandoffDraftPayload>(
+    () => ({
+      handoffToId,
+      handoffToDisplay,
+      handoffReportAtLocal,
+      handoffNotes,
+    }),
+    [handoffNotes, handoffReportAtLocal, handoffToDisplay, handoffToId]
+  );
+  const handoffDraftDirty =
+    providerHandoffDraftSignature(handoffDraftPayload) !== handoffServerSignatureRef.current;
 
   useEffect(() => {
     setForm(erProviderMseFormFromEncounter(encounter.nursingAssessment));
@@ -404,6 +475,58 @@ export function EmergencyProviderMsePanel({
       followUpDisposition: hydrated.followUpDisposition,
     });
   }, [encounter, encounter.nursingAssessment, encounter.updatedAt]);
+
+  useEffect(() => {
+    if (handoffRestoredDraftKeyRef.current === handoffDraftKey) return;
+    if (typeof window === "undefined") return;
+    const draft = readClinicalDraft<ProviderHandoffDraftPayload>(window.localStorage, handoffDraftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: handoffDraftScope,
+      workflowEditable: !formDisabled,
+      signedOrFinalized: isLocked,
+      encounterStatus: encounter.status ?? null,
+      hasPayloadContent: providerHandoffDraftHasContent,
+    });
+    handoffRestoredDraftKeyRef.current = handoffDraftKey;
+    if (canRestore && draft) {
+      setHandoffToId(draft.payload.handoffToId);
+      setHandoffToDisplay(draft.payload.handoffToDisplay);
+      setHandoffReportAtLocal(draft.payload.handoffReportAtLocal);
+      setHandoffNotes(draft.payload.handoffNotes);
+      setHandoffDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setHandoffDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, handoffDraftKey);
+    }
+  }, [encounter.status, formDisabled, handoffDraftKey, handoffDraftScope, isLocked]);
+
+  useEffect(() => {
+    if (formDisabled) return;
+    if (!handoffDraftDirty || !providerHandoffDraftHasContent(handoffDraftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, handoffDraftKey);
+      setHandoffDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      handoffDraftKey,
+      createClinicalDraft({
+        scope: handoffDraftScope,
+        payload: handoffDraftPayload,
+        savedLocallyAt,
+      })
+    );
+    setHandoffDraftSavedLocallyAt(savedLocallyAt);
+  }, [formDisabled, handoffDraftDirty, handoffDraftKey, handoffDraftPayload, handoffDraftScope]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: handoffDraftDirty && Boolean(handoffDraftSavedLocallyAt),
+    workflowEditable: !formDisabled,
+    signedOrFinalized: isLocked,
+  });
 
   const [wideLayout, setWideLayout] = useState(false);
   useEffect(() => {
@@ -759,6 +882,10 @@ export function EmergencyProviderMsePanel({
       setHandoffReportAtLocal("");
       setHandoffToDisplay("");
       setHandoffToId(null);
+      handoffServerSignatureRef.current = providerHandoffDraftSignature(emptyProviderHandoffDraftPayload());
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, handoffDraftKey);
+      setHandoffDraftRestoredAt(null);
+      setHandoffDraftSavedLocallyAt(null);
       await onSaved();
     } catch (e) {
       console.error(e);
@@ -776,6 +903,7 @@ export function EmergencyProviderMsePanel({
     formDisabled,
     handoffNotes,
     handoffReportAtLocal,
+    handoffDraftKey,
     handoffToId,
     onSaved,
     t,
@@ -835,6 +963,16 @@ export function EmergencyProviderMsePanel({
           {t("erMseProviderPanel.sectionProviderHandoff")}
         </summary>
         <div style={{ marginTop: 10, maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
+          {handoffDraftRestoredAt ? (
+            <p role="status" style={{ margin: 0, fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
+              {t("erMseProviderPanel.handoffLocalDraftRestored")}
+            </p>
+          ) : null}
+          {handoffDraftSavedLocallyAt && handoffDraftDirty ? (
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+              {t("erMseProviderPanel.handoffLocalDraftSaved")}
+            </p>
+          ) : null}
           <div>
             <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffRecipient")}</label>
             <ClinicalUserRoleAutocomplete
@@ -1517,6 +1655,16 @@ export function EmergencyProviderMsePanel({
                 {t("erMseProviderPanel.sectionProviderHandoff")}
               </summary>
               <div style={{ marginTop: 10, maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
+                {handoffDraftRestoredAt ? (
+                  <p role="status" style={{ margin: 0, fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
+                    {t("erMseProviderPanel.handoffLocalDraftRestored")}
+                  </p>
+                ) : null}
+                {handoffDraftSavedLocallyAt && handoffDraftDirty ? (
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                    {t("erMseProviderPanel.handoffLocalDraftSaved")}
+                  </p>
+                ) : null}
                 <div>
                   <label style={labelStyle}>{t("erMseProviderPanel.labelHandoffRecipient")}</label>
                   <ClinicalUserRoleAutocomplete

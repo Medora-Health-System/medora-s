@@ -1,14 +1,27 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import type { ObservationReassessmentV1Body } from "@medora/shared";
 import { insertTextAtTextareaSelection } from "@/lib/insertTextAtTextareaSelection";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 const OBS_REASSESS_NOTE_MAX = 2000;
+const OBS_REASSESSMENT_DRAFT_VERSION = "observation-reassessment-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
 
 import { OBSERVATION_REASSESSMENT_OPERATIONAL_PRESET_IDS } from "@/features/observation/observationReassessmentOperationalPresets";
 
@@ -89,15 +102,45 @@ export type ObservationReassessmentModalProps = {
   defaultRole: "PROVIDER" | "RN";
   encounterId: string;
   facilityId: string;
+  encounterStatus?: string | null;
   onClose: () => void;
   onSaved: () => void;
 };
+
+type ObservationReassessmentDraftPayload = ObservationReassessmentV1Body;
+
+function defaultObservationReassessmentPayload(role: "PROVIDER" | "RN"): ObservationReassessmentDraftPayload {
+  return {
+    role,
+    patientStatus: "unchanged",
+    symptomsReviewed: true,
+    vitalsReviewed: true,
+    resultsReviewed: true,
+    painControlled: true,
+    continueObservation: true,
+    readyForDischarge: false,
+    transferConsidered: false,
+    note: "",
+  };
+}
+
+function observationReassessmentPayloadSignature(payload: ObservationReassessmentDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function observationReassessmentDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<ObservationReassessmentDraftPayload>;
+  return observationReassessmentPayloadSignature(p as ObservationReassessmentDraftPayload) !==
+    observationReassessmentPayloadSignature(defaultObservationReassessmentPayload((p.role as "PROVIDER" | "RN") ?? "PROVIDER"));
+}
 
 export function ObservationReassessmentModal({
   open,
   defaultRole,
   encounterId,
   facilityId,
+  encounterStatus,
   onClose,
   onSaved,
 }: ObservationReassessmentModalProps) {
@@ -114,23 +157,123 @@ export function ObservationReassessmentModal({
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const restoredDraftKeyRef = useRef<string | null>(null);
   const noteRef = useRef<HTMLTextAreaElement | null>(null);
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "OBSERVATION_REASSESSMENT",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: `${OBS_REASSESSMENT_DRAFT_VERSION}:${defaultRole}`,
+    }),
+    [defaultRole, encounterId, facilityId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
+  const workflowEditable = open && (encounterStatus == null || encounterStatus === "OPEN");
+  const currentPayload: ObservationReassessmentDraftPayload = useMemo(
+    () => ({
+      role,
+      patientStatus,
+      symptomsReviewed,
+      vitalsReviewed,
+      resultsReviewed,
+      painControlled,
+      continueObservation,
+      readyForDischarge,
+      transferConsidered,
+      note,
+    }),
+    [
+      continueObservation,
+      note,
+      painControlled,
+      patientStatus,
+      readyForDischarge,
+      resultsReviewed,
+      role,
+      symptomsReviewed,
+      transferConsidered,
+      vitalsReviewed,
+    ]
+  );
+  const defaultPayload = useMemo(() => defaultObservationReassessmentPayload(defaultRole), [defaultRole]);
+  const draftDirty =
+    observationReassessmentPayloadSignature(currentPayload) !== observationReassessmentPayloadSignature(defaultPayload);
 
   useEffect(() => {
     if (!open) return;
-    setRole(defaultRole);
-    setPatientStatus("unchanged");
-    setSymptomsReviewed(true);
-    setVitalsReviewed(true);
-    setResultsReviewed(true);
-    setPainControlled(true);
-    setContinueObservation(true);
-    setReadyForDischarge(false);
-    setTransferConsidered(false);
-    setNote("");
+    const base = defaultObservationReassessmentPayload(defaultRole);
+    setRole(base.role);
+    setPatientStatus(base.patientStatus);
+    setSymptomsReviewed(base.symptomsReviewed);
+    setVitalsReviewed(base.vitalsReviewed);
+    setResultsReviewed(base.resultsReviewed);
+    setPainControlled(base.painControlled);
+    setContinueObservation(base.continueObservation);
+    setReadyForDischarge(base.readyForDischarge);
+    setTransferConsidered(base.transferConsidered);
+    setNote(base.note ?? "");
     setError(null);
     setSaving(false);
-  }, [open, defaultRole]);
+    setDraftRestoredAt(null);
+    setDraftSavedLocallyAt(null);
+
+    if (typeof window === "undefined" || restoredDraftKeyRef.current === draftKey) return;
+    const draft = readClinicalDraft<ObservationReassessmentDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      workflowEditable,
+      encounterStatus: encounterStatus ?? null,
+      hasPayloadContent: observationReassessmentDraftHasContent,
+    });
+    restoredDraftKeyRef.current = draftKey;
+    if (canRestore && draft) {
+      setRole(draft.payload.role);
+      setPatientStatus(draft.payload.patientStatus);
+      setSymptomsReviewed(draft.payload.symptomsReviewed);
+      setVitalsReviewed(draft.payload.vitalsReviewed);
+      setResultsReviewed(draft.payload.resultsReviewed);
+      setPainControlled(draft.payload.painControlled);
+      setContinueObservation(draft.payload.continueObservation);
+      setReadyForDischarge(draft.payload.readyForDischarge);
+      setTransferConsidered(draft.payload.transferConsidered);
+      setNote(draft.payload.note ?? "");
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+  }, [defaultRole, draftKey, draftScope, encounterStatus, open, workflowEditable]);
+
+  useEffect(() => {
+    if (!workflowEditable) return;
+    if (!draftDirty || !observationReassessmentDraftHasContent(currentPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: currentPayload,
+        savedLocallyAt,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [currentPayload, draftDirty, draftKey, draftScope, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: draftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable,
+  });
 
   const submit = useCallback(async () => {
     setSaving(true);
@@ -154,6 +297,9 @@ export function ObservationReassessmentModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
       onSaved();
       onClose();
     } catch (e: unknown) {
@@ -168,6 +314,7 @@ export function ObservationReassessmentModal({
     continueObservation,
     encounterId,
     facilityId,
+    draftKey,
     language,
     note,
     onClose,
@@ -215,6 +362,16 @@ export function ObservationReassessmentModal({
         <p style={{ margin: "0 0 14px 0", fontSize: 13, color: "#64748b", lineHeight: 1.5 }}>
           {t("encounterChrome.observationReassessment.intro")}
         </p>
+        {draftRestoredAt ? (
+          <p role="status" style={{ margin: "0 0 8px 0", fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
+            {t("encounterChrome.observationReassessment.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt && draftDirty ? (
+          <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b" }}>
+            {t("encounterChrome.observationReassessment.localDraftSaved")}
+          </p>
+        ) : null}
 
         <div style={{ marginBottom: 12 }}>
           <span style={labelStyle}>{t("encounterChrome.observationReassessment.fieldRole")}</span>

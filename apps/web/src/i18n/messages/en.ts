@@ -5552,6 +5552,8 @@ export default {
     handoffSaving: "Saving...",
     handoffSuccess: "Handoff recorded.",
     handoffError: "Could not record handoff.",
+    handoffLocalDraftRestored: "Unsaved provider handoff draft restored.",
+    handoffLocalDraftSaved: "Draft saved locally.",
     handoffRecipientRequired: "Pick a receiving provider from the list.",
     handoffRecipientPlaceholder: "Search provider by first or last name…",
     handoffInvalidDate: "Invalid date or time.",
@@ -6130,6 +6132,8 @@ export default {
       save: "Save",
       saving: "Saving…",
       saveError: "Could not save reassessment.",
+      localDraftRestored: "Unsaved observation reassessment draft restored.",
+      localDraftSaved: "Draft saved locally.",
       quickPhrases: {
         title: "Quick phrases",
         reviewHint: "Review and edit before saving — you remain the author of the note.",
@@ -6227,6 +6231,8 @@ export default {
       save: "Save reassessment",
       saving: "Saving…",
       saveError: "Could not save reassessment.",
+      localDraftRestored: "Unsaved continue-observation draft restored.",
+      localDraftSaved: "Draft saved locally.",
     },
     observationOrderTemplateBannerButton: "Observation order template",
     observationOrderTemplateBannerPartial:

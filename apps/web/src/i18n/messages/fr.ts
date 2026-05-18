@@ -5534,6 +5534,8 @@ export default {
     handoffSaving: "Enregistrement…",
     handoffSuccess: "Passation enregistrée.",
     handoffError: "Impossible d'enregistrer la passation.",
+    handoffLocalDraftRestored: "Brouillon de passation médecin non enregistré restauré.",
+    handoffLocalDraftSaved: "Brouillon enregistré localement.",
     handoffRecipientRequired: "Sélectionnez un médecin destinataire dans la liste.",
     handoffRecipientPlaceholder: "Rechercher un médecin (prénom ou nom)…",
     handoffInvalidDate: "Date ou heure invalide.",
@@ -6116,6 +6118,8 @@ export default {
       save: "Enregistrer",
       saving: "Enregistrement…",
       saveError: "Impossible d'enregistrer la réévaluation.",
+      localDraftRestored: "Brouillon de réévaluation observation non enregistré restauré.",
+      localDraftSaved: "Brouillon enregistré localement.",
       quickPhrases: {
         title: "Formulations rapides",
         reviewHint:
@@ -6214,6 +6218,8 @@ export default {
       save: "Enregistrer la réévaluation",
       saving: "Enregistrement…",
       saveError: "Impossible d'enregistrer la réévaluation.",
+      localDraftRestored: "Brouillon de poursuite d'observation non enregistré restauré.",
+      localDraftSaved: "Brouillon enregistré localement.",
     },
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
     observationOrderTemplateBannerPartial:

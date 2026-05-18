@@ -1,13 +1,26 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import type { ObservationReassessmentV1Body } from "@medora/shared";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 const NOTE_MAX = 2000;
+const OBS_CONTINUE_NOTE_DRAFT_VERSION = "observation-continue-note-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
 
 const overlay: React.CSSProperties = {
   position: "fixed",
@@ -36,9 +49,23 @@ export type ObservationContinueObservationQuickModalProps = {
   open: boolean;
   encounterId: string;
   facilityId: string;
+  encounterStatus?: string | null;
   onClose: () => void;
   onSaved: () => void | Promise<void>;
 };
+
+type ObservationContinueNoteDraftPayload = {
+  rationale: string;
+};
+
+function continueNoteSignature(payload: ObservationContinueNoteDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function continueNoteDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  return Boolean((payload as Partial<ObservationContinueNoteDraftPayload>).rationale?.trim());
+}
 
 /**
  * Provider-only quick path: documents intent to continue observation via the same
@@ -49,6 +76,7 @@ export function ObservationContinueObservationQuickModal({
   open,
   encounterId,
   facilityId,
+  encounterStatus,
   onClose,
   onSaved,
 }: ObservationContinueObservationQuickModalProps) {
@@ -56,13 +84,75 @@ export function ObservationContinueObservationQuickModal({
   const [rationale, setRationale] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const restoredDraftKeyRef = useRef<string | null>(null);
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "OBSERVATION_CONTINUE_NOTE",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: OBS_CONTINUE_NOTE_DRAFT_VERSION,
+    }),
+    [encounterId, facilityId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
+  const workflowEditable = open && (encounterStatus == null || encounterStatus === "OPEN");
+  const currentPayload = useMemo<ObservationContinueNoteDraftPayload>(() => ({ rationale }), [rationale]);
+  const draftDirty = continueNoteSignature(currentPayload) !== continueNoteSignature({ rationale: "" });
 
   useEffect(() => {
     if (!open) return;
     setRationale("");
     setError(null);
     setSaving(false);
-  }, [open]);
+    setDraftRestoredAt(null);
+    setDraftSavedLocallyAt(null);
+    if (typeof window === "undefined" || restoredDraftKeyRef.current === draftKey) return;
+    const draft = readClinicalDraft<ObservationContinueNoteDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      workflowEditable,
+      encounterStatus: encounterStatus ?? null,
+      hasPayloadContent: continueNoteDraftHasContent,
+    });
+    restoredDraftKeyRef.current = draftKey;
+    if (canRestore && draft) {
+      setRationale(draft.payload.rationale);
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+  }, [draftKey, draftScope, encounterStatus, open, workflowEditable]);
+
+  useEffect(() => {
+    if (!workflowEditable) return;
+    if (!draftDirty || !continueNoteDraftHasContent(currentPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: currentPayload,
+        savedLocallyAt,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [currentPayload, draftDirty, draftKey, draftScope, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: draftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable,
+  });
 
   const submit = useCallback(async () => {
     const note = rationale.trim();
@@ -88,6 +178,9 @@ export function ObservationContinueObservationQuickModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
       await onSaved();
       onClose();
     } catch (e: unknown) {
@@ -98,7 +191,7 @@ export function ObservationContinueObservationQuickModal({
     } finally {
       setSaving(false);
     }
-  }, [encounterId, facilityId, language, onClose, onSaved, rationale, t]);
+  }, [draftKey, encounterId, facilityId, language, onClose, onSaved, rationale, t]);
 
   if (!open) return null;
 
@@ -114,6 +207,16 @@ export function ObservationContinueObservationQuickModal({
         <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#b45309", lineHeight: 1.45, fontWeight: 600 }}>
           {t("encounterChrome.continueObservationQuick.reviewHint")}
         </p>
+        {draftRestoredAt ? (
+          <p role="status" style={{ margin: "0 0 8px 0", fontSize: 13, color: "#0f766e", fontWeight: 600 }}>
+            {t("encounterChrome.continueObservationQuick.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt && draftDirty ? (
+          <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b" }}>
+            {t("encounterChrome.continueObservationQuick.localDraftSaved")}
+          </p>
+        ) : null}
         <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 600, color: "#334155" }}>
           {t("encounterChrome.continueObservationQuick.rationaleLabel")}
           <textarea
