@@ -6760,6 +6760,8 @@ export default {
     saving: "Saving…",
     savedOk: "Saved.",
     errSave: "Unable to save.",
+    localDraftRestored: "Unsaved nursing assessment draft restored.",
+    localDraftSaved: "Draft saved locally.",
     signerFallback: "Clinician",
     queuedBanner:
       "The nursing assessment was saved on this device and is pending sync with the server. It is not yet confirmed on the server.",

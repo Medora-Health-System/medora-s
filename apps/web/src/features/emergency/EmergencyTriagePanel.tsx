@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
@@ -56,6 +56,17 @@ import {
 } from "./erTriageSafetyPrompts";
 import type { VitalsJsonMergeFormInput } from "./emergencyTriageVitalsMerge";
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 function applyTemplateBilingualIfFieldEmpty(
   current: string,
@@ -99,6 +110,13 @@ type TriageFormState = {
   erV1: ErTriageV1Form;
 };
 
+type TriageLocalDraftPayload = {
+  formData: TriageFormState;
+};
+
+const ED_TRIAGE_DRAFT_VERSION = "ed-triage-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
 const emptyForm = (): TriageFormState => ({
   chiefComplaint: "",
   onsetAt: "",
@@ -122,6 +140,20 @@ const emptyForm = (): TriageFormState => ({
   triageCompleteAt: "",
   erV1: emptyErTriageV1Form(),
 });
+
+function triageFormSignature(formData: TriageFormState): string {
+  return clinicalDraftPayloadSignature(formData);
+}
+
+function triageFormHasContent(formData: TriageFormState): boolean {
+  return triageFormSignature(formData) !== triageFormSignature(emptyForm());
+}
+
+function triageDraftPayloadHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const formData = (payload as Partial<TriageLocalDraftPayload>).formData;
+  return Boolean(formData && triageFormHasContent(formData));
+}
 
 const inputBase: React.CSSProperties = {
   width: "100%",
@@ -204,9 +236,27 @@ export function EmergencyTriagePanel({
   const [complaintTemplateQuery, setComplaintTemplateQuery] = useState("");
   const [templateAppliedHint, setTemplateAppliedHint] = useState<string | null>(null);
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const serverFormSignatureRef = useRef(triageFormSignature(emptyForm()));
+  const restoredDraftKeyRef = useRef<string | null>(null);
 
   const isReadOnly = encounter.status !== "OPEN";
   const formDisabled = isReadOnly || isLocked;
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "ED_TRIAGE",
+      encounterId: encounter.id,
+      patientId: encounter.patient?.id ?? null,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: ED_TRIAGE_DRAFT_VERSION,
+    }),
+    [encounter.id, encounter.patient?.id, facilityId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
+  const currentFormSignature = useMemo(() => triageFormSignature(formData), [formData]);
+  const triageDraftDirty = currentFormSignature !== serverFormSignatureRef.current;
 
   const screeningYnuOptions: { value: ErScreeningYnu; label: string }[] = useMemo(
     () => [
@@ -286,7 +336,7 @@ export function EmergencyTriagePanel({
         const parsed = triagePreviewSliceFromTriageGet(d, language);
         const s = parsed?.slice;
         const v = (d.vitalsJson || {}) as Record<string, number | string | null>;
-        setFormData({
+        const nextForm = {
           chiefComplaint: (d.chiefComplaint as string) || "",
           onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString().slice(0, 16) : "",
           esi: d.esi != null ? String(d.esi) : "",
@@ -310,9 +360,67 @@ export function EmergencyTriagePanel({
             ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
             : "",
           erV1: erTriageV1FormFromVitalsJson(d.vitalsJson),
-        });
+        };
+        serverFormSignatureRef.current = triageFormSignature(nextForm);
+        setFormData(nextForm);
+        setDraftRestoredAt(null);
+        setDraftSavedLocallyAt(null);
+        if (typeof window !== "undefined" && restoredDraftKeyRef.current !== draftKey) {
+          const draft = readClinicalDraft<TriageLocalDraftPayload>(window.localStorage, draftKey);
+          const serverSavedAt =
+            typeof d.updatedAt === "string"
+              ? d.updatedAt
+              : d.updatedAt
+                ? new Date(d.updatedAt as string).toISOString()
+                : null;
+          const canRestore = shouldRestoreClinicalDraft({
+            draft,
+            scope: draftScope,
+            serverSavedAt,
+            workflowEditable: !formDisabled,
+            signedOrFinalized: Boolean(d.triageCompleteAt),
+            encounterStatus: encounter.status,
+            hasPayloadContent: triageDraftPayloadHasContent,
+          });
+          restoredDraftKeyRef.current = draftKey;
+          if (canRestore && draft?.payload.formData) {
+            setFormData({
+              ...draft.payload.formData,
+              // Never restore completion state from an unsaved local triage draft.
+              triageCompleteAt: nextForm.triageCompleteAt,
+            });
+            setDraftRestoredAt(draft.metadata.savedLocallyAt);
+            setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+          } else if (draft && !canRestore) {
+            removeClinicalDraft(window.localStorage, draftKey);
+          }
+        }
       } else {
-        setFormData(emptyForm());
+        const nextForm = emptyForm();
+        serverFormSignatureRef.current = triageFormSignature(nextForm);
+        setFormData(nextForm);
+        setDraftRestoredAt(null);
+        setDraftSavedLocallyAt(null);
+        if (typeof window !== "undefined" && restoredDraftKeyRef.current !== draftKey) {
+          const draft = readClinicalDraft<TriageLocalDraftPayload>(window.localStorage, draftKey);
+          const canRestore = shouldRestoreClinicalDraft({
+            draft,
+            scope: draftScope,
+            serverSavedAt: null,
+            workflowEditable: !formDisabled,
+            signedOrFinalized: false,
+            encounterStatus: encounter.status,
+            hasPayloadContent: triageDraftPayloadHasContent,
+          });
+          restoredDraftKeyRef.current = draftKey;
+          if (canRestore && draft?.payload.formData) {
+            setFormData({ ...draft.payload.formData, triageCompleteAt: "" });
+            setDraftRestoredAt(draft.metadata.savedLocallyAt);
+            setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+          } else if (draft && !canRestore) {
+            removeClinicalDraft(window.localStorage, draftKey);
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -324,7 +432,7 @@ export function EmergencyTriagePanel({
     } finally {
       setLoading(false);
     }
-  }, [encounter.id, facilityId, language, t]);
+  }, [draftKey, draftScope, encounter.id, encounter.status, facilityId, formDisabled, language, t]);
 
   useEffect(() => {
     void loadTriage();
@@ -399,6 +507,11 @@ export function EmergencyTriagePanel({
 
       await loadTriage();
       await onSaved();
+      if (typeof window !== "undefined") {
+        removeClinicalDraft(window.localStorage, draftKey);
+      }
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
       const baseMsg =
         res && typeof res === "object" && (res as { queued?: boolean }).queued === true
           ? t("erTriage.panel.saveQueued")
@@ -422,6 +535,38 @@ export function EmergencyTriagePanel({
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (loading || formDisabled) return;
+    if (!triageDraftDirty || !triageFormHasContent(formData)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: { formData },
+        savedLocallyAt,
+        lastServerSavedAt:
+          triage?.updatedAt && typeof triage.updatedAt === "string"
+            ? triage.updatedAt
+            : triage?.updatedAt
+              ? new Date(triage.updatedAt as string).toISOString()
+              : null,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [draftKey, draftScope, formData, formDisabled, loading, triage?.updatedAt, triageDraftDirty]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: triageDraftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable: !formDisabled,
+  });
 
   const updatedLine =
     triage?.updatedByDisplayFr && triage?.updatedAt
@@ -620,10 +765,29 @@ export function EmergencyTriagePanel({
                 {saveInfo}
               </p>
             ) : null}
+            {draftRestoredAt ? (
+              <p
+                role="status"
+                style={{
+                  margin: "10px 0 0 0",
+                  fontSize: 13,
+                  color: "#0f766e",
+                  lineHeight: 1.45,
+                  fontWeight: 600,
+                }}
+              >
+                {t("erTriage.panel.localDraftRestored")}
+              </p>
+            ) : null}
+            {draftSavedLocallyAt && triageDraftDirty ? (
+              <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                {t("erTriage.panel.localDraftSaved")}
+              </p>
+            ) : null}
 
             <div
               style={{
-                marginTop: saveInfo ? 10 : 12,
+                marginTop: saveInfo || draftRestoredAt || draftSavedLocallyAt ? 10 : 12,
                 padding: "10px 12px",
                 borderRadius: 10,
                 border: `1px solid ${triageCompletenessOk ? "#a7f3d0" : "#fde68a"}`,

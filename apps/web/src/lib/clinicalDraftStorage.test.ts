@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildClinicalDraftKey,
   createClinicalDraft,
@@ -45,6 +45,30 @@ describe("clinicalDraftStorage", () => {
     expect(buildClinicalDraftKey({ ...scope, userId: "provider-2" })).not.toBe(key);
   });
 
+  it("scopes ED triage and nursing assessment drafts by encounter, facility, and user", () => {
+    const triageScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "ED_TRIAGE",
+      userId: "rn-1",
+      version: "ed-triage-v1",
+    };
+    const nursingScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "NURSING_ASSESSMENT",
+      userId: "rn-1",
+      version: "nursing-assessment-v1",
+    };
+
+    expect(buildClinicalDraftKey(triageScope)).not.toBe(buildClinicalDraftKey(nursingScope));
+    expect(buildClinicalDraftKey(triageScope)).not.toBe(
+      buildClinicalDraftKey({ ...triageScope, facilityId: "facility-2" })
+    );
+    expect(buildClinicalDraftKey(nursingScope)).not.toBe(
+      buildClinicalDraftKey({ ...nursingScope, encounterId: "enc-2" })
+    );
+    expect(buildClinicalDraftKey(nursingScope)).not.toBe(buildClinicalDraftKey({ ...nursingScope, userId: "rn-2" }));
+  });
+
   it("round-trips and removes a typed local clinical draft", () => {
     const storage = makeMemoryStorage();
     const key = buildClinicalDraftKey(scope);
@@ -83,6 +107,44 @@ describe("clinicalDraftStorage", () => {
     ).toBe(false);
   });
 
+  it("rejects stale ED triage and nursing assessment drafts", () => {
+    const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
+    const nursingScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "NURSING_ASSESSMENT",
+      version: "nursing-assessment-v1",
+    };
+    const triageDraft = createClinicalDraft({
+      scope: triageScope,
+      payload: { formData: { chiefComplaint: "Local draft" } },
+      savedLocallyAt: "2026-05-17T12:00:00.000Z",
+    });
+    const nursingDraft = createClinicalDraft({
+      scope: nursingScope,
+      payload: { state: { etatGeneral: { text: "Local draft" } }, ivState: { performed: false } },
+      savedLocallyAt: "2026-05-17T12:00:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: triageDraft,
+        scope: triageScope,
+        serverSavedAt: "2026-05-17T12:05:00.000Z",
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: nursingDraft,
+        scope: nursingScope,
+        serverSavedAt: "2026-05-17T12:05:00.000Z",
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
+
   it("blocks restore over signed, finalized, closed, or non-editable workflows", () => {
     const draft = createClinicalDraft({
       scope,
@@ -94,6 +156,75 @@ describe("clinicalDraftStorage", () => {
     expect(shouldRestoreClinicalDraft({ draft, scope, workflowEditable: true, signedOrFinalized: true })).toBe(false);
     expect(shouldRestoreClinicalDraft({ draft, scope, workflowEditable: false })).toBe(false);
     expect(shouldRestoreClinicalDraft({ draft, scope, workflowEditable: true, encounterStatus: "CLOSED" })).toBe(false);
+  });
+
+  it("manual save cleanup removes local ED triage and nursing assessment drafts", () => {
+    const storage = makeMemoryStorage();
+    const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
+    const nursingScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "NURSING_ASSESSMENT",
+      version: "nursing-assessment-v1",
+    };
+    const triageKey = buildClinicalDraftKey(triageScope);
+    const nursingKey = buildClinicalDraftKey(nursingScope);
+
+    writeClinicalDraft(
+      storage,
+      triageKey,
+      createClinicalDraft({
+        scope: triageScope,
+        payload: { formData: { chiefComplaint: "Needs save" } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+    writeClinicalDraft(
+      storage,
+      nursingKey,
+      createClinicalDraft({
+        scope: nursingScope,
+        payload: { state: { etatGeneral: { text: "Needs save" } }, ivState: { performed: false } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+
+    removeClinicalDraft(storage, triageKey);
+    removeClinicalDraft(storage, nursingKey);
+    expect(readClinicalDraft(storage, triageKey)).toBeNull();
+    expect(readClinicalDraft(storage, nursingKey)).toBeNull();
+  });
+
+  it("local triage and nursing draft writes do not submit server PUT/PATCH side effects", () => {
+    const storage = makeMemoryStorage();
+    const serverSubmit = vi.fn();
+    const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
+    const nursingScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "NURSING_ASSESSMENT",
+      version: "nursing-assessment-v1",
+    };
+
+    writeClinicalDraft(
+      storage,
+      buildClinicalDraftKey(triageScope),
+      createClinicalDraft({
+        scope: triageScope,
+        payload: { formData: { chiefComplaint: "Local only" } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+    writeClinicalDraft(
+      storage,
+      buildClinicalDraftKey(nursingScope),
+      createClinicalDraft({
+        scope: nursingScope,
+        payload: { state: { douleur: { text: "Local only" } }, ivState: { performed: false } },
+        savedLocallyAt: "2026-05-17T12:10:00.000Z",
+      })
+    );
+
+    expect(serverSubmit).not.toHaveBeenCalled();
+    expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|diagnosisId|orderId/i);
   });
 
   it("allows local-only medication/MAR and lab/radiology draft scopes without executing clinical actions", () => {

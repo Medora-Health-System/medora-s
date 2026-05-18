@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch, parseApiResponse } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
@@ -12,6 +12,17 @@ import {
 } from "@/lib/nursingProcedures";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 type SectionDef = { id: string; label: string; chips: string[] };
 
@@ -62,6 +73,13 @@ function ivSiteOptionLabel(opt: string, t: (k: string) => string): string {
 }
 
 type AssessmentState = Record<string, { text: string }>;
+type NursingAssessmentLocalDraftPayload = {
+  state: AssessmentState;
+  ivState: IvInsertionProcedureV1;
+};
+
+const NURSING_ASSESSMENT_DRAFT_VERSION = "nursing-assessment-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
 
 function sectionTextFromUnknown(v: unknown): string | null {
   if (!v || typeof v !== "object") return null;
@@ -163,6 +181,25 @@ function buildPayload(
   };
 }
 
+function nursingAssessmentSignature(state: AssessmentState, ivState: IvInsertionProcedureV1): string {
+  return clinicalDraftPayloadSignature({ state, ivState });
+}
+
+function nursingAssessmentDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<NursingAssessmentLocalDraftPayload>;
+  const hasSectionText = Object.values(p.state ?? {}).some((section) => Boolean(section?.text?.trim()));
+  const iv = p.ivState;
+  return Boolean(
+    hasSectionText ||
+      iv?.performed ||
+      iv?.site?.trim() ||
+      iv?.siteOther?.trim() ||
+      iv?.gauge?.trim() ||
+      iv?.note?.trim()
+  );
+}
+
 export function NursingAssessmentTab({
   encounterId,
   facilityId,
@@ -195,11 +232,61 @@ export function NursingAssessmentTab({
   const [ok, setOk] = useState(false);
   /** true si le PATCH est seulement mis en file (pas encore confirmé serveur). */
   const [queuedLocalSave, setQueuedLocalSave] = useState(false);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const serverSignatureRef = useRef(nursingAssessmentSignature(initial, parseIvInsertionFromNursing(encounter?.nursingAssessment)));
+  const restoredDraftKeyRef = useRef<string | null>(null);
+  const workflowEditable = !formLocked && (encounter?.status == null || encounter.status === "OPEN");
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "NURSING_ASSESSMENT",
+      encounterId,
+      patientId: encounter?.patient?.id ?? null,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: NURSING_ASSESSMENT_DRAFT_VERSION,
+    }),
+    [encounter?.patient?.id, encounterId, facilityId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
+  const currentSignature = useMemo(() => nursingAssessmentSignature(state, ivState), [ivState, state]);
+  const draftDirty = currentSignature !== serverSignatureRef.current;
 
-  React.useEffect(() => {
-    setState(parseAssessment(encounter?.nursingAssessment));
-    setIvState(parseIvInsertionFromNursing(encounter?.nursingAssessment));
-  }, [encounter?.nursingAssessment, encounter?.updatedAt]);
+  useEffect(() => {
+    const serverState = parseAssessment(encounter?.nursingAssessment);
+    const serverIvState = parseIvInsertionFromNursing(encounter?.nursingAssessment);
+    serverSignatureRef.current = nursingAssessmentSignature(serverState, serverIvState);
+    setState(serverState);
+    setIvState(serverIvState);
+    setDraftRestoredAt(null);
+    setDraftSavedLocallyAt(null);
+
+    if (typeof window === "undefined" || restoredDraftKeyRef.current === draftKey) return;
+    const draft = readClinicalDraft<NursingAssessmentLocalDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      serverSavedAt:
+        typeof encounter?.updatedAt === "string"
+          ? encounter.updatedAt
+          : encounter?.updatedAt
+            ? new Date(encounter.updatedAt).toISOString()
+            : null,
+      workflowEditable,
+      signedOrFinalized: formLocked,
+      encounterStatus: encounter?.status ?? null,
+      hasPayloadContent: nursingAssessmentDraftHasContent,
+    });
+    restoredDraftKeyRef.current = draftKey;
+    if (canRestore && draft) {
+      setState(draft.payload.state);
+      setIvState(draft.payload.ivState);
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+  }, [draftKey, draftScope, encounter?.nursingAssessment, encounter?.status, encounter?.updatedAt, formLocked, workflowEditable]);
 
   const setSectionText = (id: string, text: string) => {
     setState((s) => ({ ...s, [id]: { text } }));
@@ -257,6 +344,12 @@ export function NursingAssessmentTab({
       } else {
         setOk(true);
         setQueuedLocalSave(false);
+        serverSignatureRef.current = nursingAssessmentSignature(state, ivState);
+        if (typeof window !== "undefined") {
+          removeClinicalDraft(window.localStorage, draftKey);
+        }
+        setDraftRestoredAt(null);
+        setDraftSavedLocallyAt(null);
       }
       onUpdate();
     } catch (e) {
@@ -266,7 +359,41 @@ export function NursingAssessmentTab({
     } finally {
       setSaving(false);
     }
-  }, [encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState, sectionDefs, t]);
+  }, [draftKey, encounterId, facilityId, encounter?.nursingAssessment, onUpdate, state, ivState, sectionDefs, t]);
+
+  useEffect(() => {
+    if (!workflowEditable) return;
+    const payload: NursingAssessmentLocalDraftPayload = { state, ivState };
+    if (!draftDirty || !nursingAssessmentDraftHasContent(payload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload,
+        savedLocallyAt,
+        lastServerSavedAt:
+          typeof encounter?.updatedAt === "string"
+            ? encounter.updatedAt
+            : encounter?.updatedAt
+              ? new Date(encounter.updatedAt).toISOString()
+              : null,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [draftDirty, draftKey, draftScope, encounter?.updatedAt, ivState, state, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: draftDirty && Boolean(draftSavedLocallyAt),
+    workflowEditable,
+    signedOrFinalized: formLocked,
+  });
 
   const shell: React.CSSProperties = {
     backgroundColor: MEDORA_CARD_SHELL.background,
@@ -292,6 +419,25 @@ export function NursingAssessmentTab({
           <strong style={{ color: "#0f172a" }}>{t("nursingAssessmentTab.introBold")}</strong>
           {t("nursingAssessmentTab.introRest")}
         </p>
+        {draftRestoredAt ? (
+          <p
+            role="status"
+            style={{
+              margin: "10px 0 0 0",
+              fontSize: 13,
+              color: "#0f766e",
+              lineHeight: 1.45,
+              fontWeight: 600,
+            }}
+          >
+            {t("nursingAssessmentTab.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt && draftDirty ? (
+          <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+            {t("nursingAssessmentTab.localDraftSaved")}
+          </p>
+        ) : null}
       </div>
 
       <fieldset

@@ -6754,6 +6754,8 @@ export default {
     saving: "Enregistrement…",
     savedOk: "Enregistré.",
     errSave: "Impossible d'enregistrer.",
+    localDraftRestored: "Brouillon d'évaluation infirmière non enregistré restauré.",
+    localDraftSaved: "Brouillon enregistré localement.",
     signerFallback: "Professionnel",
     queuedBanner:
       "L'évaluation infirmière a été enregistrée sur cet appareil et est en attente de synchronisation avec le serveur. Elle n'est pas encore confirmée côté serveur.",
