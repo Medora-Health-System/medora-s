@@ -43,6 +43,7 @@ import {
   shouldRestoreProviderDocumentationDraft,
   writeProviderDocumentationDraft,
 } from "@/lib/providerDocumentationDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -515,16 +516,11 @@ export function ProviderDocumentationWorkspace({
     };
   }, [currentSignature, draftKey, hasDraftableContent, onSave, readOnly, saving, signedOrFinalized]);
 
-  useEffect(() => {
-    if (signedOrFinalized || readOnly) return;
-    if (currentSignature === lastSavedSignatureRef.current) return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [currentSignature, readOnly, signedOrFinalized]);
+  useClinicalBeforeUnloadWarning({
+    dirty: currentSignature !== lastSavedSignatureRef.current,
+    workflowEditable: !readOnly,
+    signedOrFinalized,
+  });
 
   const runManualSave = async () => {
     setAutosaveStatus("saving");

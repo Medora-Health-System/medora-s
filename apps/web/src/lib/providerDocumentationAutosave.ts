@@ -1,3 +1,8 @@
+import {
+  createLatestWinsClinicalAutosaveScheduler,
+  shouldRunClinicalAutosave,
+} from "./clinicalAutosave";
+
 export type ProviderDocumentationAutosaveStatus =
   | "idle"
   | "unsaved"
@@ -14,13 +19,15 @@ export function shouldAutosaveProviderDocumentation(input: {
   saving?: boolean;
   hasContent?: boolean;
 }): boolean {
-  return Boolean(
-    input.hasContent &&
-      !input.readOnly &&
-      !input.signedOrFinalized &&
-      !input.saving &&
-      input.currentSignature !== input.lastSavedSignature
-  );
+  return shouldRunClinicalAutosave({
+    currentSignature: input.currentSignature,
+    lastSavedSignature: input.lastSavedSignature,
+    mode: "server",
+    hasContent: input.hasContent,
+    workflowEditable: !input.readOnly,
+    signedOrFinalized: input.signedOrFinalized,
+    saving: input.saving,
+  });
 }
 
 export function createProviderDocumentationAutosaveScheduler(input: {
@@ -29,26 +36,12 @@ export function createProviderDocumentationAutosaveScheduler(input: {
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
 }) {
-  const setTimeoutFn = input.setTimeoutFn ?? setTimeout;
-  const clearTimeoutFn = input.clearTimeoutFn ?? clearTimeout;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-
-  return {
-    schedule() {
-      if (timer) clearTimeoutFn(timer);
-      timer = setTimeoutFn(() => {
-        timer = null;
-        void input.save();
-      }, input.debounceMs);
-    },
-    cancel() {
-      if (timer) {
-        clearTimeoutFn(timer);
-        timer = null;
-      }
-    },
-    pending() {
-      return timer !== null;
-    },
-  };
+  const scheduler = createLatestWinsClinicalAutosaveScheduler({
+    debounceMs: input.debounceMs,
+    getSnapshot: () => ({ signature: String(Date.now()), payload: null }),
+    save: input.save,
+    setTimeoutFn: input.setTimeoutFn,
+    clearTimeoutFn: input.clearTimeoutFn,
+  });
+  return scheduler;
 }
