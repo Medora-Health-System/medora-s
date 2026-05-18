@@ -136,6 +136,111 @@ export const PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS = {
   providerAddendum: "provider-documentation-provider-addendum",
 } as const;
 
+export type ProviderDocumentationDictationSectionId =
+  | "hpi"
+  | "ros"
+  | "physicalExam"
+  | "mdm"
+  | "impression"
+  | "plan";
+
+export type ProviderDocumentationDictationSectionTarget = {
+  sectionId: ProviderDocumentationDictationSectionId;
+  labelKey: string;
+  primaryTargetId: string;
+  targetIds: string[];
+};
+
+export const PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS: ProviderDocumentationDictationSectionTarget[] = [
+  {
+    sectionId: "hpi",
+    labelKey: "providerDocumentationWorkspace.dictationFocusHpi",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi,
+    targetIds: [PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi],
+  },
+  {
+    sectionId: "ros",
+    labelKey: "providerDocumentationWorkspace.dictationFocusRos",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression,
+    targetIds: [
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosRedFlags,
+    ],
+  },
+  {
+    sectionId: "physicalExam",
+    labelKey: "providerDocumentationWorkspace.dictationFocusExam",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral,
+    targetIds: [
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamHeent,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamCardiovascular,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamRespiratory,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamAbdomen,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamNeuroPsych,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamMusculoskeletal,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamSkin,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamReassessment,
+    ],
+  },
+  {
+    sectionId: "mdm",
+    labelKey: "providerDocumentationWorkspace.dictationFocusMdm",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment,
+    targetIds: [
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmClinicalRationale,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmPlanSummary,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmImmediateActionsRationale,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge,
+    ],
+  },
+  {
+    sectionId: "impression",
+    labelKey: "providerDocumentationWorkspace.dictationFocusImpression",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression,
+    targetIds: [PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression],
+  },
+  {
+    sectionId: "plan",
+    labelKey: "providerDocumentationWorkspace.dictationFocusPlan",
+    primaryTargetId: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan,
+    targetIds: [
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition,
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum,
+    ],
+  },
+];
+
+export function providerDocumentationDictationSectionOrder(): ProviderDocumentationDictationSectionId[] {
+  return PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.map((target) => target.sectionId);
+}
+
+export function providerDocumentationDictationSectionForTargetId(
+  targetId: string | null | undefined
+): ProviderDocumentationDictationSectionId | null {
+  if (!targetId) return null;
+  return (
+    PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.find((section) => section.targetIds.includes(targetId))?.sectionId ??
+    null
+  );
+}
+
+export function providerDocumentationPrimaryDictationTargetForSection(
+  sectionId: ProviderDocumentationDictationSectionId
+): string {
+  return (
+    PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.find((section) => section.sectionId === sectionId)?.primaryTargetId ??
+    PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi
+  );
+}
+
 export const PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS: ProviderDocumentationExamSectionId[] = [
   "general",
   "heent",

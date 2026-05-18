@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
+  PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
   PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
@@ -14,8 +15,11 @@ import {
   buildProviderDocumentationPreviewSections,
   buildProviderDocumentationSignReadiness,
   providerDocumentationCanSubmitSignature,
+  providerDocumentationDictationSectionForTargetId,
+  providerDocumentationPrimaryDictationTargetForSection,
   providerDocumentationStateHasContent,
   providerDocumentationTitleKey,
+  type ProviderDocumentationDictationSectionId,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
   type ProviderDocumentationMetadata,
@@ -287,14 +291,11 @@ const OBSERVATION_CHIPS: Chip[] = [
   fragmentKey: `providerDocumentationWorkspace.${key}`,
 }));
 
-const DICTATION_NAV_TARGETS = [
-  { labelKey: "providerDocumentationWorkspace.dictationFocusHpi", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi },
-  { labelKey: "providerDocumentationWorkspace.dictationFocusRos", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression },
-  { labelKey: "providerDocumentationWorkspace.dictationFocusExam", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral },
-  { labelKey: "providerDocumentationWorkspace.dictationFocusMdm", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment },
-  { labelKey: "providerDocumentationWorkspace.dictationFocusImpression", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression },
-  { labelKey: "providerDocumentationWorkspace.dictationFocusPlan", id: PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan },
-];
+const DICTATION_NAV_TARGETS = PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.map((section) => ({
+  sectionId: section.sectionId,
+  labelKey: section.labelKey,
+  id: section.primaryTargetId,
+}));
 
 function WorkspaceSection({
   title,
@@ -348,6 +349,8 @@ export function ProviderDocumentationWorkspace({
   const [autosaveStatus, setAutosaveStatus] = useState<ProviderDocumentationAutosaveStatus>("idle");
   const [autosaveSavedAt, setAutosaveSavedAt] = useState<string | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [activeDictationSection, setActiveDictationSection] = useState<ProviderDocumentationDictationSectionId | null>(null);
+  const [highlightedDictationTargetId, setHighlightedDictationTargetId] = useState<string | null>(null);
   const latestSignatureRef = useRef(providerDocumentationStateSignature(value));
   const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -551,6 +554,12 @@ export function ProviderDocumentationWorkspace({
     if (saveMessage.variant === "success" || saveMessage.variant === "queued") setAutosaveStatus("saved");
   }, [saveMessage]);
 
+  useEffect(() => {
+    if (!highlightedDictationTargetId) return;
+    const timer = setTimeout(() => setHighlightedDictationTargetId(null), 1200);
+    return () => clearTimeout(timer);
+  }, [highlightedDictationTargetId]);
+
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
   };
@@ -588,21 +597,34 @@ export function ProviderDocumentationWorkspace({
       })
     );
   };
+  const markActiveDictationTarget = (id: string | undefined) => {
+    const section = providerDocumentationDictationSectionForTargetId(id);
+    if (section) setActiveDictationSection(section);
+  };
   const focusDictationTarget = (id: string) => {
     if (typeof document === "undefined") return;
-    document.getElementById(id)?.focus();
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    if (!el || el.disabled) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.focus();
+    markActiveDictationTarget(id);
+    setHighlightedDictationTargetId(id);
+  };
+  const focusDictationSection = (sectionId: ProviderDocumentationDictationSectionId) => {
+    focusDictationTarget(providerDocumentationPrimaryDictationTargetForSection(sectionId));
   };
   const focusRelativeDictationTarget = (direction: 1 | -1) => {
     if (typeof document === "undefined") return;
     const activeId = document.activeElement?.id;
-    const currentIndex = DICTATION_NAV_TARGETS.findIndex((target) => target.id === activeId);
+    const activeSection = providerDocumentationDictationSectionForTargetId(activeId) ?? activeDictationSection;
+    const currentIndex = DICTATION_NAV_TARGETS.findIndex((target) => target.sectionId === activeSection);
     const nextIndex =
       currentIndex >= 0
         ? Math.min(DICTATION_NAV_TARGETS.length - 1, Math.max(0, currentIndex + direction))
         : direction > 0
           ? 0
           : DICTATION_NAV_TARGETS.length - 1;
-    focusDictationTarget(DICTATION_NAV_TARGETS[nextIndex].id);
+    focusDictationSection(DICTATION_NAV_TARGETS[nextIndex].sectionId);
   };
   const ta = (field: keyof ProviderDocumentationWorkspaceState, rows = 2, dictationId?: string) => (
     <textarea
@@ -610,9 +632,17 @@ export function ProviderDocumentationWorkspace({
       data-dictation-ready={dictationId ? "true" : undefined}
       value={String(value[field] ?? "")}
       onChange={(e) => patch({ [field]: e.target.value } as Partial<ProviderDocumentationWorkspaceState>)}
+      onFocus={() => markActiveDictationTarget(dictationId)}
       disabled={readOnly}
       rows={rows}
-      style={{ ...inputBase, resize: "vertical", minHeight: rows * 24, background: readOnly ? "#f8fafc" : "#fff" }}
+      style={{
+        ...inputBase,
+        resize: "vertical",
+        minHeight: rows * 24,
+        background: readOnly ? "#f8fafc" : highlightedDictationTargetId === dictationId ? "#fefce8" : "#fff",
+        boxShadow: highlightedDictationTargetId === dictationId ? "0 0 0 3px rgba(20, 184, 166, 0.18)" : undefined,
+        transition: "background 160ms ease, box-shadow 160ms ease",
+      }}
     />
   );
   const chipRow = <T extends Chip,>(chips: T[], onClick: (chip: T) => void, tone?: "warn" | "green") => (
@@ -762,6 +792,15 @@ export function ProviderDocumentationWorkspace({
           <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
             {t("providerDocumentationWorkspace.dictationInstruction")}
           </p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#0f766e", lineHeight: 1.45, fontWeight: 700 }}>
+            {t("providerDocumentationWorkspace.dictationActiveSection")}:{" "}
+            {activeDictationSection
+              ? t(DICTATION_NAV_TARGETS.find((target) => target.sectionId === activeDictationSection)?.labelKey ?? "common.dash")
+              : t("common.dash")}
+          </p>
+          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
+            {t("providerDocumentationWorkspace.dictationDragonHelp")}
+          </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={secondaryButton(false)}>
               {t("providerDocumentationWorkspace.dictationPreviousSection")}
@@ -770,7 +809,7 @@ export function ProviderDocumentationWorkspace({
               {t("providerDocumentationWorkspace.dictationNextSection")}
             </button>
             {DICTATION_NAV_TARGETS.map((target) => (
-              <button key={target.id} type="button" onClick={() => focusDictationTarget(target.id)} style={secondaryButton(false)}>
+              <button key={target.id} type="button" onClick={() => focusDictationSection(target.sectionId)} style={secondaryButton(false)}>
                 {t(target.labelKey)}
               </button>
             ))}
@@ -940,6 +979,7 @@ export function ProviderDocumentationWorkspace({
                       data-dictation-ready="true"
                       value={value.physicalExam[group.sectionId]}
                       disabled={readOnly}
+                      onFocus={() => markActiveDictationTarget(examDictationIdBySection[group.sectionId])}
                       onChange={(e) =>
                         onChange({
                           ...value,
@@ -947,7 +987,20 @@ export function ProviderDocumentationWorkspace({
                         })
                       }
                       rows={2}
-                      style={{ ...inputBase, resize: "vertical", background: readOnly ? "#f8fafc" : "#fff" }}
+                      style={{
+                        ...inputBase,
+                        resize: "vertical",
+                        background: readOnly
+                          ? "#f8fafc"
+                          : highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
+                            ? "#fefce8"
+                            : "#fff",
+                        boxShadow:
+                          highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
+                            ? "0 0 0 3px rgba(20, 184, 166, 0.18)"
+                            : undefined,
+                        transition: "background 160ms ease, box-shadow 160ms ease",
+                      }}
                     />
                   </Field>
                   {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
@@ -1199,7 +1252,16 @@ function Field({
 }) {
   const focusDictationField = () => {
     if (!dictationTargetId || typeof document === "undefined") return;
-    document.getElementById(dictationTargetId)?.focus();
+    const el = document.getElementById(dictationTargetId) as HTMLTextAreaElement | null;
+    if (!el || el.disabled) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.focus();
+    el.style.boxShadow = "0 0 0 3px rgba(20, 184, 166, 0.18)";
+    el.style.background = "#fefce8";
+    window.setTimeout(() => {
+      el.style.boxShadow = "";
+      el.style.background = "";
+    }, 1200);
   };
   const microphoneTitle = readOnly ? readOnlyLabel : dictationLabel;
   return (

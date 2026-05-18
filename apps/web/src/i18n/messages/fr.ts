@@ -5150,6 +5150,8 @@ export default {
     dictationReady: "Prêt pour la dictée",
     dictationInstruction:
       "Placer le curseur dans une section, puis utiliser Dragon ou la dictée du navigateur. Relire avant d'enregistrer.",
+    dictationDragonHelp: "Pour Dragon : cliquez sur le microphone à côté d'un champ, puis dictez dans cette section.",
+    dictationActiveSection: "Section active",
     voiceReadyField: "Prêt voix",
     dictationFocusField: "Cliquez pour placer le curseur ici, puis utilisez Dragon ou la dictée du navigateur.",
     dictationReadOnlyField: "Cette note est signée ou en lecture seule.",

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   appendDocumentationFragment,
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
+  PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   applyCompleteNormalRosPrefill,
@@ -20,6 +21,9 @@ import {
   emptyProviderDocumentationWorkspaceState,
   hydrateProviderDocumentationWorkspaceState,
   providerDocumentationCanSubmitSignature,
+  providerDocumentationDictationSectionForTargetId,
+  providerDocumentationDictationSectionOrder,
+  providerDocumentationPrimaryDictationTargetForSection,
   providerDocumentationSignedTimelineLabel,
   providerDocumentationTimelineLabel,
   providerDocumentationTitleKey,
@@ -444,6 +448,49 @@ describe("providerDocumentationModel", () => {
     });
   });
 
+  it("defines predictable dictation section order and primary section targets", () => {
+    expect(providerDocumentationDictationSectionOrder()).toEqual([
+      "hpi",
+      "ros",
+      "physicalExam",
+      "mdm",
+      "impression",
+      "plan",
+    ]);
+    expect(providerDocumentationPrimaryDictationTargetForSection("hpi")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi
+    );
+    expect(providerDocumentationPrimaryDictationTargetForSection("ros")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression
+    );
+    expect(providerDocumentationPrimaryDictationTargetForSection("physicalExam")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamGeneral
+    );
+    expect(providerDocumentationPrimaryDictationTargetForSection("mdm")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment
+    );
+    expect(providerDocumentationPrimaryDictationTargetForSection("impression")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression
+    );
+    expect(providerDocumentationPrimaryDictationTargetForSection("plan")).toBe(
+      PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan
+    );
+  });
+
+  it("resolves active dictation section from any major microphone target", () => {
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)).toBe("hpi");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint)).toBe("hpi");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives)).toBe("ros");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.physicalExamSkin)).toBe("physicalExam");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)).toBe("mdm");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)).toBe("impression");
+    expect(providerDocumentationDictationSectionForTargetId(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum)).toBe("plan");
+    expect(providerDocumentationDictationSectionForTargetId("unknown")).toBeNull();
+    expect(PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.flatMap((section) => section.targetIds)).toEqual(
+      expect.arrayContaining(Object.values(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS))
+    );
+  });
+
   it("renders dictation hints, navigation targets, and microphone focus affordances without changing save behavior", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
@@ -453,11 +500,15 @@ describe("providerDocumentationModel", () => {
     expect(source).toContain("dictationInstruction");
     expect(source).toContain("dictationNextSection");
     expect(source).toContain("dictationPreviousSection");
+    expect(source).toContain("dictationActiveSection");
+    expect(source).toContain("dictationDragonHelp");
     expect(source).toContain("voiceReadyField");
     expect(source).toContain("dictationFocusField");
     expect(source).toContain("dictationReadOnlyField");
     expect(source).toContain("MicrophoneGlyph");
     expect(source).toContain("focusDictationField");
+    expect(source).toContain("scrollIntoView");
+    expect(source).toContain("setHighlightedDictationTargetId");
     for (const key of Object.keys(PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS)) {
       expect(source).toContain(`PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.${key}`);
     }
