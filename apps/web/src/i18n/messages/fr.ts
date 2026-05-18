@@ -1076,14 +1076,13 @@ export default {
     sectionFollowUp: "Médecin — suivi et consignes",
     sectionNursing: "IDE — documentation de sortie",
     insertSummaryButton: "Insérer un résumé d’observation (brouillon)",
-    insertSummaryHint:
-      "Insère le contexte opérationnel comme texte modifiable dans la synthèse clinique / disposition. Relire et adapter avant de poursuivre la clôture.",
-    reminderDetailsSummary: "Rappels documentaires (appuyer pour afficher)",
+    insertSummaryHint: "",
+    reminderDetailsSummary: "Rappels documentaires",
     quickNotesGroupProvider: "Raccourcis médecin",
     quickNotesGroupNursing: "Raccourcis IDE",
     summaryDraft: {
       banner:
-        "Contexte d’observation (brouillon — à relire avant enregistrement ; ne remplace pas une note clinique complète).",
+        "Contexte d’observation (brouillon ; ne remplace pas une note clinique complète).",
       motifLabel: "Motif / plainte principale",
       losLabel: "Durée de séjour (indicateur opérationnel)",
       laneProviderLabel: "Voie de réévaluation médecin (observation)",
@@ -5246,7 +5245,7 @@ export default {
     sectionRos: "Revue ciblée",
     insertCompleteNormalRos: "Insérer une revue complète normale",
     completeNormalRosHelp:
-      "Relire et modifier avant l'enregistrement. Garder seulement les négatifs revus personnellement avec le patient.",
+      "Garder seulement les négatifs revus personnellement avec le patient.",
     completeNormalRosText:
       "Revue des systèmes :\nConstitutionnel : nie fièvre, frissons, fatigue ou changement de poids.\nYeux : nie changement de vision, douleur oculaire, rougeur ou écoulement.\nORL : nie douleur d'oreille, congestion nasale, mal de gorge ou difficulté à avaler.\nCardiovasculaire : nie douleur thoracique, palpitations ou œdème des jambes.\nRespiratoire : nie toux, dyspnée, sibilants ou oppression thoracique.\nGastro-intestinal : nie douleur abdominale, nausées, vomissements, diarrhée, constipation ou sang dans les selles.\nGénito-urinaire : nie douleur à la miction, fréquence urinaire, urgence, sang dans les urines ou douleur du flanc.\nMusculo-squelettique : nie douleur articulaire, douleur musculaire, douleur dorsale ou gonflement.\nPeau : nie éruption, prurit, plaies ou changement cutané.\nNeurologique : nie céphalée, vertige, faiblesse, engourdissement, picotements ou syncope.\nPsychiatrique : nie anxiété, dépression, confusion, idées suicidaires ou trouble du sommeil.\nEndocrinien : nie soif excessive, urines excessives, intolérance au chaud ou au froid.\nHématologique / lymphatique : nie ecchymoses faciles, saignements faciles ou ganglions enflés.\nAllergique / immunologique : nie allergies saisonnières, urticaire ou infections récurrentes.",
     sectionExam: "Examen physique",
@@ -5601,7 +5600,7 @@ export default {
   },
   erMseAssist: {
     prefillFromTriage: "Pré-remplir depuis le triage",
-    helperNote: "Pré-remplissage à partir des données déjà documentées.",
+    helperNote: "",
   },
   erMseExamTemplatePresets: {
     normal: {
@@ -6121,8 +6120,7 @@ export default {
       localDraftSaved: "Brouillon enregistré localement.",
       quickPhrases: {
         title: "Formulations rapides",
-        reviewHint:
-          "Relire et adapter avant enregistrement — vous restez l'auteur de la note.",
+        reviewHint: "",
         groups: {
           general: "Général",
           clinical: "Contextes cliniques (modèles)",
@@ -7990,8 +7988,7 @@ export default {
     placeholderSafety: "Rails, risque de chute, voie, surveillance",
     labelAddendum: "Addendum",
     triageBedsideSafetySection: "Triage — sécurité au chevet (checklist)",
-    triageBedsideSafetyHelp:
-      "Données enregistrées avec le triage (même enregistrement que l'onglet triage). À l'enregistrement de cette réévaluation, ces champs mettent à jour le triage s'ils ont été modifiés.",
+    triageBedsideSafetyHelp: "",
     triageBedsideLoading: "Chargement du triage…",
     triageBedsideNoTriageRow:
       "Aucun triage enregistré — enregistrez d'abord le triage. Les changements de la checklist n'ont pas été envoyés au serveur.",
@@ -7999,7 +7996,7 @@ export default {
     saveOkTriageBedsideFailed: "Réévaluation enregistrée. La checklist sécurité (triage) n'a pas été mise à jour : {detail}",
     saveQueuedTriageBedsideFailed: "En attente de synchronisation. La checklist sécurité (triage) n'a pas été mise à jour : {detail}",
     traumaSummaryLabel: "Documentation trauma",
-    traumaSummaryHelp: "Examen primaire / secondaire — enregistré avec le dossier (JSON).",
+    traumaSummaryHelp: "",
     traumaPrimaryAbcde: "Examen primaire (ABCDE)",
     traumaPrimaryNotes: "Notes (primaire)",
     traumaSecondary: "Examen secondaire",

@@ -1118,13 +1118,12 @@ export default {
     sectionFollowUp: "Provider — follow-up & instructions",
     sectionNursing: "Nursing — discharge documentation",
     insertSummaryButton: "Insert observation summary (draft)",
-    insertSummaryHint:
-      "Inserts operational context as editable text into Clinical summary / disposition. Review and edit before continuing to close.",
-    reminderDetailsSummary: "Documentation reminders (tap to expand)",
+    insertSummaryHint: "",
+    reminderDetailsSummary: "Documentation reminders",
     quickNotesGroupProvider: "Provider shortcuts",
     quickNotesGroupNursing: "Nursing shortcuts",
     summaryDraft: {
-      banner: "Observation context (draft — review before save; not a standalone legal document).",
+      banner: "Observation context (draft; not a standalone legal document).",
       motifLabel: "Presenting concern",
       losLabel: "Length of stay (operational)",
       laneProviderLabel: "Provider observation reassessment lane",
@@ -5264,8 +5263,7 @@ export default {
     sectionPresentation: "Presentation and chief complaint",
     sectionRos: "Targeted ROS",
     insertCompleteNormalRos: "Insert complete normal ROS",
-    completeNormalRosHelp:
-      "Review and edit before saving. Only keep negatives personally reviewed with the patient.",
+    completeNormalRosHelp: "Keep only negatives personally reviewed with the patient.",
     completeNormalRosText:
       "Review of Systems:\nConstitutional: Denies fever, chills, fatigue, or weight changes.\nEyes: Denies vision changes, eye pain, redness, or discharge.\nENT: Denies ear pain, nasal congestion, sore throat, or difficulty swallowing.\nCardiovascular: Denies chest pain, palpitations, or leg swelling.\nRespiratory: Denies cough, shortness of breath, wheezing, or chest tightness.\nGastrointestinal: Denies abdominal pain, nausea, vomiting, diarrhea, constipation, or blood in stool.\nGenitourinary: Denies painful urination, urinary frequency, urgency, blood in urine, or flank pain.\nMusculoskeletal: Denies joint pain, muscle pain, back pain, or swelling.\nSkin: Denies rash, itching, wounds, or skin changes.\nNeurologic: Denies headache, dizziness, weakness, numbness, tingling, or fainting.\nPsychiatric: Denies anxiety, depression, confusion, suicidal thoughts, or sleep disturbance.\nEndocrine: Denies excessive thirst, excessive urination, heat or cold intolerance.\nHematologic/Lymphatic: Denies easy bruising, easy bleeding, or swollen lymph nodes.\nAllergic/Immunologic: Denies seasonal allergies, hives, or recurrent infections.",
     sectionExam: "Physical exam",
@@ -5618,7 +5616,7 @@ export default {
   },
   erMseAssist: {
     prefillFromTriage: "Prefill from triage",
-    helperNote: "Prefill uses already documented data only.",
+    helperNote: "",
   },
   erMseExamTemplatePresets: {
     normal: {
@@ -6135,7 +6133,7 @@ export default {
       localDraftSaved: "Draft saved locally.",
       quickPhrases: {
         title: "Quick phrases",
-        reviewHint: "Review and edit before saving — you remain the author of the note.",
+        reviewHint: "",
         groups: {
           general: "General",
           clinical: "Clinical templates",
@@ -7980,15 +7978,14 @@ export default {
     placeholderSafety: "Rails, fall risk, line, monitoring",
     labelAddendum: "Addendum",
     triageBedsideSafetySection: "Triage — bedside safety checklist",
-    triageBedsideSafetyHelp:
-      "Stored with triage (same data as the triage tab). When you save this reassessment, these fields update triage if you changed them.",
+    triageBedsideSafetyHelp: "",
     triageBedsideLoading: "Loading triage…",
     triageBedsideNoTriageRow: "No triage record yet — save triage first. Bedside checklist changes were not written to the server.",
     triageBedsideSaveFailed: "Could not update triage bedside fields.",
     saveOkTriageBedsideFailed: "Reassessment saved. Triage bedside checklist was not updated: {detail}",
     saveQueuedTriageBedsideFailed: "Pending sync. Triage bedside checklist was not updated: {detail}",
     traumaSummaryLabel: "Trauma documentation",
-    traumaSummaryHelp: "Primary / secondary survey — saved with the chart (JSON).",
+    traumaSummaryHelp: "",
     traumaPrimaryAbcde: "Primary survey (ABCDE)",
     traumaPrimaryNotes: "Notes (primary)",
     traumaSecondary: "Secondary survey",

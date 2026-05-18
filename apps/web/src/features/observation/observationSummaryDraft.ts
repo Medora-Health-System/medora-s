@@ -2,7 +2,7 @@ import type { ObservationOperationalSnapshot } from "@medora/shared";
 
 /** Caller supplies localized labels (French product copy from `t()`). */
 export type ObservationSummaryDraftLabels = {
-  /** e.g. "Observation context (draft — review before save)" */
+  /** e.g. "Observation context (draft)" */
   draftBanner: string;
   /** e.g. "Presenting concern" */
   motifLabel: string;

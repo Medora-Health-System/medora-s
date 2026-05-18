@@ -68,9 +68,9 @@ export const erTriageMessagesFr = {
     readonlyEncounter: "Consultation fermée — triage en lecture seule.",
     readonlyLocked: "Dossier médical signé — triage en lecture seule.",
     linkFullTriageTab: "Onglet triage (dossier complet)",
-    templateAppliedHint: "Modèle appliqué. Vérifiez et modifiez avant d'enregistrer.",
+    templateAppliedHint: "Modèle appliqué.",
     docPreviewTitle: "Aperçu de la documentation",
-    docPreviewReviewButton: "Relire avant d'enregistrer",
+    docPreviewReviewButton: "Aperçu",
     docPreviewHideButton: "Masquer l'aperçu",
     docPreviewMissingDisclaimer: "A titre informatif — contrôles optionnels avant l'enregistrement :",
     docPreviewMissingChief: "Motif principal non saisi",
@@ -100,7 +100,7 @@ export const erTriageMessagesFr = {
   },
   v1: {
     badge: "Triage V1",
-    extendedHint: "Champs étendus enregistrés avec le triage.",
+    extendedHint: "",
     s1Title: "1 — Triage rapide",
     s1Help:
       "Narratif, EPI, évaluation ABC, douleur, orientation. La gravité principale reste l'ESI ci-dessus.",

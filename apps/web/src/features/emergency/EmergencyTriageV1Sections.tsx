@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { searchCatalog } from "@/lib/catalogSearchApi";
@@ -55,20 +54,6 @@ const summaryRow: React.CSSProperties = {
   alignItems: "center",
   gap: 8,
   listStyle: "none",
-};
-
-const help: React.CSSProperties = {
-  margin: "8px 0 0 0",
-  fontSize: 12,
-  color: "#64748b",
-  lineHeight: 1.45,
-};
-
-const chipHintStyle: React.CSSProperties = {
-  margin: "4px 0 0 0",
-  fontSize: 11,
-  color: "#94a3b8",
-  fontWeight: 500,
 };
 
 type ErTriageDocChipProps = {
@@ -312,7 +297,6 @@ export function EmergencyTriageV1Sections({
   grid2,
   grid3,
   sectionHeading,
-  patientChartHref,
   facilityId,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
@@ -469,7 +453,6 @@ export function EmergencyTriageV1Sections({
       {v1Any ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>{t("erTriage.v1.badge")}</MedoraCardBadge>
-          <span style={{ fontSize: 12, color: "#64748b" }}>{t("erTriage.v1.extendedHint")}</span>
         </div>
       ) : null}
 
@@ -477,7 +460,6 @@ export function EmergencyTriageV1Sections({
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s1Title")}</span>
         </summary>
-        <p style={help}>{t("erTriage.v1.s1Help")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
             <p style={sectionHeading}>{t("erTriage.v1.narrativeHeading")}</p>
@@ -501,7 +483,6 @@ export function EmergencyTriageV1Sections({
               style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               placeholder={t("erTriage.v1.ppePlaceholder")}
             />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
               {ER_TRIAGE_PPE_CHIP_DEFS.map((def) => {
                 const label = t(`erTriage.v1.${def.i18nKey}`);
@@ -628,7 +609,6 @@ export function EmergencyTriageV1Sections({
                 style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                 placeholder={t("erTriage.v1.referralPlaceholder")}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {ER_TRIAGE_ROUTING_CHIP_DEFS.map((def) => {
                   const label = t(`erTriage.v1.${def.i18nKey}`);
@@ -815,7 +795,6 @@ export function EmergencyTriageV1Sections({
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.safetyRoutingTitle")}</span>
         </summary>
-        <p style={help}>{t("erTriage.v1.safetyRoutingHelp")}</p>
         <div style={{ ...grid3, marginTop: 10 }}>
           <div>
             <label style={labelStyle}>{t("erTriage.v1.safeHome")}</label>
@@ -832,7 +811,6 @@ export function EmergencyTriageV1Sections({
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s3Title")}</span>
         </summary>
-        <p style={help}>{t("erTriage.v1.s3Help")}</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
             <label style={labelStyle}>{t("erTriage.v1.medsSummary")}</label>
@@ -844,7 +822,6 @@ export function EmergencyTriageV1Sections({
               maxLength={8000}
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
               {ER_TRIAGE_MEDS_CHIP_DEFS.map((def) => {
                 const label = t(`erTriage.v1.${def.i18nKey}`);
@@ -948,7 +925,6 @@ export function EmergencyTriageV1Sections({
               style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               placeholder={t("erTriage.v1.allergyExtraPlaceholder")}
             />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
               {ER_TRIAGE_ALLERGY_CHIP_DEFS.map((def) => {
                 const label = t(`erTriage.v1.${def.i18nKey}`);
@@ -972,7 +948,6 @@ export function EmergencyTriageV1Sections({
                 );
               })}
             </ErTriageDocChipRow>
-            <p style={{ ...chipHintStyle, marginTop: 10 }}>{t("erTriage.v1.allergyAppendSectionHint")}</p>
             <p style={{ ...sectionHeading, fontSize: 10, marginTop: 6 }}>{t("erTriage.v1.allergenSectionTitle")}</p>
             <ErTriageDocChipRow>
               {ALLERGY_QUICK_ALLERGEN_I18N_KEYS.map((k) => (
@@ -1018,7 +993,6 @@ export function EmergencyTriageV1Sections({
               style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               placeholder={t("erTriage.v1.immuPlaceholder")}
             />
-            <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
             <ErTriageDocChipRow>
               {IMMU_CHIP_I18N_KEYS.map((k) => (
                 <ErTriageDocChip
@@ -1037,19 +1011,6 @@ export function EmergencyTriageV1Sections({
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s4Title")}</span>
         </summary>
-        <p style={help}>
-          {patientChartHref ? (
-            <>
-              {t("erTriage.v1.s4HelpChart")}{" "}
-              <Link href={patientChartHref} style={{ color: "#1d4ed8", fontWeight: 600 }}>
-                {t("erTriage.v1.s4HelpChartLink")}
-              </Link>
-              .
-            </>
-          ) : (
-            t("erTriage.v1.s4HelpNoChart")
-          )}
-        </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div style={grid2}>
             <div>
@@ -1062,7 +1023,6 @@ export function EmergencyTriageV1Sections({
                 maxLength={8000}
                 style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
               <input
                 type="search"
                 value={historyPmhFilter}
@@ -1097,7 +1057,6 @@ export function EmergencyTriageV1Sections({
                 maxLength={8000}
                 style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
               <input
                 type="search"
                 value={historyPshFilter}
@@ -1133,7 +1092,6 @@ export function EmergencyTriageV1Sections({
               maxLength={4000}
               style={{ ...inputBase, minHeight: 52, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
             />
-            <p style={{ ...chipHintStyle, marginTop: 8 }}>{t("erTriage.v1.historyQuickPickHint")}</p>
             <input
               type="search"
               value={historyFhFilter}
@@ -1169,7 +1127,6 @@ export function EmergencyTriageV1Sections({
                 style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
                 placeholder={t("erTriage.v1.smokingPlaceholder")}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {SMOKING_CHIP_I18N_KEYS.map((k) => (
                   <ErTriageDocChip
@@ -1190,7 +1147,6 @@ export function EmergencyTriageV1Sections({
                 disabled={formDisabled}
                 style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {ALCOHOL_CHIP_I18N_KEYS.map((k) => (
                   <ErTriageDocChip
@@ -1211,7 +1167,6 @@ export function EmergencyTriageV1Sections({
                 disabled={formDisabled}
                 style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {CANNABIS_CHIP_I18N_KEYS.map((k) => (
                   <ErTriageDocChip
@@ -1232,7 +1187,6 @@ export function EmergencyTriageV1Sections({
                 disabled={formDisabled}
                 style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {STIMULANT_CHIP_I18N_KEYS.map((k) => (
                   <ErTriageDocChip
@@ -1253,7 +1207,6 @@ export function EmergencyTriageV1Sections({
                 disabled={formDisabled}
                 style={{ ...inputBase, marginTop: 6, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <p style={chipHintStyle}>{t("erTriage.v1.chipsHint")}</p>
               <ErTriageDocChipRow>
                 {OPIOID_CHIP_I18N_KEYS.map((k) => (
                   <ErTriageDocChip

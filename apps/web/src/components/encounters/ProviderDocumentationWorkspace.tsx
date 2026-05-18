@@ -113,7 +113,7 @@ const stickyActionHeaderStyle: React.CSSProperties = {
   border: MEDORA_CARD_SHELL.border,
   borderRadius: MEDORA_CARD_SHELL.radius,
   boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12)",
-  padding: "14px 16px",
+  padding: "9px 12px",
 };
 
 const chipStyle: React.CSSProperties = {
@@ -718,9 +718,6 @@ export function ProviderDocumentationWorkspace({
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
               {t(providerDocumentationTitleKey(encounterMode))}
             </h2>
-            <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
-              {t("providerDocumentationWorkspace.subtitle")}
-            </p>
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <button
@@ -781,23 +778,7 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
           </p>
         ) : null}
-        <div style={{ marginTop: 10, padding: "9px 10px", border: "1px solid #dbeafe", borderRadius: 12, background: "#f8fafc" }}>
-          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 800, color: "#1e40af", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-            {t("providerDocumentationWorkspace.dictationReady")}
-          </p>
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
-            {t("providerDocumentationWorkspace.dictationInstruction")}
-          </p>
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#0f766e", lineHeight: 1.45, fontWeight: 700 }}>
-            {t("providerDocumentationWorkspace.dictationActiveSection")}:{" "}
-            {activeDictationSection
-              ? t(DICTATION_NAV_TARGETS.find((target) => target.sectionId === activeDictationSection)?.labelKey ?? "common.dash")
-              : t("common.dash")}
-          </p>
-          <p style={{ margin: "0 0 8px", fontSize: 11, color: "#475569", lineHeight: 1.45 }}>
-            {t("providerDocumentationWorkspace.dictationDragonHelp")}
-          </p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
             <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={secondaryButton(false)}>
               {t("providerDocumentationWorkspace.dictationPreviousSection")}
             </button>
@@ -809,7 +790,6 @@ export function ProviderDocumentationWorkspace({
                 {t(target.labelKey)}
               </button>
             ))}
-          </div>
         </div>
         {showTemplates ? (
           <div
@@ -821,9 +801,6 @@ export function ProviderDocumentationWorkspace({
               background: "#f8fafc",
             }}
           >
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.templatePickerHelp")}
-            </p>
             {PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS.map((categoryKey) => {
               const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.categoryKey === categoryKey);
               if (!templates.length) return null;
@@ -932,7 +909,7 @@ export function ProviderDocumentationWorkspace({
               >
                 {t("providerDocumentationWorkspace.insertCompleteNormalRos")}
               </button>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#92400e", lineHeight: 1.45, fontWeight: 600 }}>
                 {t("providerDocumentationWorkspace.completeNormalRosHelp")}
               </p>
             </div>
@@ -1231,7 +1208,6 @@ export function ProviderDocumentationWorkspace({
 
 function Field({
   label,
-  voiceReadyLabel,
   dictationTargetId,
   dictationLabel,
   readOnly = false,
@@ -1264,21 +1240,6 @@ function Field({
     <div style={{ display: "block" }}>
       <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
         <span style={{ ...labelStyle, marginBottom: 0 }}>{label}</span>
-        {voiceReadyLabel ? (
-          <span
-            style={{
-              borderRadius: 9999,
-              padding: "2px 6px",
-              fontSize: 10,
-              fontWeight: 800,
-              color: "#0f766e",
-              background: "#ecfdf5",
-              border: "1px solid #99f6e4",
-            }}
-          >
-            {voiceReadyLabel}
-          </span>
-        ) : null}
         {dictationTargetId ? (
           <button
             type="button"
