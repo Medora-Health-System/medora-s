@@ -121,6 +121,41 @@ describe("clinicalDraftStorage", () => {
     );
   });
 
+  it("scopes MAR, effective-time correction, and infusion drafts by row subject id", () => {
+    const marScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "MEDICATION_MAR_DOCUMENTATION",
+      version: "medication-mar-documentation-v1",
+      subjectId: "order-item-1",
+    };
+    const effectiveScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+      version: "mar-effective-time-correction-v1:0:2026-05-17T12:00:00.000Z",
+      subjectId: "admin-row-1",
+    };
+    const infusionStartScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "INFUSION_START_DOCUMENTATION",
+      version: "infusion-documentation-v1",
+      subjectId: "order-item-1",
+    };
+    const infusionStopScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "INFUSION_STOP_DOCUMENTATION",
+      version: "infusion-documentation-v1",
+      subjectId: "order-item-1",
+    };
+
+    expect(buildClinicalDraftKey(marScope)).toContain("order-item-1");
+    expect(buildClinicalDraftKey(effectiveScope)).toContain("admin-row-1");
+    expect(buildClinicalDraftKey(marScope)).not.toBe(buildClinicalDraftKey({ ...marScope, subjectId: "order-item-2" }));
+    expect(buildClinicalDraftKey(effectiveScope)).not.toBe(
+      buildClinicalDraftKey({ ...effectiveScope, subjectId: "admin-row-2" })
+    );
+    expect(buildClinicalDraftKey(infusionStartScope)).not.toBe(buildClinicalDraftKey(infusionStopScope));
+  });
+
   it("round-trips and removes a typed local clinical draft", () => {
     const storage = makeMemoryStorage();
     const key = buildClinicalDraftKey(scope);
@@ -313,6 +348,69 @@ describe("clinicalDraftStorage", () => {
     expect(closeEncounter).not.toHaveBeenCalled();
   });
 
+  it("rejects stale MAR documentation drafts and blocks cancelled medication restore", () => {
+    const marScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "MEDICATION_MAR_DOCUMENTATION",
+      version: "medication-mar-documentation-v1",
+      subjectId: "order-item-1",
+    };
+    const draft = createClinicalDraft({
+      scope: marScope,
+      payload: { notes: "Patient reported nausea", effectiveTimeReason: "" },
+      savedLocallyAt: "2026-05-17T12:00:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: marScope,
+        serverSavedAt: "2026-05-17T12:05:00.000Z",
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft: createClinicalDraft({
+          scope: marScope,
+          payload: { notes: "Held for BP", effectiveTimeReason: "" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        }),
+        scope: marScope,
+        workflowEditable: false,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
+
+  it("blocks effective-time correction restore after a submitted correction changes the scoped version", () => {
+    const draftScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+      version: "mar-effective-time-correction-v1:0:2026-05-17T12:00:00.000Z",
+      subjectId: "admin-row-1",
+    };
+    const submittedScope: ClinicalDraftScope = {
+      ...draftScope,
+      version: "mar-effective-time-correction-v1:1:2026-05-17T12:05:00.000Z",
+    };
+    const draft = createClinicalDraft({
+      scope: draftScope,
+      payload: { reason: "Late chart entry" },
+      savedLocallyAt: "2026-05-17T12:10:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: submittedScope,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
+
   it("manual save cleanup removes local ED triage and nursing assessment drafts", () => {
     const storage = makeMemoryStorage();
     const triageScope: ClinicalDraftScope = { ...scope, workflowType: "ED_TRIAGE", version: "ed-triage-v1" };
@@ -385,6 +483,50 @@ describe("clinicalDraftStorage", () => {
         createClinicalDraft({
           scope: s,
           payload: { note: "Manual action pending" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        })
+      );
+    }
+
+    for (const s of scopes) removeClinicalDraft(storage, buildClinicalDraftKey(s));
+    for (const s of scopes) expect(readClinicalDraft(storage, buildClinicalDraftKey(s))).toBeNull();
+  });
+
+  it("manual submit cleanup removes MAR, effective-time, and infusion local drafts", () => {
+    const storage = makeMemoryStorage();
+    const scopes: ClinicalDraftScope[] = [
+      {
+        ...scope,
+        workflowType: "MEDICATION_MAR_DOCUMENTATION",
+        version: "medication-mar-documentation-v1",
+        subjectId: "order-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+        version: "mar-effective-time-correction-v1:0:2026-05-17T12:00:00.000Z",
+        subjectId: "admin-row-1",
+      },
+      {
+        ...scope,
+        workflowType: "INFUSION_START_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "INFUSION_STOP_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-1",
+      },
+    ];
+    for (const s of scopes) {
+      writeClinicalDraft(
+        storage,
+        buildClinicalDraftKey(s),
+        createClinicalDraft({
+          scope: s,
+          payload: { note: "Manual action pending", reason: "Late charting" },
           savedLocallyAt: "2026-05-17T12:10:00.000Z",
         })
       );
@@ -495,6 +637,60 @@ describe("clinicalDraftStorage", () => {
     expect(clinicalEventCreate).not.toHaveBeenCalled();
     expect(billingCreate).not.toHaveBeenCalled();
     expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|dischargeStatus|clinicalEvent/i);
+  });
+
+  it("local MAR and infusion draft writes do not call administer, start, stop, or correct endpoints", () => {
+    const storage = makeMemoryStorage();
+    const administer = vi.fn();
+    const startInfusion = vi.fn();
+    const stopInfusion = vi.fn();
+    const correctTime = vi.fn();
+    const billingCreate = vi.fn();
+    const scopes: ClinicalDraftScope[] = [
+      {
+        ...scope,
+        workflowType: "MEDICATION_MAR_DOCUMENTATION",
+        version: "medication-mar-documentation-v1",
+        subjectId: "order-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+        version: "mar-effective-time-correction-v1:0:2026-05-17T12:00:00.000Z",
+        subjectId: "admin-row-1",
+      },
+      {
+        ...scope,
+        workflowType: "INFUSION_START_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-1",
+      },
+      {
+        ...scope,
+        workflowType: "INFUSION_STOP_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-1",
+      },
+    ];
+
+    for (const s of scopes) {
+      writeClinicalDraft(
+        storage,
+        buildClinicalDraftKey(s),
+        createClinicalDraft({
+          scope: s,
+          payload: { notes: "Local-only note", reason: "Local-only reason" },
+          savedLocallyAt: "2026-05-17T12:10:00.000Z",
+        })
+      );
+    }
+
+    expect(administer).not.toHaveBeenCalled();
+    expect(startInfusion).not.toHaveBeenCalled();
+    expect(stopInfusion).not.toHaveBeenCalled();
+    expect(correctTime).not.toHaveBeenCalled();
+    expect(billingCreate).not.toHaveBeenCalled();
+    expect(JSON.stringify([...storage.data.values()])).not.toMatch(/billing|diagnosisId|orderEvent|administeredAt/i);
   });
 
   it("allows local-only medication/MAR and lab/radiology draft scopes without executing clinical actions", () => {

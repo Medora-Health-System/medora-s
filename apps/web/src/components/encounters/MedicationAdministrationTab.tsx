@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { getPendingMedicationAdminsFromQueue } from "@/lib/pendingMedicationAdminsFromQueue";
@@ -65,6 +65,17 @@ import {
   buildMedicationAdministrationTaskRowClockAction,
 } from "@/features/mar/buildMedicationAdministrationRowClockAction";
 import { isEncounterLocked } from "@/lib/encounterLock";
+import {
+  buildClinicalDraftKey,
+  clinicalDraftPayloadSignature,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
 type AdminRow = {
   id: string;
@@ -189,6 +200,35 @@ const MAR_TABLE_CONTROLS_CELL: React.CSSProperties = {
   minWidth: 0,
 };
 
+const MAR_DRAFT_VERSION = "medication-mar-documentation-v1";
+const INFUSION_DRAFT_VERSION = "infusion-documentation-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type MarDocumentationDraftPayload = {
+  notes: string;
+  effectiveTimeReason: string;
+};
+
+type InfusionDocumentationDraftPayload = {
+  note: string;
+};
+
+function marDraftPayloadSignature(payload: MarDocumentationDraftPayload): string {
+  return clinicalDraftPayloadSignature(payload);
+}
+
+function marDraftPayloadHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<MarDocumentationDraftPayload>;
+  return Boolean(p.notes?.trim() || p.effectiveTimeReason?.trim());
+}
+
+function infusionDraftPayloadHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<InfusionDocumentationDraftPayload>;
+  return Boolean(p.note?.trim());
+}
+
 type MarOrderEventRow = {
   id: string;
   orderId: string;
@@ -310,9 +350,22 @@ export function MedicationAdministrationTab({
   const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(false);
   const [modalEffectiveTimeLocal, setModalEffectiveTimeLocal] = useState("");
   const [modalEffectiveTimeReason, setModalEffectiveTimeReason] = useState("");
+  const [marDraftRestoredAt, setMarDraftRestoredAt] = useState<string | null>(null);
+  const [marDraftSavedLocallyAt, setMarDraftSavedLocallyAt] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
   const [adminTimeSaving, setAdminTimeSaving] = useState(false);
+  const [infusionModal, setInfusionModal] = useState<{
+    orderItemId: string;
+    orderId: string;
+    op: "start" | "stop";
+    label: string;
+  } | null>(null);
+  const [infusionModalNote, setInfusionModalNote] = useState("");
+  const [infusionDraftRestoredAt, setInfusionDraftRestoredAt] = useState<string | null>(null);
+  const [infusionDraftSavedLocallyAt, setInfusionDraftSavedLocallyAt] = useState<string | null>(null);
+  const marRestoringDraftRef = useRef(false);
+  const infusionRestoringDraftRef = useRef(false);
   /** Re-render periodically so infusion elapsed time updates on the MAR grid. */
   const [, setInfusionClockTick] = useState(0);
   useEffect(() => {
@@ -341,6 +394,54 @@ export function MedicationAdministrationTab({
   const canAdjustAdminTime = canAdjustMedicationAdministrationTime(
     roleCodes.length > 0 ? roleCodes : ["RN", "PROVIDER", "ADMIN"]
   );
+  const marDraftScope = useMemo<ClinicalDraftScope | null>(() => {
+    const orderItemId = modalItem?.orderItemId?.trim();
+    if (!orderItemId) return null;
+    return {
+      workflowType: "MEDICATION_MAR_DOCUMENTATION",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: MAR_DRAFT_VERSION,
+      subjectId: orderItemId,
+    };
+  }, [encounterId, facilityId, modalItem?.orderItemId]);
+  const marDraftKey = useMemo(() => (marDraftScope ? buildClinicalDraftKey(marDraftScope) : null), [marDraftScope]);
+  const marDraftPayload = useMemo<MarDocumentationDraftPayload>(
+    () => ({ notes: modalNotes, effectiveTimeReason: modalEffectiveTimeReason }),
+    [modalEffectiveTimeReason, modalNotes]
+  );
+  const marDraftDirty = Boolean(
+    modalItem &&
+      marDraftKey &&
+      marDraftPayloadSignature(marDraftPayload) !== marDraftPayloadSignature({ notes: "", effectiveTimeReason: "" })
+  );
+  const infusionDraftScope = useMemo<ClinicalDraftScope | null>(() => {
+    if (!infusionModal) return null;
+    return {
+      workflowType:
+        infusionModal.op === "start" ? "INFUSION_START_DOCUMENTATION" : "INFUSION_STOP_DOCUMENTATION",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: INFUSION_DRAFT_VERSION,
+      subjectId: infusionModal.orderItemId,
+    };
+  }, [encounterId, facilityId, infusionModal]);
+  const infusionDraftKey = useMemo(
+    () => (infusionDraftScope ? buildClinicalDraftKey(infusionDraftScope) : null),
+    [infusionDraftScope]
+  );
+  const infusionDraftPayload = useMemo<InfusionDocumentationDraftPayload>(
+    () => ({ note: infusionModalNote }),
+    [infusionModalNote]
+  );
+  const infusionDraftDirty = Boolean(infusionModal && infusionDraftKey && infusionModalNote.trim());
+
+  useClinicalBeforeUnloadWarning({
+    dirty: (marDraftDirty && Boolean(marDraftSavedLocallyAt)) || (infusionDraftDirty && Boolean(infusionDraftSavedLocallyAt)),
+    workflowEditable: encounterClinicalMutationsAllowed,
+  });
 
   const orderItemById = useMemo(() => {
     const map = new Map<string, OrderItemApi>();
@@ -434,13 +535,20 @@ export function MedicationAdministrationTab({
   const marOrderEventRows = useMemo(() => parseOrderEventsForMar(orderEventsRaw), [orderEventsRaw]);
 
   const runMarInfusion = useCallback(
-    async (orderItemId: string, orderId: string, op: "start" | "stop") => {
+    async (orderItemId: string, orderId: string, op: "start" | "stop", note?: string) => {
       const busyKey = `${orderId}:${orderItemId}:${op}`;
       setInfusionBusy(busyKey);
       setError(null);
       try {
-        if (op === "start") await startMedicationInfusion(orderItemId, facilityId);
-        else await stopMedicationInfusion(orderItemId, facilityId);
+        if (op === "start") await startMedicationInfusion(orderItemId, facilityId, note);
+        else await stopMedicationInfusion(orderItemId, facilityId, note);
+        if (infusionDraftKey && typeof window !== "undefined") {
+          removeClinicalDraft(window.localStorage, infusionDraftKey);
+        }
+        setInfusionModal(null);
+        setInfusionModalNote("");
+        setInfusionDraftRestoredAt(null);
+        setInfusionDraftSavedLocallyAt(null);
         await loadAll();
       } catch (e) {
         setError(
@@ -451,7 +559,7 @@ export function MedicationAdministrationTab({
         setInfusionBusy(null);
       }
     },
-    [facilityId, language, loadAll, t]
+    [facilityId, infusionDraftKey, language, loadAll, t]
   );
 
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
@@ -574,6 +682,111 @@ export function MedicationAdministrationTab({
     });
   }, [orders, language, t]);
 
+  useEffect(() => {
+    if (!modalItem || !marDraftKey || !marDraftScope || marRestoringDraftRef.current) return;
+    setMarDraftRestoredAt(null);
+    setMarDraftSavedLocallyAt(null);
+    if (typeof window === "undefined") return;
+    const rowStillDraftable = taskRows.some((row) => row.orderItemId === modalItem.orderItemId);
+    const draft = readClinicalDraft<MarDocumentationDraftPayload>(window.localStorage, marDraftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: marDraftScope,
+      workflowEditable: encounterClinicalMutationsAllowed && rowStillDraftable,
+      encounterStatus,
+      hasPayloadContent: marDraftPayloadHasContent,
+    });
+    if (canRestore && draft) {
+      marRestoringDraftRef.current = true;
+      setModalNotes(draft.payload.notes ?? "");
+      setModalEffectiveTimeReason(draft.payload.effectiveTimeReason ?? "");
+      setMarDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setMarDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+      queueMicrotask(() => {
+        marRestoringDraftRef.current = false;
+      });
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, marDraftKey);
+    }
+  }, [encounterClinicalMutationsAllowed, encounterStatus, marDraftKey, marDraftScope, modalItem, taskRows]);
+
+  useEffect(() => {
+    if (!modalItem || !marDraftKey || !marDraftScope || marRestoringDraftRef.current) return;
+    if (!encounterClinicalMutationsAllowed) return;
+    if (!marDraftDirty || !marDraftPayloadHasContent(marDraftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, marDraftKey);
+      setMarDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      marDraftKey,
+      createClinicalDraft({
+        scope: marDraftScope,
+        payload: marDraftPayload,
+        savedLocallyAt,
+      })
+    );
+    setMarDraftSavedLocallyAt(savedLocallyAt);
+  }, [encounterClinicalMutationsAllowed, marDraftDirty, marDraftKey, marDraftPayload, marDraftScope, modalItem]);
+
+  useEffect(() => {
+    if (!infusionModal || !infusionDraftKey || !infusionDraftScope || infusionRestoringDraftRef.current) return;
+    setInfusionDraftRestoredAt(null);
+    setInfusionDraftSavedLocallyAt(null);
+    if (typeof window === "undefined") return;
+    const draft = readClinicalDraft<InfusionDocumentationDraftPayload>(window.localStorage, infusionDraftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: infusionDraftScope,
+      workflowEditable: encounterClinicalMutationsAllowed,
+      encounterStatus,
+      hasPayloadContent: infusionDraftPayloadHasContent,
+    });
+    if (canRestore && draft) {
+      infusionRestoringDraftRef.current = true;
+      setInfusionModalNote(draft.payload.note ?? "");
+      setInfusionDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setInfusionDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+      queueMicrotask(() => {
+        infusionRestoringDraftRef.current = false;
+      });
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, infusionDraftKey);
+    }
+  }, [encounterClinicalMutationsAllowed, encounterStatus, infusionDraftKey, infusionDraftScope, infusionModal]);
+
+  useEffect(() => {
+    if (!infusionModal || !infusionDraftKey || !infusionDraftScope || infusionRestoringDraftRef.current) return;
+    if (!encounterClinicalMutationsAllowed) return;
+    if (!infusionDraftDirty || !infusionDraftPayloadHasContent(infusionDraftPayload)) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, infusionDraftKey);
+      setInfusionDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      infusionDraftKey,
+      createClinicalDraft({
+        scope: infusionDraftScope,
+        payload: infusionDraftPayload,
+        savedLocallyAt,
+      })
+    );
+    setInfusionDraftSavedLocallyAt(savedLocallyAt);
+  }, [
+    encounterClinicalMutationsAllowed,
+    infusionDraftDirty,
+    infusionDraftKey,
+    infusionDraftPayload,
+    infusionDraftScope,
+    infusionModal,
+  ]);
+
   const marAdvancedMedicationSafetyWarnings = useMemo(() => {
     if (!modalItem?.advancedSafetyLine || modalAction !== "administered") return [];
     const adminQty = modalAdminQty.trim() ? Number(modalAdminQty) : null;
@@ -631,6 +844,8 @@ export function MedicationAdministrationTab({
     setMarAllergySafetyAck(false);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
+    setMarDraftRestoredAt(null);
+    setMarDraftSavedLocallyAt(null);
     clearModalEffectiveTime();
   };
 
@@ -748,6 +963,11 @@ export function MedicationAdministrationTab({
       } else {
         setMarQueuedOfflineNotice(false);
       }
+      if (marDraftKey && typeof window !== "undefined") {
+        removeClinicalDraft(window.localStorage, marDraftKey);
+      }
+      setMarDraftRestoredAt(null);
+      setMarDraftSavedLocallyAt(null);
       setModalItem(null);
       await loadAll();
     } catch (err) {
@@ -941,13 +1161,15 @@ export function MedicationAdministrationTab({
                       <button
                         type="button"
                         disabled={primaryInfusionDisabled}
-                        onClick={() =>
-                          void runMarInfusion(
-                            row.orderItemId,
-                            resolvedOrderIdForInfusion || row.orderItemId,
-                            "start"
-                          )
-                        }
+                        onClick={() => {
+                          setInfusionModal({
+                            orderItemId: row.orderItemId,
+                            orderId: resolvedOrderIdForInfusion || row.orderItemId,
+                            op: "start",
+                            label: row.label,
+                          });
+                          setInfusionModalNote("");
+                        }}
                         style={{
                           padding: "8px 10px",
                           fontSize: 13,
@@ -970,13 +1192,15 @@ export function MedicationAdministrationTab({
                       <button
                         type="button"
                         disabled={primaryInfusionDisabled}
-                        onClick={() =>
-                          void runMarInfusion(
-                            row.orderItemId,
-                            resolvedOrderIdForInfusion || row.orderItemId,
-                            "stop"
-                          )
-                        }
+                        onClick={() => {
+                          setInfusionModal({
+                            orderItemId: row.orderItemId,
+                            orderId: resolvedOrderIdForInfusion || row.orderItemId,
+                            op: "stop",
+                            label: row.label,
+                          });
+                          setInfusionModalNote("");
+                        }}
                         style={{
                           padding: "8px 10px",
                           fontSize: 13,
@@ -1785,6 +2009,16 @@ export function MedicationAdministrationTab({
             ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{t("marTab.notesLabel")}</label>
+            {marDraftRestoredAt ? (
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+                {t("marTab.localDraftRestored")}
+              </p>
+            ) : null}
+            {marDraftSavedLocallyAt ? (
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                {t("marTab.localDraftSaved")}
+              </p>
+            ) : null}
             <textarea
               value={modalNotes}
               onChange={(e) => setModalNotes(e.target.value)}
@@ -2034,6 +2268,122 @@ export function MedicationAdministrationTab({
         </div>
       ) : null}
 
+      {infusionModal ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="mar-infusion-doc-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+            boxSizing: "border-box",
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !infusionBusy) setInfusionModal(null);
+          }}
+        >
+          <div
+            style={{
+              width: "min(440px, 100%)",
+              backgroundColor: "white",
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id="mar-infusion-doc-title" style={{ margin: "0 0 10px", fontSize: 17 }}>
+              {infusionModal.op === "start" ? t("marTab.infusionStartModalTitle") : t("marTab.infusionStopModalTitle")}
+            </h4>
+            <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>
+              {infusionModal.label}
+            </p>
+            {infusionDraftRestoredAt ? (
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+                {t("marTab.localDraftRestored")}
+              </p>
+            ) : null}
+            {infusionDraftSavedLocallyAt ? (
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+                {t("marTab.localDraftSaved")}
+              </p>
+            ) : null}
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+              {t("marTab.infusionNoteLabel")}
+            </label>
+            <textarea
+              value={infusionModalNote}
+              onChange={(e) => setInfusionModalNote(e.target.value)}
+              rows={3}
+              disabled={Boolean(infusionBusy)}
+              placeholder={t("marTab.infusionNotePlaceholder")}
+              style={{
+                width: "100%",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                fontSize: 15,
+                resize: "vertical",
+                boxSizing: "border-box",
+                marginBottom: 12,
+              }}
+            />
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+              {t("marTab.infusionManualActionHint")}
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                disabled={Boolean(infusionBusy)}
+                onClick={() => setInfusionModal(null)}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  cursor: infusionBusy ? "not-allowed" : "pointer",
+                }}
+              >
+                {t("marTab.cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(infusionBusy)}
+                onClick={() =>
+                  void runMarInfusion(
+                    infusionModal.orderItemId,
+                    infusionModal.orderId,
+                    infusionModal.op,
+                    infusionModalNote
+                  )
+                }
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: infusionModal.op === "start" ? "#1565c0" : "#2e7d32",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: infusionBusy ? "not-allowed" : "pointer",
+                }}
+              >
+                {infusionBusy
+                  ? t("common.loading")
+                  : infusionModal.op === "start"
+                    ? t("marTab.startInfusion")
+                    : t("marTab.stopInfusion")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {adminTimeModalRow ? (() => {
         const row = adminTimeModalRow;
         const displayTimes = resolveMedicationAdministrationDisplayTimes(row);
@@ -2063,6 +2413,10 @@ export function MedicationAdministrationTab({
         return (
           <MedicationAdministrationEffectiveTimeModal
             open
+            encounterId={encounterId}
+            facilityId={facilityId}
+            medicationAdministrationId={row.id}
+            workflowEditable={encounterClinicalMutationsAllowed}
             medicationLabel={label}
             defaultEffectiveIso={displayTimes.effectiveIso}
             originalAdministeredAt={new Date(row.administeredAt)}

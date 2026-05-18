@@ -112,7 +112,7 @@ describe("OrdersService.startMedicationInfusion", () => {
     const medicationAdministration = { createInfusionStartMar };
     const service = new OrdersService(prisma as any, audit as any, medicationAdministration as any);
 
-    await service.startMedicationInfusion("fac-1", "item-vanco-1", [RoleCode.RN], "user-1");
+    await service.startMedicationInfusion("fac-1", "item-vanco-1", {}, [RoleCode.RN], "user-1");
 
     expect(orderItemUpdate).toHaveBeenCalledWith(
       expect.objectContaining({

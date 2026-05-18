@@ -8,6 +8,9 @@ export type ClinicalDraftWorkflowType =
   | "OBSERVATION_CONTINUE_NOTE"
   | "ORDERS_DRAFTING"
   | "MEDICATION_MAR_DOCUMENTATION"
+  | "MAR_EFFECTIVE_TIME_CORRECTION"
+  | "INFUSION_START_DOCUMENTATION"
+  | "INFUSION_STOP_DOCUMENTATION"
   | "LAB_RADIOLOGY_DOCUMENTATION"
   | "DISCHARGE_DOCUMENTATION"
   | "PROVIDER_HANDOFF"
@@ -20,6 +23,8 @@ export type ClinicalDraftScope = {
   facilityId: string;
   userId: string;
   version: string;
+  /** Optional row-level scope, e.g. orderItemId or medicationAdministrationId. */
+  subjectId?: string | null;
 };
 
 export type ClinicalDraftMetadata = ClinicalDraftScope & {
@@ -45,7 +50,7 @@ function keyPart(value: string | null | undefined): string {
 }
 
 export function buildClinicalDraftKey(scope: ClinicalDraftScope): string {
-  return [
+  const parts = [
     CLINICAL_DRAFT_KEY_PREFIX,
     keyPart(scope.workflowType),
     keyPart(scope.facilityId),
@@ -53,7 +58,11 @@ export function buildClinicalDraftKey(scope: ClinicalDraftScope): string {
     keyPart(scope.encounterId),
     keyPart(scope.patientId ?? NO_PATIENT_ID),
     keyPart(scope.version),
-  ].join(":");
+  ];
+  if (scope.subjectId != null && scope.subjectId.trim()) {
+    parts.push(keyPart(scope.subjectId));
+  }
+  return parts.join(":");
 }
 
 export function clinicalDraftPayloadSignature(payload: unknown): string {
@@ -127,7 +136,8 @@ function sameDraftScope(draft: ClinicalDraft<unknown>, scope: ClinicalDraftScope
     (metadata.patientId ?? null) === (scope.patientId ?? null) &&
     metadata.facilityId === scope.facilityId &&
     metadata.userId === scope.userId &&
-    metadata.version === scope.version
+    metadata.version === scope.version &&
+    (metadata.subjectId ?? null) === (scope.subjectId ?? null)
   );
 }
 

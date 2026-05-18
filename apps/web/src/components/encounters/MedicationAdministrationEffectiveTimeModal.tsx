@@ -5,6 +5,16 @@ import { parseMedicationAdministrationEffectiveTimeIso } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
+  buildClinicalDraftKey,
+  createClinicalDraft,
+  readClinicalDraft,
+  removeClinicalDraft,
+  shouldRestoreClinicalDraft,
+  writeClinicalDraft,
+  type ClinicalDraftScope,
+} from "@/lib/clinicalDraftStorage";
+import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
+import {
   datetimeLocalValueToUtcIso,
   medicationAdminTimeModalIsLargeBackdate,
   medicationAdminTimeModalRequiresDetailedReason,
@@ -18,8 +28,25 @@ function toDatetimeLocalValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const MAR_EFFECTIVE_TIME_DRAFT_VERSION = "mar-effective-time-correction-v1";
+const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
+
+type MarEffectiveTimeDraftPayload = {
+  reason: string;
+};
+
+function effectiveTimeDraftHasContent(payload: unknown): boolean {
+  if (!payload || typeof payload !== "object") return false;
+  const p = payload as Partial<MarEffectiveTimeDraftPayload>;
+  return Boolean(p.reason?.trim());
+}
+
 export function MedicationAdministrationEffectiveTimeModal({
   open,
+  encounterId,
+  facilityId,
+  medicationAdministrationId,
+  workflowEditable,
   medicationLabel,
   defaultEffectiveIso,
   originalAdministeredAt,
@@ -35,6 +62,10 @@ export function MedicationAdministrationEffectiveTimeModal({
   saving,
 }: {
   open: boolean;
+  encounterId: string;
+  facilityId: string;
+  medicationAdministrationId: string;
+  workflowEditable: boolean;
   medicationLabel: string;
   defaultEffectiveIso: string;
   originalAdministeredAt: Date;
@@ -53,14 +84,76 @@ export function MedicationAdministrationEffectiveTimeModal({
   const [clinicalLocal, setClinicalLocal] = useState(() => toDatetimeLocalValue(defaultEffectiveIso));
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
+  const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+
+  const draftScope = useMemo<ClinicalDraftScope>(
+    () => ({
+      workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+      encounterId,
+      facilityId,
+      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      version: `${MAR_EFFECTIVE_TIME_DRAFT_VERSION}:${adjustmentVersion}:${defaultEffectiveIso}`,
+      subjectId: medicationAdministrationId,
+    }),
+    [adjustmentVersion, defaultEffectiveIso, encounterId, facilityId, medicationAdministrationId]
+  );
+  const draftKey = useMemo(() => buildClinicalDraftKey(draftScope), [draftScope]);
 
   useEffect(() => {
     if (open) {
       setClinicalLocal(toDatetimeLocalValue(defaultEffectiveIso));
       setReason("");
       setError(null);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
     }
   }, [open, defaultEffectiveIso]);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    const draft = readClinicalDraft<MarEffectiveTimeDraftPayload>(window.localStorage, draftKey);
+    const canRestore = shouldRestoreClinicalDraft({
+      draft,
+      scope: draftScope,
+      workflowEditable,
+      encounterStatus: workflowEditable ? "OPEN" : "CLOSED",
+      hasPayloadContent: effectiveTimeDraftHasContent,
+    });
+    if (canRestore && draft) {
+      setReason(draft.payload.reason ?? "");
+      setDraftRestoredAt(draft.metadata.savedLocallyAt);
+      setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
+    } else if (draft && !canRestore) {
+      removeClinicalDraft(window.localStorage, draftKey);
+    }
+  }, [draftKey, draftScope, open, workflowEditable]);
+
+  useEffect(() => {
+    if (!open || !workflowEditable) return;
+    if (!reason.trim()) {
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftSavedLocallyAt(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const savedLocallyAt = new Date().toISOString();
+    writeClinicalDraft(
+      window.localStorage,
+      draftKey,
+      createClinicalDraft({
+        scope: draftScope,
+        payload: { reason },
+        savedLocallyAt,
+      })
+    );
+    setDraftSavedLocallyAt(savedLocallyAt);
+  }, [draftKey, draftScope, open, reason, workflowEditable]);
+
+  useClinicalBeforeUnloadWarning({
+    dirty: Boolean(open && workflowEditable && reason.trim() && draftSavedLocallyAt),
+    workflowEditable,
+  });
 
   const effectiveIso = useMemo(() => datetimeLocalValueToUtcIso(clinicalLocal), [clinicalLocal]);
 
@@ -130,6 +223,9 @@ export function MedicationAdministrationEffectiveTimeModal({
         effectiveAdministeredTime: iso,
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       } satisfies { effectiveAdministeredTime: string; reason?: string });
+      if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+      setDraftRestoredAt(null);
+      setDraftSavedLocallyAt(null);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
       const fromServer = raw.trim()
@@ -195,6 +291,16 @@ export function MedicationAdministrationEffectiveTimeModal({
           {t("marTab.adminTime.reasonLabel")}
           {reasonRequired ? " *" : null}
         </label>
+        {draftRestoredAt ? (
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
+            {t("marTab.localDraftRestored")}
+          </p>
+        ) : null}
+        {draftSavedLocallyAt ? (
+          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
+            {t("marTab.localDraftSaved")}
+          </p>
+        ) : null}
         <textarea
           value={reason}
           onChange={(e) => setReason(e.target.value)}

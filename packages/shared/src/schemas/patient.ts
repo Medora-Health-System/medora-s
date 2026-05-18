@@ -645,6 +645,13 @@ export const medicationAdministrationCreateDtoSchema = z.object({
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
 
+/** POST /orders/items/:id/infusion/start — IVPB infusion start note (manual action only). */
+export const medicationInfusionStartDtoSchema = z.object({
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type MedicationInfusionStartDto = z.infer<typeof medicationInfusionStartDtoSchema>;
+
 /** POST /orders/items/:id/infusion/stop — IVPB infusion end (Phase 1). */
 export const medicationInfusionStopDtoSchema = z.object({
   stoppedAt: z.coerce.date().optional(),

@@ -38,6 +38,7 @@ import {
 } from "../common/workflow/order-item-action-guards.util";
 import type {
   CareProcedureEffectiveClinicalTimeDto,
+  MedicationInfusionStartDto,
   MedicationInfusionStopDto,
   OrderCancelDto,
   OrderCreateDto,
@@ -2588,6 +2589,7 @@ export class OrdersService {
   async startMedicationInfusion(
     facilityId: string,
     orderItemId: string,
+    dto: MedicationInfusionStartDto,
     requestorRoleCodes: RoleCode[],
     userId?: string,
     ip?: string,
@@ -2656,6 +2658,7 @@ export class OrdersService {
       infusionStartedAt: startedIso,
       route: routeResolved,
       source: "IV_INFUSION",
+      ...(dto.notes?.trim() ? { note: dto.notes.trim() } : {}),
       ...identitySnapshot,
     };
     const startMeta = stripUndefinedDeep(startMetaRaw) as Prisma.InputJsonValue;
@@ -2691,6 +2694,7 @@ export class OrdersService {
         infusionSessionKey,
         startedAt: infusionStartedAt,
         route: routeResolved,
+        notes: dto.notes,
       }
     );
 

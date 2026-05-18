@@ -733,6 +733,7 @@ export class MedicationAdministrationService {
       infusionSessionKey: string;
       startedAt: Date;
       route?: string;
+      notes?: string;
     }
   ) {
     const sessionKey = input.infusionSessionKey.trim();
@@ -758,6 +759,8 @@ export class MedicationAdministrationService {
       });
     }
 
+    const notesCombined = [INFUSION_START_MAR_NOTE_PREFIX, input.notes?.trim()].filter(Boolean).join("\n\n");
+
     return this.create(
       encounterId,
       facilityId,
@@ -767,7 +770,7 @@ export class MedicationAdministrationService {
         marAction: "administered",
         administeredAt: input.startedAt,
         ...(input.route?.trim() ? { route: input.route.trim() } : {}),
-        notes: INFUSION_START_MAR_NOTE_PREFIX,
+        notes: notesCombined,
       },
       {
         allowAdministeredForInfusionStart: true,

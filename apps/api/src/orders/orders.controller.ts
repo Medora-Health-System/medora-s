@@ -19,6 +19,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   careProcedureEffectiveClinicalTimeDtoSchema,
   labRadiologyEffectiveClinicalTimeDtoSchema,
+  medicationInfusionStartDtoSchema,
   medicationInfusionStopDtoSchema,
   orderCancelDtoSchema,
   orderCreateDtoSchema,
@@ -415,15 +416,17 @@ export class OrdersController {
   /** IVPB / infusion — Phase 1: start (no MAR row, no billing). */
   @Post("orders/items/:id/infusion/start")
   @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
-  async startMedicationInfusion(@Param("id") orderItemId: string, @Req() req: any) {
+  async startMedicationInfusion(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
+    const dto = assertZodBody(medicationInfusionStartDtoSchema.safeParse(body ?? {}));
     const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
     return this.ordersService.startMedicationInfusion(
       facilityId,
       orderItemId,
+      dto,
       codes,
       req.user?.userId,
       req.ip,
