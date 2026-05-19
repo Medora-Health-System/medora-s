@@ -46,6 +46,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
+      multer:
+        specifier: ^2.1.1
+        version: 2.1.1
       otpauth:
         specifier: ^9.5.1
         version: 9.5.1
