@@ -5532,7 +5532,7 @@ export default {
     handoffSaving: "Enregistrement…",
     handoffSuccess: "Passation enregistrée.",
     handoffError: "Impossible d'enregistrer la passation.",
-    handoffLocalDraftRestored: "Brouillon de passation médecin non enregistré restauré.",
+    handoffLocalDraftRestored: "Brouillon restauré sur cet appareil.",
     handoffLocalDraftSaved: "Brouillon enregistré localement.",
     handoffRecipientRequired: "Sélectionnez un médecin destinataire dans la liste.",
     handoffRecipientPlaceholder: "Rechercher un médecin (prénom ou nom)…",
@@ -6116,7 +6116,7 @@ export default {
       save: "Enregistrer",
       saving: "Enregistrement…",
       saveError: "Impossible d'enregistrer la réévaluation.",
-      localDraftRestored: "Brouillon de réévaluation observation non enregistré restauré.",
+      localDraftRestored: "Brouillon restauré sur cet appareil.",
       localDraftSaved: "Brouillon enregistré localement.",
       quickPhrases: {
         title: "Formulations rapides",
@@ -6215,7 +6215,7 @@ export default {
       save: "Enregistrer la réévaluation",
       saving: "Enregistrement…",
       saveError: "Impossible d'enregistrer la réévaluation.",
-      localDraftRestored: "Brouillon de poursuite d'observation non enregistré restauré.",
+      localDraftRestored: "Brouillon restauré sur cet appareil.",
       localDraftSaved: "Brouillon enregistré localement.",
     },
     observationOrderTemplateBannerButton: "Modèle d'ordres (observation / court séjour)",
@@ -6542,8 +6542,8 @@ export default {
       dischargeTitleObservation: "Fin d'observation — dossier de sortie",
       dischargeIntro:
         "Champs infirmiers et médicaux selon le rôle (infirmier : état, destination, mode ; médecin : disposition, instructions, médicaments, suivi). Les champs non autorisés sont en lecture seule.",
-      localDraftRestored: "Brouillon local restauré sur cet appareil.",
-      localDraftSaved: "Brouillon enregistré localement sur cet appareil.",
+      localDraftRestored: "Brouillon restauré sur cet appareil.",
+      localDraftSaved: "Brouillon enregistré localement.",
       observationDischargeReminderTitle: "Observation — rappels documentaires (non bloquant)",
       observationDischargeReminderFootnote:
         "Rappel uniquement. Vérifiez durée de séjour, réévaluations, signes vitaux, résultats en attente, médicaments actifs, complétude du MAR, documentation PRN, perfusions / IV et déroulé d'observation dans votre documentation rédigée avant la sortie.",
@@ -6759,7 +6759,7 @@ export default {
     saving: "Enregistrement…",
     savedOk: "Enregistré.",
     errSave: "Impossible d'enregistrer.",
-    localDraftRestored: "Brouillon d'évaluation infirmière non enregistré restauré.",
+    localDraftRestored: "Brouillon restauré sur cet appareil.",
     localDraftSaved: "Brouillon enregistré localement.",
     signerFallback: "Professionnel",
     queuedBanner:
@@ -9097,8 +9097,8 @@ export default {
     carePickerTransferPreparation: "Préparation au transfert",
     carePresets:
       "Pose de voie IV périphérique\nOxygénothérapie\nNébulisation\nPose de sonde urinaire\nAspiration\nSurveillance / monitoring",
-    localDraftRestored: "Brouillon d'ordre restauré sur cet appareil.",
-    localDraftSaved: "Brouillon d'ordre enregistré localement sur cet appareil.",
+    localDraftRestored: "Brouillon restauré sur cet appareil.",
+    localDraftSaved: "Brouillon enregistré localement.",
     mapOrderCreateError: "Impossible de créer l'ordre.",
     titleOrderCreated: "Ordre créé",
     titlePrescription: "Ordonnance",

@@ -915,4 +915,156 @@ describe("clinicalDraftStorage", () => {
     expect(labRadKey).toContain("LAB_RADIOLOGY_DOCUMENTATION");
     expect(marKey).not.toBe(labRadKey);
   });
+
+  /**
+   * Phase 18G — cross-workflow audit matrix: every Phase 18 local-only workflow must have a
+   * distinct key and must not cross-restore across workflow type, row subject, or department.
+   */
+  it("Phase 18G: all audited local-only workflows have distinct scoped keys", () => {
+    const base = {
+      encounterId: "enc-audit",
+      patientId: "patient-audit",
+      facilityId: "facility-audit",
+      userId: "user-audit",
+    };
+    const workflowScopes: ClinicalDraftScope[] = [
+      { ...base, workflowType: "ED_TRIAGE", version: "ed-triage-v1" },
+      { ...base, workflowType: "NURSING_ASSESSMENT", version: "nursing-assessment-v1" },
+      { ...base, workflowType: "OBSERVATION_REASSESSMENT", version: "observation-reassessment-v1:RN" },
+      { ...base, workflowType: "OBSERVATION_CONTINUE_NOTE", version: "observation-continue-note-v1" },
+      { ...base, workflowType: "PROVIDER_HANDOFF", version: "provider-handoff-v1" },
+      { ...base, workflowType: "ORDERS_DRAFTING", version: "orders-drafting-v1" },
+      { ...base, workflowType: "DISCHARGE_DOCUMENTATION", version: "discharge-documentation-v1" },
+      {
+        ...base,
+        workflowType: "MEDICATION_MAR_DOCUMENTATION",
+        version: "medication-mar-documentation-v1",
+        subjectId: "order-item-a",
+      },
+      {
+        ...base,
+        workflowType: "MAR_EFFECTIVE_TIME_CORRECTION",
+        version: "mar-effective-time-correction-v1:0:2026-05-17T12:00:00.000Z",
+        subjectId: "admin-row-a",
+      },
+      {
+        ...base,
+        workflowType: "INFUSION_START_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-a",
+      },
+      {
+        ...base,
+        workflowType: "INFUSION_STOP_DOCUMENTATION",
+        version: "infusion-documentation-v1",
+        subjectId: "order-item-a",
+      },
+      {
+        ...base,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:lab",
+        subjectId: "lab-item-a",
+      },
+      {
+        ...base,
+        workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+        version: "lab-radiology-documentation-v1:radiology",
+        subjectId: "rad-item-a",
+      },
+      {
+        ...base,
+        workflowType: "LAB_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:lab:resulted:0:2026-05-17T12:00:00.000Z",
+        subjectId: "lab-item-a",
+      },
+      {
+        ...base,
+        workflowType: "RADIOLOGY_EFFECTIVE_TIME_CORRECTION",
+        version: "lab-radiology-effective-time-correction-v1:radiology:finalized:0:2026-05-17T12:00:00.000Z",
+        subjectId: "rad-item-a",
+      },
+    ];
+
+    const keys = workflowScopes.map((s) => buildClinicalDraftKey(s));
+    expect(new Set(keys).size).toBe(keys.length);
+
+    for (const s of workflowScopes) {
+      expect(buildClinicalDraftKey(s)).toContain(s.facilityId);
+      expect(buildClinicalDraftKey(s)).toContain(s.encounterId);
+      expect(buildClinicalDraftKey(s)).toContain(s.userId);
+    }
+  });
+
+  it("Phase 18G: row-scoped workflows do not cross-restore across subject ids", () => {
+    const marScopeA: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "MEDICATION_MAR_DOCUMENTATION",
+      version: "medication-mar-documentation-v1",
+      subjectId: "order-item-a",
+    };
+    const marScopeB: ClinicalDraftScope = {
+      ...marScopeA,
+      subjectId: "order-item-b",
+    };
+    const draft = createClinicalDraft({
+      scope: marScopeA,
+      payload: { notes: "Held for vitals" },
+      savedLocallyAt: "2026-05-17T12:10:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: marScopeA,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(true);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: marScopeB,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
+
+  it("Phase 18G: lab documentation cannot restore into radiology row", () => {
+    const labScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      version: "lab-radiology-documentation-v1:lab",
+      subjectId: "item-a",
+    };
+    const radScope: ClinicalDraftScope = {
+      ...scope,
+      workflowType: "LAB_RADIOLOGY_DOCUMENTATION",
+      version: "lab-radiology-documentation-v1:radiology",
+      subjectId: "item-a",
+    };
+    const draft = createClinicalDraft({
+      scope: labScope,
+      payload: { resultText: "WBC 11.2" },
+      savedLocallyAt: "2026-05-17T12:10:00.000Z",
+    });
+
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: labScope,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+        hasPayloadContent: (p) => Boolean((p as { resultText?: string }).resultText?.trim()),
+      })
+    ).toBe(true);
+    expect(
+      shouldRestoreClinicalDraft({
+        draft,
+        scope: radScope,
+        workflowEditable: true,
+        encounterStatus: "OPEN",
+      })
+    ).toBe(false);
+  });
 });

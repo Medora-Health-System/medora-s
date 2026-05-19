@@ -319,7 +319,7 @@ export default function EncounterDetailPage() {
   const router = useRouter();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
   const encounterDetailPath = `/app/encounters/${encounterId}`;
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
@@ -538,10 +538,10 @@ export default function EncounterDetailPage() {
       encounterId: encounter.id,
       patientId: encounter.patient?.id ?? null,
       facilityId,
-      userId: UNKNOWN_CLINICAL_DRAFT_USER_ID,
+      userId: userId || UNKNOWN_CLINICAL_DRAFT_USER_ID,
       version: DISCHARGE_DOCUMENTATION_DRAFT_VERSION,
     };
-  }, [encounter?.id, encounter?.patient?.id, facilityId]);
+  }, [encounter?.id, encounter?.patient?.id, facilityId, userId]);
   const dischargeDraftKey = useMemo(
     () => (dischargeDraftScope ? buildClinicalDraftKey(dischargeDraftScope) : null),
     [dischargeDraftScope]

@@ -9,7 +9,7 @@ export const erTriageMessagesFr = {
     saveQueued: "En attente de synchronisation",
     saveOk: "Triage enregistré",
     saveError: "Impossible d'enregistrer le triage.",
-    localDraftRestored: "Brouillon de triage non enregistré restauré.",
+    localDraftRestored: "Brouillon restauré sur cet appareil.",
     localDraftSaved: "Brouillon enregistré localement.",
     staleConflict:
       "Le triage a été mis à jour par un autre utilisateur. Actualisez avant d'enregistrer pour éviter d'écraser ses modifications.",

@@ -9,7 +9,7 @@ export const erTriageMessagesEn = {
     saveQueued: "Saved locally. Pending sync.",
     saveOk: "Triage saved",
     saveError: "Could not save triage.",
-    localDraftRestored: "Unsaved triage draft restored.",
+    localDraftRestored: "Draft restored on this device.",
     localDraftSaved: "Draft saved locally.",
     staleConflict:
       "Triage was updated by another user. Refresh before saving to avoid overwriting their changes.",

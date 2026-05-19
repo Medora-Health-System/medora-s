@@ -5549,7 +5549,7 @@ export default {
     handoffSaving: "Saving...",
     handoffSuccess: "Handoff recorded.",
     handoffError: "Could not record handoff.",
-    handoffLocalDraftRestored: "Unsaved provider handoff draft restored.",
+    handoffLocalDraftRestored: "Draft restored on this device.",
     handoffLocalDraftSaved: "Draft saved locally.",
     handoffRecipientRequired: "Pick a receiving provider from the list.",
     handoffRecipientPlaceholder: "Search provider by first or last name…",
@@ -6129,7 +6129,7 @@ export default {
       save: "Save",
       saving: "Saving…",
       saveError: "Could not save reassessment.",
-      localDraftRestored: "Unsaved observation reassessment draft restored.",
+      localDraftRestored: "Draft restored on this device.",
       localDraftSaved: "Draft saved locally.",
       quickPhrases: {
         title: "Quick phrases",
@@ -6228,7 +6228,7 @@ export default {
       save: "Save reassessment",
       saving: "Saving…",
       saveError: "Could not save reassessment.",
-      localDraftRestored: "Unsaved continue-observation draft restored.",
+      localDraftRestored: "Draft restored on this device.",
       localDraftSaved: "Draft saved locally.",
     },
     observationOrderTemplateBannerButton: "Observation order template",
@@ -6553,8 +6553,8 @@ export default {
       dischargeTitleObservation: "Observation discharge packet",
       dischargeIntro:
         "Nursing and medical fields by role (nurse: condition, destination, mode; provider: disposition, instructions, medications, follow-up). Unauthorized fields are read-only.",
-      localDraftRestored: "Local draft restored on this device.",
-      localDraftSaved: "Draft saved locally on this device.",
+      localDraftRestored: "Draft restored on this device.",
+      localDraftSaved: "Draft saved locally.",
       observationDischargeReminderTitle: "Observation — documentation reminders (non-blocking)",
       observationDischargeReminderFootnote:
         "Reminder only. Confirm LOS, reassessments, vitals, pending results, active medications, MAR completion, PRN documentation, IV/infusions, and observation course in your authored documentation before discharge.",
@@ -6765,7 +6765,7 @@ export default {
     saving: "Saving…",
     savedOk: "Saved.",
     errSave: "Unable to save.",
-    localDraftRestored: "Unsaved nursing assessment draft restored.",
+    localDraftRestored: "Draft restored on this device.",
     localDraftSaved: "Draft saved locally.",
     signerFallback: "Clinician",
     queuedBanner:
@@ -9077,8 +9077,8 @@ export default {
     carePickerTransferPreparation: "Transfer preparation",
     carePresets:
       "Peripheral IV placement\nOxygen therapy\nNebulizer treatment\nUrinary catheter insertion\nSuctioning\nMonitoring",
-    localDraftRestored: "Order draft restored on this device.",
-    localDraftSaved: "Order draft saved locally on this device.",
+    localDraftRestored: "Draft restored on this device.",
+    localDraftSaved: "Draft saved locally.",
     mapOrderCreateError: "Unable to create the order.",
     titleOrderCreated: "Order created",
     titlePrescription: "Prescription",
