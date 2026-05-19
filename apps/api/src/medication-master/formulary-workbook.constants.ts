@@ -93,4 +93,25 @@ export const SECONDARY_REVIEW_FLAGS = [
   "SEARCH_UX_REVIEW",
   "INVENTORY_ONLY",
   "VACCINE_PARALLEL_SYSTEM",
+  "SOURCE_EXACT_TEXT_REQUIRED",
+  "OCR_REVIEW_REQUIRED",
+  "MANUAL_REVIEW_REQUIRED",
+] as const;
+
+/** Phase 19E.0 — optional traceability columns (not required for import). */
+export const FORMULARY_WORKBOOK_SOURCE_TRACE_COLUMNS = [
+  "source_page",
+  "source_line_number",
+  "exact_source_text",
+  "source_name_exact",
+  "source_strength_exact",
+  "source_route_exact",
+  "source_package_exact",
+  "source_review_status",
+  "source_language",
+  "normalized_name_proposed",
+  "normalization_notes",
+  "source_image_ref",
+  "exact_raw_text",
+  "extraction_confidence",
 ] as const;

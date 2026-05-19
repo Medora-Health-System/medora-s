@@ -34,6 +34,7 @@ export type FormularyImportStagingResult = {
   /** Per-row outcomes (no PHI beyond workbook content). */
   rowOutcomes: Array<{
     sourceRowId: string;
+    sourceInventoryDescription: string;
     importGateStatus: string;
     overallStatus: string;
     isValid: boolean;
@@ -132,7 +133,23 @@ export class MedicationFormularyImportService {
       sourceRowId: `stored-${i}`,
       sourceInventorySku: null,
       sourceInventoryDescription: "",
+      exactSource: {
+        exactSourceText: "",
+        sourceInventorySku: null,
+        sourceNameExact: null,
+        sourceStrengthExact: null,
+        sourceRouteExact: null,
+        sourcePackageExact: null,
+        sourcePage: null,
+        sourceLineNumber: null,
+        sourceImageRef: null,
+        exactRawText: null,
+        sourceReviewStatus: null,
+        sourceLanguage: null,
+        normalizationNotes: null,
+      },
       raw: {},
+      preservedRawJson: { __sourceTrace: {} },
       proposedConceptCode: r.proposedConceptCode,
       proposedProductCode: r.proposedProductCode,
       proposedPackageCode: r.proposedPackageCode,
@@ -210,6 +227,7 @@ export class MedicationFormularyImportService {
   private rowOutcomes(rows: ValidatedWorkbookRow[]) {
     return rows.map((r) => ({
       sourceRowId: r.sourceRowId,
+      sourceInventoryDescription: r.sourceInventoryDescription,
       importGateStatus: r.importGateStatus,
       overallStatus: r.overallStatus,
       isValid: r.isValid,
@@ -230,7 +248,7 @@ export class MedicationFormularyImportService {
       sourceRowId: row.sourceRowId,
       sourceInventorySku: row.sourceInventorySku,
       sourceInventoryDescription: row.sourceInventoryDescription,
-      rawJson: row.raw as Prisma.InputJsonValue,
+      rawJson: row.preservedRawJson as Prisma.InputJsonValue,
       proposedConceptCode: row.proposedConceptCode,
       proposedProductCode: row.proposedProductCode,
       proposedPackageCode: row.proposedPackageCode,

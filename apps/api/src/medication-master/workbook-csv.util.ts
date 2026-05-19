@@ -37,7 +37,8 @@ export function parseWorkbookCsv(csvText: string): CsvParseResult {
     for (let j = 0; j < headers.length; j++) {
       const key = headers[j];
       if (!key) continue;
-      row[key] = (cells[j] ?? "").trim();
+      // Phase 19E.0 — preserve exact cell text (no trim); normalization happens in validation only.
+      row[key] = cells[j] ?? "";
     }
     rows.push(row);
   }

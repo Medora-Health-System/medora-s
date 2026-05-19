@@ -11,6 +11,15 @@ import {
   ROUTES,
   SECONDARY_REVIEW_FLAGS,
 } from "./formulary-workbook.constants";
+import {
+  applyBillingSafetyFlags,
+  blocksAutoApproval,
+  buildExactSourceTrace,
+  buildPreservedRawJson,
+  proposedCell,
+  requiresSourceExtractionReview,
+  resolveExactSourceInventoryDescription,
+} from "./formulary-source-preservation.util";
 
 export type ValidationErrorItem = {
   field?: string;
@@ -21,8 +30,11 @@ export type ValidationErrorItem = {
 export type ValidatedWorkbookRow = {
   sourceRowId: string;
   sourceInventorySku: string | null;
+  /** Exact inventory wording — never normalized or translated. */
   sourceInventoryDescription: string;
+  exactSource: ReturnType<typeof buildExactSourceTrace>;
   raw: Record<string, string>;
+  preservedRawJson: Record<string, unknown>;
   proposedConceptCode: string | null;
   proposedProductCode: string | null;
   proposedPackageCode: string | null;
@@ -43,9 +55,7 @@ export type ValidatedWorkbookRow = {
   isValid: boolean;
 };
 
-function cell(row: Record<string, string>, key: string): string {
-  return (row[key] ?? "").trim();
-}
+const cell = proposedCell;
 
 function parseYesNo(value: string): boolean | null {
   const v = value.trim().toLowerCase();
@@ -171,14 +181,23 @@ export function validateWorkbookRow(
   const errors: ValidationErrorItem[] = [];
 
   const sourceRowId = cell(row, "workbook_row_id") || `ROW_${rowIndex + 2}`;
-  const sourceInventoryDescription =
-    cell(row, "source_inventory_description") || cell(row, "generic_name") || "";
+  const exactSource = buildExactSourceTrace(row);
+  const sourceInventoryDescription = resolveExactSourceInventoryDescription(row);
 
   if (!sourceInventoryDescription) {
     errors.push({
       field: "source_inventory_description",
-      code: "REQUIRED",
-      message: "Description ou generic_name requis.",
+      code: "SOURCE_EXACT_TEXT_REQUIRED",
+      message:
+        "Texte source inventaire exact requis (exact_source_text ou source_inventory_description). Ne pas substituer generic_name.",
+    });
+  }
+
+  if (requiresSourceExtractionReview(exactSource)) {
+    errors.push({
+      field: "source_review_status",
+      code: exactSource.sourceReviewStatus ?? "MANUAL_REVIEW_REQUIRED",
+      message: "Revue OCR/manuelle requise avant import staging approuvé.",
     });
   }
 
@@ -268,7 +287,10 @@ export function validateWorkbookRow(
     }
   }
 
-  const overallRaw = cell(row, "overall_status").toLowerCase();
+  let overallRaw = cell(row, "overall_status").toLowerCase();
+  if (blocksAutoApproval(exactSource, overallRaw || "draft")) {
+    overallRaw = "draft";
+  }
   const overallStatus = overallRaw || "draft";
   if (overallStatus && !inList(overallStatus, OVERALL_STATUSES)) {
     errors.push({
@@ -278,13 +300,34 @@ export function validateWorkbookRow(
     });
   }
 
+  let reviewFlags = parsePipeList(cell(row, "review_flags"));
+  if (requiresSourceExtractionReview(exactSource)) {
+    const flag = exactSource.sourceReviewStatus?.toUpperCase() ?? "MANUAL_REVIEW_REQUIRED";
+    if (!reviewFlags.includes(flag)) reviewFlags.push(flag);
+  }
+
+  let billingReviewStatus = cell(row, "billing_review_status").toLowerCase() || null;
   const ndc11Raw = cell(row, "ndc11").replace(/\D/g, "");
-  const ndc11 = ndc11Raw.length === 11 ? ndc11Raw : ndc11Raw.length === 0 ? null : ndc11Raw;
+  let ndc11: string | null =
+    ndc11Raw.length === 11 ? ndc11Raw : ndc11Raw.length === 0 ? null : ndc11Raw;
+  let hcpcsCodeSuggested = cell(row, "hcpcs_j_code_suggested") || null;
+
   if (ndc11 && ndc11.length !== 11) {
     errors.push({ field: "ndc11", code: "INVALID_NDC", message: "ndc11 doit contenir 11 chiffres." });
   }
 
-  const reviewFlags = parsePipeList(cell(row, "review_flags"));
+  const billingAugment = applyBillingSafetyFlags({
+    row,
+    ndc11: ndc11 && ndc11.length === 11 ? ndc11 : null,
+    hcpcsCodeSuggested,
+    billingReviewStatus,
+    reviewFlags,
+  });
+  ndc11 = billingAugment.ndc11;
+  hcpcsCodeSuggested = billingAugment.hcpcsCodeSuggested;
+  billingReviewStatus = billingAugment.billingReviewStatus;
+  reviewFlags = billingAugment.reviewFlags;
+
   for (const flag of reviewFlags) {
     if (!inList(flag, SECONDARY_REVIEW_FLAGS)) {
       errors.push({
@@ -296,22 +339,30 @@ export function validateWorkbookRow(
   }
 
   const gateEval = evaluateImportGates(row, errors);
+  let importGateStatus = gateEval.importGateStatus;
+  if (requiresSourceExtractionReview(exactSource) && importGateStatus === "READY") {
+    importGateStatus = "BLOCKED";
+  }
+
+  const preservedRawJson = buildPreservedRawJson(row, exactSource);
 
   return {
     sourceRowId,
-    sourceInventorySku: cell(row, "source_inventory_sku") || null,
+    sourceInventorySku: exactSource.sourceInventorySku,
     sourceInventoryDescription,
+    exactSource,
     raw: row,
+    preservedRawJson,
     proposedConceptCode: cell(row, "proposed_concept_code") || null,
     proposedProductCode: cell(row, "proposed_product_code") || null,
     proposedPackageCode: cell(row, "proposed_package_code") || null,
     reconciliationStatus: reconciliationStatus || "NEW_PRODUCT_REQUIRED",
-    importGateStatus: gateEval.importGateStatus,
+    importGateStatus,
     overallStatus: overallStatus,
     reviewFlags,
     ndc11: ndc11 && ndc11.length === 11 ? ndc11 : null,
-    hcpcsCodeSuggested: cell(row, "hcpcs_j_code_suggested") || null,
-    billingReviewStatus: cell(row, "billing_review_status").toLowerCase() || null,
+    hcpcsCodeSuggested,
+    billingReviewStatus,
     safetyReviewStatus: cell(row, "safety_review_status").toLowerCase() || null,
     infusionReviewStatus: cell(row, "infusion_review_status").toLowerCase() || null,
     pharmacySignoff: cell(row, "pharmacy_signoff") || null,

@@ -14,6 +14,8 @@ Prepare **Priority Emergency Room** pharmacy inventory for safe reconciliation a
 
 This document defines the **workbook structure**, **classification rules**, **governance sign-off**, and **import validation gates** that must be completed **before** any Phase 19B schema or seed work.
 
+**Phase 19E.0 (exact source preservation):** See `PHASE_19E0_PRIORITY_ER_INVENTORY_EXACT_SOURCE.md`. Inventory PDF/OCR lines must use `exact_source_text` / `source_inventory_description` verbatim; optional trace columns are appended to `templates/priority-er-formulary-workbook-template.csv`. Extraction-only rows use `templates/priority-er-inventory-extraction-staging-template.csv` with `OCR_REVIEW_REQUIRED` or `MANUAL_REVIEW_REQUIRED` until pharmacist verification.
+
 ---
 
 ## Workbook artifacts (deliverables)
