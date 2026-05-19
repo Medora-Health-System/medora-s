@@ -20,7 +20,14 @@ import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-b
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
+import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
 import { promoteStagingRowBodySchema } from "./dto/promote-staging.dto";
+import {
+  medicationMasterGovernanceDuplicatesQuerySchema,
+  medicationMasterGovernanceFacilityQuerySchema,
+  medicationMasterGovernanceUnmappedQuerySchema,
+  medicationMasterGovernanceWarningsQuerySchema,
+} from "./dto/medication-master-governance.dto";
 
 function facilityIdFromReq(req: {
   user?: { facilityId?: string };
@@ -37,7 +44,8 @@ export class MedicationMasterController {
     private readonly formularyImport: MedicationFormularyImportService,
     private readonly catalogBackfill: MedicationCatalogBackfillAnalysisService,
     private readonly promotion: MedicationFormularyPromotionService,
-    private readonly explorer: MedicationMasterExplorerService
+    private readonly explorer: MedicationMasterExplorerService,
+    private readonly governance: MedicationMasterGovernanceService
   ) {}
 
   /** Phase 19C.1 — read-only canonical medication search (no runtime cutover). */
@@ -75,6 +83,90 @@ export class MedicationMasterController {
       this.explorer.assertFacilityScope(facilityId, callerFacilityId);
     }
     return this.explorer.getConceptDetail(id, facilityId);
+  }
+
+  /** Phase 19C.4 — read-only governance summary (no activation/cutover). */
+  @Get("governance/summary")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getGovernanceSummary(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationMasterGovernanceFacilityQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.governance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.governance.getSummary(facilityId);
+  }
+
+  /** Phase 19C.4 — paginated validation warnings for pharmacy review queues. */
+  @Get("governance/warnings")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getGovernanceWarnings(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationMasterGovernanceWarningsQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.governance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.governance.getWarnings({ ...parsed.data, facilityId });
+  }
+
+  /** Phase 19C.4 — legacy catalog rows with no confident canonical link. */
+  @Get("governance/unmapped")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getGovernanceUnmapped(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationMasterGovernanceUnmappedQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.governance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.governance.getUnmapped(parsed.data);
+  }
+
+  /** Phase 19C.4 — duplicate candidate groups (NDC, generic name, staging codes). */
+  @Get("governance/duplicates")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getGovernanceDuplicates(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationMasterGovernanceDuplicatesQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.governance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.governance.getDuplicates({ ...parsed.data, facilityId });
   }
 
   /** Phase 19C.1 — read-only facility formulary explorer (canonical master only). */
