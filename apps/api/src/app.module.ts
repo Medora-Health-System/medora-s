@@ -19,6 +19,7 @@ import { PathwaysModule } from "./pathways/pathways.module";
 import { PharmacyInventoryModule } from "./pharmacy-inventory/pharmacy-inventory.module";
 import { PharmacyDispenseModule } from "./pharmacy-dispense/pharmacy-dispense.module";
 import { MedicationCatalogModule } from "./medication-catalog/medication-catalog.module";
+import { MedicationMasterModule } from "./medication-master/medication-master.module";
 import { OrderCatalogModule } from "./order-catalog/order-catalog.module";
 import { PublicHealthModule } from "./public-health/public-health.module";
 import { DiagnosesModule } from "./diagnoses/diagnoses.module";
@@ -64,6 +65,7 @@ const imports = [
   PharmacyInventoryModule,
   PharmacyDispenseModule,
   MedicationCatalogModule,
+  MedicationMasterModule,
   OrderCatalogModule,
   PublicHealthModule,
   DiagnosesModule,

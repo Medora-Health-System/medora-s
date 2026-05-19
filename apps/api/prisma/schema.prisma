@@ -2245,6 +2245,8 @@ model MedicationFormularyImportStaging {
   validationErrors           Json?
   importedAt                 DateTime?
   importedByUserId           String?
+  /// Phase 19B.3 — canonical entity ids + resolution metadata after manual promotion (no PHI).
+  promotionResultJson        Json?
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
