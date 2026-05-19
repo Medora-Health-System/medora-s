@@ -365,6 +365,21 @@ enum MedicationAdministrationInfusionPhase {
   INFUSION_STOP
 }
 
+/// Phase 19B.1 — canonical infusion session lifecycle (not wired to runtime yet).
+enum InfusionSessionStatus {
+  IN_PROGRESS
+  STOPPED
+  CANCELLED
+}
+
+/// Phase 19B.1 — MAR workflow hint on administration profile.
+enum MedicationMarWorkflow {
+  SINGLE_DOSE
+  INFUSION_SESSION
+  PRN
+  CONTINUOUS
+}
+
 enum DiagnosisStatus {
   ACTIVE
   RESOLVED
@@ -427,70 +442,73 @@ enum MsppRoleCode {
 }
 
 model Facility {
-  id                       String   @id @default(uuid())
-  code                     String   @unique
-  name                     String
-  country                  String
-  timezone                 String
-  defaultLanguage          String   @default("fr")
-  isActive                 Boolean  @default(true)
+  id                         String   @id @default(uuid())
+  code                       String   @unique
+  name                       String
+  country                    String
+  timezone                   String
+  defaultLanguage            String   @default("fr")
+  isActive                   Boolean  @default(true)
   /// Phase 1 — freestanding-ER policy: when true, RN may submit `LAB_TEST` results at this facility.
   /// Default false preserves existing safe behavior (LAB/RADIOLOGY/ADMIN only). Never grants RN
   /// imaging submission, provider verification, order creation, or other LAB-role privileges.
-  allowRnLabResultSubmission Boolean @default(false)
+  allowRnLabResultSubmission Boolean  @default(false)
   /// Phase 7 — institutional / UB-style claim billing identity (optional).
-  billingLegalName         String?
-  billingNpi               String?
-  taxIdEin                 String?
-  billingAddressLine1      String?
-  billingAddressLine2      String?
-  billingCity              String?
-  billingStateProvince     String?
-  billingPostalCode        String?
-  billingCountry           String?
-  billingFacilityTypeLabel String?
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  billingLegalName           String?
+  billingNpi                 String?
+  taxIdEin                   String?
+  billingAddressLine1        String?
+  billingAddressLine2        String?
+  billingCity                String?
+  billingStateProvince       String?
+  billingPostalCode          String?
+  billingCountry             String?
+  billingFacilityTypeLabel   String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 
-  departments                    Department[]
-  userRoles                      UserRole[]
-  patientsRegistered             Patient[]                       @relation("RegisteredAtFacility")
-  patients                       Patient[]                       @relation("PatientFacility")
-  encounters                     Encounter[]
-  orders                         Order[]
-  auditLogs                      AuditLog[]
-  triages                        Triage[]
-  results                        Result[]
-  pathwaySessions                PathwaySession[]
-  protocolOrderSets              ProtocolOrderSet[]
-  diagnoses                      Diagnosis[]
-  medicationDispenses            MedicationDispense[]
-  medicationAdministrations      MedicationAdministration[]
-  inventoryItems                 InventoryItem[]
-  inventoryTransactions          InventoryTransaction[]
-  facilityMedicationUsages       FacilityMedicationUsage[]
-  vaccineAdministrations         VaccineAdministration[]
-  diseaseCaseReports             DiseaseCaseReport[]
-  followUps                      FollowUp[]
-  triageVitalsReadings           TriageVitalsReading[]
-  encounterProviderAddenda       EncounterProviderAddendum[]
-  breakGlassSessions             BreakGlassSession[]
-  encounterIntakes               EncounterIntake[]
-  patientInsuranceCoverages      PatientInsuranceCoverage[]
-  billingEvents                  BillingEvent[]
-  claimSubmissionBatches         ClaimSubmissionBatch[]
-  claimSubmissions               ClaimSubmission[]
-  claimControlCounters           ClaimControlCounter[]
-  claimAcknowledgments           ClaimAcknowledgment[]
-  claimAcknowledgmentDeadLetters ClaimAcknowledgmentDeadLetter[]
-  claimOperationalEvents         ClaimOperationalEvent[]
-  orderEvents                    OrderEvent[]
-  billingReviewDecisions         BillingReviewDecision[]
-  encounterClinicalEvents        EncounterClinicalEvent[]
+  departments                      Department[]
+  userRoles                        UserRole[]
+  patientsRegistered               Patient[]                          @relation("RegisteredAtFacility")
+  patients                         Patient[]                          @relation("PatientFacility")
+  encounters                       Encounter[]
+  orders                           Order[]
+  auditLogs                        AuditLog[]
+  triages                          Triage[]
+  results                          Result[]
+  pathwaySessions                  PathwaySession[]
+  protocolOrderSets                ProtocolOrderSet[]
+  diagnoses                        Diagnosis[]
+  medicationDispenses              MedicationDispense[]
+  medicationAdministrations        MedicationAdministration[]
+  inventoryItems                   InventoryItem[]
+  inventoryTransactions            InventoryTransaction[]
+  facilityMedicationUsages         FacilityMedicationUsage[]
+  facilityFormularyItems           FacilityFormularyItem[]
+  medicationFormularyImportStaging MedicationFormularyImportStaging[]
+  infusionSessions                 InfusionSession[]
+  vaccineAdministrations           VaccineAdministration[]
+  diseaseCaseReports               DiseaseCaseReport[]
+  followUps                        FollowUp[]
+  triageVitalsReadings             TriageVitalsReading[]
+  encounterProviderAddenda         EncounterProviderAddendum[]
+  breakGlassSessions               BreakGlassSession[]
+  encounterIntakes                 EncounterIntake[]
+  patientInsuranceCoverages        PatientInsuranceCoverage[]
+  billingEvents                    BillingEvent[]
+  claimSubmissionBatches           ClaimSubmissionBatch[]
+  claimSubmissions                 ClaimSubmission[]
+  claimControlCounters             ClaimControlCounter[]
+  claimAcknowledgments             ClaimAcknowledgment[]
+  claimAcknowledgmentDeadLetters   ClaimAcknowledgmentDeadLetter[]
+  claimOperationalEvents           ClaimOperationalEvent[]
+  orderEvents                      OrderEvent[]
+  billingReviewDecisions           BillingReviewDecision[]
+  encounterClinicalEvents          EncounterClinicalEvent[]
   /// Phase 5F — immutable encounter chart export snapshots originating at this facility.
-  encounterChartExports          EncounterChartExport[]
+  encounterChartExports            EncounterChartExport[]
   /// Phase 5G — Release of Information (ROI) requests for this facility.
-  chartRoiRequests               ChartRoiRequest[]
+  chartRoiRequests                 ChartRoiRequest[]
 }
 
 /// Catalogue payeur (installation) — recherche par nom normalisé.
@@ -566,31 +584,31 @@ model Role {
 }
 
 model User {
-  id                  String   @id @default(uuid())
-  email               String   @unique
-  firstName           String
-  lastName            String
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  firstName            String
+  lastName             String
   /// Phase 7 — 10-digit NPI for professional claim rendering (optional).
-  billingNpi          String?
-  billingTaxonomyCode String?
-  billingNameOverride String?
-  passwordHash        String
-  refreshTokenHash    String?
-  isActive            Boolean  @default(true)
+  billingNpi           String?
+  billingTaxonomyCode  String?
+  billingNameOverride  String?
+  passwordHash         String
+  refreshTokenHash     String?
+  isActive             Boolean   @default(true)
   /// Phase 9 — TOTP-based MFA (RFC 6238). All fields additive; defaults preserve pre-MFA behavior.
-  mfaEnabled            Boolean   @default(false)
+  mfaEnabled           Boolean   @default(false)
   /// AES-256-GCM ciphertext of the base32 TOTP secret. Format: `v1:<b64Iv>:<b64Ct>:<b64Tag>`. Pending enrollment also lives here while mfaEnabled=false.
-  mfaSecretEncrypted    String?
-  mfaEnabledAt          DateTime?
+  mfaSecretEncrypted   String?
+  mfaEnabledAt         DateTime?
   /// JSON array `[{ hash, usedAt }]`. Argon2id hash; single-use; cleared on disable / regenerate / admin reset.
-  mfaRecoveryCodesHash  Json?
-  mfaLastVerifiedAt     DateTime?
+  mfaRecoveryCodesHash Json?
+  mfaLastVerifiedAt    DateTime?
   /// RFC 6238 step counter (epoch / 30s) of last accepted code, used to reject replay within the same step window.
-  mfaLastUsedStep       BigInt?
+  mfaLastUsedStep      BigInt?
   /// Plateforme : réservé au compte principal unique (`atranchant@medora.local`); tenir aligné avec les migrations (index unique partiel).
-  canCreateFacilities Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  canCreateFacilities  Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   userRoles                 UserRole[]
   auditLogs                 AuditLog[]
@@ -602,39 +620,40 @@ model User {
   followUpsCreated          FollowUp[]
   passwordResetTokens       PasswordResetToken[]
 
-  encountersAsAssignedPhysician              Encounter[]                   @relation("EncounterPhysicianAssigned")
+  encountersAsAssignedPhysician              Encounter[]                           @relation("EncounterPhysicianAssigned")
   /// Phase 10A — operational ER ownership. RN currently responsible for the encounter.
-  encountersAsAssignedNurse                  Encounter[]                   @relation("EncounterNurseAssigned")
-  encountersSignedByProvider                 Encounter[]                   @relation("EncounterSignedBy")
-  encountersBillingFinalizedBy               Encounter[]                   @relation("EncounterBillingFinalizedBy")
-  encountersBillingReopenedBy                Encounter[]                   @relation("EncounterBillingReopenedBy")
+  encountersAsAssignedNurse                  Encounter[]                           @relation("EncounterNurseAssigned")
+  encountersSignedByProvider                 Encounter[]                           @relation("EncounterSignedBy")
+  encountersBillingFinalizedBy               Encounter[]                           @relation("EncounterBillingFinalizedBy")
+  encountersBillingReopenedBy                Encounter[]                           @relation("EncounterBillingReopenedBy")
   providerAddendaCreated                     EncounterProviderAddendum[]
-  orderItemsCompletedNurse                   OrderItem[]                   @relation("OrderItemNurseCompleted")
-  ordersCancelled                            Order[]                       @relation("OrderCancelledBy")
+  orderItemsCompletedNurse                   OrderItem[]                           @relation("OrderItemNurseCompleted")
+  ordersCancelled                            Order[]                               @relation("OrderCancelledBy")
   msppUserRoleAssignments                    MsppUserRoleAssignment[]
   msppReviewAuditEvents                      MsppReviewAuditEvent[]
-  msppAlertTriagesAcknowledged               MsppAlertTriage[]             @relation("MsppAlertTriageAckBy")
-  msppAlertTriagesAssigned                   MsppAlertTriage[]             @relation("MsppAlertTriageAssignTo")
-  msppAlertInvestigationsOpened              MsppAlertInvestigation[]      @relation("MsppAlertInvestigationOpenedBy")
-  msppAlertInvestigationsAssigned            MsppAlertInvestigation[]      @relation("MsppAlertInvestigationAssignedTo")
-  msppAlertInvestigationEventsCreated        MsppAlertInvestigationEvent[] @relation("MsppAlertInvestigationEventCreatedBy")
-  msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackCreatedBy")
-  msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
-  msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[]   @relation("MsppDiseaseReportFeedbackResolvedBy")
+  msppAlertTriagesAcknowledged               MsppAlertTriage[]                     @relation("MsppAlertTriageAckBy")
+  msppAlertTriagesAssigned                   MsppAlertTriage[]                     @relation("MsppAlertTriageAssignTo")
+  msppAlertInvestigationsOpened              MsppAlertInvestigation[]              @relation("MsppAlertInvestigationOpenedBy")
+  msppAlertInvestigationsAssigned            MsppAlertInvestigation[]              @relation("MsppAlertInvestigationAssignedTo")
+  msppAlertInvestigationEventsCreated        MsppAlertInvestigationEvent[]         @relation("MsppAlertInvestigationEventCreatedBy")
+  msppDiseaseReportFeedbacksCreated          MsppDiseaseReportFeedback[]           @relation("MsppDiseaseReportFeedbackCreatedBy")
+  msppDiseaseReportFeedbacksFacilityReviewed MsppDiseaseReportFeedback[]           @relation("MsppDiseaseReportFeedbackFacilityReviewedBy")
+  msppDiseaseReportFeedbacksResolved         MsppDiseaseReportFeedback[]           @relation("MsppDiseaseReportFeedbackResolvedBy")
   authSessions                               AuthSession[]
   breakGlassSessions                         BreakGlassSession[]
   performedOrderEvents                       OrderEvent[]
-  billingReviewDecisionsReviewed             BillingReviewDecision[]        @relation("BillingReviewDecisionReviewer")
-  encounterClinicalEventsCreated             EncounterClinicalEvent[]       @relation("EncounterClinicalEventCreatedBy")
+  billingReviewDecisionsReviewed             BillingReviewDecision[]               @relation("BillingReviewDecisionReviewer")
+  encounterClinicalEventsCreated             EncounterClinicalEvent[]              @relation("EncounterClinicalEventCreatedBy")
   /// Phase 5F — immutable encounter chart export snapshots this user created.
-  encounterChartExportsExported              EncounterChartExport[]         @relation("EncounterChartExportExportedBy")
+  encounterChartExportsExported              EncounterChartExport[]                @relation("EncounterChartExportExportedBy")
   /// Phase 5G — ROI workflow actor links.
-  chartRoiRequestsRequested                  ChartRoiRequest[]              @relation("ChartRoiRequestedBy")
-  chartRoiRequestsApproved                   ChartRoiRequest[]              @relation("ChartRoiApprovedBy")
-  chartRoiRequestsFulfilled                  ChartRoiRequest[]              @relation("ChartRoiFulfilledBy")
+  chartRoiRequestsRequested                  ChartRoiRequest[]                     @relation("ChartRoiRequestedBy")
+  chartRoiRequestsApproved                   ChartRoiRequest[]                     @relation("ChartRoiApprovedBy")
+  chartRoiRequestsFulfilled                  ChartRoiRequest[]                     @relation("ChartRoiFulfilledBy")
   /// Phase 14G-A — platform release / operational notices (creator optional).
-  platformAnnouncementsCreated              PlatformAnnouncement[]         @relation("PlatformAnnouncementCreatedBy")
-  platformAnnouncementAcknowledgements      PlatformAnnouncementAcknowledgement[]
+  platformAnnouncementsCreated               PlatformAnnouncement[]                @relation("PlatformAnnouncementCreatedBy")
+  platformAnnouncementAcknowledgements       PlatformAnnouncementAcknowledgement[]
+  medicationFormularyImportStagingImported   MedicationFormularyImportStaging[]    @relation("MedicationFormularyImportStagingImportedBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -744,7 +763,7 @@ model Patient {
   insuranceCoverages        PatientInsuranceCoverage[]
   billingEvents             BillingEvent[]
   billingReviewDecisions    BillingReviewDecision[]
-  encounterClinicalEvents     EncounterClinicalEvent[]
+  encounterClinicalEvents   EncounterClinicalEvent[]
   /// Phase 5F — immutable encounter chart export snapshots tied to this patient.
   encounterChartExports     EncounterChartExport[]
   /// Phase 5G — Release of Information requests for this patient.
@@ -800,27 +819,27 @@ model AuditLog {
 /// exporting user is `SetNull` to keep snapshots if a user account is
 /// later deactivated/removed.
 model EncounterChartExport {
-  id               String   @id @default(uuid())
-  facilityId       String
-  encounterId      String
-  patientId        String
-  exportedByUserId String?
-  manifestVersion  String
-  manifestHash     String
+  id                String   @id @default(uuid())
+  facilityId        String
+  encounterId       String
+  patientId         String
+  exportedByUserId  String?
+  manifestVersion   String
+  manifestHash      String
   /// Phase 6 — server-issued HMAC-SHA256 signature over the manifestHash, formatted as "<sigVersion>:<hex>". Nullable to support legacy snapshots created before signing was introduced; new snapshots require it in production.
   manifestSignature String?
-  manifestJson     Json
+  manifestJson      Json
   /// "json" | "html" — format requested at creation time (informational; HTML is rendered server-side from the stored manifest).
-  renderedFormat   String
+  renderedFormat    String
   /// Optional template/render version (decoupled from manifestVersion). Lets HTML rendering evolve without invalidating prior snapshots.
-  templateVersion  String?
-  livePreview      Boolean  @default(false)
-  createdAt        DateTime @default(now())
+  templateVersion   String?
+  livePreview       Boolean  @default(false)
+  createdAt         DateTime @default(now())
 
-  facility       Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  encounter      Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  exportedByUser User?     @relation("EncounterChartExportExportedBy", fields: [exportedByUserId], references: [id], onDelete: SetNull)
+  facility         Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  encounter        Encounter         @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient          Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  exportedByUser   User?             @relation("EncounterChartExportExportedBy", fields: [exportedByUserId], references: [id], onDelete: SetNull)
   /// Phase 5G — ROI requests that reference this immutable snapshot (at most one active link per snapshot in practice).
   chartRoiRequests ChartRoiRequest[]
 
@@ -835,29 +854,29 @@ model EncounterChartExport {
 /// Immutable chart snapshots (`EncounterChartExport`) are linked on fulfillment after approval.
 /// No outbound email / portal delivery in this phase — workflow + audit trail only.
 model ChartRoiRequest {
-  id                       String                 @id @default(uuid())
-  facilityId               String
-  patientId                String
-  encounterId              String?
+  id                     String                  @id @default(uuid())
+  facilityId             String
+  patientId              String
+  encounterId            String?
   requestedByUserId      String
-  approvedByUserId         String?
-  fulfilledByUserId        String?
-  encounterChartExportId   String?
-  requestType              ChartRoiRequestType
-  status                   ChartRoiRequestStatus  @default(DRAFT)
-  recipientName            String?
-  recipientOrganization    String?
-  deliveryMethod           ChartRoiDeliveryMethod?
+  approvedByUserId       String?
+  fulfilledByUserId      String?
+  encounterChartExportId String?
+  requestType            ChartRoiRequestType
+  status                 ChartRoiRequestStatus   @default(DRAFT)
+  recipientName          String?
+  recipientOrganization  String?
+  deliveryMethod         ChartRoiDeliveryMethod?
   /// Free-text purpose / scope (stored for legal traceability; never copied into audit metadata).
-  purpose                  String
-  authorizationReference   String?
-  denialReason             String?
-  cancelledReason          String?
-  createdAt                DateTime               @default(now())
-  approvedAt               DateTime?
-  fulfilledAt              DateTime?
-  cancelledAt              DateTime?
-  deniedAt                 DateTime?
+  purpose                String
+  authorizationReference String?
+  denialReason           String?
+  cancelledReason        String?
+  createdAt              DateTime                @default(now())
+  approvedAt             DateTime?
+  fulfilledAt            DateTime?
+  cancelledAt            DateTime?
+  deniedAt               DateTime?
 
   facility             Facility              @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   patient              Patient               @relation(fields: [patientId], references: [id], onDelete: Restrict)
@@ -897,13 +916,13 @@ model Encounter {
   roomLabel               String?
   /// Assigned attending physician (display name only in UI; never use for nurse attribution)
   physicianAssignedUserId String?
-  physicianAssigned       User?   @relation("EncounterPhysicianAssigned", fields: [physicianAssignedUserId], references: [id], onDelete: SetNull)
+  physicianAssigned       User?     @relation("EncounterPhysicianAssigned", fields: [physicianAssignedUserId], references: [id], onDelete: SetNull)
   /// Phase 10A — timestamp of the most recent physician assignment (operational only).
   physicianAssignedAt     DateTime?
   /// Phase 10A — RN currently responsible for the encounter (operational ownership only;
   /// never used for clinical authorship/signature/order authority).
   nurseAssignedUserId     String?
-  nurseAssigned           User?   @relation("EncounterNurseAssigned", fields: [nurseAssignedUserId], references: [id], onDelete: SetNull)
+  nurseAssigned           User?     @relation("EncounterNurseAssigned", fields: [nurseAssignedUserId], references: [id], onDelete: SetNull)
   nurseAssignedAt         DateTime?
   /// Structured discharge summary (French UI keys / values); saved before closing when using discharge flow
   dischargeSummaryJson    Json?
@@ -947,6 +966,7 @@ model Encounter {
   diagnoses                 Diagnosis[]
   medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
+  infusionSessions          InfusionSession[]
   vaccineAdministrations    VaccineAdministration[]
   diseaseCaseReports        DiseaseCaseReport[]
   followUps                 FollowUp[]
@@ -1024,9 +1044,9 @@ model BillingEvent {
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
-  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility               Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient                Patient                 @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter              Encounter               @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   billingReviewDecisions BillingReviewDecision[]
 
   @@unique([facilityId, sourceModule, sourceRecordId])
@@ -1164,66 +1184,73 @@ model Order {
 }
 
 model OrderItem {
-  id                          String                       @id @default(uuid())
-  orderId                     String
+  id                              String                       @id @default(uuid())
+  orderId                         String
   /// Référence catalogue (nullable si saisie manuelle — `manualLabel` requis dans ce cas).
-  catalogItemId               String?
-  catalogItemType             String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
+  catalogItemId                   String?
+  catalogItemType                 String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
   /// Libellé saisi à la main lorsque l’article n’existe pas au catalogue (analyse, examen, médicament).
-  manualLabel                 String?
+  manualLabel                     String?
   /// Précision (ex. région imagerie) ou texte secondaire d’affichage.
-  manualSecondaryText         String?
-  quantity                    Int?
-  notes                       String?
-  strength                    String? // e.g. "500 mg" for medication
-  route                       String? // medication route snapshot, e.g. PO / IM / IVP / IVPB
-  refillCount                 Int? // number of refills for Rx
-  medicationFulfillmentIntent MedicationFulfillmentIntent?
+  manualSecondaryText             String?
+  quantity                        Int?
+  notes                           String?
+  strength                        String? // e.g. "500 mg" for medication
+  route                           String? // medication route snapshot, e.g. PO / IM / IVP / IVPB
+  refillCount                     Int? // number of refills for Rx
+  medicationFulfillmentIntent     MedicationFulfillmentIntent?
   /// Administration prévue (information clinique, pas planification récurrente).
-  intendedAdministrationAt    DateTime?
-  completedAt                 DateTime?
-  completedByUserId           String?
-  completedByNurse            User?                        @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  intendedAdministrationAt        DateTime?
+  completedAt                     DateTime?
+  completedByUserId               String?
+  completedByNurse                User?                        @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id], onDelete: SetNull)
   /// System time when the line was first marked complete (immutable after set).
-  documentedCompletedAt       DateTime?
+  documentedCompletedAt           DateTime?
   /// User-entered when care/procedure was actually performed (CARE lines only).
-  effectiveClinicalAt         DateTime?
-  effectiveClinicalAtSetAt    DateTime?
-  effectiveClinicalAtSetByUserId String?
-  effectiveClinicalAtReason   String?
+  effectiveClinicalAt             DateTime?
+  effectiveClinicalAtSetAt        DateTime?
+  effectiveClinicalAtSetByUserId  String?
+  effectiveClinicalAtReason       String?
   /// Incremented on each effective-time correction (audit / reason rules).
-  effectiveClinicalAtVersion  Int                          @default(0)
+  effectiveClinicalAtVersion      Int                          @default(0)
   /// Lab: specimen collected (system time at START; clinical correction via effectiveCollectedAt).
-  documentedCollectedAt       DateTime?
-  effectiveCollectedAt        DateTime?
-  effectiveCollectedAtSetAt   DateTime?
+  documentedCollectedAt           DateTime?
+  effectiveCollectedAt            DateTime?
+  effectiveCollectedAtSetAt       DateTime?
   effectiveCollectedAtSetByUserId String?
-  effectiveCollectedAtReason  String?
-  effectiveCollectedAtVersion Int                          @default(0)
+  effectiveCollectedAtReason      String?
+  effectiveCollectedAtVersion     Int                          @default(0)
   /// Lab: specimen received at department (system time at ACK).
-  documentedReceivedAt        DateTime?
-  effectiveReceivedAt         DateTime?
-  effectiveReceivedAtSetAt    DateTime?
-  effectiveReceivedAtSetByUserId String?
-  effectiveReceivedAtReason   String?
-  effectiveReceivedAtVersion  Int                          @default(0)
+  documentedReceivedAt            DateTime?
+  effectiveReceivedAt             DateTime?
+  effectiveReceivedAtSetAt        DateTime?
+  effectiveReceivedAtSetByUserId  String?
+  effectiveReceivedAtReason       String?
+  effectiveReceivedAtVersion      Int                          @default(0)
   /// Imaging: exam performed (system time at START).
-  documentedPerformedAt       DateTime?
-  effectivePerformedAt        DateTime?
-  effectivePerformedAtSetAt   DateTime?
+  documentedPerformedAt           DateTime?
+  effectivePerformedAt            DateTime?
+  effectivePerformedAtSetAt       DateTime?
   effectivePerformedAtSetByUserId String?
-  effectivePerformedAtReason  String?
-  effectivePerformedAtVersion Int                          @default(0)
-  status                      OrderStatus                  @default(PENDING)
+  effectivePerformedAtReason      String?
+  effectivePerformedAtVersion     Int                          @default(0)
+  status                          OrderStatus                  @default(PENDING)
   /// Explicit visit lifecycle — kept in sync with `status` in application code; `REVIEWED` = chart/review closure.
-  lifecycleState              OrderItemLifecycleState      @default(ORDERED)
-  createdAt                   DateTime                     @default(now())
-  updatedAt                   DateTime                     @updatedAt
+  lifecycleState                  OrderItemLifecycleState      @default(ORDERED)
+  /// Phase 19B.1 — future dual-write to canonical product (nullable; not populated in this phase).
+  medicationProductId             String?
+  /// Phase 19B.1 — future dual-write to canonical package (nullable; not populated in this phase).
+  medicationPackageId             String?
+  createdAt                       DateTime                     @default(now())
+  updatedAt                       DateTime                     @updatedAt
 
   order                     Order                      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   result                    Result?
   pharmacyDispenseRecord    MedicationDispense?
   medicationAdministrations MedicationAdministration[]
+  infusionSessions          InfusionSession[]
+  medicationProduct         MedicationProduct?         @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
+  medicationPackage         MedicationPackage?         @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
   billingReviewDecisions    BillingReviewDecision[]
 
   @@index([orderId])
@@ -1233,6 +1260,8 @@ model OrderItem {
   @@index([catalogItemId])
   @@index([completedByUserId])
   @@index([medicationFulfillmentIntent])
+  @@index([medicationProductId])
+  @@index([medicationPackageId])
 }
 
 /// ER-ORDER-LIFECYCLE: immutable audit events for all order domains.
@@ -1331,32 +1360,32 @@ model TriageVitalsReading {
 }
 
 model Result {
-  id                       String    @id @default(uuid())
-  orderItemId              String    @unique
-  facilityId               String
-  resultData               Json?
-  resultText               String?
-  criticalValue            Boolean   @default(false)
+  id                              String    @id @default(uuid())
+  orderItemId                     String    @unique
+  facilityId                      String
+  resultData                      Json?
+  resultText                      String?
+  criticalValue                   Boolean   @default(false)
   /// Department user who last saved substantive result text/attachments (lab/radiology); not physician sign-off.
-  verifiedByUserId         String?
-  verifiedAt               DateTime?
-  acknowledgedByProviderAt DateTime?
+  verifiedByUserId                String?
+  verifiedAt                      DateTime?
+  acknowledgedByProviderAt        DateTime?
   /// Receiving clinician who acknowledged the result in-chart (distinct from `verifiedByUserId`).
-  acknowledgedByUserId     String?
+  acknowledgedByUserId            String?
   /// Lab: clinical result time (documented entry time remains `verifiedAt`).
-  effectiveResultedAt          DateTime?
-  effectiveResultedAtSetAt     DateTime?
-  effectiveResultedAtSetByUserId String?
-  effectiveResultedAtReason    String?
-  effectiveResultedAtVersion   Int       @default(0)
+  effectiveResultedAt             DateTime?
+  effectiveResultedAtSetAt        DateTime?
+  effectiveResultedAtSetByUserId  String?
+  effectiveResultedAtReason       String?
+  effectiveResultedAtVersion      Int       @default(0)
   /// Imaging: clinical finalized/report time (documented entry remains `verifiedAt`).
-  effectiveFinalizedAt         DateTime?
-  effectiveFinalizedAtSetAt    DateTime?
+  effectiveFinalizedAt            DateTime?
+  effectiveFinalizedAtSetAt       DateTime?
   effectiveFinalizedAtSetByUserId String?
-  effectiveFinalizedAtReason   String?
-  effectiveFinalizedAtVersion  Int       @default(0)
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
+  effectiveFinalizedAtReason      String?
+  effectiveFinalizedAtVersion     Int       @default(0)
+  createdAt                       DateTime  @default(now())
+  updatedAt                       DateTime  @updatedAt
 
   orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -1486,6 +1515,7 @@ model CatalogMedication {
   medicationDispenses      MedicationDispense[]
   aliases                  MedicationAlias[]
   facilityMedicationUsages FacilityMedicationUsage[]
+  legacyMedicationProducts MedicationProduct[]       @relation("CatalogMedicationLegacyProduct")
 
   @@index([ndc11])
 }
@@ -1688,17 +1718,22 @@ model InventoryItem {
   unit                String?
   isActive            Boolean   @default(true)
   isFavorite          Boolean   @default(false)
+  /// Phase 19B.1 — future link to canonical package (nullable; not populated in this phase).
+  medicationPackageId String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  facility            Facility               @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  catalogMedication   CatalogMedication      @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
-  medicationDispenses MedicationDispense[]
-  transactions        InventoryTransaction[]
+  facility               Facility                @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  catalogMedication      CatalogMedication       @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
+  medicationPackage      MedicationPackage?      @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
+  medicationDispenses    MedicationDispense[]
+  facilityFormularyItems FacilityFormularyItem[]
+  transactions           InventoryTransaction[]
 
   @@unique([facilityId, sku])
   @@index([facilityId])
   @@index([catalogMedicationId])
+  @@index([medicationPackageId])
   @@index([isActive])
   @@index([isFavorite])
 }
@@ -1768,6 +1803,10 @@ model MedicationDispense {
   ndc11Snapshot         String?  @db.VarChar(11)
   /// ER-3: human display NDC snapshot (hyphenated), optional.
   ndcDisplaySnapshot    String?  @db.VarChar(32)
+  /// Phase 19B.1 — future dual-write to canonical product (nullable; not populated in this phase).
+  medicationProductId   String?
+  /// Phase 19B.1 — future dual-write to canonical package (nullable; not populated in this phase).
+  medicationPackageId   String?
   dosageInstructions    String?
   dispensedByUserId     String
   dispensedAt           DateTime @default(now())
@@ -1779,6 +1818,8 @@ model MedicationDispense {
   encounter         Encounter          @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   catalogMedication CatalogMedication? @relation(fields: [catalogMedicationId], references: [id], onDelete: Restrict)
+  medicationProduct MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
+  medicationPackage MedicationPackage? @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
   inventoryItem     InventoryItem?     @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
   orderItem         OrderItem?         @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
   dispensedBy       User               @relation(fields: [dispensedByUserId], references: [id], onDelete: Restrict)
@@ -1787,64 +1828,467 @@ model MedicationDispense {
   @@index([encounterId])
   @@index([facilityId])
   @@index([inventoryItemId])
+  @@index([medicationProductId])
+  @@index([medicationPackageId])
   @@index([dispensedAt])
   @@index([ndc11Snapshot])
 }
 
 /// Append-only bedside medication administrations (MAR log); does not replace OrderItem lifecycle.
 model MedicationAdministration {
-  id                      String   @id @default(uuid())
-  facilityId              String
-  patientId               String
-  encounterId             String
-  orderItemId             String?
-  medicationLabelSnapshot String?
+  id                                 String                                 @id @default(uuid())
+  facilityId                         String
+  patientId                          String
+  encounterId                        String
+  orderItemId                        String?
+  medicationLabelSnapshot            String?
   /// Route as documented at administration time (e.g. IV, IM, SQ, PO); preferred over catalog for billing CPT inference.
-  route                   String?
+  route                              String?
   /// ER-3: structured dose value documented at administration.
-  doseValue               Decimal? @db.Decimal(12, 4)
+  doseValue                          Decimal?                               @db.Decimal(12, 4)
   /// ER-3: dose unit (mg, mL, unit, each, etc.).
-  doseUnit                String?  @db.VarChar(32)
+  doseUnit                           String?                                @db.VarChar(32)
   /// ER-3: administered quantity documented by nurse/provider.
-  administeredQuantity    Decimal? @db.Decimal(12, 4)
+  administeredQuantity               Decimal?                               @db.Decimal(12, 4)
   /// ER-3: quantity captured for billing prep (defaults to administeredQuantity when omitted).
-  billingQuantity         Decimal? @db.Decimal(12, 4)
+  billingQuantity                    Decimal?                               @db.Decimal(12, 4)
   /// ER-3: quantity unit snapshot.
-  quantityUnit            String?  @db.VarChar(32)
+  quantityUnit                       String?                                @db.VarChar(32)
   /// ER-3: normalized NDC snapshot at administration time (11 digits), optional.
-  ndc11Snapshot           String?  @db.VarChar(11)
+  ndc11Snapshot                      String?                                @db.VarChar(11)
   /// ER-3: display NDC snapshot at administration time, optional.
-  ndcDisplaySnapshot      String?  @db.VarChar(32)
-  administeredAt          DateTime @default(now())
-  administeredByUserId    String
+  ndcDisplaySnapshot                 String?                                @db.VarChar(32)
+  administeredAt                     DateTime                               @default(now())
+  administeredByUserId               String
   /// Phase 15F-B: corrected clinical administration instant; never overwrites `administeredAt`.
-  effectiveAdministeredAt          DateTime?
-  effectiveAdministeredAtSetAt     DateTime?
+  effectiveAdministeredAt            DateTime?
+  effectiveAdministeredAtSetAt       DateTime?
   effectiveAdministeredAtSetByUserId String?
-  effectiveAdministeredAtReason    String?
-  effectiveAdministeredAtVersion   Int      @default(0)
+  effectiveAdministeredAtReason      String?
+  effectiveAdministeredAtVersion     Int                                    @default(0)
   /// ER-3.2: primary MAR outcome; null = legacy row (derive from notes only for display).
-  marAction               MedicationMarAction?
+  marAction                          MedicationMarAction?
   /// Phase 15F-B.1: infusion START (in-progress) vs STOP (terminal) MAR documentation.
-  infusionPhase           MedicationAdministrationInfusionPhase?
+  infusionPhase                      MedicationAdministrationInfusionPhase?
   /// Matches OrderEvent metadata `infusionSessionKey` for the same IV session.
-  infusionSessionKey      String?  @db.VarChar(64)
-  notes                   String?
-  createdAt               DateTime @default(now())
+  infusionSessionKey                 String?                                @db.VarChar(64)
+  /// Phase 19B.1 — future canonical infusion session (nullable; not wired to runtime yet).
+  infusionSessionId                  String?
+  /// Phase 19B.1 — future dual-write to canonical product (nullable; not populated in this phase).
+  medicationProductId                String?
+  /// Phase 19B.1 — future dual-write to canonical package (nullable; not populated in this phase).
+  medicationPackageId                String?
+  notes                              String?
+  createdAt                          DateTime                               @default(now())
 
-  facility       Facility   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  encounter      Encounter  @relation(fields: [encounterId], references: [id], onDelete: Restrict)
-  orderItem      OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
-  administeredBy User       @relation(fields: [administeredByUserId], references: [id], onDelete: Restrict)
+  facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  encounter         Encounter          @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem         OrderItem?         @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  infusionSession   InfusionSession?   @relation(fields: [infusionSessionId], references: [id], onDelete: SetNull)
+  medicationProduct MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
+  medicationPackage MedicationPackage? @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
+  administeredBy    User               @relation(fields: [administeredByUserId], references: [id], onDelete: Restrict)
 
   @@index([facilityId])
   @@index([patientId])
   @@index([encounterId])
   @@index([orderItemId])
+  @@index([infusionSessionId])
+  @@index([medicationProductId])
+  @@index([medicationPackageId])
   @@index([administeredAt])
   @@index([ndc11Snapshot])
   @@index([infusionSessionKey])
+}
+
+// --- Phase 19B.1: Canonical medication master (additive; inert until future phases) ---
+
+model MedicationTherapeuticClass {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent                         MedicationTherapeuticClass?  @relation("MedicationTherapeuticClassHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children                       MedicationTherapeuticClass[] @relation("MedicationTherapeuticClassHierarchy")
+  concepts                       MedicationConcept[]
+  safetyProfilesDuplicateTherapy MedicationSafetyProfile[]    @relation("MedicationSafetyDuplicateTherapyClass")
+
+  @@index([parentId])
+}
+
+model MedicationRoute {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productsDefault      MedicationProduct[]      @relation("MedicationProductDefaultRoute")
+  orderSetLinksDefault MedicationOrderSetLink[]
+}
+
+model MedicationDoseUnit {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  concentrationNumerators    MedicationConcentration[]         @relation("MedicationConcentrationNumeratorUnit")
+  concentrationDenominators  MedicationConcentration[]         @relation("MedicationConcentrationDenominatorUnit")
+  concentrationTotalVolumes  MedicationConcentration[]         @relation("MedicationConcentrationTotalVolumeUnit")
+  packageContentsUnits       MedicationPackage[]               @relation("MedicationPackageContentsUnit")
+  packageDefaultDoseUnits    MedicationPackage[]               @relation("MedicationPackageDefaultDoseUnit")
+  administrationTypicalUnits MedicationAdministrationProfile[] @relation("MedicationAdministrationTypicalDoseUnit")
+  safetyMaxSingleDoseUnits   MedicationSafetyProfile[]         @relation("MedicationSafetyMaxSingleDoseUnit")
+}
+
+model MedicationConcept {
+  id                 String    @id @default(uuid())
+  code               String    @unique
+  genericName        String
+  displayName        String
+  therapeuticClassId String?
+  rxNormConceptId    String?   @db.VarChar(64)
+  isActive           Boolean   @default(true)
+  retiredAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  therapeuticClass MedicationTherapeuticClass? @relation(fields: [therapeuticClassId], references: [id], onDelete: SetNull)
+  products         MedicationProduct[]
+  safetyProfile    MedicationSafetyProfile?
+  searchAliases    MedicationSearchAlias[]
+
+  @@index([therapeuticClassId])
+  @@index([isActive])
+}
+
+model MedicationConcentration {
+  id                String   @id @default(uuid())
+  numeratorAmount   Decimal? @db.Decimal(16, 6)
+  numeratorUnitId   String?
+  denominatorAmount Decimal? @db.Decimal(16, 6)
+  denominatorUnitId String?
+  totalVolumeAmount Decimal? @db.Decimal(16, 6)
+  totalVolumeUnitId String?
+  displayText       String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  numeratorUnit   MedicationDoseUnit? @relation("MedicationConcentrationNumeratorUnit", fields: [numeratorUnitId], references: [id], onDelete: SetNull)
+  denominatorUnit MedicationDoseUnit? @relation("MedicationConcentrationDenominatorUnit", fields: [denominatorUnitId], references: [id], onDelete: SetNull)
+  totalVolumeUnit MedicationDoseUnit? @relation("MedicationConcentrationTotalVolumeUnit", fields: [totalVolumeUnitId], references: [id], onDelete: SetNull)
+  products        MedicationProduct[]
+
+  @@index([numeratorUnitId])
+  @@index([denominatorUnitId])
+  @@index([totalVolumeUnitId])
+}
+
+model MedicationProduct {
+  id                        String   @id @default(uuid())
+  code                      String   @unique
+  conceptId                 String
+  /// Backfill link to legacy `CatalogMedication` during migration (optional, unique when set).
+  legacyCatalogMedicationId String?  @unique
+  strengthDisplay           String
+  concentrationId           String?
+  dosageForm                String   @db.VarChar(64)
+  defaultRouteId            String?
+  /// ORAL | IM | SQ | PUSH | INFUSION | OTHER
+  administrationType        String   @db.VarChar(32)
+  /// HYDRATION | THERAPEUTIC | DRUG_SUPPLY | UNKNOWN
+  billingClass              String   @db.VarChar(32)
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  concept                 MedicationConcept                @relation(fields: [conceptId], references: [id], onDelete: Restrict)
+  legacyCatalogMedication CatalogMedication?               @relation("CatalogMedicationLegacyProduct", fields: [legacyCatalogMedicationId], references: [id], onDelete: SetNull)
+  concentration           MedicationConcentration?         @relation(fields: [concentrationId], references: [id], onDelete: SetNull)
+  defaultRoute            MedicationRoute?                 @relation("MedicationProductDefaultRoute", fields: [defaultRouteId], references: [id], onDelete: SetNull)
+  packages                MedicationPackage[]
+  administrationProfile   MedicationAdministrationProfile?
+  infusionProfile         InfusionProfile?
+  orderSetLinks           MedicationOrderSetLink[]
+  orderItems              OrderItem[]
+  dispenses               MedicationDispense[]
+  administrations         MedicationAdministration[]
+  infusionSessions        InfusionSession[]
+  searchAliases           MedicationSearchAlias[]
+
+  @@index([conceptId])
+  @@index([legacyCatalogMedicationId])
+  @@index([isActive])
+  @@index([administrationType])
+}
+
+model MedicationPackage {
+  id                  String   @id @default(uuid())
+  code                String   @unique
+  productId           String
+  packageDescription  String
+  /// VIAL | SYRINGE | BAG_PREMIX | BAG_BASE | AMPULE | TABLET_BOTTLE | OTHER
+  packageType         String   @db.VarChar(32)
+  ndc11               String?  @db.VarChar(11)
+  ndcDisplay          String?  @db.VarChar(32)
+  contentsAmount      Decimal? @db.Decimal(16, 6)
+  contentsUnitId      String?
+  defaultDoseUnitId   String?
+  isDefaultForProduct Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  product                MedicationProduct          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  contentsUnit           MedicationDoseUnit?        @relation("MedicationPackageContentsUnit", fields: [contentsUnitId], references: [id], onDelete: SetNull)
+  defaultDoseUnit        MedicationDoseUnit?        @relation("MedicationPackageDefaultDoseUnit", fields: [defaultDoseUnitId], references: [id], onDelete: SetNull)
+  billingProfiles        MedicationBillingProfile[]
+  facilityFormularyItems FacilityFormularyItem[]
+  inventoryItems         InventoryItem[]
+  orderItems             OrderItem[]
+  dispenses              MedicationDispense[]
+  administrations        MedicationAdministration[]
+  infusionSessions       InfusionSession[]
+  orderSetLinksDefault   MedicationOrderSetLink[]   @relation("MedicationOrderSetLinkDefaultPackage")
+
+  @@index([productId])
+  @@index([ndc11])
+  @@index([isActive])
+  @@index([isDefaultForProduct])
+}
+
+model FacilityFormularyItem {
+  id                  String    @id @default(uuid())
+  facilityId          String
+  packageId           String
+  inventoryItemId     String?
+  isOnFormulary       Boolean   @default(true)
+  isEDFormulary       Boolean   @default(false)
+  favoriteTier        String?   @db.VarChar(32)
+  sortPriority        Int?
+  searchBoost         Int?
+  allowManualOverride Boolean   @default(false)
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  facility      Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  package       MedicationPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  inventoryItem InventoryItem?    @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@unique([facilityId, packageId])
+  @@index([facilityId])
+  @@index([packageId])
+  @@index([inventoryItemId])
+  @@index([isEDFormulary])
+  @@index([favoriteTier])
+}
+
+model MedicationBillingProfile {
+  id                             String    @id @default(uuid())
+  packageId                      String
+  payerProfileId                 String?   @db.VarChar(64)
+  hcpcsCodeSuggested             String?   @db.VarChar(16)
+  hcpcsUnitType                  String?   @db.VarChar(32)
+  revenueCodeSuggested           String?   @db.VarChar(16)
+  billableUnitRule               String?   @db.VarChar(32)
+  companionProcedureCptSuggested String?   @db.VarChar(16)
+  wastageBillable                Boolean   @default(false)
+  requiresManualReview           Boolean   @default(true)
+  effectiveFrom                  DateTime?
+  effectiveTo                    DateTime?
+  createdAt                      DateTime  @default(now())
+  updatedAt                      DateTime  @updatedAt
+
+  package MedicationPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@index([packageId])
+  @@index([payerProfileId])
+}
+
+model MedicationSafetyProfile {
+  id                      String   @id @default(uuid())
+  conceptId               String   @unique
+  isHighAlert             Boolean  @default(false)
+  highAlertCategories     Json?
+  lasaGroupId             String?  @db.VarChar(64)
+  isControlled            Boolean  @default(false)
+  controlledSchedule      String?  @db.VarChar(8)
+  requiresWitness         Boolean  @default(false)
+  requiresDoubleSign      Boolean  @default(false)
+  duplicateTherapyClassId String?
+  interactionGroupIds     Json?
+  maxSingleDoseAmount     Decimal? @db.Decimal(16, 6)
+  maxSingleDoseUnitId     String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  concept               MedicationConcept           @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  duplicateTherapyClass MedicationTherapeuticClass? @relation("MedicationSafetyDuplicateTherapyClass", fields: [duplicateTherapyClassId], references: [id], onDelete: SetNull)
+  maxSingleDoseUnit     MedicationDoseUnit?         @relation("MedicationSafetyMaxSingleDoseUnit", fields: [maxSingleDoseUnitId], references: [id], onDelete: SetNull)
+
+  @@index([duplicateTherapyClassId])
+  @@index([isControlled])
+  @@index([isHighAlert])
+}
+
+model MedicationAdministrationProfile {
+  id                       String                @id @default(uuid())
+  productId                String                @unique
+  defaultMarWorkflow       MedicationMarWorkflow
+  requiresInfusionSession  Boolean               @default(false)
+  allowsPartialDose        Boolean               @default(false)
+  allowsWasteDocumentation Boolean               @default(false)
+  typicalDoseUnitId        String?
+  hydrationFluid           Boolean               @default(false)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  product         MedicationProduct   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  typicalDoseUnit MedicationDoseUnit? @relation("MedicationAdministrationTypicalDoseUnit", fields: [typicalDoseUnitId], references: [id], onDelete: SetNull)
+
+  @@index([typicalDoseUnitId])
+}
+
+model InfusionProfile {
+  id                            String   @id @default(uuid())
+  productId                     String   @unique
+  /// HYDRATION | THERAPEUTIC | BLOOD | TPN | OTHER
+  infusionType                  String   @db.VarChar(32)
+  requiresStopMarForBilling     Boolean  @default(true)
+  minDocumentedDurationMinutes  Int?
+  rateRequired                  Boolean  @default(false)
+  compatibleBaseFluidProductIds Json?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  product MedicationProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model MedicationSearchAlias {
+  id              String   @id @default(uuid())
+  conceptId       String?
+  productId       String?
+  alias           String
+  normalizedAlias String
+  language        String?  @db.VarChar(8)
+  aliasType       String?  @db.VarChar(32)
+  searchWeight    Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  concept MedicationConcept? @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  product MedicationProduct? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([conceptId])
+  @@index([productId])
+  @@index([normalizedAlias])
+  @@index([alias])
+}
+
+model MedicationOrderSetLink {
+  id                       String                       @id @default(uuid())
+  /// Protocol order set or future medication order set id (string until FK cutover).
+  orderSetId               String
+  productId                String
+  defaultPackageId         String?
+  defaultQuantity          Decimal?                     @db.Decimal(12, 4)
+  defaultRouteId           String?
+  defaultFulfillmentIntent MedicationFulfillmentIntent?
+  sequence                 Int?
+  notes                    String?
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+
+  product        MedicationProduct  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  defaultPackage MedicationPackage? @relation("MedicationOrderSetLinkDefaultPackage", fields: [defaultPackageId], references: [id], onDelete: SetNull)
+  defaultRoute   MedicationRoute?   @relation(fields: [defaultRouteId], references: [id], onDelete: SetNull)
+
+  @@index([orderSetId])
+  @@index([productId])
+  @@index([defaultPackageId])
+  @@index([sequence])
+}
+
+/// Workbook staging rows — not active medications; no ordering/MAR/billing effect until manual promotion (future phase).
+model MedicationFormularyImportStaging {
+  id                         String    @id @default(uuid())
+  facilityId                 String?
+  batchId                    String
+  sourceRowId                String
+  sourceInventorySku         String?
+  sourceInventoryDescription String    @db.Text
+  rawJson                    Json
+  proposedConceptCode        String?
+  proposedProductCode        String?
+  proposedPackageCode        String?
+  reconciliationStatus       String    @db.VarChar(64)
+  importGateStatus           String    @db.VarChar(32)
+  overallStatus              String    @db.VarChar(32)
+  reviewFlags                Json?
+  ndc11                      String?   @db.VarChar(11)
+  hcpcsCodeSuggested         String?   @db.VarChar(16)
+  billingReviewStatus        String?   @db.VarChar(32)
+  safetyReviewStatus         String?   @db.VarChar(32)
+  infusionReviewStatus       String?   @db.VarChar(32)
+  pharmacySignoff            String?
+  nursingSignoff             String?
+  edMdSignoff                String?
+  complianceSignoff          String?
+  validationErrors           Json?
+  importedAt                 DateTime?
+  importedByUserId           String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  facility   Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  importedBy User?     @relation("MedicationFormularyImportStagingImportedBy", fields: [importedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([batchId])
+  @@index([overallStatus])
+  @@index([importGateStatus])
+  @@index([reconciliationStatus])
+  @@index([facilityId])
+  @@index([sourceRowId])
+  @@index([importedAt])
+}
+
+/// Canonical infusion session (Phase 19B.1 schema only — not wired to runtime yet).
+model InfusionSession {
+  id                       String                @id @default(uuid())
+  encounterId              String
+  facilityId               String
+  orderItemId              String
+  medicationProductId      String?
+  medicationPackageId      String?
+  legacyInfusionSessionKey String?               @db.VarChar(64)
+  status                   InfusionSessionStatus
+  startedAt                DateTime?
+  stoppedAt                DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+
+  encounter                 Encounter                  @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  facility                  Facility                   @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orderItem                 OrderItem                  @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  medicationProduct         MedicationProduct?         @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
+  medicationPackage         MedicationPackage?         @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
+  medicationAdministrations MedicationAdministration[]
+
+  @@index([encounterId])
+  @@index([facilityId])
+  @@index([orderItemId])
+  @@index([legacyInfusionSessionKey])
+  @@index([status])
+  @@index([medicationProductId])
+  @@index([medicationPackageId])
 }
 
 // --- Medora Public Health: vaccination + disease reporting ---
@@ -2399,29 +2843,29 @@ model ClaimOperationalEvent {
 
 /// Phase 14G-A — non-clinical platform announcements (no PHI; not patient-scoped).
 model PlatformAnnouncement {
-  id               String    @id @default(cuid())
-  title            String
-  body             String    @db.Text
-  severity         String?
-  versionKey       String    @unique
-  startsAt         DateTime?
-  expiresAt        DateTime?
-  isActive         Boolean   @default(true)
-  createdByUserId  String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  title           String
+  body            String    @db.Text
+  severity        String?
+  versionKey      String    @unique
+  startsAt        DateTime?
+  expiresAt       DateTime?
+  isActive        Boolean   @default(true)
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  createdBy        User? @relation("PlatformAnnouncementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy        User?                                 @relation("PlatformAnnouncementCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   acknowledgements PlatformAnnouncementAcknowledgement[]
 
   @@index([isActive, startsAt, expiresAt, createdAt])
 }
 
 model PlatformAnnouncementAcknowledgement {
-  id              String   @id @default(cuid())
-  announcementId  String
-  userId          String
-  acknowledgedAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String
+  acknowledgedAt DateTime @default(now())
 
   announcement PlatformAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
