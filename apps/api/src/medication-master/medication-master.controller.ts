@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -14,10 +15,20 @@ import type { Request } from "express";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { importStagingBodySchema } from "./dto/medication-formulary-import.dto";
+import { medicationMasterSearchQuerySchema } from "./dto/medication-master-explorer.dto";
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
+import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { promoteStagingRowBodySchema } from "./dto/promote-staging.dto";
+
+function facilityIdFromReq(req: {
+  user?: { facilityId?: string };
+  headers: Record<string, string | string[] | undefined>;
+}): string | undefined {
+  const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+  return typeof facilityId === "string" ? facilityId : Array.isArray(facilityId) ? facilityId[0] : undefined;
+}
 
 @Controller("medication-master")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -25,8 +36,58 @@ export class MedicationMasterController {
   constructor(
     private readonly formularyImport: MedicationFormularyImportService,
     private readonly catalogBackfill: MedicationCatalogBackfillAnalysisService,
-    private readonly promotion: MedicationFormularyPromotionService
+    private readonly promotion: MedicationFormularyPromotionService,
+    private readonly explorer: MedicationMasterExplorerService
   ) {}
+
+  /** Phase 19C.1 — read-only canonical medication search (no runtime cutover). */
+  @Get("search")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async searchMedicationMaster(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationMasterSearchQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.explorer.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.explorer.search({ ...parsed.data, facilityId });
+  }
+
+  /** Phase 19C.1 — read-only concept detail with products/packages/profiles. */
+  @Get("concepts/:id")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getMedicationConcept(
+    @Param("id") id: string,
+    @Query("facilityId") facilityIdQuery: string | undefined,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = facilityIdQuery ?? callerFacilityId;
+    if (facilityId) {
+      this.explorer.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.explorer.getConceptDetail(id, facilityId);
+  }
+
+  /** Phase 19C.1 — read-only facility formulary explorer (canonical master only). */
+  @Get("formulary/facility/:facilityId")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async getFacilityFormulary(
+    @Param("facilityId") facilityId: string,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const callerFacilityId = facilityIdFromReq(req);
+    this.explorer.assertFacilityScope(facilityId, callerFacilityId);
+    return this.explorer.getFacilityFormulary(facilityId);
+  }
 
   /**
    * Import Priority ER workbook rows into staging only (never activates formulary).

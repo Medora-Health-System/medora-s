@@ -4,6 +4,7 @@ import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
+import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { MedicationMasterController } from "./medication-master.controller";
 
 @Module({
@@ -13,12 +14,14 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationFormularyImportService,
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
+    MedicationMasterExplorerService,
     AuditService,
   ],
   exports: [
     MedicationFormularyImportService,
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
+    MedicationMasterExplorerService,
   ],
 })
 export class MedicationMasterModule {}
