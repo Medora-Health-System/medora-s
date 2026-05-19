@@ -194,12 +194,23 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     return res;
   }
 
-  const bodyText =
-    req.method === "GET" || req.method === "HEAD" ? undefined : await req.text();
+  const incomingContentType = req.headers.get("content-type") ?? "";
+  const isMultipart = incomingContentType.toLowerCase().includes("multipart/form-data");
+
+  const forwardBody: BodyInit | undefined =
+    req.method === "GET" || req.method === "HEAD"
+      ? undefined
+      : isMultipart
+        ? await req.arrayBuffer()
+        : await req.text();
 
   const buildForwardInit = (token: string): RequestInit => {
     const headers = new Headers();
-    headers.set("Content-Type", "application/json");
+    if (isMultipart && incomingContentType) {
+      headers.set("Content-Type", incomingContentType);
+    } else if (!isMultipart) {
+      headers.set("Content-Type", "application/json");
+    }
     headers.set("Authorization", `Bearer ${token}`);
     if (facilityId) {
       headers.set("x-facility-id", facilityId);
@@ -210,7 +221,7 @@ export async function proxyNestRequest(req: NextRequest, nestPath: string): Prom
     return {
       method: req.method,
       headers,
-      body: bodyText,
+      body: forwardBody,
     };
   };
 
