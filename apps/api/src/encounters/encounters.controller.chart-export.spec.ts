@@ -65,7 +65,12 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       treatmentPlan: null,
       clinicianImpression: null,
       providerNote: null,
-      providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
+      providerDocumentation: {
+        status: "SIGNED",
+        signedAt: null,
+        signedByDisplayFr: null,
+        workspaceNote: null,
+      },
       providerAddenda: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",
@@ -95,6 +100,7 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     procedures: { entries: [] },
     ivAccess: { entries: [] },
     clinicalTimeline: { items: [], capped: false },
+    unifiedTimeline: null,
     auditTimelineSummary: { items: [], capped: false },
     followUps: { items: [] },
     deferredDomains: [{ domain: "pathways", reason: "deferred_to_phase_5f" }],
@@ -117,10 +123,14 @@ function makeController(opts?: {
   };
   const encountersService = {} as never;
   const diagnosesService = {} as never;
+  const unifiedTimelineService = {} as never;
+  const observationOrderTemplateService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
-    chartExportService as never
+    chartExportService as never,
+    unifiedTimelineService,
+    observationOrderTemplateService
   );
   return { controller, chartExportService };
 }

@@ -37,7 +37,12 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       treatmentPlan: null,
       clinicianImpression: null,
       providerNote: null,
-      providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
+      providerDocumentation: {
+        status: "SIGNED",
+        signedAt: null,
+        signedByDisplayFr: null,
+        workspaceNote: null,
+      },
       providerAddenda: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",

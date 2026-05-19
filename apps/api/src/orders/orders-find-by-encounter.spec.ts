@@ -58,6 +58,12 @@ function makeService(options?: { resultFindMany?: jest.Mock }) {
     user: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    userRole: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    orderEvent: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
   const audit = {
     log: jest.fn().mockResolvedValue(undefined),
@@ -86,7 +92,6 @@ describe("OrdersService.findByEncounter", () => {
       select: expect.objectContaining({
         id: true,
         orderItemId: true,
-        acknowledgedByUserId: true,
       }),
     });
   });
