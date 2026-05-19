@@ -50,6 +50,7 @@ export type PriorityErInventoryImportSummary = {
   safetyReviewRequired: number;
   ndcReviewRequired: number;
   duplicateWarnings: number;
+  headerlessDetected: boolean;
 };
 
 export type PriorityErInventoryImportResult = {
@@ -122,6 +123,7 @@ export class PriorityErInventoryImportService {
       dryRun,
       workbookFilename,
       parsed.sheetNames,
+      parsed.headerlessDetected,
       rowOutcomes,
       skippedRows,
       dryRun ? 0 : createRows.length
@@ -385,6 +387,7 @@ export class PriorityErInventoryImportService {
     dryRun: boolean,
     workbookFilename: string,
     sheetNames: string[],
+    headerlessDetected: boolean,
     outcomes: PriorityErInventoryRowOutcome[],
     skippedRows: number,
     stagedRows: number
@@ -417,6 +420,7 @@ export class PriorityErInventoryImportService {
       ndcReviewRequired: outcomes.filter((o) => o.reviewFlags.includes("NDC_REVIEW_REQUIRED"))
         .length,
       duplicateWarnings: outcomes.filter((o) => o.duplicateWarnings.length > 0).length,
+      headerlessDetected,
     };
   }
 }

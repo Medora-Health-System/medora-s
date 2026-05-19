@@ -1,6 +1,9 @@
 import { BadRequestException } from "@nestjs/common";
 import { PriorityErInventoryImportService } from "./priority-er-inventory-import.service";
-import { buildPriorityErInventoryXlsxBuffer } from "./priority-er-inventory-xlsx.util";
+import {
+  buildHeaderlessPriorityErInventoryXlsxBuffer,
+  buildPriorityErInventoryXlsxBuffer,
+} from "./priority-er-inventory-workbook.util"; // active parser (not xlsx.util re-export)
 import { loadMedicationCatalogIndex } from "./priority-er-inventory-catalog-index";
 
 jest.mock("./priority-er-inventory-catalog-index", () => ({
@@ -82,6 +85,25 @@ describe("PriorityErInventoryImportService", () => {
     const result = await service.importFromXlsxBuffer(sampleBuffer(), "inventory.xlsx", { dryRun: true }, null);
     expect(result.rowOutcomes[0]?.reviewFlags).toContain("BILLING_REVIEW_REQUIRED");
     expect(result.rowOutcomes[0]?.reviewFlags).toContain("NDC_REVIEW_REQUIRED");
+  });
+
+  it("imports headerless 3-column workbook in dry-run without runtime activation", async () => {
+    const buffer = buildHeaderlessPriorityErInventoryXlsxBuffer([
+      { medication: "Acetaminophen", dose: "100mg/100ml", form: "Injection" },
+    ]);
+    const result = await service.importFromXlsxBuffer(
+      buffer,
+      "PHARMACY INVENTORY LIST (1).xlsx",
+      { dryRun: true },
+      null
+    );
+    expect(result.summary.headerlessDetected).toBe(true);
+    expect(result.summary.stagedRows).toBe(0);
+    expect(result.rowOutcomes[0]?.sourceInventoryDescription).toBe(
+      "Acetaminophen 100mg/100ml Injection"
+    );
+    expect(prisma.medicationFormularyImportStaging.createMany).not.toHaveBeenCalled();
+    expect(prisma.medicationConcept.create).not.toHaveBeenCalled();
   });
 
   it("rejects empty workbook buffer with structured error", async () => {

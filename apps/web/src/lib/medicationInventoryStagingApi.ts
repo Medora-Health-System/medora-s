@@ -34,6 +34,7 @@ export type PriorityErInventoryImportSummary = {
   safetyReviewRequired: number;
   ndcReviewRequired: number;
   duplicateWarnings: number;
+  headerlessDetected: boolean;
 };
 
 export type PriorityErInventoryRowOutcome = {

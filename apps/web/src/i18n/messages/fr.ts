@@ -2616,6 +2616,8 @@ export default {
     summaryNew: "Nouveaux candidats",
     summaryBilling: "Revue facturation",
     summaryNdc: "Revue NDC",
+    headerlessDetectedNotice:
+      "Inventaire sans en-tête détecté. Les colonnes A, B et C ont été interprétées comme Médicament, Dose et Forme.",
     loading: "Chargement…",
     refresh: "Actualiser",
     openConceptReview: "Ouvrir la revue canonique",

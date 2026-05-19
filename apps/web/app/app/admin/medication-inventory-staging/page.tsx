@@ -211,6 +211,21 @@ export default function MedicationInventoryStagingPage() {
             {lastImport.summary.workbookFilename} · {lastImport.summary.batchId}
             {lastImport.summary.dryRun ? " · dry-run" : ""}
           </p>
+          {lastImport.summary.headerlessDetected ? (
+            <p
+              style={{
+                margin: "10px 0 0 0",
+                padding: "8px 12px",
+                background: "#f0f9ff",
+                border: "1px solid #bae6fd",
+                borderRadius: 8,
+                fontSize: 13,
+                color: "#0c4a6e",
+              }}
+            >
+              {t("medicationInventoryStaging.headerlessDetectedNotice")}
+            </p>
+          ) : null}
           <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 14 }}>
             <li>
               {t("medicationInventoryStaging.summaryTotal")}: {lastImport.summary.totalRows}

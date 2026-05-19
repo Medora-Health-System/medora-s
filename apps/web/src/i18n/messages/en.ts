@@ -2640,6 +2640,8 @@ export default {
     summaryNew: "New candidates",
     summaryBilling: "Billing review",
     summaryNdc: "NDC review",
+    headerlessDetectedNotice:
+      "Headerless inventory detected. Columns A, B, and C were interpreted as Medication, Dose, and Form.",
     loading: "Loading…",
     refresh: "Refresh",
     openConceptReview: "Open canonical review",
