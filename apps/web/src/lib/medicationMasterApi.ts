@@ -50,7 +50,16 @@ export type MedicationMasterSearchParams = {
   administrationType?: string;
 };
 
+export type MedicationMasterValidationWarning = {
+  code: string;
+  severity: "critical" | "warning" | "info";
+  scope: "concept" | "product" | "package";
+  scopeLabel: string;
+};
+
 export type MedicationMasterConceptDetail = {
+  readOnly: true;
+  validationWarnings: MedicationMasterValidationWarning[];
   concept: {
     id: string;
     code: string;
@@ -66,6 +75,7 @@ export type MedicationMasterConceptDetail = {
       requiresWitness: boolean;
       requiresDoubleSign: boolean;
     } | null;
+    conceptAliases: Array<{ alias: string; aliasType: string | null }>;
     aliases: Array<{ alias: string; aliasType: string | null }>;
   };
   products: Array<{
@@ -78,12 +88,20 @@ export type MedicationMasterConceptDetail = {
     isActive: boolean;
     legacyCatalogMedicationId: string | null;
     defaultRoute: { code: string; label: string } | null;
+    productAliases: Array<{ alias: string; aliasType: string | null }>;
     administrationProfile: {
       defaultMarWorkflow: string;
       requiresInfusionSession: boolean;
       hydrationFluid: boolean;
+      allowsPartialDose: boolean;
+      allowsWasteDocumentation: boolean;
     } | null;
-    infusionProfile: { infusionType: string; rateRequired: boolean } | null;
+    infusionProfile: {
+      infusionType: string;
+      rateRequired: boolean;
+      requiresStopMarForBilling: boolean;
+      minDocumentedDurationMinutes: number | null;
+    } | null;
     packages: Array<{
       id: string;
       code: string;
@@ -96,7 +114,11 @@ export type MedicationMasterConceptDetail = {
       billingProfiles: Array<{
         requiresManualReview: boolean;
         hcpcsCodeSuggested: string | null;
+        hcpcsUnitType: string | null;
         revenueCodeSuggested: string | null;
+        billableUnitRule: string | null;
+        companionProcedureCptSuggested: string | null;
+        wastageBillable: boolean;
       }>;
       facilityFormulary: {
         id: string;

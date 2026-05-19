@@ -7,6 +7,10 @@ import {
   type MedicationMasterExplorerBadges,
 } from "./medication-master-badge.util";
 import { normalizeMedicationAlias } from "./promotion-alias.util";
+import {
+  buildMedicationMasterValidationWarnings,
+  type MedicationMasterValidationWarning,
+} from "./medication-master-validation.util";
 
 const CONCEPT_LIST_INCLUDE = {
   therapeuticClass: { select: { code: true, name: true } },
@@ -47,6 +51,9 @@ export type MedicationMasterSearchHitDto = {
 };
 
 export type MedicationMasterConceptDetailDto = {
+  /** Phase 19C.3 — pharmacy validation view is read-only only. */
+  readOnly: true;
+  validationWarnings: MedicationMasterValidationWarning[];
   concept: {
     id: string;
     code: string;
@@ -61,7 +68,10 @@ export type MedicationMasterConceptDetailDto = {
       controlledSchedule: string | null;
       requiresWitness: boolean;
       requiresDoubleSign: boolean;
+      lasaGroupId: string | null;
     } | null;
+    conceptAliases: Array<{ alias: string; aliasType: string | null }>;
+    /** Merged concept + product aliases (explorer compat). */
     aliases: Array<{ alias: string; aliasType: string | null }>;
   };
   products: Array<{
@@ -74,12 +84,20 @@ export type MedicationMasterConceptDetailDto = {
     isActive: boolean;
     legacyCatalogMedicationId: string | null;
     defaultRoute: { code: string; label: string } | null;
+    productAliases: Array<{ alias: string; aliasType: string | null }>;
     administrationProfile: {
       defaultMarWorkflow: string;
       requiresInfusionSession: boolean;
       hydrationFluid: boolean;
+      allowsPartialDose: boolean;
+      allowsWasteDocumentation: boolean;
     } | null;
-    infusionProfile: { infusionType: string; rateRequired: boolean } | null;
+    infusionProfile: {
+      infusionType: string;
+      rateRequired: boolean;
+      requiresStopMarForBilling: boolean;
+      minDocumentedDurationMinutes: number | null;
+    } | null;
     packages: Array<{
       id: string;
       code: string;
@@ -92,7 +110,11 @@ export type MedicationMasterConceptDetailDto = {
       billingProfiles: Array<{
         requiresManualReview: boolean;
         hcpcsCodeSuggested: string | null;
+        hcpcsUnitType: string | null;
         revenueCodeSuggested: string | null;
+        billableUnitRule: string | null;
+        companionProcedureCptSuggested: string | null;
+        wastageBillable: boolean;
       }>;
       facilityFormulary: {
         id: string;
@@ -324,7 +346,11 @@ export class MedicationMasterExplorerService {
                   select: {
                     requiresManualReview: true,
                     hcpcsCodeSuggested: true,
+                    hcpcsUnitType: true,
                     revenueCodeSuggested: true,
+                    billableUnitRule: true,
+                    companionProcedureCptSuggested: true,
+                    wastageBillable: true,
                   },
                 },
                 ...(facilityId
@@ -340,32 +366,18 @@ export class MedicationMasterExplorerService {
 
     if (!concept) throw new NotFoundException("Concept médicamenteux introuvable.");
 
-    return {
-      concept: {
-        id: concept.id,
-        code: concept.code,
-        genericName: concept.genericName,
-        displayName: concept.displayName,
-        isActive: concept.isActive,
-        rxNormConceptId: concept.rxNormConceptId,
-        therapeuticClass: concept.therapeuticClass,
-        safetyProfile: concept.safetyProfile
-          ? {
-              isHighAlert: concept.safetyProfile.isHighAlert,
-              isControlled: concept.safetyProfile.isControlled,
-              controlledSchedule: concept.safetyProfile.controlledSchedule,
-              requiresWitness: concept.safetyProfile.requiresWitness,
-              requiresDoubleSign: concept.safetyProfile.requiresDoubleSign,
-            }
-          : null,
-        aliases: [
-          ...concept.searchAliases.map((a) => ({ alias: a.alias, aliasType: a.aliasType })),
-          ...concept.products.flatMap((p) =>
-            p.searchAliases.map((a) => ({ alias: a.alias, aliasType: a.aliasType }))
-          ),
-        ],
-      },
-      products: concept.products.map((product) => ({
+    const conceptAliases = concept.searchAliases.map((a) => ({
+      alias: a.alias,
+      aliasType: a.aliasType,
+    }));
+
+    const products = concept.products.map((product) => {
+      const productAliases = product.searchAliases.map((a) => ({
+        alias: a.alias,
+        aliasType: a.aliasType,
+      }));
+
+      return {
         id: product.id,
         code: product.code,
         strengthDisplay: product.strengthDisplay,
@@ -375,17 +387,22 @@ export class MedicationMasterExplorerService {
         isActive: product.isActive,
         legacyCatalogMedicationId: product.legacyCatalogMedicationId,
         defaultRoute: product.defaultRoute,
+        productAliases,
         administrationProfile: product.administrationProfile
           ? {
               defaultMarWorkflow: product.administrationProfile.defaultMarWorkflow,
               requiresInfusionSession: product.administrationProfile.requiresInfusionSession,
               hydrationFluid: product.administrationProfile.hydrationFluid,
+              allowsPartialDose: product.administrationProfile.allowsPartialDose,
+              allowsWasteDocumentation: product.administrationProfile.allowsWasteDocumentation,
             }
           : null,
         infusionProfile: product.infusionProfile
           ? {
               infusionType: product.infusionProfile.infusionType,
               rateRequired: product.infusionProfile.rateRequired,
+              requiresStopMarForBilling: product.infusionProfile.requiresStopMarForBilling,
+              minDocumentedDurationMinutes: product.infusionProfile.minDocumentedDurationMinutes,
             }
           : null,
         packages: product.packages.map((pkg) => {
@@ -413,7 +430,15 @@ export class MedicationMasterExplorerService {
             ndcDisplay: pkg.ndcDisplay,
             isDefaultForProduct: pkg.isDefaultForProduct,
             badges,
-            billingProfiles: pkg.billingProfiles,
+            billingProfiles: pkg.billingProfiles.map((b) => ({
+              requiresManualReview: b.requiresManualReview,
+              hcpcsCodeSuggested: b.hcpcsCodeSuggested,
+              hcpcsUnitType: b.hcpcsUnitType,
+              revenueCodeSuggested: b.revenueCodeSuggested,
+              billableUnitRule: b.billableUnitRule,
+              companionProcedureCptSuggested: b.companionProcedureCptSuggested,
+              wastageBillable: b.wastageBillable,
+            })),
             facilityFormulary: formulary
               ? {
                   id: formulary.id,
@@ -425,7 +450,59 @@ export class MedicationMasterExplorerService {
               : null,
           };
         }),
+      };
+    });
+
+    const validationWarnings = buildMedicationMasterValidationWarnings({
+      facilityId,
+      concept: {
+        code: concept.code,
+        safetyProfile: concept.safetyProfile,
+        conceptAliases,
+      },
+      products: products.map((p) => ({
+        code: p.code,
+        administrationType: p.administrationType,
+        administrationProfile: p.administrationProfile,
+        infusionProfile: p.infusionProfile,
+        productAliases: p.productAliases,
+        packages: p.packages.map((pkg) => ({
+          code: pkg.code,
+          ndc11: pkg.ndc11,
+          billingProfiles: pkg.billingProfiles,
+          facilityFormulary: pkg.facilityFormulary,
+        })),
       })),
+    });
+
+    return {
+      readOnly: true as const,
+      validationWarnings,
+      concept: {
+        id: concept.id,
+        code: concept.code,
+        genericName: concept.genericName,
+        displayName: concept.displayName,
+        isActive: concept.isActive,
+        rxNormConceptId: concept.rxNormConceptId,
+        therapeuticClass: concept.therapeuticClass,
+        safetyProfile: concept.safetyProfile
+          ? {
+              isHighAlert: concept.safetyProfile.isHighAlert,
+              isControlled: concept.safetyProfile.isControlled,
+              controlledSchedule: concept.safetyProfile.controlledSchedule,
+              requiresWitness: concept.safetyProfile.requiresWitness,
+              requiresDoubleSign: concept.safetyProfile.requiresDoubleSign,
+              lasaGroupId: concept.safetyProfile.lasaGroupId,
+            }
+          : null,
+        conceptAliases,
+        aliases: [
+          ...conceptAliases,
+          ...products.flatMap((p) => p.productAliases),
+        ],
+      },
+      products,
     };
   }
 

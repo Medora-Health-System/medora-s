@@ -64,4 +64,11 @@ describe("MedicationMasterController RBAC", () => {
     expect(proto["administerMedication"]).toBeUndefined();
     expect(proto["captureBilling"]).toBeUndefined();
   });
+
+  it("has no POST/PATCH/DELETE on concepts/:id (validation review is GET-only)", () => {
+    const proto = MedicationMasterController.prototype as unknown as Record<string, unknown>;
+    expect(proto["updateMedicationConcept"]).toBeUndefined();
+    expect(proto["activateMedicationConcept"]).toBeUndefined();
+    expect(proto["promoteConcept"]).toBeUndefined();
+  });
 });

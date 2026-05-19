@@ -38,4 +38,55 @@ describe("MedicationMasterExplorerService", () => {
     expect(result.total).toBe(0);
     expect(prisma.medicationConcept.findMany).toHaveBeenCalled();
   });
+
+  it("getConceptDetail returns readOnly with validation warnings", async () => {
+    prisma.medicationConcept.findUnique = jest.fn().mockResolvedValue({
+      id: "concept-1",
+      code: "C-EPINEPH",
+      genericName: "Epinephrine",
+      displayName: "Épinéphrine",
+      isActive: true,
+      rxNormConceptId: null,
+      therapeuticClass: null,
+      safetyProfile: null,
+      searchAliases: [],
+      products: [
+        {
+          id: "prod-1",
+          code: "P-1",
+          strengthDisplay: "1 mg/mL",
+          dosageForm: "INJ",
+          administrationType: "INFUSION",
+          billingClass: "THERAPEUTIC",
+          isActive: true,
+          legacyCatalogMedicationId: null,
+          defaultRoute: null,
+          administrationProfile: null,
+          infusionProfile: null,
+          searchAliases: [],
+          packages: [
+            {
+              id: "pkg-1",
+              code: "PKG-1",
+              packageDescription: "Ampoule",
+              packageType: "AMPULE",
+              ndc11: null,
+              ndcDisplay: null,
+              isDefaultForProduct: true,
+              billingProfiles: [],
+              facilityFormularyItems: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    const detail = await service.getConceptDetail("concept-1", "fac-1");
+
+    expect(detail.readOnly).toBe(true);
+    expect(detail.validationWarnings.length).toBeGreaterThan(0);
+    expect(detail.validationWarnings.some((w) => w.code === "MISSING_SAFETY_PROFILE")).toBe(true);
+    expect(detail.validationWarnings.some((w) => w.code === "MISSING_NDC")).toBe(true);
+    expect(detail.concept.conceptAliases).toEqual([]);
+  });
 });

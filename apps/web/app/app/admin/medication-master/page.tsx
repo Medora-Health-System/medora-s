@@ -445,6 +445,20 @@ export default function AdminMedicationMasterPage() {
           }}
         >
           <h2 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("medicationMasterExplorer.detailTitle")}</h2>
+          {selectedConceptId ? (
+            <Link
+              href={`/app/admin/medication-master/review/${encodeURIComponent(selectedConceptId)}`}
+              style={{
+                display: "inline-block",
+                marginBottom: 10,
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#1e40af",
+              }}
+            >
+              {t("medicationMasterExplorer.openFullReview")}
+            </Link>
+          ) : null}
           {detailLoading ? <p>{t("common.loading")}</p> : <DetailPanel detail={detail} t={t} />}
         </aside>
       </div>
