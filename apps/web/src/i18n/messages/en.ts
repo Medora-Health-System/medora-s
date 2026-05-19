@@ -2645,6 +2645,25 @@ export default {
     loading: "Loading…",
     refresh: "Refresh",
     openConceptReview: "Open canonical review",
+    colPromote: "Promote",
+    promoteButton: "Promote to canonical",
+    promoting: "Promoting…",
+    promotedBadge: "Promoted (inactive)",
+    promoteBlocked: "Not eligible for promotion",
+    promoteSuccess: "Row promoted to canonical master (inactive — not orderable yet).",
+    promoteError: "Promotion failed.",
+    rowCount: "{count} row(s)",
+    dryRunBadge: "dry-run",
+    invalidImportResponse: "Invalid inventory import response.",
+    errors: {
+      MISSING_REQUIRED_COLUMNS:
+        "Required columns not found. Expected a Medication column (and preferably Dose, Form), or three columns A/B/C without a header row.",
+      NO_DATA_ROWS:
+        "Headers detected but no medication rows. Check that rows below the header are not empty.",
+      MISSING_WORKSHEET: "No worksheet found in the workbook.",
+      EMPTY_FILE: "The workbook file is empty.",
+      PARSER_FAILURE: "Unable to read the inventory file.",
+    },
     reconciliation: {
       EXACT_MATCH: "Exact match",
       POSSIBLE_DUPLICATE: "Possible duplicate",

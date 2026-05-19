@@ -24,6 +24,8 @@ import { medicationMasterSearchQuerySchema } from "./dto/medication-master-explo
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { PriorityErInventoryImportService } from "./priority-er-inventory-import.service";
+import { PriorityErInventoryPromotionService } from "./priority-er-inventory-promotion.service";
+import { promotePriorityErStagingRowBodySchema } from "./dto/priority-er-promote-staging.dto";
 import {
   priorityErInventoryImportQuerySchema,
   priorityErInventoryStagingListQuerySchema,
@@ -58,6 +60,7 @@ export class MedicationMasterController {
   constructor(
     private readonly formularyImport: MedicationFormularyImportService,
     private readonly priorityErInventoryImport: PriorityErInventoryImportService,
+    private readonly priorityErPromotion: PriorityErInventoryPromotionService,
     private readonly catalogBackfill: MedicationCatalogBackfillAnalysisService,
     private readonly promotion: MedicationFormularyPromotionService,
     private readonly explorer: MedicationMasterExplorerService,
@@ -422,6 +425,36 @@ export class MedicationMasterController {
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async catalogBackfillAnalysis() {
     return this.catalogBackfill.analyzeCatalogBackfill();
+  }
+
+  /**
+   * Phase 19E.2 — Priority ER inventory staging row → canonical master (manual, inactive).
+   * Preserves exact source medication/dose/form; no runtime ordering/MAR/billing cutover.
+   */
+  @Post("import-staging/promote-priority-er/:id")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async promotePriorityErStagingRow(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+
+    const parsed = promotePriorityErStagingRowBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+    return this.priorityErPromotion.promoteStagingRow(id, parsed.data, userId, req.user?.facilityId, {
+      ip,
+      userAgent: ua,
+    });
   }
 
   /** Manual promotion: staging row → canonical master (no runtime cutover). */

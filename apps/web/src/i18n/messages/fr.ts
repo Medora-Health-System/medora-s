@@ -2621,6 +2621,25 @@ export default {
     loading: "Chargement…",
     refresh: "Actualiser",
     openConceptReview: "Ouvrir la revue canonique",
+    colPromote: "Promotion",
+    promoteButton: "Promouvoir vers le canonique",
+    promoting: "Promotion…",
+    promotedBadge: "Promu (inactif)",
+    promoteBlocked: "Non admissible à la promotion",
+    promoteSuccess: "Ligne promue vers le référentiel canonique (inactif — non commandable pour l'instant).",
+    promoteError: "Échec de la promotion.",
+    rowCount: "{count} ligne(s)",
+    dryRunBadge: "simulation",
+    invalidImportResponse: "Réponse import inventaire invalide.",
+    errors: {
+      MISSING_REQUIRED_COLUMNS:
+        "Colonnes obligatoires introuvables. Attendu : une colonne Médicament / Medication (et de préférence Dose, Form), ou trois colonnes A/B/C sans en-tête.",
+      NO_DATA_ROWS:
+        "En-têtes détectés mais aucune ligne de médicament. Vérifiez que les lignes sous l'en-tête ne sont pas vides.",
+      MISSING_WORKSHEET: "Aucune feuille trouvée dans le classeur.",
+      EMPTY_FILE: "Le fichier classeur est vide.",
+      PARSER_FAILURE: "Impossible de lire le fichier inventaire.",
+    },
     reconciliation: {
       EXACT_MATCH: "Correspondance exacte",
       POSSIBLE_DUPLICATE: "Doublon possible",

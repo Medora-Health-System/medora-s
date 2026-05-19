@@ -150,60 +150,6 @@ export async function fetchMedicationGovernanceUnmapped(
   );
 }
 
-async function governancePost<T>(
-  path: string,
-  facilityId: string,
-  body: Record<string, unknown>
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "x-facility-id": facilityId,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
-  }
-  return (await parseApiResponse(res)) as T;
-}
-
-export async function approveMedicationProductGovernance(
-  facilityId: string,
-  productId: string,
-  body?: { governanceNote?: string }
-): Promise<{ governanceOnly: true }> {
-  return governancePost(`/approve/${encodeURIComponent(productId)}`, facilityId, {
-    facilityId,
-    governanceNote: body?.governanceNote,
-  });
-}
-
-export async function blockMedicationProductGovernance(
-  facilityId: string,
-  productId: string,
-  governanceNote: string
-): Promise<{ governanceOnly: true }> {
-  return governancePost(`/block/${encodeURIComponent(productId)}`, facilityId, {
-    facilityId,
-    governanceNote,
-  });
-}
-
-export async function retireMedicationProductGovernance(
-  facilityId: string,
-  productId: string,
-  governanceNote: string
-): Promise<{ governanceOnly: true }> {
-  return governancePost(`/retire/${encodeURIComponent(productId)}`, facilityId, {
-    facilityId,
-    governanceNote,
-  });
-}
-
 export async function fetchMedicationGovernanceDuplicates(
   facilityId: string,
   params?: { kind?: string; limit?: number; offset?: number }

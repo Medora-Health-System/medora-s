@@ -26,9 +26,17 @@ function getByPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
-function resolveT(active: unknown, frRoot: unknown, key: string): string {
+function resolveT(
+  active: unknown,
+  frRoot: unknown,
+  key: string,
+  language: SupportedLanguage
+): string {
   const v = getByPath(active, key);
   if (typeof v === "string") return v;
+  if (language === "en") {
+    return key;
+  }
   const frVal = getByPath(frRoot, key);
   if (typeof frVal === "string") return frVal;
   return key;
@@ -49,9 +57,20 @@ export function I18nProvider({
   children: React.ReactNode;
   facilityLanguage?: string;
 }) {
-  const [language, setLanguageState] = useState<SupportedLanguage>(
-    (facilityLanguage as SupportedLanguage) || defaultLanguage
-  );
+  const [language, setLanguageState] = useState<SupportedLanguage>(() => {
+    if (facilityLanguage && isSupportedLanguage(facilityLanguage)) {
+      return facilityLanguage;
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(STORAGE_KEY);
+        if (raw && isSupportedLanguage(raw)) return raw;
+      } catch {
+        /* ignore */
+      }
+    }
+    return defaultLanguage;
+  });
 
   useEffect(() => {
     try {
@@ -85,7 +104,7 @@ export function I18nProvider({
   const t = useCallback(
     (key: string) => {
       const activeRoot = messagesByLang[language];
-      return resolveT(activeRoot, frMessages, key);
+      return resolveT(activeRoot, frMessages, key, language);
     },
     [language]
   );

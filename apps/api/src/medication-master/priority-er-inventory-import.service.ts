@@ -13,6 +13,15 @@ import {
 } from "./priority-er-inventory-workbook.util";
 import { reconcilePriorityErInventoryRow } from "./priority-er-inventory-reconciliation.util";
 import type { PriorityErReconciliationStatus } from "./priority-er-reconciliation.constants";
+import {
+  evaluatePriorityErPromotionEligibility,
+  type PriorityErPromotionBlockReason,
+} from "./priority-er-inventory-promotion-eligibility.util";
+import { isPriorityErInventoryStagingRow } from "./priority-er-inventory-staging-source.util";
+import {
+  medicationFormularyImportStagingPromotionSelect,
+  type MedicationFormularyImportStagingPromotionRow,
+} from "./medication-formulary-import-staging.types";
 
 export type PriorityErInventoryRowOutcome = {
   sourceRowId: string;
@@ -170,21 +179,7 @@ export class PriorityErInventoryImportService {
         orderBy: [{ batchId: "desc" }, { sourceRowId: "asc" }],
         take: query.limit,
         skip: query.offset,
-        select: {
-          id: true,
-          batchId: true,
-          sourceRowId: true,
-          sourceInventoryDescription: true,
-          reconciliationStatus: true,
-          importGateStatus: true,
-          overallStatus: true,
-          reviewFlags: true,
-          validationErrors: true,
-          rawJson: true,
-          importedAt: true,
-          proposedConceptCode: true,
-          proposedProductCode: true,
-        },
+        select: medicationFormularyImportStagingPromotionSelect,
       }),
     ]);
 
@@ -194,27 +189,24 @@ export class PriorityErInventoryImportService {
     };
   }
 
-  private mapStagingListRow(row: {
-    id: string;
-    batchId: string;
-    sourceRowId: string;
-    sourceInventoryDescription: string;
-    reconciliationStatus: string;
-    importGateStatus: string;
-    overallStatus: string;
-    reviewFlags: unknown;
-    validationErrors: unknown;
-    rawJson: unknown;
-    importedAt: Date | null;
-    proposedConceptCode: string | null;
-    proposedProductCode: string | null;
-  }) {
+  private mapStagingListRow(row: MedicationFormularyImportStagingPromotionRow) {
     const raw = (row.rawJson ?? {}) as Record<string, unknown>;
     const trace = (raw.__sourceTrace ?? {}) as Record<string, unknown>;
     const reconciliation = (raw.__reconciliation ?? {}) as Record<string, unknown>;
     const duplicateWarnings = Array.isArray(reconciliation.duplicateWarnings)
       ? (reconciliation.duplicateWarnings as string[])
       : [];
+
+    const promotionEligibility = isPriorityErInventoryStagingRow(row.rawJson)
+      ? evaluatePriorityErPromotionEligibility(row)
+      : { eligible: false as const, reasons: [{ code: "NOT_PRIORITY_ER_ROW", message: "" }] };
+
+    const promotionResult =
+      row.promotionResultJson != null &&
+      typeof row.promotionResultJson === "object" &&
+      !Array.isArray(row.promotionResultJson)
+        ? (row.promotionResultJson as Record<string, unknown>)
+        : null;
 
     return {
       id: row.id,
@@ -252,6 +244,16 @@ export class PriorityErInventoryImportService {
         (reconciliation.matchedConceptIds as string[])[0]
           ? `/app/admin/medication-master/review/${(reconciliation.matchedConceptIds as string[])[0]}`
           : null,
+      promotionEligible: promotionEligibility.eligible,
+      promotionBlockReasons: promotionEligibility.eligible
+        ? ([] as PriorityErPromotionBlockReason[])
+        : promotionEligibility.reasons,
+      promoted: Boolean(promotionResult?.conceptId && promotionResult?.productId),
+      canonicalConceptId:
+        typeof promotionResult?.conceptId === "string" ? promotionResult.conceptId : null,
+      canonicalProductId:
+        typeof promotionResult?.productId === "string" ? promotionResult.productId : null,
+      proposedPackageCode: row.proposedPackageCode,
     };
   }
 

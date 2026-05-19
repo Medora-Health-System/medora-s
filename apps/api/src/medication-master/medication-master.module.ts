@@ -4,6 +4,7 @@ import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { PriorityErInventoryImportService } from "./priority-er-inventory-import.service";
+import { PriorityErInventoryPromotionService } from "./priority-er-inventory-promotion.service";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
 import { CatalogCanonicalReadService } from "./catalog-canonical-read.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
@@ -17,6 +18,7 @@ import { MedicationMasterController } from "./medication-master.controller";
   providers: [
     MedicationFormularyImportService,
     PriorityErInventoryImportService,
+    PriorityErInventoryPromotionService,
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,
@@ -28,6 +30,7 @@ import { MedicationMasterController } from "./medication-master.controller";
   exports: [
     MedicationFormularyImportService,
     PriorityErInventoryImportService,
+    PriorityErInventoryPromotionService,
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,

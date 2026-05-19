@@ -24,6 +24,15 @@ describe("medication content i18n guard (19E.0)", () => {
     expect(adminSources[3]).toMatch(/r\.exactSourceText|r\.medication/);
   });
 
+  it("inventory staging page uses API fields for medication text, not i18n drug labels", () => {
+    const stagingPage = adminSources[3]!;
+    expect(stagingPage).toMatch(/r\.exactSourceText/);
+    expect(stagingPage).toMatch(/r\.medication/);
+    expect(stagingPage).toMatch(/r\.dose/);
+    expect(stagingPage).toMatch(/r\.form/);
+    expect(stagingPage).not.toMatch(/t\([^)]*Acetaminophen/);
+  });
+
   it("French and English UI message catalogs do not embed sample drug names as translation values", () => {
     const drugSamples = ["Atorvastatin", "Épinéphrine", "Norepinephrine", " IVPB"];
     for (const sample of drugSamples) {

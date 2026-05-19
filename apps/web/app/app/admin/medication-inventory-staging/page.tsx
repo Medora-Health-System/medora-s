@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   fetchStagingBatches,
   fetchStagingRows,
+  promotePriorityErStagingRow,
   stagingImportErrorMessage,
   uploadPriorityErInventory,
   type PriorityErInventoryImportResult,
@@ -54,6 +55,7 @@ export default function MedicationInventoryStagingPage() {
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastImport, setLastImport] = useState<PriorityErInventoryImportResult | null>(null);
+  const [promotingRowId, setPromotingRowId] = useState<string | null>(null);
 
   const loadQueue = useCallback(async () => {
     if (!isAdmin) return;
@@ -85,6 +87,30 @@ export default function MedicationInventoryStagingPage() {
   useEffect(() => {
     void loadQueue();
   }, [loadQueue]);
+
+  const handlePromote = async (rowId: string, confirmDuplicate = false) => {
+    setPromotingRowId(rowId);
+    setError(null);
+    try {
+      const outcome = await promotePriorityErStagingRow(
+        rowId,
+        confirmDuplicate ? { confirmCreateDespiteDuplicate: true } : {},
+        facilityId ?? undefined
+      );
+      if (outcome.status === "blocked") {
+        setError(
+          outcome.reasons?.map((r) => r.message).join(" ") ||
+            t("medicationInventoryStaging.promoteBlocked")
+        );
+      } else {
+        await loadQueue();
+      }
+    } catch (err) {
+      setError(stagingImportErrorMessage(err, language) || t("medicationInventoryStaging.promoteError"));
+    } finally {
+      setPromotingRowId(null);
+    }
+  };
 
   const handleImport = async () => {
     if (!file) return;
@@ -209,7 +235,9 @@ export default function MedicationInventoryStagingPage() {
           <h2 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("medicationInventoryStaging.summaryTitle")}</h2>
           <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
             {lastImport.summary.workbookFilename} · {lastImport.summary.batchId}
-            {lastImport.summary.dryRun ? " · dry-run" : ""}
+            {lastImport.summary.dryRun
+              ? ` · ${t("medicationInventoryStaging.dryRunBadge")}`
+              : ""}
           </p>
           {lastImport.summary.headerlessDetected ? (
             <p
@@ -319,7 +347,9 @@ export default function MedicationInventoryStagingPage() {
         </div>
 
         <p style={{ fontSize: 13, color: "#64748b" }}>
-          {loading ? t("medicationInventoryStaging.loading") : `${total} ligne(s)`}
+          {loading
+            ? t("medicationInventoryStaging.loading")
+            : t("medicationInventoryStaging.rowCount").replace("{count}", String(total))}
         </p>
 
         {rows.length === 0 && !loading ? (
@@ -336,6 +366,7 @@ export default function MedicationInventoryStagingPage() {
                   <th style={{ padding: 8 }}>{t("medicationInventoryStaging.colReconciliation")}</th>
                   <th style={{ padding: 8 }}>{t("medicationInventoryStaging.colFlags")}</th>
                   <th style={{ padding: 8 }}>{t("medicationInventoryStaging.colReview")}</th>
+                  <th style={{ padding: 8 }}>{t("medicationInventoryStaging.colPromote")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -356,6 +387,31 @@ export default function MedicationInventoryStagingPage() {
                         <Link href={r.reviewConceptUrl}>{t("medicationInventoryStaging.openConceptReview")}</Link>
                       ) : (
                         "—"
+                      )}
+                    </td>
+                    <td style={{ padding: 8 }}>
+                      {r.promoted ? (
+                        <span style={{ fontSize: 12, color: "#15803d" }}>
+                          {t("medicationInventoryStaging.promotedBadge")}
+                        </span>
+                      ) : r.promotionEligible ? (
+                        <button
+                          type="button"
+                          disabled={promotingRowId === r.id}
+                          onClick={() => void handlePromote(r.id)}
+                          style={{ padding: "4px 10px", fontSize: 12 }}
+                        >
+                          {promotingRowId === r.id
+                            ? t("medicationInventoryStaging.promoting")
+                            : t("medicationInventoryStaging.promoteButton")}
+                        </button>
+                      ) : (
+                        <span
+                          style={{ fontSize: 11, color: "#64748b" }}
+                          title={r.promotionBlockReasons.map((b) => b.message).join("; ")}
+                        >
+                          {t("medicationInventoryStaging.promoteBlocked")}
+                        </span>
                       )}
                     </td>
                   </tr>

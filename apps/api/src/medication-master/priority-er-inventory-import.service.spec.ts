@@ -5,6 +5,7 @@ import {
   buildPriorityErInventoryXlsxBuffer,
 } from "./priority-er-inventory-workbook.util"; // active parser (not xlsx.util re-export)
 import { loadMedicationCatalogIndex } from "./priority-er-inventory-catalog-index";
+import { medicationFormularyImportStagingPromotionFixture } from "./medication-formulary-import-staging.types";
 
 jest.mock("./priority-er-inventory-catalog-index", () => ({
   loadMedicationCatalogIndex: jest.fn(),
@@ -104,6 +105,18 @@ describe("PriorityErInventoryImportService", () => {
     );
     expect(prisma.medicationFormularyImportStaging.createMany).not.toHaveBeenCalled();
     expect(prisma.medicationConcept.create).not.toHaveBeenCalled();
+  });
+
+  it("listStagingRows maps rows with sourceInventorySku nullable field", async () => {
+    const fixture = medicationFormularyImportStagingPromotionFixture({
+      sourceInventorySku: "SKU-123",
+    });
+    prisma.medicationFormularyImportStaging.count.mockResolvedValue(1);
+    prisma.medicationFormularyImportStaging.findMany.mockResolvedValue([fixture]);
+
+    const result = await service.listStagingRows({ limit: 10, offset: 0 });
+    expect(result.rows[0]?.promotionEligible).toBe(true);
+    expect(result.rows[0]?.exactSourceText).toBe(fixture.sourceInventoryDescription);
   });
 
   it("rejects empty workbook buffer with structured error", async () => {

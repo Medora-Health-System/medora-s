@@ -778,6 +778,25 @@ export function ProviderDocumentationWorkspace({
             {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
           </p>
         ) : null}
+        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+          <strong>{t("providerDocumentationWorkspace.dictationReady")}</strong>
+          {t("providerDocumentationWorkspace.dictationInstruction")
+            ? ` — ${t("providerDocumentationWorkspace.dictationInstruction")}`
+            : ""}
+          {activeDictationSection ? (
+            <>
+              {" · "}
+              {t("providerDocumentationWorkspace.dictationActiveSection")}{" "}
+              {t(
+                DICTATION_NAV_TARGETS.find((target) => target.sectionId === activeDictationSection)?.labelKey ??
+                  "providerDocumentationWorkspace.dictationReady"
+              )}
+            </>
+          ) : null}
+          {t("providerDocumentationWorkspace.dictationDragonHelp")
+            ? ` · ${t("providerDocumentationWorkspace.dictationDragonHelp")}`
+            : ""}
+        </p>
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
             <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={secondaryButton(false)}>
               {t("providerDocumentationWorkspace.dictationPreviousSection")}

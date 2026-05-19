@@ -62,20 +62,20 @@ export function resolveObservationBoardDispositionModel(input: {
   const hasFirstDispositionDoc =
     firstDocRaw != null && (typeof firstDocRaw !== "string" || firstDocRaw.trim() !== "");
 
-  if (mode) {
-    return {
-      tier: "outcome",
-      outcome: inferOutcomeUiFromForms(mode, sup),
-      encounterClosed,
-    };
-  }
-
   if (encounterClosed) {
     return null;
   }
 
   if (displayStatus.phase === "DISCHARGE_IN_PROGRESS") {
     return { tier: "discharge_packet_active" };
+  }
+
+  if (mode) {
+    return {
+      tier: "outcome",
+      outcome: inferOutcomeUiFromForms(mode, sup),
+      encounterClosed,
+    };
   }
 
   if (input.observationOps?.flags.readyForDischarge) {
