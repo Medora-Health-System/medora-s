@@ -82,4 +82,18 @@ describe("CatalogCanonicalReadService", () => {
     const ids = await service.findCatalogIdsViaCanonicalAlias("foo");
     expect(ids).toEqual([]);
   });
+
+  it("excludes inactive promoted products from provider catalog alias resolution (19E.3)", async () => {
+    prisma.medicationSearchAlias.findMany.mockResolvedValue([
+      {
+        productId: "p-inactive",
+        conceptId: "c-inactive",
+        product: { legacyCatalogMedicationId: "cat-promoted-inactive", isActive: false },
+      },
+    ]);
+
+    const ids = await service.findCatalogIdsViaCanonicalAlias("Acetaminophen");
+    expect(ids).toEqual([]);
+    expect(prisma.medicationProduct.findMany).not.toHaveBeenCalled();
+  });
 });

@@ -119,6 +119,40 @@ describe("PriorityErInventoryImportService", () => {
     expect(result.rows[0]?.exactSourceText).toBe(fixture.sourceInventoryDescription);
   });
 
+  it("production-style dry-run summary preserves exact source and review flags (19E.3)", async () => {
+    prisma.facility.findUnique.mockResolvedValue({ id: "fac-prod-check" });
+    const buffer = buildHeaderlessPriorityErInventoryXlsxBuffer([
+      { medication: "Acetaminophen", dose: "100mg/100ml", form: "Injection" },
+      { medication: "Atorvastatin", dose: "40 mg", form: "PO" },
+    ]);
+    const result = await service.importFromXlsxBuffer(
+      buffer,
+      "PHARMACY INVENTORY LIST (1).xlsx",
+      { dryRun: true, facilityId: "fac-prod-check" },
+      null
+    );
+
+    expect(result.summary).toMatchObject({
+      dryRun: true,
+      workbookFilename: "PHARMACY INVENTORY LIST (1).xlsx",
+      totalRows: 2,
+      stagedRows: 0,
+      headerlessDetected: true,
+      billingReviewRequired: 2,
+      ndcReviewRequired: 2,
+    });
+    expect(result.rowOutcomes[0]).toMatchObject({
+      medication: "Acetaminophen",
+      dose: "100mg/100ml",
+      form: "Injection",
+      sourceInventoryDescription: "Acetaminophen 100mg/100ml Injection",
+      reviewFlags: expect.arrayContaining(["BILLING_REVIEW_REQUIRED", "NDC_REVIEW_REQUIRED"]),
+    });
+    expect(result.rowOutcomes[0]?.medication).not.toMatch(/Acétaminophène|Paracetamol/i);
+    expect(prisma.medicationFormularyImportStaging.createMany).not.toHaveBeenCalled();
+    expect(prisma.medicationConcept.create).not.toHaveBeenCalled();
+  });
+
   it("rejects empty workbook buffer with structured error", async () => {
     try {
       await service.importFromXlsxBuffer(Buffer.alloc(0), "empty.xlsx", { dryRun: true }, null);

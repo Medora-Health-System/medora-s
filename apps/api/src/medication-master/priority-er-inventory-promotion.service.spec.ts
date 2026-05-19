@@ -206,4 +206,17 @@ describe("PriorityErInventoryPromotionService", () => {
     expect(trace.sourceNameExact).toBe("Acetaminophen");
     expect(trace.sourceNameExact).not.toMatch(/Acétaminophène|Paracetamol/i);
   });
+
+  it("manual single-row promotion stays non-orderable with inactive package (19E.3)", async () => {
+    const prisma = makePrismaMock();
+    const service = new PriorityErInventoryPromotionService(prisma as never, { log: jest.fn() } as never);
+    const out = await service.promoteStagingRow("st-pri-1", {}, "user-1", "fac-1");
+    expect(out.status).toBe("promoted");
+    if (out.status !== "promoted") return;
+
+    expect(out.result.runtimeOrderable).toBe(false);
+    const packageCreate = prisma.tx.medicationPackage.create.mock.calls[0][0];
+    expect(packageCreate.data.isActive).toBe(false);
+    expect(prisma.tx.medicationBillingProfile.create).not.toHaveBeenCalled();
+  });
 });
