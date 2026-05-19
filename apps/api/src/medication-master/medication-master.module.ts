@@ -4,6 +4,7 @@ import { AuditService } from "../common/services/audit.service";
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
+import { CatalogCanonicalReadService } from "./catalog-canonical-read.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { MedicationMasterController } from "./medication-master.controller";
 
@@ -15,6 +16,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,
+    CatalogCanonicalReadService,
     AuditService,
   ],
   exports: [
@@ -22,6 +24,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationCatalogBackfillAnalysisService,
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,
+    CatalogCanonicalReadService,
   ],
 })
 export class MedicationMasterModule {}

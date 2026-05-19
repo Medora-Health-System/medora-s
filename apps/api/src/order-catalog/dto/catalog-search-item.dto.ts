@@ -40,6 +40,24 @@ export type CatalogSearchItemDto = {
     bodyRegion?: string;
     /** LAB_TEST: suggestion CPT/HCPCS, non appliquée automatiquement. */
     billingCodeDefault?: string;
+    /**
+     * Phase 19C.2 — supplemental read-only canonical master hints (search/display only).
+     * Never contains canonical concept/product/package UUIDs; ordering still uses `id` (CatalogMedication).
+     */
+    canonicalReadOnly?: {
+      matchConfidence: "LEGACY_LINK";
+      badges: {
+        edFormulary: boolean;
+        rsi: boolean;
+        crashCart: boolean;
+        infusion: boolean;
+        controlled: boolean;
+        highAlert: boolean;
+        billingReview: boolean;
+        ndcPresent: boolean;
+      };
+      canonicalAliases?: string[];
+    };
   };
 };
 

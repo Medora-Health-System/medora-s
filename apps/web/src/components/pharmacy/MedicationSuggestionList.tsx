@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
+import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { useI18n } from "@/lib/i18n";
 
@@ -65,9 +66,10 @@ export function MedicationSuggestionList({
               )}
             </div>
             <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>{sub || "—"}</div>
-            {badge && (
+            {badge ? (
               <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>{badge}</div>
-            )}
+            ) : null}
+            <MedicationCanonicalBadges item={med} />
           </button>
         );
       })}

@@ -10,6 +10,7 @@ import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSea
 import type { SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
+import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { useI18n } from "@/lib/i18n";
 
 function catalogListPrimaryLine(
@@ -44,6 +45,8 @@ function catalogSearchHaystack(
     item.metadata?.strength,
     item.metadata?.dosageForm,
     item.metadata?.route,
+    ...(item.metadata?.commonAliases ?? []),
+    ...(item.metadata?.canonicalReadOnly?.canonicalAliases ?? []),
     catalogListPrimaryLine(item, language, t),
   ]
     .filter(Boolean)
@@ -351,6 +354,7 @@ export function SharedCatalogAutocomplete({
                   {badge ? (
                     <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>{badge}</div>
                   ) : null}
+                  {catalogType === "MEDICATION" ? <MedicationCanonicalBadges item={item} /> : null}
                 </button>
               );
             })}

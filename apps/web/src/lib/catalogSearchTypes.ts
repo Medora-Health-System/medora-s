@@ -33,6 +33,21 @@ export type CatalogSearchItem = {
     modality?: string;
     bodyRegion?: string;
     billingCodeDefault?: string;
+    /** Phase 19C.2 — read-only canonical hints; ordering still uses catalog `id`. */
+    canonicalReadOnly?: {
+      matchConfidence: "LEGACY_LINK";
+      badges: {
+        edFormulary: boolean;
+        rsi: boolean;
+        crashCart: boolean;
+        infusion: boolean;
+        controlled: boolean;
+        highAlert: boolean;
+        billingReview: boolean;
+        ndcPresent: boolean;
+      };
+      canonicalAliases?: string[];
+    };
   };
 };
 

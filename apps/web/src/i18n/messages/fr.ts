@@ -7602,6 +7602,16 @@ export default {
   },
   pharmacyMedicationSearch: {
     essentialBadge: "Essentiel",
+    badgeEd: "Urgences",
+    badgeRsi: "RSI",
+    badgeCrashCart: "Chariot",
+    badgeInfusion: "Perfusion",
+    badgeControlled: "Contrôlé",
+    badgeHighAlert: "Haute vigilance",
+    badgeBillingReview: "Revue fact.",
+    badgeNdcPresent: "NDC",
+    badgeNdcMissing: "NDC manquant",
+    canonicalAliases: "Alias",
   },
   pharmacyFavorites: {
     title: "Médicaments favoris",

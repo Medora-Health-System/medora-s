@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { CatalogMedication } from "@prisma/client";
+import { CatalogCanonicalReadService } from "../medication-master/catalog-canonical-read.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CatalogSearchItemDto } from "../order-catalog/dto/catalog-search-item.dto";
 import {
@@ -9,6 +10,7 @@ import {
   type CatalogRankableRow,
 } from "../order-catalog/catalog-search-rank.util";
 import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-search.mapper";
+import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
 
 /** One medication row from DB with its match tier (direct search vs alias-only path). */
 type ScoredMedicationRow = { row: CatalogMedication; tier: number };
@@ -27,7 +29,10 @@ function medicationToRankable(m: CatalogMedication): CatalogRankableRow {
 
 @Injectable()
 export class MedicationCatalogService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly canonicalRead: CatalogCanonicalReadService
+  ) {}
 
   /**
    * Search medications (min 2 chars on client). Ranking: exact / prefix / alias / contains + essential + sortPriority.
@@ -84,6 +89,19 @@ export class MedicationCatalogService {
       scored.push({ row, tier });
     }
 
+    const canonicalAliasCatalogIds = await this.canonicalRead.findCatalogIdsViaCanonicalAlias(q);
+    const missingCanonicalIds = canonicalAliasCatalogIds.filter((id) => !directIds.has(id));
+    if (missingCanonicalIds.length > 0) {
+      const extraRows = await this.prisma.catalogMedication.findMany({
+        where: { id: { in: missingCanonicalIds }, isActive: true },
+      });
+      for (const row of extraRows) {
+        if (scored.some((s) => s.row.id === row.id)) continue;
+        const tier = matchTierForQuery(q, medicationToRankable(row), { aliasOnlyMatch: true });
+        scored.push({ row, tier });
+      }
+    }
+
     scored.sort((a, b) =>
       compareCatalogRows(
         { row: medicationToRankable(a.row), tier: a.tier },
@@ -115,7 +133,18 @@ export class MedicationCatalogService {
       });
     }
 
+    items = await this.attachCanonicalReadMetadata(facilityId, items);
     return { items };
+  }
+
+  private async attachCanonicalReadMetadata(
+    facilityId: string,
+    items: CatalogSearchItemDto[]
+  ): Promise<CatalogSearchItemDto[]> {
+    const catalogIds = items.filter((i) => i.type === "MEDICATION").map((i) => i.id);
+    if (catalogIds.length === 0) return items;
+    const meta = await this.canonicalRead.getReadMetadataByCatalogIds(facilityId, catalogIds);
+    return enrichMedicationSearchItemsWithCanonical(items, meta);
   }
 
   private async getFavoriteCatalogIds(facilityId: string, catalogIds: string[]): Promise<Set<string>> {
@@ -134,12 +163,13 @@ export class MedicationCatalogService {
       orderBy: { updatedAt: "desc" },
       take: limit,
     });
-    return items.map((i) =>
+    const mapped = items.map((i) =>
       mapMedicationToCatalogSearchItem(
         { ...i.catalogMedication, isFavorite: true },
         truncateSearchText(i.catalogMedication.searchText)
       )
     );
+    return this.attachCanonicalReadMetadata(facilityId, mapped);
   }
 
   async getRecent(facilityId: string, limit = 20): Promise<CatalogSearchItemDto[]> {
@@ -149,7 +179,7 @@ export class MedicationCatalogService {
       take: limit,
       include: { catalogMedication: true },
     });
-    return usages
+    const mapped = usages
       .filter((u) => u.catalogMedication.isActive)
       .map((u) =>
         mapMedicationToCatalogSearchItem(
@@ -157,6 +187,7 @@ export class MedicationCatalogService {
           truncateSearchText(u.catalogMedication.searchText)
         )
       );
+    return this.attachCanonicalReadMetadata(facilityId, mapped);
   }
 
   async recordInventoryAdd(facilityId: string, catalogMedicationId: string): Promise<void> {
