@@ -128,6 +128,47 @@ export function MedicationMasterValidationReview({ detail }: { detail: Medicatio
           <h2 style={{ margin: "0 0 8px 0", fontSize: 15 }}>
             {t("medicationMasterValidation.sectionProduct")} — {product.strengthDisplay}
           </h2>
+          <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: 9999,
+                background: "#f0f9ff",
+                color: "#0c4a6e",
+                border: "1px solid #bae6fd",
+              }}
+            >
+              {t(`medicationGovernance.status.${product.governanceStatus}`)}
+            </span>
+          </p>
+          {product.activationReadiness.blockingReasons.length > 0 ? (
+            <div style={{ marginBottom: 8, fontSize: 13, color: "#92400e" }}>
+              <strong>{t("medicationGovernance.activationReadiness")} :</strong>
+              <ul style={{ margin: "4px 0 0 0", paddingLeft: 18 }}>
+                {product.activationReadiness.blockingReasons.map((code) => (
+                  <li key={code}>{t(`medicationGovernance.blocking.${code}`)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p style={{ color: "#166534", fontSize: 13, marginBottom: 8 }}>
+              {t("medicationGovernance.activationReady")}
+            </p>
+          )}
+          {product.governanceTimeline.length > 0 ? (
+            <div style={{ marginBottom: 10, fontSize: 12, color: "#475569" }}>
+              <strong>{t("medicationGovernance.timelineTitle")}</strong>
+              <ul style={{ margin: "4px 0 0 0", paddingLeft: 18 }}>
+                {product.governanceTimeline.map((e, i) => (
+                  <li key={i}>
+                    {new Date(e.at).toLocaleString()} — {e.action} ({e.newStatus})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <FieldRow label={t("medicationMasterValidation.fieldCode")} value={product.code} />
           <FieldRow
             label={t("medicationMasterValidation.fieldAdministrationType")}

@@ -6,7 +6,7 @@ describe("MedicationMasterGovernanceService", () => {
     medicationConcept: { findMany: jest.fn() },
     facilityFormularyItem: { findMany: jest.fn() },
     catalogMedication: { count: jest.fn(), findMany: jest.fn() },
-    medicationProduct: { findMany: jest.fn() },
+    medicationProduct: { findMany: jest.fn(), groupBy: jest.fn() },
     medicationPackage: { groupBy: jest.fn(), findMany: jest.fn() },
     medicationFormularyImportStaging: {
       groupBy: jest.fn(),
@@ -70,6 +70,9 @@ describe("MedicationMasterGovernanceService", () => {
     prisma.medicationFormularyImportStaging.groupBy = jest.fn().mockResolvedValue([]);
     prisma.medicationFormularyImportStaging.findFirst = jest.fn().mockResolvedValue(null);
     prisma.medicationFormularyImportStaging.count = jest.fn().mockResolvedValue(0);
+    prisma.medicationProduct.groupBy = jest.fn().mockResolvedValue([
+      { governanceStatus: "REVIEW_REQUIRED", _count: { _all: 2 } },
+    ]);
 
     const summary = await service.getSummary("fac-1");
 

@@ -87,6 +87,19 @@ export type MedicationMasterConceptDetail = {
     billingClass: string;
     isActive: boolean;
     legacyCatalogMedicationId: string | null;
+    governanceStatus: string;
+    activationApprovedAt: string | null;
+    activationApprovedByUserId: string | null;
+    governanceNotes: string | null;
+    activationReadiness: { ready: boolean; blockingReasons: string[] };
+    governanceTimeline: Array<{
+      at: string;
+      action: string;
+      previousStatus: string | null;
+      newStatus: string;
+      userId: string | null;
+      governanceNote: string | null;
+    }>;
     defaultRoute: { code: string; label: string } | null;
     productAliases: Array<{ alias: string; aliasType: string | null }>;
     administrationProfile: {

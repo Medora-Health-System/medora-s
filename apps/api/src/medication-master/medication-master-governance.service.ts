@@ -8,6 +8,9 @@ import type {
 } from "./dto/medication-master-governance.dto";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import {
+  PENDING_REVIEW_GOVERNANCE_STATUSES,
+} from "./medication-product-governance.constants";
+import {
   aggregateGovernanceFromConcepts,
   readinessPercent,
   type GovernanceConceptRow,
@@ -19,13 +22,20 @@ const GOVERNANCE_CONCEPT_INCLUDE = {
   searchAliases: { select: { alias: true } },
   products: {
     where: { isActive: true },
-    include: {
+    select: {
+      id: true,
+      code: true,
+      governanceStatus: true,
+      administrationType: true,
       administrationProfile: { select: { requiresInfusionSession: true } },
       infusionProfile: { select: { id: true } },
       searchAliases: { select: { alias: true } },
       packages: {
         where: { isActive: true },
-        include: {
+        select: {
+          id: true,
+          code: true,
+          ndc11: true,
           billingProfiles: { select: { requiresManualReview: true } },
         },
       },
@@ -74,6 +84,14 @@ export type MedicationMasterGovernanceSummaryDto = {
   };
   warningCountsByCode: Record<string, number>;
   warningCountsBySeverity: Record<string, number>;
+  activation: {
+    byStatus: Record<string, number>;
+    activationApproved: number;
+    blocked: number;
+    retired: number;
+    pendingReview: number;
+    readyForActivation: number;
+  };
 };
 
 export type MedicationMasterGovernanceWarningRowDto = GovernanceWarningItem;
@@ -118,11 +136,12 @@ export class MedicationMasterGovernanceService {
   }
 
   async getSummary(facilityId?: string): Promise<MedicationMasterGovernanceSummaryDto> {
-    const [aggregate, legacy, duplicateNdcGroups, staging] = await Promise.all([
+    const [aggregate, legacy, duplicateNdcGroups, staging, activation] = await Promise.all([
       this.loadAggregate(facilityId),
       this.legacyMappingCounts(),
       this.countDuplicateNdcGroups(),
       this.stagingPromotionOverview(facilityId),
+      this.activationStatusCounts(),
     ]);
 
     const conceptsReady = aggregate.activeConcepts - aggregate.conceptsWithCriticalWarnings;
@@ -164,6 +183,42 @@ export class MedicationMasterGovernanceService {
       },
       warningCountsByCode: aggregate.warningCountsByCode,
       warningCountsBySeverity: aggregate.warningCountsBySeverity,
+      activation,
+    };
+  }
+
+  private async activationStatusCounts(): Promise<MedicationMasterGovernanceSummaryDto["activation"]> {
+    const groups = await this.prisma.medicationProduct.groupBy({
+      by: ["governanceStatus"],
+      where: { isActive: true },
+      _count: { _all: true },
+    });
+
+    const byStatus: Record<string, number> = {};
+    let activationApproved = 0;
+    let blocked = 0;
+    let retired = 0;
+    let pendingReview = 0;
+    let readyForActivation = 0;
+
+    for (const g of groups) {
+      byStatus[g.governanceStatus] = g._count._all;
+      if (g.governanceStatus === "ACTIVATION_APPROVED") activationApproved = g._count._all;
+      if (g.governanceStatus === "BLOCKED") blocked = g._count._all;
+      if (g.governanceStatus === "RETIRED") retired = g._count._all;
+      if (g.governanceStatus === "READY_FOR_ACTIVATION") readyForActivation = g._count._all;
+      if (PENDING_REVIEW_GOVERNANCE_STATUSES.includes(g.governanceStatus as never)) {
+        pendingReview += g._count._all;
+      }
+    }
+
+    return {
+      byStatus,
+      activationApproved,
+      blocked,
+      retired,
+      pendingReview,
+      readyForActivation,
     };
   }
 
@@ -329,6 +384,7 @@ export class MedicationMasterGovernanceService {
       products: concept.products.map((product) => ({
         id: product.id,
         code: product.code,
+        governanceStatus: product.governanceStatus,
         administrationType: product.administrationType,
         administrationProfile: product.administrationProfile,
         infusionProfile: product.infusionProfile,

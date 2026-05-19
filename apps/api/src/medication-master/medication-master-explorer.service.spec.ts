@@ -6,6 +6,8 @@ describe("MedicationMasterExplorerService", () => {
     medicationConcept: { findMany: jest.fn(), findUnique: jest.fn() },
     facilityFormularyItem: { findMany: jest.fn() },
     facility: { findUnique: jest.fn() },
+    auditLog: { findMany: jest.fn() },
+    medicationPackage: { findFirst: jest.fn() },
   };
 
   const service = new MedicationMasterExplorerService(prisma as never);
@@ -40,6 +42,8 @@ describe("MedicationMasterExplorerService", () => {
   });
 
   it("getConceptDetail returns readOnly with validation warnings", async () => {
+    prisma.auditLog.findMany = jest.fn().mockResolvedValue([]);
+    prisma.medicationPackage.findFirst = jest.fn().mockResolvedValue(null);
     prisma.medicationConcept.findUnique = jest.fn().mockResolvedValue({
       id: "concept-1",
       code: "C-EPINEPH",
@@ -54,6 +58,10 @@ describe("MedicationMasterExplorerService", () => {
         {
           id: "prod-1",
           code: "P-1",
+          governanceStatus: "REVIEW_REQUIRED",
+          activationApprovedAt: null,
+          activationApprovedByUserId: null,
+          governanceNotes: null,
           strengthDisplay: "1 mg/mL",
           dosageForm: "INJ",
           administrationType: "INFUSION",

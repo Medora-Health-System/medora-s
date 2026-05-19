@@ -654,6 +654,7 @@ model User {
   platformAnnouncementsCreated               PlatformAnnouncement[]                @relation("PlatformAnnouncementCreatedBy")
   platformAnnouncementAcknowledgements       PlatformAnnouncementAcknowledgement[]
   medicationFormularyImportStagingImported   MedicationFormularyImportStaging[]    @relation("MedicationFormularyImportStagingImportedBy")
+  medicationProductsActivationApproved       MedicationProduct[]                   @relation("MedicationProductActivationApprovedBy")
 }
 
 /// Session de rafraîchissement par appareil / navigateur (jeton avec revendication `sid` dans le JWT refresh).
@@ -2005,10 +2006,16 @@ model MedicationProduct {
   /// HYDRATION | THERAPEUTIC | DRUG_SUPPLY | UNKNOWN
   billingClass              String   @db.VarChar(32)
   isActive                  Boolean  @default(true)
+  /// Phase 19D.1 — governance activation state (does not affect runtime ordering/MAR/billing).
+  governanceStatus          String   @default("REVIEW_REQUIRED") @db.VarChar(48)
+  activationApprovedAt      DateTime?
+  activationApprovedByUserId String?
+  governanceNotes           String?  @db.Text
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
   concept                 MedicationConcept                @relation(fields: [conceptId], references: [id], onDelete: Restrict)
+  activationApprovedBy    User?                            @relation("MedicationProductActivationApprovedBy", fields: [activationApprovedByUserId], references: [id], onDelete: SetNull)
   legacyCatalogMedication CatalogMedication?               @relation("CatalogMedicationLegacyProduct", fields: [legacyCatalogMedicationId], references: [id], onDelete: SetNull)
   concentration           MedicationConcentration?         @relation(fields: [concentrationId], references: [id], onDelete: SetNull)
   defaultRoute            MedicationRoute?                 @relation("MedicationProductDefaultRoute", fields: [defaultRouteId], references: [id], onDelete: SetNull)
@@ -2026,6 +2033,7 @@ model MedicationProduct {
   @@index([legacyCatalogMedicationId])
   @@index([isActive])
   @@index([administrationType])
+  @@index([governanceStatus])
 }
 
 model MedicationPackage {

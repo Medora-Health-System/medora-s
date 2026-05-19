@@ -66,6 +66,15 @@ function ReadinessCard({ label, percent }: { label: string; percent: number }) {
   );
 }
 
+function CountCard({ label, count }: { label: string; count: number }) {
+  return (
+    <div style={cardStyle()}>
+      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{label}</p>
+      <p style={{ margin: "4px 0 0 0", fontSize: 22, fontWeight: 700 }}>{count}</p>
+    </div>
+  );
+}
+
 function WarningsTable({
   rows,
   t,
@@ -389,6 +398,23 @@ export default function MedicationGovernancePage() {
             label={t("medicationGovernance.readinessLegacy")}
             percent={summary.readiness.legacyCatalogMappedPercent}
           />
+        </div>
+      ) : null}
+
+      {summary ? (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 8,
+            marginBottom: 20,
+          }}
+        >
+          <CountCard label={t("medicationGovernance.metricApproved")} count={summary.activation.activationApproved} />
+          <CountCard label={t("medicationGovernance.metricBlocked")} count={summary.activation.blocked} />
+          <CountCard label={t("medicationGovernance.metricRetired")} count={summary.activation.retired} />
+          <CountCard label={t("medicationGovernance.metricPending")} count={summary.activation.pendingReview} />
+          <CountCard label={t("medicationGovernance.metricReady")} count={summary.activation.readyForActivation} />
         </div>
       ) : null}
 

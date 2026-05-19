@@ -7,6 +7,7 @@ import { MedicationFormularyPromotionService } from "./medication-formulary-prom
 import { CatalogCanonicalReadService } from "./catalog-canonical-read.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
+import { MedicationProductGovernanceService } from "./medication-product-governance.service";
 import { MedicationMasterController } from "./medication-master.controller";
 
 @Module({
@@ -18,6 +19,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,
     MedicationMasterGovernanceService,
+    MedicationProductGovernanceService,
     CatalogCanonicalReadService,
     AuditService,
   ],
@@ -27,6 +29,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationFormularyPromotionService,
     MedicationMasterExplorerService,
     MedicationMasterGovernanceService,
+    MedicationProductGovernanceService,
     CatalogCanonicalReadService,
   ],
 })

@@ -18,6 +18,7 @@ export type GovernanceConceptRow = {
   products: Array<{
     id: string;
     code: string;
+    governanceStatus?: string;
     administrationType: string;
     administrationProfile: { requiresInfusionSession?: boolean } | null;
     infusionProfile: unknown | null;
@@ -89,9 +90,10 @@ export function aggregateGovernanceFromConcepts(
     if (concept.safetyProfile?.isControlled) controlledConcepts += 1;
     if (!concept.safetyProfile) missingSafetyProfile += 1;
 
-    activeProducts += concept.products.length;
+    const eligibleProducts = concept.products.filter((p) => p.governanceStatus !== "RETIRED");
+    activeProducts += eligibleProducts.length;
 
-    const productInputs = concept.products.map((product) => {
+    const productInputs = eligibleProducts.map((product) => {
       const adminType = product.administrationType.trim().toUpperCase();
       const needsInfusion =
         adminType === "INFUSION" ||

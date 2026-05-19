@@ -88,4 +88,12 @@ describe("MedicationMasterController RBAC", () => {
     expect(proto["activateGovernance"]).toBeUndefined();
     expect(proto["promoteGovernance"]).toBeUndefined();
   });
+
+  it("governance activation POST handlers require ADMIN or MEDORA_SUPER_ADMIN", () => {
+    const proto = MedicationMasterController.prototype as unknown as Record<string, unknown>;
+    for (const key of ["approveProductGovernance", "blockProductGovernance", "retireProductGovernance"]) {
+      const roles = Reflect.getMetadata("roles", proto[key] as object) as RoleCode[];
+      expect(roles).toEqual([...FACILITY_OR_PLATFORM_ADMIN_ROLES]);
+    }
+  });
 });

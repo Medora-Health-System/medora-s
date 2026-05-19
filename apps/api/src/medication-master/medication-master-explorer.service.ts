@@ -11,6 +11,11 @@ import {
   buildMedicationMasterValidationWarnings,
   type MedicationMasterValidationWarning,
 } from "./medication-master-validation.util";
+import {
+  MEDICATION_PRODUCT_GOVERNANCE_AUDIT_ENTITY,
+  type MedicationProductGovernanceTimelineEntry,
+} from "./medication-product-governance.constants";
+import { evaluateActivationReadiness } from "./medication-product-activation-readiness.util";
 
 const CONCEPT_LIST_INCLUDE = {
   therapeuticClass: { select: { code: true, name: true } },
@@ -83,6 +88,12 @@ export type MedicationMasterConceptDetailDto = {
     billingClass: string;
     isActive: boolean;
     legacyCatalogMedicationId: string | null;
+    governanceStatus: string;
+    activationApprovedAt: string | null;
+    activationApprovedByUserId: string | null;
+    governanceNotes: string | null;
+    activationReadiness: { ready: boolean; blockingReasons: string[] };
+    governanceTimeline: MedicationProductGovernanceTimelineEntry[];
     defaultRoute: { code: string; label: string } | null;
     productAliases: Array<{ alias: string; aliasType: string | null }>;
     administrationProfile: {
@@ -371,41 +382,45 @@ export class MedicationMasterExplorerService {
       aliasType: a.aliasType,
     }));
 
-    const products = concept.products.map((product) => {
+    const validationWarnings = buildMedicationMasterValidationWarnings({
+      facilityId,
+      concept: {
+        code: concept.code,
+        safetyProfile: concept.safetyProfile,
+        conceptAliases,
+      },
+      products: concept.products.map((product) => ({
+        code: product.code,
+        administrationType: product.administrationType,
+        administrationProfile: product.administrationProfile,
+        infusionProfile: product.infusionProfile,
+        productAliases: product.searchAliases.map((a) => ({ alias: a.alias })),
+        packages: product.packages.map((pkg) => {
+          const formulary = Array.isArray(pkg.facilityFormularyItems)
+            ? pkg.facilityFormularyItems[0]
+            : null;
+          return {
+            code: pkg.code,
+            ndc11: pkg.ndc11,
+            billingProfiles: pkg.billingProfiles,
+            facilityFormulary: formulary,
+          };
+        }),
+      })),
+    });
+
+    const timelinesByProduct = facilityId
+      ? await this.loadGovernanceTimelines(concept.products.map((p) => p.id))
+      : new Map<string, MedicationProductGovernanceTimelineEntry[]>();
+
+    const products = await Promise.all(
+      concept.products.map(async (product) => {
       const productAliases = product.searchAliases.map((a) => ({
         alias: a.alias,
         aliasType: a.aliasType,
       }));
 
-      return {
-        id: product.id,
-        code: product.code,
-        strengthDisplay: product.strengthDisplay,
-        dosageForm: product.dosageForm,
-        administrationType: product.administrationType,
-        billingClass: product.billingClass,
-        isActive: product.isActive,
-        legacyCatalogMedicationId: product.legacyCatalogMedicationId,
-        defaultRoute: product.defaultRoute,
-        productAliases,
-        administrationProfile: product.administrationProfile
-          ? {
-              defaultMarWorkflow: product.administrationProfile.defaultMarWorkflow,
-              requiresInfusionSession: product.administrationProfile.requiresInfusionSession,
-              hydrationFluid: product.administrationProfile.hydrationFluid,
-              allowsPartialDose: product.administrationProfile.allowsPartialDose,
-              allowsWasteDocumentation: product.administrationProfile.allowsWasteDocumentation,
-            }
-          : null,
-        infusionProfile: product.infusionProfile
-          ? {
-              infusionType: product.infusionProfile.infusionType,
-              rateRequired: product.infusionProfile.rateRequired,
-              requiresStopMarForBilling: product.infusionProfile.requiresStopMarForBilling,
-              minDocumentedDurationMinutes: product.infusionProfile.minDocumentedDurationMinutes,
-            }
-          : null,
-        packages: product.packages.map((pkg) => {
+      const mappedPackages = product.packages.map((pkg) => {
           const formulary = Array.isArray(pkg.facilityFormularyItems)
             ? pkg.facilityFormularyItems[0]
             : null;
@@ -449,31 +464,72 @@ export class MedicationMasterExplorerService {
                 }
               : null,
           };
-        }),
-      };
-    });
+        });
 
-    const validationWarnings = buildMedicationMasterValidationWarnings({
-      facilityId,
-      concept: {
-        code: concept.code,
-        safetyProfile: concept.safetyProfile,
-        conceptAliases,
-      },
-      products: products.map((p) => ({
-        code: p.code,
-        administrationType: p.administrationType,
-        administrationProfile: p.administrationProfile,
-        infusionProfile: p.infusionProfile,
-        productAliases: p.productAliases,
-        packages: p.packages.map((pkg) => ({
-          code: pkg.code,
-          ndc11: pkg.ndc11,
-          billingProfiles: pkg.billingProfiles,
-          facilityFormulary: pkg.facilityFormulary,
-        })),
-      })),
-    });
+      const duplicateNdc = facilityId
+        ? await this.hasDuplicateNdcOnOtherProducts(product.id, product.packages)
+        : false;
+
+      const activationReadiness = facilityId
+        ? evaluateActivationReadiness({
+            facilityId,
+            productCode: product.code,
+            governanceStatus: product.governanceStatus,
+            concept: { safetyProfile: concept.safetyProfile },
+            product: {
+              administrationType: product.administrationType,
+              administrationProfile: product.administrationProfile,
+              infusionProfile: product.infusionProfile,
+              packages: mappedPackages.map((pkg) => ({
+                code: pkg.code,
+                ndc11: pkg.ndc11,
+                billingProfiles: pkg.billingProfiles,
+                facilityFormulary: pkg.facilityFormulary,
+              })),
+            },
+            validationWarnings,
+            duplicateNdcOnOtherProducts: duplicateNdc,
+          })
+        : { ready: false, blockingReasons: [] };
+
+      return {
+        id: product.id,
+        code: product.code,
+        strengthDisplay: product.strengthDisplay,
+        dosageForm: product.dosageForm,
+        administrationType: product.administrationType,
+        billingClass: product.billingClass,
+        isActive: product.isActive,
+        legacyCatalogMedicationId: product.legacyCatalogMedicationId,
+        governanceStatus: product.governanceStatus,
+        activationApprovedAt: product.activationApprovedAt?.toISOString() ?? null,
+        activationApprovedByUserId: product.activationApprovedByUserId,
+        governanceNotes: product.governanceNotes,
+        activationReadiness,
+        governanceTimeline: timelinesByProduct.get(product.id) ?? [],
+        defaultRoute: product.defaultRoute,
+        productAliases,
+        administrationProfile: product.administrationProfile
+          ? {
+              defaultMarWorkflow: product.administrationProfile.defaultMarWorkflow,
+              requiresInfusionSession: product.administrationProfile.requiresInfusionSession,
+              hydrationFluid: product.administrationProfile.hydrationFluid,
+              allowsPartialDose: product.administrationProfile.allowsPartialDose,
+              allowsWasteDocumentation: product.administrationProfile.allowsWasteDocumentation,
+            }
+          : null,
+        infusionProfile: product.infusionProfile
+          ? {
+              infusionType: product.infusionProfile.infusionType,
+              rateRequired: product.infusionProfile.rateRequired,
+              requiresStopMarForBilling: product.infusionProfile.requiresStopMarForBilling,
+              minDocumentedDurationMinutes: product.infusionProfile.minDocumentedDurationMinutes,
+            }
+          : null,
+        packages: mappedPackages,
+      };
+    })
+    );
 
     return {
       readOnly: true as const,
@@ -655,5 +711,55 @@ export class MedicationMasterExplorerService {
       out.push(h);
     }
     return out;
+  }
+
+  private async hasDuplicateNdcOnOtherProducts(
+    productId: string,
+    packages: Array<{ ndc11: string | null }>
+  ): Promise<boolean> {
+    const ndcs = packages.map((p) => p.ndc11?.trim()).filter((n): n is string => Boolean(n));
+    if (ndcs.length === 0) return false;
+    const conflict = await this.prisma.medicationPackage.findFirst({
+      where: { ndc11: { in: ndcs }, isActive: true, productId: { not: productId } },
+      select: { id: true },
+    });
+    return Boolean(conflict);
+  }
+
+  private async loadGovernanceTimelines(
+    productIds: string[]
+  ): Promise<Map<string, MedicationProductGovernanceTimelineEntry[]>> {
+    const map = new Map<string, MedicationProductGovernanceTimelineEntry[]>();
+    if (productIds.length === 0) return map;
+
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        entityType: MEDICATION_PRODUCT_GOVERNANCE_AUDIT_ENTITY,
+        entityId: { in: productIds },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { entityId: true, createdAt: true, action: true, userId: true, metadata: true },
+    });
+
+    for (const r of rows) {
+      if (!r.entityId) continue;
+      const list = map.get(r.entityId) ?? [];
+      if (list.length >= 10) continue;
+      const meta =
+        r.metadata && typeof r.metadata === "object" && !Array.isArray(r.metadata)
+          ? (r.metadata as Record<string, unknown>)
+          : {};
+      list.push({
+        at: r.createdAt.toISOString(),
+        action: String(meta.governanceAction ?? r.action),
+        previousStatus: meta.previousStatus != null ? String(meta.previousStatus) : null,
+        newStatus: String(meta.newStatus ?? ""),
+        userId: r.userId,
+        governanceNote: meta.governanceNote != null ? String(meta.governanceNote) : null,
+      });
+      map.set(r.entityId, list);
+    }
+    return map;
   }
 }

@@ -466,6 +466,7 @@ export class MedicationFormularyPromotionService {
         defaultRouteId: params.routeId,
         administrationType: adminType,
         billingClass,
+        governanceStatus: "REVIEW_REQUIRED",
       },
     });
   }
