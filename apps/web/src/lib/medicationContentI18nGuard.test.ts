@@ -10,6 +10,7 @@ const adminSources = [
   readFileSync(join(srcRoot, "components/admin/MedicationMasterValidationReview.tsx"), "utf8"),
   readFileSync(join(webRoot, "app/app/admin/medication-master/page.tsx"), "utf8"),
   readFileSync(join(webRoot, "app/app/admin/medication-governance/page.tsx"), "utf8"),
+  readFileSync(join(webRoot, "app/app/admin/medication-inventory-staging/page.tsx"), "utf8"),
 ];
 
 const frMessages = readFileSync(join(srcRoot, "i18n/messages/fr.ts"), "utf8");
@@ -17,10 +18,10 @@ const enMessages = readFileSync(join(srcRoot, "i18n/messages/en.ts"), "utf8");
 
 describe("medication content i18n guard (19E.0)", () => {
   it("renders medication names from API data props, not i18n keys", () => {
-    for (const src of adminSources) {
-      expect(src).toMatch(/displayName|genericName|strengthDisplay/);
-    }
     expect(adminSources[0]).toMatch(/concept\.displayName/);
+    expect(adminSources[1]).toMatch(/displayName|genericName|strengthDisplay/);
+    expect(adminSources[2]).toMatch(/displayName|genericName|strengthDisplay/);
+    expect(adminSources[3]).toMatch(/r\.exactSourceText|r\.medication/);
   });
 
   it("French and English UI message catalogs do not embed sample drug names as translation values", () => {

@@ -186,6 +186,23 @@ export default function AdminPage() {
         </li>
         <li>
           <Link
+            href="/app/admin/medication-inventory-staging"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              backgroundColor: "#fff",
+              color: "#1a1a1a",
+              border: "1px solid #1a1a1a",
+              borderRadius: 4,
+              textDecoration: "none",
+              fontWeight: 600,
+            }}
+          >
+            {t("adminHub.medicationInventoryStagingLink")}
+          </Link>
+        </li>
+        <li>
+          <Link
             href="/app/admin/roi"
             style={{
               display: "inline-block",

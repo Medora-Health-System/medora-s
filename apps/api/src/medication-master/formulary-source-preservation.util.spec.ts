@@ -40,7 +40,7 @@ describe("formulary-source-preservation", () => {
     );
   });
 
-  it("flags billing review when HCPCS or NDC missing — no guessing", () => {
+  it("flags billing and NDC review when HCPCS or NDC missing — no guessing", () => {
     const augment = applyBillingSafetyFlags({
       row: { ndc11: "", hcpcs_j_code_suggested: "" },
       ndc11: null,
@@ -49,6 +49,7 @@ describe("formulary-source-preservation", () => {
       reviewFlags: [],
     });
     expect(augment.reviewFlags).toContain("BILLING_REVIEW_REQUIRED");
+    expect(augment.reviewFlags).toContain("NDC_REVIEW_REQUIRED");
     expect(augment.billingReviewStatus).toBe("pending");
     expect(augment.hcpcsCodeSuggested).toBeNull();
   });

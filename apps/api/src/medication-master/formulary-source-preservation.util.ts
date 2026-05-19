@@ -145,13 +145,21 @@ export function applyBillingSafetyFlags(input: {
     hcpcsCodeSuggested = null;
   }
 
+  if (!ndc11) {
+    if (!flags.includes("NDC_REVIEW_REQUIRED")) {
+      flags.push("NDC_REVIEW_REQUIRED");
+    }
+    if (!billingReviewStatus || billingReviewStatus === "approved") {
+      billingReviewStatus = "pending";
+    }
+  }
+
   const needsBillingReview =
     !hcpcsCodeSuggested ||
-    !ndc11 ||
     ndcConfidence === "unknown" ||
     billingReviewStatus === "pending";
 
-  if (needsBillingReview) {
+  if (needsBillingReview || !hcpcsCodeSuggested) {
     if (!flags.includes("BILLING_REVIEW_REQUIRED")) {
       flags.push("BILLING_REVIEW_REQUIRED");
     }

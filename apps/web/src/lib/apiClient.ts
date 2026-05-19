@@ -114,8 +114,10 @@ export async function apiFetchResponse(
   const { facilityId: providedFacilityId, ...fetchOptions } = options;
   const method = (fetchOptions.method ?? "GET").toUpperCase();
 
+  const isFormData =
+    typeof FormData !== "undefined" && fetchOptions.body instanceof FormData;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...(fetchOptions.headers && typeof fetchOptions.headers === "object" && !(fetchOptions.headers instanceof Headers)
       ? (fetchOptions.headers as Record<string, string>)
       : {}),
@@ -181,10 +183,15 @@ export async function apiFetchResponse(
         const json = JSON.parse(txt) as {
           message?: string | string[];
           error?: string;
+          code?: string;
           statusCode?: number;
         };
-        if (typeof json?.message === "string") message = json.message;
-        else if (Array.isArray(json?.message)) message = json.message.filter(Boolean).join(" ");
+        if (typeof json?.message === "string") {
+          message =
+            typeof json.code === "string" && json.code
+              ? `${json.message} (${json.code})`
+              : json.message;
+        } else if (Array.isArray(json?.message)) message = json.message.filter(Boolean).join(" ");
         else if (typeof json?.error === "string") message = json.error;
       }
     } catch {

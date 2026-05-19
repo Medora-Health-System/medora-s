@@ -8,8 +8,13 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
+import { throwInventoryImportError } from "./priority-er-inventory-import.errors";
 import { AuthGuard } from "@nestjs/passport";
 import type { Request } from "express";
 import { FACILITY_OR_PLATFORM_ADMIN_ROLES } from "../common/auth/platform-operator-roles";
@@ -18,6 +23,11 @@ import { importStagingBodySchema } from "./dto/medication-formulary-import.dto";
 import { medicationMasterSearchQuerySchema } from "./dto/medication-master-explorer.dto";
 import { MedicationCatalogBackfillAnalysisService } from "./medication-catalog-backfill-analysis.service";
 import { MedicationFormularyImportService } from "./medication-formulary-import.service";
+import { PriorityErInventoryImportService } from "./priority-er-inventory-import.service";
+import {
+  priorityErInventoryImportQuerySchema,
+  priorityErInventoryStagingListQuerySchema,
+} from "./dto/priority-er-inventory-import.dto";
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
@@ -47,6 +57,7 @@ function facilityIdFromReq(req: {
 export class MedicationMasterController {
   constructor(
     private readonly formularyImport: MedicationFormularyImportService,
+    private readonly priorityErInventoryImport: PriorityErInventoryImportService,
     private readonly catalogBackfill: MedicationCatalogBackfillAnalysisService,
     private readonly promotion: MedicationFormularyPromotionService,
     private readonly explorer: MedicationMasterExplorerService,
@@ -290,12 +301,120 @@ export class MedicationMasterController {
     return this.formularyImport.importStaging(parsed.data, parsed.data.dryRun ? null : userId);
   }
 
+  /** Phase 19E.1 — list staging import batches (read-only queue). */
+  @Get("import-staging/batches")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listImportStagingBatches(@Query("limit") limitRaw?: string) {
+    const limit = Math.min(Math.max(Number(limitRaw) || 50, 1), 200);
+    const batches = await this.priorityErInventoryImport.listBatches(limit);
+    return { batches };
+  }
+
+  /** Phase 19E.1 — paginated staging rows for pharmacy review. */
+  @Get("import-staging/rows")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listImportStagingRows(@Query() query: Record<string, string | undefined>) {
+    const parsed = priorityErInventoryStagingListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    return this.priorityErInventoryImport.listStagingRows(parsed.data);
+  }
+
   /** Aggregate staging batch metrics (no PHI). */
   @Get("import-staging/:batchId/summary")
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async importStagingSummary(@Param("batchId") batchId: string) {
     const summary = await this.formularyImport.getBatchSummary(batchId);
     return { summary };
+  }
+
+  /**
+   * Phase 19E.1 — Priority ER inventory XLSX → staging only (multipart upload).
+   * Default dryRun=true. Never writes MedicationConcept/Product/Package.
+   */
+  @Post("import-priority-er-inventory")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  @UseInterceptors(
+    FileInterceptor("workbook", {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+    })
+  )
+  async importPriorityErInventory(
+    @UploadedFile()
+    file:
+      | {
+          buffer?: Buffer;
+          originalname?: string;
+          mimetype?: string;
+          size?: number;
+        }
+      | undefined,
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { userId?: string } }
+  ) {
+    const parsed = priorityErInventoryImportQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throwInventoryImportError({
+        code: "INVALID_QUERY",
+        message: parsed.error.issues[0]?.message ?? "Requête invalide.",
+        details: { issues: parsed.error.issues },
+      });
+    }
+
+    const buffer = file?.buffer;
+    if (!file || !buffer?.length) {
+      throwInventoryImportError({
+        code: "MISSING_FILE",
+        message:
+          "Fichier inventaire requis. Utilisez le champ multipart « workbook » (.xlsx, .xls ou .csv).",
+        details: {
+          fieldName: "workbook",
+          receivedField: file ? "workbook (empty buffer)" : "none",
+        },
+      });
+    }
+
+    const name = file.originalname?.trim() || "PHARMACY INVENTORY LIST.xlsx";
+    const lowerName = name.toLowerCase();
+    const allowedExt = lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls") || lowerName.endsWith(".csv");
+    if (!allowedExt) {
+      throwInventoryImportError({
+        code: "INVALID_EXTENSION",
+        message: "Extension non acceptée. Formats autorisés : .xlsx, .xls, .csv",
+        details: { workbookFilename: name },
+      });
+    }
+
+    const mime = (file.mimetype ?? "").toLowerCase();
+    const allowedMime =
+      !mime ||
+      mime.includes("spreadsheet") ||
+      mime.includes("excel") ||
+      mime.includes("csv") ||
+      mime === "application/octet-stream";
+    if (!allowedMime) {
+      throwInventoryImportError({
+        code: "INVALID_MIMETYPE",
+        message: "Type MIME du fichier non reconnu pour un inventaire pharmacie.",
+        details: { mimetype: file.mimetype, workbookFilename: name },
+      });
+    }
+
+    const userId = req.user?.userId ?? null;
+    if (!parsed.data.dryRun && !userId) {
+      throw new UnauthorizedException();
+    }
+
+    return this.priorityErInventoryImport.importFromXlsxBuffer(
+      buffer,
+      name,
+      parsed.data,
+      parsed.data.dryRun ? null : userId
+    );
   }
 
   /** Read-only legacy catalog → proposed master mapping analysis (no writes). */
