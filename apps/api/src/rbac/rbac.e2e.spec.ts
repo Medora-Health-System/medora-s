@@ -3,6 +3,7 @@ import { INestApplication } from "@nestjs/common";
 import * as request from "supertest";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma/prisma.service";
+import { applyE2eAuthTestEnv, assertE2eLoginAccessToken } from "../test-utils/e2e-auth-env";
 import * as argon2 from "argon2";
 import { RoleCode } from "@prisma/client";
 
@@ -16,12 +17,15 @@ describe("RBAC (e2e)", () => {
   let patientId: string;
 
   beforeAll(async () => {
+    applyE2eAuthTestEnv();
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
+    applyE2eAuthTestEnv();
 
     prisma = moduleFixture.get<PrismaService>(PrismaService);
 
@@ -111,21 +115,24 @@ describe("RBAC (e2e)", () => {
     // Login and get tokens
     const frontDeskLogin = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ username: "frontdesk@test.local", password: "Test123!" });
+      .send({ username: "frontdesk@test.local", password: "Test123!" })
+      .expect(201);
 
-    frontDeskToken = frontDeskLogin.body.accessToken;
+    frontDeskToken = assertE2eLoginAccessToken(frontDeskLogin.body, "frontdesk@test.local");
 
     const labLogin = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ username: "lab@test.local", password: "Test123!" });
+      .send({ username: "lab@test.local", password: "Test123!" })
+      .expect(201);
 
-    labToken = labLogin.body.accessToken;
+    labToken = assertE2eLoginAccessToken(labLogin.body, "lab@test.local");
 
     const providerLogin = await request(app.getHttpServer())
       .post("/auth/login")
-      .send({ username: "provider@test.local", password: "Test123!" });
+      .send({ username: "provider@test.local", password: "Test123!" })
+      .expect(201);
 
-    providerToken = providerLogin.body.accessToken;
+    providerToken = assertE2eLoginAccessToken(providerLogin.body, "provider@test.local");
 
     // Create a test patient
     const patient = await prisma.patient.create({

@@ -81,4 +81,38 @@ describe("evaluatePriorityErPromotionEligibility", () => {
     );
     expect(out.eligible).toBe(false);
   });
+
+  it("blocks when governance decision is BLOCKED_DUPLICATE", () => {
+    const rawJson = {
+      ...(baseRow.rawJson as Record<string, unknown>),
+      __governance: {
+        governanceDecision: "BLOCKED_DUPLICATE",
+        duplicateResolutionStatus: "BLOCKED_DUPLICATE",
+      },
+    };
+    const out = evaluatePriorityErPromotionEligibility({
+      ...baseRow,
+      rawJson,
+      reviewFlags: ["GOVERNANCE_BLOCKED"],
+    });
+    expect(out.eligible).toBe(false);
+    expect(out.eligible === false && out.reasons.some((r) => r.code === "GOVERNANCE_BLOCKED")).toBe(true);
+  });
+
+  it("allows POSSIBLE_DUPLICATE when governance approves create new", () => {
+    const rawJson = {
+      ...(baseRow.rawJson as Record<string, unknown>),
+      __governance: {
+        governanceDecision: "CREATE_NEW_APPROVED",
+        duplicateResolutionStatus: "CREATE_NEW_APPROVED",
+      },
+    };
+    const out = evaluatePriorityErPromotionEligibility({
+      ...baseRow,
+      reconciliationStatus: "POSSIBLE_DUPLICATE",
+      rawJson,
+      reviewFlags: ["POSSIBLE_DUPLICATE"],
+    });
+    expect(out.eligible).toBe(true);
+  });
 });

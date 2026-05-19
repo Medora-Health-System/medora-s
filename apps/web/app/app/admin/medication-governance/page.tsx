@@ -375,6 +375,12 @@ export default function MedicationGovernancePage() {
         <Link href="/app/admin/medication-master" style={{ alignSelf: "center", fontSize: 14 }}>
           {t("medicationGovernance.openExplorer")}
         </Link>
+        <Link
+          href="/app/admin/medication-governance/duplicates"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernance.openDuplicateQueue")}
+        </Link>
       </div>
 
       {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}

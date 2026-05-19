@@ -155,7 +155,7 @@ export async function fetchMedicationGovernanceDuplicates(
   params?: { kind?: string; limit?: number; offset?: number }
 ): Promise<{ items: MedicationGovernanceDuplicateGroup[]; total: number }> {
   return governanceFetch(
-    `/duplicates${facilityQs(facilityId, {
+    `/duplicate-groups${facilityQs(facilityId, {
       kind: params?.kind,
       limit: params?.limit ?? 100,
       offset: params?.offset ?? 0,

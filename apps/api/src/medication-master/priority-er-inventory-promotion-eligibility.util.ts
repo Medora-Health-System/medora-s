@@ -1,6 +1,12 @@
 import type { DuplicateResolutionMode } from "./promotion-duplicate.util";
 import type { MedicationFormularyImportStagingPromotionRow } from "./medication-formulary-import-staging.types";
 import {
+  GOVERNANCE_REVIEW_FLAG_BLOCKED,
+  isGovernanceBlocked,
+  isGovernanceResolvedForPromotion,
+  parsePriorityErGovernance,
+} from "./priority-er-inventory-governance.util";
+import {
   isPriorityErInventoryStagingRow,
   parsePriorityErSourceTrace,
 } from "./priority-er-inventory-staging-source.util";
@@ -71,6 +77,23 @@ export function evaluatePriorityErPromotionEligibility(
   }
 
   const flags = reviewFlags(row);
+  const governance = parsePriorityErGovernance(row.rawJson);
+
+  if (isGovernanceBlocked(governance, flags)) {
+    reasons.push({
+      code: "GOVERNANCE_BLOCKED",
+      message: "Ligne bloquée par la gouvernance pharmacie — débloquer avant promotion.",
+    });
+  }
+
+  if (!isGovernanceResolvedForPromotion(governance, row.reconciliationStatus)) {
+    reasons.push({
+      code: "GOVERNANCE_UNRESOLVED",
+      message:
+        "Décision de gouvernance requise (lier existant ou approuver nouvelle entrée) avant promotion.",
+    });
+  }
+
   if (flags.includes("MISSING_MEDICATION_NAME")) {
     reasons.push({ code: "MISSING_MEDICATION_NAME", message: "Drapeau MISSING_MEDICATION_NAME actif." });
   }
@@ -82,10 +105,27 @@ export function evaluatePriorityErPromotionEligibility(
   }
 
   const status = row.reconciliationStatus.trim().toUpperCase();
-  const resolution = input.duplicateResolution ?? "CREATE_NEW";
+  const resolution =
+    input.duplicateResolution ??
+    (governance.governanceDecision === "LINK_TO_EXISTING"
+      ? governance.linkedProductId
+        ? "LINK_TO_EXISTING_PRODUCT"
+        : "LINK_TO_EXISTING_CONCEPT"
+      : governance.governanceDecision === "CREATE_NEW_APPROVED"
+        ? "CREATE_NEW"
+        : "CREATE_NEW");
 
-  if (status === "POSSIBLE_DUPLICATE") {
+  if (flags.includes(GOVERNANCE_REVIEW_FLAG_BLOCKED)) {
+    reasons.push({
+      code: "GOVERNANCE_BLOCKED",
+      message: "Drapeau GOVERNANCE_BLOCKED actif.",
+    });
+  }
+
+  if (status === "POSSIBLE_DUPLICATE" || status === "EXACT_MATCH") {
     const allowed =
+      governance.governanceDecision === "CREATE_NEW_APPROVED" ||
+      governance.governanceDecision === "LINK_TO_EXISTING" ||
       resolution === "LINK_TO_EXISTING_CONCEPT" ||
       resolution === "LINK_TO_EXISTING_PRODUCT" ||
       resolution === "NEW_PACKAGE_ONLY" ||
@@ -94,9 +134,21 @@ export function evaluatePriorityErPromotionEligibility(
       reasons.push({
         code: "UNRESOLVED_DUPLICATE",
         message:
-          "Doublon possible non résolu — lier un concept/produit existant ou confirmer la création explicite.",
+          "Doublon possible non résolu — décision de gouvernance ou lien explicite requis.",
       });
     }
+  }
+
+  if (
+    governance.governanceDecision === "LINK_TO_EXISTING" &&
+    !governance.linkedConceptId &&
+    !governance.linkedProductId &&
+    !input.duplicateResolution
+  ) {
+    reasons.push({
+      code: "MISSING_LINK_TARGET",
+      message: "Lien gouvernance sans concept/produit cible.",
+    });
   }
 
   if (input.activateBilling === true && flags.includes("BILLING_REVIEW_REQUIRED")) {

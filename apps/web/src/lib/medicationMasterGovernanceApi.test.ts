@@ -19,6 +19,7 @@ describe("medicationMasterGovernanceApi — read-only governance", () => {
     expect(source).toContain("fetchMedicationGovernanceWarnings");
     expect(source).toContain("fetchMedicationGovernanceUnmapped");
     expect(source).toContain("fetchMedicationGovernanceDuplicates");
+    expect(source).toContain("/duplicate-groups");
     expect(source).not.toMatch(/activate|promoteStaging|importStaging/i);
   });
 

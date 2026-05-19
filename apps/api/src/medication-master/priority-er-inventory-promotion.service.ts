@@ -13,6 +13,7 @@ import {
   evaluatePriorityErPromotionEligibility,
   type PriorityErPromotionBlockReason,
 } from "./priority-er-inventory-promotion-eligibility.util";
+import { parsePriorityErGovernance } from "./priority-er-inventory-governance.util";
 import {
   isPriorityErInventoryStagingRow,
   parsePriorityErReconciliationMeta,
@@ -95,8 +96,15 @@ export class PriorityErInventoryPromotionService {
       return { status: "promoted", result: existing };
     }
 
+    const governance = parsePriorityErGovernance(row.rawJson);
     const eligibility = evaluatePriorityErPromotionEligibility(row, {
-      duplicateResolution: body.duplicateResolution,
+      duplicateResolution:
+        body.duplicateResolution ??
+        (governance.governanceDecision === "LINK_TO_EXISTING"
+          ? governance.linkedProductId
+            ? "LINK_TO_EXISTING_PRODUCT"
+            : "LINK_TO_EXISTING_CONCEPT"
+          : undefined),
       confirmCreateDespiteDuplicate: body.confirmCreateDespiteDuplicate,
       activateBilling: body.activateBilling,
       activatePackageWithNdc: body.activatePackageWithNdc,
@@ -110,7 +118,15 @@ export class PriorityErInventoryPromotionService {
       throw new BadRequestException("facilityId requis sur la ligne ou dans la requête.");
     }
 
-    const resolution = body.duplicateResolution ?? "CREATE_NEW";
+    const resolution =
+      body.duplicateResolution ??
+      (governance.governanceDecision === "LINK_TO_EXISTING"
+        ? governance.linkedProductId
+          ? "LINK_TO_EXISTING_PRODUCT"
+          : "LINK_TO_EXISTING_CONCEPT"
+        : governance.governanceDecision === "CREATE_NEW_APPROVED"
+          ? "CREATE_NEW"
+          : "CREATE_NEW");
     const trace = parsePriorityErSourceTrace(row.rawJson);
     const reconciliation = parsePriorityErReconciliationMeta(row.rawJson);
     const codes = buildPriorityErCanonicalCodes({
@@ -126,8 +142,14 @@ export class PriorityErInventoryPromotionService {
       conceptCode: codes.conceptCode,
       productCode: codes.productCode,
       packageCode: codes.packageCode,
-      existingConceptId: body.existingConceptId ?? reconciliation.matchedConceptIds[0],
-      existingProductId: body.existingProductId ?? reconciliation.matchedProductIds[0],
+      existingConceptId:
+        body.existingConceptId ??
+        governance.linkedConceptId ??
+        reconciliation.matchedConceptIds[0],
+      existingProductId:
+        body.existingProductId ??
+        governance.linkedProductId ??
+        reconciliation.matchedProductIds[0],
     });
 
     const result = await this.prisma.$transaction(async (tx) =>

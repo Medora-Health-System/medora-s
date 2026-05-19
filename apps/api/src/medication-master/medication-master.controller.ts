@@ -33,7 +33,13 @@ import {
 import { MedicationFormularyPromotionService } from "./medication-formulary-promotion.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
+import { MedicationStagingDuplicateGovernanceService } from "./medication-staging-duplicate-governance.service";
 import { MedicationProductGovernanceService } from "./medication-product-governance.service";
+import {
+  resolveStagingDuplicateBodySchema,
+  stagingDuplicateGovernanceActionBodySchema,
+  stagingDuplicateGovernanceListQuerySchema,
+} from "./dto/medication-staging-duplicate-governance.dto";
 import { promoteStagingRowBodySchema } from "./dto/promote-staging.dto";
 import {
   medicationProductGovernanceActionBodySchema,
@@ -65,6 +71,7 @@ export class MedicationMasterController {
     private readonly promotion: MedicationFormularyPromotionService,
     private readonly explorer: MedicationMasterExplorerService,
     private readonly governance: MedicationMasterGovernanceService,
+    private readonly stagingDuplicateGovernance: MedicationStagingDuplicateGovernanceService,
     private readonly productGovernance: MedicationProductGovernanceService
   ) {}
 
@@ -169,9 +176,9 @@ export class MedicationMasterController {
   }
 
   /** Phase 19C.4 — duplicate candidate groups (NDC, generic name, staging codes). */
-  @Get("governance/duplicates")
+  @Get("governance/duplicate-groups")
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
-  async getGovernanceDuplicates(
+  async getGovernanceDuplicateGroups(
     @Query() query: Record<string, string | undefined>,
     @Req() req: Request & { user?: { facilityId?: string } }
   ) {
@@ -187,6 +194,117 @@ export class MedicationMasterController {
       this.governance.assertFacilityScope(facilityId, callerFacilityId);
     }
     return this.governance.getDuplicates({ ...parsed.data, facilityId });
+  }
+
+  /** Phase 19F — Priority ER staging duplicate governance queue (no activation). */
+  @Get("governance/duplicates")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listStagingDuplicateGovernance(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = stagingDuplicateGovernanceListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.stagingDuplicateGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    return this.stagingDuplicateGovernance.listStagingDuplicates({ ...parsed.data, facilityId });
+  }
+
+  @Post("governance/duplicates/:stagingRowId/resolve")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async resolveStagingDuplicateGovernance(
+    @Param("stagingRowId") stagingRowId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+    const parsed = resolveStagingDuplicateBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.stagingDuplicateGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    return this.stagingDuplicateGovernance.resolveStagingDuplicate(
+      stagingRowId,
+      { ...parsed.data, facilityId },
+      userId,
+      { ip, userAgent: ua }
+    );
+  }
+
+  @Post("governance/duplicates/:stagingRowId/block")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async blockStagingDuplicateGovernance(
+    @Param("stagingRowId") stagingRowId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+    const parsed = stagingDuplicateGovernanceActionBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.stagingDuplicateGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    return this.stagingDuplicateGovernance.blockStagingDuplicate(
+      stagingRowId,
+      { ...parsed.data, facilityId },
+      userId,
+      { ip, userAgent: ua }
+    );
+  }
+
+  @Post("governance/duplicates/:stagingRowId/unblock")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async unblockStagingDuplicateGovernance(
+    @Param("stagingRowId") stagingRowId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+    const parsed = stagingDuplicateGovernanceActionBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (facilityId) {
+      this.stagingDuplicateGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    }
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    return this.stagingDuplicateGovernance.unblockStagingDuplicate(
+      stagingRowId,
+      { ...parsed.data, facilityId },
+      userId,
+      { ip, userAgent: ua }
+    );
   }
 
   /** Phase 19D.1 — governance activation approval (no runtime cutover). */

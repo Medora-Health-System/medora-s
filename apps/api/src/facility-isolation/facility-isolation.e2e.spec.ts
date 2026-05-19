@@ -8,6 +8,7 @@ import * as request from "supertest";
 import { randomBytes } from "crypto";
 import { AppModule } from "../app.module";
 import { PrismaService } from "../prisma/prisma.service";
+import { applyE2eAuthTestEnv, assertE2eLoginAccessToken } from "../test-utils/e2e-auth-env";
 import * as argon2 from "argon2";
 import { EncounterType, EncounterStatus, OrderStatus, RoleCode } from "@prisma/client";
 
@@ -38,11 +39,7 @@ describe("Facility isolation (e2e)", () => {
   const password = "Test123!";
 
   beforeAll(async () => {
-    process.env.JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET ?? "test_access_secret";
-    process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? "test_refresh_secret";
-    process.env.JWT_ACCESS_TTL = process.env.JWT_ACCESS_TTL ?? "15m";
-    process.env.JWT_REFRESH_TTL = process.env.JWT_REFRESH_TTL ?? "14d";
-    process.env.TOKEN_ISSUER = process.env.TOKEN_ISSUER ?? "medora-s";
+    applyE2eAuthTestEnv();
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -50,6 +47,7 @@ describe("Facility isolation (e2e)", () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+    applyE2eAuthTestEnv();
 
     prisma = moduleFixture.get<PrismaService>(PrismaService);
 
@@ -139,7 +137,7 @@ describe("Facility isolation (e2e)", () => {
         .post("/auth/login")
         .send({ username: u, password })
         .expect(201);
-      return res.body.accessToken as string;
+      return assertE2eLoginAccessToken(res.body, u);
     };
 
     providerTokenA = await login(email("provider"));
