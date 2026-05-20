@@ -78,9 +78,10 @@ export default function MedicationGovernanceActivationPage() {
         q: searchQ.trim() || undefined,
         limit: 100,
       });
-      setItems(res.items);
-      if (res.items.length && !res.items.some((r) => r.productId === selectedId)) {
-        setSelectedId(res.items[0]?.productId ?? null);
+      const rows = Array.isArray(res.items) ? res.items : [];
+      setItems(rows);
+      if (rows.length && !rows.some((r) => r.productId === selectedId)) {
+        setSelectedId(rows[0]?.productId ?? null);
       }
     } catch (err) {
       setError(
@@ -215,7 +216,7 @@ export default function MedicationGovernanceActivationPage() {
                     }}
                   >
                     <div style={{ fontWeight: 600, fontSize: 13 }}>
-                      {row.exactSourceMedication ?? row.productCode}
+                      {row.medicationDisplayName ?? row.exactSourceMedication ?? row.productCode}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>{row.activationState}</div>
                   </button>

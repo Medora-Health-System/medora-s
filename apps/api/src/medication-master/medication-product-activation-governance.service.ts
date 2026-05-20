@@ -41,12 +41,16 @@ import { parsePriorityErSourceTrace } from "./priority-er-inventory-staging-sour
 export type ActivationCandidateDto = {
   productId: string;
   conceptId: string;
+  facilityId: string;
   productCode: string;
   governanceStatus: string;
   productIsActive: boolean;
   conceptIsActive: boolean;
   activationState: MedicationRuntimeActivationState;
   runtime: ProductRuntimeActivationMeta;
+  /** Exact inventory source text when available (never translated). */
+  exactSourceText: string | null;
+  medicationDisplayName: string | null;
   exactSourceMedication: string | null;
   exactSourceDose: string | null;
   exactSourceFormRoute: string | null;
@@ -78,30 +82,39 @@ export class MedicationProductActivationGovernanceService {
       throw new BadRequestException("facilityId est requis.");
     }
 
+    const facilityId = query.facilityId;
+
     const products = await this.prisma.medicationProduct.findMany({
       where: {
-        OR: [
-          { isActive: false },
+        AND: [
           {
-            governanceNotes: { contains: RUNTIME_ACTIVATION_MARKER_START },
+            OR: [
+              { isActive: false },
+              { governanceNotes: { contains: RUNTIME_ACTIVATION_MARKER_START } },
+            ],
+          },
+          {
+            packages: {
+              some: { facilityFormularyItems: { some: { facilityId } } },
+            },
           },
         ],
       },
       include: {
-        concept: { select: { id: true, isActive: true, code: true } },
+        concept: { select: { id: true, isActive: true, code: true, genericName: true, displayName: true } },
         packages: {
           orderBy: [{ isDefaultForProduct: "desc" }, { createdAt: "asc" }],
           take: 3,
           include: {
             facilityFormularyItems: {
-              where: { facilityId: query.facilityId },
+              where: { facilityId },
               take: 1,
             },
           },
         },
       },
       orderBy: { updatedAt: "desc" },
-      take: query.limit ?? 100,
+      take: Math.min(query.limit ?? 100, 200),
     });
 
     const q = query.q?.trim().toLowerCase();
@@ -112,11 +125,14 @@ export class MedicationProductActivationGovernanceService {
 
     let items = await Promise.all(
       products.map((p) =>
-        this.toCandidateDto(p, query.facilityId!, stagingByProduct.get(p.id) ?? null)
+        this.toCandidateDto(p, facilityId, stagingByProduct.get(p.id) ?? null)
       )
     );
 
     items = items.filter((row) => {
+      if (row.duplicateGovernanceStatus === "BLOCKED_DUPLICATE") return false;
+      if (!row.duplicateGovernanceResolved && row.duplicateGovernanceStatus) return false;
+      if (row.governanceStatus === "RETIRED" || row.governanceStatus === "BLOCKED") return false;
       if (row.runtime.orderSearchEnabled && row.productIsActive) return true;
       if (!row.productIsActive) return true;
       if (row.runtime.formularyApprovedInactive) return true;
@@ -604,7 +620,12 @@ export class MedicationProductActivationGovernanceService {
       isActive: boolean;
       governanceNotes: string | null;
       legacyCatalogMedicationId: string | null;
-      concept: { id: string; isActive: boolean };
+      concept: {
+        id: string;
+        isActive: boolean;
+        genericName: string;
+        displayName: string;
+      };
       packages: Array<{
         id: string;
         facilityFormularyItems: Array<{ id: string; isOnFormulary: boolean; facilityId: string }>;
@@ -621,6 +642,14 @@ export class MedicationProductActivationGovernanceService {
       staging?.reconciliationStatus ?? null,
       staging?.reviewFlags ?? []
     );
+
+    const sourceName = staging?.sourceTrace?.sourceNameExact?.trim() || null;
+    const sourceDose = staging?.sourceTrace?.sourceStrengthExact?.trim() || null;
+    const sourceForm = staging?.sourceTrace?.sourceRouteExact?.trim() || null;
+    const exactSourceText =
+      staging?.sourceTrace?.exactSourceText?.trim() ||
+      [sourceName, sourceDose, sourceForm].filter(Boolean).join(" ") ||
+      null;
 
     const approveGate = evaluateApproveFormularyGate({
       governanceStatus: product.governanceStatus,
@@ -639,6 +668,7 @@ export class MedicationProductActivationGovernanceService {
     return {
       productId: product.id,
       conceptId: product.conceptId,
+      facilityId,
       productCode: product.code,
       governanceStatus: product.governanceStatus,
       productIsActive: product.isActive,
@@ -651,9 +681,11 @@ export class MedicationProductActivationGovernanceService {
         runtime,
       }),
       runtime,
-      exactSourceMedication: staging?.sourceTrace?.sourceNameExact ?? null,
-      exactSourceDose: staging?.sourceTrace?.sourceStrengthExact ?? null,
-      exactSourceFormRoute: staging?.sourceTrace?.sourceRouteExact ?? null,
+      exactSourceText,
+      medicationDisplayName: sourceName ?? product.concept.genericName ?? product.concept.displayName,
+      exactSourceMedication: sourceName,
+      exactSourceDose: sourceDose,
+      exactSourceFormRoute: sourceForm,
       duplicateGovernanceStatus: staging?.governance?.governanceDecision ?? null,
       duplicateGovernanceResolved: duplicateGate.allowed,
       formularyOnFormulary: Boolean(formulary?.isOnFormulary),

@@ -5,6 +5,7 @@
 import { apiFetchResponse, parseApiResponse } from "./apiClient";
 import { normalizeUserFacingError } from "./userFacingError";
 
+/** Matches `apiFetchResponse` proxy: `/api/backend` + `/medication-master/governance/*`. */
 const API_BASE = "/medication-master/governance";
 
 export type ActivationRuntimeState =
@@ -19,7 +20,10 @@ export type ActivationRuntimeState =
 export type ActivationCandidateRow = {
   productId: string;
   conceptId: string;
+  facilityId: string;
   productCode: string;
+  exactSourceText: string | null;
+  medicationDisplayName: string | null;
   governanceStatus: string;
   productIsActive: boolean;
   conceptIsActive: boolean;
