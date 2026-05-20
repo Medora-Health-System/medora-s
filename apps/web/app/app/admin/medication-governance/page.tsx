@@ -381,6 +381,12 @@ export default function MedicationGovernancePage() {
         >
           {t("medicationGovernance.openDuplicateQueue")}
         </Link>
+        <Link
+          href="/app/admin/medication-governance/activation"
+          style={{ alignSelf: "center", fontSize: 14 }}
+        >
+          {t("medicationGovernanceActivation.openActivationQueue")}
+        </Link>
       </div>
 
       {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}

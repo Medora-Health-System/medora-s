@@ -22,8 +22,8 @@ const PRODUCT_GOVERNANCE_INCLUDE = {
   administrationProfile: true,
   infusionProfile: true,
   searchAliases: { select: { alias: true } },
+  /** Include inactive packages so Priority ER promoted rows pass 19D readiness before runtime activation. */
   packages: {
-    where: { isActive: true },
     include: {
       billingProfiles: { select: { requiresManualReview: true } },
     },

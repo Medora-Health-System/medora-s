@@ -35,6 +35,7 @@ import { MedicationMasterExplorerService } from "./medication-master-explorer.se
 import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
 import { MedicationStagingDuplicateGovernanceService } from "./medication-staging-duplicate-governance.service";
 import { MedicationProductGovernanceService } from "./medication-product-governance.service";
+import { MedicationProductActivationGovernanceService } from "./medication-product-activation-governance.service";
 import {
   resolveStagingDuplicateBodySchema,
   stagingDuplicateGovernanceActionBodySchema,
@@ -51,6 +52,11 @@ import {
   medicationMasterGovernanceUnmappedQuerySchema,
   medicationMasterGovernanceWarningsQuerySchema,
 } from "./dto/medication-master-governance.dto";
+import {
+  medicationActivationEnableBillingBodySchema,
+  medicationActivationGovernanceActionBodySchema,
+  medicationActivationGovernanceListQuerySchema,
+} from "./dto/medication-product-activation-governance.dto";
 
 function facilityIdFromReq(req: {
   user?: { facilityId?: string };
@@ -72,7 +78,8 @@ export class MedicationMasterController {
     private readonly explorer: MedicationMasterExplorerService,
     private readonly governance: MedicationMasterGovernanceService,
     private readonly stagingDuplicateGovernance: MedicationStagingDuplicateGovernanceService,
-    private readonly productGovernance: MedicationProductGovernanceService
+    private readonly productGovernance: MedicationProductGovernanceService,
+    private readonly activationGovernance: MedicationProductActivationGovernanceService
   ) {}
 
   /** Phase 19C.1 — read-only canonical medication search (no runtime cutover). */
@@ -304,6 +311,113 @@ export class MedicationMasterController {
       { ...parsed.data, facilityId },
       userId,
       { ip, userAgent: ua }
+    );
+  }
+
+  /** Phase 19G — controlled formulary/runtime activation candidates (no bulk). */
+  @Get("governance/activation-candidates")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listActivationCandidates(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationActivationGovernanceListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (!facilityId) {
+      throw new BadRequestException("facilityId est requis.");
+    }
+    this.activationGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    return this.activationGovernance.listActivationCandidates({ ...parsed.data, facilityId });
+  }
+
+  @Post("governance/activation/:productId/approve-formulary")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async approveFormularyActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    return this.runActivationAction(productId, body, req, (uid, data, meta) =>
+      this.activationGovernance.approveFormularyInactive(productId, data, uid, meta)
+    );
+  }
+
+  @Post("governance/activation/:productId/enable-order-search")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async enableOrderSearchActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    return this.runActivationAction(productId, body, req, (uid, data, meta) =>
+      this.activationGovernance.enableOrderSearch(productId, data, uid, meta)
+    );
+  }
+
+  @Post("governance/activation/:productId/enable-mar")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async enableMarActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    return this.runActivationAction(productId, body, req, (uid, data, meta) =>
+      this.activationGovernance.enableMar(productId, data, uid, meta)
+    );
+  }
+
+  @Post("governance/activation/:productId/request-billing-review")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async requestBillingReviewActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    return this.runActivationAction(productId, body, req, (uid, data, meta) =>
+      this.activationGovernance.requestBillingReview(productId, data, uid, meta)
+    );
+  }
+
+  @Post("governance/activation/:productId/enable-billing")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async enableBillingActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+    const parsed = medicationActivationEnableBillingBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    this.activationGovernance.assertFacilityScope(parsed.data.facilityId, callerFacilityId);
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    return this.activationGovernance.enableBilling(productId, parsed.data, userId, {
+      ip,
+      userAgent: ua,
+    });
+  }
+
+  @Post("governance/activation/:productId/disable-runtime")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async disableRuntimeActivation(
+    @Param("productId") productId: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    return this.runActivationAction(productId, body, req, (uid, data, meta) =>
+      this.activationGovernance.disableRuntime(productId, data, uid, meta)
     );
   }
 
@@ -627,5 +741,30 @@ export class MedicationMasterController {
       ip,
       userAgent: ua,
     });
+  }
+
+  private async runActivationAction(
+    productId: string,
+    body: unknown,
+    req: Request & { user?: { userId?: string; facilityId?: string } },
+    handler: (
+      userId: string,
+      data: import("./dto/medication-product-activation-governance.dto").MedicationActivationGovernanceActionBody,
+      meta: { ip?: string; userAgent?: string }
+    ) => Promise<unknown>
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+    const parsed = medicationActivationGovernanceActionBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    this.activationGovernance.assertFacilityScope(parsed.data.facilityId, callerFacilityId);
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    return handler(userId, parsed.data, { ip, userAgent: ua });
   }
 }
