@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type { CatalogMedication } from "@prisma/client";
 import { CatalogCanonicalReadService } from "../medication-master/catalog-canonical-read.service";
+import { MedicationProductActivationGovernanceService } from "../medication-master/medication-product-activation-governance.service";
 import { PrismaService } from "../prisma/prisma.service";
 import type { CatalogSearchItemDto } from "../order-catalog/dto/catalog-search-item.dto";
 import {
@@ -31,7 +32,8 @@ function medicationToRankable(m: CatalogMedication): CatalogRankableRow {
 export class MedicationCatalogService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly canonicalRead: CatalogCanonicalReadService
+    private readonly canonicalRead: CatalogCanonicalReadService,
+    private readonly activationGovernance: MedicationProductActivationGovernanceService
   ) {}
 
   /**
@@ -109,7 +111,13 @@ export class MedicationCatalogService {
       )
     );
 
-    const sliced = scored.slice(0, limit).map((s) => s.row);
+    let sliced = scored.slice(0, limit).map((s) => s.row);
+    const eligibleCatalogIds = await this.activationGovernance.filterProviderSearchCatalogIds(
+      facilityId,
+      sliced.map((m) => m.id)
+    );
+    sliced = sliced.filter((m) => eligibleCatalogIds.has(m.id));
+
     const favoriteIds = query.favoritesFirst
       ? await this.getFavoriteCatalogIds(facilityId, sliced.map((m) => m.id))
       : new Set<string>();
