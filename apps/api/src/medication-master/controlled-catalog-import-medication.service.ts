@@ -48,15 +48,44 @@ export type ControlledCatalogMedicationDryRunResult = {
   rows: ControlledCatalogMedicationRowResult[];
 };
 
+export type ControlledCatalogOrderSearchBlocked = {
+  rowKey: string;
+  rowNumber: number;
+  medication: string;
+  productId: string;
+  reason: string;
+  blockers?: string[];
+};
+
 export type ControlledCatalogMedicationCommitResult = {
   dryRun: false;
   fingerprint: string;
   committed: number;
   skipped: number;
   orderSearchEnabled: number;
+  orderSearchBlocked: ControlledCatalogOrderSearchBlocked[];
   productIds: string[];
   counts: Record<ControlledCatalogMedicationClassification, number>;
 };
+
+function extractHttpErrorDetail(error: unknown): { message: string; blockers?: string[] } {
+  if (error instanceof BadRequestException) {
+    const res = error.getResponse();
+    if (typeof res === "object" && res !== null) {
+      const o = res as Record<string, unknown>;
+      const msg = typeof o.message === "string" ? o.message : "Requête invalide.";
+      const blockers = Array.isArray(o.blockers)
+        ? (o.blockers as string[])
+        : Array.isArray(o.blockingReasons)
+          ? (o.blockingReasons as string[])
+          : undefined;
+      return { message: msg, blockers };
+    }
+    if (typeof res === "string") return { message: res };
+  }
+  if (error instanceof Error && error.message) return { message: error.message };
+  return { message: "Erreur inconnue lors de l'activation." };
+}
 
 function mapRouteCode(formExact: string): string {
   const upper = formExact.trim().toUpperCase();
@@ -126,21 +155,41 @@ export class ControlledCatalogImportMedicationService {
     const safeRows = classified.filter((r) => r.classification === "SAFE_LOW_RISK");
 
     const productIds: string[] = [];
+    const createdRows: Array<{ row: ControlledCatalogMedicationRowResult; productId: string }> = [];
     let orderSearchEnabled = 0;
+    const orderSearchBlocked: ControlledCatalogOrderSearchBlocked[] = [];
 
+    // Phase A — catalog only (inactive); never roll back on order-search failures.
     for (const row of safeRows) {
       const created = await this.createInactiveMedicationRow(row, body.facilityId);
       productIds.push(created.productId);
+      createdRows.push({ row, productId: created.productId });
+    }
 
-      if (body.enableProviderOrderSearch) {
-        await this.enableProviderOrderSearchForProduct(
-          created.productId,
-          body.facilityId,
-          userId,
-          body.note!.trim(),
-          auditMeta
-        );
-        orderSearchEnabled += 1;
+    // Phase B — optional provider order search (separate per row).
+    if (body.enableProviderOrderSearch) {
+      const note = body.note!.trim();
+      for (const { row, productId } of createdRows) {
+        try {
+          await this.enableProviderOrderSearchForProduct(
+            productId,
+            body.facilityId,
+            userId,
+            note,
+            auditMeta
+          );
+          orderSearchEnabled += 1;
+        } catch (e) {
+          const detail = extractHttpErrorDetail(e);
+          orderSearchBlocked.push({
+            rowKey: row.rowKey,
+            rowNumber: row.rowNumber,
+            medication: row.medication,
+            productId,
+            reason: detail.message,
+            blockers: detail.blockers,
+          });
+        }
       }
     }
 
@@ -156,6 +205,7 @@ export class ControlledCatalogImportMedicationService {
         committed: safeRows.length,
         skipped: classified.length - safeRows.length,
         orderSearchEnabled,
+        orderSearchBlockedCount: orderSearchBlocked.length,
         enableProviderOrderSearch: body.enableProviderOrderSearch,
         counts,
       },
@@ -167,6 +217,7 @@ export class ControlledCatalogImportMedicationService {
       committed: safeRows.length,
       skipped: classified.length - safeRows.length,
       orderSearchEnabled,
+      orderSearchBlocked,
       productIds,
       counts,
     };
@@ -403,17 +454,22 @@ export class ControlledCatalogImportMedicationService {
       auditMeta
     );
 
-    await this.activationGovernance.approveFormularyInactive(
-      productId,
-      {
-        facilityId,
-        note,
-        confirmExactSourcePreserved: true,
-        confirmDuplicateGovernanceResolved: true,
+    // Controlled import has no Priority ER staging row — approveFormularyInactive requires
+    // staging sourceTrace (hasExactSourceFields). Set formulary-approved-inactive runtime directly.
+    const existing = await this.prisma.medicationProduct.findUnique({
+      where: { id: productId },
+      select: { governanceNotes: true },
+    });
+    const formularyApprovedAt = new Date().toISOString();
+    await this.prisma.medicationProduct.update({
+      where: { id: productId },
+      data: {
+        governanceNotes: mergeProductRuntimeActivation(existing?.governanceNotes, {
+          formularyApprovedInactive: true,
+          formularyApprovedAt,
+        }),
       },
-      userId,
-      auditMeta
-    );
+    });
 
     await this.activationGovernance.enableOrderSearch(
       productId,

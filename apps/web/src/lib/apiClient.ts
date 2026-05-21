@@ -65,6 +65,37 @@ export async function parseApiResponse(response: Response): Promise<unknown> {
   return trimmed;
 }
 
+/** Extracts a user-visible message from Nest/Express JSON error bodies. */
+export function formatApiErrorJson(json: {
+  message?: unknown;
+  error?: string;
+  code?: string;
+  blockers?: string[];
+  blockingReasons?: string[];
+}): string {
+  let message = "";
+  const m = json.message;
+  if (typeof m === "string") {
+    message =
+      typeof json.code === "string" && json.code ? `${m} (${json.code})` : m;
+  } else if (Array.isArray(m)) {
+    message = m.filter((x): x is string => typeof x === "string" && Boolean(x)).join(" ");
+  } else if (typeof m === "object" && m !== null) {
+    const o = m as Record<string, unknown>;
+    if (typeof o.message === "string") message = o.message;
+    else message = JSON.stringify(o);
+  } else if (typeof json.error === "string") {
+    message = json.error;
+  }
+  const blockers = json.blockers ?? json.blockingReasons;
+  if (Array.isArray(blockers) && blockers.length > 0) {
+    const joined = blockers.join(", ");
+    message = message ? `${message}: ${joined}` : joined;
+  }
+  if (!message && typeof json.code === "string") message = json.code;
+  return message;
+}
+
 /** Objet JSON attendu (GET) : exclut null, tableaux, et enveloppe hors-ligne `queued`. */
 export function asApiObject<T extends object = Record<string, unknown>>(data: unknown): T | null {
   if (data === null || typeof data !== "object" || Array.isArray(data)) return null;
@@ -180,19 +211,9 @@ export async function apiFetchResponse(
     let message = `Request failed (${response.status}).`;
     try {
       if (txt.trim()) {
-        const json = JSON.parse(txt) as {
-          message?: string | string[];
-          error?: string;
-          code?: string;
-          statusCode?: number;
-        };
-        if (typeof json?.message === "string") {
-          message =
-            typeof json.code === "string" && json.code
-              ? `${json.message} (${json.code})`
-              : json.message;
-        } else if (Array.isArray(json?.message)) message = json.message.filter(Boolean).join(" ");
-        else if (typeof json?.error === "string") message = json.error;
+        const json = JSON.parse(txt) as Parameters<typeof formatApiErrorJson>[0];
+        const extracted = formatApiErrorJson(json);
+        if (extracted) message = extracted;
       }
     } catch {
       if (txt?.trim()) {
@@ -202,11 +223,8 @@ export async function apiFetchResponse(
         message = `${response.status} ${response.statusText}`;
       }
     }
-    throw new Error(
-      normalizeUserFacingError(message.trim() || `Request failed (${response.status}).`, loc) ||
-        message.trim() ||
-        `Request failed (${response.status}).`
-    );
+    const raw = message.trim() || `Request failed (${response.status}).`;
+    throw new Error(normalizeUserFacingError(raw, loc) || raw);
   }
 
   return response;
@@ -317,14 +335,9 @@ export async function apiFetch(
     let message = `Request failed (${response.status}).`;
     try {
       if (txt.trim()) {
-        const json = JSON.parse(txt) as {
-          message?: string | string[];
-          error?: string;
-          statusCode?: number;
-        };
-        if (typeof json?.message === "string") message = json.message;
-        else if (Array.isArray(json?.message)) message = json.message.filter(Boolean).join(" ");
-        else if (typeof json?.error === "string") message = json.error;
+        const json = JSON.parse(txt) as Parameters<typeof formatApiErrorJson>[0];
+        const extracted = formatApiErrorJson(json);
+        if (extracted) message = extracted;
       }
     } catch {
       if (txt?.trim()) {
@@ -334,11 +347,8 @@ export async function apiFetch(
         message = `${response.status} ${response.statusText}`;
       }
     }
-    throw new Error(
-      normalizeUserFacingError(message.trim() || `Request failed (${response.status}).`, loc) ||
-        message.trim() ||
-        `Request failed (${response.status}).`
-    );
+    const raw = message.trim() || `Request failed (${response.status}).`;
+    throw new Error(normalizeUserFacingError(raw, loc) || raw);
   }
 
   if (queueType && method !== "GET") {

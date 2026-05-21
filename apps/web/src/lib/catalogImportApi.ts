@@ -23,11 +23,21 @@ export type MedicationDryRunResult = {
   rows: MedicationImportRow[];
 };
 
+export type MedicationOrderSearchBlocked = {
+  rowKey: string;
+  rowNumber: number;
+  medication: string;
+  productId: string;
+  reason: string;
+  blockers?: string[];
+};
+
 export type MedicationCommitResult = {
   dryRun: false;
   committed: number;
   skipped: number;
   orderSearchEnabled: number;
+  orderSearchBlocked?: MedicationOrderSearchBlocked[];
   counts: Record<string, number>;
 };
 

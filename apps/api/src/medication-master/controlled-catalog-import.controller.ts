@@ -100,18 +100,19 @@ export class ControlledCatalogImportController {
         }
       | undefined,
     @Body() body: Record<string, unknown>,
-    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string }; body?: Record<string, unknown> }
   ) {
     const userId = req.user?.userId;
     if (!userId) throw new UnauthorizedException();
 
+    const formBody = { ...(req.body ?? {}), ...body };
     const parsed = controlledCatalogMedicationCommitBodySchema.safeParse({
-      facilityId: pickFormField(body, "facilityId"),
-      enableProviderOrderSearch: pickFormField(body, "enableProviderOrderSearch") === "true",
-      confirmOrderSearchEnablement: pickFormField(body, "confirmOrderSearchEnablement") === "true",
-      confirmMarRemainsOff: pickFormField(body, "confirmMarRemainsOff") === "true",
-      confirmBillingRemainsOff: pickFormField(body, "confirmBillingRemainsOff") === "true",
-      note: pickFormField(body, "note") ?? "",
+      facilityId: pickFormField(formBody, "facilityId"),
+      enableProviderOrderSearch: pickFormField(formBody, "enableProviderOrderSearch") === "true",
+      confirmOrderSearchEnablement: pickFormField(formBody, "confirmOrderSearchEnablement") === "true",
+      confirmMarRemainsOff: pickFormField(formBody, "confirmMarRemainsOff") === "true",
+      confirmBillingRemainsOff: pickFormField(formBody, "confirmBillingRemainsOff") === "true",
+      note: pickFormField(formBody, "note") ?? "",
     });
     if (!parsed.success) {
       throw new BadRequestException({

@@ -2698,8 +2698,13 @@ export default {
     noteLabel: "Note de gouvernance (obligatoire si prescription activée)",
     orderSearchHint:
       "Recherche prescription uniquement — n’active pas le MAR ni la facturation.",
+    billingDisclaimer:
+      "Ceci n’active pas la facturation. Les médicaments commandés nécessiteront un mappage facturation/charges distinct avant toute facturation automatique.",
     commitSuccess: "Import terminé : {committed} ligne(s) validée(s), {skipped} ignorée(s).",
     commitOrderSearch: "{count} médicament(s) disponible(s) en recherche prescription.",
+    commitOrderSearchBlocked:
+      "Import catalogue réussi, mais l’activation de la recherche prescription a été bloquée pour {count} ligne(s).",
+    commitOrderSearchBlockedRow: "Ligne {row} ({medication}) : {reason}",
     errorDryRun: "Échec de la simulation.",
     errorCommit: "Échec de la validation.",
     errorConfirmOrderSearch: "Cochez les trois confirmations pour activer la recherche de prescription.",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatApiErrorJson } from "./apiClient";
 import { catalogImportErrorMessage } from "./catalogImportApi";
 
 describe("catalogImportErrorMessage", () => {
@@ -16,5 +17,15 @@ describe("catalogImportErrorMessage", () => {
       "fr"
     );
     expect(msg).toContain("Confirmation requise");
+  });
+
+  it("surfaces backend blockers appended to the error message", () => {
+    const raw = formatApiErrorJson({
+      message: "Activation bloquée.",
+      blockers: ["MISSING_EXACT_NAME_DOSE_FORM"],
+    });
+    const msg = catalogImportErrorMessage(new Error(raw), "fr");
+    expect(msg).toContain("MISSING_EXACT_NAME_DOSE_FORM");
+    expect(msg).not.toBe("Une erreur est survenue.");
   });
 });

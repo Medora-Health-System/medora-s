@@ -2719,8 +2719,13 @@ export default {
     confirmBillingOff: "I confirm billing remains off (separate activation).",
     noteLabel: "Governance note (required when order search enabled)",
     orderSearchHint: "Provider order search only — does not enable MAR or billing.",
+    billingDisclaimer:
+      "This does not enable billing. Ordered medications will require separate billing/charge mapping before automatic billing.",
     commitSuccess: "Import complete: {committed} row(s) committed, {skipped} skipped.",
     commitOrderSearch: "{count} medication(s) enabled for provider order search.",
+    commitOrderSearchBlocked:
+      "Catalog import succeeded, but provider order search activation was blocked for {count} row(s).",
+    commitOrderSearchBlockedRow: "Row {row} ({medication}): {reason}",
     errorDryRun: "Dry-run failed.",
     errorCommit: "Commit failed.",
     errorConfirmOrderSearch: "Check all three confirmations to enable provider order search.",

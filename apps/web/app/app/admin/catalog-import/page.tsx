@@ -126,14 +126,33 @@ export default function CatalogImportPage() {
           confirmBillingRemainsOff: confirmBillingOff,
           note,
         });
-        setSuccess(
-          t("catalogImport.commitSuccess")
-            .replace("{committed}", String(out.committed))
-            .replace("{skipped}", String(out.skipped)) +
-            (out.orderSearchEnabled > 0
-              ? ` ${t("catalogImport.commitOrderSearch").replace("{count}", String(out.orderSearchEnabled))}`
-              : "")
-        );
+        let successMsg = t("catalogImport.commitSuccess")
+          .replace("{committed}", String(out.committed))
+          .replace("{skipped}", String(out.skipped));
+        if (out.orderSearchEnabled > 0) {
+          successMsg += ` ${t("catalogImport.commitOrderSearch").replace("{count}", String(out.orderSearchEnabled))}`;
+        }
+        const blocked = out.orderSearchBlocked ?? [];
+        setSuccess(successMsg);
+        if (blocked.length > 0) {
+          const header = t("catalogImport.commitOrderSearchBlocked").replace(
+            "{count}",
+            String(blocked.length)
+          );
+          const rowLines = blocked
+            .slice(0, 8)
+            .map((b) =>
+              t("catalogImport.commitOrderSearchBlockedRow")
+                .replace("{row}", String(b.rowNumber))
+                .replace("{medication}", b.medication)
+                .replace(
+                  "{reason}",
+                  b.reason + (b.blockers?.length ? ` (${b.blockers.join(", ")})` : "")
+                )
+            )
+            .join(" ");
+          setError(`${header} ${rowLines}`);
+        }
       } else {
         const out = await commitProcedureCatalog(file, { facilityId, note });
         setSuccess(
@@ -290,6 +309,7 @@ export default function CatalogImportPage() {
             {enableOrderSearch && (
               <>
                 <p style={{ fontSize: 13, color: "#64748b" }}>{t("catalogImport.orderSearchHint")}</p>
+                <p style={{ fontSize: 13, color: "#64748b" }}>{t("catalogImport.billingDisclaimer")}</p>
                 <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input
                     type="checkbox"
