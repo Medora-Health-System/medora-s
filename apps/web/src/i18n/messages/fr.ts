@@ -2702,6 +2702,13 @@ export default {
     commitOrderSearch: "{count} médicament(s) disponible(s) en recherche prescription.",
     errorDryRun: "Échec de la simulation.",
     errorCommit: "Échec de la validation.",
+    errorConfirmOrderSearch: "Cochez les trois confirmations pour activer la recherche de prescription.",
+    errorNoteRequired: "Une note de gouvernance est requise pour activer la recherche de prescription.",
+    errors: {
+      INVALID_COMMIT_PARAMS: "Paramètres de validation invalides. Vérifiez l'établissement et le fichier.",
+      MISSING_FILE: "Fichier requis (.csv ou .xlsx).",
+      MISSING_REQUIRED_COLUMNS: "Colonnes obligatoires manquantes dans le fichier.",
+    },
     classification: {
       SAFE_LOW_RISK: "Faible risque",
       HIGH_RISK_MANUAL_REVIEW: "Risque élevé — revue manuelle",

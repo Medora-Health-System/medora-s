@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import {
+  catalogImportErrorMessage,
   commitMedicationCatalog,
   commitProcedureCatalog,
   dryRunMedicationCatalog,
@@ -79,28 +80,38 @@ export default function CatalogImportPage() {
     setSuccess(null);
     try {
       if (tab === "medications") {
-        setMedDryRun(await dryRunMedicationCatalog(file));
+        setMedDryRun(await dryRunMedicationCatalog(file, facilityId || undefined));
         setProcDryRun(null);
       } else {
-        setProcDryRun(await dryRunProcedureCatalog(file));
+        setProcDryRun(await dryRunProcedureCatalog(file, facilityId || undefined));
         setMedDryRun(null);
       }
     } catch (e: unknown) {
       setError(
-        stagingImportErrorMessage(e, language) ||
-          normalizeUserFacingError(e instanceof Error ? e.message : "", language) ||
+        catalogImportErrorMessage(e, language) ||
+          stagingImportErrorMessage(e, language) ||
           t("catalogImport.errorDryRun")
       );
     } finally {
       setBusy(false);
     }
-  }, [file, tab, language, t]);
+  }, [file, tab, language, t, facilityId]);
 
   const runCommit = useCallback(async () => {
     if (!file || !facilityId) return;
     if (!activeDryRun) {
       setError(t("catalogImport.dryRunRequired"));
       return;
+    }
+    if (tab === "medications" && enableOrderSearch) {
+      if (!confirmOrderSearch || !confirmMarOff || !confirmBillingOff) {
+        setError(t("catalogImport.errorConfirmOrderSearch"));
+        return;
+      }
+      if (!note.trim()) {
+        setError(t("catalogImport.errorNoteRequired"));
+        return;
+      }
     }
     setBusy(true);
     setError(null);
@@ -133,8 +144,8 @@ export default function CatalogImportPage() {
       }
     } catch (e: unknown) {
       setError(
-        stagingImportErrorMessage(e, language) ||
-          normalizeUserFacingError(e instanceof Error ? e.message : "", language) ||
+        catalogImportErrorMessage(e, language) ||
+          stagingImportErrorMessage(e, language) ||
           t("catalogImport.errorCommit")
       );
     } finally {

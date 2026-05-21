@@ -1,8 +1,8 @@
 import {
   BadRequestException,
+  Body,
   Controller,
   Post,
-  Query,
   Req,
   UnauthorizedException,
   UploadedFile,
@@ -27,6 +27,32 @@ const FACILITY_OR_PLATFORM_ADMIN_ROLES = [
   RoleCode.ADMIN,
   RoleCode.MEDORA_SUPER_ADMIN,
 ] as const;
+
+function facilityIdFromReq(req: {
+  user?: { facilityId?: string };
+  headers: Record<string, string | string[] | undefined>;
+}): string | undefined {
+  const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+  return typeof facilityId === "string" ? facilityId : Array.isArray(facilityId) ? facilityId[0] : undefined;
+}
+
+function pickFormField(body: Record<string, unknown>, key: string): string | undefined {
+  const v = body[key];
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  return undefined;
+}
+
+function formatZodCommitError(issues: { path: (string | number)[]; message: string }[]): string {
+  const first = issues[0];
+  if (!first) return "Requête invalide.";
+  const path = first.path.join(".");
+  if (path === "facilityId") {
+    return "Identifiant d'établissement invalide (UUID requis).";
+  }
+  if (path === "note") return "La note de gouvernance dépasse la longueur maximale.";
+  return first.message;
+}
 
 @Controller("medication-master/controlled-catalog")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -73,34 +99,38 @@ export class ControlledCatalogImportController {
           originalname?: string;
         }
       | undefined,
-    @Query() query: Record<string, string | undefined>,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
   ) {
     const userId = req.user?.userId;
     if (!userId) throw new UnauthorizedException();
 
     const parsed = controlledCatalogMedicationCommitBodySchema.safeParse({
-      facilityId: query.facilityId,
-      enableProviderOrderSearch: query.enableProviderOrderSearch === "true",
-      confirmOrderSearchEnablement: query.confirmOrderSearchEnablement === "true",
-      confirmMarRemainsOff: query.confirmMarRemainsOff === "true",
-      confirmBillingRemainsOff: query.confirmBillingRemainsOff === "true",
-      note: query.note ?? "",
+      facilityId: pickFormField(body, "facilityId"),
+      enableProviderOrderSearch: pickFormField(body, "enableProviderOrderSearch") === "true",
+      confirmOrderSearchEnablement: pickFormField(body, "confirmOrderSearchEnablement") === "true",
+      confirmMarRemainsOff: pickFormField(body, "confirmMarRemainsOff") === "true",
+      confirmBillingRemainsOff: pickFormField(body, "confirmBillingRemainsOff") === "true",
+      note: pickFormField(body, "note") ?? "",
     });
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.");
+      throw new BadRequestException({
+        code: "INVALID_COMMIT_PARAMS",
+        message: formatZodCommitError(parsed.error.issues),
+      });
     }
 
     const buffer = this.requireUpload(file);
     const ip = typeof req.ip === "string" ? req.ip : undefined;
     const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    const callerFacilityId = facilityIdFromReq(req);
 
     return this.medicationImport.commit(
       buffer,
       file!.originalname ?? "upload",
       parsed.data,
       userId,
-      req.user?.facilityId,
+      callerFacilityId,
       { ip, userAgent: ua }
     );
   }
@@ -142,30 +172,34 @@ export class ControlledCatalogImportController {
           originalname?: string;
         }
       | undefined,
-    @Query() query: Record<string, string | undefined>,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
   ) {
     const userId = req.user?.userId;
     if (!userId) throw new UnauthorizedException();
 
     const parsed = controlledCatalogProcedureCommitBodySchema.safeParse({
-      facilityId: query.facilityId,
-      note: query.note ?? "",
+      facilityId: pickFormField(body, "facilityId"),
+      note: pickFormField(body, "note") ?? "",
     });
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.");
+      throw new BadRequestException({
+        code: "INVALID_COMMIT_PARAMS",
+        message: formatZodCommitError(parsed.error.issues),
+      });
     }
 
     const buffer = this.requireUpload(file);
     const ip = typeof req.ip === "string" ? req.ip : undefined;
     const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+    const callerFacilityId = facilityIdFromReq(req);
 
     return this.procedureImport.commit(
       buffer,
       file!.originalname ?? "upload",
       parsed.data,
       userId,
-      req.user?.facilityId,
+      callerFacilityId,
       { ip, userAgent: ua }
     );
   }

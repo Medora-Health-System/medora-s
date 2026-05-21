@@ -2723,6 +2723,13 @@ export default {
     commitOrderSearch: "{count} medication(s) enabled for provider order search.",
     errorDryRun: "Dry-run failed.",
     errorCommit: "Commit failed.",
+    errorConfirmOrderSearch: "Check all three confirmations to enable provider order search.",
+    errorNoteRequired: "A governance note is required to enable provider order search.",
+    errors: {
+      INVALID_COMMIT_PARAMS: "Invalid commit parameters. Check facility and file.",
+      MISSING_FILE: "File required (.csv or .xlsx).",
+      MISSING_REQUIRED_COLUMNS: "Required columns missing in file.",
+    },
     classification: {
       SAFE_LOW_RISK: "Low risk",
       HIGH_RISK_MANUAL_REVIEW: "High risk — manual review",
