@@ -2849,6 +2849,40 @@ export default {
     billingUnitPlaceholder: "Unité de facturation revue",
     billingRolePlaceholder: "Rôle validateur (ex. PHARMACY)",
     openActivationQueue: "File d’activation contrôlée →",
+    governanceReviewRequired:
+      "Revue de gouvernance requise avant l’activation au formulaire.",
+    governanceReviewRequiredBanner:
+      "Revue de gouvernance requise avant l’activation au formulaire. Validez d’abord l’approbation gouvernance du produit avant d’activer le formulaire, la recherche, le MAR ou la facturation.",
+    governanceApproveHint:
+      "Validez d’abord l’activation sur le tableau de bord gouvernance.",
+    actionErrorTitle: "Étape d’activation refusée",
+    blocker: {
+      GOVERNANCE_REVIEW_REQUIRED:
+        "Revue de gouvernance requise avant l’activation au formulaire.",
+      GOVERNANCE_BLOCKED: "Gouvernance produit bloquée.",
+      GOVERNANCE_RETIRED: "Gouvernance produit retirée.",
+      DUPLICATE_GOVERNANCE_UNRESOLVED: "Gouvernance doublons non résolue.",
+      DUPLICATE_GOVERNANCE_BLOCKED: "Gouvernance doublons bloquée.",
+      CONFIRM_EXACT_SOURCE_REQUIRED: "Confirmez la préservation de la source exacte.",
+      CONFIRM_DUPLICATE_RESOLVED_REQUIRED: "Confirmez la résolution des doublons.",
+      NOTE_REQUIRED: "Une note pharmacie ou admin est obligatoire.",
+      FORMULARY_NOT_APPROVED: "Approbation formulaire requise en premier.",
+      ORDER_SEARCH_NOT_ENABLED: "La recherche prescripteur doit être activée avant cette étape.",
+      FACILITY_FORMULARY_MISSING: "Entrée formulaire d’établissement manquante.",
+      MISSING_EXACT_NAME_DOSE_FORM:
+        "Médicament, dose et forme/voie exacts obligatoires.",
+      NDC_REVIEW_REQUIRED: "Revue NDC requise avant cette étape.",
+      BILLING_REVIEW_REQUIRED: "Revue facturation requise avant activation facturation.",
+      BILLING_CODE_REQUIRED: "Code de facturation revu obligatoire.",
+      BILLING_UNIT_REQUIRED: "Unité de facturation revue obligatoire.",
+      BILLING_ROLE_REQUIRED: "Rôle validateur obligatoire.",
+      PRODUCT_INACTIVE: "Le produit doit rester inactif pour cette étape.",
+      CONCEPT_INACTIVE: "Le concept médicament doit rester inactif pour cette étape.",
+      ADMINISTRATION_ROUTE_UNSAFE: "Voie d’administration non sécurisée pour le MAR.",
+      ALREADY_ORDER_SEARCH_ENABLED: "Recherche prescripteur déjà activée.",
+      ALREADY_MAR_ENABLED: "MAR déjà activé.",
+      ALREADY_BILLING_ENABLED: "Facturation déjà activée.",
+    },
   },
   goLiveReadiness: {
     title: "Préparation mise en service",

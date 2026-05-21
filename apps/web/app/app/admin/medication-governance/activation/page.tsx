@@ -12,10 +12,14 @@ import {
   enableMarActivation,
   enableOrderSearchActivation,
   fetchActivationCandidates,
+  formatActivationGovernanceError,
   requestBillingReviewActivation,
   type ActivationCandidateRow,
 } from "@/lib/medicationActivationGovernanceApi";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import {
+  formatActivationBlockerMessage,
+  getActivationCandidateUiState,
+} from "@/lib/medicationActivationGovernanceUi.util";
 
 function cardStyle(): CSSProperties {
   return {
@@ -46,7 +50,7 @@ function StatusBadge({ label, on }: { label: string; on: boolean }) {
 }
 
 export default function MedicationGovernanceActivationPage() {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const { ready, roles, facilityId } = useFacilityAndRoles();
   const isAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
 
@@ -55,7 +59,8 @@ export default function MedicationGovernanceActivationPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [acting, setActing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [note, setNote] = useState("");
   const [confirmExact, setConfirmExact] = useState(false);
@@ -69,10 +74,15 @@ export default function MedicationGovernanceActivationPage() {
     [items, selectedId]
   );
 
+  const selectedUi = useMemo(
+    () => (selected ? getActivationCandidateUiState(selected, t) : null),
+    [selected, t]
+  );
+
   const loadQueue = useCallback(async () => {
     if (!isAdmin || !facilityId) return;
     setLoading(true);
-    setError(null);
+    setLoadError(null);
     try {
       const res = await fetchActivationCandidates(facilityId, {
         q: searchQ.trim() || undefined,
@@ -84,14 +94,14 @@ export default function MedicationGovernanceActivationPage() {
         setSelectedId(rows[0]?.productId ?? null);
       }
     } catch (err) {
-      setError(
-        normalizeUserFacingError((err as Error)?.message, language) ||
-          t("medicationGovernanceActivation.errorLoad")
+      setItems([]);
+      setLoadError(
+        formatActivationGovernanceError(err, t) || t("medicationGovernanceActivation.errorLoad")
       );
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, facilityId, searchQ, language, t, selectedId]);
+  }, [isAdmin, facilityId, searchQ, t, selectedId]);
 
   useEffect(() => {
     void loadQueue();
@@ -100,11 +110,11 @@ export default function MedicationGovernanceActivationPage() {
   const runAction = async (fn: () => Promise<unknown>) => {
     if (!selected || !facilityId) return;
     if (!note.trim() || !confirmExact || !confirmDuplicate) {
-      setError(t("medicationGovernanceActivation.errorConfirmations"));
+      setActionError(t("medicationGovernanceActivation.errorConfirmations"));
       return;
     }
     setActing(true);
-    setError(null);
+    setActionError(null);
     try {
       await fn();
       setConfirmExact(false);
@@ -112,10 +122,7 @@ export default function MedicationGovernanceActivationPage() {
       setNote("");
       await loadQueue();
     } catch (err) {
-      setError(
-        normalizeUserFacingError((err as Error)?.message, language) ||
-          t("medicationGovernanceActivation.errorAction")
-      );
+      setActionError(formatActivationGovernanceError(err, t));
     } finally {
       setActing(false);
     }
@@ -127,6 +134,8 @@ export default function MedicationGovernanceActivationPage() {
     confirmExactSourcePreserved: true as const,
     confirmDuplicateGovernanceResolved: true as const,
   });
+
+  const forwardDisabled = acting || (selectedUi?.forwardStepsDisabled ?? true);
 
   if (!ready) return null;
 
@@ -170,9 +179,9 @@ export default function MedicationGovernanceActivationPage() {
         <strong>{t("medicationGovernanceActivation.safetyBanner")}</strong>
       </div>
 
-      {error ? (
+      {loadError && items.length === 0 ? (
         <p style={{ color: "#b91c1c", fontSize: 14 }} role="alert">
-          {error}
+          {loadError}
         </p>
       ) : null}
 
@@ -202,7 +211,10 @@ export default function MedicationGovernanceActivationPage() {
                 <li key={row.productId}>
                   <button
                     type="button"
-                    onClick={() => setSelectedId(row.productId)}
+                    onClick={() => {
+                      setSelectedId(row.productId);
+                      setActionError(null);
+                    }}
                     style={{
                       width: "100%",
                       textAlign: "left",
@@ -226,11 +238,57 @@ export default function MedicationGovernanceActivationPage() {
           )}
         </section>
 
-        {selected ? (
+        {selected && selectedUi ? (
           <section style={cardStyle()}>
             <h2 style={{ margin: "0 0 8px 0", fontSize: 15 }}>
               {t("medicationGovernanceActivation.detailTitle")}
             </h2>
+
+            {!selectedUi.governanceActivationApproved ? (
+              <div
+                role="status"
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "#fffbeb",
+                  border: "1px solid #fcd34d",
+                  fontSize: 13,
+                  color: "#92400e",
+                }}
+              >
+                <strong>
+                  {selectedUi.governanceReviewRequired
+                    ? t("medicationGovernanceActivation.governanceReviewRequired")
+                    : t("medicationGovernanceActivation.governanceReviewRequiredBanner")}
+                </strong>
+                <p style={{ margin: "8px 0 0 0" }}>
+                  {t("medicationGovernanceActivation.governanceApproveHint")}{" "}
+                  <Link href="/app/admin/medication-governance">
+                    {t("medicationGovernanceActivation.backGovernance")}
+                  </Link>
+                </p>
+              </div>
+            ) : null}
+
+            {actionError ? (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  fontSize: 13,
+                  color: "#b91c1c",
+                }}
+              >
+                <strong>{t("medicationGovernanceActivation.actionErrorTitle")}</strong>
+                <p style={{ margin: "6px 0 0 0" }}>{actionError}</p>
+              </div>
+            ) : null}
+
             <p style={{ margin: "4px 0", fontSize: 13 }}>
               <strong>{t("medicationGovernanceActivation.colProduct")}:</strong> {selected.productCode}
             </p>
@@ -270,10 +328,14 @@ export default function MedicationGovernanceActivationPage() {
               />
             </div>
 
-            {selected.blockerReasons.length > 0 ? (
+            {selectedUi.blockerMessages.length > 0 ? (
               <div style={{ marginBottom: 12, fontSize: 12, color: "#92400e" }}>
-                <strong>{t("medicationGovernanceActivation.blockers")}:</strong>{" "}
-                {selected.blockerReasons.join(", ")}
+                <strong>{t("medicationGovernanceActivation.blockers")}:</strong>
+                <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                  {selectedUi.blockerMessages.map((msg) => (
+                    <li key={msg}>{msg}</li>
+                  ))}
+                </ul>
               </div>
             ) : null}
 
@@ -285,10 +347,16 @@ export default function MedicationGovernanceActivationPage() {
                 rows={3}
                 style={{ display: "block", width: "100%", marginTop: 4, padding: 8, borderRadius: 8 }}
                 placeholder={t("medicationGovernanceActivation.notePlaceholder")}
+                disabled={forwardDisabled}
               />
             </label>
             <label style={{ display: "flex", gap: 8, fontSize: 13, marginBottom: 6 }}>
-              <input type="checkbox" checked={confirmExact} onChange={(e) => setConfirmExact(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={confirmExact}
+                onChange={(e) => setConfirmExact(e.target.checked)}
+                disabled={forwardDisabled}
+              />
               {t("medicationGovernanceActivation.confirmExactSource")}
             </label>
             <label style={{ display: "flex", gap: 8, fontSize: 13, marginBottom: 12 }}>
@@ -296,6 +364,7 @@ export default function MedicationGovernanceActivationPage() {
                 type="checkbox"
                 checked={confirmDuplicate}
                 onChange={(e) => setConfirmDuplicate(e.target.checked)}
+                disabled={forwardDisabled}
               />
               {t("medicationGovernanceActivation.confirmDuplicateResolved")}
             </label>
@@ -303,7 +372,7 @@ export default function MedicationGovernanceActivationPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <button
                 type="button"
-                disabled={acting}
+                disabled={forwardDisabled}
                 onClick={() =>
                   void runAction(() =>
                     approveFormularyInactive(selected.productId, facilityId, baseBody())
@@ -314,7 +383,7 @@ export default function MedicationGovernanceActivationPage() {
               </button>
               <button
                 type="button"
-                disabled={acting}
+                disabled={forwardDisabled}
                 onClick={() =>
                   void runAction(() =>
                     enableOrderSearchActivation(selected.productId, facilityId, baseBody())
@@ -325,7 +394,7 @@ export default function MedicationGovernanceActivationPage() {
               </button>
               <button
                 type="button"
-                disabled={acting}
+                disabled={forwardDisabled}
                 onClick={() =>
                   void runAction(() => enableMarActivation(selected.productId, facilityId, baseBody()))
                 }
@@ -334,7 +403,7 @@ export default function MedicationGovernanceActivationPage() {
               </button>
               <button
                 type="button"
-                disabled={acting}
+                disabled={forwardDisabled}
                 onClick={() =>
                   void runAction(() =>
                     requestBillingReviewActivation(selected.productId, facilityId, baseBody())
@@ -348,20 +417,23 @@ export default function MedicationGovernanceActivationPage() {
                   value={billingCode}
                   onChange={(e) => setBillingCode(e.target.value)}
                   placeholder={t("medicationGovernanceActivation.billingCodePlaceholder")}
+                  disabled={forwardDisabled}
                 />
                 <input
                   value={billingUnit}
                   onChange={(e) => setBillingUnit(e.target.value)}
                   placeholder={t("medicationGovernanceActivation.billingUnitPlaceholder")}
+                  disabled={forwardDisabled}
                 />
                 <input
                   value={billingRole}
                   onChange={(e) => setBillingRole(e.target.value)}
                   placeholder={t("medicationGovernanceActivation.billingRolePlaceholder")}
+                  disabled={forwardDisabled}
                 />
                 <button
                   type="button"
-                  disabled={acting || !billingCode.trim() || !billingUnit.trim()}
+                  disabled={forwardDisabled || !billingCode.trim() || !billingUnit.trim()}
                   onClick={() =>
                     void runAction(() =>
                       enableBillingActivation(selected.productId, facilityId, {
@@ -378,7 +450,7 @@ export default function MedicationGovernanceActivationPage() {
               </div>
               <button
                 type="button"
-                disabled={acting}
+                disabled={acting || !selectedUi.canDisableRuntime}
                 style={{ marginTop: 8, color: "#b91c1c" }}
                 onClick={() =>
                   void runAction(() =>

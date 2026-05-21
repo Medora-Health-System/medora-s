@@ -22,6 +22,13 @@ describe("medicationActivationGovernanceApi (19G.2)", () => {
     expect(apiSource).toContain("apiFetchResponse");
     expect(apiSource).toContain("/activation-candidates");
     expect(apiSource).not.toContain("/api/backend/api/backend");
+    expect(apiSource).toContain("facilityId");
+  });
+
+  it("parses structured 400 blockers instead of normalizeUserFacingError", () => {
+    expect(apiSource).toContain("ActivationGovernanceApiError");
+    expect(apiSource).toContain("parseActivationApiError");
+    expect(apiSource).not.toContain("normalizeUserFacingError");
   });
 
   it("activation page uses fetchActivationCandidates without hardcoded French chrome", () => {
@@ -29,5 +36,15 @@ describe("medicationActivationGovernanceApi (19G.2)", () => {
     expect(pageSource).toMatch(/medicationGovernanceActivation\./);
     expect(pageSource).not.toMatch(/Chargement\.\.\./);
     expect(pageSource).not.toMatch(/Actualiser/);
+  });
+
+  it("activation page splits load vs action errors and disables forward steps (19G.2B)", () => {
+    expect(pageSource).toMatch(/loadError/);
+    expect(pageSource).toMatch(/actionError/);
+    expect(pageSource).toMatch(/forwardDisabled/);
+    expect(pageSource).toMatch(/getActivationCandidateUiState/);
+    expect(pageSource).toMatch(/formatActivationGovernanceError/);
+    expect(pageSource).not.toMatch(/normalizeUserFacingError/);
+    expect(pageSource).toMatch(/governanceReviewRequired/);
   });
 });

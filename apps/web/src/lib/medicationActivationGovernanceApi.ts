@@ -3,7 +3,11 @@
  */
 
 import { apiFetchResponse, parseApiResponse } from "./apiClient";
-import { normalizeUserFacingError } from "./userFacingError";
+import {
+  formatActivationApiErrorMessage,
+  parseActivationApiError,
+  type ParsedActivationApiError,
+} from "./medicationActivationGovernanceUi.util";
 
 /** Matches `apiFetchResponse` proxy: `/api/backend` + `/medication-master/governance/*`. */
 const API_BASE = "/medication-master/governance";
@@ -56,6 +60,29 @@ export type ActivationActionBody = {
   confirmDuplicateGovernanceResolved: true;
 };
 
+export class ActivationGovernanceApiError extends Error {
+  readonly parsed: ParsedActivationApiError;
+
+  constructor(parsed: ParsedActivationApiError) {
+    super(parsed.message);
+    this.name = "ActivationGovernanceApiError";
+    this.parsed = parsed;
+  }
+}
+
+export function formatActivationGovernanceError(
+  err: unknown,
+  t: (key: string) => string
+): string {
+  if (err instanceof ActivationGovernanceApiError) {
+    return formatActivationApiErrorMessage(err.parsed, t);
+  }
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return t("medicationGovernanceActivation.errorAction");
+}
+
 function facilityQs(
   facilityId: string | undefined,
   extra?: Record<string, string | number | undefined>
@@ -74,11 +101,12 @@ function facilityQs(
 async function activationGet<T>(path: string, facilityId?: string): Promise<T> {
   const res = await apiFetchResponse(`${API_BASE}${path}`, {
     method: "GET",
-    headers: facilityId ? { "x-facility-id": facilityId } : undefined,
+    facilityId,
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    const parsed = parseActivationApiError(txt || `HTTP ${res.status}`, res.status);
+    throw new ActivationGovernanceApiError(parsed);
   }
   return (await parseApiResponse(res)) as T;
 }
@@ -90,15 +118,14 @@ async function activationPost<T>(
 ): Promise<T> {
   const res = await apiFetchResponse(`${API_BASE}${path}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(facilityId ? { "x-facility-id": facilityId } : {}),
-    },
+    facilityId,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    const parsed = parseActivationApiError(txt || `HTTP ${res.status}`, res.status);
+    throw new ActivationGovernanceApiError(parsed);
   }
   return (await parseApiResponse(res)) as T;
 }

@@ -18,6 +18,18 @@ describe("medicationGovernanceActivation i18n (19G)", () => {
     expect(fr.medicationGovernanceActivation.refresh).toBe("Actualiser");
   });
 
+  it("mirrors governance blocker keys between en and fr (19G.2B)", () => {
+    const enBlockers = Object.keys(en.medicationGovernanceActivation.blocker).sort();
+    const frBlockers = Object.keys(fr.medicationGovernanceActivation.blocker).sort();
+    expect(frBlockers).toEqual(enBlockers);
+    expect(fr.medicationGovernanceActivation.governanceReviewRequired).toMatch(
+      /Revue de gouvernance/
+    );
+    expect(en.medicationGovernanceActivation.governanceReviewRequired).toMatch(
+      /Governance review required/
+    );
+  });
+
   it("activation page uses i18n keys (no hardcoded French chrome)", () => {
     const pageSource = readFileSync(
       join(process.cwd(), "app/app/admin/medication-governance/activation/page.tsx"),
