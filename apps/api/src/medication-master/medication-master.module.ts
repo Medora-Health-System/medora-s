@@ -15,11 +15,16 @@ import { MedicationProductActivationGovernanceService } from "./medication-produ
 import { MedicationGlobalBaselineService } from "./medication-global-baseline.service";
 import { MedicationGlobalBaselineAutoApproveService } from "./medication-global-baseline-auto-approve.service";
 import { MedicationMasterController } from "./medication-master.controller";
+import { ControlledCatalogImportController } from "./controlled-catalog-import.controller";
+import { ControlledCatalogImportMedicationService } from "./controlled-catalog-import-medication.service";
+import { ControlledCatalogImportProcedureService } from "./controlled-catalog-import-procedure.service";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [MedicationMasterController],
+  controllers: [MedicationMasterController, ControlledCatalogImportController],
   providers: [
+    ControlledCatalogImportMedicationService,
+    ControlledCatalogImportProcedureService,
     MedicationFormularyImportService,
     PriorityErInventoryImportService,
     PriorityErInventoryPromotionService,

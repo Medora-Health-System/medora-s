@@ -57,20 +57,10 @@ export function I18nProvider({
   children: React.ReactNode;
   facilityLanguage?: string;
 }) {
-  const [language, setLanguageState] = useState<SupportedLanguage>(() => {
-    if (facilityLanguage && isSupportedLanguage(facilityLanguage)) {
-      return facilityLanguage;
-    }
-    if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        if (raw && isSupportedLanguage(raw)) return raw;
-      } catch {
-        /* ignore */
-      }
-    }
-    return defaultLanguage;
-  });
+  // SSR/hydration-safe: never read localStorage in useState initializer (React #418).
+  const [language, setLanguageState] = useState<SupportedLanguage>(() =>
+    facilityLanguage && isSupportedLanguage(facilityLanguage) ? facilityLanguage : defaultLanguage
+  );
 
   useEffect(() => {
     try {

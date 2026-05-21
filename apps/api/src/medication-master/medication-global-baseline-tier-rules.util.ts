@@ -108,8 +108,13 @@ function haystack(input: GlobalBaselineTierEvaluationInput): string {
     .toLowerCase();
 }
 
-function hasHighRiskMedicationPattern(text: string): boolean {
+/** Phase 19K — shared high-risk detection for controlled catalog import. */
+export function medicationTextMatchesHighRiskPatterns(text: string): boolean {
   return HIGH_RISK_NAME_PATTERNS.some((re) => re.test(text));
+}
+
+function hasHighRiskMedicationPattern(text: string): boolean {
+  return medicationTextMatchesHighRiskPatterns(text);
 }
 
 function isAmbiguousDose(dose: string): boolean {

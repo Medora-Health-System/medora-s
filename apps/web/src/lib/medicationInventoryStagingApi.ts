@@ -16,7 +16,19 @@ const INVENTORY_IMPORT_ERROR_CODES = [
   "PARSER_FAILURE",
 ] as const;
 
+const PROMOTE_CONFLICT_ERROR_CODES = [
+  "DUPLICATE_CANONICAL_EXISTS",
+  "DUPLICATE_PRODUCT_CODE",
+  "DUPLICATE_PACKAGE_CODE",
+  "DUPLICATE_ALIAS",
+  "CONCEPT_EXISTS",
+  "PRODUCT_EXISTS",
+  "PACKAGE_EXISTS",
+] as const;
+
 type InventoryImportErrorCode = (typeof INVENTORY_IMPORT_ERROR_CODES)[number];
+type PromoteConflictErrorCode = (typeof PROMOTE_CONFLICT_ERROR_CODES)[number];
+type StagingErrorCode = InventoryImportErrorCode | PromoteConflictErrorCode;
 
 function getByPath(obj: unknown, path: string): unknown {
   const parts = path.split(".").filter(Boolean);
@@ -28,19 +40,19 @@ function getByPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
-function inventoryImportErrorForCode(
-  code: InventoryImportErrorCode,
-  language: SupportedLanguage
-): string | undefined {
+function stagingErrorForCode(code: StagingErrorCode, language: SupportedLanguage): string | undefined {
   const root = language === "en" ? enMessages : frMessages;
   const v = getByPath(root, `medicationInventoryStaging.errors.${code}`);
   return typeof v === "string" ? v : undefined;
 }
 
-function extractInventoryImportErrorCode(message: string): InventoryImportErrorCode | null {
-  for (const code of INVENTORY_IMPORT_ERROR_CODES) {
+function extractStagingErrorCode(message: string): StagingErrorCode | null {
+  for (const code of [...PROMOTE_CONFLICT_ERROR_CODES, ...INVENTORY_IMPORT_ERROR_CODES]) {
     if (message.includes(code)) return code;
   }
+  if (message.includes("Concept existe déjà")) return "CONCEPT_EXISTS";
+  if (message.includes("Produit existe déjà")) return "PRODUCT_EXISTS";
+  if (message.includes("Conditionnement existe déjà")) return "PACKAGE_EXISTS";
   return null;
 }
 
@@ -259,12 +271,13 @@ export function stagingImportErrorMessage(err: unknown, language: SupportedLangu
         ? (typeof v === "string" ? v : "Invalid inventory import response.")
         : (typeof fr === "string" ? fr : "Réponse import inventaire invalide.");
     }
-    const code = extractInventoryImportErrorCode(err.message);
+    const code = extractStagingErrorCode(err.message);
     if (code) {
-      const localized = inventoryImportErrorForCode(code, language);
+      const localized = stagingErrorForCode(code, language);
       if (localized) return localized;
     }
-    return normalizeUserFacingError(err.message, language) || err.message;
+    const stripped = err.message.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
+    return normalizeUserFacingError(stripped, language) || stripped || err.message;
   }
   return language === "en" ? "Import failed." : "Échec de l'import.";
 }
