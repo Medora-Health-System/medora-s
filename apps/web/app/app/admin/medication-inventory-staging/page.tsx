@@ -184,6 +184,19 @@ export default function MedicationInventoryStagingPage() {
       >
         {t("medicationInventoryStaging.readOnlyBanner")}
       </p>
+      <p
+        style={{
+          margin: "0 0 12px 0",
+          padding: "8px 12px",
+          background: "#f0fdfa",
+          border: "1px solid #99f6e4",
+          borderRadius: 8,
+          fontSize: 13,
+          color: "#0f766e",
+        }}
+      >
+        {t("medicationInventoryStaging.promoteGlobalBaselineHint")}
+      </p>
 
       {error ? (
         <p style={{ color: "#b91c1c", fontSize: 14 }} role="alert">

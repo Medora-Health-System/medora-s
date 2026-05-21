@@ -2623,11 +2623,14 @@ export default {
     refresh: "Actualiser",
     openConceptReview: "Ouvrir la revue canonique",
     colPromote: "Promotion",
-    promoteButton: "Promouvoir vers le canonique",
+    promoteButton: "Promouvoir vers la base globale",
     promoting: "Promotion…",
     promotedBadge: "Promu (inactif)",
     promoteBlocked: "Non admissible à la promotion",
-    promoteSuccess: "Ligne promue vers le référentiel canonique (inactif — non commandable pour l'instant).",
+    promoteSuccess:
+      "Ligne promue vers la base globale (inactive). N'active pas la prescription, le MAR, la facturation ni l'activation clinique.",
+    promoteGlobalBaselineHint:
+      "Base globale uniquement — n'active pas la prescription, le MAR, la facturation ni l'activation clinique.",
     promoteError: "Échec de la promotion.",
     rowCount: "{count} ligne(s)",
     dryRunBadge: "simulation",

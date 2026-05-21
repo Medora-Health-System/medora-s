@@ -278,6 +278,21 @@ export class MedicationMasterGovernanceService {
       }
     }
 
+    // Phase 19J.3E — promoted Priority ER baseline rows are inactive (isActive=false) but still await governance.
+    try {
+      const inactiveBaselinePending = await this.prisma.medicationProduct.count({
+        where: {
+          isActive: false,
+          baselineAvailable: true,
+          baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+          governanceStatus: { in: PENDING_REVIEW_GOVERNANCE_STATUSES },
+        },
+      });
+      pendingReview += inactiveBaselinePending;
+    } catch (e) {
+      if (!this.shouldUseGlobalBaselineFallback(e)) throw e;
+    }
+
     return {
       byStatus,
       activationApproved,

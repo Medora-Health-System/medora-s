@@ -155,15 +155,19 @@ export class PriorityErInventoryPromotionService {
         reconciliation.matchedProductIds[0],
     });
 
+    // Phase 19J.3E — Priority ER staging promote always hydrates global baseline (inactive)
+    // and optional per-facility formulary shell; never runtime activation.
     const result = await this.prisma.$transaction(async (tx) =>
       this.promoteInTransaction(tx, {
         row,
         trace,
         codes,
         resolution,
-        body,
+        body: { ...body, activateBilling: false, activatePackageWithNdc: false },
         userId,
         facilityId: targetFacilityId,
+        promotionMode: "global_baseline",
+        sourceRowId: row.sourceRowId,
       })
     );
 
@@ -186,6 +190,8 @@ export class PriorityErInventoryPromotionService {
         createdProduct: result.createdProduct,
         createdPackage: result.createdPackage,
         runtimeOrderable: false,
+        globalBaseline: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
       },
     });
 
@@ -211,6 +217,60 @@ export class PriorityErInventoryPromotionService {
     const existingPromo = parseExistingPromotion(row.promotionResultJson);
     if (existingPromo?.globalBaseline) {
       return { status: "promoted", result: existingPromo };
+    }
+
+    // Phase 19J.3E — facility staging promote may exist without baseline flags; hydrate in place.
+    if (existingPromo?.productId) {
+      const trace = parsePriorityErSourceTrace(row.rawJson);
+      const overlayFacilityId = body.facilityOverlayId ?? row.facilityId ?? undefined;
+      await this.prisma.$transaction(async (tx) => {
+        await tx.medicationProduct.update({
+          where: { id: existingPromo.productId },
+          data: {
+            baselineAvailable: true,
+            baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+            baselineSourceRowId: row.sourceRowId,
+            isActive: false,
+            governanceStatus: "REVIEW_REQUIRED",
+          },
+        });
+        if (overlayFacilityId && existingPromo.packageId) {
+          const existingFormulary = await tx.facilityFormularyItem.findUnique({
+            where: {
+              facilityId_packageId: {
+                facilityId: overlayFacilityId,
+                packageId: existingPromo.packageId,
+              },
+            },
+          });
+          if (!existingFormulary) {
+            await tx.facilityFormularyItem.create({
+              data: {
+                facilityId: overlayFacilityId,
+                packageId: existingPromo.packageId,
+                isOnFormulary: false,
+                isEDFormulary: false,
+                allowManualOverride: false,
+              },
+            });
+          }
+        }
+      });
+      const hydrated: PriorityErPromotionResultPayload = {
+        ...existingPromo,
+        stagingRowId: row.id,
+        sourceRowId: row.sourceRowId,
+        exactSourceText: trace.exactSourceText,
+        runtimeOrderable: false,
+        promotedAt: new Date().toISOString(),
+        globalBaseline: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+      };
+      await this.prisma.medicationFormularyImportStaging.update({
+        where: { id: row.id },
+        data: { promotionResultJson: hydrated as unknown as Prisma.InputJsonValue },
+      });
+      return { status: "promoted", result: hydrated };
     }
 
     const existingBaseline = await this.prisma.medicationProduct.findFirst({
@@ -607,7 +667,9 @@ export class PriorityErInventoryPromotionService {
     });
 
     let facilityFormularyItemId: string | null = null;
-    const overlayFacilityId = isGlobalBaseline ? body.facilityOverlayId : facilityId;
+    const overlayFacilityId = isGlobalBaseline
+      ? body.facilityOverlayId ?? facilityId
+      : facilityId;
     if (overlayFacilityId) {
       const existingFormulary = await tx.facilityFormularyItem.findUnique({
         where: { facilityId_packageId: { facilityId: overlayFacilityId, packageId: pkg.id } },

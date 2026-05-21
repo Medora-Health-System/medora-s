@@ -61,8 +61,12 @@ function makePrismaMock() {
           dosageForm: data.dosageForm,
           isActive: data.isActive,
           governanceStatus: data.governanceStatus,
+          baselineAvailable: data.baselineAvailable,
+          baselineSource: data.baselineSource,
+          baselineSourceRowId: data.baselineSourceRowId,
         })
       ),
+      update: jest.fn().mockResolvedValue({ id: "product-1" }),
     },
     medicationPackage: {
       findUnique: jest.fn().mockResolvedValue(null),
@@ -110,6 +114,7 @@ function makePrismaMock() {
   return {
     medicationFormularyImportStaging: {
       findUnique: jest.fn().mockResolvedValue(stagingRow),
+      update: jest.fn().mockResolvedValue({}),
     },
     medicationConcept: {
       findUnique: jest.fn().mockResolvedValue(null),
@@ -117,6 +122,7 @@ function makePrismaMock() {
     },
     medicationProduct: {
       findUnique: jest.fn().mockResolvedValue(null),
+      findFirst: jest.fn().mockResolvedValue(null),
       findMany: jest.fn().mockResolvedValue([]),
     },
     medicationPackage: {
@@ -205,6 +211,69 @@ describe("PriorityErInventoryPromotionService", () => {
     const trace = parsePriorityErSourceTrace(stagingRow.rawJson);
     expect(trace.sourceNameExact).toBe("Acetaminophen");
     expect(trace.sourceNameExact).not.toMatch(/Acétaminophène|Paracetamol/i);
+  });
+
+  it("global baseline promote hydrates existing facility promotion without re-create (19J.3E)", async () => {
+    const prisma = makePrismaMock();
+    prisma.medicationFormularyImportStaging.findUnique.mockResolvedValue({
+      ...stagingRow,
+      promotionResultJson: {
+        stagingRowId: "st-pri-1",
+        sourceRowId: "PRI_ER_Inventory_1",
+        productId: "product-1",
+        packageId: "package-1",
+        conceptId: "concept-1",
+        runtimeOrderable: false,
+      },
+    });
+    const service = new PriorityErInventoryPromotionService(prisma as never, { log: jest.fn() } as never);
+    const out = await service.promoteStagingRowAsGlobalBaseline("st-pri-1", {}, "user-1");
+    expect(out.status).toBe("promoted");
+    if (out.status !== "promoted") return;
+    expect(out.result.globalBaseline).toBe(true);
+    expect(prisma.tx.medicationProduct.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "product-1" },
+        data: expect.objectContaining({
+          baselineAvailable: true,
+          baselineSource: "PRIORITY_ER_INVENTORY",
+          baselineSourceRowId: "PRI_ER_Inventory_1",
+          isActive: false,
+        }),
+      })
+    );
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(prisma.tx.medicationConcept.create).not.toHaveBeenCalled();
+    expect(prisma.medicationFormularyImportStaging.update).toHaveBeenCalled();
+  });
+
+  it("staging facility promote hydrates global baseline flags (19J.3E)", async () => {
+    const prisma = makePrismaMock();
+    const service = new PriorityErInventoryPromotionService(prisma as never, { log: jest.fn() } as never);
+    const out = await service.promoteStagingRow("st-pri-1", {}, "user-1", "fac-1");
+    expect(out.status).toBe("promoted");
+    if (out.status !== "promoted") return;
+
+    expect(out.result.globalBaseline).toBe(true);
+    expect(out.result.baselineSource).toBe("PRIORITY_ER_INVENTORY");
+
+    const productCreate = prisma.tx.medicationProduct.create.mock.calls[0][0];
+    expect(productCreate.data.baselineAvailable).toBe(true);
+    expect(productCreate.data.baselineSource).toBe("PRIORITY_ER_INVENTORY");
+    expect(productCreate.data.baselineSourceRowId).toBe("PRI_ER_Inventory_1");
+    expect(productCreate.data.isActive).toBe(false);
+
+    expect(prisma.tx.medicationProduct.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          baselineAvailable: true,
+          baselineSource: "PRIORITY_ER_INVENTORY",
+          baselineSourceRowId: "PRI_ER_Inventory_1",
+          isActive: false,
+          governanceStatus: "REVIEW_REQUIRED",
+        }),
+      })
+    );
   });
 
   it("manual single-row promotion stays non-orderable with inactive package (19E.3)", async () => {

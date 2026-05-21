@@ -2647,11 +2647,14 @@ export default {
     refresh: "Refresh",
     openConceptReview: "Open canonical review",
     colPromote: "Promote",
-    promoteButton: "Promote to canonical",
+    promoteButton: "Promote to global baseline",
     promoting: "Promoting…",
     promotedBadge: "Promoted (inactive)",
     promoteBlocked: "Not eligible for promotion",
-    promoteSuccess: "Row promoted to canonical master (inactive — not orderable yet).",
+    promoteSuccess:
+      "Row promoted to global baseline (inactive). Does not enable provider ordering, MAR, billing, or runtime activation.",
+    promoteGlobalBaselineHint:
+      "Global baseline only — does not enable provider ordering, MAR, billing, or runtime activation.",
     promoteError: "Promotion failed.",
     rowCount: "{count} row(s)",
     dryRunBadge: "dry-run",

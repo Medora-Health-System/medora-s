@@ -220,4 +220,67 @@ describe("Medication global baseline (19H e2e)", () => {
       )
     ).toBe(true);
   });
+
+  it("staging queue promote route hydrates global baseline and governance dashboard (19J.3E)", async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const staging = await seedStagingRow(suffix, facilityA);
+
+    const beforeBaseline = await prisma.medicationProduct.count({
+      where: {
+        baselineAvailable: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .post(`/medication-master/import-staging/promote-priority-er/${staging.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("x-facility-id", facilityA)
+      .send({})
+      .expect(201);
+
+    expect(res.body.status).toBe("promoted");
+    expect(res.body.result.globalBaseline).toBe(true);
+
+    const product = await prisma.medicationProduct.findUnique({
+      where: { id: res.body.result.productId },
+      include: {
+        packages: {
+          where: { isDefaultForProduct: true },
+          include: { facilityFormularyItems: { where: { facilityId: facilityA } } },
+        },
+      },
+    });
+    expect(product?.baselineAvailable).toBe(true);
+    expect(product?.baselineSource).toBe(MEDICATION_BASELINE_SOURCE_PRIORITY_ER);
+    expect(product?.baselineSourceRowId).toBe(staging.sourceRowId);
+    expect(product?.isActive).toBe(false);
+    expect(product?.governanceStatus).toBe("REVIEW_REQUIRED");
+
+    const ffi = product?.packages[0]?.facilityFormularyItems[0];
+    expect(ffi?.isOnFormulary).toBe(false);
+
+    const runtime = parseProductRuntimeActivation(product?.governanceNotes ?? null);
+    expect(runtime.orderSearchEnabled).toBe(false);
+    expect(runtime.marEnabled).toBe(false);
+    expect(runtime.billingEnabled).toBe(false);
+
+    const afterBaseline = await prisma.medicationProduct.count({
+      where: {
+        baselineAvailable: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+      },
+    });
+    expect(afterBaseline).toBeGreaterThanOrEqual(beforeBaseline + 1);
+
+    const summary = await request(app.getHttpServer())
+      .get("/medication-master/governance/summary")
+      .query({ facilityId: facilityA })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("x-facility-id", facilityA)
+      .expect(200);
+
+    expect(summary.body.globalBaseline.priorityErAvailable).toBeGreaterThanOrEqual(1);
+    expect(summary.body.activation.pendingReview).toBeGreaterThanOrEqual(1);
+  });
 });
