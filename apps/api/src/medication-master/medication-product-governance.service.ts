@@ -10,7 +10,39 @@ import {
   type MedicationProductGovernanceTimelineEntry,
 } from "./medication-product-governance.constants";
 import { evaluateActivationReadiness } from "./medication-product-activation-readiness.util";
-import type { MedicationProductGovernanceActionBody } from "./dto/medication-product-governance-action.dto";
+import type {
+  MedicationProductGovernanceActionBody,
+  MedicationProductGovernanceApproveBody,
+  MedicationProductGovernanceBlockBody,
+} from "./dto/medication-product-governance-action.dto";
+
+function assertGovernanceActionConfirmations(
+  body: {
+    confirmExactSourcePreserved?: boolean;
+    confirmDuplicateGovernanceResolved?: boolean;
+    governanceNote?: string;
+  },
+  options?: { requireNote?: boolean }
+): void {
+  if (body.confirmExactSourcePreserved !== true) {
+    throw new BadRequestException({
+      message: "Confirmation de préservation de la source exacte requise.",
+      blockers: ["CONFIRM_EXACT_SOURCE_REQUIRED"],
+    });
+  }
+  if (body.confirmDuplicateGovernanceResolved !== true) {
+    throw new BadRequestException({
+      message: "Confirmation de résolution des doublons requise.",
+      blockers: ["CONFIRM_DUPLICATE_RESOLVED_REQUIRED"],
+    });
+  }
+  if (options?.requireNote && !body.governanceNote?.trim()) {
+    throw new BadRequestException({
+      message: "Une note de gouvernance est obligatoire.",
+      blockers: ["NOTE_REQUIRED"],
+    });
+  }
+}
 
 const PRODUCT_GOVERNANCE_INCLUDE = {
   concept: {
@@ -75,10 +107,12 @@ export class MedicationProductGovernanceService {
 
   async approveActivation(
     productId: string,
-    body: MedicationProductGovernanceActionBody,
+    body: MedicationProductGovernanceApproveBody,
     userId: string,
     auditMeta?: { ip?: string; userAgent?: string }
   ) {
+    assertGovernanceActionConfirmations(body, { requireNote: true });
+
     const loaded = await this.loadProductForGovernance(productId, body.facilityId);
     const previousStatus = loaded.governanceStatus;
     const readiness = await this.computeReadiness(loaded, body.facilityId);
@@ -123,13 +157,11 @@ export class MedicationProductGovernanceService {
 
   async blockProduct(
     productId: string,
-    body: MedicationProductGovernanceActionBody & { governanceNote: string },
+    body: MedicationProductGovernanceBlockBody,
     userId: string,
     auditMeta?: { ip?: string; userAgent?: string }
   ) {
-    if (!body.governanceNote?.trim()) {
-      throw new BadRequestException("Une note de gouvernance est obligatoire pour bloquer.");
-    }
+    assertGovernanceActionConfirmations(body, { requireNote: true });
 
     const loaded = await this.loadProductForGovernance(productId, body.facilityId);
     const previousStatus = loaded.governanceStatus;

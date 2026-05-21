@@ -180,10 +180,18 @@ export class MedicationMasterExplorerService {
     const take = query.limit;
     const skip = query.offset;
 
-    const activeOnly = query.activeOnly !== "false";
+    const baselineOnly = query.baselineOnly === "true";
+    const activeOnly = baselineOnly ? false : query.activeOnly !== "false";
 
     const conceptWhere: Prisma.MedicationConceptWhereInput = {};
-    if (activeOnly) {
+    if (baselineOnly) {
+      conceptWhere.products = {
+        some: {
+          baselineAvailable: true,
+          baselineSource: "PRIORITY_ER_INVENTORY",
+        },
+      };
+    } else if (activeOnly) {
       conceptWhere.isActive = true;
       conceptWhere.products = { some: { isActive: true } };
     }
@@ -248,9 +256,34 @@ export class MedicationMasterExplorerService {
       };
     }
 
+    const include = baselineOnly
+      ? {
+          therapeuticClass: CONCEPT_LIST_INCLUDE.therapeuticClass,
+          safetyProfile: CONCEPT_LIST_INCLUDE.safetyProfile,
+          searchAliases: CONCEPT_LIST_INCLUDE.searchAliases,
+          products: {
+            where: {
+              baselineAvailable: true,
+              baselineSource: "PRIORITY_ER_INVENTORY",
+            },
+            include: {
+              defaultRoute: { select: { code: true, label: true } },
+              administrationProfile: true,
+              infusionProfile: true,
+              searchAliases: { select: { alias: true, normalizedAlias: true } },
+              packages: {
+                include: {
+                  billingProfiles: { select: { requiresManualReview: true } },
+                },
+              },
+            },
+          },
+        }
+      : CONCEPT_LIST_INCLUDE;
+
     const concepts = await this.prisma.medicationConcept.findMany({
       where: conceptWhere,
-      include: CONCEPT_LIST_INCLUDE,
+      include,
       orderBy: [{ displayName: "asc" }],
       take: Math.min(take + skip + 80, 300),
     });

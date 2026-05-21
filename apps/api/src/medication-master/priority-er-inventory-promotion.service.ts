@@ -26,6 +26,7 @@ import {
   normalizeMedicationNameForMatch,
 } from "./priority-er-inventory-match-normalize.util";
 import { medicationFormularyImportStagingPromotionSelect } from "./medication-formulary-import-staging.types";
+import { MEDICATION_BASELINE_SOURCE_PRIORITY_ER } from "./medication-baseline.constants";
 
 export type PriorityErPromotionResultPayload = {
   stagingRowId: string;
@@ -47,6 +48,8 @@ export type PriorityErPromotionResultPayload = {
   createdPackage: boolean;
   runtimeOrderable: false;
   promotedAt: string;
+  globalBaseline?: true;
+  baselineSource?: string;
 };
 
 export type PromotePriorityErRowOutcome =
@@ -189,6 +192,155 @@ export class PriorityErInventoryPromotionService {
     return { status: "promoted", result };
   }
 
+  /**
+   * Phase 19H — promote to global baseline master (all facilities). No runtime activation.
+   * Idempotent per staging sourceRowId. Facility overlay optional via facilityOverlayId.
+   */
+  async promoteStagingRowAsGlobalBaseline(
+    stagingRowId: string,
+    body: PromotePriorityErStagingRowBody,
+    userId: string,
+    auditMeta?: { ip?: string; userAgent?: string }
+  ): Promise<PromotePriorityErRowOutcome> {
+    const row = await this.prisma.medicationFormularyImportStaging.findUnique({
+      where: { id: stagingRowId },
+      select: medicationFormularyImportStagingPromotionSelect,
+    });
+    if (!row) throw new NotFoundException("Ligne de staging introuvable.");
+
+    const existingPromo = parseExistingPromotion(row.promotionResultJson);
+    if (existingPromo?.globalBaseline) {
+      return { status: "promoted", result: existingPromo };
+    }
+
+    const existingBaseline = await this.prisma.medicationProduct.findFirst({
+      where: {
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+        baselineSourceRowId: row.sourceRowId,
+      },
+      select: { id: true, conceptId: true, code: true },
+    });
+    if (existingBaseline) {
+      const trace = parsePriorityErSourceTrace(row.rawJson);
+      const pkg = await this.prisma.medicationPackage.findFirst({
+        where: { productId: existingBaseline.id, isDefaultForProduct: true },
+        select: { id: true, code: true },
+      });
+      const payload: PriorityErPromotionResultPayload = {
+        stagingRowId: row.id,
+        sourceRowId: row.sourceRowId,
+        exactSourceText: trace.exactSourceText,
+        sourceNameExact: trace.sourceNameExact,
+        sourceStrengthExact: trace.sourceStrengthExact,
+        sourceRouteExact: trace.sourceRouteExact,
+        duplicateResolution: "LINK_TO_EXISTING_PRODUCT",
+        conceptId: existingBaseline.conceptId,
+        productId: existingBaseline.id,
+        packageId: pkg?.id ?? "",
+        facilityFormularyItemId: null,
+        conceptCode: "",
+        productCode: existingBaseline.code,
+        packageCode: pkg?.code ?? "",
+        createdConcept: false,
+        createdProduct: false,
+        createdPackage: false,
+        runtimeOrderable: false,
+        promotedAt: new Date().toISOString(),
+        globalBaseline: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+      };
+      await this.prisma.medicationFormularyImportStaging.update({
+        where: { id: row.id },
+        data: { promotionResultJson: payload as unknown as Prisma.InputJsonValue },
+      });
+      return { status: "promoted", result: payload };
+    }
+
+    const governance = parsePriorityErGovernance(row.rawJson);
+    const eligibility = evaluatePriorityErPromotionEligibility(row, {
+      duplicateResolution:
+        body.duplicateResolution ??
+        (governance.governanceDecision === "LINK_TO_EXISTING"
+          ? governance.linkedProductId
+            ? "LINK_TO_EXISTING_PRODUCT"
+            : "LINK_TO_EXISTING_CONCEPT"
+          : undefined),
+      confirmCreateDespiteDuplicate: body.confirmCreateDespiteDuplicate,
+      activateBilling: false,
+      activatePackageWithNdc: false,
+    });
+    if (!eligibility.eligible) {
+      return { status: "blocked", stagingRowId, reasons: eligibility.reasons };
+    }
+
+    const resolution =
+      body.duplicateResolution ??
+      (governance.governanceDecision === "LINK_TO_EXISTING"
+        ? governance.linkedProductId
+          ? "LINK_TO_EXISTING_PRODUCT"
+          : "LINK_TO_EXISTING_CONCEPT"
+        : governance.governanceDecision === "CREATE_NEW_APPROVED"
+          ? "CREATE_NEW"
+          : "CREATE_NEW");
+    const trace = parsePriorityErSourceTrace(row.rawJson);
+    const reconciliation = parsePriorityErReconciliationMeta(row.rawJson);
+    const codes = buildPriorityErCanonicalCodes({
+      sourceRowId: row.sourceRowId,
+      sourceNameExact: trace.sourceNameExact,
+      sourceStrengthExact: trace.sourceStrengthExact,
+      sourceRouteExact: trace.sourceRouteExact,
+    });
+
+    await this.assertNoDuplicateCanonicalCreate({
+      resolution,
+      trace,
+      conceptCode: codes.conceptCode,
+      productCode: codes.productCode,
+      packageCode: codes.packageCode,
+      existingConceptId:
+        body.existingConceptId ??
+        governance.linkedConceptId ??
+        reconciliation.matchedConceptIds[0],
+      existingProductId:
+        body.existingProductId ??
+        governance.linkedProductId ??
+        reconciliation.matchedProductIds[0],
+    });
+
+    const result = await this.prisma.$transaction(async (tx) =>
+      this.promoteInTransaction(tx, {
+        row,
+        trace,
+        codes,
+        resolution,
+        body: { ...body, activateBilling: false, activatePackageWithNdc: false },
+        userId,
+        facilityId: body.facilityOverlayId ?? "",
+        promotionMode: "global_baseline",
+        sourceRowId: row.sourceRowId,
+      })
+    );
+
+    await this.audit.log(AuditAction.CREATE, "MEDICATION_GLOBAL_BASELINE_PROMOTION", {
+      userId,
+      facilityId: body.facilityOverlayId,
+      entityId: stagingRowId,
+      ip: auditMeta?.ip,
+      userAgent: auditMeta?.userAgent,
+      critical: true,
+      metadata: {
+        stagingRowId,
+        sourceRowId: row.sourceRowId,
+        globalBaseline: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+        productId: result.productId,
+        runtimeOrderable: false,
+      },
+    });
+
+    return { status: "promoted", result };
+  }
+
   private async assertNoDuplicateCanonicalCreate(params: {
     resolution: DuplicateResolutionMode;
     trace: ReturnType<typeof parsePriorityErSourceTrace>;
@@ -299,9 +451,12 @@ export class PriorityErInventoryPromotionService {
       body: PromotePriorityErStagingRowBody;
       userId: string;
       facilityId: string;
+      promotionMode?: "facility" | "global_baseline";
+      sourceRowId?: string;
     }
   ): Promise<PriorityErPromotionResultPayload> {
     const { row, trace, codes, resolution, body, userId, facilityId } = ctx;
+    const isGlobalBaseline = ctx.promotionMode === "global_baseline";
     const reconciliation = parsePriorityErReconciliationMeta(row.rawJson);
     const flags = Array.isArray(row.reviewFlags) ? (row.reviewFlags as string[]) : [];
 
@@ -387,6 +542,8 @@ export class PriorityErInventoryPromotionService {
           trace,
           concentrationId: concentration.id,
           routeId: route.id,
+          globalBaseline: isGlobalBaseline,
+          baselineSourceRowId: ctx.sourceRowId ?? row.sourceRowId,
         });
         productId = created.id;
         createdProduct = true;
@@ -400,9 +557,24 @@ export class PriorityErInventoryPromotionService {
         trace,
         concentrationId: concentration.id,
         routeId: route.id,
+        globalBaseline: isGlobalBaseline,
+        baselineSourceRowId: ctx.sourceRowId ?? row.sourceRowId,
       });
       productId = created.id;
       createdProduct = true;
+    }
+
+    if (isGlobalBaseline) {
+      await tx.medicationProduct.update({
+        where: { id: productId },
+        data: {
+          baselineAvailable: true,
+          baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+          baselineSourceRowId: ctx.sourceRowId ?? row.sourceRowId,
+          isActive: false,
+          governanceStatus: "REVIEW_REQUIRED",
+        },
+      });
     }
 
     const existingPkg = await tx.medicationPackage.findUnique({ where: { code: codes.packageCode } });
@@ -435,22 +607,25 @@ export class PriorityErInventoryPromotionService {
     });
 
     let facilityFormularyItemId: string | null = null;
-    const existingFormulary = await tx.facilityFormularyItem.findUnique({
-      where: { facilityId_packageId: { facilityId, packageId: pkg.id } },
-    });
-    if (!existingFormulary) {
-      const item = await tx.facilityFormularyItem.create({
-        data: {
-          facilityId,
-          packageId: pkg.id,
-          isOnFormulary: false,
-          isEDFormulary: false,
-          allowManualOverride: false,
-        },
+    const overlayFacilityId = isGlobalBaseline ? body.facilityOverlayId : facilityId;
+    if (overlayFacilityId) {
+      const existingFormulary = await tx.facilityFormularyItem.findUnique({
+        where: { facilityId_packageId: { facilityId: overlayFacilityId, packageId: pkg.id } },
       });
-      facilityFormularyItemId = item.id;
-    } else {
-      facilityFormularyItemId = existingFormulary.id;
+      if (!existingFormulary) {
+        const item = await tx.facilityFormularyItem.create({
+          data: {
+            facilityId: overlayFacilityId,
+            packageId: pkg.id,
+            isOnFormulary: false,
+            isEDFormulary: false,
+            allowManualOverride: false,
+          },
+        });
+        facilityFormularyItemId = item.id;
+      } else {
+        facilityFormularyItemId = existingFormulary.id;
+      }
     }
 
     const normalizedAlias = normalizeMedicationNameForMatch(trace.sourceNameExact);
@@ -495,6 +670,12 @@ export class PriorityErInventoryPromotionService {
       createdPackage,
       runtimeOrderable: false,
       promotedAt: promotedAt.toISOString(),
+      ...(isGlobalBaseline
+        ? {
+            globalBaseline: true as const,
+            baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+          }
+        : {}),
     };
 
     const preservationRaw =
@@ -533,6 +714,8 @@ export class PriorityErInventoryPromotionService {
       trace: ReturnType<typeof parsePriorityErSourceTrace>;
       concentrationId: string;
       routeId: string;
+      globalBaseline?: boolean;
+      baselineSourceRowId?: string;
     }
   ) {
     return tx.medicationProduct.create({
@@ -547,6 +730,11 @@ export class PriorityErInventoryPromotionService {
         billingClass: "UNKNOWN",
         isActive: false,
         governanceStatus: "REVIEW_REQUIRED",
+        baselineAvailable: params.globalBaseline === true,
+        baselineSource: params.globalBaseline
+          ? MEDICATION_BASELINE_SOURCE_PRIORITY_ER
+          : null,
+        baselineSourceRowId: params.globalBaseline ? params.baselineSourceRowId ?? null : null,
       },
     });
   }

@@ -8,6 +8,8 @@ export const promotePriorityErStagingRowBodySchema = z.object({
   confirmCreateDespiteDuplicate: z.boolean().optional(),
   activateBilling: z.boolean().optional(),
   activatePackageWithNdc: z.boolean().optional(),
+  /** Phase 19H — optional facility formulary shell after global baseline promote (still inactive / not orderable). */
+  facilityOverlayId: z.string().uuid().optional(),
 });
 
 export type PromotePriorityErStagingRowBody = z.infer<typeof promotePriorityErStagingRowBodySchema>;

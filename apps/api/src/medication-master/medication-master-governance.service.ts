@@ -10,6 +10,7 @@ import { MedicationMasterExplorerService } from "./medication-master-explorer.se
 import {
   PENDING_REVIEW_GOVERNANCE_STATUSES,
 } from "./medication-product-governance.constants";
+import { MEDICATION_BASELINE_SOURCE_PRIORITY_ER } from "./medication-baseline.constants";
 import {
   aggregateGovernanceFromConcepts,
   readinessPercent,
@@ -92,6 +93,10 @@ export type MedicationMasterGovernanceSummaryDto = {
     pendingReview: number;
     readyForActivation: number;
   };
+  globalBaseline: {
+    priorityErAvailable: number;
+    facilityFormularyLinked: number;
+  };
 };
 
 export type MedicationMasterGovernanceWarningRowDto = GovernanceWarningItem;
@@ -136,12 +141,14 @@ export class MedicationMasterGovernanceService {
   }
 
   async getSummary(facilityId?: string): Promise<MedicationMasterGovernanceSummaryDto> {
-    const [aggregate, legacy, duplicateNdcGroups, staging, activation] = await Promise.all([
+    const [aggregate, legacy, duplicateNdcGroups, staging, activation, globalBaseline] =
+      await Promise.all([
       this.loadAggregate(facilityId),
       this.legacyMappingCounts(),
       this.countDuplicateNdcGroups(),
       this.stagingPromotionOverview(facilityId),
       this.activationStatusCounts(),
+      this.globalBaselineCounts(facilityId),
     ]);
 
     const conceptsReady = aggregate.activeConcepts - aggregate.conceptsWithCriticalWarnings;
@@ -184,7 +191,34 @@ export class MedicationMasterGovernanceService {
       warningCountsByCode: aggregate.warningCountsByCode,
       warningCountsBySeverity: aggregate.warningCountsBySeverity,
       activation,
+      globalBaseline,
     };
+  }
+
+  private async globalBaselineCounts(
+    facilityId?: string
+  ): Promise<MedicationMasterGovernanceSummaryDto["globalBaseline"]> {
+    const priorityErAvailable = await this.prisma.medicationProduct.count({
+      where: {
+        baselineAvailable: true,
+        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+      },
+    });
+
+    let facilityFormularyLinked = 0;
+    if (facilityId) {
+      facilityFormularyLinked = await this.prisma.medicationProduct.count({
+        where: {
+          baselineAvailable: true,
+          baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+          packages: {
+            some: { facilityFormularyItems: { some: { facilityId } } },
+          },
+        },
+      });
+    }
+
+    return { priorityErAvailable, facilityFormularyLinked };
   }
 
   private async activationStatusCounts(): Promise<MedicationMasterGovernanceSummaryDto["activation"]> {

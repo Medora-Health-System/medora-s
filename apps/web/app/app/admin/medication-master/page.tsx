@@ -165,6 +165,7 @@ export default function AdminMedicationMasterPage() {
   const [filterHighAlert, setFilterHighAlert] = useState(false);
   const [filterInfusion, setFilterInfusion] = useState(false);
   const [filterOnFormulary, setFilterOnFormulary] = useState(false);
+  const [filterBaseline, setFilterBaseline] = useState(false);
   const [ndcStatus, setNdcStatus] = useState<"any" | "present" | "missing">("any");
 
   const loadSearch = useCallback(async () => {
@@ -185,6 +186,8 @@ export default function AdminMedicationMasterPage() {
         infusionOnly: filterInfusion,
         onFormularyOnly: filterOnFormulary,
         ndcStatus,
+        baselineOnly: filterBaseline,
+        activeOnly: filterBaseline ? false : undefined,
       });
       setSearchHits(res.items);
       setTotal(res.total);
@@ -204,6 +207,7 @@ export default function AdminMedicationMasterPage() {
     filterHighAlert,
     filterInfusion,
     filterOnFormulary,
+    filterBaseline,
     ndcStatus,
     language,
     t,
@@ -393,6 +397,8 @@ export default function AdminMedicationMasterPage() {
           setFilterInfusion={setFilterInfusion}
           filterOnFormulary={filterOnFormulary}
           setFilterOnFormulary={setFilterOnFormulary}
+          filterBaseline={filterBaseline}
+          setFilterBaseline={setFilterBaseline}
           ndcStatus={ndcStatus}
           setNdcStatus={setNdcStatus}
         />
@@ -478,6 +484,8 @@ function ExplorerFilters(props: {
   setFilterInfusion: (v: boolean) => void;
   filterOnFormulary: boolean;
   setFilterOnFormulary: (v: boolean) => void;
+  filterBaseline: boolean;
+  setFilterBaseline: (v: boolean) => void;
   ndcStatus: "any" | "present" | "missing";
   setNdcStatus: (v: "any" | "present" | "missing") => void;
 }) {
@@ -493,6 +501,8 @@ function ExplorerFilters(props: {
     setFilterInfusion,
     filterOnFormulary,
     setFilterOnFormulary,
+    filterBaseline,
+    setFilterBaseline,
     ndcStatus,
     setNdcStatus,
   } = props;
@@ -529,6 +539,14 @@ function ExplorerFilters(props: {
           onChange={(e) => setFilterOnFormulary(e.target.checked)}
         />{" "}
         {t("medicationMasterExplorer.filterOnFormulary")}
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={filterBaseline}
+          onChange={(e) => setFilterBaseline(e.target.checked)}
+        />{" "}
+        {t("medicationMasterExplorer.filterGlobalBaseline")}
       </label>
       <label>
         <input type="radio" name="ndc" checked={ndcStatus === "any"} onChange={() => setNdcStatus("any")} />{" "}

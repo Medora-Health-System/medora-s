@@ -57,6 +57,31 @@ describe("MedicationProductGovernanceService", () => {
     prisma.auditLog.findMany = jest.fn().mockResolvedValue([]);
   });
 
+  const validActionBody = {
+    facilityId: "fac-1",
+    governanceNote: "OK pharmacie",
+    confirmExactSourcePreserved: true as const,
+    confirmDuplicateGovernanceResolved: true as const,
+  };
+
+  it("requires confirmations and note for approve", async () => {
+    await expect(
+      service.approveActivation(
+        "prod-1",
+        { facilityId: "fac-1" } as Parameters<typeof service.approveActivation>[1],
+        "user-1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.approveActivation(
+        "prod-1",
+        { ...validActionBody, confirmExactSourcePreserved: false as unknown as true },
+        "user-1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.medicationProduct.update).not.toHaveBeenCalled();
+  });
+
   it("blocks approval when readiness incomplete", async () => {
     prisma.medicationProduct.findUnique = jest.fn().mockResolvedValue({
       ...productRow,
@@ -64,23 +89,35 @@ describe("MedicationProductGovernanceService", () => {
     });
 
     await expect(
-      service.approveActivation("prod-1", { facilityId: "fac-1" }, "user-1")
+      service.approveActivation("prod-1", validActionBody, "user-1")
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.medicationProduct.update).not.toHaveBeenCalled();
   });
 
-  it("requires governance note for block", async () => {
+  it("requires governance note and confirmations for block", async () => {
     await expect(
-      service.blockProduct("prod-1", { facilityId: "fac-1", governanceNote: "  " }, "user-1")
+      service.blockProduct(
+        "prod-1",
+        { facilityId: "fac-1", governanceNote: "  " } as Parameters<typeof service.blockProduct>[1],
+        "user-1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.blockProduct(
+        "prod-1",
+        {
+          facilityId: "fac-1",
+          governanceNote: "blocked",
+          confirmExactSourcePreserved: false as unknown as true,
+          confirmDuplicateGovernanceResolved: true,
+        },
+        "user-1"
+      )
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it("approves and writes audit when ready", async () => {
-    const result = await service.approveActivation(
-      "prod-1",
-      { facilityId: "fac-1", governanceNote: "OK pharmacie" },
-      "user-1"
-    );
+    const result = await service.approveActivation("prod-1", validActionBody, "user-1");
     expect(result.governanceOnly).toBe(true);
     expect(audit.log).toHaveBeenCalledWith(
       "UPDATE",

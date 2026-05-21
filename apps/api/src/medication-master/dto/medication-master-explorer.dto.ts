@@ -13,6 +13,7 @@ export const medicationMasterSearchQuerySchema = z.object({
   onFormularyOnly: z.enum(["true", "false"]).optional(),
   ndcStatus: z.enum(["present", "missing", "any"]).optional().default("any"),
   administrationType: z.string().max(32).optional(),
+  baselineOnly: z.enum(["true", "false"]).optional(),
 });
 
 export type MedicationMasterSearchQuery = z.infer<typeof medicationMasterSearchQuerySchema>;

@@ -2011,6 +2011,10 @@ model MedicationProduct {
   activationApprovedAt      DateTime?
   activationApprovedByUserId String?
   governanceNotes           String?  @db.Text
+  /// Phase 19H — global baseline catalog row (all facilities); does not enable ordering/MAR/billing.
+  baselineAvailable         Boolean  @default(false)
+  baselineSource            String?  @db.VarChar(48)
+  baselineSourceRowId       String?  @db.VarChar(128)
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
 
@@ -2034,6 +2038,8 @@ model MedicationProduct {
   @@index([isActive])
   @@index([administrationType])
   @@index([governanceStatus])
+  @@index([baselineAvailable])
+  @@index([baselineSource])
 }
 
 model MedicationPackage {

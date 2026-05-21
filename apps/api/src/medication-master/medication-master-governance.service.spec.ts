@@ -6,7 +6,7 @@ describe("MedicationMasterGovernanceService", () => {
     medicationConcept: { findMany: jest.fn() },
     facilityFormularyItem: { findMany: jest.fn() },
     catalogMedication: { count: jest.fn(), findMany: jest.fn() },
-    medicationProduct: { findMany: jest.fn(), groupBy: jest.fn() },
+    medicationProduct: { findMany: jest.fn(), groupBy: jest.fn(), count: jest.fn() },
     medicationPackage: { groupBy: jest.fn(), findMany: jest.fn() },
     medicationFormularyImportStaging: {
       groupBy: jest.fn(),
@@ -73,11 +73,16 @@ describe("MedicationMasterGovernanceService", () => {
     prisma.medicationProduct.groupBy = jest.fn().mockResolvedValue([
       { governanceStatus: "REVIEW_REQUIRED", _count: { _all: 2 } },
     ]);
+    prisma.medicationProduct.count = jest.fn().mockResolvedValue(0);
 
     const summary = await service.getSummary("fac-1");
 
     expect(summary.readOnly).toBe(true);
     expect(summary.readiness.legacyCatalogMappedPercent).toBe(0);
     expect(summary.counts.legacyCatalogActive).toBe(10);
+    expect(summary.globalBaseline).toEqual({
+      priorityErAvailable: 0,
+      facilityFormularyLinked: 0,
+    });
   });
 });

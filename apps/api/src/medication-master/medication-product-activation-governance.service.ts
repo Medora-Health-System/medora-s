@@ -157,6 +157,24 @@ export class MedicationProductActivationGovernanceService {
     return { items, total: items.length };
   }
 
+  /**
+   * Phase 19G.2C — promoted inactive products awaiting governance activation approval.
+   * Does not enable runtime (search / MAR / billing).
+   */
+  async listPendingGovernanceActivationReview(
+    query: MedicationActivationGovernanceListQuery
+  ): Promise<{ items: ActivationCandidateDto[]; total: number }> {
+    const { items } = await this.listActivationCandidates(query);
+    const pending = items.filter((row) => {
+      if (row.governanceStatus === "ACTIVATION_APPROVED") return false;
+      if (row.governanceStatus === "BLOCKED" || row.governanceStatus === "RETIRED") return false;
+      if (row.productIsActive) return false;
+      if (!row.duplicateGovernanceResolved) return false;
+      return true;
+    });
+    return { items: pending, total: pending.length };
+  }
+
   async approveFormularyInactive(
     productId: string,
     body: MedicationActivationGovernanceActionBody,
@@ -704,7 +722,10 @@ export class MedicationProductActivationGovernanceService {
     if (productIds.length === 0) return map;
 
     const rows = await this.prisma.medicationFormularyImportStaging.findMany({
-      where: { facilityId, promotionResultJson: { not: Prisma.DbNull } },
+      where: {
+        promotionResultJson: { not: Prisma.DbNull },
+        OR: [{ facilityId }, { facilityId: null }],
+      },
       select: {
         promotionResultJson: true,
         rawJson: true,

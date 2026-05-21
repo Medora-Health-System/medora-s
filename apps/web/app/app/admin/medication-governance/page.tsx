@@ -17,8 +17,10 @@ import {
 } from "@/lib/medicationMasterGovernanceApi";
 import { searchMedicationMaster, type MedicationMasterSearchHit } from "@/lib/medicationMasterApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { GovernanceActivationReviewQueue } from "@/components/admin/GovernanceActivationReviewQueue";
 
 type SectionId =
+  | "activationReview"
   | "promotion"
   | "missingNdc"
   | "missingBilling"
@@ -154,12 +156,14 @@ export default function MedicationGovernancePage() {
   const isAdmin = roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN");
 
   const [summary, setSummary] = useState<MedicationGovernanceSummary | null>(null);
-  const [section, setSection] = useState<SectionId>("promotion");
+  const [section, setSection] = useState<SectionId>("activationReview");
+  const [pendingReviewCount, setPendingReviewCount] = useState<number | null>(null);
   const [warnings, setWarnings] = useState<MedicationGovernanceWarningRow[]>([]);
   const [unmapped, setUnmapped] = useState<MedicationGovernanceUnmappedRow[]>([]);
   const [duplicates, setDuplicates] = useState<MedicationGovernanceDuplicateGroup[]>([]);
   const [searchHits, setSearchHits] = useState<MedicationMasterSearchHit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [sectionLoading, setSectionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState("displayName");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -178,7 +182,7 @@ export default function MedicationGovernancePage() {
       setError(t("medicationGovernance.errorFacility"));
       return;
     }
-    setLoading(true);
+    setSummaryLoading(true);
     setError(null);
     try {
       const data = await fetchMedicationGovernanceSummary(facilityId);
@@ -188,13 +192,13 @@ export default function MedicationGovernancePage() {
       setSummary(null);
       setError(normalizeUserFacingError(raw, language) || t("medicationGovernance.errorLoad"));
     } finally {
-      setLoading(false);
+      setSummaryLoading(false);
     }
   }, [facilityId, language, t]);
 
   const loadSection = useCallback(async () => {
     if (!facilityId) return;
-    setLoading(true);
+    setSectionLoading(true);
     setError(null);
     try {
       if (section === "missingNdc") {
@@ -229,7 +233,7 @@ export default function MedicationGovernancePage() {
       const raw = e instanceof Error ? e.message : "";
       setError(normalizeUserFacingError(raw, language) || t("medicationGovernance.errorLoad"));
     } finally {
-      setLoading(false);
+      setSectionLoading(false);
     }
   }, [facilityId, section, filterQ, language, t]);
 
@@ -239,7 +243,9 @@ export default function MedicationGovernancePage() {
   }, [ready, isAdmin, facilityId, loadSummary]);
 
   useEffect(() => {
-    if (!ready || !isAdmin || !facilityId || section === "promotion") return;
+    if (!ready || !isAdmin || !facilityId || section === "promotion" || section === "activationReview") {
+      return;
+    }
     void loadSection();
   }, [ready, isAdmin, facilityId, section, loadSection]);
 
@@ -276,6 +282,11 @@ export default function MedicationGovernancePage() {
   };
 
   const sections: Array<{ id: SectionId; label: string; count?: number }> = [
+    {
+      id: "activationReview",
+      label: t("medicationGovernance.sectionActivationReview"),
+      count: pendingReviewCount ?? summary?.activation.pendingReview,
+    },
     { id: "promotion", label: t("medicationGovernance.sectionPromotion") },
     {
       id: "missingNdc",
@@ -347,7 +358,11 @@ export default function MedicationGovernancePage() {
         {t("medicationGovernance.backAdmin")}
       </Link>
       <h1 style={{ margin: "12px 0 4px 0" }}>{t("medicationGovernance.title")}</h1>
-      <p style={{ color: "#475569", maxWidth: 800 }}>{t("medicationGovernance.intro")}</p>
+      <p style={{ color: "#475569", maxWidth: 800 }}>
+        {section === "activationReview"
+          ? t("medicationGovernance.activationReview.intro")
+          : t("medicationGovernance.intro")}
+      </p>
 
       <div
         style={{
@@ -364,11 +379,11 @@ export default function MedicationGovernancePage() {
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button type="button" onClick={() => void loadSummary()} disabled={loading}>
+        <button type="button" onClick={() => void loadSummary()} disabled={summaryLoading}>
           {t("medicationGovernance.refresh")}
         </button>
-        {section !== "promotion" ? (
-          <button type="button" onClick={exportCsv} disabled={loading}>
+        {section !== "promotion" && section !== "activationReview" ? (
+          <button type="button" onClick={exportCsv} disabled={sectionLoading}>
             {t("medicationGovernance.exportCsv")}
           </button>
         ) : null}
@@ -390,6 +405,8 @@ export default function MedicationGovernancePage() {
       </div>
 
       {error ? <p style={{ color: "#b91c1c" }}>{error}</p> : null}
+
+      {summaryLoading && !summary ? <p>{t("common.loading")}</p> : null}
 
       {summary ? (
         <div
@@ -427,6 +444,14 @@ export default function MedicationGovernancePage() {
           <CountCard label={t("medicationGovernance.metricRetired")} count={summary.activation.retired} />
           <CountCard label={t("medicationGovernance.metricPending")} count={summary.activation.pendingReview} />
           <CountCard label={t("medicationGovernance.metricReady")} count={summary.activation.readyForActivation} />
+          <CountCard
+            label={t("medicationGovernance.metricGlobalBaseline")}
+            count={summary.globalBaseline?.priorityErAvailable ?? 0}
+          />
+          <CountCard
+            label={t("medicationGovernance.metricFacilityBaselineLinked")}
+            count={summary.globalBaseline?.facilityFormularyLinked ?? 0}
+          />
         </div>
       ) : null}
 
@@ -451,9 +476,17 @@ export default function MedicationGovernancePage() {
         ))}
       </div>
 
-      {loading ? <p>{t("common.loading")}</p> : null}
+      {section === "activationReview" && facilityId ? (
+        <div style={cardStyle()}>
+          <GovernanceActivationReviewQueue
+            facilityId={facilityId}
+            facilityLabel={facilityId}
+            onQueueLoaded={(count) => setPendingReviewCount(count)}
+          />
+        </div>
+      ) : null}
 
-      {!loading && section === "promotion" && summary ? (
+      {section === "promotion" && summary ? (
         <div style={cardStyle()}>
           <h2 style={{ margin: "0 0 10px 0", fontSize: 16 }}>{t("medicationGovernance.sectionPromotion")}</h2>
           <p style={{ margin: "4px 0", fontSize: 14 }}>
@@ -486,7 +519,9 @@ export default function MedicationGovernancePage() {
         </div>
       ) : null}
 
-      {!loading &&
+      {sectionLoading ? <p>{t("common.loading")}</p> : null}
+
+      {!sectionLoading &&
       ["missingNdc", "missingBilling", "missingSafety", "missingInfusion"].includes(section) ? (
         <div style={cardStyle()}>
           {warnings.length === 0 ? (
@@ -497,7 +532,7 @@ export default function MedicationGovernancePage() {
         </div>
       ) : null}
 
-      {!loading && section === "duplicates" ? (
+      {!sectionLoading && section === "duplicates" ? (
         <div style={cardStyle()}>
           {duplicates.length === 0 ? (
             <p style={{ color: "#166534" }}>{t("medicationGovernance.emptySection")}</p>
@@ -533,7 +568,7 @@ export default function MedicationGovernancePage() {
         </div>
       ) : null}
 
-      {!loading && section === "unmapped" ? (
+      {!sectionLoading && section === "unmapped" ? (
         <div style={cardStyle()}>
           <input
             type="search"
@@ -570,7 +605,7 @@ export default function MedicationGovernancePage() {
         </div>
       ) : null}
 
-      {!loading && ["highAlert", "controlled", "edFormulary"].includes(section) ? (
+      {!sectionLoading && ["highAlert", "controlled", "edFormulary"].includes(section) ? (
         <div style={cardStyle()}>
           {searchHits.length === 0 ? (
             <p style={{ color: "#166534" }}>{t("medicationGovernance.emptySection")}</p>

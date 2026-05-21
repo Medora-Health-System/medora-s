@@ -52,6 +52,10 @@ export type MedicationGovernanceSummary = {
     pendingReview: number;
     readyForActivation: number;
   };
+  globalBaseline: {
+    priorityErAvailable: number;
+    facilityFormularyLinked: number;
+  };
 };
 
 export type MedicationGovernanceWarningRow = {

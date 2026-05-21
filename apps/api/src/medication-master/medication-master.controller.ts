@@ -36,6 +36,8 @@ import { MedicationMasterGovernanceService } from "./medication-master-governanc
 import { MedicationStagingDuplicateGovernanceService } from "./medication-staging-duplicate-governance.service";
 import { MedicationProductGovernanceService } from "./medication-product-governance.service";
 import { MedicationProductActivationGovernanceService } from "./medication-product-activation-governance.service";
+import { MedicationGlobalBaselineService } from "./medication-global-baseline.service";
+import { medicationGlobalBaselineListQuerySchema } from "./dto/medication-global-baseline.dto";
 import {
   resolveStagingDuplicateBodySchema,
   stagingDuplicateGovernanceActionBodySchema,
@@ -43,7 +45,7 @@ import {
 } from "./dto/medication-staging-duplicate-governance.dto";
 import { promoteStagingRowBodySchema } from "./dto/promote-staging.dto";
 import {
-  medicationProductGovernanceActionBodySchema,
+  medicationProductGovernanceApproveBodySchema,
   medicationProductGovernanceBlockBodySchema,
 } from "./dto/medication-product-governance-action.dto";
 import {
@@ -79,7 +81,8 @@ export class MedicationMasterController {
     private readonly governance: MedicationMasterGovernanceService,
     private readonly stagingDuplicateGovernance: MedicationStagingDuplicateGovernanceService,
     private readonly productGovernance: MedicationProductGovernanceService,
-    private readonly activationGovernance: MedicationProductActivationGovernanceService
+    private readonly activationGovernance: MedicationProductActivationGovernanceService,
+    private readonly globalBaseline: MedicationGlobalBaselineService
   ) {}
 
   /** Phase 19C.1 — read-only canonical medication search (no runtime cutover). */
@@ -314,6 +317,31 @@ export class MedicationMasterController {
     );
   }
 
+  /** Phase 19G.2C — promoted inactive products pending governance activation approval. */
+  @Get("governance/pending-activation-review")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listPendingGovernanceActivationReview(
+    @Query() query: Record<string, string | undefined>,
+    @Req() req: Request & { user?: { facilityId?: string } }
+  ) {
+    const parsed = medicationActivationGovernanceListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    const callerFacilityId = facilityIdFromReq(req);
+    const facilityId = parsed.data.facilityId ?? callerFacilityId;
+    if (!facilityId) {
+      throw new BadRequestException("facilityId est requis.");
+    }
+    this.activationGovernance.assertFacilityScope(facilityId, callerFacilityId);
+    return this.activationGovernance.listPendingGovernanceActivationReview({
+      ...parsed.data,
+      facilityId,
+    });
+  }
+
   /** Phase 19G — controlled formulary/runtime activation candidates (no bulk). */
   @Get("governance/activation-candidates")
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
@@ -432,7 +460,7 @@ export class MedicationMasterController {
     const userId = req.user?.userId;
     if (!userId) throw new UnauthorizedException();
 
-    const parsed = medicationProductGovernanceActionBodySchema.safeParse(body ?? {});
+    const parsed = medicationProductGovernanceApproveBodySchema.safeParse(body ?? {});
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
         cause: parsed.error,
@@ -657,6 +685,51 @@ export class MedicationMasterController {
   @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
   async catalogBackfillAnalysis() {
     return this.catalogBackfill.analyzeCatalogBackfill();
+  }
+
+  /** Phase 19H — list global Priority ER baseline products (all facilities). */
+  @Get("governance/baseline/priority-er-products")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async listGlobalPriorityErBaselineProducts(
+    @Query() query: Record<string, string | undefined>
+  ) {
+    const parsed = medicationGlobalBaselineListQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    return this.globalBaseline.listGlobalBaselineProducts(parsed.data);
+  }
+
+  /**
+   * Phase 19H — promote Priority ER staging row to global baseline master (single row).
+   * No provider search / MAR / billing. Optional facilityOverlayId for inactive formulary shell.
+   */
+  @Post("governance/baseline/promote-priority-er/:id")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async promotePriorityErToGlobalBaseline(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+
+    const parsed = promotePriorityErStagingRowBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+    return this.globalBaseline.promotePriorityErStagingToGlobalBaseline(id, parsed.data, userId, {
+      ip,
+      userAgent: ua,
+    });
   }
 
   /**

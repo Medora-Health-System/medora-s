@@ -48,6 +48,7 @@ export type MedicationMasterSearchParams = {
   onFormularyOnly?: boolean;
   ndcStatus?: "present" | "missing" | "any";
   administrationType?: string;
+  baselineOnly?: boolean;
 };
 
 export type MedicationMasterValidationWarning = {
@@ -180,6 +181,7 @@ function buildSearchQuery(params: MedicationMasterSearchParams): string {
   if (params.onFormularyOnly) sp.set("onFormularyOnly", "true");
   if (params.ndcStatus && params.ndcStatus !== "any") sp.set("ndcStatus", params.ndcStatus);
   if (params.administrationType) sp.set("administrationType", params.administrationType);
+  if (params.baselineOnly) sp.set("baselineOnly", "true");
   const qs = sp.toString();
   return qs ? `?${qs}` : "";
 }

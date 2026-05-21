@@ -4,6 +4,7 @@
  */
 
 import type { INestApplication } from "@nestjs/common";
+import { MedicationMarWorkflow } from "@prisma/client";
 import * as request from "supertest";
 import type { PrismaService } from "../prisma/prisma.service";
 import { mergeProductRuntimeActivation } from "./medication-product-runtime-activation.util";
@@ -40,6 +41,72 @@ export type LifecycleReport = {
   searchAfterOrderSearch?: boolean;
   searchAfterDisable?: boolean;
 };
+
+/** Ensure 19D readiness passes before governance approve (reuse path / reruns). */
+async function ensureProductReadinessForGovernanceApprove(
+  prisma: PrismaService,
+  productId: string,
+  facilityId: string
+): Promise<void> {
+  const product = await prisma.medicationProduct.findUnique({
+    where: { id: productId },
+    include: {
+      concept: { include: { safetyProfile: true } },
+      administrationProfile: true,
+      packages: {
+        include: {
+          billingProfiles: true,
+          facilityFormularyItems: { where: { facilityId } },
+        },
+      },
+    },
+  });
+  if (!product) return;
+
+  if (!product.concept.safetyProfile) {
+    await prisma.medicationSafetyProfile.create({
+      data: {
+        conceptId: product.conceptId,
+        isHighAlert: false,
+        isControlled: false,
+      },
+    });
+  }
+
+  if (!product.administrationProfile) {
+    await prisma.medicationAdministrationProfile.create({
+      data: {
+        productId: product.id,
+        defaultMarWorkflow: MedicationMarWorkflow.SINGLE_DOSE,
+        requiresInfusionSession: false,
+      },
+    });
+  }
+
+  for (const pkg of product.packages) {
+    if (!pkg.ndc11?.trim()) {
+      await prisma.medicationPackage.update({
+        where: { id: pkg.id },
+        data: { ndc11: "12345678901" },
+      });
+    }
+    if (pkg.billingProfiles.length === 0) {
+      await prisma.medicationBillingProfile.create({
+        data: { packageId: pkg.id, requiresManualReview: false },
+      });
+    }
+    if (pkg.facilityFormularyItems.length === 0) {
+      await prisma.facilityFormularyItem.create({
+        data: {
+          facilityId,
+          packageId: pkg.id,
+          isOnFormulary: false,
+          isEDFormulary: false,
+        },
+      });
+    }
+  }
+}
 
 async function ensureFacilityFormularyForProduct(
   prisma: PrismaService,
@@ -358,6 +425,8 @@ export async function runMedicationGovernanceLifecycle(params: {
       return { ok: false, steps, stagingRowId, productId, catalogMedicationId };
     }
 
+    await ensureProductReadinessForGovernanceApprove(params.prisma, productId, params.facilityId);
+
     const approveGovRes = await request(params.app.getHttpServer())
       .post(`/medication-master/governance/approve/${productId}`)
       .set("Authorization", `Bearer ${params.adminToken}`)
@@ -365,6 +434,8 @@ export async function runMedicationGovernanceLifecycle(params: {
       .send({
         facilityId: params.facilityId,
         governanceNote: "19G.1 smoke: governance activation approved",
+        confirmExactSourcePreserved: true,
+        confirmDuplicateGovernanceResolved: true,
       });
 
     push(
