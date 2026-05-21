@@ -3,6 +3,7 @@
  * Not registered in production unless explicitly invoked via guarded debug route.
  */
 
+import { randomUUID } from "node:crypto";
 import type { INestApplication } from "@nestjs/common";
 import { MedicationMarWorkflow } from "@prisma/client";
 import * as request from "supertest";
@@ -23,6 +24,12 @@ export const LIFECYCLE_TEST_MEDICATION = {
   form: "Tablet",
   exactSourceText: "Acetaminophen 500mg Tablet",
 } as const;
+
+/** Unique 11-digit NDC for e2e reruns (avoids DUPLICATE_NDC_CONFLICT across products). */
+export function lifecycleUniqueNdc11(): string {
+  const suffix = `${Date.now()}${randomUUID().replace(/\D/g, "").slice(0, 4)}`;
+  return suffix.replace(/\D/g, "").padStart(11, "0").slice(-11);
+}
 
 export type LifecycleStepResult = {
   step: string;
@@ -84,12 +91,10 @@ async function ensureProductReadinessForGovernanceApprove(
   }
 
   for (const pkg of product.packages) {
-    if (!pkg.ndc11?.trim()) {
-      await prisma.medicationPackage.update({
-        where: { id: pkg.id },
-        data: { ndc11: "12345678901" },
-      });
-    }
+    await prisma.medicationPackage.update({
+      where: { id: pkg.id },
+      data: { ndc11: lifecycleUniqueNdc11() },
+    });
     if (pkg.billingProfiles.length === 0) {
       await prisma.medicationBillingProfile.create({
         data: { packageId: pkg.id, requiresManualReview: false },
@@ -251,19 +256,26 @@ export async function countActivationAudits(
   });
 }
 
-export function buildPriorityErStagingRawJson() {
+export function buildPriorityErStagingRawJson(runSuffix?: string) {
+  const name =
+    runSuffix != null && runSuffix.length > 0
+      ? `${LIFECYCLE_TEST_MEDICATION.name} ${runSuffix}`
+      : LIFECYCLE_TEST_MEDICATION.name;
+  const dose = LIFECYCLE_TEST_MEDICATION.dose;
+  const form = LIFECYCLE_TEST_MEDICATION.form;
+  const exactSourceText = `${name} ${dose} ${form}`;
   return {
-    medication: LIFECYCLE_TEST_MEDICATION.name,
-    dose: LIFECYCLE_TEST_MEDICATION.dose,
-    form: LIFECYCLE_TEST_MEDICATION.form,
-    exact_source_text: LIFECYCLE_TEST_MEDICATION.exactSourceText,
+    medication: name,
+    dose,
+    form,
+    exact_source_text: exactSourceText,
     __preservation: { phase: "19G.1", rule: "priority_er_inventory_exact_source" },
     __sourceTrace: {
-      exactSourceText: LIFECYCLE_TEST_MEDICATION.exactSourceText,
-      sourceNameExact: LIFECYCLE_TEST_MEDICATION.name,
-      sourceStrengthExact: LIFECYCLE_TEST_MEDICATION.dose,
-      sourceRouteExact: LIFECYCLE_TEST_MEDICATION.form,
-      sourcePackageExact: LIFECYCLE_TEST_MEDICATION.form,
+      exactSourceText,
+      sourceNameExact: name,
+      sourceStrengthExact: dose,
+      sourceRouteExact: form,
+      sourcePackageExact: form,
       sourceReviewStatus: "MANUAL_REVIEW_REQUIRED",
     },
     __reconciliation: {
@@ -304,19 +316,20 @@ export async function runMedicationGovernanceLifecycle(params: {
 
   try {
     if (!stagingRowId) {
+      const runSuffix = randomUUID().slice(0, 8);
       const batchId = `19G1-LIFECYCLE-${Date.now()}`;
       const row = await params.prisma.medicationFormularyImportStaging.create({
         data: {
           facilityId: params.facilityId,
           batchId,
           sourceRowId: `PRI_ER_LIFECYCLE_${Date.now()}`,
-          sourceInventoryDescription: LIFECYCLE_TEST_MEDICATION.exactSourceText,
-          rawJson: buildPriorityErStagingRawJson(),
+          sourceInventoryDescription: `${LIFECYCLE_TEST_MEDICATION.exactSourceText} ${runSuffix}`,
+          rawJson: buildPriorityErStagingRawJson(runSuffix),
           reconciliationStatus: "NEW_CANDIDATE",
           importGateStatus: "BLOCKED",
           overallStatus: "draft",
           reviewFlags: [],
-          ndc11: "12345678901",
+          ndc11: lifecycleUniqueNdc11(),
           hcpcsCodeSuggested: "J0130",
           importedByUserId: params.adminUserId,
         },

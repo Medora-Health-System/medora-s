@@ -146,6 +146,8 @@ describe("Medication global baseline auto-approve tiered (19I e2e)", () => {
       .expect(201);
 
     expect(dry.body.dryRun).toBe(true);
+    expect(dry.body.skippedDuplicates).toBe(0);
+    expect(dry.body.skippedControlled).toBe(0);
     expect(dry.body.tier1AutoApprovable).toBeGreaterThanOrEqual(1);
     expect(
       (dry.body.sampleRows as Array<{ productId: string; tier: number }>).some(
@@ -157,7 +159,7 @@ describe("Medication global baseline auto-approve tiered (19I e2e)", () => {
     expect(after?.governanceStatus).toBe("REVIEW_REQUIRED");
   });
 
-  it("duplicate and high-risk rows stay tier 2", async () => {
+  it("duplicate low-risk is tier 1; explicit high-risk class stays tier 2 (19I.2)", async () => {
     const isolatedFac = await prisma.facility.create({
       data: { code: `19I-ISO-${Date.now()}`, name: "Iso", country: "Test", timezone: "UTC" },
     });
@@ -198,11 +200,14 @@ describe("Medication global baseline auto-approve tiered (19I e2e)", () => {
       tier: number;
       tier2Reasons: string[];
     }>;
-    expect(dry.body.tier2ManualReview).toBeGreaterThanOrEqual(2);
+    expect(dry.body.tier2ManualReview).toBeGreaterThanOrEqual(1);
+    expect(dry.body.skippedDuplicates).toBe(0);
+    expect(dry.body.skippedControlled).toBe(0);
+    expect(dry.body.skippedHighRisk).toBeGreaterThanOrEqual(1);
 
     const dupRow = rows.find((r) => r.productId === dupProductId);
-    expect(dupRow?.tier).toBe(2);
-    expect(dupRow?.tier2Reasons).toContain("POSSIBLE_DUPLICATE");
+    expect(dupRow?.tier).toBe(1);
+    expect(dupRow?.tier2Reasons ?? []).toHaveLength(0);
 
     const insulinRow = rows.find((r) => r.productId === insulinProductId);
     expect(insulinRow?.tier).toBe(2);

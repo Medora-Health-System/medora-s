@@ -27,24 +27,36 @@ describe("evaluateGlobalBaselineTier (19I)", () => {
     expect(evaluateGlobalBaselineTier(baseInput())).toEqual({ tier: 1, tier2Reasons: [] });
   });
 
-  it("tier 2 for duplicate candidate", () => {
-    const r = evaluateGlobalBaselineTier(
-      baseInput({ reconciliationStatus: "POSSIBLE_DUPLICATE" })
-    );
-    expect(r.tier).toBe(2);
-    expect(r.tier2Reasons).toContain("POSSIBLE_DUPLICATE");
+  it("tier 1 for duplicate candidate when otherwise low-risk (19I.2)", () => {
+    expect(
+      evaluateGlobalBaselineTier(
+        baseInput({ reconciliationStatus: "POSSIBLE_DUPLICATE", reviewFlags: ["DUPLICATE_WARNING"] })
+      )
+    ).toEqual({ tier: 1, tier2Reasons: [] });
   });
 
-  it("tier 2 for high-alert", () => {
-    const r = evaluateGlobalBaselineTier(baseInput({ isHighAlert: true }));
-    expect(r.tier).toBe(2);
-    expect(r.tier2Reasons).toContain("HIGH_ALERT");
+  it("tier 1 for high-alert and controlled when not high-risk class (19I.2)", () => {
+    expect(evaluateGlobalBaselineTier(baseInput({ isHighAlert: true }))).toEqual({
+      tier: 1,
+      tier2Reasons: [],
+    });
+    expect(evaluateGlobalBaselineTier(baseInput({ isControlled: true }))).toEqual({
+      tier: 1,
+      tier2Reasons: [],
+    });
   });
 
-  it("tier 2 for controlled substance", () => {
-    const r = evaluateGlobalBaselineTier(baseInput({ isControlled: true }));
-    expect(r.tier).toBe(2);
-    expect(r.tier2Reasons).toContain("CONTROLLED_SUBSTANCE");
+  it("tier 1 for reconciliation review and manual review flags (19I.2)", () => {
+    expect(
+      evaluateGlobalBaselineTier(
+        baseInput({
+          reconciliationStatus: "REVIEW_REQUIRED",
+          reviewFlags: ["MANUAL_REVIEW_REQUIRED", "NDC_REVIEW_REQUIRED", "INFUSION_REVIEW_REQUIRED"],
+          requiresInfusionSession: true,
+          administrationType: "INFUSION",
+        })
+      )
+    ).toEqual({ tier: 1, tier2Reasons: [] });
   });
 
   it("tier 2 for insulin and opioid patterns", () => {
@@ -74,5 +86,48 @@ describe("evaluateGlobalBaselineTier (19I)", () => {
     );
     expect(r.tier).toBe(2);
     expect(r.tier2Reasons).toContain("ALREADY_BASELINE_APPROVED");
+  });
+
+  it("tier 2 for governance blocked or retired", () => {
+    expect(evaluateGlobalBaselineTier(baseInput({ governanceBlocked: true }))).toEqual({
+      tier: 2,
+      tier2Reasons: ["GOVERNANCE_BLOCKED"],
+    });
+    expect(evaluateGlobalBaselineTier(baseInput({ governanceStatus: "BLOCKED" }))).toEqual({
+      tier: 2,
+      tier2Reasons: ["GOVERNANCE_BLOCKED"],
+    });
+    expect(evaluateGlobalBaselineTier(baseInput({ governanceStatus: "RETIRED" }))).toEqual({
+      tier: 2,
+      tier2Reasons: ["GOVERNANCE_BLOCKED"],
+    });
+  });
+
+  it("tier 2 reasons are only emitted union members (19I.2B)", () => {
+    const emitted = new Set([
+      "MISSING_MEDICATION_NAME",
+      "MISSING_DOSE",
+      "MISSING_FORM",
+      "MISSING_EXACT_SOURCE",
+      "HIGH_RISK_MEDICATION",
+      "AMBIGUOUS_DOSE",
+      "GOVERNANCE_BLOCKED",
+      "ALREADY_BASELINE_APPROVED",
+    ]);
+    const cases = [
+      baseInput(),
+      baseInput({ reconciliationStatus: "POSSIBLE_DUPLICATE", reviewFlags: ["DUPLICATE_WARNING"] }),
+      baseInput({ sourceNameExact: "Morphine" }),
+      baseInput({ sourceStrengthExact: "see pkg" }),
+      baseInput({ governanceStatus: "RETIRED" }),
+    ];
+    for (const input of cases) {
+      const r = evaluateGlobalBaselineTier(input);
+      if (r.tier === 2) {
+        for (const reason of r.tier2Reasons) {
+          expect(emitted.has(reason)).toBe(true);
+        }
+      }
+    }
   });
 });

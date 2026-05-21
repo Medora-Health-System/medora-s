@@ -110,6 +110,7 @@ function appendGovernanceNote(existing: string | null, adminNote: string): strin
   return parts.join("\n\n");
 }
 
+/** Tier 2 skip tallies (19I.2B). skippedDuplicates/skippedControlled stay 0 for API compatibility. */
 function incrementSkipCounters(
   tier2Reasons: GlobalBaselineTier2Reason[],
   counters: Omit<
@@ -118,9 +119,7 @@ function incrementSkipCounters(
   >
 ) {
   for (const r of tier2Reasons) {
-    if (r === "POSSIBLE_DUPLICATE" || r === "DUPLICATE_MATCH") counters.skippedDuplicates += 1;
     if (r === "HIGH_RISK_MEDICATION") counters.skippedHighRisk += 1;
-    if (r === "CONTROLLED_SUBSTANCE") counters.skippedControlled += 1;
     if (r === "AMBIGUOUS_DOSE") counters.skippedAmbiguousDose += 1;
     if (
       r === "MISSING_MEDICATION_NAME" ||

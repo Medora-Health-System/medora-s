@@ -1,28 +1,27 @@
 /**
- * Phase 19I — Tiered global baseline auto-approval (text rules only; no runtime activation).
+ * Phase 19I / 19I.2 — Tiered global baseline auto-approval (text rules only; no runtime activation).
+ *
+ * Tier 1: structurally valid low-risk Priority ER promoted products.
+ * Tier 2 (manual review): explicit high-risk medication classes, malformed data,
+ * governance block, or already baseline-approved.
+ *
+ * Duplicates, high-alert, controlled, infusion, and billing/NDC review flags do NOT
+ * block baseline auto-approval (runtime activation remains separately gated).
  */
 
 export const GLOBAL_BASELINE_AUTO_APPROVE_NOTE =
   "Auto-approved for global baseline only by Tier 1 safety rules. Runtime ordering, MAR, and billing remain disabled.";
 
+/** Emitted only by evaluateGlobalBaselineTier (19I.2 policy). */
 export type GlobalBaselineTier2Reason =
-  | "POSSIBLE_DUPLICATE"
-  | "DUPLICATE_MATCH"
   | "MISSING_MEDICATION_NAME"
   | "MISSING_DOSE"
   | "MISSING_FORM"
   | "MISSING_EXACT_SOURCE"
-  | "HIGH_ALERT"
-  | "CONTROLLED_SUBSTANCE"
   | "HIGH_RISK_MEDICATION"
   | "AMBIGUOUS_DOSE"
-  | "NDC_OR_BILLING_REVIEW"
-  | "INFUSION_PROTOCOL"
   | "GOVERNANCE_BLOCKED"
-  | "RECONCILIATION_REVIEW_REQUIRED"
-  | "MANUAL_REVIEW_REQUIRED"
-  | "ALREADY_BASELINE_APPROVED"
-  | "UNCERTAIN";
+  | "ALREADY_BASELINE_APPROVED";
 
 export type GlobalBaselineTierEvaluationInput = {
   sourceNameExact: string;
@@ -45,12 +44,19 @@ export type GlobalBaselineTierEvaluationResult =
   | { tier: 1; tier2Reasons: [] }
   | { tier: 2; tier2Reasons: GlobalBaselineTier2Reason[] };
 
+/** Manual-review-only classes per operational policy (19I.2). */
 const HIGH_RISK_NAME_PATTERNS: RegExp[] = [
+  /\bopioid\b/i,
+  /\bmorphine\b/i,
+  /\bfentanyl\b/i,
+  /\bhydromorphone\b/i,
+  /\boxycodone\b/i,
+  /\bbenzodiazepine\b/i,
+  /\bmidazolam\b/i,
+  /\blorazepam\b/i,
+  /\bdiazepam\b/i,
   /\binsulin\b/i,
   /\bheparin\b/i,
-  /\benoxaparin\b/i,
-  /\bwarfarin\b/i,
-  /\banticoagulant\b/i,
   /\bpotassium\s+chloride\b/i,
   /\bk\s*cl\b/i,
   /\bnorepinephrine\b/i,
@@ -58,23 +64,13 @@ const HIGH_RISK_NAME_PATTERNS: RegExp[] = [
   /\bdopamine\b/i,
   /\bvasopressin\b/i,
   /\bvasopressor\b/i,
-  /\bpressor\b/i,
   /\bpropofol\b/i,
-  /\bmidazolam\b/i,
-  /\blorazepam\b/i,
-  /\bdiazepam\b/i,
-  /\bbenzodiazepine\b/i,
-  /\bmorphine\b/i,
-  /\bfentanyl\b/i,
-  /\bhydromorphone\b/i,
-  /\boxycodone\b/i,
-  /\bopioid\b/i,
+  /\bsedative\b/i,
+  /\bphenobarbital\b/i,
   /\brocuronium\b/i,
   /\bvecuronium\b/i,
   /\bsuccinylcholine\b/i,
   /\bparalytic\b/i,
-  /\bsedative\b/i,
-  /\bphenobarbital\b/i,
 ];
 
 const AMBIGUOUS_DOSE_PATTERNS: RegExp[] = [
@@ -113,12 +109,6 @@ function isAmbiguousDose(dose: string): boolean {
   return false;
 }
 
-function isDuplicateCandidate(status: string, flags: string[]): boolean {
-  const s = status.trim().toUpperCase();
-  if (s === "POSSIBLE_DUPLICATE" || s === "EXACT_MATCH") return true;
-  return flags.includes("GOVERNANCE_BLOCKED") || flags.includes("DUPLICATE_WARNING");
-}
-
 export function evaluateGlobalBaselineTier(
   input: GlobalBaselineTierEvaluationInput
 ): GlobalBaselineTierEvaluationResult {
@@ -136,11 +126,6 @@ export function evaluateGlobalBaselineTier(
     return { tier: 2, tier2Reasons: ["GOVERNANCE_BLOCKED"] };
   }
 
-  const reconciliation = input.reconciliationStatus.trim().toUpperCase();
-  if (reconciliation === "REVIEW_REQUIRED") {
-    return { tier: 2, tier2Reasons: ["RECONCILIATION_REVIEW_REQUIRED"] };
-  }
-
   const name = input.sourceNameExact.trim();
   const dose = input.sourceStrengthExact.trim();
   const form = input.sourceRouteExact.trim();
@@ -155,41 +140,10 @@ export function evaluateGlobalBaselineTier(
     return { tier: 2, tier2Reasons: reasons };
   }
 
-  if (isDuplicateCandidate(input.reconciliationStatus, input.reviewFlags)) {
-    reasons.push(
-      input.reconciliationStatus.trim().toUpperCase() === "EXACT_MATCH"
-        ? "DUPLICATE_MATCH"
-        : "POSSIBLE_DUPLICATE"
-    );
-  }
-
-  if (input.isControlled) reasons.push("CONTROLLED_SUBSTANCE");
-  if (input.isHighAlert) reasons.push("HIGH_ALERT");
-
   const text = haystack(input);
   if (hasHighRiskMedicationPattern(text)) reasons.push("HIGH_RISK_MEDICATION");
 
   if (isAmbiguousDose(dose)) reasons.push("AMBIGUOUS_DOSE");
-
-  if (
-    input.reviewFlags.includes("NDC_REVIEW_REQUIRED") ||
-    input.reviewFlags.includes("BILLING_REVIEW_REQUIRED")
-  ) {
-    reasons.push("NDC_OR_BILLING_REVIEW");
-  }
-
-  if (
-    input.requiresInfusionSession ||
-    input.administrationType === "INFUSION" ||
-    input.reviewFlags.includes("INFUSION_REVIEW_REQUIRED") ||
-    input.reviewFlags.includes("MAR_WORKFLOW_REVIEW_REQUIRED")
-  ) {
-    reasons.push("INFUSION_PROTOCOL");
-  }
-
-  if (input.reviewFlags.includes("MANUAL_REVIEW_REQUIRED")) {
-    reasons.push("MANUAL_REVIEW_REQUIRED");
-  }
 
   if (reasons.length > 0) {
     return { tier: 2, tier2Reasons: [...new Set(reasons)] };

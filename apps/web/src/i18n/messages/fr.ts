@@ -2712,9 +2712,9 @@ export default {
       dryRunRequired: "Lancez une simulation avant de valider les approbations niveau 1.",
       summary:
         "Candidats : {total} — Niveau 1 auto-approuvable : {tier1} — Niveau 2 revue manuelle : {tier2}",
-      skippedDuplicates: "Ignorés (doublons)",
-      skippedHighRisk: "Ignorés (médicaments à risque)",
-      skippedControlled: "Ignorés (contrôlés)",
+      skippedDuplicates: "Ignorés (doublons — non utilisé par les règles de niveau)",
+      skippedHighRisk: "Ignorés (classe médicamenteuse à risque)",
+      skippedControlled: "Ignorés (contrôlés — non utilisé par les règles de niveau)",
       skippedAmbiguousDose: "Ignorés (dose ambiguë)",
       skippedMissing: "Ignorés (champs requis manquants)",
       colTier: "Niveau",

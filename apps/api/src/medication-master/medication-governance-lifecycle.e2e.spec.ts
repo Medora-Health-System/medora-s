@@ -128,7 +128,7 @@ describe("Medication governance lifecycle smoke (19G.1 e2e)", () => {
       where: { id: report.productId! },
       select: { strengthDisplay: true, dosageForm: true, concept: { select: { genericName: true } } },
     });
-    expect(product?.concept.genericName).toBe(LIFECYCLE_TEST_MEDICATION.name);
+    expect(product?.concept.genericName).toContain(LIFECYCLE_TEST_MEDICATION.name);
     expect(product?.strengthDisplay).toBe(LIFECYCLE_TEST_MEDICATION.dose);
     expect(product?.dosageForm).toBe(LIFECYCLE_TEST_MEDICATION.form);
   }, 180000);
