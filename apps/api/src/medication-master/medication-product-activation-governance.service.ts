@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { AuditAction, Prisma } from "@prisma/client";
 import { AuditService } from "../common/services/audit.service";
+import { logError } from "../common/logging/medoraLogger";
 import { PrismaService } from "../prisma/prisma.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 import {
@@ -83,51 +84,20 @@ export class MedicationProductActivationGovernanceService {
     }
 
     const facilityId = query.facilityId;
-
-    const products = await this.prisma.medicationProduct.findMany({
-      where: {
-        AND: [
-          {
-            OR: [
-              { isActive: false },
-              { governanceNotes: { contains: RUNTIME_ACTIVATION_MARKER_START } },
-            ],
-          },
-          {
-            packages: {
-              some: { facilityFormularyItems: { some: { facilityId } } },
-            },
-          },
-        ],
-      },
-      include: {
-        concept: { select: { id: true, isActive: true, code: true, genericName: true, displayName: true } },
-        packages: {
-          orderBy: [{ isDefaultForProduct: "desc" }, { createdAt: "asc" }],
-          take: 3,
-          include: {
-            facilityFormularyItems: {
-              where: { facilityId },
-              take: 1,
-            },
-          },
-        },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: Math.min(query.limit ?? 100, 200),
+    const promotedProductIds = await this.resolvePromotedProductIdsForFacility(facilityId);
+    const products = await this.findActivationCandidateProducts({
+      facilityId,
+      promotedProductIds,
+      limit: query.limit,
     });
 
     const q = query.q?.trim().toLowerCase();
     const stagingByProduct = await this.loadStagingContextByProductIds(
       products.map((p) => p.id),
-      query.facilityId
+      facilityId
     );
 
-    let items = await Promise.all(
-      products.map((p) =>
-        this.toCandidateDto(p, facilityId, stagingByProduct.get(p.id) ?? null)
-      )
-    );
+    let items = this.mapProductsToCandidateDtos(products, facilityId, stagingByProduct);
 
     items = items.filter((row) => {
       if (row.duplicateGovernanceStatus === "BLOCKED_DUPLICATE") return false;
@@ -164,15 +134,66 @@ export class MedicationProductActivationGovernanceService {
   async listPendingGovernanceActivationReview(
     query: MedicationActivationGovernanceListQuery
   ): Promise<{ items: ActivationCandidateDto[]; total: number }> {
-    const { items } = await this.listActivationCandidates(query);
-    const pending = items.filter((row) => {
-      if (row.governanceStatus === "ACTIVATION_APPROVED") return false;
-      if (row.governanceStatus === "BLOCKED" || row.governanceStatus === "RETIRED") return false;
-      if (row.productIsActive) return false;
-      if (!row.duplicateGovernanceResolved) return false;
-      return true;
-    });
-    return { items: pending, total: pending.length };
+    if (!query.facilityId) {
+      throw new BadRequestException("facilityId est requis.");
+    }
+
+    try {
+      const facilityId = query.facilityId;
+      const promotedProductIds = await this.resolvePromotedProductIdsForFacility(facilityId);
+      const products = await this.findActivationCandidateProducts({
+        facilityId,
+        promotedProductIds,
+        limit: query.limit,
+        governanceStatus: "REVIEW_REQUIRED",
+        inactiveOnly: true,
+      });
+
+      const stagingByProduct = await this.loadStagingContextByProductIds(
+        products.map((p) => p.id),
+        facilityId
+      );
+
+      let items = this.mapProductsToCandidateDtos(products, facilityId, stagingByProduct);
+
+      const q = query.q?.trim().toLowerCase();
+      items = items.filter((row) => {
+        if (row.governanceStatus === "ACTIVATION_APPROVED") return false;
+        if (row.governanceStatus === "BLOCKED" || row.governanceStatus === "RETIRED") return false;
+        if (row.productIsActive) return false;
+        if (row.duplicateGovernanceStatus === "BLOCKED_DUPLICATE") return false;
+        if (!row.duplicateGovernanceResolved && row.duplicateGovernanceStatus) return false;
+        return true;
+      });
+
+      if (q) {
+        items = items.filter((row) => {
+          const hay = [
+            row.productCode,
+            row.exactSourceMedication,
+            row.exactSourceDose,
+            row.exactSourceFormRoute,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return hay.includes(q);
+        });
+      }
+
+      return { items, total: items.length };
+    } catch (e) {
+      if (e instanceof BadRequestException) throw e;
+      const prismaCode =
+        e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
+      logError("medication_pending_activation_review_failed", {
+        facilityId: query.facilityId,
+        action: "list_pending_governance_activation_review",
+        prismaCode,
+        errorName: e instanceof Error ? e.name : "unknown",
+      });
+      return { items: [], total: 0 };
+    }
   }
 
   async approveFormularyInactive(
@@ -629,29 +650,183 @@ export class MedicationProductActivationGovernanceService {
     };
   }
 
-  private async toCandidateDto(
-    product: {
-      id: string;
-      code: string;
-      conceptId: string;
-      governanceStatus: string;
-      isActive: boolean;
-      governanceNotes: string | null;
-      legacyCatalogMedicationId: string | null;
+  /**
+   * Explicit select omits Phase 19H baseline columns so unmigrated production DBs (P2022) stay readable.
+   */
+  private activationCandidateProductSelect(facilityId: string) {
+    return {
+      id: true,
+      code: true,
+      conceptId: true,
+      governanceStatus: true,
+      isActive: true,
+      governanceNotes: true,
+      legacyCatalogMedicationId: true,
       concept: {
-        id: string;
-        isActive: boolean;
-        genericName: string;
-        displayName: string;
-      };
-      packages: Array<{
-        id: string;
-        facilityFormularyItems: Array<{ id: string; isOnFormulary: boolean; facilityId: string }>;
-      }>;
-    },
+        select: { id: true, isActive: true, code: true, genericName: true, displayName: true },
+      },
+      packages: {
+        orderBy: [{ isDefaultForProduct: "desc" as const }, { createdAt: "asc" as const }],
+        take: 3,
+        select: {
+          id: true,
+          facilityFormularyItems: {
+            where: { facilityId },
+            take: 1,
+            select: { id: true, isOnFormulary: true, facilityId: true },
+          },
+        },
+      },
+    } satisfies Prisma.MedicationProductSelect;
+  }
+
+  private buildActivationCandidateWhere(
+    facilityId: string,
+    promotedProductIds: string[],
+    options?: { governanceStatus?: string; inactiveOnly?: boolean }
+  ): Prisma.MedicationProductWhereInput {
+    const inactiveOrRuntime: Prisma.MedicationProductWhereInput = options?.inactiveOnly
+      ? { isActive: false }
+      : {
+          OR: [
+            { isActive: false },
+            { governanceNotes: { contains: RUNTIME_ACTIVATION_MARKER_START } },
+          ],
+        };
+
+    const facilityScope: Prisma.MedicationProductWhereInput =
+      promotedProductIds.length > 0
+        ? {
+            OR: [
+              {
+                packages: {
+                  some: { facilityFormularyItems: { some: { facilityId } } },
+                },
+              },
+              { id: { in: promotedProductIds } },
+            ],
+          }
+        : {
+            packages: {
+              some: { facilityFormularyItems: { some: { facilityId } } },
+            },
+          };
+
+    const and: Prisma.MedicationProductWhereInput[] = [inactiveOrRuntime, facilityScope];
+    if (options?.governanceStatus) {
+      and.push({ governanceStatus: options.governanceStatus });
+    }
+
+    return { AND: and };
+  }
+
+  private parsePromotionProductId(promotionResultJson: unknown): string | null {
+    if (
+      promotionResultJson == null ||
+      typeof promotionResultJson !== "object" ||
+      Array.isArray(promotionResultJson)
+    ) {
+      return null;
+    }
+    const productId = (promotionResultJson as Record<string, unknown>).productId;
+    return typeof productId === "string" && productId.trim() ? productId : null;
+  }
+
+  private async resolvePromotedProductIdsForFacility(facilityId: string): Promise<string[]> {
+    try {
+      const rows = await this.prisma.medicationFormularyImportStaging.findMany({
+        where: {
+          promotionResultJson: { not: Prisma.DbNull },
+          OR: [{ facilityId }, { facilityId: null }],
+        },
+        select: { promotionResultJson: true },
+        take: 500,
+      });
+
+      const ids = new Set<string>();
+      for (const row of rows) {
+        const pid = this.parsePromotionProductId(row.promotionResultJson);
+        if (pid) ids.add(pid);
+      }
+      return [...ids];
+    } catch (e) {
+      const prismaCode =
+        e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
+      logError("medication_activation_staging_product_ids_failed", {
+        facilityId,
+        action: "resolve_promoted_product_ids",
+        prismaCode,
+        errorName: e instanceof Error ? e.name : "unknown",
+      });
+      return [];
+    }
+  }
+
+  private async findActivationCandidateProducts(params: {
+    facilityId: string;
+    promotedProductIds: string[];
+    limit?: number;
+    governanceStatus?: string;
+    inactiveOnly?: boolean;
+  }): Promise<ActivationCandidateProductRow[]> {
+    const take = Math.min(params.limit ?? 100, 200);
+    const where = this.buildActivationCandidateWhere(
+      params.facilityId,
+      params.promotedProductIds,
+      {
+        governanceStatus: params.governanceStatus,
+        inactiveOnly: params.inactiveOnly,
+      }
+    );
+    const select = this.activationCandidateProductSelect(params.facilityId);
+
+    try {
+      return await this.prisma.medicationProduct.findMany({
+        where,
+        select,
+        orderBy: { updatedAt: "desc" },
+        take,
+      });
+    } catch (e) {
+      if (!(e instanceof Prisma.PrismaClientKnownRequestError)) throw e;
+      logError("medication_activation_candidate_query_failed", {
+        facilityId: params.facilityId,
+        action: "find_activation_candidate_products",
+        prismaCode: e.code,
+        promotedIdCount: params.promotedProductIds.length,
+      });
+      throw e;
+    }
+  }
+
+  private mapProductsToCandidateDtos(
+    products: ActivationCandidateProductRow[],
+    facilityId: string,
+    stagingByProduct: Map<string, StagingProductContext>
+  ): ActivationCandidateDto[] {
+    const items: ActivationCandidateDto[] = [];
+    for (const product of products) {
+      try {
+        items.push(
+          this.toCandidateDto(product, facilityId, stagingByProduct.get(product.id) ?? null)
+        );
+      } catch (e) {
+        logError("medication_activation_candidate_row_skipped", {
+          facilityId,
+          action: "map_activation_candidate_dto",
+          productId: product.id,
+          errorName: e instanceof Error ? e.name : "unknown",
+        });
+      }
+    }
+    return items;
+  }
+
+  private toCandidateDto(
+    product: ActivationCandidateProductRow,
     facilityId: string,
     staging: StagingProductContext | null
-  ): Promise<ActivationCandidateDto> {
+  ): ActivationCandidateDto {
     const pkg = product.packages[0];
     const formulary = pkg?.facilityFormularyItems[0];
     const runtime = parseProductRuntimeActivation(product.governanceNotes);
@@ -721,39 +896,55 @@ export class MedicationProductActivationGovernanceService {
     const map = new Map<string, StagingProductContext>();
     if (productIds.length === 0) return map;
 
-    const rows = await this.prisma.medicationFormularyImportStaging.findMany({
-      where: {
-        promotionResultJson: { not: Prisma.DbNull },
-        OR: [{ facilityId }, { facilityId: null }],
-      },
-      select: {
-        promotionResultJson: true,
-        rawJson: true,
-        reconciliationStatus: true,
-        reviewFlags: true,
-      },
-      take: 500,
-    });
+    const productIdSet = new Set(productIds);
 
-    for (const row of rows) {
-      const promo =
-        row.promotionResultJson != null &&
-        typeof row.promotionResultJson === "object" &&
-        !Array.isArray(row.promotionResultJson)
-          ? (row.promotionResultJson as Record<string, unknown>)
-          : null;
-      const pid = typeof promo?.productId === "string" ? promo.productId : null;
-      if (!pid || !productIds.includes(pid) || map.has(pid)) continue;
+    try {
+      const rows = await this.prisma.medicationFormularyImportStaging.findMany({
+        where: {
+          promotionResultJson: { not: Prisma.DbNull },
+          OR: [{ facilityId }, { facilityId: null }],
+        },
+        select: {
+          promotionResultJson: true,
+          rawJson: true,
+          reconciliationStatus: true,
+          reviewFlags: true,
+        },
+        take: 500,
+      });
 
-      const sourceTrace = parsePriorityErSourceTrace(row.rawJson);
-      const flags = Array.isArray(row.reviewFlags)
-        ? row.reviewFlags.filter((f): f is string => typeof f === "string")
-        : [];
-      map.set(pid, {
-        governance: parseStagingGovernanceFromRow(row.rawJson),
-        reconciliationStatus: row.reconciliationStatus,
-        reviewFlags: flags,
-        sourceTrace,
+      for (const row of rows) {
+        const pid = this.parsePromotionProductId(row.promotionResultJson);
+        if (!pid || !productIdSet.has(pid) || map.has(pid)) continue;
+
+        try {
+          const sourceTrace = parsePriorityErSourceTrace(row.rawJson);
+          const flags = Array.isArray(row.reviewFlags)
+            ? row.reviewFlags.filter((f): f is string => typeof f === "string")
+            : [];
+          map.set(pid, {
+            governance: parseStagingGovernanceFromRow(row.rawJson),
+            reconciliationStatus: row.reconciliationStatus ?? "",
+            reviewFlags: flags,
+            sourceTrace,
+          });
+        } catch (e) {
+          logError("medication_activation_staging_context_row_skipped", {
+            facilityId,
+            action: "load_staging_context",
+            productId: pid,
+            errorName: e instanceof Error ? e.name : "unknown",
+          });
+        }
+      }
+    } catch (e) {
+      const prismaCode =
+        e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined;
+      logError("medication_activation_staging_context_failed", {
+        facilityId,
+        action: "load_staging_context",
+        prismaCode,
+        productIdCount: productIds.length,
       });
     }
 
@@ -811,6 +1002,27 @@ type StagingProductContext = {
   reconciliationStatus: string;
   reviewFlags: string[];
   sourceTrace: ReturnType<typeof parsePriorityErSourceTrace>;
+};
+
+type ActivationCandidateProductRow = {
+  id: string;
+  code: string;
+  conceptId: string;
+  governanceStatus: string;
+  isActive: boolean;
+  governanceNotes: string | null;
+  legacyCatalogMedicationId: string | null;
+  concept: {
+    id: string;
+    isActive: boolean;
+    code: string;
+    genericName: string;
+    displayName: string;
+  };
+  packages: Array<{
+    id: string;
+    facilityFormularyItems: Array<{ id: string; isOnFormulary: boolean; facilityId: string }>;
+  }>;
 };
 
 function gateNoteOnly(body: MedicationActivationGovernanceActionBody): boolean {

@@ -386,4 +386,112 @@ describe("Medication governance pending activation review (19G.2C e2e)", () => {
       .set("x-facility-id", facilityId)
       .expect(403);
   });
+
+  it("returns 200 with empty items when no eligible pending products", async () => {
+    const res = await request(app.getHttpServer())
+      .get(PENDING_PATH)
+      .query({ facilityId, q: `no-match-${randomUUID()}`, limit: 50 })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("x-facility-id", facilityId)
+      .expect(200);
+
+    expect(res.body.items).toEqual([]);
+    expect(res.body.total).toBe(0);
+  });
+
+  it("includes global-baseline promoted product without facility formulary overlay", async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const medName = `${LIFECYCLE_TEST_MEDICATION.name} GB-${suffix}`;
+    const rawJson = mergeGovernanceIntoRawJson(
+      {
+        ...buildPriorityErStagingRawJson(),
+        medication: medName,
+        dose: LIFECYCLE_TEST_MEDICATION.dose,
+        form: LIFECYCLE_TEST_MEDICATION.form,
+        __sourceTrace: {
+          exactSourceText: `${medName} ${LIFECYCLE_TEST_MEDICATION.dose} ${LIFECYCLE_TEST_MEDICATION.form}`,
+          sourceNameExact: medName,
+          sourceStrengthExact: LIFECYCLE_TEST_MEDICATION.dose,
+          sourceRouteExact: LIFECYCLE_TEST_MEDICATION.form,
+          sourcePackageExact: LIFECYCLE_TEST_MEDICATION.form,
+          sourceReviewStatus: "MANUAL_REVIEW_REQUIRED",
+        },
+      },
+      {
+        duplicateResolutionStatus: "CREATE_NEW_APPROVED",
+        governanceDecision: "CREATE_NEW_APPROVED",
+      }
+    );
+
+    const staging = await prisma.medicationFormularyImportStaging.create({
+      data: {
+        facilityId: null,
+        batchId: `19H1-BATCH-${suffix}`,
+        sourceRowId: `PRI_ER_19H1_${suffix}`,
+        sourceInventoryDescription: `${medName} pending`,
+        rawJson: rawJson as Prisma.InputJsonValue,
+        reconciliationStatus: "NEW_CANDIDATE",
+        importGateStatus: "PROMOTED",
+        overallStatus: "promoted",
+        reviewFlags: [],
+        importedByUserId: adminUserId,
+      },
+    });
+
+    const concept = await prisma.medicationConcept.create({
+      data: {
+        code: `19H1-CONCEPT-${suffix}`,
+        genericName: medName,
+        displayName: medName,
+        isActive: false,
+      },
+    });
+    const product = await prisma.medicationProduct.create({
+      data: {
+        code: `19H1-PRODUCT-${suffix}`,
+        conceptId: concept.id,
+        strengthDisplay: LIFECYCLE_TEST_MEDICATION.dose,
+        dosageForm: LIFECYCLE_TEST_MEDICATION.form,
+        administrationType: "ORAL",
+        billingClass: "UNKNOWN",
+        isActive: false,
+        governanceStatus: "REVIEW_REQUIRED",
+        baselineAvailable: true,
+        baselineSource: "PRIORITY_ER_INVENTORY",
+        baselineSourceRowId: staging.sourceRowId,
+      },
+    });
+    const pkg = await prisma.medicationPackage.create({
+      data: {
+        code: `19H1-PKG-${suffix}`,
+        productId: product.id,
+        packageDescription: medName,
+        packageType: "OTHER",
+        isDefaultForProduct: true,
+        isActive: false,
+      },
+    });
+
+    await prisma.medicationFormularyImportStaging.update({
+      where: { id: staging.id },
+      data: {
+        promotionResultJson: {
+          productId: product.id,
+          conceptId: concept.id,
+          packageId: pkg.id,
+          globalBaseline: true,
+        },
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .get(PENDING_PATH)
+      .query({ facilityId, q: suffix, limit: 200 })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("x-facility-id", facilityId)
+      .expect(200);
+
+    const ids = (res.body.items as Array<{ productId: string }>).map((r) => r.productId);
+    expect(ids).toContain(product.id);
+  });
 });
