@@ -1,5 +1,5 @@
 /**
- * Phase 19I / 19I.2 — Tiered global baseline auto-approval (text rules only; no runtime activation).
+ * Phase 19I / 19I.2 / 19J.2B — Tiered global baseline auto-approval (text rules only; no runtime activation).
  *
  * Tier 1: structurally valid low-risk Priority ER promoted products.
  * Tier 2 (manual review): explicit high-risk medication classes, malformed data,
@@ -44,29 +44,41 @@ export type GlobalBaselineTierEvaluationResult =
   | { tier: 1; tier2Reasons: [] }
   | { tier: 2; tier2Reasons: GlobalBaselineTier2Reason[] };
 
-/** Manual-review-only classes per operational policy (19I.2). */
+/** Manual-review-only classes per operational policy (19I.2, extended 19J.2B). */
 const HIGH_RISK_NAME_PATTERNS: RegExp[] = [
+  // Opioids
   /\bopioid\b/i,
   /\bmorphine\b/i,
   /\bfentanyl\b/i,
   /\bhydromorphone\b/i,
   /\boxycodone\b/i,
+  // Benzodiazepines (explicit drug names; no broad anticoagulant or class-wide benzo catch-all)
   /\bbenzodiazepine\b/i,
   /\bmidazolam\b/i,
   /\blorazepam\b/i,
   /\bdiazepam\b/i,
+  /\balprazolam\b/i,
+  /\bclonazepam\b/i,
+  /\btemazepam\b/i,
+  /\bchlordiazepoxide\b/i,
   /\binsulin\b/i,
   /\bheparin\b/i,
   /\bpotassium\s+chloride\b/i,
   /\bk\s*cl\b/i,
+  // Vasopressors
   /\bnorepinephrine\b/i,
   /\bepinephrine\b/i,
   /\bdopamine\b/i,
   /\bvasopressin\b/i,
   /\bvasopressor\b/i,
+  // Sedatives / anesthetic agents
   /\bpropofol\b/i,
   /\bsedative\b/i,
   /\bphenobarbital\b/i,
+  /\bketamine\b/i,
+  /\betomidate\b/i,
+  /\bdexmedetomidine\b/i,
+  // Paralytics
   /\brocuronium\b/i,
   /\bvecuronium\b/i,
   /\bsuccinylcholine\b/i,

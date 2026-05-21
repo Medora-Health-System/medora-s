@@ -59,7 +59,21 @@ describe("evaluateGlobalBaselineTier (19I)", () => {
     ).toEqual({ tier: 1, tier2Reasons: [] });
   });
 
-  it("tier 2 for insulin and opioid patterns", () => {
+  it("tier 1 for acetaminophen and albuterol (19J.2B regression)", () => {
+    expect(evaluateGlobalBaselineTier(baseInput())).toEqual({ tier: 1, tier2Reasons: [] });
+    expect(
+      evaluateGlobalBaselineTier(
+        baseInput({
+          sourceNameExact: "Albuterol",
+          sourceStrengthExact: "2.5mg/3mL",
+          sourceRouteExact: "Inhalation sol",
+          exactSourceText: "Albuterol 2.5mg/3mL Inhalation sol",
+        })
+      )
+    ).toEqual({ tier: 1, tier2Reasons: [] });
+  });
+
+  it("tier 2 for insulin, opioid, paralytic, heparin, and propofol patterns", () => {
     expect(
       evaluateGlobalBaselineTier(baseInput({ sourceNameExact: "Regular Insulin" })).tier
     ).toBe(2);
@@ -72,6 +86,26 @@ describe("evaluateGlobalBaselineTier (19I)", () => {
     expect(
       evaluateGlobalBaselineTier(baseInput({ sourceNameExact: "Rocuronium" })).tier
     ).toBe(2);
+    expect(evaluateGlobalBaselineTier(baseInput({ sourceNameExact: "Heparin" })).tier).toBe(2);
+    expect(evaluateGlobalBaselineTier(baseInput({ sourceNameExact: "Propofol" })).tier).toBe(2);
+  });
+
+  it("tier 2 for extended benzodiazepine and sedative/anesthetic names (19J.2B)", () => {
+    const highRiskNames = [
+      "Alprazolam",
+      "Clonazepam",
+      "Temazepam",
+      "Chlordiazepoxide",
+      "Ketamine",
+      "Ketamine MDV",
+      "Etomidate",
+      "Dexmedetomidine",
+    ];
+    for (const sourceNameExact of highRiskNames) {
+      const r = evaluateGlobalBaselineTier(baseInput({ sourceNameExact }));
+      expect(r.tier).toBe(2);
+      expect(r.tier2Reasons).toContain("HIGH_RISK_MEDICATION");
+    }
   });
 
   it("tier 2 for malformed dose", () => {
