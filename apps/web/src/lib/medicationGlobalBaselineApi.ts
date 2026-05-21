@@ -42,6 +42,51 @@ export async function fetchGlobalPriorityErBaselineProducts(
   return (await parseApiResponse(res)) as { items: GlobalBaselineProductRow[]; total: number };
 }
 
+export type GlobalBaselineAutoApproveResult = {
+  dryRun: boolean;
+  source: string;
+  totalCandidates: number;
+  tier1AutoApprovable: number;
+  tier2ManualReview: number;
+  skippedDuplicates: number;
+  skippedHighRisk: number;
+  skippedControlled: number;
+  skippedAmbiguousDose: number;
+  skippedMissingRequiredFields: number;
+  skippedAlreadyApproved: number;
+  committedCount?: number;
+  sampleRows: Array<{
+    productId: string;
+    productCode: string;
+    tier: 1 | 2;
+    tier2Reasons: string[];
+    exactSourceText: string | null;
+    governanceStatus: string;
+  }>;
+};
+
+export async function runGlobalBaselineTieredAutoApprove(body: {
+  dryRun?: boolean;
+  source?: "PRIORITY_ER_INVENTORY";
+  limit?: number;
+  facilityId?: string;
+  adminNote?: string;
+}): Promise<GlobalBaselineAutoApproveResult> {
+  const res = await apiFetchResponse(
+    "/medication-master/governance/global-baseline/auto-approve-tiered",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  return (await parseApiResponse(res)) as GlobalBaselineAutoApproveResult;
+}
+
 export async function promoteStagingToGlobalBaseline(
   stagingRowId: string,
   body?: { facilityOverlayId?: string }

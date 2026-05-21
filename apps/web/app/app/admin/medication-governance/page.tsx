@@ -18,6 +18,7 @@ import {
 import { searchMedicationMaster, type MedicationMasterSearchHit } from "@/lib/medicationMasterApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { GovernanceActivationReviewQueue } from "@/components/admin/GovernanceActivationReviewQueue";
+import { GlobalBaselineAutoApprovalPanel } from "@/components/admin/GlobalBaselineAutoApprovalPanel";
 
 type SectionId =
   | "activationReview"
@@ -454,6 +455,8 @@ export default function MedicationGovernancePage() {
           />
         </div>
       ) : null}
+
+      <GlobalBaselineAutoApprovalPanel facilityId={facilityId} isAdmin={isAdmin} />
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
         {sections.map((s) => (
