@@ -1,0 +1,4 @@
+-- Historical reconciliation placeholder.
+-- Original production migration failed with applied_steps_count = 0.
+-- Runtime schema objects were later created by subsequent migrations/manual repair.
+-- No-op migration retained to reconcile Prisma migration history safely.

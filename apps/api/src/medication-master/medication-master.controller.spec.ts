@@ -91,7 +91,11 @@ describe("MedicationMasterController RBAC", () => {
 
   it("global baseline endpoints require ADMIN or MEDORA_SUPER_ADMIN", () => {
     const proto = MedicationMasterController.prototype as unknown as Record<string, unknown>;
-    for (const key of ["listGlobalPriorityErBaselineProducts", "promotePriorityErToGlobalBaseline"]) {
+    for (const key of [
+      "listGlobalPriorityErBaselineProducts",
+      "promotePriorityErToGlobalBaseline",
+      "autoApproveGlobalBaselineTiered",
+    ]) {
       const roles = Reflect.getMetadata("roles", proto[key] as object) as RoleCode[];
       expect(roles).toEqual([...FACILITY_OR_PLATFORM_ADMIN_ROLES]);
     }

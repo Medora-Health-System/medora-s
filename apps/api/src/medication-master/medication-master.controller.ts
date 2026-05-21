@@ -37,7 +37,9 @@ import { MedicationStagingDuplicateGovernanceService } from "./medication-stagin
 import { MedicationProductGovernanceService } from "./medication-product-governance.service";
 import { MedicationProductActivationGovernanceService } from "./medication-product-activation-governance.service";
 import { MedicationGlobalBaselineService } from "./medication-global-baseline.service";
+import { MedicationGlobalBaselineAutoApproveService } from "./medication-global-baseline-auto-approve.service";
 import { medicationGlobalBaselineListQuerySchema } from "./dto/medication-global-baseline.dto";
+import { medicationGlobalBaselineAutoApproveBodySchema } from "./dto/medication-global-baseline-auto-approve.dto";
 import {
   resolveStagingDuplicateBodySchema,
   stagingDuplicateGovernanceActionBodySchema,
@@ -82,7 +84,8 @@ export class MedicationMasterController {
     private readonly stagingDuplicateGovernance: MedicationStagingDuplicateGovernanceService,
     private readonly productGovernance: MedicationProductGovernanceService,
     private readonly activationGovernance: MedicationProductActivationGovernanceService,
-    private readonly globalBaseline: MedicationGlobalBaselineService
+    private readonly globalBaseline: MedicationGlobalBaselineService,
+    private readonly globalBaselineAutoApprove: MedicationGlobalBaselineAutoApproveService
   ) {}
 
   /** Phase 19C.1 — read-only canonical medication search (no runtime cutover). */
@@ -727,6 +730,34 @@ export class MedicationMasterController {
     const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
 
     return this.globalBaseline.promotePriorityErStagingToGlobalBaseline(id, parsed.data, userId, {
+      ip,
+      userAgent: ua,
+    });
+  }
+
+  /**
+   * Phase 19I — tiered global baseline auto-approval (dry-run default; no runtime activation).
+   */
+  @Post("governance/global-baseline/auto-approve-tiered")
+  @RequireRoles(...FACILITY_OR_PLATFORM_ADMIN_ROLES)
+  async autoApproveGlobalBaselineTiered(
+    @Body() body: unknown,
+    @Req() req: Request & { user?: { userId?: string; facilityId?: string } }
+  ) {
+    const userId = req.user?.userId;
+    if (!userId) throw new UnauthorizedException();
+
+    const parsed = medicationGlobalBaselineAutoApproveBodySchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+
+    const ip = typeof req.ip === "string" ? req.ip : undefined;
+    const ua = typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"] : undefined;
+
+    return this.globalBaselineAutoApprove.runTieredAutoApproval(parsed.data, userId, {
       ip,
       userAgent: ua,
     });

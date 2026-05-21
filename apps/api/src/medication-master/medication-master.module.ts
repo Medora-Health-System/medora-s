@@ -13,6 +13,7 @@ import { MedicationStagingDuplicateGovernanceService } from "./medication-stagin
 import { MedicationProductGovernanceService } from "./medication-product-governance.service";
 import { MedicationProductActivationGovernanceService } from "./medication-product-activation-governance.service";
 import { MedicationGlobalBaselineService } from "./medication-global-baseline.service";
+import { MedicationGlobalBaselineAutoApproveService } from "./medication-global-baseline-auto-approve.service";
 import { MedicationMasterController } from "./medication-master.controller";
 
 @Module({
@@ -30,6 +31,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationProductGovernanceService,
     MedicationProductActivationGovernanceService,
     MedicationGlobalBaselineService,
+    MedicationGlobalBaselineAutoApproveService,
     CatalogCanonicalReadService,
     AuditService,
   ],
@@ -45,6 +47,7 @@ import { MedicationMasterController } from "./medication-master.controller";
     MedicationProductGovernanceService,
     MedicationProductActivationGovernanceService,
     MedicationGlobalBaselineService,
+    MedicationGlobalBaselineAutoApproveService,
     CatalogCanonicalReadService,
   ],
 })
