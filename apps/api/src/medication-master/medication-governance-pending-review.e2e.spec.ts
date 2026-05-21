@@ -18,6 +18,7 @@ import { mergeGovernanceIntoRawJson } from "./priority-er-inventory-governance.u
 import { parseProductRuntimeActivation } from "./medication-product-runtime-activation.util";
 
 const PENDING_PATH = "/medication-master/governance/pending-activation-review";
+const SUMMARY_PATH = "/medication-master/governance/summary";
 const APPROVE_PATH = (productId: string) =>
   `/medication-master/governance/approve/${productId}`;
 const ACTIVATION_CANDIDATES_PATH = "/medication-master/governance/activation-candidates";
@@ -232,6 +233,23 @@ describe("Medication governance pending activation review (19G.2C e2e)", () => {
     governanceNote: "19G.2C pharmacy approval note",
     confirmExactSourcePreserved: true,
     confirmDuplicateGovernanceResolved: true,
+  });
+
+  it("governance summary returns 200 for dashboard load", async () => {
+    const res = await request(app.getHttpServer())
+      .get(SUMMARY_PATH)
+      .query({ facilityId })
+      .set("Authorization", `Bearer ${adminToken}`)
+      .set("x-facility-id", facilityId)
+      .expect(200);
+
+    expect(res.body.readOnly).toBe(true);
+    expect(res.body.globalBaseline).toEqual(
+      expect.objectContaining({
+        priorityErAvailable: expect.any(Number),
+        facilityFormularyLinked: expect.any(Number),
+      })
+    );
   });
 
   it("lists promoted REVIEW_REQUIRED products on pending-activation-review", async () => {

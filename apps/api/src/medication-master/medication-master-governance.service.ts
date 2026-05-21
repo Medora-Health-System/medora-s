@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { logError } from "../common/logging/medoraLogger";
 import { PrismaService } from "../prisma/prisma.service";
 import type {
   MedicationMasterGovernanceDuplicatesQuery,
@@ -195,30 +196,61 @@ export class MedicationMasterGovernanceService {
     };
   }
 
+  private static readonly GLOBAL_BASELINE_COUNT_FALLBACK: MedicationMasterGovernanceSummaryDto["globalBaseline"] =
+    {
+      priorityErAvailable: 0,
+      facilityFormularyLinked: 0,
+    };
+
+  /**
+   * Phase 19H baseline metrics — uses columns added in 20260810120000_medication_global_baseline_phase_19h.
+   * On unmigrated production DBs (Prisma P2022), returns zero counts so the dashboard summary still loads.
+   */
   private async globalBaselineCounts(
     facilityId?: string
   ): Promise<MedicationMasterGovernanceSummaryDto["globalBaseline"]> {
-    const priorityErAvailable = await this.prisma.medicationProduct.count({
-      where: {
-        baselineAvailable: true,
-        baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
-      },
-    });
-
-    let facilityFormularyLinked = 0;
-    if (facilityId) {
-      facilityFormularyLinked = await this.prisma.medicationProduct.count({
+    try {
+      const priorityErAvailable = await this.prisma.medicationProduct.count({
         where: {
           baselineAvailable: true,
           baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
-          packages: {
-            some: { facilityFormularyItems: { some: { facilityId } } },
-          },
         },
       });
-    }
 
-    return { priorityErAvailable, facilityFormularyLinked };
+      let facilityFormularyLinked = 0;
+      if (facilityId) {
+        facilityFormularyLinked = await this.prisma.medicationProduct.count({
+          where: {
+            baselineAvailable: true,
+            baselineSource: MEDICATION_BASELINE_SOURCE_PRIORITY_ER,
+            packages: {
+              some: { facilityFormularyItems: { some: { facilityId } } },
+            },
+          },
+        });
+      }
+
+      return { priorityErAvailable, facilityFormularyLinked };
+    } catch (e) {
+      if (this.shouldUseGlobalBaselineFallback(e)) {
+        logError("medication_governance_summary_baseline_fallback", {
+          facilityId: facilityId ?? null,
+          endpoint: "governance/summary",
+          action: "global_baseline_counts",
+          prismaCode:
+            e instanceof Prisma.PrismaClientKnownRequestError ? e.code : undefined,
+          fallbackApplied: true,
+          errorName: e instanceof Error ? e.name : "unknown",
+        });
+        return MedicationMasterGovernanceService.GLOBAL_BASELINE_COUNT_FALLBACK;
+      }
+      throw e;
+    }
+  }
+
+  private shouldUseGlobalBaselineFallback(error: unknown): boolean {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+    return error.code === "P2022" || error.code === "P2021";
   }
 
   private async activationStatusCounts(): Promise<MedicationMasterGovernanceSummaryDto["activation"]> {

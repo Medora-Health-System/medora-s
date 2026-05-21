@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { MedicationMasterGovernanceService } from "./medication-master-governance.service";
 import { MedicationMasterExplorerService } from "./medication-master-explorer.service";
 
@@ -84,5 +85,32 @@ describe("MedicationMasterGovernanceService", () => {
       priorityErAvailable: 0,
       facilityFormularyLinked: 0,
     });
+  });
+
+  it("getSummary falls back globalBaseline to zero on P2022 (unmigrated baseline columns)", async () => {
+    prisma.medicationConcept.findMany = jest.fn().mockResolvedValue([]);
+    prisma.facilityFormularyItem.findMany = jest.fn().mockResolvedValue([]);
+    prisma.catalogMedication.count = jest.fn().mockResolvedValue(0);
+    prisma.medicationProduct.findMany = jest.fn().mockResolvedValue([]);
+    prisma.medicationPackage.groupBy = jest.fn().mockResolvedValue([]);
+    prisma.medicationFormularyImportStaging.groupBy = jest.fn().mockResolvedValue([]);
+    prisma.medicationFormularyImportStaging.findFirst = jest.fn().mockResolvedValue(null);
+    prisma.medicationFormularyImportStaging.count = jest.fn().mockResolvedValue(0);
+    prisma.medicationProduct.groupBy = jest.fn().mockResolvedValue([]);
+    prisma.medicationProduct.count = jest.fn().mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("column does not exist", {
+        code: "P2022",
+        clientVersion: "test",
+      })
+    );
+
+    const summary = await service.getSummary("fac-1");
+
+    expect(summary.readOnly).toBe(true);
+    expect(summary.globalBaseline).toEqual({
+      priorityErAvailable: 0,
+      facilityFormularyLinked: 0,
+    });
+    expect(summary.activation.pendingReview).toBeDefined();
   });
 });
