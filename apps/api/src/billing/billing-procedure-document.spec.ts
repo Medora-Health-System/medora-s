@@ -38,5 +38,12 @@ describe("billing procedure documentation (19M.2 / 19M.3)", () => {
         documentationRole: "NURSING",
       })
     ).toBe(false);
+    expect(
+      isProviderProcedureDocumentationForBilling({
+        procedureType: "SPLINT_APPLICATION",
+        documentationRole: "NURSING",
+        payloadVersion: 1,
+      })
+    ).toBe(false);
   });
 });

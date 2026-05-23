@@ -24,8 +24,17 @@ import { isAdvancedProcedureType } from "./ProcedureDocumentAdvancedForms";
 describe("erProcedureLauncherCatalog (19M.3)", () => {
   it("splits provider and nursing launcher sections", () => {
     expect(ER_PROCEDURE_PROVIDER_TILES.length).toBeGreaterThan(10);
-    expect(ER_PROCEDURE_NURSING_PRIMARY_TILES.length).toBe(5);
+    expect(ER_PROCEDURE_NURSING_PRIMARY_TILES.length).toBe(6);
     expect(ER_PROCEDURE_NURSING_ASSIST_TILES.length).toBeGreaterThan(10);
+  });
+
+  it("includes splint application on provider and nursing tracks with one canonical procedureType", () => {
+    expect(ER_PROCEDURE_PROVIDER_TILES.some((tile) => tile.step === "SPLINT_APPLICATION")).toBe(true);
+    expect(ER_PROCEDURE_NURSING_PRIMARY_TILES.some((tile) => tile.step === "SPLINT_APPLICATION")).toBe(true);
+    expect(
+      ER_PROCEDURE_NURSING_ASSIST_TILES.some((tile) => tile.assistedProcedureType === "SPLINT_APPLICATION")
+    ).toBe(true);
+    expect(nursingAssistStepFor("SPLINT_APPLICATION")).toBe("nursing-assist:SPLINT_APPLICATION");
   });
 
   it("recognizes nursing assist step prefix", () => {

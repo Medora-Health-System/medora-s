@@ -30,6 +30,7 @@ export const ER_PROCEDURE_NURSING_PRIMARY_STEPS: BasicNonLacerationProcedureType
   "PREGNANCY_TEST",
   "EKG",
   "FOLEY_CATHETER",
+  "SPLINT_APPLICATION",
 ];
 
 /** Provider-side launcher tiles (left column). */
@@ -80,6 +81,7 @@ export const ER_PROCEDURE_NURSING_PRIMARY_TILES = [
   { step: "PREGNANCY_TEST" as const, labelKey: "erProcedureLauncher.tilePregnancy" },
   { step: "EKG" as const, labelKey: "erProcedureLauncher.tileEkg" },
   { step: "FOLEY_CATHETER" as const, labelKey: "erProcedureLauncher.tileFoley" },
+  { step: "SPLINT_APPLICATION" as const, labelKey: "erProcedureLauncher.tileSplint" },
 ] as const;
 
 /** @deprecated Use ER_PROCEDURE_PROVIDER_TILES — kept for compatibility. */
