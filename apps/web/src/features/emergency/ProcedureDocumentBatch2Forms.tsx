@@ -3,15 +3,15 @@
 import React, { useState } from "react";
 import {
   ABSCESS_SIZE_VALUES,
-  BALLOON_VOLUME_VALUES,
-  CATHETER_SIZE_VALUES,
+  BALLOON_VOLUME_UI_VALUES,
+  CATHETER_SIZE_UI_VALUES,
+  FOLEY_INDICATION_UI_VALUES,
   CLEANING_SOLUTION_VALUES,
   DRAINAGE_AMOUNT_VALUES,
   DRESSING_TYPE_VALUES,
   EKG_INDICATION_VALUES,
   EKG_RHYTHM_VALUES,
   EXTREMITY_SITE_VALUES,
-  FOLEY_INDICATION_VALUES,
   GLUCOSE_ACTION_VALUES,
   LACERATION_ANESTHESIA_VALUES,
   LACERATION_SITE_VALUES,
@@ -21,18 +21,26 @@ import {
   RATE_RANGE_VALUES,
   SPECIMEN_SOURCE_VALUES,
   SPLINT_TYPE_VALUES,
+  URINE_APPEARANCE_FOLEY_UI_VALUES,
   URINE_APPEARANCE_VALUES,
   URINE_METHOD_VALUES,
   WOUND_TYPE_VALUES,
   type DocumentedProcedureType,
+  ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
 } from "@medora/shared";
+import { afterProcedureDocumentSaveSuccess } from "@/features/emergency/procedureSaveSuccess";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
+export type BasicNonLacerationProcedureType = Exclude<
+  DocumentedProcedureType,
+  "LACERATION_REPAIR" | (typeof ADVANCED_DOCUMENTED_PROCEDURE_TYPES)[number]
+>;
+
 export type NonLacerationProcedureType = Exclude<DocumentedProcedureType, "LACERATION_REPAIR">;
 
-export const NON_LACERATION_FORM_TITLE_I18N_KEYS: Record<NonLacerationProcedureType, string> = {
+export const NON_LACERATION_FORM_TITLE_I18N_KEYS: Record<BasicNonLacerationProcedureType, string> = {
   WOUND_CARE: "erProcedureLauncher.formTitleWoundCare",
   INCISION_AND_DRAINAGE: "erProcedureLauncher.formTitleIAndD",
   SPLINT_APPLICATION: "erProcedureLauncher.formTitleSplint",
@@ -69,7 +77,20 @@ type CommonProps = {
   encounterId: string;
   facilityId: string;
   onBack: () => void;
+  onClose: () => void;
   onRecorded: () => void;
+};
+
+const procedureSaveSuccessBannerStyle: React.CSSProperties = {
+  margin: "0 0 12px 0",
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid #86efac",
+  background: "#f0fdf4",
+  color: "#166534",
+  fontSize: 13,
+  fontWeight: 700,
+  letterSpacing: "0.03em",
 };
 
 async function postDocument(encounterId: string, facilityId: string, body: Record<string, unknown>) {
@@ -95,14 +116,24 @@ type FormShellProps = CommonProps & {
   children: (ctx: FormShellSubmitCtx) => React.ReactNode;
 };
 
-function FormShell({ encounterId, facilityId, onBack, onRecorded, titleKey, children }: FormShellProps) {
+function FormShell({
+  encounterId,
+  facilityId,
+  onBack,
+  onClose,
+  onRecorded,
+  titleKey,
+  children,
+}: FormShellProps) {
   const { t } = useI18n();
   const [performedAtLocal, setPerformedAtLocal] = useState(() => toDatetimeLocalValue(new Date()));
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   const onSubmit = async (body: Record<string, unknown>) => {
     setSubmitErr(null);
+    setSaveSuccess(false);
     setSubmitting(true);
     try {
       if (performedAtLocal.trim()) {
@@ -110,8 +141,8 @@ function FormShell({ encounterId, facilityId, onBack, onRecorded, titleKey, chil
         if (!Number.isNaN(d.getTime())) body.performedAt = d.toISOString();
       }
       await postDocument(encounterId, facilityId, body);
-      onRecorded();
-      onBack();
+      setSaveSuccess(true);
+      await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });
     } catch (e) {
       setSubmitErr(
         normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erProcedureLauncher.saveError")
@@ -126,6 +157,7 @@ function FormShell({ encounterId, facilityId, onBack, onRecorded, titleKey, chil
       <button
         type="button"
         onClick={onBack}
+        disabled={submitting || saveSuccess}
         style={{
           marginBottom: 12,
           padding: "6px 12px",
@@ -134,14 +166,21 @@ function FormShell({ encounterId, facilityId, onBack, onRecorded, titleKey, chil
           background: "#fff",
           fontSize: 13,
           fontWeight: 600,
-          cursor: "pointer",
+          cursor: submitting || saveSuccess ? "not-allowed" : "pointer",
         }}
       >
         {t("erProcedureLauncher.backToGrid")}
       </button>
       <p style={{ margin: "0 0 10px 0", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{t(titleKey)}</p>
+      {saveSuccess ? (
+        <p role="status" aria-live="polite" style={procedureSaveSuccessBannerStyle}>
+          {t("erProcedureLauncher.saveSuccess")}
+        </p>
+      ) : null}
       {submitErr ? (
-        <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>{submitErr}</p>
+        <p role="alert" style={{ margin: "0 0 12px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>
+          {submitErr}
+        </p>
       ) : null}
       {children({ performedAtLocal, setPerformedAtLocal, submitErr, setSubmitErr, submitting, setSubmitting, onSubmit })}
     </div>
@@ -786,14 +825,14 @@ function SplintProcedureForm(p: CommonProps) {
 
 function FoleyProcedureForm(p: CommonProps) {
   const { t } = useI18n();
-  const [catheterSize, setCatheterSize] = useState<(typeof CATHETER_SIZE_VALUES)[number] | "">("");
+  const [catheterSize, setCatheterSize] = useState<(typeof CATHETER_SIZE_UI_VALUES)[number] | "">("");
   const [catheterSizeOther, setCatheterSizeOther] = useState("");
-  const [indication, setIndication] = useState<(typeof FOLEY_INDICATION_VALUES)[number] | "">("");
+  const [indication, setIndication] = useState<(typeof FOLEY_INDICATION_UI_VALUES)[number] | "">("");
   const [indicationOther, setIndicationOther] = useState("");
   const [urineReturn, setUrineReturn] = useState(true);
-  const [urineAppearance, setUrineAppearance] = useState<(typeof URINE_APPEARANCE_VALUES)[number] | "">("");
+  const [urineAppearance, setUrineAppearance] = useState<(typeof URINE_APPEARANCE_FOLEY_UI_VALUES)[number] | "">("");
   const [urineAppearanceOther, setUrineAppearanceOther] = useState("");
-  const [balloonVolume, setBalloonVolume] = useState<(typeof BALLOON_VOLUME_VALUES)[number] | "">("");
+  const [balloonVolume, setBalloonVolume] = useState<(typeof BALLOON_VOLUME_UI_VALUES)[number] | "">("");
   const [balloonVolumeOther, setBalloonVolumeOther] = useState("");
   const [toleratedWell, setToleratedWell] = useState(true);
   const [complications, setComplications] = useState("");
@@ -853,7 +892,7 @@ function FoleyProcedureForm(p: CommonProps) {
           {enumSelect({
             value: catheterSize,
             onChange: setCatheterSize,
-            values: CATHETER_SIZE_VALUES,
+            values: CATHETER_SIZE_UI_VALUES,
             labelKey: (v) => `erProcedureLauncher.catheterSize.${v}`,
             t,
             required: true,
@@ -874,7 +913,7 @@ function FoleyProcedureForm(p: CommonProps) {
           {enumSelect({
             value: indication,
             onChange: setIndication,
-            values: FOLEY_INDICATION_VALUES,
+            values: FOLEY_INDICATION_UI_VALUES,
             labelKey: (v) => `erProcedureLauncher.foleyIndication.${v}`,
             t,
             required: true,
@@ -897,7 +936,7 @@ function FoleyProcedureForm(p: CommonProps) {
           {enumSelect({
             value: urineAppearance,
             onChange: setUrineAppearance,
-            values: URINE_APPEARANCE_VALUES,
+            values: URINE_APPEARANCE_FOLEY_UI_VALUES,
             labelKey: (v) => `erProcedureLauncher.urineAppearance.${v}`,
             t,
             required: true,
@@ -918,7 +957,7 @@ function FoleyProcedureForm(p: CommonProps) {
           {enumSelect({
             value: balloonVolume,
             onChange: setBalloonVolume,
-            values: BALLOON_VOLUME_VALUES,
+            values: BALLOON_VOLUME_UI_VALUES,
             labelKey: (v) => `erProcedureLauncher.balloonVolume.${v}`,
             t,
             required: true,
@@ -1463,15 +1502,17 @@ export function NonLacerationProcedureForm({
   encounterId,
   facilityId,
   onBack,
+  onClose,
   onRecorded,
 }: {
-  procedureType: NonLacerationProcedureType;
+  procedureType: BasicNonLacerationProcedureType;
   encounterId: string;
   facilityId: string;
   onBack: () => void;
+  onClose: () => void;
   onRecorded: () => void;
 }) {
-  const common: CommonProps = { encounterId, facilityId, onBack, onRecorded };
+  const common: CommonProps = { encounterId, facilityId, onBack, onClose, onRecorded };
   switch (procedureType) {
     case "WOUND_CARE":
       return <WoundCareProcedureForm {...common} />;

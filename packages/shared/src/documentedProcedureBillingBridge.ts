@@ -18,6 +18,14 @@ export const DOCUMENTED_PROCEDURE_BILLING_MEDORA_CODE: Record<DocumentedProcedur
   GLUCOSE_CHECK: "PROCEDURE_GLUCOSE_CHECK",
   URINE_COLLECTION: "PROCEDURE_URINE_COLLECTION",
   PREGNANCY_TEST: "PROCEDURE_PREGNANCY_TEST",
+  CHEST_TUBE: "PROCEDURE_CHEST_TUBE",
+  INTUBATION: "PROCEDURE_INTUBATION",
+  CENTRAL_LINE: "PROCEDURE_CENTRAL_LINE",
+  PROCEDURAL_SEDATION: "PROCEDURE_PROCEDURAL_SEDATION",
+  REDUCTION: "PROCEDURE_REDUCTION",
+  THORACENTESIS_PARACENTESIS: "PROCEDURE_THORACENTESIS_PARACENTESIS",
+  PELVIC_EXAM: "PROCEDURE_PELVIC_EXAM",
+  LUMBAR_PUNCTURE: "PROCEDURE_LUMBAR_PUNCTURE",
 };
 
 /** French display labels for billing review surfaces (product language). */
@@ -31,6 +39,14 @@ export const DOCUMENTED_PROCEDURE_DISPLAY_NAME_FR: Record<DocumentedProcedureTyp
   GLUCOSE_CHECK: "Glycémie capillaire (documentée)",
   URINE_COLLECTION: "Collecte d'urine (documentée)",
   PREGNANCY_TEST: "Test de grossesse (documenté)",
+  CHEST_TUBE: "Drain thoracique (documenté)",
+  INTUBATION: "Intubation (documentée)",
+  CENTRAL_LINE: "Cathéter central (documenté)",
+  PROCEDURAL_SEDATION: "Sédation procédurale (documentée)",
+  REDUCTION: "Réduction (documentée)",
+  THORACENTESIS_PARACENTESIS: "Thoracentèse / paracentèse (documentée)",
+  PELVIC_EXAM: "Examen pelvien (documenté)",
+  LUMBAR_PUNCTURE: "Ponction lombaire (documentée)",
 };
 
 export function medoraCodeForDocumentedProcedureType(procedureType: string | null | undefined): string | null {

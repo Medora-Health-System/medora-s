@@ -2,23 +2,33 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  LACERATION_ANESTHESIA_VALUES,
-  LACERATION_CLOSURE_VALUES,
-  LACERATION_IRRIGATION_VALUES,
-  LACERATION_SITE_VALUES,
-  LACERATION_SUTURES_VALUES,
-  LACERATION_WOUND_LENGTH_VALUES,
+  LACERATION_ANESTHESIA_UI_VALUES,
+  LACERATION_CLOSURE_UI_VALUES,
+  LACERATION_IRRIGATION_UI_VALUES,
+  LACERATION_SITE_UI_VALUES,
+  LACERATION_SUTURES_UI_VALUES,
+  LACERATION_WOUND_LENGTH_UI_VALUES,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
+  ER_PROCEDURE_ENABLED_TILES,
+} from "@/features/emergency/erProcedureLauncherCatalog";
+import { afterProcedureDocumentSaveSuccess } from "@/features/emergency/procedureSaveSuccess";
+import {
+  AdvancedProcedureForm,
+  ADVANCED_PROCEDURE_FORM_TITLE_I18N_KEYS,
+  isAdvancedProcedureType,
+} from "@/features/emergency/ProcedureDocumentAdvancedForms";
+import {
   NonLacerationProcedureForm,
   NON_LACERATION_FORM_TITLE_I18N_KEYS,
-  type NonLacerationProcedureType,
+  type BasicNonLacerationProcedureType,
 } from "@/features/emergency/ProcedureDocumentBatch2Forms";
+import type { DocumentedProcedureType } from "@medora/shared";
 
-type LauncherStep = "menu" | "laceration" | NonLacerationProcedureType;
+type LauncherStep = "menu" | "laceration" | DocumentedProcedureType;
 
 function toDatetimeLocalValue(d: Date): string {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
@@ -119,25 +129,26 @@ export function EmergencyProcedureLauncherModal({
   encounterId: string;
   facilityId: string;
   onRecorded: () => void;
-  initialNonLacerationStep?: NonLacerationProcedureType | null;
+  initialNonLacerationStep?: DocumentedProcedureType | null;
 }) {
   const { t } = useI18n();
   const [step, setStep] = useState<LauncherStep>("menu");
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const [site, setSite] = useState<(typeof LACERATION_SITE_VALUES)[number] | "">("");
+  const [site, setSite] = useState<(typeof LACERATION_SITE_UI_VALUES)[number] | "">("");
   const [siteOther, setSiteOther] = useState("");
   const [performedAtLocal, setPerformedAtLocal] = useState(() => toDatetimeLocalValue(new Date()));
-  const [woundLength, setWoundLength] = useState<(typeof LACERATION_WOUND_LENGTH_VALUES)[number] | "">("");
+  const [woundLength, setWoundLength] = useState<(typeof LACERATION_WOUND_LENGTH_UI_VALUES)[number] | "">("");
   const [woundLengthOther, setWoundLengthOther] = useState("");
-  const [anesthesia, setAnesthesia] = useState<(typeof LACERATION_ANESTHESIA_VALUES)[number] | "">("");
+  const [anesthesia, setAnesthesia] = useState<(typeof LACERATION_ANESTHESIA_UI_VALUES)[number] | "">("");
   const [anesthesiaOther, setAnesthesiaOther] = useState("");
-  const [irrigation, setIrrigation] = useState<(typeof LACERATION_IRRIGATION_VALUES)[number] | "">("");
+  const [irrigation, setIrrigation] = useState<(typeof LACERATION_IRRIGATION_UI_VALUES)[number] | "">("");
   const [irrigationOther, setIrrigationOther] = useState("");
-  const [closureMethod, setClosureMethod] = useState<(typeof LACERATION_CLOSURE_VALUES)[number] | "">("");
+  const [closureMethod, setClosureMethod] = useState<(typeof LACERATION_CLOSURE_UI_VALUES)[number] | "">("");
   const [closureMethodOther, setClosureMethodOther] = useState("");
-  const [suturesOrStaples, setSuturesOrStaples] = useState<(typeof LACERATION_SUTURES_VALUES)[number] | "">("");
+  const [suturesOrStaples, setSuturesOrStaples] = useState<(typeof LACERATION_SUTURES_UI_VALUES)[number] | "">("");
   const [suturesOrStaplesOther, setSuturesOrStaplesOther] = useState("");
   const [asepticTechnique, setAsepticTechnique] = useState<boolean>(true);
   const [dressingApplied, setDressingApplied] = useState<boolean>(true);
@@ -149,6 +160,7 @@ export function EmergencyProcedureLauncherModal({
     if (!open) return;
     setStep(initialNonLacerationStep ?? "menu");
     setSubmitErr(null);
+    setSaveSuccess(false);
     setSite("");
     setSiteOther("");
     setPerformedAtLocal(toDatetimeLocalValue(new Date()));
@@ -189,11 +201,13 @@ export function EmergencyProcedureLauncherModal({
     setComplications("");
     setNotes("");
     setSubmitErr(null);
+    setSaveSuccess(false);
   };
 
   const onSaveLaceration = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitErr(null);
+    setSaveSuccess(false);
     if (site === "OTHER" && !siteOther.trim()) {
       setSubmitErr(t("erProcedureLauncher.validationOtherRequired"));
       return;
@@ -255,9 +269,8 @@ export function EmergencyProcedureLauncherModal({
         facilityId,
         body: JSON.stringify(body),
       });
-      onRecorded();
-      resetLacerationForm();
-      setStep("menu");
+      setSaveSuccess(true);
+      await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });
     } catch (err) {
       setSubmitErr(
         normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erProcedureLauncher.saveError")
@@ -269,6 +282,15 @@ export function EmergencyProcedureLauncherModal({
 
   if (!open) return null;
 
+  const procedureStepTitle =
+    step === "menu"
+      ? t("erProcedureLauncher.modalTitle")
+      : step === "laceration"
+        ? t("erProcedureLauncher.lacerationTitle")
+        : isAdvancedProcedureType(step)
+          ? t(ADVANCED_PROCEDURE_FORM_TITLE_I18N_KEYS[step])
+          : t(NON_LACERATION_FORM_TITLE_I18N_KEYS[step as BasicNonLacerationProcedureType]);
+
   const sectionTitle: React.CSSProperties = {
     margin: "0 0 8px 0",
     fontSize: 10,
@@ -276,14 +298,6 @@ export function EmergencyProcedureLauncherModal({
     letterSpacing: "0.07em",
     textTransform: "uppercase",
     color: "#64748b",
-  };
-
-  const comingSoonTile: React.CSSProperties = {
-    ...tileBase,
-    background: "#f8fafc",
-    color: "#94a3b8",
-    cursor: "not-allowed",
-    opacity: 0.75,
   };
 
   const boolSelect = (value: boolean, onChange: (v: boolean) => void) => (
@@ -320,11 +334,7 @@ export function EmergencyProcedureLauncherModal({
           }}
         >
           <h2 id="er-procedure-launcher-title" style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#0f172a" }}>
-            {step === "menu"
-              ? t("erProcedureLauncher.modalTitle")
-              : step === "laceration"
-                ? t("erProcedureLauncher.lacerationTitle")
-                : t(NON_LACERATION_FORM_TITLE_I18N_KEYS[step])}
+            {procedureStepTitle}
           </h2>
           <button
             type="button"
@@ -345,8 +355,29 @@ export function EmergencyProcedureLauncherModal({
         </div>
 
         <div style={{ padding: "14px 16px 18px" }}>
+          {step === "laceration" && saveSuccess ? (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{
+                margin: "0 0 12px 0",
+                padding: "10px 12px",
+                borderRadius: 8,
+                border: "1px solid #86efac",
+                background: "#f0fdf4",
+                color: "#166534",
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: "0.03em",
+              }}
+            >
+              {t("erProcedureLauncher.saveSuccess")}
+            </p>
+          ) : null}
           {step === "laceration" && submitErr ? (
-            <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>{submitErr}</p>
+            <p role="alert" style={{ margin: "0 0 12px 0", fontSize: 13, color: "#b45309", fontWeight: 600 }}>
+              {submitErr}
+            </p>
           ) : null}
 
           {step === "menu" ? (
@@ -359,33 +390,7 @@ export function EmergencyProcedureLauncherModal({
                   gap: 10,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("laceration");
-                    setSubmitErr(null);
-                  }}
-                  style={{
-                    ...tileBase,
-                    background: "#eff6ff",
-                    borderColor: "#93c5fd",
-                    color: "#1e40af",
-                  }}
-                >
-                  {t("erProcedureLauncher.tileLaceration")}
-                </button>
-                {(
-                  [
-                    ["WOUND_CARE", "erProcedureLauncher.tileWoundCare"],
-                    ["INCISION_AND_DRAINAGE", "erProcedureLauncher.tileIAndD"],
-                    ["SPLINT_APPLICATION", "erProcedureLauncher.tileSplint"],
-                    ["FOLEY_CATHETER", "erProcedureLauncher.tileFoley"],
-                    ["EKG", "erProcedureLauncher.tileEkg"],
-                    ["GLUCOSE_CHECK", "erProcedureLauncher.tileGlucose"],
-                    ["URINE_COLLECTION", "erProcedureLauncher.tileUrine"],
-                    ["PREGNANCY_TEST", "erProcedureLauncher.tilePregnancy"],
-                  ] as const
-                ).map(([proc, labelKey]) => (
+                {ER_PROCEDURE_ENABLED_TILES.map(({ step: proc, labelKey }) => (
                   <button
                     key={proc}
                     type="button"
@@ -403,54 +408,6 @@ export function EmergencyProcedureLauncherModal({
                     {t(labelKey)}
                   </button>
                 ))}
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileChestTube")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileIntubation")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileCentralLine")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileProceduralSedation")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileReduction")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileThoracentesis")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tilePelvicExam")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
-                <div style={comingSoonTile}>
-                  <span>{t("erProcedureLauncher.tileLumbarPuncture")}</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#94a3b8", marginTop: 4 }}>
-                    {t("erProcedureLauncher.comingSoon")}
-                  </span>
-                </div>
               </div>
             </>
           ) : step === "laceration" ? (
@@ -479,7 +436,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: site,
                 onChange: setSite,
-                values: LACERATION_SITE_VALUES,
+                values: LACERATION_SITE_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.site.${v}`,
                 t,
                 required: true,
@@ -509,7 +466,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: woundLength,
                 onChange: setWoundLength,
-                values: LACERATION_WOUND_LENGTH_VALUES,
+                values: LACERATION_WOUND_LENGTH_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.woundLength.${v}`,
                 t,
                 required: true,
@@ -531,7 +488,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: anesthesia,
                 onChange: setAnesthesia,
-                values: LACERATION_ANESTHESIA_VALUES,
+                values: LACERATION_ANESTHESIA_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.anesthesia.${v}`,
                 t,
                 required: true,
@@ -553,7 +510,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: irrigation,
                 onChange: setIrrigation,
-                values: LACERATION_IRRIGATION_VALUES,
+                values: LACERATION_IRRIGATION_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.irrigation.${v}`,
                 t,
                 required: true,
@@ -578,7 +535,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: closureMethod,
                 onChange: setClosureMethod,
-                values: LACERATION_CLOSURE_VALUES,
+                values: LACERATION_CLOSURE_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.closureMethod.${v}`,
                 t,
                 required: true,
@@ -600,7 +557,7 @@ export function EmergencyProcedureLauncherModal({
               {enumSelect({
                 value: suturesOrStaples,
                 onChange: setSuturesOrStaples,
-                values: LACERATION_SUTURES_VALUES,
+                values: LACERATION_SUTURES_UI_VALUES,
                 labelKey: (v) => `erProcedureLauncher.suturesOrStaples.${v}`,
                 t,
                 required: true,
@@ -642,7 +599,7 @@ export function EmergencyProcedureLauncherModal({
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || saveSuccess}
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,
@@ -657,12 +614,25 @@ export function EmergencyProcedureLauncherModal({
                 {t("erProcedureLauncher.save")}
               </button>
             </form>
-          ) : (
-            <NonLacerationProcedureForm
+          ) : isAdvancedProcedureType(step) ? (
+            <AdvancedProcedureForm
               procedureType={step}
               encounterId={encounterId}
               facilityId={facilityId}
               onRecorded={onRecorded}
+              onClose={onClose}
+              onBack={() => {
+                setStep("menu");
+                setSubmitErr(null);
+              }}
+            />
+          ) : (
+            <NonLacerationProcedureForm
+              procedureType={step as BasicNonLacerationProcedureType}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              onRecorded={onRecorded}
+              onClose={onClose}
               onBack={() => {
                 setStep("menu");
                 setSubmitErr(null);

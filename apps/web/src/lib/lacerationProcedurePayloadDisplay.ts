@@ -156,6 +156,14 @@ const PROCEDURE_NAME_I18N: Record<string, string> = {
   GLUCOSE_CHECK: "glucoseCheck",
   URINE_COLLECTION: "urineCollection",
   PREGNANCY_TEST: "pregnancyTest",
+  CHEST_TUBE: "chestTube",
+  INTUBATION: "intubation",
+  CENTRAL_LINE: "centralLine",
+  PROCEDURAL_SEDATION: "proceduralSedation",
+  REDUCTION: "reduction",
+  THORACENTESIS_PARACENTESIS: "thoracentesisParacentesis",
+  PELVIC_EXAM: "pelvicExam",
+  LUMBAR_PUNCTURE: "lumbarPuncture",
 };
 
 export function procedureTypeDisplayName(t: (k: string) => string, procedureType: string): string {
@@ -223,6 +231,22 @@ export function procedureTimelineCompactSuffix(p: ProcedurePayload, t: (k: strin
       return tEnum(p, "method", "methodOther", "urineMethod", t);
     case "PREGNANCY_TEST":
       return tEnum(p, "result", "resultOther", "pregnancyResult", t);
+    case "CHEST_TUBE":
+      return tEnum(p, "side", "sideOther", "laterality", t);
+    case "INTUBATION":
+      return tEnum(p, "indication", "indicationOther", "intubationIndication", t);
+    case "CENTRAL_LINE":
+      return tEnum(p, "site", "siteOther", "centralLineSite", t);
+    case "PROCEDURAL_SEDATION":
+      return tEnum(p, "indication", "indicationOther", "sedationIndication", t);
+    case "REDUCTION":
+      return tEnum(p, "bodyPart", "bodyPartOther", "reductionBodyPart", t);
+    case "THORACENTESIS_PARACENTESIS":
+      return tEnum(p, "fluidProcedureType", "fluidProcedureTypeOther", "fluidProcedureType", t);
+    case "PELVIC_EXAM":
+      return tEnum(p, "indication", "indicationOther", "pelvicExamIndication", t);
+    case "LUMBAR_PUNCTURE":
+      return tEnum(p, "indication", "indicationOther", "lpIndication", t);
     default:
       return str(p, "site") || "—";
   }

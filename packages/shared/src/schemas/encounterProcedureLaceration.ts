@@ -6,10 +6,16 @@ const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
 export const LACERATION_SITE_VALUES = [
   "SCALP",
   "FACE",
+  "LIP",
+  "EAR",
   "NECK",
   "CHEST",
   "ABDOMEN",
   "BACK",
+  "UPPER_EXTREMITY",
+  "HAND_FINGER",
+  "LOWER_EXTREMITY",
+  "FOOT_TOE",
   "RIGHT_ARM",
   "LEFT_ARM",
   "RIGHT_HAND",
@@ -51,22 +57,28 @@ export function isKnownLacerationSutures(v: string): v is LacerationSutures {
 
 export const LACERATION_WOUND_LENGTH_VALUES = [
   "LT_1CM",
+  "CM_1_TO_2",
+  "CM_2_TO_5",
+  "GT_5CM",
+  /** @deprecated legacy granular values — display-only for older entries */
   "CM_1",
   "CM_2",
   "CM_3",
   "CM_4",
   "CM_5",
-  "GT_5CM",
   "OTHER",
 ] as const;
 
 export const LACERATION_ANESTHESIA_VALUES = [
   "NONE",
+  "LOCAL_INFILTRATION",
+  "LET_TOPICAL",
+  "DIGITAL_BLOCK",
+  /** @deprecated legacy — display-only */
   "LIDOCAINE_1",
   "LIDOCAINE_2",
   "LIDOCAINE_EPI",
   "LET_GEL",
-  "DIGITAL_BLOCK",
   "OTHER",
 ] as const;
 
@@ -80,21 +92,87 @@ export const LACERATION_IRRIGATION_VALUES = [
 ] as const;
 
 export const LACERATION_CLOSURE_VALUES = [
-  "STERI_STRIPS",
-  "TISSUE_ADHESIVE",
   "SUTURES",
   "STAPLES",
+  "TISSUE_ADHESIVE",
+  "STERI_STRIPS",
+  "SECONDARY_INTENTION",
+  /** @deprecated use SECONDARY_INTENTION */
   "LEFT_OPEN",
   "OTHER",
 ] as const;
 
 export const LACERATION_SUTURES_VALUES = [
   "NONE",
+  "COUNT_1_3",
+  "COUNT_4_6",
+  "COUNT_7_10",
+  "COUNT_GT_10",
+  /** @deprecated legacy suture types — display-only */
   "NYLON_3_0",
   "NYLON_4_0",
   "NYLON_5_0",
   "ABSORBABLE",
   "STAPLES",
+  "OTHER",
+] as const;
+
+/** Values shown in ED laceration documentation UI (excludes legacy-only codes). */
+export const LACERATION_WOUND_LENGTH_UI_VALUES = [
+  "LT_1CM",
+  "CM_1_TO_2",
+  "CM_2_TO_5",
+  "GT_5CM",
+  "OTHER",
+] as const;
+
+export const LACERATION_ANESTHESIA_UI_VALUES = [
+  "NONE",
+  "LOCAL_INFILTRATION",
+  "LET_TOPICAL",
+  "DIGITAL_BLOCK",
+  "OTHER",
+] as const;
+
+export const LACERATION_SUTURES_UI_VALUES = [
+  "NONE",
+  "COUNT_1_3",
+  "COUNT_4_6",
+  "COUNT_7_10",
+  "COUNT_GT_10",
+  "OTHER",
+] as const;
+
+/** Values shown in ED laceration site dropdown (excludes legacy bilateral codes). */
+export const LACERATION_SITE_UI_VALUES = [
+  "SCALP",
+  "FACE",
+  "LIP",
+  "EAR",
+  "NECK",
+  "CHEST",
+  "ABDOMEN",
+  "BACK",
+  "UPPER_EXTREMITY",
+  "HAND_FINGER",
+  "LOWER_EXTREMITY",
+  "FOOT_TOE",
+  "OTHER",
+] as const;
+
+export const LACERATION_CLOSURE_UI_VALUES = [
+  "SUTURES",
+  "STAPLES",
+  "TISSUE_ADHESIVE",
+  "STERI_STRIPS",
+  "SECONDARY_INTENTION",
+  "OTHER",
+] as const;
+
+export const LACERATION_IRRIGATION_UI_VALUES = [
+  "NORMAL_SALINE",
+  "STERILE_WATER",
+  "COPIOUS_IRRIGATION",
   "OTHER",
 ] as const;
 

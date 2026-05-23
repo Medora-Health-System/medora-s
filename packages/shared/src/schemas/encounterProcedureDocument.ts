@@ -4,6 +4,19 @@ import {
   LACERATION_SITE_VALUES,
   lacerationProcedureDocumentDtoSchema,
 } from "./encounterProcedureLaceration.js";
+import {
+  ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
+  centralLineProcedureDocumentDtoSchema,
+  chestTubeProcedureDocumentDtoSchema,
+  intubationProcedureDocumentDtoSchema,
+  lumbarPunctureProcedureDocumentDtoSchema,
+  pelvicExamProcedureDocumentDtoSchema,
+  proceduralSedationProcedureDocumentDtoSchema,
+  reductionProcedureDocumentDtoSchema,
+  thoracentesisParacentesisProcedureDocumentDtoSchema,
+} from "./encounterProcedureAdvanced.js";
+
+export * from "./encounterProcedureAdvanced.js";
 
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
@@ -171,13 +184,48 @@ const splintProcedureDocumentDtoSchema = z
 export const CATHETER_SIZE_VALUES = ["FR_12", "FR_14", "FR_16", "FR_18", "FR_20", "OTHER"] as const;
 export const FOLEY_INDICATION_VALUES = [
   "URINARY_RETENTION",
+  "STRICT_IO",
+  "PERI_PROCEDURAL",
+  "IMMOBILIZATION_CRITICAL",
+  "COMFORT_CARE",
+  /** @deprecated legacy — display-only */
   "SURGERY_PREP",
   "OUTPUT_MONITORING",
+  "OTHER",
+] as const;
+export const URINE_APPEARANCE_VALUES = [
+  "CLEAR",
+  "YELLOW",
+  "AMBER",
+  "CLOUDY",
+  "BLOODY",
+  "DARK",
+  "SEDIMENT",
+  "OTHER",
+] as const;
+export const BALLOON_VOLUME_VALUES = ["ML_5", "ML_10", "ML_30", "ML_15", "OTHER"] as const;
+
+export const FOLEY_INDICATION_UI_VALUES = [
+  "URINARY_RETENTION",
+  "STRICT_IO",
+  "PERI_PROCEDURAL",
+  "IMMOBILIZATION_CRITICAL",
   "COMFORT_CARE",
   "OTHER",
 ] as const;
-export const URINE_APPEARANCE_VALUES = ["CLEAR", "CLOUDY", "BLOODY", "DARK", "SEDIMENT", "OTHER"] as const;
-export const BALLOON_VOLUME_VALUES = ["ML_5", "ML_10", "ML_15", "OTHER"] as const;
+
+export const CATHETER_SIZE_UI_VALUES = ["FR_12", "FR_14", "FR_16", "FR_18", "FR_20", "OTHER"] as const;
+
+export const BALLOON_VOLUME_UI_VALUES = ["ML_5", "ML_10", "ML_30", "OTHER"] as const;
+
+export const URINE_APPEARANCE_FOLEY_UI_VALUES = [
+  "CLEAR",
+  "YELLOW",
+  "AMBER",
+  "CLOUDY",
+  "BLOODY",
+  "OTHER",
+] as const;
 
 const foleyProcedureDocumentDtoSchema = z
   .object({
@@ -344,6 +392,14 @@ export const encounterProcedureDocumentDtoSchema = z.union([
   glucoseProcedureDocumentDtoSchema,
   urineCollectionProcedureDocumentDtoSchema,
   pregnancyTestProcedureDocumentDtoSchema,
+  chestTubeProcedureDocumentDtoSchema,
+  intubationProcedureDocumentDtoSchema,
+  centralLineProcedureDocumentDtoSchema,
+  proceduralSedationProcedureDocumentDtoSchema,
+  reductionProcedureDocumentDtoSchema,
+  thoracentesisParacentesisProcedureDocumentDtoSchema,
+  pelvicExamProcedureDocumentDtoSchema,
+  lumbarPunctureProcedureDocumentDtoSchema,
 ]);
 
 export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;
@@ -358,6 +414,7 @@ export const DOCUMENTED_PROCEDURE_TYPES = [
   "GLUCOSE_CHECK",
   "URINE_COLLECTION",
   "PREGNANCY_TEST",
+  ...ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
 ] as const;
 
 export type DocumentedProcedureType = (typeof DOCUMENTED_PROCEDURE_TYPES)[number];

@@ -5,6 +5,7 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import { buildAdvancedProcedureSummaryRows } from "@/lib/advancedProcedureSummary";
 import {
   formatProcedureEnumField,
   lacerationAnesthesiaDisplayText,
@@ -233,6 +234,8 @@ function buildProcedureDetailRows(
       { k: "summaryDetailTestResult", v: fe("result", "resultOther", "pregnancyResult") || "—" },
       { k: "summaryDetailProviderNotified", v: boolLabel(p.providerNotified, t) }
     );
+  } else {
+    rows.push(...buildAdvancedProcedureSummaryRows(pt, p, t, boolLabel));
   }
 
   const comp = typeof p.complications === "string" ? p.complications.trim() : "";
