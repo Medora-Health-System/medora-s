@@ -6251,6 +6251,9 @@ export default {
     save: "Enregistrer la documentation",
     saving: "Enregistrement…",
     sectionPresentation: "Présentation et motif",
+    sectionHpi: "HPI / histoire de la maladie",
+    accordionSelectedCount: "{count} sélectionné(s)",
+    accordionActionsSummary: "Apprêt à signer et finalisation",
     sectionRos: "Revue ciblée",
     insertCompleteNormalRos: "Insérer une revue complète normale",
     completeNormalRosHelp:

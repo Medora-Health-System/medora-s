@@ -47,6 +47,15 @@ import {
   writeProviderDocumentationDraft,
 } from "@/lib/providerDocumentationDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
+import { ProviderDocumentationAccordionSection } from "@/components/encounters/ProviderDocumentationAccordionSection";
+import { ProviderDocumentationChipPanel } from "@/components/encounters/ProviderDocumentationChipPanel";
+import {
+  accordionSectionsToExpandForDictation,
+  defaultExpandedAccordionSections,
+  providerDocumentationAccordionSelectedCounts,
+  providerDocumentationAccordionSummaries,
+  type ProviderDocumentationAccordionSectionId,
+} from "@/lib/providerDocumentationSectionSummary";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -331,28 +340,6 @@ const DICTATION_NAV_TARGETS = PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS.m
   id: section.primaryTargetId,
 }));
 
-function WorkspaceSection({
-  title,
-  status,
-  t,
-  children,
-}: {
-  title: string;
-  status?: ProviderDocumentationSectionStatus;
-  t: (key: string) => string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section style={sectionShell}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", marginBottom: 10 }}>
-        <h3 style={{ margin: 0, fontSize: 13, color: "#0f172a", fontWeight: 700 }}>{title}</h3>
-        {status ? <StatusPill status={status} t={t} /> : null}
-      </div>
-      {children}
-    </section>
-  );
-}
-
 export function ProviderDocumentationWorkspace({
   encounterId,
   encounterMode,
@@ -385,6 +372,10 @@ export function ProviderDocumentationWorkspace({
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [activeDictationSection, setActiveDictationSection] = useState<ProviderDocumentationDictationSectionId | null>(null);
   const [highlightedDictationTargetId, setHighlightedDictationTargetId] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<ProviderDocumentationAccordionSectionId>>(
+    () => new Set(["hpi"])
+  );
+  const initializedDefaultExpandRef = useRef(false);
   const latestSignatureRef = useRef(providerDocumentationStateSignature(value));
   const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -435,6 +426,20 @@ export function ProviderDocumentationWorkspace({
     [encounterId, encounterMode, providerUserId]
   );
   const hasDraftableContent = useMemo(() => providerDocumentationStateHasContent(value), [value]);
+  const accordionSummaries = useMemo(() => providerDocumentationAccordionSummaries(value), [value]);
+  const accordionSelectedCounts = useMemo(() => providerDocumentationAccordionSelectedCounts(value), [value]);
+
+  useEffect(() => {
+    if (initializedDefaultExpandRef.current) return;
+    initializedDefaultExpandRef.current = true;
+    setExpandedSections(
+      new Set(
+        defaultExpandedAccordionSections({
+          missingSectionIds: completeness.missingSections,
+        })
+      )
+    );
+  }, [completeness.missingSections]);
 
   useEffect(() => {
     latestSignatureRef.current = currentSignature;
@@ -640,8 +645,31 @@ export function ProviderDocumentationWorkspace({
     setHighlightedDictationTargetId(id);
   };
   const focusDictationSection = (sectionId: ProviderDocumentationDictationSectionId) => {
-    focusDictationTarget(providerDocumentationPrimaryDictationTargetForSection(sectionId));
+    const primaryTarget = providerDocumentationPrimaryDictationTargetForSection(sectionId);
+    setExpandedSections((previous) => {
+      const next = new Set(previous);
+      for (const accordionId of accordionSectionsToExpandForDictation(sectionId, primaryTarget)) {
+        next.add(accordionId);
+      }
+      return next;
+    });
+    if (typeof document !== "undefined") {
+      const accordionId = accordionSectionsToExpandForDictation(sectionId, primaryTarget)[0];
+      document
+        .querySelector(`[data-testid="provider-documentation-accordion-${accordionId}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    focusDictationTarget(primaryTarget);
   };
+  const toggleAccordionSection = (sectionId: ProviderDocumentationAccordionSectionId) => {
+    setExpandedSections((previous) => {
+      const next = new Set(previous);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+  const isAccordionExpanded = (sectionId: ProviderDocumentationAccordionSectionId) => expandedSections.has(sectionId);
   const focusRelativeDictationTarget = (direction: 1 | -1) => {
     if (typeof document === "undefined") return;
     const activeId = document.activeElement?.id;
@@ -832,18 +860,6 @@ export function ProviderDocumentationWorkspace({
           {autosaveSavedAt ? ` · ${new Date(autosaveSavedAt).toLocaleTimeString()}` : ""}
           {draftRestoredAt ? ` · ${t("providerDocumentationWorkspace.draftRestored")}` : ""}
         </p>
-        {onSign && !signedOrFinalized ? (
-          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 10, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-            <input
-              type="checkbox"
-              checked={attestationAccepted}
-              disabled={readOnly || signing}
-              onChange={(event) => setAttestationAccepted(event.target.checked)}
-              style={{ marginTop: 2 }}
-            />
-            <span>{t("providerDocumentationWorkspace.signAttestation")}</span>
-          </label>
-        ) : null}
         {signedMetadata ? (
           <p style={{ margin: "10px 0 0", fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
             {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
@@ -986,8 +1002,17 @@ export function ProviderDocumentationWorkspace({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPresentation")} status={sectionStatusById.chiefComplaintHpi} t={t}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
+          <ProviderDocumentationAccordionSection
+            sectionId="presentation"
+            title={t("providerDocumentationWorkspace.sectionPresentation")}
+            summary={accordionSummaries.presentation}
+            selectedCount={accordionSelectedCounts.presentation}
+            status={sectionStatusById.chiefComplaintHpi}
+            expanded={isAccordionExpanded("presentation")}
+            onToggle={() => toggleAccordionSection("presentation")}
+            t={t}
+          >
             <Field
               label={t("providerDocumentationWorkspace.chiefComplaint")}
               voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
@@ -998,32 +1023,51 @@ export function ProviderDocumentationWorkspace({
             >
               {ta("chiefComplaint", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.chiefComplaint)}
             </Field>
-            <div style={{ marginTop: 10 }}>
-              <Field
-                label={t("providerDocumentationWorkspace.hpi")}
-                voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
-                dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi}
-                dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
-                readOnly={readOnly}
-                readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
-              >
-                {ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}
-              </Field>
-              {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
-              {HPI_CHIPS.map((group) => (
-                <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                  {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
-                </ChipGroupView>
-              ))}
-              {encounterMode === "OBSERVATION" ? (
-                <ChipGroupView title={t("providerDocumentationWorkspace.observationChips")}>
-                  {chipRow(OBSERVATION_CHIPS, (chip) => appendField("hpi", chip.fragmentKey), "green")}
-                </ChipGroupView>
-              ) : null}
-            </div>
-          </WorkspaceSection>
+          </ProviderDocumentationAccordionSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionRos")} status={sectionStatusById.ros} t={t}>
+          <ProviderDocumentationAccordionSection
+            sectionId="hpi"
+            title={t("providerDocumentationWorkspace.sectionHpi")}
+            summary={accordionSummaries.hpi}
+            selectedCount={accordionSelectedCounts.hpi}
+            status={sectionStatusById.chiefComplaintHpi}
+            expanded={isAccordionExpanded("hpi")}
+            onToggle={() => toggleAccordionSection("hpi")}
+            t={t}
+          >
+            <Field
+              label={t("providerDocumentationWorkspace.hpi")}
+              voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
+              dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi}
+              dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
+              readOnly={readOnly}
+              readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
+            >
+              {ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}
+            </Field>
+            {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
+            {HPI_CHIPS.map((group) => (
+              <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
+                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
+              </ChipGroupView>
+            ))}
+            {encounterMode === "OBSERVATION" ? (
+              <ChipGroupView title={t("providerDocumentationWorkspace.observationChips")}>
+                {chipRow(OBSERVATION_CHIPS, (chip) => appendField("hpi", chip.fragmentKey), "green")}
+              </ChipGroupView>
+            ) : null}
+          </ProviderDocumentationAccordionSection>
+
+          <ProviderDocumentationAccordionSection
+            sectionId="ros"
+            title={t("providerDocumentationWorkspace.sectionRos")}
+            summary={accordionSummaries.ros}
+            selectedCount={accordionSelectedCounts.ros}
+            status={sectionStatusById.ros}
+            expanded={isAccordionExpanded("ros")}
+            onToggle={() => toggleAccordionSection("ros")}
+            t={t}
+          >
             <div
               style={{
                 marginBottom: 10,
@@ -1070,59 +1114,80 @@ export function ProviderDocumentationWorkspace({
                 {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), group.field === "rosImportantNegatives" ? "warn" : undefined)}
               </ChipGroupView>
             ))}
-          </WorkspaceSection>
+          </ProviderDocumentationAccordionSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionExam")} status={sectionStatusById.physicalExam} t={t}>
+          <ProviderDocumentationAccordionSection
+            sectionId="physicalExam"
+            title={t("providerDocumentationWorkspace.sectionExam")}
+            summary={accordionSummaries.physicalExam}
+            selectedCount={accordionSelectedCounts.physicalExam}
+            status={sectionStatusById.physicalExam}
+            expanded={isAccordionExpanded("physicalExam")}
+            onToggle={() => toggleAccordionSection("physicalExam")}
+            t={t}
+          >
             {templatePromptReminders(activeTemplate)}
             {templateExamChips(activeTemplate)}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
-              {EXAM_CHIPS.map((group) => (
-                <div key={group.sectionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: 10, background: "#f8fafc" }}>
-                  <Field
-                    label={t(group.titleKey)}
-                    voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
-                    dictationTargetId={examDictationIdBySection[group.sectionId]}
-                    dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
-                    readOnly={readOnly}
-                    readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
-                  >
-                    <textarea
-                      id={examDictationIdBySection[group.sectionId]}
-                      data-dictation-ready="true"
-                      value={value.physicalExam[group.sectionId]}
-                      disabled={readOnly}
-                      onFocus={() => markActiveDictationTarget(examDictationIdBySection[group.sectionId])}
-                      onChange={(e) =>
-                        onChange({
-                          ...value,
-                          physicalExam: { ...value.physicalExam, [group.sectionId]: e.target.value },
-                        })
-                      }
-                      rows={2}
-                      style={{
-                        ...inputBase,
-                        resize: "vertical",
-                        background: readOnly
-                          ? "#f8fafc"
-                          : highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
-                            ? "#fefce8"
-                            : "#fff",
-                        boxShadow:
-                          highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
-                            ? "0 0 0 3px rgba(20, 184, 166, 0.18)"
-                            : undefined,
-                        transition: "background 160ms ease, box-shadow 160ms ease",
-                      }}
-                    />
-                  </Field>
-                  {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
-                </div>
-              ))}
-            </div>
+            {EXAM_CHIPS.map((group) => (
+              <ProviderDocumentationChipPanel
+                key={group.sectionId}
+                title={t(group.titleKey)}
+                selectedCount={value.physicalExam[group.sectionId].trim() ? 1 : 0}
+                tone="green"
+              >
+                <Field
+                  label={t(group.titleKey)}
+                  voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")}
+                  dictationTargetId={examDictationIdBySection[group.sectionId]}
+                  dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")}
+                  readOnly={readOnly}
+                  readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}
+                >
+                  <textarea
+                    id={examDictationIdBySection[group.sectionId]}
+                    data-dictation-ready="true"
+                    value={value.physicalExam[group.sectionId]}
+                    disabled={readOnly}
+                    onFocus={() => markActiveDictationTarget(examDictationIdBySection[group.sectionId])}
+                    onChange={(e) =>
+                      onChange({
+                        ...value,
+                        physicalExam: { ...value.physicalExam, [group.sectionId]: e.target.value },
+                      })
+                    }
+                    rows={2}
+                    style={{
+                      ...inputBase,
+                      resize: "vertical",
+                      background: readOnly
+                        ? "#f8fafc"
+                        : highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
+                          ? "#fefce8"
+                          : "#fff",
+                      boxShadow:
+                        highlightedDictationTargetId === examDictationIdBySection[group.sectionId]
+                          ? "0 0 0 3px rgba(20, 184, 166, 0.18)"
+                          : undefined,
+                      transition: "background 160ms ease, box-shadow 160ms ease",
+                    }}
+                  />
+                </Field>
+                {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+              </ProviderDocumentationChipPanel>
+            ))}
             {templateReassessmentGuidanceChips(activeTemplate)}
-          </WorkspaceSection>
+          </ProviderDocumentationAccordionSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionMdm")} status={sectionStatusById.mdm} t={t}>
+          <ProviderDocumentationAccordionSection
+            sectionId="mdm"
+            title={t("providerDocumentationWorkspace.sectionMdm")}
+            summary={accordionSummaries.mdm}
+            selectedCount={accordionSelectedCounts.mdm}
+            status={sectionStatusById.mdm}
+            expanded={isAccordionExpanded("mdm")}
+            onToggle={() => toggleAccordionSection("mdm")}
+            t={t}
+          >
             {templateGuidanceChips(
               activeTemplate,
               "mdmClinicalRationale",
@@ -1178,9 +1243,18 @@ export function ProviderDocumentationWorkspace({
               <Field label={t("providerDocumentationWorkspace.consults")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmConsultsDiscussed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmConsultsDiscussed)}</Field>
               <Field label={t("providerDocumentationWorkspace.admitObserveDischarge")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmAdmitObserveDischarge", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmAdmitObserveDischarge)}</Field>
             </div>
-          </WorkspaceSection>
+          </ProviderDocumentationAccordionSection>
 
-          <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")} status={sectionStatusById.plan} t={t}>
+          <ProviderDocumentationAccordionSection
+            sectionId="impressionPlan"
+            title={t("providerDocumentationWorkspace.sectionPlan")}
+            summary={accordionSummaries.impressionPlan}
+            selectedCount={accordionSelectedCounts.impressionPlan}
+            status={sectionStatusById.plan}
+            expanded={isAccordionExpanded("impressionPlan")}
+            onToggle={() => toggleAccordionSection("impressionPlan")}
+            t={t}
+          >
             {templateGuidanceChips(
               activeTemplate,
               "followUpDisposition",
@@ -1199,7 +1273,70 @@ export function ProviderDocumentationWorkspace({
               <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("followUpDisposition", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition)}</Field>
               <Field label={t("providerDocumentationWorkspace.providerAddendum")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("providerAddendum", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.providerAddendum)}</Field>
             </div>
-          </WorkspaceSection>
+          </ProviderDocumentationAccordionSection>
+
+          <ProviderDocumentationAccordionSection
+            sectionId="actions"
+            title={t("providerDocumentationWorkspace.finalActions")}
+            summary={
+              signedOrFinalized
+                ? t("providerDocumentationWorkspace.signedStatus")
+                : signReadiness.readyToSign
+                  ? t("providerDocumentationWorkspace.readyToSign")
+                  : t("providerDocumentationWorkspace.notReadyToSign")
+            }
+            selectedCount={accordionSelectedCounts.actions}
+            expanded={isAccordionExpanded("actions")}
+            onToggle={() => toggleAccordionSection("actions")}
+            t={t}
+          >
+            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+              {t("providerDocumentationWorkspace.signSafetyHelp")}
+            </p>
+            {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
+              <p style={{ margin: "0 0 8px", fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
+                {t("providerDocumentationWorkspace.signWarningsAdvisory")}
+              </p>
+            ) : null}
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e" }}>
+              {t("providerDocumentationWorkspace.signReadiness")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e", lineHeight: 1.45, fontWeight: 700 }}>
+              {signedOrFinalized
+                ? t("providerDocumentationWorkspace.signedStatus")
+                : signReadiness.readyToSign
+                  ? t("providerDocumentationWorkspace.readyToSign")
+                  : t("providerDocumentationWorkspace.notReadyToSign")}
+            </p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
+              {t("providerDocumentationWorkspace.missingBeforeSign")}
+            </p>
+            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+              {signReadiness.missingSections.length
+                ? signReadiness.missingSections.map(completenessSectionLabel).join(", ")
+                : t("providerDocumentationWorkspace.noMissingKeySections")}
+              {!signReadiness.savedBeforeSign && !signedOrFinalized
+                ? ` · ${t("providerDocumentationWorkspace.saveRequiredBeforeSign")}`
+                : ""}
+            </p>
+            {onSign && !signedOrFinalized ? (
+              <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 8, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                <input
+                  type="checkbox"
+                  checked={attestationAccepted}
+                  disabled={readOnly || signing}
+                  onChange={(event) => setAttestationAccepted(event.target.checked)}
+                  style={{ marginTop: 2 }}
+                />
+                <span>{t("providerDocumentationWorkspace.signAttestation")}</span>
+              </label>
+            ) : null}
+            {signedMetadata ? (
+              <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
+                {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
+              </p>
+            ) : null}
+          </ProviderDocumentationAccordionSection>
         </div>
 
         <aside style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1344,28 +1481,6 @@ export function ProviderDocumentationWorkspace({
           ) : null}
         </aside>
       </div>
-      <div style={{ ...sectionShell, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 13, color: "#0f172a" }}>
-              {t("providerDocumentationWorkspace.finalActions")}
-            </h3>
-            <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.signSafetyHelp")}
-            </p>
-          </div>
-        </div>
-        {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
-          <p style={{ margin: 0, fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
-            {t("providerDocumentationWorkspace.signWarningsAdvisory")}
-          </p>
-        ) : null}
-        {signedMetadata ? (
-          <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
-            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
-          </p>
-        ) : null}
-      </div>
     </div>
   );
 }
@@ -1453,12 +1568,9 @@ function MicrophoneGlyph() {
 
 function ChipGroupView({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginTop: 8 }}>
-      <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>
-        {title}
-      </p>
+    <ProviderDocumentationChipPanel title={title}>
       {children}
-    </div>
+    </ProviderDocumentationChipPanel>
   );
 }
 
@@ -1474,37 +1586,6 @@ function ContextCard({ title, lines, empty }: { title: string; lines: string[]; 
         <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{empty}</p>
       )}
     </div>
-  );
-}
-
-function StatusPill({ status, t }: { status: ProviderDocumentationSectionStatus; t: (key: string) => string }) {
-  const color =
-    status === "complete" || status === "saved"
-      ? "#166534"
-      : status === "recommended"
-        ? "#92400e"
-        : "#991b1b";
-  const background =
-    status === "complete" || status === "saved"
-      ? "#f0fdf4"
-      : status === "recommended"
-        ? "#fffbeb"
-        : "#fef2f2";
-  return (
-    <span
-      style={{
-        borderRadius: 9999,
-        padding: "3px 8px",
-        fontSize: 10,
-        fontWeight: 800,
-        color,
-        background,
-        border: `1px solid ${status === "missing" ? "#fecaca" : status === "recommended" ? "#fcd34d" : "#bbf7d0"}`,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {t(`providerDocumentationWorkspace.sectionStatus${status[0].toUpperCase()}${status.slice(1)}`)}
-    </span>
   );
 }
 
