@@ -518,6 +518,21 @@ describe("providerDocumentationModel", () => {
     expect(source).not.toMatch(/SpeechRecognition|webkitSpeechRecognition|getUserMedia|MediaRecorder|navigator\.mediaDevices/i);
   });
 
+  it("renders three-column template picker with complaint names only (19N.1)", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain('data-testid="provider-documentation-template-picker"');
+    expect(source).toContain('data-testid="provider-template-picker-columns"');
+    expect(source).toContain("provider-template-picker-column-${majorGroup.toLowerCase()}");
+    expect(source).toContain("PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map");
+    expect(source).toContain("TEMPLATE_PICKER_COLUMN_ACCENT");
+    expect(source).toContain('title={t(template.helperKey)}');
+    expect(source).not.toMatch(/t\(template\.helperKey\)[\s\S]{0,80}<\/span>\s*<\/button>/);
+    expect(source).toContain("{t(template.labelKey)}");
+  });
+
   it("autosave and dictation readiness do not transform dictated field values", () => {
     const state = emptyProviderDocumentationWorkspaceState();
     state.hpi = "Dragon dictated line one.\nDragon dictated line two with punctuation.";
@@ -760,7 +775,9 @@ describe("providerDocumentationModel", () => {
 
   it("defines stratified TRAUMA / PEDIATRIC / ADULT complaint templates (19N)", () => {
     expect(PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS).toEqual(["TRAUMA", "PEDIATRIC", "ADULT"]);
-    expect(PROVIDER_DOCUMENTATION_TEMPLATES.length).toBeGreaterThanOrEqual(40);
+    expect(PROVIDER_DOCUMENTATION_TEMPLATES.length).toBeGreaterThanOrEqual(45);
+    const ids = PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => template.id);
+    expect(new Set(ids).size).toBe(ids.length);
     for (const majorGroup of PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS) {
       expect(providerDocumentationTemplatesByMajorGroup(majorGroup).length).toBeGreaterThan(0);
       expect(providerDocumentationTemplatesByMajorGroup(majorGroup).every((t) => t.majorGroup === majorGroup)).toBe(true);

@@ -23,6 +23,7 @@ import {
   type ProviderDocumentationDictationSectionId,
   type ProviderDocumentationEncounterMode,
   type ProviderDocumentationExamSectionId,
+  type ProviderDocumentationMajorGroup,
   type ProviderDocumentationMetadata,
   type ProviderDocumentationReadinessState,
   type ProviderDocumentationSectionStatus,
@@ -276,6 +277,36 @@ const MDM_CHIPS: ChipGroup[] = [
   { titleKey: "erMseMdmChips.catPlanSummary", field: "mdmPlanSummary", chips: ["planLabs", "planImaging", "planEcg", "planMeds", "planReassess", "planSdM"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
   { titleKey: "erMseMdmChips.catDisposition", field: "mdmAdmitObserveDischarge", chips: ["dispDcCriteria", "dispObs", "dispAdmit", "dispTransfer", "dispReturnPrecautions"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
 ];
+
+const TEMPLATE_PICKER_COLUMN_ACCENT: Record<
+  ProviderDocumentationMajorGroup,
+  { headingBg: string; headingBorder: string; headingColor: string; activeBg: string; activeBorder: string; activeColor: string }
+> = {
+  TRAUMA: {
+    headingBg: "#ecfdf5",
+    headingBorder: "#86efac",
+    headingColor: "#166534",
+    activeBg: "#ecfdf5",
+    activeBorder: "#0f766e",
+    activeColor: "#0f766e",
+  },
+  PEDIATRIC: {
+    headingBg: "#eff6ff",
+    headingBorder: "#93c5fd",
+    headingColor: "#1e40af",
+    activeBg: "#eff6ff",
+    activeBorder: "#2563eb",
+    activeColor: "#1d4ed8",
+  },
+  ADULT: {
+    headingBg: "#f5f3ff",
+    headingBorder: "#c4b5fd",
+    headingColor: "#5b21b6",
+    activeBg: "#f5f3ff",
+    activeBorder: "#7c3aed",
+    activeColor: "#6d28d9",
+  },
+};
 
 const OBSERVATION_CHIPS: Chip[] = [
   "obsSymptomsImproving",
@@ -852,54 +883,102 @@ export function ProviderDocumentationWorkspace({
         </div>
         {showTemplates ? (
           <div
+            data-testid="provider-documentation-template-picker"
             style={{
               marginTop: 12,
-              padding: "10px 12px",
+              padding: "12px 14px",
               border: "1px solid #e2e8f0",
               borderRadius: 12,
               background: "#f8fafc",
             }}
           >
-            {PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map((majorGroup) => {
-              const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup);
-              if (!templates.length) return null;
-              return (
-                <div key={majorGroup} style={{ marginTop: 10 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>
-                    {t(PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS[majorGroup])}
-                  </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
-                    {templates.map((template) => (
-                      <button
-                        key={template.id}
-                        type="button"
-                        disabled={readOnly}
-                        onClick={() => applyTemplate(template.id)}
-                        title={t(template.helperKey)}
-                        style={{
-                          padding: "9px 10px",
-                          border: value.activeTemplateId === template.id ? "1px solid #0f766e" : "1px solid #dbeafe",
-                          borderRadius: 10,
-                          background: value.activeTemplateId === template.id ? "#ecfdf5" : "#fff",
-                          color: value.activeTemplateId === template.id ? "#0f766e" : "#1e3a8a",
-                          textAlign: "left",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: readOnly ? "not-allowed" : "pointer",
-                          fontFamily: "inherit",
-                        }}
-                      >
-                        <span style={{ display: "block" }}>{t(template.labelKey)}</span>
-                        <span style={{ display: "block", marginTop: 3, color: "#64748b", fontSize: 11, fontWeight: 500 }}>
-                          {t(template.helperKey)}
-                        </span>
-                      </button>
-                    ))}
+            <div
+              data-testid="provider-template-picker-columns"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                alignItems: "flex-start",
+              }}
+            >
+              {PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map((majorGroup) => {
+                const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup);
+                if (!templates.length) return null;
+                const accent = TEMPLATE_PICKER_COLUMN_ACCENT[majorGroup];
+                return (
+                  <div
+                    key={majorGroup}
+                    data-testid={`provider-template-picker-column-${majorGroup.toLowerCase()}`}
+                    style={{
+                      flex: "1 1 280px",
+                      minWidth: 0,
+                      maxWidth: "100%",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 8,
+                        padding: "5px 10px",
+                        borderRadius: 9999,
+                        border: `1px solid ${accent.headingBorder}`,
+                        background: accent.headingBg,
+                        color: accent.headingColor,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {t(PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS[majorGroup])}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {templates.map((template) => {
+                        const isActive = value.activeTemplateId === template.id;
+                        return (
+                          <button
+                            key={template.id}
+                            type="button"
+                            disabled={readOnly}
+                            onClick={() => applyTemplate(template.id)}
+                            title={t(template.helperKey)}
+                            aria-label={t(template.labelKey)}
+                            aria-pressed={isActive}
+                            data-testid={`provider-template-picker-item-${template.id}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 8,
+                              width: "100%",
+                              padding: "8px 10px",
+                              border: isActive ? `1px solid ${accent.activeBorder}` : "1px solid #e2e8f0",
+                              borderRadius: 10,
+                              background: isActive ? accent.activeBg : "#fff",
+                              color: isActive ? accent.activeColor : "#0f172a",
+                              textAlign: "left",
+                              fontSize: 12,
+                              fontWeight: isActive ? 700 : 600,
+                              cursor: readOnly ? "not-allowed" : "pointer",
+                              fontFamily: "inherit",
+                              lineHeight: 1.35,
+                            }}
+                          >
+                            <span style={{ minWidth: 0 }}>{t(template.labelKey)}</span>
+                            <span aria-hidden style={{ color: isActive ? accent.activeColor : "#94a3b8", fontSize: 14, flexShrink: 0 }}>
+                              ›
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+                );
+              })}
+            </div>
+            <p style={{ margin: "10px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.templateSafetyComment")}
             </p>
           </div>

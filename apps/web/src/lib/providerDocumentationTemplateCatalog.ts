@@ -543,6 +543,81 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ADULT_GUIDANCE_ACS
   ),
   adultTemplate(
+    "adult_uri_respiratory",
+    "providerDocumentationWorkspace.templateAdultUriRespiratory",
+    "providerDocumentationWorkspace.templateAdultUriRespiratoryHelp",
+    ["erMseHpiChips.timStartedToday", "erMseHpiChips.timGradualOnset", "erMseHpiChips.assocSob"],
+    ["erMseRosChips.posFever", "erMseRosChips.posSob"],
+    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesSyncope", "providerDocumentationWorkspace.stickerRosNoHemoptysis"],
+    ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypotensionConcern"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waCardiopulmonary"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      heent: ["erMseExamChips.heentOropharynxClear"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
+    }
+  ),
+  adultTemplate(
+    "adult_nausea_vomiting",
+    "providerDocumentationWorkspace.templateAdultNauseaVomiting",
+    "providerDocumentationWorkspace.templateAdultNauseaVomitingHelp",
+    ["erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posVomiting", "erMseRosChips.posAbdominalPain"],
+    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoBloodInEmesis"],
+    ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs"],
+      mdmPlanSummary: ["erMseMdmChips.actAntiemetic", "erMseMdmChips.actFluids", "erMseMdmChips.planReassess"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      heent: ["erMseExamChips.heentDryMm"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "providerDocumentationWorkspace.stickerExamBowelSoundsPresent"],
+    }
+  ),
+  adultTemplate(
+    "adult_diarrhea",
+    "providerDocumentationWorkspace.templateAdultDiarrhea",
+    "providerDocumentationWorkspace.templateAdultDiarrheaHelp",
+    ["erMseHpiChipsPediatric.diarrheaDuration", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posVomiting", "erMseRosChips.posAbdominalPain"],
+    ["erMseRosChips.negDeniesFever"],
+    ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waAbdominal"],
+      mdmPlanSummary: ["erMseMdmChips.actFluids", "erMseMdmChips.planReassess"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
+      heent: ["erMseExamChips.heentDryMm"],
+    }
+  ),
+  adultTemplate(
+    "adult_seizure",
+    "providerDocumentationWorkspace.templateAdultSeizure",
+    "providerDocumentationWorkspace.templateAdultSeizureHelp",
+    ["erMseHpiChipsPediatric.seizureDescription", "erMseHpiChips.timSuddenOnset", "erMseHpiChipsPediatric.postIctalStatusReviewed"],
+    ["erMseRosChips.posWeakness", "erMseRosChips.posHeadache"],
+    ["erMseRosChips.negDeniesChestPain"],
+    ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfNeuroDeficit"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waNeurologic"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispAdmit"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroFollowsCommands", "erMseExamChips.neuroFocalDeficitNoted"],
+    },
+    ADULT_GUIDANCE_NEURO
+  ),
+  adultTemplate(
     "stroke_symptoms",
     "providerDocumentationWorkspace.templateStrokeSymptoms",
     "providerDocumentationWorkspace.templateStrokeSymptomsHelp",
