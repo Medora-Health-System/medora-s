@@ -5,6 +5,12 @@ import type {
   ProviderDocumentationTemplateId,
 } from "./providerDocumentationModel";
 import {
+  ABDOMINAL_COMPLAINT_INTEL,
+  CHEST_PAIN_COMPLAINT_INTEL,
+  SOB_COMPLAINT_INTEL,
+  type ProviderDocumentationComplaintIntelligence,
+} from "./providerDocumentationComplaintIntelligence";
+import {
   ADULT_GUIDANCE_ACS,
   ADULT_GUIDANCE_NEURO,
   ADULT_MDM_CARDIOPULMONARY,
@@ -111,7 +117,8 @@ function adultTemplate(
   fields: ReturnType<typeof mergeFields>,
   physicalExam: ReturnType<typeof mergeExam>,
   guidance?: ProviderDocumentationTemplateGuidance,
-  promptReminderKeys?: string[]
+  promptReminderKeys?: string[],
+  complaintIntelligence?: ProviderDocumentationComplaintIntelligence
 ): TemplateSpec {
   return {
     id,
@@ -133,6 +140,7 @@ function adultTemplate(
     physicalExam,
     guidance,
     promptReminderKeys,
+    complaintIntelligence,
   };
 }
 
@@ -493,8 +501,11 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     [
       "providerDocumentationPromptReminders.adultAcsExclusion",
       "providerDocumentationPromptReminders.adultEcgReview",
+      "providerDocumentationPromptReminders.chestPainHeartScoreReminder",
+      "providerDocumentationPromptReminders.chestPainSerialTroponinReminder",
       "providerDocumentationPromptReminders.emtalaReassessment",
-    ]
+    ],
+    CHEST_PAIN_COMPLAINT_INTEL
   ),
   adultTemplate(
     "abdominal_pain",
@@ -525,7 +536,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmDifferentialSynthesis: ["erMseMdmGuidance.abdominalDifferentialReviewed"],
       reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
       followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
-    }
+    },
+    [
+      "providerDocumentationPromptReminders.adultAbdominalRedFlags",
+      "providerDocumentationPromptReminders.adultAbdominalSerialExam",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    ABDOMINAL_COMPLAINT_INTEL
   ),
   adultTemplate(
     "sob",
@@ -540,7 +557,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing", "erMseExamChips.respCrackles"],
       cardiovascular: ["erMseExamChips.cardioRrr"],
     },
-    ADULT_GUIDANCE_ACS
+    ADULT_GUIDANCE_ACS,
+    [
+      "providerDocumentationPromptReminders.adultDyspneaPeConsidered",
+      "providerDocumentationPromptReminders.sobWorkupReminder",
+      "providerDocumentationPromptReminders.adultEcgReview",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    SOB_COMPLAINT_INTEL
   ),
   adultTemplate(
     "adult_uri_respiratory",
