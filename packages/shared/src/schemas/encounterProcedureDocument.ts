@@ -5,7 +5,6 @@ import {
   lacerationProcedureDocumentDtoSchema,
 } from "./encounterProcedureLaceration.js";
 import {
-  ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
   centralLineProcedureDocumentDtoSchema,
   chestTubeProcedureDocumentDtoSchema,
   intubationProcedureDocumentDtoSchema,
@@ -15,10 +14,17 @@ import {
   reductionProcedureDocumentDtoSchema,
   thoracentesisParacentesisProcedureDocumentDtoSchema,
 } from "./encounterProcedureAdvanced.js";
-import { nursingProcedureAssistDocumentDtoSchema } from "./encounterProcedureNursing.js";
 
 export * from "./encounterProcedureAdvanced.js";
 export * from "./encounterProcedureNursing.js";
+export {
+  ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
+  ASSISTED_PROCEDURE_TYPES,
+  BASIC_DOCUMENTED_PROCEDURE_TYPES,
+  DOCUMENTED_PROCEDURE_TYPES,
+  type AdvancedDocumentedProcedureType,
+  type DocumentedProcedureType,
+} from "./encounterProcedureTypes.js";
 
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
@@ -405,21 +411,3 @@ export const encounterProcedureDocumentDtoSchema = z.union([
 ]);
 
 export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;
-
-export const DOCUMENTED_PROCEDURE_TYPES = [
-  "LACERATION_REPAIR",
-  "WOUND_CARE",
-  "INCISION_AND_DRAINAGE",
-  "SPLINT_APPLICATION",
-  "FOLEY_CATHETER",
-  "EKG",
-  "GLUCOSE_CHECK",
-  "URINE_COLLECTION",
-  "PREGNANCY_TEST",
-  ...ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
-] as const;
-
-/** Clinical procedure types that may appear in nursing assist notes (includes laceration). */
-export const ASSISTED_PROCEDURE_TYPES = [...DOCUMENTED_PROCEDURE_TYPES] as const;
-
-export type DocumentedProcedureType = (typeof DOCUMENTED_PROCEDURE_TYPES)[number];

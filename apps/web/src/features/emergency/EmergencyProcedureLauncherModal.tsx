@@ -707,7 +707,7 @@ export function EmergencyProcedureLauncherModal({
             </form>
           ) : isNursingAssistStep(step) ? (
             <NursingProcedureAssistForm
-              assistedProcedureType={assistedProcedureTypeFromNursingStep(step)}
+              procedureType={assistedProcedureTypeFromNursingStep(step)}
               encounterId={encounterId}
               facilityId={facilityId}
               onRecorded={onRecorded}

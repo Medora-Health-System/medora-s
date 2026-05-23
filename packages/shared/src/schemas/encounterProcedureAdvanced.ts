@@ -415,15 +415,7 @@ export const lumbarPunctureProcedureDocumentDtoSchema = z
     requireOther(val, "csfAppearance", "csfAppearanceOther", ctx);
   });
 
-export const ADVANCED_DOCUMENTED_PROCEDURE_TYPES = [
-  "CHEST_TUBE",
-  "INTUBATION",
-  "CENTRAL_LINE",
-  "PROCEDURAL_SEDATION",
-  "REDUCTION",
-  "THORACENTESIS_PARACENTESIS",
-  "PELVIC_EXAM",
-  "LUMBAR_PUNCTURE",
-] as const;
-
-export type AdvancedDocumentedProcedureType = (typeof ADVANCED_DOCUMENTED_PROCEDURE_TYPES)[number];
+export {
+  ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
+  type AdvancedDocumentedProcedureType,
+} from "./encounterProcedureTypes.js";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DOCUMENTED_PROCEDURE_TYPES } from "./encounterProcedureDocument.js";
+import { DOCUMENTED_PROCEDURE_TYPES } from "./encounterProcedureTypes.js";
 
 /** Canonical payload version for procedure documentation events (19M.3A). */
 export const PROCEDURE_DOCUMENT_PAYLOAD_VERSION = 1 as const;

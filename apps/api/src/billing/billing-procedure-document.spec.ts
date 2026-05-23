@@ -27,9 +27,9 @@ describe("billing procedure documentation (19M.2 / 19M.3)", () => {
   it("excludes nursing-only procedure documentation from billing bridge eligibility", () => {
     expect(
       isProviderProcedureDocumentationForBilling({
-        procedureType: "NURSING_PROCEDURE_ASSIST",
+        procedureType: "PROCEDURAL_SEDATION",
         documentationRole: "NURSING",
-        assistedProcedureType: "PROCEDURAL_SEDATION",
+        payloadVersion: 1,
       })
     ).toBe(false);
     expect(
