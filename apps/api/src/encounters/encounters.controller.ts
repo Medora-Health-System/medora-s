@@ -35,6 +35,10 @@ import {
   encounterIvAccessInsertDtoSchema,
   encounterIvAccessRemoveDtoSchema,
   encounterProcedureDocumentDtoSchema,
+  isNursingAssistMonitoringPayload,
+  nursingProcedureDocumentDtoSchema,
+  type EncounterProcedureDocumentDto,
+  type NursingProcedureDocumentDto,
   encounterUpdateDtoSchema,
   observationOrderTemplateApplyDtoSchema,
   observationReassessmentV1BodySchema,
@@ -563,13 +567,27 @@ export class EncountersController {
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
-    const parsed = encounterProcedureDocumentDtoSchema.safeParse(body ?? {});
-    if (!parsed.success) {
-      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    const raw = (body ?? {}) as Record<string, unknown>;
+    let dto: EncounterProcedureDocumentDto | NursingProcedureDocumentDto;
+    let documentationRole: "PROVIDER" | "NURSING" = "PROVIDER";
+
+    if (isNursingAssistMonitoringPayload(raw)) {
+      const nursingParsed = nursingProcedureDocumentDtoSchema.safeParse(raw);
+      if (!nursingParsed.success) {
+        throw new BadRequestException("Invalid payload", { cause: nursingParsed.error });
+      }
+      dto = nursingParsed.data;
+      documentationRole = "NURSING";
+    } else {
+      const parsed = encounterProcedureDocumentDtoSchema.safeParse(raw);
+      if (!parsed.success) {
+        throw new BadRequestException("Invalid payload", { cause: parsed.error });
+      }
+      dto = parsed.data;
+      documentationRole = raw.documentationRole === "NURSING" ? "NURSING" : "PROVIDER";
     }
-    const rawRole = (body as Record<string, unknown> | null)?.documentationRole;
-    const documentationRole = rawRole === "NURSING" ? ("NURSING" as const) : ("PROVIDER" as const);
-    return this.encountersService.recordProcedureDocumented(facilityId, id, parsed.data, req.user?.userId, {
+
+    return this.encountersService.recordProcedureDocumented(facilityId, id, dto, req.user?.userId, {
       documentationRole,
     });
   }

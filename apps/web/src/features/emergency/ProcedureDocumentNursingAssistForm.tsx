@@ -2,7 +2,11 @@
 
 import React, { useState } from "react";
 import type { DocumentedProcedureType } from "@medora/shared";
-import { NURSING_TIMEOUT_WITNESS_VALUES, NURSING_TOLERANCE_VALUES } from "@medora/shared";
+import {
+  NURSING_TIMEOUT_WITNESS_VALUES,
+  NURSING_TOLERANCE_VALUES,
+  PROCEDURE_DOCUMENT_PAYLOAD_VERSION,
+} from "@medora/shared";
 import {
   boolSelect,
   enumSelect,
@@ -19,17 +23,19 @@ import {
 import { useI18n } from "@/lib/i18n";
 
 export function NursingProcedureAssistForm({
-  assistedProcedureType,
+  procedureType,
+  linkedProcedureEventId = null,
   encounterId,
   facilityId,
   onBack,
   onClose,
   onRecorded,
 }: ProcedureFormCommonProps & {
-  assistedProcedureType: DocumentedProcedureType;
+  procedureType: DocumentedProcedureType;
+  linkedProcedureEventId?: string | null;
 }) {
   const { t } = useI18n();
-  const titleKey = `erProcedureLauncher.nursingAssistTitle.${assistedProcedureType}`;
+  const titleKey = `erProcedureLauncher.nursingAssistTitle.${procedureType}`;
   const [assistedProviderName, setAssistedProviderName] = useState("");
   const [patientPositionPrep, setPatientPositionPrep] = useState("");
   const [suppliesPrepared, setSuppliesPrepared] = useState(true);
@@ -71,9 +77,9 @@ export function NursingProcedureAssistForm({
               return;
             }
             const body: Record<string, unknown> = {
-              procedureType: "NURSING_PROCEDURE_ASSIST",
+              procedureType,
               documentationRole: "NURSING",
-              assistedProcedureType,
+              payloadVersion: PROCEDURE_DOCUMENT_PAYLOAD_VERSION,
               suppliesPrepared,
               timeoutWitness,
               specimensCollected,
@@ -82,7 +88,10 @@ export function NursingProcedureAssistForm({
               postProcedureCareGiven,
               providerNotified,
             };
-            if (assistedProcedureType === "PELVIC_EXAM") body.chaperonePresent = chaperonePresent;
+            if (linkedProcedureEventId?.trim()) {
+              body.linkedProcedureEventId = linkedProcedureEventId.trim();
+            }
+            if (procedureType === "PELVIC_EXAM") body.chaperonePresent = chaperonePresent;
             trimOptional(body, "assistedProviderName", assistedProviderName);
             trimOptional(body, "patientPositionPrep", patientPositionPrep);
             trimOptional(body, "vitalsMonitoringNotes", vitalsMonitoringNotes);
@@ -125,7 +134,7 @@ export function NursingProcedureAssistForm({
             placeholderKey: "erProcedureLauncher.selectPlaceholder",
           })}
 
-          {assistedProcedureType === "PELVIC_EXAM" ? (
+          {procedureType === "PELVIC_EXAM" ? (
             <>
               <label style={labelStyle}>{t("erProcedureLauncher.nursingFieldChaperonePresent")}</label>
               {boolSelect(chaperonePresent, setChaperonePresent, t)}

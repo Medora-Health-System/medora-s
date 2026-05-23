@@ -29,7 +29,9 @@ type ProcedureEntry = {
   documentedAt: string | null;
   documentationRole: "PROVIDER" | "NURSING";
   procedureType: string;
-  assistedProcedureType: string | null;
+  canonicalProcedureType: string;
+  linkedProcedureEventId: string | null;
+  payloadVersion: number;
   performedAt: string | null;
   performerDisplayName: string | null;
   performedByDisplayName: string | null;
@@ -72,7 +74,9 @@ function mergePayloadFromRow(x: Record<string, unknown>): ProcedurePayload {
     "documentedByDisplayName",
     "documentedAt",
     "documentationRole",
-    "assistedProcedureType",
+    "canonicalProcedureType",
+    "linkedProcedureEventId",
+    "payloadVersion",
     "status",
     "clinicalSummaryFr",
   ]);
@@ -136,12 +140,31 @@ function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
       (payload as Record<string, unknown>).documentationRole === "NURSING"
         ? "NURSING"
         : "PROVIDER";
-    const assistedProcedureType =
-      typeof x.assistedProcedureType === "string" && x.assistedProcedureType.trim()
-        ? x.assistedProcedureType.trim()
-        : typeof payload.assistedProcedureType === "string"
-          ? String(payload.assistedProcedureType).trim()
+    const rawProcedureType =
+      typeof x.canonicalProcedureType === "string" && x.canonicalProcedureType.trim()
+        ? x.canonicalProcedureType.trim()
+        : typeof x.procedureType === "string" && x.procedureType.trim()
+          ? x.procedureType.trim()
+          : typeof payload.procedureType === "string"
+            ? String(payload.procedureType).trim()
+            : "";
+    const legacyAssisted = (payload as Record<string, unknown>).assistedProcedureType;
+    const resolvedCanonical =
+      rawProcedureType === "NURSING_PROCEDURE_ASSIST" &&
+      typeof legacyAssisted === "string" &&
+      legacyAssisted.trim()
+        ? legacyAssisted.trim()
+        : rawProcedureType;
+    const linkedProcedureEventId =
+      typeof x.linkedProcedureEventId === "string" && x.linkedProcedureEventId.trim()
+        ? x.linkedProcedureEventId.trim()
+        : typeof (payload as Record<string, unknown>).linkedProcedureEventId === "string"
+          ? String((payload as Record<string, unknown>).linkedProcedureEventId).trim()
           : null;
+    const payloadVersion =
+      typeof x.payloadVersion === "number" && Number.isFinite(x.payloadVersion)
+        ? Math.floor(x.payloadVersion)
+        : 1;
     const clinicalSummaryFr =
       typeof x.clinicalSummaryFr === "string" && x.clinicalSummaryFr.trim() ? x.clinicalSummaryFr.trim() : null;
     const performerTitle =
@@ -151,8 +174,10 @@ function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
       createdAt: typeof x.createdAt === "string" ? x.createdAt : "",
       documentedAt,
       documentationRole,
-      procedureType: typeof x.procedureType === "string" ? x.procedureType : "",
-      assistedProcedureType,
+      procedureType: resolvedCanonical,
+      canonicalProcedureType: resolvedCanonical,
+      linkedProcedureEventId,
+      payloadVersion,
       performedAt,
       performerDisplayName,
       performedByDisplayName,
@@ -168,15 +193,14 @@ function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
 }
 
 function procedureEntryDisplayName(row: ProcedureEntry, t: (k: string) => string): string {
-  if (row.procedureType === "NURSING_PROCEDURE_ASSIST" && row.assistedProcedureType) {
-    const titleKey = `erProcedureLauncher.nursingAssistTitle.${row.assistedProcedureType}`;
+  const canonical = row.canonicalProcedureType || row.procedureType;
+  if (row.documentationRole === "NURSING") {
+    const titleKey = `erProcedureLauncher.nursingAssistTitle.${canonical}`;
     const translated = t(titleKey);
     if (translated !== titleKey) return translated;
+    return `${procedureTypeDisplayName(t, canonical)} (${t("erProcedureLauncher.summaryDocumentationRoleNursing")})`;
   }
-  if (row.documentationRole === "NURSING") {
-    return `${procedureTypeDisplayName(t, row.procedureType)} (${t("erProcedureLauncher.summaryDocumentationRoleNursing")})`;
-  }
-  return procedureTypeDisplayName(t, row.procedureType);
+  return procedureTypeDisplayName(t, canonical);
 }
 
 function boolLabel(v: unknown, t: (k: string) => string): string {

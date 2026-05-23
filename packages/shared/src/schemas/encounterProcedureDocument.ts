@@ -402,7 +402,6 @@ export const encounterProcedureDocumentDtoSchema = z.union([
   thoracentesisParacentesisProcedureDocumentDtoSchema,
   pelvicExamProcedureDocumentDtoSchema,
   lumbarPunctureProcedureDocumentDtoSchema,
-  nursingProcedureAssistDocumentDtoSchema,
 ]);
 
 export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;

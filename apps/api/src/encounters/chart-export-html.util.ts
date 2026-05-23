@@ -46,6 +46,8 @@ function renderProcedureExportEntry(
     return `<li class="procedure-doc">
       ${pAlways("Volet", entry.documentationRoleFr ?? (entry.documentationRole === "NURSING" ? "Documentation infirmière" : "Documentation médicale"))}
       ${pAlways("Procédure", entry.procedureNameFr)}
+      ${pLine("Identité canonique", entry.canonicalProcedureType ?? undefined)}
+      ${pLine("Liée à l'événement", entry.linkedProcedureEventId ?? undefined)}
       ${pAlways("Réalisée le", performedWhen)}
       ${pLine("Réalisée par", entry.performedByDisplayFr)}
       ${pAlways("Documentée le", entry.documentedAtIso ?? entry.createdAt)}

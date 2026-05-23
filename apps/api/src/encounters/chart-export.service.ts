@@ -12,6 +12,9 @@ import {
 } from "@prisma/client";
 import {
   buildDocumentedProcedureSummaryMeta,
+  readCanonicalProcedureTypeFromPayload,
+  readLinkedProcedureEventIdFromPayload,
+  readPayloadVersionFromPayload,
   clinicalTimelineDisplayLabelFr,
   computeObservationStaySummaryForExport,
   resolveClinicalTimelineDisplayEventType,
@@ -345,6 +348,9 @@ export type ChartExportManifest = {
       clinicalSummaryFr?: string | null;
       documentationRole?: string | null;
       documentationRoleFr?: string | null;
+      canonicalProcedureType?: string | null;
+      linkedProcedureEventId?: string | null;
+      payloadVersion?: number | null;
     }>;
   };
   ivAccess: {
@@ -1130,6 +1136,9 @@ export class EncounterChartExportService {
               summaryMeta.documentationRole === "NURSING"
                 ? "Documentation infirmière"
                 : "Documentation médicale",
+            canonicalProcedureType: readCanonicalProcedureTypeFromPayload(p.payloadJson),
+            linkedProcedureEventId: readLinkedProcedureEventIdFromPayload(p.payloadJson),
+            payloadVersion: readPayloadVersionFromPayload(p.payloadJson),
           };
         }),
       },

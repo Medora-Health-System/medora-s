@@ -83,6 +83,10 @@ import {
   type EncounterIvAccessInsertDto,
   type EncounterIvAccessRemoveDto,
   type EncounterProcedureDocumentDto,
+  type NursingProcedureDocumentDto,
+  PROCEDURE_DOCUMENT_PAYLOAD_VERSION,
+  readCanonicalProcedureTypeFromPayload,
+  readLinkedProcedureEventIdFromPayload,
   type EncounterUpdateDto,
   type EncounterCloseDocumentationCheckResult,
   type EncounterIntakeUpsertDto,
@@ -3003,14 +3007,19 @@ export class EncountersService {
           documentedByDisplayName,
         });
         const documentationRole = readDocumentationRoleFromPayload(p);
+        const canonicalProcedureType = readCanonicalProcedureTypeFromPayload(p) ?? "";
         return {
           id: r.id,
           createdAt: documentedAt,
           documentedAt,
           documentationRole,
-          procedureType: typeof p.procedureType === "string" ? p.procedureType : "",
-          assistedProcedureType:
-            typeof p.assistedProcedureType === "string" ? p.assistedProcedureType : null,
+          procedureType: canonicalProcedureType,
+          canonicalProcedureType,
+          linkedProcedureEventId: readLinkedProcedureEventIdFromPayload(p),
+          payloadVersion:
+            typeof p.payloadVersion === "number" && Number.isFinite(p.payloadVersion)
+              ? Math.floor(p.payloadVersion)
+              : 1,
           site: typeof p.site === "string" ? p.site : "",
           performedAt,
           performerDisplayName: display,
@@ -3032,7 +3041,7 @@ export class EncountersService {
   }
 
   private procedureDocumentPayloadFromDto(
-    dto: EncounterProcedureDocumentDto,
+    dto: EncounterProcedureDocumentDto | NursingProcedureDocumentDto,
     performedAtIso: string | undefined,
     performer: {
       performerRoleCode: string | null;
@@ -3054,17 +3063,18 @@ export class EncountersService {
     out.performerDisplayName = performer.performedByDisplayName;
     out.performerTitle = performer.performerTitle;
     out.performerRoleCode = performer.performerRoleCode;
-    out.documentationRole =
-      plain.procedureType === "NURSING_PROCEDURE_ASSIST" || documentationRole === "NURSING"
-        ? "NURSING"
-        : "PROVIDER";
+    out.documentationRole = documentationRole === "NURSING" ? "NURSING" : "PROVIDER";
+    out.payloadVersion =
+      typeof plain.payloadVersion === "number" && Number.isFinite(plain.payloadVersion)
+        ? Math.floor(plain.payloadVersion)
+        : PROCEDURE_DOCUMENT_PAYLOAD_VERSION;
     return out;
   }
 
   async recordProcedureDocumented(
     facilityId: string,
     encounterId: string,
-    dto: EncounterProcedureDocumentDto,
+    dto: EncounterProcedureDocumentDto | NursingProcedureDocumentDto,
     userId?: string,
     options?: { documentationRole?: ProcedureDocumentationRole }
   ) {

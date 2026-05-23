@@ -1,5 +1,6 @@
 import { displayNameFrForDocumentedProcedureType } from "./documentedProcedureBillingBridge.js";
 import {
+  readCanonicalProcedureTypeFromPayload,
   readDocumentationRoleFromPayload,
   type ProcedureDocumentationRole,
 } from "./schemas/encounterProcedureNursing.js";
@@ -21,21 +22,16 @@ function readStr(record: Record<string, unknown>, key: string): string | null {
 }
 
 export function displayNameFrForDocumentedProcedurePayload(payloadJson: unknown): string {
-  const record = asRecord(payloadJson);
-  const procedureType = readProcedureTypeFromPayload(payloadJson);
-  if (procedureType === "NURSING_PROCEDURE_ASSIST") {
-    const assisted = readStr(record, "assistedProcedureType");
-    const assistedLabel = assisted ? displayNameFrForDocumentedProcedureType(assisted) : "Procédure";
-    return `Soins infirmiers — ${assistedLabel}`;
-  }
-  if (readDocumentationRoleFromPayload(payloadJson) === "NURSING" && procedureType) {
+  const procedureType = readCanonicalProcedureTypeFromPayload(payloadJson);
+  const documentationRole = readDocumentationRoleFromPayload(payloadJson);
+  if (documentationRole === "NURSING" && procedureType) {
     return `${displayNameFrForDocumentedProcedureType(procedureType)} (soins infirmiers)`;
   }
   return displayNameFrForDocumentedProcedureType(procedureType);
 }
 
 export function readProcedureTypeFromPayload(payloadJson: unknown): string | null {
-  return readStr(asRecord(payloadJson), "procedureType");
+  return readCanonicalProcedureTypeFromPayload(payloadJson);
 }
 
 export function readPerformedAtFromPayload(payloadJson: unknown): string | null {
@@ -69,7 +65,7 @@ export function buildDocumentedProcedureSummaryMeta(input: {
   documentedAtIso: string;
   documentedByDisplayName: string | null;
 }): DocumentedProcedureSummaryMeta | null {
-  const procedureType = readProcedureTypeFromPayload(input.payloadJson);
+  const procedureType = readCanonicalProcedureTypeFromPayload(input.payloadJson);
   if (!procedureType) return null;
 
   const record = asRecord(input.payloadJson);
