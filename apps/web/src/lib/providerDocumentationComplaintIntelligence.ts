@@ -1,12 +1,12 @@
 /**
- * Phase 19N.3 — Complaint-specific documentation intelligence (Batch 1).
+ * Phase 19N.3 / 19N.4 — Complaint-specific documentation intelligence.
  *
  * Authoritative references (audit summary):
  * - CMS 2023 E/M Guidelines — MDM problems/data/risk documentation; provider-selected elements only.
  * - ACEP ED documentation guidance — risk stratification, reassessment, disposition documentation.
- * - ACC/AHA 2022 chest pain / AMI data elements; ACEP NSTE-ACS policy (HEART score).
- * - SAEM M4 approaches: chest pain, dyspnea, abdominal pain; ECBC acute dyspnea summary.
- * - StatPearls / NSW ECAT abdominal red flags; medico-legal serial exam + return precaution documentation.
+ * - Batch 1: ACC/AHA chest pain; SAEM M4 chest pain / dyspnea / abdominal pain.
+ * - Batch 2: AHA/ASA acute ischemic stroke early management (last known well, time-sensitive workflow);
+ *   ACEP headache policy (thunderclap, meningismus, red flags); ACEP syncope policy (ECG, orthostatics, serious causes).
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -36,6 +36,9 @@ const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocu
 const cp = (key: string) => `providerDocumentationComplaintIntel.chestPain.${key}`;
 const sob = (key: string) => `providerDocumentationComplaintIntel.sob.${key}`;
 const abd = (key: string) => `providerDocumentationComplaintIntel.abdominal.${key}`;
+const stroke = (key: string) => `providerDocumentationComplaintIntel.stroke.${key}`;
+const headache = (key: string) => `providerDocumentationComplaintIntel.headache.${key}`;
+const dizz = (key: string) => `providerDocumentationComplaintIntel.dizzinessSyncope.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -318,15 +321,362 @@ export const ABDOMINAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligen
   ],
 });
 
+/** Acute neuro symptoms / stroke concern — AHA/ASA time-sensitive workflow elements. */
+export const STROKE_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    stroke("hpiSuddenOnset"),
+    stroke("hpiFacialDroop"),
+    stroke("hpiArmWeakness"),
+    stroke("hpiSpeechDifficulty"),
+    stroke("hpiVisionChange"),
+    stroke("hpiNumbnessTingling"),
+    stroke("hpiLastKnownWellReviewed"),
+    stroke("hpiSymptomOnsetTimeDocumented"),
+    stroke("hpiSymptomProgression"),
+    stroke("hpiHeadacheWithNeuroSymptoms"),
+    stroke("hpiSeizureActivityReviewed"),
+    stroke("hpiAnticoagulantUse"),
+    stroke("hpiPriorTiaStroke"),
+    stroke("hpiAtrialFibrillation"),
+    stroke("hpiHypertensionHistory"),
+    stroke("hpiDiabetesHistory"),
+    stroke("hpiRecentTrauma"),
+    stroke("hpiCocaineUse"),
+  ],
+  rosImportantPositives: [
+    stroke("rosWeakness"),
+    stroke("rosSpeechDifficulty"),
+    stroke("rosVisionChange"),
+    stroke("rosHeadache"),
+    stroke("rosDizziness"),
+    stroke("rosNumbness"),
+    stroke("rosConfusion"),
+  ],
+  rosImportantNegatives: [
+    stroke("rosDeniesChestPain"),
+    stroke("rosDeniesFever"),
+    stroke("rosDeniesTrauma"),
+    stroke("rosDeniesNeckPain"),
+  ],
+  rosRedFlags: [
+    stroke("rfNeuroDeficit"),
+    stroke("rfAlteredMentalStatus"),
+    stroke("rfSuddenSevereHeadache"),
+  ],
+  physicalExam: {
+    neuroPsych: [
+      stroke("examAlertOriented"),
+      stroke("examSpeechClear"),
+      stroke("examFocalDeficitNoted"),
+      stroke("examFollowsCommands"),
+      stroke("examAlteredMentalStatus"),
+    ],
+    cardiovascular: [
+      stroke("examCardioRrr"),
+      stroke("examCardioTachycardic"),
+      stroke("examIrregularRhythmNoted"),
+    ],
+    general: [stroke("examAlert"), stroke("examUncomfortableAppearing")],
+  },
+  mdmWorkingAssessment: [
+    stroke("mdmStrokeSyndromeConsidered"),
+    stroke("mdmHemorrhagicStrokeConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    stroke("diffIschemicStroke"),
+    stroke("diffHemorrhagicStroke"),
+    stroke("diffTia"),
+    stroke("diffMigraineWithAura"),
+    stroke("diffSeizurePostIctal"),
+    stroke("diffHypoglycemia"),
+    stroke("diffIntracranialMass"),
+    stroke("diffMeningitisEncephalitis"),
+    stroke("diffConversionReaction"),
+  ],
+  mdmDataReviewed: [
+    stroke("mdmCtHeadReviewed"),
+    stroke("mdmCtaReviewed"),
+    stroke("mdmGlucoseReviewed"),
+    stroke("mdmNihssDocumentedIfUsed"),
+    stroke("mdmEcgReviewed"),
+    stroke("mdmExternalRecordsReviewed"),
+  ],
+  mdmClinicalRationale: [
+    stroke("mdmLastKnownWellDocumented"),
+    stroke("mdmStrokeActivationConsidered"),
+    stroke("mdmTimeSensitiveWorkflowReviewed"),
+    stroke("mdmThrombolysisEligibilityConsidered"),
+  ],
+  mdmPlanSummary: [
+    stroke("mdmNeurologyConsult"),
+    stroke("mdmTransferStrokeCenterConsidered"),
+    stroke("mdmSerialNeuroExamsPlanned"),
+  ],
+  mdmImmediateActionsRationale: [
+    stroke("mdmNpoIfStrokeSuspected"),
+    stroke("mdmBloodPressureManagementConsidered"),
+  ],
+  mdmAdmitObserveDischarge: [
+    stroke("mdmAdmissionConsidered"),
+    stroke("mdmTransferConsidered"),
+    stroke("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    stroke("reassessRepeatNeuroExam"),
+    stroke("reassessSymptomsImproved"),
+    stroke("reassessSymptomsUnchanged"),
+    stroke("reassessSymptomsWorsened"),
+    stroke("reassessHemodynamicallyStable"),
+  ],
+  followUpDisposition: [
+    stroke("dispReturnPrecautionsDiscussed"),
+    stroke("dispReturnRecurrentNeuroSymptoms"),
+    stroke("dispReturnWorseningWeakness"),
+    stroke("dispNeurologyFollowUp"),
+    stroke("dispStrokeEducationReviewed"),
+  ],
+});
+
+/** Headache — ACEP red flags / secondary headache workup framework. */
+export const HEADACHE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    headache("hpiSuddenSevereOnset"),
+    headache("hpiThunderclapConcern"),
+    headache("hpiGradualOnset"),
+    headache("hpiPositional"),
+    headache("hpiWorseWithValsalva"),
+    headache("hpiPhotophobia"),
+    headache("hpiPhonophobia"),
+    headache("hpiNauseaVomiting"),
+    headache("hpiVisualAura"),
+    headache("hpiNeckStiffnessConcern"),
+    headache("hpiFeverSymptoms"),
+    headache("hpiTraumaReviewed"),
+    headache("hpiRecentLpReviewed"),
+    headache("hpiPregnancyConcern"),
+    headache("hpiImmunocompromised"),
+    headache("hpiAnticoagulantUse"),
+    headache("hpiPriorMigraineHistory"),
+    headache("hpiWorstHeadacheOfLife"),
+    headache("hpiExertionalOnset"),
+  ],
+  rosImportantPositives: [
+    headache("rosHeadache"),
+    headache("rosNausea"),
+    headache("rosVomiting"),
+    headache("rosPhotophobia"),
+    headache("rosFever"),
+    headache("rosNeckPain"),
+    headache("rosVisualChanges"),
+    headache("rosDizziness"),
+  ],
+  rosImportantNegatives: [
+    headache("rosDeniesFever"),
+    headache("rosDeniesSyncope"),
+    headache("rosDeniesNeckStiffness"),
+    headache("rosDeniesTrauma"),
+    headache("rosDeniesNeuroDeficit"),
+  ],
+  rosRedFlags: [
+    headache("rfAlteredMentalStatus"),
+    headache("rfNeuroDeficit"),
+    headache("rfSeverePain"),
+    headache("rfThunderclapPattern"),
+  ],
+  physicalExam: {
+    heent: [headache("examPerrla"), headache("examOropharynxClear")],
+    neuroPsych: [
+      headache("examAlertOriented"),
+      headache("examNeckStiffnessNoted"),
+      headache("examFocalDeficitNoted"),
+      headache("examSpeechClear"),
+    ],
+    general: [headache("examUncomfortableAppearing"), headache("examPhotophobicAppearing")],
+  },
+  mdmWorkingAssessment: [
+    headache("mdmSecondaryHeadacheConsidered"),
+    headache("mdmSahConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    headache("diffMigraine"),
+    headache("diffTensionHeadache"),
+    headache("diffSubarachnoidHemorrhage"),
+    headache("diffMeningitis"),
+    headache("diffEncephalitis"),
+    headache("diffBrainTumor"),
+    headache("diffHypertensiveEmergency"),
+    headache("diffTemporalArteritis"),
+    headache("diffIdiopathicIntracranialHypertension"),
+    headache("diffSinusitis"),
+    headache("diffMedicationOveruse"),
+  ],
+  mdmDataReviewed: [
+    headache("mdmCtHeadReviewed"),
+    headache("mdmLpConsidered"),
+    headache("mdmLabsReviewed"),
+    headache("mdmEsrCrpIfIndicated"),
+  ],
+  mdmClinicalRationale: [
+    headache("mdmRedFlagsEvaluated"),
+    headache("mdmInfectiousWorkupConsidered"),
+    headache("mdmAnalgesiaResponseReviewed"),
+  ],
+  mdmPlanSummary: [
+    headache("mdmAntiMigraineTherapyIfIndicated"),
+    headache("mdmSerialNeuroExamsPlanned"),
+  ],
+  mdmImmediateActionsRationale: [headache("mdmIvFluidsAnalgesiaPlan")],
+  mdmAdmitObserveDischarge: [
+    headache("mdmAdmissionConsidered"),
+    headache("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    headache("reassessPainImprovedAfterTreatment"),
+    headache("reassessRepeatNeuroExam"),
+    headache("reassessSerialExamUnchanged"),
+  ],
+  followUpDisposition: [
+    headache("dispReturnThunderclapPrecautions"),
+    headache("dispReturnWorseningHeadache"),
+    headache("dispReturnNeuroSymptoms"),
+    headache("dispNeurologyFollowUp"),
+    headache("dispPcpFollowUp"),
+  ],
+});
+
+/** Dizziness / syncope — ACEP serious-cause evaluation framework. */
+export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    dizz("hpiTrueVertigo"),
+    dizz("hpiPresyncope"),
+    dizz("hpiSyncopeEvent"),
+    dizz("hpiOrthostaticSymptoms"),
+    dizz("hpiExertionalSyncope"),
+    dizz("hpiProdromeReviewed"),
+    dizz("hpiPalpitationsBeforeEvent"),
+    dizz("hpiChestPainBeforeEvent"),
+    dizz("hpiSeizureLikeActivityReviewed"),
+    dizz("hpiVolumeDepletion"),
+    dizz("hpiMedicationReview"),
+    dizz("hpiCardiacHistory"),
+    dizz("hpiPriorSyncope"),
+    dizz("hpiAlcoholUse"),
+    dizz("hpiPregnancyConcern"),
+    dizz("hpiPostEventConfusion"),
+    dizz("hpiInjuryFromFallReviewed"),
+  ],
+  rosImportantPositives: [
+    dizz("rosDizziness"),
+    dizz("rosPalpitations"),
+    dizz("rosChestPain"),
+    dizz("rosWeakness"),
+    dizz("rosNausea"),
+    dizz("rosShortnessOfBreath"),
+  ],
+  rosImportantNegatives: [
+    dizz("rosDeniesNeuroDeficit"),
+    dizz("rosDeniesChestPainAtRest"),
+    dizz("rosDeniesFever"),
+    dizz("rosDeniesHeadache"),
+  ],
+  rosRedFlags: [
+    dizz("rfSyncope"),
+    dizz("rfNeuroDeficit"),
+    dizz("rfHypotensionConcern"),
+    dizz("rfAnticoagulantBleedingConcern"),
+  ],
+  physicalExam: {
+    cardiovascular: [
+      dizz("examCardioRrr"),
+      dizz("examCardioTachycardic"),
+      dizz("examMurmurAppreciated"),
+      dizz("examPeripheralPulsesPresent"),
+      dizz("examOrthostaticVitalsReviewed"),
+    ],
+    neuroPsych: [
+      dizz("examAlertOriented"),
+      dizz("examSpeechClear"),
+      dizz("examFollowsCommands"),
+      dizz("examGaitAssessed"),
+    ],
+    general: [dizz("examAlert"), dizz("examDiaphoretic")],
+  },
+  mdmWorkingAssessment: [
+    dizz("mdmCardiacCauseConsidered"),
+    dizz("mdmNeurologicCauseConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    dizz("diffVasovagal"),
+    dizz("diffOrthostaticHypotension"),
+    dizz("diffCardiacArrhythmia"),
+    dizz("diffStructuralHeartDisease"),
+    dizz("diffPulmonaryEmbolism"),
+    dizz("diffAcs"),
+    dizz("diffCerebrovascular"),
+    dizz("diffSeizure"),
+    dizz("diffHemorrhage"),
+    dizz("diffMetabolic"),
+    dizz("diffVertebrobasilar"),
+  ],
+  mdmDataReviewed: [
+    dizz("mdmEcgReviewed"),
+    dizz("mdmOrthostaticVitalsPerformed"),
+    dizz("mdmTroponinIfIndicated"),
+    dizz("mdmGlucoseReviewed"),
+    dizz("mdmHemoglobinIfIndicated"),
+    dizz("mdmCtHeadIfIndicated"),
+  ],
+  mdmClinicalRationale: [
+    dizz("mdmSanFranciscoSyncopeConsidered"),
+    dizz("mdmSeriousCauseEvaluationDocumented"),
+    dizz("mdmVolumeStatusAssessed"),
+  ],
+  mdmPlanSummary: [
+    dizz("mdmIvFluidsIfIndicated"),
+    dizz("mdmEchocardiogramConsidered"),
+    dizz("mdmTelemetryConsidered"),
+  ],
+  mdmImmediateActionsRationale: [
+    dizz("mdmFallPrecautions"),
+    dizz("mdmCardiacMonitoringIfIndicated"),
+  ],
+  mdmAdmitObserveDischarge: [
+    dizz("mdmAdmissionConsidered"),
+    dizz("mdmObservationConsidered"),
+    dizz("mdmDischargeAfterNegativeWorkup"),
+  ],
+  reassessment: [
+    dizz("reassessSymptomsResolvedAfterFluids"),
+    dizz("reassessRepeatOrthostatics"),
+    dizz("reassessRepeatNeuroExam"),
+    dizz("reassessHemodynamicallyStable"),
+  ],
+  followUpDisposition: [
+    dizz("dispNoDrivingUntilCleared"),
+    dizz("dispReturnRecurrentSyncope"),
+    dizz("dispReturnChestPainPalpitations"),
+    dizz("dispCardiologyFollowUp"),
+    dizz("dispPcpFollowUp"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
   chest_pain: CHEST_PAIN_COMPLAINT_INTEL,
   sob: SOB_COMPLAINT_INTEL,
   abdominal_pain: ABDOMINAL_COMPLAINT_INTEL,
+  stroke_symptoms: STROKE_SYMPTOMS_COMPLAINT_INTEL,
+  headache: HEADACHE_COMPLAINT_INTEL,
+  dizziness_syncope: DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
+export const BATCH2_COMPLAINT_TEMPLATE_IDS = ["stroke_symptoms", "headache", "dizziness_syncope"] as const;
+export const COMPLAINT_INTEL_TEMPLATE_IDS = [
+  ...BATCH1_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH2_COMPLAINT_TEMPLATE_IDS,
+] as const;
 
 export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationComplaintIntelligence): string[] {
   return [

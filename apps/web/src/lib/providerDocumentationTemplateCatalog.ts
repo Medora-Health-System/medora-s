@@ -7,7 +7,10 @@ import type {
 import {
   ABDOMINAL_COMPLAINT_INTEL,
   CHEST_PAIN_COMPLAINT_INTEL,
+  DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+  HEADACHE_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
+  STROKE_SYMPTOMS_COMPLAINT_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import {
@@ -660,7 +663,9 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     [
       "providerDocumentationPromptReminders.adultStrokeTimeSensitive",
       "providerDocumentationPromptReminders.adultNeuroRepeatExam",
-    ]
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    STROKE_SYMPTOMS_COMPLAINT_INTEL
   ),
   adultTemplate(
     "dizziness_syncope",
@@ -681,7 +686,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioPeripheralPulsesPresent"],
       neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroSpeechClear", "erMseExamChips.neuroFollowsCommands"],
     },
-    ADULT_GUIDANCE_NEURO
+    ADULT_GUIDANCE_NEURO,
+    [
+      "providerDocumentationPromptReminders.adultSyncopeWorkup",
+      "providerDocumentationPromptReminders.adultNeuroRepeatExam",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    DIZZINESS_SYNCOPE_COMPLAINT_INTEL
   ),
   adultTemplate(
     "headache",
@@ -701,7 +712,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       heent: ["erMseExamChips.heentPerrla"],
       neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroSpeechClear"],
     },
-    ADULT_GUIDANCE_NEURO
+    ADULT_GUIDANCE_NEURO,
+    [
+      "providerDocumentationPromptReminders.adultHeadacheRedFlags",
+      "providerDocumentationPromptReminders.adultNeuroRepeatExam",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    HEADACHE_COMPLAINT_INTEL
   ),
   adultTemplate(
     "psychiatric_behavioral",
