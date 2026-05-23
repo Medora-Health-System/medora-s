@@ -132,6 +132,9 @@ export default function CatalogImportPage() {
         if (out.orderSearchEnabled > 0) {
           successMsg += ` ${t("catalogImport.commitOrderSearch").replace("{count}", String(out.orderSearchEnabled))}`;
         }
+        if (out.highRiskQueued > 0) {
+          successMsg += ` ${t("catalogImport.commitHighRiskQueued").replace("{count}", String(out.highRiskQueued))}`;
+        }
         const blocked = out.orderSearchBlocked ?? [];
         setSuccess(successMsg);
         if (blocked.length > 0) {

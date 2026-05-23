@@ -138,6 +138,7 @@ describe("ControlledCatalogImportMedicationService", () => {
       FACILITY_ID
     );
     expect(result.committed).toBe(1);
+    expect(result.highRiskQueued).toBe(0);
     expect(result.orderSearchEnabled).toBe(0);
     expect(result.orderSearchBlocked).toEqual([]);
     expect(activationGovernance.enableOrderSearch).not.toHaveBeenCalled();
@@ -171,7 +172,7 @@ describe("ControlledCatalogImportMedicationService", () => {
     expect(activationGovernance.enableOrderSearch).toHaveBeenCalled();
   });
 
-  it("excludes high-risk and duplicate rows from commit", async () => {
+  it("excludes duplicate rows and queues high-risk instead of skipping", async () => {
     const { service, prisma } = buildService({
       existingProducts: [
         {
@@ -203,8 +204,9 @@ describe("ControlledCatalogImportMedicationService", () => {
       FACILITY_ID
     );
     expect(result.committed).toBe(0);
-    expect(result.skipped).toBe(2);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(result.skipped).toBe(1);
+    expect(result.highRiskQueued).toBe(1);
+    expect(prisma.$transaction).toHaveBeenCalled();
   });
 });
 

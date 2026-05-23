@@ -113,6 +113,16 @@ export function medicationTextMatchesHighRiskPatterns(text: string): boolean {
   return HIGH_RISK_NAME_PATTERNS.some((re) => re.test(text));
 }
 
+/** Returns matched high-risk pattern tokens for queue display (no PHI). */
+export function highRiskMedicationReasonCodes(text: string): string[] {
+  const codes: string[] = [];
+  for (const re of HIGH_RISK_NAME_PATTERNS) {
+    const m = text.match(re);
+    if (m?.[0]) codes.push(m[0].trim().toUpperCase().replace(/\s+/g, "_"));
+  }
+  return [...new Set(codes)];
+}
+
 function hasHighRiskMedicationPattern(text: string): boolean {
   return medicationTextMatchesHighRiskPatterns(text);
 }

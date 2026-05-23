@@ -7,6 +7,8 @@ export const MEDICATION_PRODUCT_GOVERNANCE_STATUSES = [
   "READY_FOR_BILLING_REVIEW",
   "READY_FOR_ACTIVATION",
   "ACTIVATION_APPROVED",
+  /** Phase 19K.1 — controlled import high-risk queue (provider ordering not yet approved). */
+  "HIGH_RISK_PENDING_APPROVAL",
   "BLOCKED",
   "RETIRED",
 ] as const;
@@ -30,4 +32,7 @@ export const PENDING_REVIEW_GOVERNANCE_STATUSES: MedicationProductGovernanceStat
   "REVIEW_REQUIRED",
   "READY_FOR_PHARMACY_REVIEW",
   "READY_FOR_BILLING_REVIEW",
+  "HIGH_RISK_PENDING_APPROVAL",
 ];
+
+export const HIGH_RISK_PENDING_GOVERNANCE_STATUS = "HIGH_RISK_PENDING_APPROVAL" as const;

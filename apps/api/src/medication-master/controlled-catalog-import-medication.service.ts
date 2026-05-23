@@ -25,6 +25,13 @@ import {
 } from "./controlled-catalog-import-parse.util";
 import { normalizeMedicationNameForMatch } from "./priority-er-inventory-match-normalize.util";
 import { mergeProductRuntimeActivation } from "./medication-product-runtime-activation.util";
+import { HIGH_RISK_PENDING_GOVERNANCE_STATUS } from "./medication-product-governance.constants";
+import { highRiskMedicationReasonCodes } from "./medication-global-baseline-tier-rules.util";
+import {
+  defaultHighRiskImportMeta,
+  mergeHighRiskImportMeta,
+  type HighRiskImportMeta,
+} from "./medication-high-risk-import-meta.util";
 
 export type ControlledCatalogMedicationRowResult = {
   rowKey: string;
@@ -62,6 +69,7 @@ export type ControlledCatalogMedicationCommitResult = {
   fingerprint: string;
   committed: number;
   skipped: number;
+  highRiskQueued: number;
   orderSearchEnabled: number;
   orderSearchBlocked: ControlledCatalogOrderSearchBlocked[];
   productIds: string[];
@@ -153,17 +161,63 @@ export class ControlledCatalogImportMedicationService {
     const classified = await this.classifyRows(rows);
     const counts = this.countByClassification(classified);
     const safeRows = classified.filter((r) => r.classification === "SAFE_LOW_RISK");
+    const highRiskRows = classified.filter((r) => r.classification === "HIGH_RISK_MANUAL_REVIEW");
 
     const productIds: string[] = [];
     const createdRows: Array<{ row: ControlledCatalogMedicationRowResult; productId: string }> = [];
     let orderSearchEnabled = 0;
+    let highRiskQueued = 0;
     const orderSearchBlocked: ControlledCatalogOrderSearchBlocked[] = [];
+    const importFingerprint = fingerprintRows(rows, filename);
 
     // Phase A — catalog only (inactive); never roll back on order-search failures.
     for (const row of safeRows) {
       const created = await this.createInactiveMedicationRow(row, body.facilityId);
       productIds.push(created.productId);
       createdRows.push({ row, productId: created.productId });
+    }
+
+    // Phase A2 — high-risk rows enter approval queue (inactive, not provider-searchable).
+    for (const row of highRiskRows) {
+      try {
+        const reasonCodes = highRiskMedicationReasonCodes(
+          [row.medication, row.dose, row.form].join(" ")
+        );
+        const highRiskMeta = defaultHighRiskImportMeta({
+          sourceFilename: filename,
+          sourceFingerprint: importFingerprint,
+          sourceRowNumber: row.rowNumber,
+          sourceRowKey: row.rowKey,
+          classificationReasonCodes: reasonCodes.length ? reasonCodes : ["HIGH_RISK_MEDICATION"],
+          importedAt: new Date().toISOString(),
+        });
+        const created = await this.createInactiveMedicationRow(row, body.facilityId, {
+          governanceStatus: HIGH_RISK_PENDING_GOVERNANCE_STATUS,
+          isHighAlert: true,
+          highRiskImport: highRiskMeta,
+        });
+        productIds.push(created.productId);
+        highRiskQueued += 1;
+
+        await this.audit.log(AuditAction.CREATE, "HIGH_RISK_MEDICATION_IMPORTED", {
+          userId,
+          facilityId: body.facilityId,
+          entityId: created.productId,
+          critical: true,
+          ip: auditMeta?.ip,
+          userAgent: auditMeta?.userAgent,
+          metadata: {
+            productCode: created.productId,
+            sourceRowKey: row.rowKey,
+            sourceRowNumber: row.rowNumber,
+            classificationReasonCodes: highRiskMeta.classificationReasonCodes,
+            sourceFingerprint: importFingerprint,
+          },
+        });
+      } catch (e) {
+        // Duplicate canonical — skip silently (counts already reflect high-risk classification).
+        if (!(e instanceof ConflictException)) throw e;
+      }
     }
 
     // Phase B — optional provider order search (separate per row).
@@ -201,9 +255,10 @@ export class ControlledCatalogImportMedicationService {
       userAgent: auditMeta?.userAgent,
       metadata: {
         filename,
-        fingerprint: fingerprintRows(rows, filename),
+        fingerprint: importFingerprint,
         committed: safeRows.length,
-        skipped: classified.length - safeRows.length,
+        skipped: classified.length - safeRows.length - highRiskRows.length,
+        highRiskQueued,
         orderSearchEnabled,
         orderSearchBlockedCount: orderSearchBlocked.length,
         enableProviderOrderSearch: body.enableProviderOrderSearch,
@@ -213,14 +268,32 @@ export class ControlledCatalogImportMedicationService {
 
     return {
       dryRun: false,
-      fingerprint: fingerprintRows(rows, filename),
+      fingerprint: importFingerprint,
       committed: safeRows.length,
-      skipped: classified.length - safeRows.length,
+      skipped: classified.length - safeRows.length - highRiskRows.length,
+      highRiskQueued,
       orderSearchEnabled,
       orderSearchBlocked,
       productIds,
       counts,
     };
+  }
+
+  /** Public wrapper for high-risk review queue provider-order activation. */
+  async activateProviderOrderSearchForImport(
+    productId: string,
+    facilityId: string,
+    userId: string,
+    note: string,
+    auditMeta?: { ip?: string; userAgent?: string }
+  ) {
+    return this.enableProviderOrderSearchForProduct(
+      productId,
+      facilityId,
+      userId,
+      note,
+      auditMeta
+    );
   }
 
   private loadMedicationRows(buffer: Buffer, filename: string): ControlledCatalogMedicationParsedRow[] {
@@ -291,7 +364,13 @@ export class ControlledCatalogImportMedicationService {
 
   private async createInactiveMedicationRow(
     row: ControlledCatalogMedicationRowResult,
-    facilityId: string
+    facilityId: string,
+    options?: {
+      governanceStatus?: string;
+      isHighAlert?: boolean;
+      isControlled?: boolean;
+      highRiskImport?: HighRiskImportMeta;
+    }
   ): Promise<{ productId: string; conceptId: string; packageId: string; catalogMedicationId: string | null }> {
     const codes = buildControlledCatalogMedicationCodes({
       rowKey: row.rowKey,
@@ -334,6 +413,12 @@ export class ControlledCatalogImportMedicationService {
         data: { displayText: row.dose },
       });
 
+      const governanceStatus = options?.governanceStatus ?? "REVIEW_REQUIRED";
+      let governanceNotes = mergeProductRuntimeActivation(null, {});
+      if (options?.highRiskImport) {
+        governanceNotes = mergeHighRiskImportMeta(governanceNotes, options.highRiskImport);
+      }
+
       const product = await tx.medicationProduct.create({
         data: {
           code: codes.productCode,
@@ -345,8 +430,8 @@ export class ControlledCatalogImportMedicationService {
           administrationType: "ORAL",
           billingClass: "UNKNOWN",
           isActive: false,
-          governanceStatus: "REVIEW_REQUIRED",
-          governanceNotes: mergeProductRuntimeActivation(null, {}),
+          governanceStatus,
+          governanceNotes,
         },
       });
 
@@ -364,7 +449,11 @@ export class ControlledCatalogImportMedicationService {
       });
 
       await tx.medicationSafetyProfile.create({
-        data: { conceptId: concept.id, isHighAlert: false, isControlled: false },
+        data: {
+          conceptId: concept.id,
+          isHighAlert: options?.isHighAlert ?? false,
+          isControlled: options?.isControlled ?? false,
+        },
       });
       await tx.medicationAdministrationProfile.create({
         data: {

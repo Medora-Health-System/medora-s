@@ -36,6 +36,7 @@ export type MedicationCommitResult = {
   dryRun: false;
   committed: number;
   skipped: number;
+  highRiskQueued: number;
   orderSearchEnabled: number;
   orderSearchBlocked?: MedicationOrderSearchBlocked[];
   counts: Record<string, number>;

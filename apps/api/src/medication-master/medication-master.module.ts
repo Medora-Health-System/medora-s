@@ -16,15 +16,22 @@ import { MedicationGlobalBaselineService } from "./medication-global-baseline.se
 import { MedicationGlobalBaselineAutoApproveService } from "./medication-global-baseline-auto-approve.service";
 import { MedicationMasterController } from "./medication-master.controller";
 import { ControlledCatalogImportController } from "./controlled-catalog-import.controller";
+import { HighRiskMedicationReviewController } from "./high-risk-medication-review.controller";
+import { HighRiskMedicationReviewService } from "./high-risk-medication-review.service";
 import { ControlledCatalogImportMedicationService } from "./controlled-catalog-import-medication.service";
 import { ControlledCatalogImportProcedureService } from "./controlled-catalog-import-procedure.service";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [MedicationMasterController, ControlledCatalogImportController],
+  controllers: [
+    MedicationMasterController,
+    ControlledCatalogImportController,
+    HighRiskMedicationReviewController,
+  ],
   providers: [
     ControlledCatalogImportMedicationService,
     ControlledCatalogImportProcedureService,
+    HighRiskMedicationReviewService,
     MedicationFormularyImportService,
     PriorityErInventoryImportService,
     PriorityErInventoryPromotionService,
