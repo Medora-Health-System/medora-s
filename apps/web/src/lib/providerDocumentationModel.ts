@@ -133,6 +133,8 @@ export type ProviderDocumentationTemplateGuidance = {
   providerAddendum?: string[];
 };
 
+export type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+
 export type ProviderDocumentationTemplateDefinition = {
   id: ProviderDocumentationTemplateId;
   majorGroup: ProviderDocumentationMajorGroup;
@@ -145,6 +147,8 @@ export type ProviderDocumentationTemplateDefinition = {
   guidance?: ProviderDocumentationTemplateGuidance;
   /** Read-only advisory bullets shown when template is active (not auto-inserted). */
   promptReminderKeys?: string[];
+  /** Click-only complaint-specific helpers — never auto-inserted on template apply (19N.3). */
+  complaintIntelligence?: import("./providerDocumentationComplaintIntelligence").ProviderDocumentationComplaintIntelligence;
 };
 
 export type ProviderDocumentationSignReadiness = {

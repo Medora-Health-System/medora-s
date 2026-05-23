@@ -797,6 +797,69 @@ export function ProviderDocumentationWorkspace({
       </ChipGroupView>
     );
   };
+  const complaintIntelligenceFieldChips = (
+    template: ProviderDocumentationTemplateDefinition | null,
+    field:
+      | "hpi"
+      | "rosImportantPositives"
+      | "rosImportantNegatives"
+      | "rosRedFlags"
+      | "mdmWorkingAssessment"
+      | "mdmDifferentialSynthesis"
+      | "mdmDataReviewed"
+      | "mdmClinicalRationale"
+      | "mdmPlanSummary"
+      | "mdmImmediateActionsRationale"
+      | "mdmAdmitObserveDischarge",
+    titleKey: string
+  ) => {
+    const keys = template?.complaintIntelligence?.[field];
+    if (!keys?.length) return null;
+    const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
+    return (
+      <ChipGroupView title={t(titleKey)}>
+        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey))}
+      </ChipGroupView>
+    );
+  };
+  const complaintIntelligenceExamChips = (template: ProviderDocumentationTemplateDefinition | null) => {
+    const exam = template?.complaintIntelligence?.physicalExam;
+    if (!exam) return null;
+    const groups = PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS.map((sectionId) => ({
+      sectionId,
+      chips: (exam[sectionId] ?? []).map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey })),
+    })).filter((group) => group.chips.length > 0);
+    if (!groups.length) return null;
+    return (
+      <div style={{ marginBottom: 10 }}>
+        {groups.map((group) => (
+          <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
+            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+          </ChipGroupView>
+        ))}
+      </div>
+    );
+  };
+  const complaintIntelligenceReassessmentChips = (template: ProviderDocumentationTemplateDefinition | null) => {
+    const keys = template?.complaintIntelligence?.reassessment;
+    if (!keys?.length) return null;
+    const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
+    return (
+      <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionReassessment")}>
+        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), "green")}
+      </ChipGroupView>
+    );
+  };
+  const complaintIntelligenceDispositionChips = (template: ProviderDocumentationTemplateDefinition | null) => {
+    const keys = template?.complaintIntelligence?.followUpDisposition;
+    if (!keys?.length) return null;
+    const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
+    return (
+      <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionDisposition")}>
+        {chipRow(chips, (chip) => appendField("followUpDisposition", chip.fragmentKey))}
+      </ChipGroupView>
+    );
+  };
   const completenessSectionLabel = (sectionId: string) => {
     const labelKey =
       sectionId === "chiefComplaintHpi"
@@ -1046,6 +1109,7 @@ export function ProviderDocumentationWorkspace({
               {ta("hpi", 4, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.hpi)}
             </Field>
             {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
+            {complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi")}
             {HPI_CHIPS.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
                 {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
@@ -1114,6 +1178,9 @@ export function ProviderDocumentationWorkspace({
                 {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), group.field === "rosImportantNegatives" ? "warn" : undefined)}
               </ChipGroupView>
             ))}
+            {complaintIntelligenceFieldChips(activeTemplate, "rosImportantPositives", "providerDocumentationWorkspace.complaintIntelSectionRosPositives")}
+            {complaintIntelligenceFieldChips(activeTemplate, "rosImportantNegatives", "providerDocumentationWorkspace.complaintIntelSectionRosNegatives")}
+            {complaintIntelligenceFieldChips(activeTemplate, "rosRedFlags", "providerDocumentationWorkspace.complaintIntelSectionRosRedFlags")}
           </ProviderDocumentationAccordionSection>
 
           <ProviderDocumentationAccordionSection
@@ -1176,6 +1243,8 @@ export function ProviderDocumentationWorkspace({
               </ProviderDocumentationChipPanel>
             ))}
             {templateReassessmentGuidanceChips(activeTemplate)}
+            {complaintIntelligenceExamChips(activeTemplate)}
+            {complaintIntelligenceReassessmentChips(activeTemplate)}
           </ProviderDocumentationAccordionSection>
 
           <ProviderDocumentationAccordionSection
@@ -1217,6 +1286,13 @@ export function ProviderDocumentationWorkspace({
                 {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
               </ChipGroupView>
             ))}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmWorkingAssessment", "providerDocumentationWorkspace.complaintIntelSectionMdmAssessment")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmDifferentialSynthesis", "providerDocumentationWorkspace.complaintIntelSectionDifferential")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmDataReviewed", "providerDocumentationWorkspace.complaintIntelSectionMdmData")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmClinicalRationale", "providerDocumentationWorkspace.complaintIntelSectionMdmRationale")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmPlanSummary", "providerDocumentationWorkspace.complaintIntelSectionMdmPlan")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmImmediateActionsRationale", "providerDocumentationWorkspace.complaintIntelSectionMdmActions")}
+            {complaintIntelligenceFieldChips(activeTemplate, "mdmAdmitObserveDischarge", "providerDocumentationWorkspace.complaintIntelSectionMdmDisposition")}
             <p style={{ margin: "8px 0", fontSize: 11, color: "#64748b" }}>
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
@@ -1267,6 +1343,7 @@ export function ProviderDocumentationWorkspace({
               "providerAddendum",
               "providerDocumentationWorkspace.activeTemplateSmartSentences"
             )}
+            {complaintIntelligenceDispositionChips(activeTemplate)}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
               <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
