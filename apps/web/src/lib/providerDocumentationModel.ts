@@ -521,6 +521,67 @@ export function appendDocumentationFragment(current: string, fragment: string): 
   return `${currentTrimmed}; ${clean}`;
 }
 
+export function documentationFragmentPresentInField(fieldText: string, fragment: string): boolean {
+  const clean = normalizeFragment(fragment);
+  if (!clean) return false;
+  const currentTrimmed = fieldText.trim();
+  if (!currentTrimmed) return false;
+  const parts = currentTrimmed
+    .split(/\s*;\s*/u)
+    .map((p) => normalizeFragment(p))
+    .filter(Boolean);
+  return parts.some((p) => p.toLocaleLowerCase() === clean.toLocaleLowerCase());
+}
+
+export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS: Record<
+  ProviderDocumentationExamSectionId,
+  readonly string[]
+> = {
+  general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+  heent: [
+    "erMseExamChips.heentHeadAtraumatic",
+    "erMseExamChips.heentPerrla",
+    "erMseExamChips.heentOropharynxClear",
+  ],
+  cardiovascular: [
+    "erMseExamChips.cardioRrr",
+    "erMseExamChips.cardioNoMurmur",
+    "erMseExamChips.cardioPeripheralPulsesPresent",
+  ],
+  respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
+  abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "erMseExamChips.abdNoGuarding"],
+  neuroPsych: [
+    "erMseExamChips.neuroAlertOriented",
+    "erMseExamChips.neuroFollowsCommands",
+    "erMseExamChips.neuroSpeechClear",
+  ],
+  musculoskeletal: ["erMseExamChips.mskRomNormal", "erMseExamChips.mskNoDeformityNoted"],
+  skin: ["erMseExamChips.skinWarmDry", "erMseExamChips.skinNoRash"],
+  reassessment: ["erMseMdmChips.planReassess"],
+};
+
+export function applyCompleteNormalPhysicalExamPrefill(input: {
+  state: ProviderDocumentationWorkspaceState;
+  resolveFragment: (key: string) => string;
+}): ProviderDocumentationWorkspaceState {
+  const next = {
+    ...input.state,
+    physicalExam: { ...input.state.physicalExam },
+  };
+
+  for (const sectionId of PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS) {
+    if (next.physicalExam[sectionId].trim()) continue;
+    const fragmentKeys = PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS[sectionId];
+    let current = next.physicalExam[sectionId];
+    for (const fragmentKey of fragmentKeys) {
+      current = appendDocumentationFragment(current, input.resolveFragment(fragmentKey));
+    }
+    next.physicalExam[sectionId] = current;
+  }
+
+  return next;
+}
+
 function appendDocumentationBlock(current: string, block: string): string {
   const clean = block.trim();
   if (!clean) return current;

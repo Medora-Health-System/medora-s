@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   appendDocumentationFragment,
+  documentationFragmentPresentInField,
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
@@ -10,6 +11,7 @@ import {
   providerDocumentationMajorGroupForTemplateId,
   providerDocumentationTemplatesByMajorGroup,
   applyCompleteNormalRosPrefill,
+  applyCompleteNormalPhysicalExamPrefill,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
   buildProviderDocumentationMetadata,
@@ -66,6 +68,11 @@ describe("providerDocumentationModel", () => {
     expect(appendDocumentationFragment("nausea; vomiting", "Vomiting")).toBe("nausea; vomiting");
   });
 
+  it("detects whether a documentation fragment is already present in a field", () => {
+    expect(documentationFragmentPresentInField("nausea; vomiting", "vomiting")).toBe(true);
+    expect(documentationFragmentPresentInField("nausea; vomiting", "fever")).toBe(false);
+  });
+
   it("resolves ED and observation titles and timeline labels safely", () => {
     expect(providerDocumentationTitleKey("ED")).toBe("providerDocumentationWorkspace.titleEd");
     expect(providerDocumentationTimelineLabel("ED")).toBe("ED provider documentation saved");
@@ -104,6 +111,17 @@ describe("providerDocumentationModel", () => {
     const first = applyCompleteNormalRosPrefill({ state: emptyProviderDocumentationWorkspaceState() });
     const second = applyCompleteNormalRosPrefill({ state: first });
     expect(second.rosFocusedImpression).toBe(first.rosFocusedImpression);
+  });
+
+  it("fills only empty physical exam sections for complete normal exam prefill", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.physicalExam.respiratory = "wheezing";
+    const next = applyCompleteNormalPhysicalExamPrefill({
+      state,
+      resolveFragment: (key) => (key === "erMseExamChips.respClearBs" ? "clear breath sounds" : "normal fragment"),
+    });
+    expect(next.physicalExam.respiratory).toBe("wheezing");
+    expect(next.physicalExam.general).toContain("normal fragment");
   });
 
   it("complete normal ROS prefill remains editable text and has no billing/order/diagnosis side effects", () => {

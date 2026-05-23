@@ -10,6 +10,7 @@ import {
   PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   appendDocumentationFragment,
+  applyCompleteNormalPhysicalExamPrefill,
   applyCompleteNormalRosPrefill,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
@@ -56,10 +57,21 @@ import {
   providerDocumentationAccordionSummaries,
   type ProviderDocumentationAccordionSectionId,
 } from "@/lib/providerDocumentationSectionSummary";
+import {
+  isDocumentationChipSelected,
+  resolveDocumentationChipStyles,
+} from "@/lib/providerDocumentationChipSelection";
+import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateLocationChips";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
 type ExamChipGroup = { sectionId: ProviderDocumentationExamSectionId; titleKey: string; chips: Chip[] };
+type TemplateFieldChip = Chip & { field: ProviderDocumentationTemplateStringField };
+type ChipRowOptions = {
+  tone?: "warn" | "green";
+  fieldText?: string;
+  getFieldText?: (chip: Chip) => string;
+};
 type PreviewSectionId = ReturnType<typeof buildProviderDocumentationPreviewSections>[number]["id"];
 
 export type ProviderDocumentationWorkspaceProps = {
@@ -385,6 +397,10 @@ export function ProviderDocumentationWorkspace({
     () => PROVIDER_DOCUMENTATION_TEMPLATES.find((template) => template.id === value.activeTemplateId) ?? null,
     [value.activeTemplateId]
   );
+  const hpiChipGroups = useMemo(
+    () => resolveHpiChipGroupsForTemplate(value.activeTemplateId, HPI_CHIPS),
+    [value.activeTemplateId]
+  );
   const completeness = useMemo(
     () =>
       buildProviderDocumentationCompleteness({
@@ -631,6 +647,15 @@ export function ProviderDocumentationWorkspace({
       })
     );
   };
+  const applyCompleteNormalExam = () => {
+    if (readOnly) return;
+    onChange(
+      applyCompleteNormalPhysicalExamPrefill({
+        state: value,
+        resolveFragment: t,
+      })
+    );
+  };
   const markActiveDictationTarget = (id: string | undefined) => {
     const section = providerDocumentationDictationSectionForTargetId(id);
     if (section) setActiveDictationSection(section);
@@ -702,27 +727,49 @@ export function ProviderDocumentationWorkspace({
       }}
     />
   );
-  const chipRow = <T extends Chip,>(chips: T[], onClick: (chip: T) => void, tone?: "warn" | "green") => (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-      {chips.map((chip) => (
-        <button
-          key={chip.labelKey}
-          type="button"
-          disabled={readOnly}
-          onClick={() => onClick(chip)}
-          style={{
-            ...chipStyle,
-            background: readOnly ? "#f1f5f9" : tone === "warn" ? "#fffbeb" : tone === "green" ? "#f0fdf4" : "#eff6ff",
-            borderColor: readOnly ? "#e2e8f0" : tone === "warn" ? "#fcd34d" : tone === "green" ? "#bbf7d0" : "#dbeafe",
-            color: readOnly ? "#94a3b8" : tone === "warn" ? "#92400e" : tone === "green" ? "#166534" : "#1e40af",
-            cursor: readOnly ? "not-allowed" : "pointer",
-          }}
-        >
-          {t(chip.labelKey)}
-        </button>
-      ))}
-    </div>
-  );
+  const chipRow = <T extends Chip,>(
+    chips: T[],
+    onClick: (chip: T) => void,
+    options?: ChipRowOptions | "warn" | "green"
+  ) => {
+    const resolved: ChipRowOptions = typeof options === "string" ? { tone: options } : (options ?? {});
+    const resolveFieldText = (chip: T) => resolved.getFieldText?.(chip) ?? resolved.fieldText ?? "";
+
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+        {chips.map((chip) => {
+          const fragment = t(chip.fragmentKey);
+          const selected = isDocumentationChipSelected(resolveFieldText(chip), fragment);
+          const toneStyles = resolveDocumentationChipStyles({
+            selected,
+            readOnly: Boolean(readOnly),
+            tone: resolved.tone,
+          });
+
+          return (
+            <button
+              key={chip.labelKey}
+              type="button"
+              disabled={readOnly}
+              aria-pressed={selected}
+              onClick={() => onClick(chip)}
+              style={{
+                ...chipStyle,
+                background: toneStyles.background,
+                borderColor: toneStyles.borderColor,
+                color: toneStyles.color,
+                borderWidth: selected ? 2 : 1,
+                cursor: readOnly ? "not-allowed" : "pointer",
+              }}
+            >
+              {selected ? "✓ " : ""}
+              {t(chip.labelKey)}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
   const templateTextChips = (
     template: ProviderDocumentationTemplateDefinition | null,
     fields: ProviderDocumentationTemplateStringField[],
@@ -735,7 +782,9 @@ export function ProviderDocumentationWorkspace({
     if (!chips.length) return null;
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(chip.field, chip.fragmentKey))}
+        {chipRow(chips, (chip) => appendField(chip.field, chip.fragmentKey), {
+          getFieldText: (chip) => String(value[(chip as TemplateFieldChip).field] ?? ""),
+        })}
       </ChipGroupView>
     );
   };
@@ -753,7 +802,10 @@ export function ProviderDocumentationWorkspace({
         </p>
         {groups.map((group) => (
           <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
-            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+              tone: "green",
+              fieldText: value.physicalExam[group.sectionId],
+            })}
           </ChipGroupView>
         ))}
       </div>
@@ -769,7 +821,7 @@ export function ProviderDocumentationWorkspace({
     const chips = template.guidance[guidanceKey]!.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey))}
+        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
       </ChipGroupView>
     );
   };
@@ -793,7 +845,10 @@ export function ProviderDocumentationWorkspace({
     const chips = template.guidance.reassessment.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.activeTemplateSmartSentences")}>
-        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), "green")}
+        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), {
+          tone: "green",
+          fieldText: value.physicalExam.reassessment,
+        })}
       </ChipGroupView>
     );
   };
@@ -818,7 +873,7 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey))}
+        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
       </ChipGroupView>
     );
   };
@@ -834,7 +889,10 @@ export function ProviderDocumentationWorkspace({
       <div style={{ marginBottom: 10 }}>
         {groups.map((group) => (
           <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
-            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+              tone: "green",
+              fieldText: value.physicalExam[group.sectionId],
+            })}
           </ChipGroupView>
         ))}
       </div>
@@ -846,7 +904,10 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionReassessment")}>
-        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), "green")}
+        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), {
+          tone: "green",
+          fieldText: value.physicalExam.reassessment,
+        })}
       </ChipGroupView>
     );
   };
@@ -856,7 +917,9 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionDisposition")}>
-        {chipRow(chips, (chip) => appendField("followUpDisposition", chip.fragmentKey))}
+        {chipRow(chips, (chip) => appendField("followUpDisposition", chip.fragmentKey), {
+          fieldText: value.followUpDisposition,
+        })}
       </ChipGroupView>
     );
   };
@@ -1110,14 +1173,19 @@ export function ProviderDocumentationWorkspace({
             </Field>
             {templateTextChips(activeTemplate, ["hpi"], "providerDocumentationWorkspace.activeTemplateHpi")}
             {complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi")}
-            {HPI_CHIPS.map((group) => (
+            {hpiChipGroups.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
+                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                  fieldText: value.hpi,
+                })}
               </ChipGroupView>
             ))}
             {encounterMode === "OBSERVATION" ? (
               <ChipGroupView title={t("providerDocumentationWorkspace.observationChips")}>
-                {chipRow(OBSERVATION_CHIPS, (chip) => appendField("hpi", chip.fragmentKey), "green")}
+                {chipRow(OBSERVATION_CHIPS, (chip) => appendField("hpi", chip.fragmentKey), {
+                  tone: "green",
+                  fieldText: value.hpi,
+                })}
               </ChipGroupView>
             ) : null}
           </ProviderDocumentationAccordionSection>
@@ -1175,7 +1243,10 @@ export function ProviderDocumentationWorkspace({
                 {group.field === "rosImportantNegatives" ? (
                   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#92400e" }}>{t("providerDocumentationWorkspace.negativesWarning")}</p>
                 ) : null}
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), group.field === "rosImportantNegatives" ? "warn" : undefined)}
+                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                  tone: group.field === "rosImportantNegatives" ? "warn" : undefined,
+                  fieldText: String(value[group.field] ?? ""),
+                })}
               </ChipGroupView>
             ))}
             {complaintIntelligenceFieldChips(activeTemplate, "rosImportantPositives", "providerDocumentationWorkspace.complaintIntelSectionRosPositives")}
@@ -1193,7 +1264,25 @@ export function ProviderDocumentationWorkspace({
             onToggle={() => toggleAccordionSection("physicalExam")}
             t={t}
           >
-            {templatePromptReminders(activeTemplate)}
+            <div style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                disabled={readOnly}
+                onClick={applyCompleteNormalExam}
+                style={{
+                  ...chipStyle,
+                  background: readOnly ? "#f1f5f9" : "#f0fdf4",
+                  borderColor: readOnly ? "#e2e8f0" : "#86efac",
+                  color: readOnly ? "#94a3b8" : "#166534",
+                  cursor: readOnly ? "not-allowed" : "pointer",
+                }}
+              >
+                {t("providerDocumentationWorkspace.insertCompleteNormalExam")}
+              </button>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#166534", lineHeight: 1.45, fontWeight: 600 }}>
+                {t("providerDocumentationWorkspace.completeNormalExamHelp")}
+              </p>
+            </div>
             {templateExamChips(activeTemplate)}
             {EXAM_CHIPS.map((group) => (
               <ProviderDocumentationChipPanel
@@ -1239,7 +1328,10 @@ export function ProviderDocumentationWorkspace({
                     }}
                   />
                 </Field>
-                {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), "green")}
+                {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+                  tone: "green",
+                  fieldText: value.physicalExam[group.sectionId],
+                })}
               </ProviderDocumentationChipPanel>
             ))}
             {templateReassessmentGuidanceChips(activeTemplate)}
@@ -1257,6 +1349,7 @@ export function ProviderDocumentationWorkspace({
             onToggle={() => toggleAccordionSection("mdm")}
             t={t}
           >
+            {templatePromptReminders(activeTemplate)}
             {templateGuidanceChips(
               activeTemplate,
               "mdmClinicalRationale",
@@ -1283,7 +1376,9 @@ export function ProviderDocumentationWorkspace({
             )}
             {MDM_CHIPS.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey))}
+                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                  fieldText: String(value[group.field] ?? ""),
+                })}
               </ChipGroupView>
             ))}
             {complaintIntelligenceFieldChips(activeTemplate, "mdmWorkingAssessment", "providerDocumentationWorkspace.complaintIntelSectionMdmAssessment")}
