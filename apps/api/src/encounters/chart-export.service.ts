@@ -11,6 +11,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import {
+  buildDocumentedProcedureSummaryMeta,
   clinicalTimelineDisplayLabelFr,
   computeObservationStaySummaryForExport,
   resolveClinicalTimelineDisplayEventType,
@@ -334,6 +335,16 @@ export type ChartExportManifest = {
       eventType: string;
       payloadJson: unknown;
       createdByDisplayFr: string | null;
+      procedureNameFr?: string | null;
+      performedAtIso?: string | null;
+      documentedAtIso?: string | null;
+      performedByDisplayFr?: string | null;
+      documentedByDisplayFr?: string | null;
+      performerTitle?: string | null;
+      status?: string | null;
+      clinicalSummaryFr?: string | null;
+      documentationRole?: string | null;
+      documentationRoleFr?: string | null;
     }>;
   };
   ivAccess: {
@@ -1086,13 +1097,41 @@ export class EncounterChartExportService {
         notes: m.notes,
       })),
       procedures: {
-        entries: procedures.map((p) => ({
-          id: p.id,
-          createdAt: p.createdAt.toISOString(),
-          eventType: p.eventType as string,
-          payloadJson: p.payloadJson,
-          createdByDisplayFr: userDisplayFr(p.createdBy),
-        })),
+        entries: procedures.map((p) => {
+          const createdByDisplayFr = userDisplayFr(p.createdBy);
+          const base = {
+            id: p.id,
+            createdAt: p.createdAt.toISOString(),
+            eventType: p.eventType as string,
+            payloadJson: p.payloadJson,
+            createdByDisplayFr,
+          };
+          if (p.eventType !== EncounterClinicalEventType.PROCEDURE_DOCUMENTED) {
+            return base;
+          }
+          const summaryMeta = buildDocumentedProcedureSummaryMeta({
+            payloadJson: p.payloadJson,
+            documentedAtIso: p.createdAt.toISOString(),
+            documentedByDisplayName: createdByDisplayFr,
+          });
+          if (!summaryMeta) return base;
+          return {
+            ...base,
+            procedureNameFr: summaryMeta.procedureNameFr,
+            performedAtIso: summaryMeta.performedAtIso,
+            documentedAtIso: summaryMeta.documentedAtIso,
+            performedByDisplayFr: summaryMeta.performedByDisplayName,
+            documentedByDisplayFr: summaryMeta.documentedByDisplayName,
+            performerTitle: summaryMeta.performerTitle,
+            status: summaryMeta.status,
+            clinicalSummaryFr: summaryMeta.clinicalSummaryFr,
+            documentationRole: summaryMeta.documentationRole,
+            documentationRoleFr:
+              summaryMeta.documentationRole === "NURSING"
+                ? "Documentation infirmière"
+                : "Documentation médicale",
+          };
+        }),
       },
       ivAccess: {
         entries: ivAccess.map((p) => ({

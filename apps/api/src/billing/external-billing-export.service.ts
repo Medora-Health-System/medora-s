@@ -14,10 +14,14 @@ import { BillingService, getAutoBillDecision } from "./billing.service";
 import {
   type InfusionBillingReviewDecision,
   type InfusionBillingSuggestion,
+  buildDocumentedProcedureSummaryMeta,
   computeObservationStaySummaryForExport,
   displayNameFrForDocumentedProcedureType,
+  isProviderProcedureDocumentationForBilling,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
+  readPerformedByDisplayNameFromPayload,
+  readProcedureTypeFromPayload,
 } from "@medora/shared";
 
 const EXPORT_SCHEMA_VERSION = "medora_external_billing_v1" as const;
@@ -51,11 +55,6 @@ function jsonStable(o: unknown): string {
   return JSON.stringify(o ?? {});
 }
 
-function readProcedureTypeFromPayload(payloadJson: unknown): string | null {
-  if (!payloadJson || typeof payloadJson !== "object" || Array.isArray(payloadJson)) return null;
-  const pt = (payloadJson as Record<string, unknown>).procedureType;
-  return typeof pt === "string" && pt.trim() ? pt.trim() : null;
-}
 
 function clinicalPayloadFromProcedureEvent(payloadJson: unknown): Record<string, unknown> {
   if (!payloadJson || typeof payloadJson !== "object" || Array.isArray(payloadJson)) return {};
@@ -813,12 +812,20 @@ export class ExternalBillingExportService {
 
     for (const ev of clinicalEvents) {
       if (ev.eventType === EncounterClinicalEventType.PROCEDURE_DOCUMENTED) {
+        if (!isProviderProcedureDocumentationForBilling(ev.payloadJson)) continue;
         const pt = readProcedureTypeFromPayload(ev.payloadJson);
         const medora = pt ? medoraCodeForDocumentedProcedureType(pt) : null;
         if (!medora || !pt) continue;
         const display = displayNameFrForDocumentedProcedureType(pt);
         const clinicalPayload = clinicalPayloadFromProcedureEvent(ev.payloadJson);
         const u = ev.createdBy;
+        const documentedByName = formatUserName(u);
+        const performedByName = readPerformedByDisplayNameFromPayload(ev.payloadJson) || documentedByName;
+        const summaryMeta = buildDocumentedProcedureSummaryMeta({
+          payloadJson: ev.payloadJson,
+          documentedAtIso: iso(ev.createdAt) ?? "",
+          documentedByDisplayName: documentedByName || null,
+        });
         const performedIso =
           typeof clinicalPayload.performedAt === "string" && (clinicalPayload.performedAt as string).trim()
             ? (clinicalPayload.performedAt as string)
@@ -833,27 +840,33 @@ export class ExternalBillingExportService {
             performedAt: performedIso,
             performedBy: {
               userId: ev.createdByUserId,
-              displayName: formatUserName(u),
-            title: u?.billingTaxonomyCode?.trim() || null,
-          },
-          status: "DOCUMENTED",
-          billingStatus: "pending_license",
-          billingCodeDefault: null,
-          codingInstruction: codingInstructionForExportLine({
-            exportCategory: "PROCEDURE",
+              displayName: performedByName,
+              title: u?.billingTaxonomyCode?.trim() || null,
+            },
+            documentedBy: {
+              userId: ev.createdByUserId,
+              displayName: documentedByName || null,
+              title: u?.billingTaxonomyCode?.trim() || null,
+            },
+            status: "DOCUMENTED",
             billingStatus: "pending_license",
-          }),
-          clinicalPayload,
-        },
-        csv: {
-          line_id: ev.id,
-          source_type: "PROCEDURE_DOCUMENTED",
-          category: "PROCEDURE",
-          medora_code: medora,
-          display_name: display,
-          status: "DOCUMENTED",
-          performed_at: performedIso,
-          performed_by_name: formatUserName(u),
+            billingCodeDefault: null,
+            codingInstruction: codingInstructionForExportLine({
+              exportCategory: "PROCEDURE",
+              billingStatus: "pending_license",
+            }),
+            clinicalSummary: summaryMeta?.clinicalSummaryFr ?? display,
+            clinicalPayload,
+          },
+          csv: {
+            line_id: ev.id,
+            source_type: "PROCEDURE_DOCUMENTED",
+            category: "PROCEDURE",
+            medora_code: medora,
+            display_name: display,
+            status: "DOCUMENTED",
+            performed_at: performedIso,
+            performed_by_name: performedByName,
             performed_by_title: u?.billingTaxonomyCode?.trim() ?? "",
             billing_status: "pending_license",
             billing_code_default: "",
@@ -861,7 +874,7 @@ export class ExternalBillingExportService {
               exportCategory: "PROCEDURE",
               billingStatus: "pending_license",
             }),
-            clinical_summary: `${display}`.slice(0, 400),
+            clinical_summary: (summaryMeta?.clinicalSummaryFr ?? display).slice(0, 400),
             clinical_payload_json: jsonStable(clinicalPayload),
           },
         });

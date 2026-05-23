@@ -26,9 +26,16 @@ type CreatedBy = { firstName: string | null; lastName: string | null };
 type ProcedureEntry = {
   id: string;
   createdAt: string;
+  documentedAt: string | null;
+  documentationRole: "PROVIDER" | "NURSING";
   procedureType: string;
+  assistedProcedureType: string | null;
   performedAt: string | null;
   performerDisplayName: string | null;
+  performedByDisplayName: string | null;
+  documentedByDisplayName: string | null;
+  status: string | null;
+  clinicalSummaryFr: string | null;
   performerTitle: string | null;
   createdBy: CreatedBy | null;
   payload: ProcedurePayload;
@@ -61,6 +68,13 @@ function mergePayloadFromRow(x: Record<string, unknown>): ProcedurePayload {
     "performerTitle",
     "performerRoleCode",
     "performedAt",
+    "performedByDisplayName",
+    "documentedByDisplayName",
+    "documentedAt",
+    "documentationRole",
+    "assistedProcedureType",
+    "status",
+    "clinicalSummaryFr",
   ]);
   for (const [k, v] of Object.entries(x)) {
     if (skip.has(k)) continue;
@@ -102,20 +116,67 @@ function parseProceduresPayload(raw: unknown): ProcedureEntry[] | null {
       typeof x.performerDisplayName === "string" && x.performerDisplayName.trim()
         ? x.performerDisplayName.trim()
         : null;
+    const performedByDisplayName =
+      typeof x.performedByDisplayName === "string" && x.performedByDisplayName.trim()
+        ? x.performedByDisplayName.trim()
+        : performerDisplayName;
+    const documentedByDisplayName =
+      typeof x.documentedByDisplayName === "string" && x.documentedByDisplayName.trim()
+        ? x.documentedByDisplayName.trim()
+        : null;
+    const documentedAt =
+      typeof x.documentedAt === "string" && x.documentedAt.trim()
+        ? x.documentedAt.trim()
+        : typeof x.createdAt === "string"
+          ? x.createdAt
+          : "";
+    const status = typeof x.status === "string" && x.status.trim() ? x.status.trim() : "COMPLETED";
+    const documentationRole =
+      x.documentationRole === "NURSING" ||
+      (payload as Record<string, unknown>).documentationRole === "NURSING"
+        ? "NURSING"
+        : "PROVIDER";
+    const assistedProcedureType =
+      typeof x.assistedProcedureType === "string" && x.assistedProcedureType.trim()
+        ? x.assistedProcedureType.trim()
+        : typeof payload.assistedProcedureType === "string"
+          ? String(payload.assistedProcedureType).trim()
+          : null;
+    const clinicalSummaryFr =
+      typeof x.clinicalSummaryFr === "string" && x.clinicalSummaryFr.trim() ? x.clinicalSummaryFr.trim() : null;
     const performerTitle =
       typeof x.performerTitle === "string" && x.performerTitle.trim() ? x.performerTitle.trim() : null;
     out.push({
       id,
       createdAt: typeof x.createdAt === "string" ? x.createdAt : "",
+      documentedAt,
+      documentationRole,
       procedureType: typeof x.procedureType === "string" ? x.procedureType : "",
+      assistedProcedureType,
       performedAt,
       performerDisplayName,
+      performedByDisplayName,
+      documentedByDisplayName,
+      status,
+      clinicalSummaryFr,
       performerTitle,
       createdBy,
       payload,
     });
   }
   return out;
+}
+
+function procedureEntryDisplayName(row: ProcedureEntry, t: (k: string) => string): string {
+  if (row.procedureType === "NURSING_PROCEDURE_ASSIST" && row.assistedProcedureType) {
+    const titleKey = `erProcedureLauncher.nursingAssistTitle.${row.assistedProcedureType}`;
+    const translated = t(titleKey);
+    if (translated !== titleKey) return translated;
+  }
+  if (row.documentationRole === "NURSING") {
+    return `${procedureTypeDisplayName(t, row.procedureType)} (${t("erProcedureLauncher.summaryDocumentationRoleNursing")})`;
+  }
+  return procedureTypeDisplayName(t, row.procedureType);
 }
 
 function boolLabel(v: unknown, t: (k: string) => string): string {
@@ -141,12 +202,31 @@ function buildProcedureDetailRows(
   const who = procedurePerformerDisplayNameWithTitle(p, createdBy, (fn, ln) =>
     formatActor(fn, ln, t("common.dash"))
   );
+  const documentedBy =
+    row.documentedByDisplayName ||
+    formatActor(createdBy.firstName, createdBy.lastName, t("common.dash"));
+  let documentedWhen = "—";
+  try {
+    const docIso = row.documentedAt ?? row.createdAt;
+    documentedWhen = docIso ? formatEncounterChromeDateTime(docIso, language) : "—";
+  } catch {
+    documentedWhen = row.documentedAt ?? row.createdAt ?? "—";
+  }
   const pt = readPayloadStr(p, "procedureType") || row.procedureType;
   const rows: Array<{ k: string; v: string }> = [
-    { k: "summaryDetailProcedure", v: procedureTypeDisplayName(t, pt) },
+    { k: "summaryDetailProcedure", v: procedureEntryDisplayName(row, t) },
     { k: "summaryDetailPerformedAt", v: when },
     { k: "summaryDetailPerformedBy", v: who },
+    { k: "summaryDetailDocumentedAt", v: documentedWhen },
+    { k: "summaryDetailDocumentedBy", v: documentedBy },
+    {
+      k: "summaryDetailStatus",
+      v: row.status === "COMPLETED" ? t("erProcedureLauncher.summaryStatusCompleted") : row.status ?? "—",
+    },
   ];
+  if (row.clinicalSummaryFr) {
+    rows.push({ k: "summaryDetailClinicalSummary", v: row.clinicalSummaryFr });
+  }
   const fe = (field: string, other: string, group: string) => formatProcedureEnumField(p, field, other, group, t);
 
   if (pt === "LACERATION_REPAIR") {
@@ -380,6 +460,57 @@ export function ErProceduresSummaryCard({
     color: "#64748b",
   };
 
+  const providerEntries = state.entries.filter((row) => row.documentationRole !== "NURSING");
+  const nursingEntries = state.entries.filter((row) => row.documentationRole === "NURSING");
+
+  const renderEntry = (row: ProcedureEntry) => {
+    const whenIso = row.performedAt ?? row.createdAt;
+    const when = whenIso ? formatEncounterChromeDateTime(whenIso, language) : "—";
+    const createdBy = row.createdBy ?? { firstName: null, lastName: null };
+    const p = row.payload;
+    const by =
+      row.performedByDisplayName ||
+      procedurePerformerDisplayNameWithTitle(p, createdBy, (fn, ln) => formatActor(fn, ln, t("common.dash")));
+    const isOpen = Boolean(expanded[row.id]);
+    return (
+      <li
+        key={row.id}
+        style={{
+          marginBottom: 10,
+          paddingBottom: 10,
+          borderBottom: "1px solid #f1f5f9",
+        }}
+      >
+        <p style={{ margin: "0 0 6px 0", lineHeight: 1.45 }}>
+          {fillTpl(t("erProcedureLauncher.summaryLine"), {
+            name: procedureEntryDisplayName(row, t),
+            site: procedureTimelineCompactSuffix(row.payload, t),
+            by,
+            time: when,
+          })}
+        </p>
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
+          aria-expanded={isOpen}
+          style={{
+            border: "1px solid #e2e8f0",
+            background: "#f8fafc",
+            borderRadius: 8,
+            padding: "4px 10px",
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#475569",
+            cursor: "pointer",
+          }}
+        >
+          {isOpen ? t("erProcedureLauncher.summaryCollapse") : t("erProcedureLauncher.summaryExpand")}
+        </button>
+        {isOpen ? <DetailDl row={row} t={t} language={language} /> : null}
+      </li>
+    );
+  };
+
   return (
     <div
       style={{
@@ -404,56 +535,22 @@ export function ErProceduresSummaryCard({
         </p>
       </div>
       <div style={{ padding: "10px 14px 12px" }}>
-        <p style={sub}>{t("erProcedureLauncher.summaryRecent")}</p>
-        <ul style={{ margin: "4px 0 0 0", paddingLeft: 0, listStyle: "none", fontSize: 12, color: "#334155" }}>
-          {state.entries.slice(0, 8).map((row) => {
-            const whenIso = row.performedAt ?? row.createdAt;
-            const when = whenIso ? formatEncounterChromeDateTime(whenIso, language) : "—";
-            const createdBy = row.createdBy ?? { firstName: null, lastName: null };
-            const p = row.payload;
-            const by = procedurePerformerDisplayNameWithTitle(p, createdBy, (fn, ln) =>
-              formatActor(fn, ln, t("common.dash"))
-            );
-            const isOpen = Boolean(expanded[row.id]);
-            return (
-              <li
-                key={row.id}
-                style={{
-                  marginBottom: 10,
-                  paddingBottom: 10,
-                  borderBottom: "1px solid #f1f5f9",
-                }}
-              >
-                <p style={{ margin: "0 0 6px 0", lineHeight: 1.45 }}>
-                  {fillTpl(t("erProcedureLauncher.summaryLine"), {
-                    name: procedureTypeDisplayName(t, row.procedureType),
-                    site: procedureTimelineCompactSuffix(row.payload, t),
-                    by,
-                    time: when,
-                  })}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setExpanded((prev) => ({ ...prev, [row.id]: !prev[row.id] }))}
-                  aria-expanded={isOpen}
-                  style={{
-                    border: "1px solid #e2e8f0",
-                    background: "#f8fafc",
-                    borderRadius: 8,
-                    padding: "4px 10px",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "#475569",
-                    cursor: "pointer",
-                  }}
-                >
-                  {isOpen ? t("erProcedureLauncher.summaryCollapse") : t("erProcedureLauncher.summaryExpand")}
-                </button>
-                {isOpen ? <DetailDl row={row} t={t} language={language} /> : null}
-              </li>
-            );
-          })}
-        </ul>
+        {providerEntries.length > 0 ? (
+          <>
+            <p style={sub}>{t("erProcedureLauncher.summaryProviderSection")}</p>
+            <ul style={{ margin: "4px 0 12px 0", paddingLeft: 0, listStyle: "none", fontSize: 12, color: "#334155" }}>
+              {providerEntries.slice(0, 8).map(renderEntry)}
+            </ul>
+          </>
+        ) : null}
+        {nursingEntries.length > 0 ? (
+          <>
+            <p style={sub}>{t("erProcedureLauncher.summaryNursingSection")}</p>
+            <ul style={{ margin: "4px 0 0 0", paddingLeft: 0, listStyle: "none", fontSize: 12, color: "#334155" }}>
+              {nursingEntries.slice(0, 8).map(renderEntry)}
+            </ul>
+          </>
+        ) : null}
       </div>
     </div>
   );

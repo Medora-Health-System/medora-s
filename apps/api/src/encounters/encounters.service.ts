@@ -95,6 +95,10 @@ import {
   readErHandoffV1FromNursingAssessment,
   readBillingCaptureV1,
   upsertBillingCaptureItem,
+  buildDocumentedProcedureSummaryMeta,
+  readDocumentationRoleFromPayload,
+  readPerformedByDisplayNameFromPayload,
+  type ProcedureDocumentationRole,
   type ObservationReassessmentV1Body,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
 } from "@medora/shared";
@@ -2987,20 +2991,33 @@ export class EncountersService {
         const raw = r.payloadJson;
         const p =
           raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-        const nameFromPayload =
-          (typeof p.performedByDisplayName === "string" && p.performedByDisplayName.trim()) ||
-          (typeof p.performerDisplayName === "string" && p.performerDisplayName.trim()) ||
-          "";
-        const display = nameFromPayload || this.userDisplayName(r.createdBy) || null;
+        const documentedByDisplayName = this.userDisplayName(r.createdBy) || null;
+        const performedByFromPayload = readPerformedByDisplayNameFromPayload(p);
+        const display = performedByFromPayload || documentedByDisplayName;
         const performedAt =
           typeof p.performedAt === "string" && p.performedAt.trim() ? p.performedAt.trim() : null;
+        const documentedAt = r.createdAt.toISOString();
+        const summaryMeta = buildDocumentedProcedureSummaryMeta({
+          payloadJson: p,
+          documentedAtIso: documentedAt,
+          documentedByDisplayName,
+        });
+        const documentationRole = readDocumentationRoleFromPayload(p);
         return {
           id: r.id,
-          createdAt: r.createdAt.toISOString(),
+          createdAt: documentedAt,
+          documentedAt,
+          documentationRole,
           procedureType: typeof p.procedureType === "string" ? p.procedureType : "",
+          assistedProcedureType:
+            typeof p.assistedProcedureType === "string" ? p.assistedProcedureType : null,
           site: typeof p.site === "string" ? p.site : "",
           performedAt,
           performerDisplayName: display,
+          performedByDisplayName: performedByFromPayload || documentedByDisplayName,
+          documentedByDisplayName,
+          status: summaryMeta?.status ?? "COMPLETED",
+          clinicalSummaryFr: summaryMeta?.clinicalSummaryFr ?? null,
           performerTitle:
             typeof p.performerTitle === "string" && p.performerTitle.trim() ? p.performerTitle.trim() : null,
           performerRoleCode:
@@ -3021,7 +3038,8 @@ export class EncountersService {
       performerRoleCode: string | null;
       performerTitle: string | null;
       performedByDisplayName: string | null;
-    }
+    },
+    documentationRole: ProcedureDocumentationRole = "PROVIDER"
   ): Record<string, unknown> {
     const plain = dto as unknown as Record<string, unknown>;
     const out: Record<string, unknown> = {};
@@ -3036,6 +3054,10 @@ export class EncountersService {
     out.performerDisplayName = performer.performedByDisplayName;
     out.performerTitle = performer.performerTitle;
     out.performerRoleCode = performer.performerRoleCode;
+    out.documentationRole =
+      plain.procedureType === "NURSING_PROCEDURE_ASSIST" || documentationRole === "NURSING"
+        ? "NURSING"
+        : "PROVIDER";
     return out;
   }
 
@@ -3043,7 +3065,8 @@ export class EncountersService {
     facilityId: string,
     encounterId: string,
     dto: EncounterProcedureDocumentDto,
-    userId?: string
+    userId?: string,
+    options?: { documentationRole?: ProcedureDocumentationRole }
   ) {
     if (!userId) {
       throw new ForbiddenException("Authentication required.");
@@ -3076,7 +3099,12 @@ export class EncountersService {
       ? this.parseOptionalIsoDate(performedAtRaw, "Date ou heure de la procédure")
       : undefined;
 
-    const payloadJson = this.procedureDocumentPayloadFromDto(dto, performedAtIso ?? undefined, performer);
+    const payloadJson = this.procedureDocumentPayloadFromDto(
+      dto,
+      performedAtIso ?? undefined,
+      performer,
+      options?.documentationRole ?? "PROVIDER"
+    );
 
     const created = await this.prisma.encounterClinicalEvent.create({
       data: {

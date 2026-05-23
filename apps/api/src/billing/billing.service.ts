@@ -11,6 +11,7 @@ import {
   DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
   DOCUMENTED_PROCEDURE_REVIEW_REASON,
   displayNameFrForDocumentedProcedureType,
+  isProviderProcedureDocumentationForBilling,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
   type BillingCaptureItem,
@@ -754,6 +755,7 @@ export class BillingService {
     id: string;
     payloadJson: unknown;
   }): BillingExportRowDto | null {
+    if (!isProviderProcedureDocumentationForBilling(ev.payloadJson)) return null;
     const procedureType = readProcedureTypeFromClinicalEventPayload(ev.payloadJson);
     const medoraCode = medoraCodeForDocumentedProcedureType(procedureType);
     if (!procedureType || !medoraCode) return null;

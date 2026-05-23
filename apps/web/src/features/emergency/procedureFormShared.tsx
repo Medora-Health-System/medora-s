@@ -34,6 +34,7 @@ export type ProcedureFormCommonProps = {
   onBack: () => void;
   onClose: () => void;
   onRecorded: () => void;
+  documentationRole?: "PROVIDER" | "NURSING";
 };
 
 const procedureSaveSuccessBannerStyle: React.CSSProperties = {
@@ -77,6 +78,7 @@ export function ProcedureFormShell({
   onBack,
   onClose,
   onRecorded,
+  documentationRole = "PROVIDER",
   titleKey,
   children,
 }: FormShellProps) {
@@ -95,6 +97,7 @@ export function ProcedureFormShell({
         const d = new Date(performedAtLocal);
         if (!Number.isNaN(d.getTime())) body.performedAt = d.toISOString();
       }
+      body.documentationRole = documentationRole;
       await postDocument(encounterId, facilityId, body);
       setSaveSuccess(true);
       await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });

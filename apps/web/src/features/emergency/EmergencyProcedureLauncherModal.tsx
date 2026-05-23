@@ -13,9 +13,16 @@ import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
-  ER_PROCEDURE_ENABLED_TILES,
+  ER_PROCEDURE_NURSING_ASSIST_TILES,
+  ER_PROCEDURE_NURSING_PRIMARY_TILES,
+  ER_PROCEDURE_PROVIDER_TILES,
+  assistedProcedureTypeFromNursingStep,
+  isNursingAssistStep,
+  nursingAssistStepFor,
+  type ErProcedureLauncherStep,
 } from "@/features/emergency/erProcedureLauncherCatalog";
 import { afterProcedureDocumentSaveSuccess } from "@/features/emergency/procedureSaveSuccess";
+import { NursingProcedureAssistForm } from "@/features/emergency/ProcedureDocumentNursingAssistForm";
 import {
   AdvancedProcedureForm,
   ADVANCED_PROCEDURE_FORM_TITLE_I18N_KEYS,
@@ -28,7 +35,7 @@ import {
 } from "@/features/emergency/ProcedureDocumentBatch2Forms";
 import type { DocumentedProcedureType } from "@medora/shared";
 
-type LauncherStep = "menu" | "laceration" | DocumentedProcedureType;
+type LauncherStep = "menu" | ErProcedureLauncherStep;
 
 function toDatetimeLocalValue(d: Date): string {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
@@ -48,7 +55,7 @@ const overlay: React.CSSProperties = {
 };
 
 const panel: React.CSSProperties = {
-  width: "min(520px, 100%)",
+  width: "min(760px, 100%)",
   backgroundColor: "#fff",
   borderRadius: 14,
   border: "1px solid #e2e8f0",
@@ -133,6 +140,7 @@ export function EmergencyProcedureLauncherModal({
 }) {
   const { t } = useI18n();
   const [step, setStep] = useState<LauncherStep>("menu");
+  const [activeDocumentationRole, setActiveDocumentationRole] = useState<"PROVIDER" | "NURSING">("PROVIDER");
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -159,6 +167,7 @@ export function EmergencyProcedureLauncherModal({
   useEffect(() => {
     if (!open) return;
     setStep(initialNonLacerationStep ?? "menu");
+    setActiveDocumentationRole("PROVIDER");
     setSubmitErr(null);
     setSaveSuccess(false);
     setSite("");
@@ -241,6 +250,7 @@ export function EmergencyProcedureLauncherModal({
     try {
       const body: Record<string, unknown> = {
         procedureType: "LACERATION_REPAIR",
+        documentationRole: "PROVIDER",
         site,
         woundLength,
         anesthesia,
@@ -285,11 +295,13 @@ export function EmergencyProcedureLauncherModal({
   const procedureStepTitle =
     step === "menu"
       ? t("erProcedureLauncher.modalTitle")
-      : step === "laceration"
-        ? t("erProcedureLauncher.lacerationTitle")
-        : isAdvancedProcedureType(step)
-          ? t(ADVANCED_PROCEDURE_FORM_TITLE_I18N_KEYS[step])
-          : t(NON_LACERATION_FORM_TITLE_I18N_KEYS[step as BasicNonLacerationProcedureType]);
+      : isNursingAssistStep(step)
+        ? t(`erProcedureLauncher.nursingAssistTitle.${assistedProcedureTypeFromNursingStep(step)}`)
+        : step === "laceration"
+          ? t("erProcedureLauncher.lacerationTitle")
+          : isAdvancedProcedureType(step)
+            ? t(ADVANCED_PROCEDURE_FORM_TITLE_I18N_KEYS[step])
+            : t(NON_LACERATION_FORM_TITLE_I18N_KEYS[step as BasicNonLacerationProcedureType]);
 
   const sectionTitle: React.CSSProperties = {
     margin: "0 0 8px 0",
@@ -386,28 +398,107 @@ export function EmergencyProcedureLauncherModal({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                  gap: 10,
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 14,
                 }}
               >
-                {ER_PROCEDURE_ENABLED_TILES.map(({ step: proc, labelKey }) => (
-                  <button
-                    key={proc}
-                    type="button"
-                    onClick={() => {
-                      setStep(proc);
-                      setSubmitErr(null);
-                    }}
+                <div>
+                  <p style={sectionTitle}>{t("erProcedureLauncher.providerSectionTitle")}</p>
+                  <div
                     style={{
-                      ...tileBase,
-                      background: "#eff6ff",
-                      borderColor: "#93c5fd",
-                      color: "#1e40af",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                      gap: 8,
                     }}
                   >
-                    {t(labelKey)}
-                  </button>
-                ))}
+                    {ER_PROCEDURE_PROVIDER_TILES.map(({ step: proc, labelKey }) => (
+                      <button
+                        key={`provider-${proc}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveDocumentationRole("PROVIDER");
+                          setStep(proc);
+                          setSubmitErr(null);
+                        }}
+                        style={{
+                          ...tileBase,
+                          minHeight: 64,
+                          background: "#eff6ff",
+                          borderColor: "#93c5fd",
+                          color: "#1e40af",
+                        }}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p style={sectionTitle}>{t("erProcedureLauncher.nursingSectionTitle")}</p>
+                  <p style={{ margin: "0 0 6px 0", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
+                    {t("erProcedureLauncher.nursingPrimarySubtitle")}
+                  </p>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                      gap: 8,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {ER_PROCEDURE_NURSING_PRIMARY_TILES.map(({ step: proc, labelKey }) => (
+                      <button
+                        key={`nursing-primary-${proc}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveDocumentationRole("NURSING");
+                          setStep(proc);
+                          setSubmitErr(null);
+                        }}
+                        style={{
+                          ...tileBase,
+                          minHeight: 64,
+                          background: "#f0fdf4",
+                          borderColor: "#86efac",
+                          color: "#166534",
+                        }}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ margin: "0 0 6px 0", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
+                    {t("erProcedureLauncher.nursingAssistSubtitle")}
+                  </p>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                      gap: 8,
+                    }}
+                  >
+                    {ER_PROCEDURE_NURSING_ASSIST_TILES.map(({ assistedProcedureType, labelKey }) => (
+                      <button
+                        key={`nursing-assist-${assistedProcedureType}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveDocumentationRole("NURSING");
+                          setStep(nursingAssistStepFor(assistedProcedureType));
+                          setSubmitErr(null);
+                        }}
+                        style={{
+                          ...tileBase,
+                          minHeight: 64,
+                          background: "#f0fdf4",
+                          borderColor: "#86efac",
+                          color: "#166534",
+                        }}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </>
           ) : step === "laceration" ? (
@@ -614,11 +705,24 @@ export function EmergencyProcedureLauncherModal({
                 {t("erProcedureLauncher.save")}
               </button>
             </form>
+          ) : isNursingAssistStep(step) ? (
+            <NursingProcedureAssistForm
+              assistedProcedureType={assistedProcedureTypeFromNursingStep(step)}
+              encounterId={encounterId}
+              facilityId={facilityId}
+              onRecorded={onRecorded}
+              onClose={onClose}
+              onBack={() => {
+                setStep("menu");
+                setSubmitErr(null);
+              }}
+            />
           ) : isAdvancedProcedureType(step) ? (
             <AdvancedProcedureForm
               procedureType={step}
               encounterId={encounterId}
               facilityId={facilityId}
+              documentationRole={activeDocumentationRole}
               onRecorded={onRecorded}
               onClose={onClose}
               onBack={() => {
@@ -631,6 +735,7 @@ export function EmergencyProcedureLauncherModal({
               procedureType={step as BasicNonLacerationProcedureType}
               encounterId={encounterId}
               facilityId={facilityId}
+              documentationRole={activeDocumentationRole}
               onRecorded={onRecorded}
               onClose={onClose}
               onBack={() => {

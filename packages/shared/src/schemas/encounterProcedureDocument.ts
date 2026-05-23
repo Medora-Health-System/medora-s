@@ -15,8 +15,10 @@ import {
   reductionProcedureDocumentDtoSchema,
   thoracentesisParacentesisProcedureDocumentDtoSchema,
 } from "./encounterProcedureAdvanced.js";
+import { nursingProcedureAssistDocumentDtoSchema } from "./encounterProcedureNursing.js";
 
 export * from "./encounterProcedureAdvanced.js";
+export * from "./encounterProcedureNursing.js";
 
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
 
@@ -400,6 +402,7 @@ export const encounterProcedureDocumentDtoSchema = z.union([
   thoracentesisParacentesisProcedureDocumentDtoSchema,
   pelvicExamProcedureDocumentDtoSchema,
   lumbarPunctureProcedureDocumentDtoSchema,
+  nursingProcedureAssistDocumentDtoSchema,
 ]);
 
 export type EncounterProcedureDocumentDto = z.infer<typeof encounterProcedureDocumentDtoSchema>;
@@ -416,5 +419,8 @@ export const DOCUMENTED_PROCEDURE_TYPES = [
   "PREGNANCY_TEST",
   ...ADVANCED_DOCUMENTED_PROCEDURE_TYPES,
 ] as const;
+
+/** Clinical procedure types that may appear in nursing assist notes (includes laceration). */
+export const ASSISTED_PROCEDURE_TYPES = [...DOCUMENTED_PROCEDURE_TYPES] as const;
 
 export type DocumentedProcedureType = (typeof DOCUMENTED_PROCEDURE_TYPES)[number];

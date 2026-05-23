@@ -192,4 +192,46 @@ describe("chart-export-html.util", () => {
     expect(html).not.toContain("</pre><script>");
     expect(html).toContain("&lt;/pre&gt;");
   });
+
+  it("renders documented procedures with French summary fields and full payload", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        procedures: {
+          entries: [
+            {
+              id: "proc-1",
+              createdAt: "2026-05-18T10:05:00.000Z",
+              eventType: "PROCEDURE_DOCUMENTED",
+              payloadJson: {
+                procedureType: "LACERATION_REPAIR",
+                performedAt: "2026-05-18T10:00:00.000Z",
+                site: "Main gauche",
+              },
+              createdByDisplayFr: "Dr Alice Test",
+              procedureNameFr: "Suture de lacération (documentée)",
+              performedAtIso: "2026-05-18T10:00:00.000Z",
+              documentedAtIso: "2026-05-18T10:05:00.000Z",
+              performedByDisplayFr: "Dr Alice Test",
+              documentedByDisplayFr: "Dr Alice Test",
+              status: "COMPLETED",
+              clinicalSummaryFr: "Suture de lacération (documentée) — Site : Main gauche",
+              documentationRole: "PROVIDER",
+              documentationRoleFr: "Documentation médicale",
+            },
+          ],
+        },
+      })
+    );
+    expect(html).toContain("Volet");
+    expect(html).toContain("Documentation médicale");
+    expect(html).toContain("Procédure");
+    expect(html).toContain("Suture de lacération (documentée)");
+    expect(html).toContain("Réalisée le");
+    expect(html).toContain("2026-05-18T10:00:00.000Z");
+    expect(html).toContain("Documentée par");
+    expect(html).toContain("Dr Alice Test");
+    expect(html).toContain("Statut");
+    expect(html).toContain("Terminée");
+    expect(html).toContain("LACERATION_REPAIR");
+  });
 });

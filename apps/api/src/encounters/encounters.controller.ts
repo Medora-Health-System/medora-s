@@ -567,7 +567,11 @@ export class EncountersController {
     if (!parsed.success) {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
-    return this.encountersService.recordProcedureDocumented(facilityId, id, parsed.data, req.user?.userId);
+    const rawRole = (body as Record<string, unknown> | null)?.documentationRole;
+    const documentationRole = rawRole === "NURSING" ? ("NURSING" as const) : ("PROVIDER" as const);
+    return this.encountersService.recordProcedureDocumented(facilityId, id, parsed.data, req.user?.userId, {
+      documentationRole,
+    });
   }
 
   @Get("encounters/:id/disposition-readiness")

@@ -43,6 +43,7 @@ export * from "./orders/labRadiologyOperationalEscalation.js";
 export * from "./encounter-allergy-safety.js";
 export * from "./vitalsUnitConversions.js";
 export * from "./documentedProcedureBillingBridge.js";
+export * from "./documentedProcedureSummary.js";
 export * from "./medicationSafetyWarnings.js";
 export * from "./medicationTimingSafety.js";
 export * from "./advancedMedicationSafety.js";

@@ -37,6 +37,29 @@ function jsonPreBlock(value: unknown): string {
   return `<pre class="json-block">${esc(safeJsonStringify(value))}</pre>`;
 }
 
+function renderProcedureExportEntry(
+  entry: ChartExportManifest["procedures"]["entries"][number]
+): string {
+  if (entry.eventType === "PROCEDURE_DOCUMENTED" && entry.procedureNameFr) {
+    const performedWhen = entry.performedAtIso ?? entry.documentedAtIso ?? entry.createdAt;
+    const statusLabel = entry.status === "COMPLETED" ? "Terminée" : entry.status ?? "—";
+    return `<li class="procedure-doc">
+      ${pAlways("Volet", entry.documentationRoleFr ?? (entry.documentationRole === "NURSING" ? "Documentation infirmière" : "Documentation médicale"))}
+      ${pAlways("Procédure", entry.procedureNameFr)}
+      ${pAlways("Réalisée le", performedWhen)}
+      ${pLine("Réalisée par", entry.performedByDisplayFr)}
+      ${pAlways("Documentée le", entry.documentedAtIso ?? entry.createdAt)}
+      ${pAlways("Documentée par", entry.documentedByDisplayFr ?? entry.createdByDisplayFr)}
+      ${pAlways("Statut", statusLabel)}
+      ${pLine("Résumé", entry.clinicalSummaryFr)}
+      ${jsonPreBlock(entry.payloadJson)}
+    </li>`;
+  }
+  return `<li><strong>${esc(entry.createdAt)}</strong> — ${esc(entry.eventType)} — ${esc(
+    entry.createdByDisplayFr ?? "—"
+  )}${jsonPreBlock(entry.payloadJson)}</li>`;
+}
+
 function workspaceProviderNoteHtml(
   workspaceNote: ChartExportManifest["encounter"]["providerDocumentation"]["workspaceNote"]
 ): string {
@@ -318,14 +341,7 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
   const procInner =
     manifest.procedures.entries.length === 0
       ? `<p class="muted">${esc(NO_DATA)}</p>`
-      : `<ol>${manifest.procedures.entries
-          .map(
-            (p) =>
-              `<li><strong>${esc(p.createdAt)}</strong> — ${esc(p.eventType)} — ${esc(
-                p.createdByDisplayFr ?? "—"
-              )}${jsonPreBlock(p.payloadJson)}</li>`
-          )
-          .join("")}</ol>`;
+      : `<ol>${manifest.procedures.entries.map(renderProcedureExportEntry).join("")}</ol>`;
 
   const ivInner =
     manifest.ivAccess.entries.length === 0

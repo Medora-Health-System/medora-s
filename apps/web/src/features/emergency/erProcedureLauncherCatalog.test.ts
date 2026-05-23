@@ -13,25 +13,36 @@ import {
   ER_PROCEDURE_ADVANCED,
   ER_PROCEDURE_BASIC_NON_LACERATION,
   ER_PROCEDURE_COMING_SOON_TILES,
-  ER_PROCEDURE_ENABLED_TILES,
+  ER_PROCEDURE_NURSING_ASSIST_TILES,
+  ER_PROCEDURE_NURSING_PRIMARY_TILES,
+  ER_PROCEDURE_PROVIDER_TILES,
+  isNursingAssistStep,
+  nursingAssistStepFor,
 } from "./erProcedureLauncherCatalog";
 import { isAdvancedProcedureType } from "./ProcedureDocumentAdvancedForms";
 
-describe("erProcedureLauncherCatalog (19M.1)", () => {
-  it("lists seventeen enabled procedure tiles including advanced procedures", () => {
-    expect(ER_PROCEDURE_ENABLED_TILES).toHaveLength(17);
-    expect(ER_PROCEDURE_BASIC_NON_LACERATION).toHaveLength(8);
-    expect(ER_PROCEDURE_ADVANCED).toHaveLength(8);
+describe("erProcedureLauncherCatalog (19M.3)", () => {
+  it("splits provider and nursing launcher sections", () => {
+    expect(ER_PROCEDURE_PROVIDER_TILES.length).toBeGreaterThan(10);
+    expect(ER_PROCEDURE_NURSING_PRIMARY_TILES.length).toBe(5);
+    expect(ER_PROCEDURE_NURSING_ASSIST_TILES.length).toBeGreaterThan(10);
   });
 
-  it("has no coming-soon placeholders after activation", () => {
-    expect(ER_PROCEDURE_COMING_SOON_TILES).toHaveLength(0);
+  it("recognizes nursing assist step prefix", () => {
+    const step = nursingAssistStepFor("INTUBATION");
+    expect(isNursingAssistStep(step)).toBe(true);
+    expect(step).toBe("nursing-assist:INTUBATION");
   });
 
-  it("recognizes all advanced procedure types", () => {
+  it("lists advanced procedures on provider side only", () => {
     for (const pt of ER_PROCEDURE_ADVANCED) {
       expect(isAdvancedProcedureType(pt)).toBe(true);
+      expect(ER_PROCEDURE_PROVIDER_TILES.some((tile) => tile.step === pt)).toBe(true);
     }
+  });
+
+  it("has no coming-soon placeholders", () => {
+    expect(ER_PROCEDURE_COMING_SOON_TILES).toHaveLength(0);
   });
 });
 
@@ -58,5 +69,9 @@ describe("erProcedureLauncher dropdown options (19M)", () => {
       expect.arrayContaining(["CLEAR", "YELLOW", "AMBER", "CLOUDY", "BLOODY"])
     );
     expect(BALLOON_VOLUME_UI_VALUES).toEqual(["ML_5", "ML_10", "ML_30", "OTHER"]);
+  });
+
+  it("keeps eight basic non-laceration provider form types", () => {
+    expect(ER_PROCEDURE_BASIC_NON_LACERATION).toHaveLength(8);
   });
 });

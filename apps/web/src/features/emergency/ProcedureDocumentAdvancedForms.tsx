@@ -925,6 +925,7 @@ export function AdvancedProcedureForm({
   onBack,
   onClose,
   onRecorded,
+  documentationRole = "PROVIDER",
 }: {
   procedureType: AdvancedProcedureType;
   encounterId: string;
@@ -932,8 +933,16 @@ export function AdvancedProcedureForm({
   onBack: () => void;
   onClose: () => void;
   onRecorded: () => void;
+  documentationRole?: "PROVIDER" | "NURSING";
 }) {
-  const common: ProcedureFormCommonProps = { encounterId, facilityId, onBack, onClose, onRecorded };
+  const common: ProcedureFormCommonProps = {
+    encounterId,
+    facilityId,
+    onBack,
+    onClose,
+    onRecorded,
+    documentationRole,
+  };
   switch (procedureType) {
     case "CHEST_TUBE":
       return <ChestTubeForm {...common} />;

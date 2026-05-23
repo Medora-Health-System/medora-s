@@ -79,6 +79,7 @@ type CommonProps = {
   onBack: () => void;
   onClose: () => void;
   onRecorded: () => void;
+  documentationRole?: "PROVIDER" | "NURSING";
 };
 
 const procedureSaveSuccessBannerStyle: React.CSSProperties = {
@@ -122,6 +123,7 @@ function FormShell({
   onBack,
   onClose,
   onRecorded,
+  documentationRole = "PROVIDER",
   titleKey,
   children,
 }: FormShellProps) {
@@ -140,6 +142,7 @@ function FormShell({
         const d = new Date(performedAtLocal);
         if (!Number.isNaN(d.getTime())) body.performedAt = d.toISOString();
       }
+      body.documentationRole = documentationRole;
       await postDocument(encounterId, facilityId, body);
       setSaveSuccess(true);
       await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });
@@ -1504,6 +1507,7 @@ export function NonLacerationProcedureForm({
   onBack,
   onClose,
   onRecorded,
+  documentationRole = "PROVIDER",
 }: {
   procedureType: BasicNonLacerationProcedureType;
   encounterId: string;
@@ -1511,8 +1515,9 @@ export function NonLacerationProcedureForm({
   onBack: () => void;
   onClose: () => void;
   onRecorded: () => void;
+  documentationRole?: "PROVIDER" | "NURSING";
 }) {
-  const common: CommonProps = { encounterId, facilityId, onBack, onClose, onRecorded };
+  const common: CommonProps = { encounterId, facilityId, onBack, onClose, onRecorded, documentationRole };
   switch (procedureType) {
     case "WOUND_CARE":
       return <WoundCareProcedureForm {...common} />;
