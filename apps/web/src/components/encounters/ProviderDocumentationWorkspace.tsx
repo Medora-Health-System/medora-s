@@ -6,7 +6,8 @@ import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_EXAM_SECTION_IDS,
-  PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS,
+  PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS,
+  PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
   appendDocumentationFragment,
   applyCompleteNormalRosPrefill,
@@ -27,6 +28,7 @@ import {
   type ProviderDocumentationSectionStatus,
   type ProviderDocumentationRiskLevel,
   type ProviderDocumentationTemplateDefinition,
+  type ProviderDocumentationTemplateGuidance,
   type ProviderDocumentationTemplateId,
   type ProviderDocumentationTemplateStringField,
   type ProviderDocumentationWorkspaceState,
@@ -698,6 +700,44 @@ export function ProviderDocumentationWorkspace({
       </div>
     );
   };
+  const templateGuidanceChips = (
+    template: ProviderDocumentationTemplateDefinition | null,
+    guidanceKey: keyof ProviderDocumentationTemplateGuidance,
+    field: ProviderDocumentationTemplateStringField,
+    titleKey: string
+  ) => {
+    if (!template?.guidance?.[guidanceKey]?.length) return null;
+    const chips = template.guidance[guidanceKey]!.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
+    return (
+      <ChipGroupView title={t(titleKey)}>
+        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey))}
+      </ChipGroupView>
+    );
+  };
+  const templatePromptReminders = (template: ProviderDocumentationTemplateDefinition | null) => {
+    if (!template?.promptReminderKeys?.length) return null;
+    return (
+      <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "#fffbeb", border: "1px solid #fcd34d" }}>
+        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
+          {t("providerDocumentationWorkspace.activeTemplatePromptReminders")}
+        </p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#78350f", lineHeight: 1.45 }}>
+          {template.promptReminderKeys.map((key) => (
+            <li key={key}>{t(key)}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+  const templateReassessmentGuidanceChips = (template: ProviderDocumentationTemplateDefinition | null) => {
+    if (!template?.guidance?.reassessment?.length) return null;
+    const chips = template.guidance.reassessment.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
+    return (
+      <ChipGroupView title={t("providerDocumentationWorkspace.activeTemplateSmartSentences")}>
+        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), "green")}
+      </ChipGroupView>
+    );
+  };
   const completenessSectionLabel = (sectionId: string) => {
     const labelKey =
       sectionId === "chiefComplaintHpi"
@@ -820,13 +860,13 @@ export function ProviderDocumentationWorkspace({
               background: "#f8fafc",
             }}
           >
-            {PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS.map((categoryKey) => {
-              const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.categoryKey === categoryKey);
+            {PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map((majorGroup) => {
+              const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup);
               if (!templates.length) return null;
               return (
-                <div key={categoryKey} style={{ marginTop: 10 }}>
+                <div key={majorGroup} style={{ marginTop: 10 }}>
                   <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#64748b" }}>
-                    {t(categoryKey)}
+                    {t(PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS[majorGroup])}
                   </p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
                     {templates.map((template) => (
@@ -954,6 +994,7 @@ export function ProviderDocumentationWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionExam")} status={sectionStatusById.physicalExam} t={t}>
+            {templatePromptReminders(activeTemplate)}
             {templateExamChips(activeTemplate)}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               {EXAM_CHIPS.map((group) => (
@@ -999,9 +1040,22 @@ export function ProviderDocumentationWorkspace({
                 </div>
               ))}
             </div>
+            {templateReassessmentGuidanceChips(activeTemplate)}
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionMdm")} status={sectionStatusById.mdm} t={t}>
+            {templateGuidanceChips(
+              activeTemplate,
+              "mdmClinicalRationale",
+              "mdmClinicalRationale",
+              "providerDocumentationWorkspace.activeTemplateMdmGuidance"
+            )}
+            {templateGuidanceChips(
+              activeTemplate,
+              "mdmDifferentialSynthesis",
+              "mdmDifferentialSynthesis",
+              "providerDocumentationWorkspace.activeTemplateGuidance"
+            )}
             {templateTextChips(
               activeTemplate,
               [
@@ -1048,6 +1102,18 @@ export function ProviderDocumentationWorkspace({
           </WorkspaceSection>
 
           <WorkspaceSection title={t("providerDocumentationWorkspace.sectionPlan")} status={sectionStatusById.plan} t={t}>
+            {templateGuidanceChips(
+              activeTemplate,
+              "followUpDisposition",
+              "followUpDisposition",
+              "providerDocumentationWorkspace.activeTemplateSmartSentences"
+            )}
+            {templateGuidanceChips(
+              activeTemplate,
+              "providerAddendum",
+              "providerAddendum",
+              "providerDocumentationWorkspace.activeTemplateSmartSentences"
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
               <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>

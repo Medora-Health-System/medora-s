@@ -5,7 +5,10 @@ import {
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
+  PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
+  providerDocumentationMajorGroupForTemplateId,
+  providerDocumentationTemplatesByMajorGroup,
   applyCompleteNormalRosPrefill,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
@@ -755,8 +758,22 @@ describe("providerDocumentationModel", () => {
     expect(providerDocumentationTitleKey("OBSERVATION")).not.toContain("Provider documentation");
   });
 
-  it("defines all requested complaint-driven templates", () => {
-    expect(PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => template.id)).toEqual([
+  it("defines stratified TRAUMA / PEDIATRIC / ADULT complaint templates (19N)", () => {
+    expect(PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS).toEqual(["TRAUMA", "PEDIATRIC", "ADULT"]);
+    expect(PROVIDER_DOCUMENTATION_TEMPLATES.length).toBeGreaterThanOrEqual(40);
+    for (const majorGroup of PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS) {
+      expect(providerDocumentationTemplatesByMajorGroup(majorGroup).length).toBeGreaterThan(0);
+      expect(providerDocumentationTemplatesByMajorGroup(majorGroup).every((t) => t.majorGroup === majorGroup)).toBe(true);
+    }
+    expect(providerDocumentationMajorGroupForTemplateId("fall")).toBe("TRAUMA");
+    expect(providerDocumentationMajorGroupForTemplateId("fever")).toBe("PEDIATRIC");
+    expect(providerDocumentationMajorGroupForTemplateId("chest_pain")).toBe("ADULT");
+    expect(PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => template.id)).toContain("chest_pain");
+    expect(PROVIDER_DOCUMENTATION_TEMPLATES.map((template) => template.id)).toContain("observation_reassessment");
+  });
+
+  it("defines legacy complaint-driven templates preserved for saved note compatibility", () => {
+    for (const legacyId of [
       "chest_pain",
       "abdominal_pain",
       "headache",
@@ -769,11 +786,14 @@ describe("providerDocumentationModel", () => {
       "urinary_symptoms",
       "psychiatric_behavioral",
       "observation_reassessment",
-    ]);
+    ] as const) {
+      expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === legacyId)).toBe(true);
+    }
   });
 
   it("gives every complaint template complete editable sticker coverage", () => {
     for (const template of PROVIDER_DOCUMENTATION_TEMPLATES) {
+      expect(template.majorGroup).toMatch(/^(TRAUMA|PEDIATRIC|ADULT)$/);
       expect(template.categoryKey).toMatch(/^providerDocumentationWorkspace\./);
       expect(template.fields.hpi?.length, template.id).toBeGreaterThan(0);
       expect(template.fields.rosImportantPositives?.length, template.id).toBeGreaterThan(0);
