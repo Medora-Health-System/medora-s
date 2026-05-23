@@ -17,6 +17,10 @@ import { MedicationGlobalBaselineAutoApproveService } from "./medication-global-
 import { MedicationMasterController } from "./medication-master.controller";
 import { ControlledCatalogImportController } from "./controlled-catalog-import.controller";
 import { HighRiskMedicationReviewController } from "./high-risk-medication-review.controller";
+import { ErProcedureCatalogImportController } from "./er-procedure-catalog-import.controller";
+import { ErProcedureComplexityReviewController } from "./er-procedure-complexity-review.controller";
+import { ErProcedureCatalogImportService } from "./er-procedure-catalog-import.service";
+import { ErProcedureComplexityReviewService } from "./er-procedure-complexity-review.service";
 import { HighRiskMedicationReviewService } from "./high-risk-medication-review.service";
 import { ControlledCatalogImportMedicationService } from "./controlled-catalog-import-medication.service";
 import { ControlledCatalogImportProcedureService } from "./controlled-catalog-import-procedure.service";
@@ -27,11 +31,15 @@ import { ControlledCatalogImportProcedureService } from "./controlled-catalog-im
     MedicationMasterController,
     ControlledCatalogImportController,
     HighRiskMedicationReviewController,
+    ErProcedureCatalogImportController,
+    ErProcedureComplexityReviewController,
   ],
   providers: [
     ControlledCatalogImportMedicationService,
     ControlledCatalogImportProcedureService,
     HighRiskMedicationReviewService,
+    ErProcedureCatalogImportService,
+    ErProcedureComplexityReviewService,
     MedicationFormularyImportService,
     PriorityErInventoryImportService,
     PriorityErInventoryPromotionService,

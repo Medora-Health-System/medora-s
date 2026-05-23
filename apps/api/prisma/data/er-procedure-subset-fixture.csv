@@ -1,0 +1,21 @@
+code,code_system,short_description,long_description
+99283,CPT,Emergency department visit moderately severe,Emergency department visit
+99284,CPT,Emergency department visit high severity,Emergency department visit
+99291,CPT,Critical care first 30-74 minutes,Critical care
+36415,CPT,Venipuncture single vein,IV blood draw
+93010,CPT,Electrocardiogram routine ECG,EKG
+71046,CPT,Chest X-ray single view,Chest radiograph
+70450,CPT,CT head without contrast,CT head
+85025,CPT,Complete blood count CBC,CBC
+80053,CPT,Comprehensive metabolic panel,CMP
+94640,CPT,Nebulizer treatment,Nebulizer
+96372,CPT,IM injection,Injection intramuscular
+10060,CPT,Incision and drainage abscess,I and D
+12001,CPT,Simple laceration repair,Laceration repair
+99152,CPT,Moderate sedation first 15 minutes,Procedural sedation
+31500,CPT,Endotracheal intubation,Intubation emergency
+E0601,HCPCS,Continuous positive airway pressure device,CPAP home device
+97110,HCPCS,Therapeutic exercises,Physical therapy
+J0690,HCPCS,Injection ceftriaxone,Drug injection
+G0378,HCPCS,Hospital observation per hour,Observation services
+A0429,HCPCS,Ambulance BLS non-emergency,Ambulance
