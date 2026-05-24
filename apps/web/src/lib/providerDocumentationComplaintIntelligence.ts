@@ -13,6 +13,8 @@
  *   sepsis/red-flag fever documentation standards.
  * - Batch 5: ACEP trauma/head injury guidance; C-spine/CT head decision documentation; wound/laceration standards;
  *   orthopedic extremity injury and neurovascular exam documentation.
+ * - Batch 6: AAP pediatric fever guidance; pediatric dehydration/gastroenteritis; pediatric asthma/wheezing;
+ *   pediatric abdominal pain red flags; caregiver historian documentation standards.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -56,6 +58,10 @@ const fallIntel = (key: string) => `providerDocumentationComplaintIntel.fall.${k
 const headInj = (key: string) => `providerDocumentationComplaintIntel.headInjury.${key}`;
 const lac = (key: string) => `providerDocumentationComplaintIntel.laceration.${key}`;
 const frac = (key: string) => `providerDocumentationComplaintIntel.fractureConcern.${key}`;
+const pedFeb = (key: string) => `providerDocumentationComplaintIntel.pediatricFever.${key}`;
+const pedAbd = (key: string) => `providerDocumentationComplaintIntel.pediatricAbdominalPain.${key}`;
+const pedAsthma = (key: string) => `providerDocumentationComplaintIntel.pediatricAsthmaWheezing.${key}`;
+const pedGastro = (key: string) => `providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -1802,6 +1808,413 @@ export const FRACTURE_CONCERN_COMPLAINT_INTEL: ProviderDocumentationComplaintInt
   ],
 });
 
+/** Pediatric fever — AAP pediatric fever / toxic appearance documentation framework. */
+export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    pedFeb("hpiCaregiverHistorianUsed"),
+    pedFeb("hpiFeverDurationReviewed"),
+    pedFeb("hpiMaximumTemperatureReviewed"),
+    pedFeb("hpiAntipyreticUseReviewed"),
+    pedFeb("hpiVaccinationStatusReviewed"),
+    pedFeb("hpiSickContactsReviewed"),
+    pedFeb("hpiDaycareSchoolExposureReviewed"),
+    pedFeb("hpiOralIntakeReviewed"),
+    pedFeb("hpiUrineOutputReviewed"),
+    pedFeb("hpiActivityLevelReviewed"),
+    pedFeb("hpiRashReviewed"),
+    pedFeb("hpiRespiratorySymptomsReviewed"),
+    pedFeb("hpiVomitingDiarrheaReviewed"),
+    pedFeb("hpiEarPainReviewed"),
+  ],
+  rosImportantPositives: [
+    pedFeb("rosFever"),
+    pedFeb("rosDecreasedAppetite"),
+    pedFeb("rosDecreasedUrineOutput"),
+    pedFeb("rosCough"),
+    pedFeb("rosCongestion"),
+    pedFeb("rosVomiting"),
+    pedFeb("rosDiarrhea"),
+    pedFeb("rosRash"),
+    pedFeb("rosEarPain"),
+  ],
+  rosImportantNegatives: [
+    pedFeb("rosDeniesNeckStiffness"),
+    pedFeb("rosDeniesDifficultyBreathing"),
+    pedFeb("rosDeniesPersistentVomiting"),
+    pedFeb("rosDeniesLethargy"),
+    pedFeb("rosDeniesSeizureActivity"),
+    pedFeb("rosDeniesRash"),
+  ],
+  rosRedFlags: [
+    pedFeb("rfToxicAppearingChild"),
+    pedFeb("rfLethargy"),
+    pedFeb("rfRespiratoryDistress"),
+    pedFeb("rfDehydrationConcern"),
+    pedFeb("rfMeningitisConcern"),
+    pedFeb("rfSepsisConcern"),
+    pedFeb("rfFeverInYoungInfant"),
+    pedFeb("rfImmunocompromisedChild"),
+  ],
+  physicalExam: {
+    general: [
+      pedFeb("examNonToxicAppearing"),
+      pedFeb("examToxicAppearing"),
+      pedFeb("examInteractiveWithCaregiver"),
+      pedFeb("examConsolable"),
+    ],
+    heent: [
+      pedFeb("examMoistMucousMembranes"),
+      pedFeb("examDryMucousMembranes"),
+      pedFeb("examCapillaryRefillNormal"),
+      pedFeb("examNoMeningismus"),
+      pedFeb("examRashPresent"),
+    ],
+    respiratory: [pedFeb("examNoRespiratoryDistress"), pedFeb("examLungsClear")],
+    abdomen: [pedFeb("examAbdomenSoft")],
+  },
+  mdmWorkingAssessment: [
+    pedFeb("mdmPediatricFeverSourceEvaluated"),
+    pedFeb("mdmSepsisConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    pedFeb("diffViralSyndrome"),
+    pedFeb("diffUri"),
+    pedFeb("diffOtitisMedia"),
+    pedFeb("diffPneumonia"),
+    pedFeb("diffUti"),
+    pedFeb("diffGastroenteritis"),
+    pedFeb("diffMeningitis"),
+    pedFeb("diffSepsis"),
+    pedFeb("diffCellulitis"),
+    pedFeb("diffFeverWithoutSource"),
+  ],
+  mdmDataReviewed: [
+    pedFeb("mdmUrinalysisConsideredReviewed"),
+    pedFeb("mdmViralTestingConsideredReviewed"),
+    pedFeb("mdmChestImagingConsideredIfRespiratoryFindings"),
+  ],
+  mdmClinicalRationale: [
+    pedFeb("mdmHydrationStatusAssessed"),
+    pedFeb("mdmCaregiverHistorianUsed"),
+    pedFeb("mdmAntipyreticResponseReviewed"),
+    pedFeb("mdmAntibioticsConsideredBasedOnSourceRisk"),
+    pedFeb("mdmWeightBasedDosingReviewed"),
+  ],
+  mdmPlanSummary: [pedFeb("mdmSerialReassessmentPerformed")],
+  mdmImmediateActionsRationale: [pedFeb("mdmAntipyreticProvidedIfIndicated")],
+  mdmAdmitObserveDischarge: [pedFeb("mdmAdmissionConsideredToxicAppearanceDehydration")],
+  reassessment: [
+    pedFeb("reassessFeverImprovedAfterAntipyretic"),
+    pedFeb("reassessRemainsNonToxicAppearing"),
+    pedFeb("reassessToleratingOralIntake"),
+    pedFeb("reassessHydrationStatusReassessed"),
+    pedFeb("reassessCaregiverComfortableWithPlan"),
+  ],
+  followUpDisposition: [
+    pedFeb("dispCaregiverReturnPrecautionsDiscussed"),
+    pedFeb("dispReturnLethargyBreathingDehydrationFever"),
+    pedFeb("dispPediatricianFollowUpRecommended"),
+    pedFeb("dispSupportiveCareDiscussed"),
+  ],
+});
+
+/** Pediatric abdominal pain — appendicitis / surgical red flag documentation framework. */
+export const PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    pedAbd("hpiCaregiverHistorianUsed"),
+    pedAbd("hpiPainLocationReviewed"),
+    pedAbd("hpiPainDurationReviewed"),
+    pedAbd("hpiVomitingReviewed"),
+    pedAbd("hpiDiarrheaReviewed"),
+    pedAbd("hpiFeverReviewed"),
+    pedAbd("hpiAppetiteReviewed"),
+    pedAbd("hpiUrinarySymptomsReviewed"),
+    pedAbd("hpiBowelMovementHistoryReviewed"),
+    pedAbd("hpiTraumaReviewed"),
+    pedAbd("hpiTesticularGynecologicSymptomsReviewedIfApplicable"),
+    pedAbd("hpiPriorAbdominalSurgeryReviewed"),
+  ],
+  rosImportantPositives: [
+    pedAbd("rosAbdominalPain"),
+    pedAbd("rosVomiting"),
+    pedAbd("rosDiarrhea"),
+    pedAbd("rosFever"),
+    pedAbd("rosDecreasedAppetite"),
+    pedAbd("rosDysuria"),
+    pedAbd("rosConstipation"),
+  ],
+  rosImportantNegatives: [
+    pedAbd("rosDeniesBiliousVomiting"),
+    pedAbd("rosDeniesBloodyStool"),
+    pedAbd("rosDeniesTesticularPainIfApplicable"),
+    pedAbd("rosDeniesUrinarySymptoms"),
+    pedAbd("rosDeniesTrauma"),
+    pedAbd("rosDeniesPersistentSeverePain"),
+  ],
+  rosRedFlags: [
+    pedAbd("rfPeritonealSigns"),
+    pedAbd("rfBiliousVomiting"),
+    pedAbd("rfSevereLocalizedRlqPain"),
+    pedAbd("rfTesticularTorsionConcern"),
+    pedAbd("rfDehydrationConcern"),
+    pedAbd("rfAppendicitisConcern"),
+    pedAbd("rfOvarianTesticularPathologyConcern"),
+  ],
+  physicalExam: {
+    general: [pedAbd("examNonToxicAppearing"), pedAbd("examHydrationStatusAssessed")],
+    abdomen: [
+      pedAbd("examAbdomenSoft"),
+      pedAbd("examAbdomenNonTender"),
+      pedAbd("examRlqTenderness"),
+      pedAbd("examGuarding"),
+      pedAbd("examReboundTenderness"),
+      pedAbd("examNoPeritonealSigns"),
+      pedAbd("examCvaTenderness"),
+    ],
+    musculoskeletal: [pedAbd("examAbleToJumpAmbulateIfAppropriate")],
+  },
+  mdmWorkingAssessment: [pedAbd("mdmAppendicitisConsidered"), pedAbd("mdmSurgicalAbdomenConsidered")],
+  mdmDifferentialSynthesis: [
+    pedAbd("diffAppendicitis"),
+    pedAbd("diffGastroenteritis"),
+    pedAbd("diffConstipation"),
+    pedAbd("diffUti"),
+    pedAbd("diffMesentericAdenitis"),
+    pedAbd("diffTesticularTorsion"),
+    pedAbd("diffOvarianTorsionCyst"),
+    pedAbd("diffIntussusception"),
+    pedAbd("diffObstruction"),
+    pedAbd("diffTraumaRelatedPain"),
+  ],
+  mdmDataReviewed: [
+    pedAbd("mdmUrinalysisReviewed"),
+    pedAbd("mdmUltrasoundConsideredReviewed"),
+    pedAbd("mdmLabsReviewedIfObtained"),
+  ],
+  mdmClinicalRationale: [
+    pedAbd("mdmSerialAbdominalExamsPerformed"),
+    pedAbd("mdmCtConsideredOnlyIfClinicallyIndicated"),
+    pedAbd("mdmSurgicalConsultationConsidered"),
+    pedAbd("mdmHydrationStatusReassessed"),
+    pedAbd("mdmCaregiverSharedDecisionMakingDocumented"),
+  ],
+  mdmPlanSummary: [pedAbd("mdmSerialReassessmentPerformed")],
+  mdmImmediateActionsRationale: [pedAbd("mdmIvFluidsIfIndicated")],
+  mdmAdmitObserveDischarge: [pedAbd("mdmAdmissionConsidered")],
+  reassessment: [
+    pedAbd("reassessAbdominalPainImproved"),
+    pedAbd("reassessRepeatAbdominalExamUnchanged"),
+    pedAbd("reassessToleratingOralIntake"),
+    pedAbd("reassessRemainsNonToxicAppearing"),
+  ],
+  followUpDisposition: [
+    pedAbd("dispReturnWorseningPain"),
+    pedAbd("dispReturnPersistentVomitingOrFever"),
+    pedAbd("dispPediatricianFollowUpRecommended"),
+    pedAbd("dispSurgicalReturnPrecautionsIfApplicable"),
+  ],
+});
+
+/** Pediatric asthma / wheezing — pediatric bronchospasm documentation framework. */
+export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    pedAsthma("hpiCaregiverHistorianUsed"),
+    pedAsthma("hpiWheezingReported"),
+    pedAsthma("hpiCoughReported"),
+    pedAsthma("hpiShortnessOfBreathReported"),
+    pedAsthma("hpiTriggerExposureReviewed"),
+    pedAsthma("hpiUriTriggerSuspected"),
+    pedAsthma("hpiRescueInhalerUseReviewed"),
+    pedAsthma("hpiPriorHospitalizationReviewed"),
+    pedAsthma("hpiPriorIcuIntubationReviewed"),
+    pedAsthma("hpiSteroidUseReviewed"),
+    pedAsthma("hpiMedicationAccessReviewed"),
+    pedAsthma("hpiOralIntakeReviewed"),
+  ],
+  rosImportantPositives: [
+    pedAsthma("rosWheezing"),
+    pedAsthma("rosCough"),
+    pedAsthma("rosShortnessOfBreath"),
+    pedAsthma("rosChestTightness"),
+    pedAsthma("rosFever"),
+    pedAsthma("rosDecreasedActivity"),
+  ],
+  rosImportantNegatives: [
+    pedAsthma("rosDeniesCyanosis"),
+    pedAsthma("rosDeniesApnea"),
+    pedAsthma("rosDeniesChestPain"),
+    pedAsthma("rosDeniesForeignBodyChokingEpisode"),
+    pedAsthma("rosDeniesPersistentVomiting"),
+  ],
+  rosRedFlags: [
+    pedAsthma("rfSevereRespiratoryDistress"),
+    pedAsthma("rfHypoxia"),
+    pedAsthma("rfPoorAirMovement"),
+    pedAsthma("rfRetractions"),
+    pedAsthma("rfInabilityToSpeakCryNormally"),
+    pedAsthma("rfPriorIcuIntubation"),
+    pedAsthma("rfPoorBronchodilatorResponse"),
+  ],
+  physicalExam: {
+    general: [pedAsthma("examHydrationStatusAssessed")],
+    respiratory: [
+      pedAsthma("examNoRespiratoryDistress"),
+      pedAsthma("examIncreasedWorkOfBreathing"),
+      pedAsthma("examRetractionsPresent"),
+      pedAsthma("examWheezingPresent"),
+      pedAsthma("examDiminishedBreathSounds"),
+      pedAsthma("examImprovedAerationAfterTreatment"),
+      pedAsthma("examSpeakingCryingComfortably"),
+      pedAsthma("examOxygenSaturationReviewed"),
+    ],
+  },
+  mdmWorkingAssessment: [pedAsthma("mdmAsthmaExacerbationConsidered"), pedAsthma("mdmViralWheezingConsidered")],
+  mdmDifferentialSynthesis: [
+    pedAsthma("diffAsthmaExacerbation"),
+    pedAsthma("diffViralWheezing"),
+    pedAsthma("diffBronchiolitis"),
+    pedAsthma("diffPneumonia"),
+    pedAsthma("diffForeignBodyAspiration"),
+    pedAsthma("diffAllergicReaction"),
+    pedAsthma("diffCroup"),
+    pedAsthma("diffRespiratoryFailure"),
+  ],
+  mdmDataReviewed: [pedAsthma("mdmChestXrayConsideredIfAtypical")],
+  mdmClinicalRationale: [
+    pedAsthma("mdmResponseToTreatmentReassessed"),
+    pedAsthma("mdmOxygenRequirementAssessed"),
+    pedAsthma("mdmRepeatLungExamPerformed"),
+    pedAsthma("mdmWeightBasedMedicationDosingReviewed"),
+    pedAsthma("mdmCaregiverInhalerSpacerEducationReviewed"),
+  ],
+  mdmPlanSummary: [
+    pedAsthma("mdmBronchodilatorTreatmentAdministered"),
+    pedAsthma("mdmSystemicSteroidConsideredAdministered"),
+    pedAsthma("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [pedAsthma("mdmOxygenIfIndicated")],
+  mdmAdmitObserveDischarge: [pedAsthma("mdmAdmissionConsideredPersistentDistress")],
+  reassessment: [
+    pedAsthma("reassessWheezingImproved"),
+    pedAsthma("reassessWorkOfBreathingImproved"),
+    pedAsthma("reassessOxygenSaturationStable"),
+    pedAsthma("reassessChildActiveComfortable"),
+    pedAsthma("reassessCaregiverComfortableWithPlan"),
+  ],
+  followUpDisposition: [
+    pedAsthma("dispDischargeAsthmaActionPlanInhalerInstructions"),
+    pedAsthma("dispReturnIncreasedWorkOfBreathing"),
+    pedAsthma("dispReturnPoorOralIntakeWorseningSymptoms"),
+    pedAsthma("dispPediatricianFollowUpRecommended"),
+    pedAsthma("dispAdmissionPersistentHypoxiaDistressConsidered"),
+  ],
+});
+
+/** Pediatric vomiting / diarrhea — gastroenteritis / dehydration documentation framework. */
+export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    pedGastro("hpiCaregiverHistorianUsed"),
+    pedGastro("hpiVomitingDurationReviewed"),
+    pedGastro("hpiDiarrheaDurationReviewed"),
+    pedGastro("hpiFrequencyReviewed"),
+    pedGastro("hpiBloodInStoolReviewed"),
+    pedGastro("hpiBiliousEmesisReviewed"),
+    pedGastro("hpiFeverReviewed"),
+    pedGastro("hpiSickContactsReviewed"),
+    pedGastro("hpiOralIntakeReviewed"),
+    pedGastro("hpiUrineOutputReviewed"),
+    pedGastro("hpiAbdominalPainReviewed"),
+    pedGastro("hpiRecentTravelFoodExposureReviewed"),
+  ],
+  rosImportantPositives: [
+    pedGastro("rosVomiting"),
+    pedGastro("rosDiarrhea"),
+    pedGastro("rosAbdominalPain"),
+    pedGastro("rosFever"),
+    pedGastro("rosDecreasedOralIntake"),
+    pedGastro("rosDecreasedUrineOutput"),
+  ],
+  rosImportantNegatives: [
+    pedGastro("rosDeniesBiliousEmesis"),
+    pedGastro("rosDeniesBloodyStool"),
+    pedGastro("rosDeniesSevereAbdominalPain"),
+    pedGastro("rosDeniesLethargy"),
+    pedGastro("rosDeniesRash"),
+  ],
+  rosRedFlags: [
+    pedGastro("rfDehydrationConcern"),
+    pedGastro("rfBiliousVomiting"),
+    pedGastro("rfBloodyStool"),
+    pedGastro("rfSevereAbdominalPain"),
+    pedGastro("rfLethargy"),
+    pedGastro("rfInabilityToTolerateOralIntake"),
+    pedGastro("rfIntussusceptionObstructionConcern"),
+  ],
+  physicalExam: {
+    general: [
+      pedGastro("examNonToxicAppearing"),
+      pedGastro("examHydrationStatusAssessed"),
+      pedGastro("examActiveInteractiveWithCaregiver"),
+    ],
+    heent: [
+      pedGastro("examMoistMucousMembranes"),
+      pedGastro("examDryMucousMembranes"),
+      pedGastro("examCapillaryRefillNormal"),
+    ],
+    abdomen: [
+      pedGastro("examAbdomenSoft"),
+      pedGastro("examAbdomenNonTender"),
+      pedGastro("examNoGuarding"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    pedGastro("mdmGastroenteritisConsidered"),
+    pedGastro("mdmDehydrationConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    pedGastro("diffViralGastroenteritis"),
+    pedGastro("diffDehydration"),
+    pedGastro("diffFoodborneIllness"),
+    pedGastro("diffAppendicitis"),
+    pedGastro("diffUti"),
+    pedGastro("diffIntussusception"),
+    pedGastro("diffBowelObstruction"),
+    pedGastro("diffElectrolyteAbnormality"),
+    pedGastro("diffDkaIfClinicallyIndicated"),
+  ],
+  mdmDataReviewed: [
+    pedGastro("mdmUrinalysisConsideredIfUrinarySymptoms"),
+    pedGastro("mdmGlucoseConsideredIfConcerningFeatures"),
+    pedGastro("mdmLabsConsideredForDehydration"),
+  ],
+  mdmClinicalRationale: [
+    pedGastro("mdmHydrationStatusAssessed"),
+    pedGastro("mdmOralRehydrationTrialPerformed"),
+    pedGastro("mdmAntiemeticTherapyConsideredAdministered"),
+    pedGastro("mdmAbdominalRedFlagsReviewed"),
+    pedGastro("mdmCaregiverReturnPrecautionsDiscussed"),
+  ],
+  mdmPlanSummary: [
+    pedGastro("mdmIvFluidsConsideredAdministered"),
+    pedGastro("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [pedGastro("mdmAntiemeticIfIndicated")],
+  mdmAdmitObserveDischarge: [pedGastro("mdmAdmissionConsideredIfDehydrated")],
+  reassessment: [
+    pedGastro("reassessToleratingOralIntake"),
+    pedGastro("reassessVomitingImproved"),
+    pedGastro("reassessHydrationStatusImproved"),
+    pedGastro("reassessAbdominalExamReassuring"),
+    pedGastro("reassessCaregiverComfortableWithPlan"),
+  ],
+  followUpDisposition: [
+    pedGastro("dispOralHydrationInstructionsProvided"),
+    pedGastro("dispReturnDehydrationSigns"),
+    pedGastro("dispReturnBiliousVomitingBloodyStoolSeverePain"),
+    pedGastro("dispPediatricianFollowUpRecommended"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -1816,9 +2229,12 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   flank_pain: FLANK_PAIN_COMPLAINT_INTEL,
   adult_uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
   uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
-  fever: FEVER_COMPLAINT_INTEL,
+  fever: PEDIATRIC_FEVER_COMPLAINT_INTEL,
   cough: COUGH_COMPLAINT_INTEL,
-  asthma_wheezing: ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  asthma_wheezing: PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  abdominal_pain_pediatric: PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
+  nausea_vomiting: PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  diarrhea: PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
   fall: FALL_COMPLAINT_INTEL,
   head_injury: HEAD_INJURY_COMPLAINT_INTEL,
   laceration: LACERATION_COMPLAINT_INTEL,
@@ -1834,9 +2250,7 @@ export const BATCH3_COMPLAINT_TEMPLATE_IDS = [
 ] as const;
 export const BATCH4_COMPLAINT_TEMPLATE_IDS = [
   "adult_uri_respiratory",
-  "fever",
   "cough",
-  "asthma_wheezing",
 ] as const;
 export const BATCH5_COMPLAINT_TEMPLATE_IDS = [
   "fall",
@@ -1844,13 +2258,21 @@ export const BATCH5_COMPLAINT_TEMPLATE_IDS = [
   "laceration",
   "fracture_concern",
 ] as const;
+export const BATCH6_COMPLAINT_TEMPLATE_IDS = [
+  "fever",
+  "abdominal_pain_pediatric",
+  "asthma_wheezing",
+  "nausea_vomiting",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
   ...BATCH3_COMPLAINT_TEMPLATE_IDS,
   ...BATCH4_COMPLAINT_TEMPLATE_IDS,
   ...BATCH5_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH6_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
+  "diarrhea",
 ] as const;
 
 export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationComplaintIntelligence): string[] {

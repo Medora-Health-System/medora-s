@@ -17,6 +17,10 @@ import {
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
   FRACTURE_CONCERN_COMPLAINT_INTEL,
+  PEDIATRIC_FEVER_COMPLAINT_INTEL,
+  PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
+  PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -362,11 +366,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     { skin: ["erMseExamChips.skinWarmDry"] },
     undefined,
     [
-      "providerDocumentationPromptReminders.feverSourceSepsisReminder",
+      "providerDocumentationPromptReminders.pediatricFeverSourceReminder",
       "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
       "providerDocumentationPromptReminders.emtalaReassessment",
     ],
-    FEVER_COMPLAINT_INTEL
+    PEDIATRIC_FEVER_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "uri_respiratory",
@@ -395,7 +400,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesChestPain", "providerDocumentationWorkspace.stickerRosNoBloodInEmesis"],
     ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
     { mdmPlanSummary: ["erMseMdmChips.actAntiemetic", "erMseMdmChips.actFluids", "erMseMdmChips.planReassess"] },
-    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"], heent: ["erMseExamChips.heentDryMm"] }
+    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"], heent: ["erMseExamChips.heentDryMm"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricGastroDehydrationReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "diarrhea",
@@ -406,7 +419,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesFever"],
     ["erMseRosChips.rfHypotensionConcern"],
     { mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waAbdominal"] },
-    { abdomen: ["erMseExamChips.abdSoft"], heent: ["erMseExamChips.heentDryMm"] }
+    { abdomen: ["erMseExamChips.abdSoft"], heent: ["erMseExamChips.heentDryMm"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricGastroDehydrationReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "ear_pain",
@@ -431,11 +452,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     { respiratory: ["erMseExamChips.respWheezing", "erMseExamChips.respIncreasedWob"] },
     undefined,
     [
-      "providerDocumentationPromptReminders.asthmaExacerbationReminder",
+      "providerDocumentationPromptReminders.pediatricAsthmaWheezingReminder",
       "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
       "providerDocumentationPromptReminders.emtalaReassessment",
     ],
-    ASTHMA_WHEEZING_COMPLAINT_INTEL
+    PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "seizure",
@@ -504,7 +526,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesFever"],
     ["erMseRosChips.rfSeverePain", "erMseRosChips.rfPregnancyConcern"],
     { mdmWorkingAssessment: ["erMseMdmChips.waAbdominal"], mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"] },
-    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent"] }
+    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricAbdominalRedFlags",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "cough",
