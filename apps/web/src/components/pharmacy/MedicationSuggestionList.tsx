@@ -4,6 +4,7 @@ import React from "react";
 import type { MedicationSearchItem } from "@/lib/pharmacyApi";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
+import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { useI18n } from "@/lib/i18n";
 
 const rowStyle: React.CSSProperties = {
@@ -35,7 +36,10 @@ export function MedicationSuggestionList({
         const isSelected = idx === selectedIndex;
         const badge = stockBadge?.(med);
         const meta = med.metadata;
-        const sub = [med.secondaryText, meta?.dosageForm, meta?.route].filter(Boolean).join(" · ");
+        const sub =
+          med.type === "MEDICATION"
+            ? formatCatalogMedicationSubtitleForLocale(med, language)
+            : [med.secondaryText, meta?.dosageForm, meta?.route].filter(Boolean).join(" · ");
         return (
           <button
             key={med.id}

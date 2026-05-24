@@ -5,6 +5,7 @@ import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/pendingEncounterOrders";
 import { getPendingMedicationAdminsFromQueue } from "@/lib/pendingMedicationAdminsFromQueue";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
@@ -1603,7 +1604,8 @@ export function MedicationAdministrationTab({
                       <div style={{ fontWeight: 600 }}>{displayName}</div>
                       {row.routeHint ? (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-                          {t("marTab.routePrefix")} {row.routeHint}
+                          {t("marTab.routePrefix")}{" "}
+                          {normalizeMedicationDisplayForLocale(row.routeHint, language)}
                         </div>
                       ) : null}
                       {row.highRiskWarning ? (
@@ -1890,7 +1892,10 @@ export function MedicationAdministrationTab({
               type="text"
               value={modalRoute}
               onChange={(e) => setModalRoute(e.target.value)}
-              placeholder={modalItem.routeHint || t("marTab.routePlaceholder")}
+              placeholder={
+                normalizeMedicationDisplayForLocale(modalItem.routeHint, language) ||
+                t("marTab.routePlaceholder")
+              }
               disabled={submitting}
               style={{
                 width: "100%",

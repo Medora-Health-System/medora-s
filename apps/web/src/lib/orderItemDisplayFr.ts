@@ -1,5 +1,6 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
+import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import { isInvalidTechnicalOrderDisplayLabel, pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
 
 /**
@@ -234,12 +235,15 @@ function catalogDisplayLabelEn(
   if (t === "MEDICATION") {
     const c = item.catalogMedication;
     const n = pickStrictEnCatalogPrimaryLabel(catalogItemTypeForGuard, c?.displayNameEn, c?.code);
-    const parts = [
-      n,
-      item.strength?.trim() || c?.strength?.trim(),
-      c?.dosageForm,
-      c?.route,
-    ].filter(Boolean);
+    const detail = formatCatalogMedicationOrderDetailLine(
+      {
+        strength: item.strength?.trim() || c?.strength?.trim() || null,
+        dosageForm: c?.dosageForm,
+        route: c?.route,
+      },
+      "en"
+    );
+    const parts = [n, detail].filter(Boolean);
     if (parts.length) return parts.join(" · ");
     return null;
   }

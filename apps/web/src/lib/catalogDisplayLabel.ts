@@ -1,5 +1,6 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogSearchItemType } from "@/lib/catalogSearchTypes";
+import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
 
 const CATALOG_SEARCH_EN_FALLBACK_KEYS: Record<CatalogSearchItemType, string> = {
@@ -35,8 +36,8 @@ export function getCatalogSearchItemDisplayLabel(
 }
 
 /**
- * Full single-line label (primary + `secondaryText`), for chips, controlled inputs, and order modal lines.
- * Phase 19U.2: normalize `secondaryText` / metadata by locale before append — do not render raw FR catalog labels in EN UI.
+ * Full single-line label (primary + subtitle), for chips, controlled inputs, and order modal lines.
+ * Medication rows normalize catalog metadata by locale (Phase 19U.2).
  */
 export function catalogSearchItemFullDisplayLine(
   item: CatalogSearchItem,
@@ -44,5 +45,9 @@ export function catalogSearchItemFullDisplayLine(
   t?: (key: string) => string
 ): string {
   const head = getCatalogSearchItemDisplayLabel(item, language, t);
-  return [head, item.secondaryText].filter(Boolean).join(" · ") || item.code;
+  const tail =
+    item.type === "MEDICATION"
+      ? formatCatalogMedicationSubtitleForLocale(item, language)
+      : item.secondaryText?.trim() ?? "";
+  return [head, tail].filter(Boolean).join(" · ") || item.code;
 }

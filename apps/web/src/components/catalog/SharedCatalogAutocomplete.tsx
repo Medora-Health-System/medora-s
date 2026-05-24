@@ -10,6 +10,7 @@ import { createOfflineAwareCatalogSearchAdapter } from "@/lib/offline/catalogSea
 import type { SupportedLanguage } from "@/i18n/config";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
+import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
 import { useI18n } from "@/lib/i18n";
 
@@ -348,11 +349,17 @@ export function SharedCatalogAutocomplete({
                       </span>
                     )}
                   </div>
-                  {item.secondaryText ? (
+                  {(() => {
+                    const subtitleLine =
+                      item.type === "MEDICATION"
+                        ? formatCatalogMedicationSubtitleForLocale(item, language)
+                        : item.secondaryText;
+                    return subtitleLine ? (
                     <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                      <HighlightMatch text={item.secondaryText} needle={needle} />
+                      <HighlightMatch text={subtitleLine} needle={needle} />
                     </div>
-                  ) : null}
+                    ) : null;
+                  })()}
                   {badge ? (
                     <div style={{ fontSize: 11, color: "#b45309", marginTop: 2 }}>{badge}</div>
                   ) : null}

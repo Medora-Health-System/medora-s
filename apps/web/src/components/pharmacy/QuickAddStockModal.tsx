@@ -8,6 +8,7 @@ import {
   type MedicationSearchItem,
 } from "@/lib/pharmacyApi";
 import { MedicationAutocomplete } from "./MedicationAutocomplete";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 import { useI18n } from "@/lib/i18n";
 
 export function QuickAddStockModal({
@@ -118,7 +119,10 @@ export function QuickAddStockModal({
             <input
               type="text"
               readOnly
-              value={selected.metadata?.dosageForm ?? t("common.dash")}
+              value={
+                normalizeMedicationDisplayForLocale(selected.metadata?.dosageForm, language) ||
+                t("common.dash")
+              }
               style={{ ...inputStyle, backgroundColor: "#f5f5f5", cursor: "default" }}
             />
           </Field>
@@ -126,7 +130,10 @@ export function QuickAddStockModal({
             <input
               type="text"
               readOnly
-              value={selected.metadata?.route ?? t("common.dash")}
+              value={
+                normalizeMedicationDisplayForLocale(selected.metadata?.route, language) ||
+                t("common.dash")
+              }
               style={{ ...inputStyle, backgroundColor: "#f5f5f5", cursor: "default" }}
             />
           </Field>
