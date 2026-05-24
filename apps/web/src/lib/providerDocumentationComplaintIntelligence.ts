@@ -19,6 +19,8 @@
  *   dermatologic rash red-flag documentation.
  * - Batch 8: ED nausea/vomiting and diarrhea documentation; medication refill medico-legal standards;
  *   observation/reassessment and discharge readiness documentation.
+ * - Batch 9: ACEP blunt trauma documentation; NEXUS/Canadian C-spine concepts; IPV/assault safety;
+ *   spinal red flags and neurovascular exam documentation.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -74,6 +76,10 @@ const adultNv = (key: string) => `providerDocumentationComplaintIntel.adultNause
 const adultDiarrhea = (key: string) => `providerDocumentationComplaintIntel.adultDiarrhea.${key}`;
 const medRefill = (key: string) => `providerDocumentationComplaintIntel.medicationRefill.${key}`;
 const obsReassess = (key: string) => `providerDocumentationComplaintIntel.observationReassessment.${key}`;
+const mvcIntel = (key: string) => `providerDocumentationComplaintIntel.mvcCollision.${key}`;
+const assaultIntel = (key: string) => `providerDocumentationComplaintIntel.assaultTrauma.${key}`;
+const neckTrauma = (key: string) => `providerDocumentationComplaintIntel.neckPainTrauma.${key}`;
+const backTrauma = (key: string) => `providerDocumentationComplaintIntel.backPainTrauma.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -2967,6 +2973,394 @@ export const OBSERVATION_REASSESSMENT_COMPLAINT_INTEL: ProviderDocumentationComp
   ],
 });
 
+/** MVC / collision — blunt trauma mechanism and C-spine documentation framework. */
+export const MVC_COLLISION_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    mvcIntel("hpiRestrainedDriverPassenger"),
+    mvcIntel("hpiUnrestrainedOccupant"),
+    mvcIntel("hpiAirbagDeployment"),
+    mvcIntel("hpiVehicleSpeedReviewed"),
+    mvcIntel("hpiRearEndCollision"),
+    mvcIntel("hpiSideImpactCollision"),
+    mvcIntel("hpiRolloverMechanism"),
+    mvcIntel("hpiEjectionDeniedReviewed"),
+    mvcIntel("hpiLossOfConsciousnessReviewed"),
+    mvcIntel("hpiHeadStrikeReviewed"),
+    mvcIntel("hpiAmbulatoryAtScene"),
+    mvcIntel("hpiEmsEvaluationReviewed"),
+    mvcIntel("hpiAnticoagulantUseReviewed"),
+    mvcIntel("hpiNeckPainReported"),
+    mvcIntel("hpiBackPainReported"),
+    mvcIntel("hpiChestAbdominalPainReviewed"),
+  ],
+  rosImportantPositives: [
+    mvcIntel("rosNeckPain"),
+    mvcIntel("rosBackPain"),
+    mvcIntel("rosHeadache"),
+    mvcIntel("rosChestWallPain"),
+    mvcIntel("rosAbdominalPain"),
+    mvcIntel("rosExtremityPain"),
+    mvcIntel("rosDizziness"),
+  ],
+  rosImportantNegatives: [
+    mvcIntel("rosDeniesLossOfConsciousness"),
+    mvcIntel("rosDeniesFocalWeakness"),
+    mvcIntel("rosDeniesNumbnessTingling"),
+    mvcIntel("rosDeniesChestPain"),
+    mvcIntel("rosDeniesAbdominalPain"),
+    mvcIntel("rosDeniesShortnessOfBreath"),
+  ],
+  rosRedFlags: [
+    mvcIntel("rfHighSpeedMechanism"),
+    mvcIntel("rfRolloverEjectionMechanism"),
+    mvcIntel("rfNeurologicDeficit"),
+    mvcIntel("rfMidlineSpinalTenderness"),
+    mvcIntel("rfAnticoagulatedHeadInjury"),
+    mvcIntel("rfChestAbdominalTraumaConcern"),
+    mvcIntel("rfIntoxicationLimitingExam"),
+  ],
+  physicalExam: {
+    general: [mvcIntel("examAlertAndOriented"), mvcIntel("examNoAcuteDistress")],
+    heent: [mvcIntel("examCervicalSpineTenderness"), mvcIntel("examNoMidlineSpinalTenderness")],
+    cardiovascular: [mvcIntel("examChestWallTenderness")],
+    abdomen: [mvcIntel("examAbdomenSoftNonTender"), mvcIntel("examSeatbeltSignAssessed")],
+    musculoskeletal: [mvcIntel("examExtremityTenderness")],
+    neuroPsych: [
+      mvcIntel("examNeurovascularlyIntact"),
+      mvcIntel("examNoFocalNeurologicDeficit"),
+      mvcIntel("examGaitAssessed"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    mvcIntel("mdmChestAbdominalInjuryConsidered"),
+    mvcIntel("mdmHeadInjuryConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    mvcIntel("diffCervicalStrain"),
+    mvcIntel("diffThoracicLumbarStrain"),
+    mvcIntel("diffConcussion"),
+    mvcIntel("diffIntracranialHemorrhage"),
+    mvcIntel("diffCervicalSpineInjury"),
+    mvcIntel("diffRibChestWallInjury"),
+    mvcIntel("diffIntraAbdominalInjury"),
+    mvcIntel("diffExtremityFracture"),
+    mvcIntel("diffContusion"),
+  ],
+  mdmDataReviewed: [
+    mvcIntel("mdmImagingReviewedIfObtained"),
+    mvcIntel("mdmCtHeadConsideredBasedOnRiskFactors"),
+  ],
+  mdmClinicalRationale: [
+    mvcIntel("mdmMechanismOfMvcReviewed"),
+    mvcIntel("mdmCspineDecisionRuleConsidered"),
+    mvcIntel("mdmNeurovascularExamDocumented"),
+    mvcIntel("mdmDischargePrecautionsDiscussed"),
+  ],
+  mdmPlanSummary: [
+    mvcIntel("mdmPainControlProvided"),
+    mvcIntel("mdmSerialReassessmentPerformed"),
+  ],
+  mdmAdmitObserveDischarge: [mvcIntel("mdmAdmissionObservationConsidered")],
+  reassessment: [
+    mvcIntel("reassessPainImproved"),
+    mvcIntel("reassessNeurologicExamUnchanged"),
+    mvcIntel("reassessAmbulatoryReassessmentPerformed"),
+    mvcIntel("reassessVitalSignsStable"),
+    mvcIntel("reassessRepeatAbdominalExamReassuring"),
+  ],
+  followUpDisposition: [
+    mvcIntel("dispDischargedWithMvcPrecautions"),
+    mvcIntel("dispReturnWorseningPainWeaknessNumbnessVomitingConfusion"),
+    mvcIntel("dispFollowUpRecommended"),
+    mvcIntel("dispAdmissionObservationConsidered"),
+  ],
+});
+
+/** Assault — IPV / assault safety and injury documentation framework. */
+export const ASSAULT_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    assaultIntel("hpiAssaultMechanismReviewed"),
+    assaultIntel("hpiStruckWithFistObject"),
+    assaultIntel("hpiKicked"),
+    assaultIntel("hpiStrangulationChokingReviewed"),
+    assaultIntel("hpiLossOfConsciousnessReviewed"),
+    assaultIntel("hpiHeadStrikeReviewed"),
+    assaultIntel("hpiWeaponInvolvementReviewed"),
+    assaultIntel("hpiSexualAssaultConcernReviewed"),
+    assaultIntel("hpiLawEnforcementInvolved"),
+    assaultIntel("hpiSafetyAtDischargeReviewed"),
+    assaultIntel("hpiAnticoagulantUseReviewed"),
+    assaultIntel("hpiPainLocationsReviewed"),
+    assaultIntel("hpiTimeSinceAssaultReviewed"),
+  ],
+  rosImportantPositives: [
+    assaultIntel("rosHeadache"),
+    assaultIntel("rosFacialPain"),
+    assaultIntel("rosNeckPain"),
+    assaultIntel("rosChestWallPain"),
+    assaultIntel("rosAbdominalPain"),
+    assaultIntel("rosExtremityPain"),
+    assaultIntel("rosDizziness"),
+    assaultIntel("rosAnxietyDistress"),
+  ],
+  rosImportantNegatives: [
+    assaultIntel("rosDeniesLossOfConsciousness"),
+    assaultIntel("rosDeniesShortnessOfBreath"),
+    assaultIntel("rosDeniesFocalWeakness"),
+    assaultIntel("rosDeniesNumbness"),
+    assaultIntel("rosDeniesAbdominalPain"),
+    assaultIntel("rosDeniesSexualAssaultConcernWhenAppropriate"),
+  ],
+  rosRedFlags: [
+    assaultIntel("rfStrangulationChokingConcern"),
+    assaultIntel("rfWeaponInjury"),
+    assaultIntel("rfSexualAssaultConcern"),
+    assaultIntel("rfUnsafeDischargeEnvironment"),
+    assaultIntel("rfLossOfConsciousness"),
+    assaultIntel("rfNeurologicDeficit"),
+    assaultIntel("rfAbdominalTraumaConcern"),
+    assaultIntel("rfFacialFractureConcern"),
+  ],
+  physicalExam: {
+    general: [assaultIntel("examAlertAndOriented"), assaultIntel("examDistressedAnxiousAppearance")],
+    heent: [assaultIntel("examFacialInjuryNoted"), assaultIntel("examScalpTenderness"), assaultIntel("examNeckTenderness")],
+    cardiovascular: [assaultIntel("examChestWallTenderness")],
+    abdomen: [assaultIntel("examAbdomenSoftNonTender")],
+    skin: [assaultIntel("examBruisingAbrasionsNoted")],
+    neuroPsych: [assaultIntel("examNoFocalNeurologicDeficit"), assaultIntel("examNeurovascularlyIntact")],
+  },
+  mdmWorkingAssessment: [
+    assaultIntel("mdmStrangulationRedFlagsConsidered"),
+    assaultIntel("mdmAbdominalTraumaConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    assaultIntel("diffContusion"),
+    assaultIntel("diffConcussion"),
+    assaultIntel("diffIntracranialInjury"),
+    assaultIntel("diffFacialFracture"),
+    assaultIntel("diffCervicalSpineInjury"),
+    assaultIntel("diffRibChestWallInjury"),
+    assaultIntel("diffIntraAbdominalInjury"),
+    assaultIntel("diffSoftTissueInjury"),
+    assaultIntel("diffStrangulationInjury"),
+    assaultIntel("diffAcuteStressReaction"),
+  ],
+  mdmDataReviewed: [assaultIntel("mdmImagingConsideredBasedOnInjuryPattern")],
+  mdmClinicalRationale: [
+    assaultIntel("mdmAssaultHistoryDocumented"),
+    assaultIntel("mdmSafetyScreeningPerformed"),
+    assaultIntel("mdmLawEnforcementInvolvementReviewed"),
+    assaultIntel("mdmSexualAssaultResourcesConsideredOfferedIfApplicable"),
+    assaultIntel("mdmNeurovascularExamDocumented"),
+    assaultIntel("mdmSocialWorkAdvocacyResourcesConsidered"),
+    assaultIntel("mdmSafeDischargePlanAssessed"),
+  ],
+  mdmPlanSummary: [
+    assaultIntel("mdmPainControlProvided"),
+    assaultIntel("mdmSerialReassessmentPerformed"),
+  ],
+  reassessment: [
+    assaultIntel("reassessPainImproved"),
+    assaultIntel("reassessNeurologicExamUnchanged"),
+    assaultIntel("reassessSafetyPlanReassessed"),
+    assaultIntel("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    assaultIntel("dispDischargedWithAssaultPrecautions"),
+    assaultIntel("dispSafetyResourcesProvidedIfApplicable"),
+    assaultIntel("dispReturnWorseningPainNeuroSymptomsVomitingBreathingDifficulty"),
+    assaultIntel("dispFollowUpRecommended"),
+    assaultIntel("dispTransferAdmissionConsideredIfUnsafeOrSevereInjury"),
+  ],
+});
+
+/** Neck pain trauma — cervical spine red flag documentation framework. */
+export const NECK_PAIN_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    neckTrauma("hpiTraumaMechanismReviewed"),
+    neckTrauma("hpiNeckPainOnsetReviewed"),
+    neckTrauma("hpiMidlinePainReviewed"),
+    neckTrauma("hpiRadiationToArmReviewed"),
+    neckTrauma("hpiNumbnessTinglingReviewed"),
+    neckTrauma("hpiWeaknessReviewed"),
+    neckTrauma("hpiLossOfConsciousnessReviewed"),
+    neckTrauma("hpiHeadInjuryReviewed"),
+    neckTrauma("hpiAnticoagulantUseReviewed"),
+    neckTrauma("hpiIntoxicationReviewed"),
+    neckTrauma("hpiPriorCervicalSpineDiseaseReviewed"),
+  ],
+  rosImportantPositives: [
+    neckTrauma("rosNeckPain"),
+    neckTrauma("rosHeadache"),
+    neckTrauma("rosArmPain"),
+    neckTrauma("rosNumbnessTingling"),
+    neckTrauma("rosWeakness"),
+    neckTrauma("rosDizziness"),
+  ],
+  rosImportantNegatives: [
+    neckTrauma("rosDeniesFocalWeakness"),
+    neckTrauma("rosDeniesNumbnessTingling"),
+    neckTrauma("rosDeniesBowelBladderSymptoms"),
+    neckTrauma("rosDeniesLossOfConsciousness"),
+    neckTrauma("rosDeniesFever"),
+    neckTrauma("rosDeniesChestPain"),
+  ],
+  rosRedFlags: [
+    neckTrauma("rfMidlineCervicalTenderness"),
+    neckTrauma("rfNeurologicDeficit"),
+    neckTrauma("rfHighRiskMechanism"),
+    neckTrauma("rfAlteredMentalStatusIntoxication"),
+    neckTrauma("rfAnticoagulatedHeadInjury"),
+    neckTrauma("rfSpinalCordSymptoms"),
+  ],
+  physicalExam: {
+    heent: [
+      neckTrauma("examCervicalMidlineTenderness"),
+      neckTrauma("examParaspinalTenderness"),
+      neckTrauma("examLimitedRangeOfMotion"),
+      neckTrauma("examNoMidlineTenderness"),
+    ],
+    musculoskeletal: [neckTrauma("examUpperExtremityStrengthIntact")],
+    neuroPsych: [
+      neckTrauma("examSensationIntact"),
+      neckTrauma("examReflexesGrosslyIntact"),
+      neckTrauma("examNoFocalNeurologicDeficit"),
+      neckTrauma("examGaitSteady"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    neckTrauma("mdmCervicalSpineInjuryConsidered"),
+    neckTrauma("mdmSpinalCordInjuryConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    neckTrauma("diffCervicalStrain"),
+    neckTrauma("diffCervicalSpineFracture"),
+    neckTrauma("diffLigamentousInjury"),
+    neckTrauma("diffRadiculopathy"),
+    neckTrauma("diffSpinalCordInjury"),
+    neckTrauma("diffConcussionHeadInjury"),
+    neckTrauma("diffMuscleSpasm"),
+  ],
+  mdmDataReviewed: [neckTrauma("mdmCervicalSpineImagingConsideredReviewed")],
+  mdmClinicalRationale: [
+    neckTrauma("mdmNexusCanadianCspineConsiderationsReviewed"),
+    neckTrauma("mdmNeurologicExamDocumented"),
+    neckTrauma("mdmHighRiskMechanismAssessed"),
+    neckTrauma("mdmReturnPrecautionsDiscussed"),
+    neckTrauma("mdmSpineOrthopedicFollowUpConsidered"),
+  ],
+  mdmPlanSummary: [
+    neckTrauma("mdmPainControlProvided"),
+    neckTrauma("mdmReassessmentPerformed"),
+  ],
+  reassessment: [
+    neckTrauma("reassessPainImproved"),
+    neckTrauma("reassessNeurologicExamUnchanged"),
+    neckTrauma("reassessAmbulatoryStatusStable"),
+    neckTrauma("reassessNoNewNeurologicSymptoms"),
+  ],
+  followUpDisposition: [
+    neckTrauma("dispDischargedWithNeckInjuryPrecautions"),
+    neckTrauma("dispReturnWeaknessNumbnessWorseningPain"),
+    neckTrauma("dispFollowUpRecommended"),
+    neckTrauma("dispAdmissionConsultConsideredIfAbnormalImagingOrNeurologicFindings"),
+  ],
+});
+
+/** Back pain trauma — thoracic/lumbar spine and cauda equina red flag documentation framework. */
+export const BACK_PAIN_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    backTrauma("hpiTraumaMechanismReviewed"),
+    backTrauma("hpiBackPainLocationReviewed"),
+    backTrauma("hpiMidlineTendernessReviewed"),
+    backTrauma("hpiRadiationToLegReviewed"),
+    backTrauma("hpiNumbnessTinglingReviewed"),
+    backTrauma("hpiWeaknessReviewed"),
+    backTrauma("hpiBowelBladderSymptomsReviewed"),
+    backTrauma("hpiSaddleAnesthesiaReviewed"),
+    backTrauma("hpiAnticoagulantUseReviewed"),
+    backTrauma("hpiPriorSpineDiseaseReviewed"),
+    backTrauma("hpiAbilityToAmbulateReviewed"),
+  ],
+  rosImportantPositives: [
+    backTrauma("rosBackPain"),
+    backTrauma("rosLegPain"),
+    backTrauma("rosNumbnessTingling"),
+    backTrauma("rosWeakness"),
+    backTrauma("rosDifficultyWalking"),
+  ],
+  rosImportantNegatives: [
+    backTrauma("rosDeniesBowelBladderIncontinence"),
+    backTrauma("rosDeniesSaddleAnesthesia"),
+    backTrauma("rosDeniesFocalWeakness"),
+    backTrauma("rosDeniesNumbness"),
+    backTrauma("rosDeniesFever"),
+    backTrauma("rosDeniesAbdominalPain"),
+  ],
+  rosRedFlags: [
+    backTrauma("rfMidlineSpinalTenderness"),
+    backTrauma("rfNeurologicDeficit"),
+    backTrauma("rfBowelBladderDysfunction"),
+    backTrauma("rfSaddleAnesthesia"),
+    backTrauma("rfHighEnergyMechanism"),
+    backTrauma("rfInabilityToAmbulate"),
+    backTrauma("rfAnticoagulatedTraumaConcern"),
+  ],
+  physicalExam: {
+    musculoskeletal: [
+      backTrauma("examThoracicLumbarTenderness"),
+      backTrauma("examParaspinalTenderness"),
+      backTrauma("examNoMidlineTenderness"),
+    ],
+    neuroPsych: [
+      backTrauma("examLowerExtremityStrengthIntact"),
+      backTrauma("examSensationIntact"),
+      backTrauma("examReflexesGrosslyIntact"),
+      backTrauma("examGaitAssessed"),
+      backTrauma("examNoFocalNeurologicDeficit"),
+      backTrauma("examNoSaddleAnesthesiaReportedExaminedIfApplicable"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    backTrauma("mdmSpinalCordInjuryConsidered"),
+    backTrauma("mdmCaudaEquinaConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    backTrauma("diffBackStrain"),
+    backTrauma("diffVertebralFracture"),
+    backTrauma("diffCompressionFracture"),
+    backTrauma("diffRadiculopathy"),
+    backTrauma("diffSpinalCordInjury"),
+    backTrauma("diffCaudaEquinaSyndrome"),
+    backTrauma("diffRenalInjury"),
+    backTrauma("diffIntraAbdominalInjuryReferredPain"),
+  ],
+  mdmDataReviewed: [backTrauma("mdmSpineImagingConsideredReviewed")],
+  mdmClinicalRationale: [
+    backTrauma("mdmTraumaMechanismReviewed"),
+    backTrauma("mdmNeurologicRedFlagsAssessed"),
+    backTrauma("mdmCaudaEquinaSymptomsReviewed"),
+    backTrauma("mdmReturnPrecautionsDiscussed"),
+    backTrauma("mdmSpineFollowUpConsidered"),
+  ],
+  mdmPlanSummary: [
+    backTrauma("mdmPainControlProvided"),
+    backTrauma("mdmAmbulatoryReassessmentPerformed"),
+  ],
+  reassessment: [
+    backTrauma("reassessPainImproved"),
+    backTrauma("reassessNeurologicExamUnchanged"),
+    backTrauma("reassessAmbulationReassessed"),
+    backTrauma("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    backTrauma("dispDischargedWithBackInjuryPrecautions"),
+    backTrauma("dispReturnWeaknessNumbnessBowelBladderChanges"),
+    backTrauma("dispFollowUpRecommended"),
+    backTrauma("dispAdmissionConsultConsideredIfNeurologicDeficitOrImagingAbnormality"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -2999,6 +3393,10 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   adult_diarrhea: ADULT_DIARRHEA_COMPLAINT_INTEL,
   medication_refill: MEDICATION_REFILL_COMPLAINT_INTEL,
   observation_reassessment: OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+  mvc: MVC_COLLISION_COMPLAINT_INTEL,
+  assault: ASSAULT_TRAUMA_COMPLAINT_INTEL,
+  neck_pain_trauma: NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  back_pain: BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -3036,6 +3434,12 @@ export const BATCH8_COMPLAINT_TEMPLATE_IDS = [
   "medication_refill",
   "observation_reassessment",
 ] as const;
+export const BATCH9_COMPLAINT_TEMPLATE_IDS = [
+  "mvc",
+  "assault",
+  "neck_pain_trauma",
+  "back_pain",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -3045,6 +3449,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH6_COMPLAINT_TEMPLATE_IDS,
   ...BATCH7_COMPLAINT_TEMPLATE_IDS,
   ...BATCH8_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH9_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;

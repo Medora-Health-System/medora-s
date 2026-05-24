@@ -38,6 +38,11 @@ import {
   ADULT_DIARRHEA_COMPLAINT_INTEL,
   MEDICATION_REFILL_COMPLAINT_INTEL,
   OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+  BATCH9_COMPLAINT_TEMPLATE_IDS,
+  MVC_COLLISION_COMPLAINT_INTEL,
+  ASSAULT_TRAUMA_COMPLAINT_INTEL,
+  NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
   FALL_COMPLAINT_INTEL,
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
@@ -1149,6 +1154,147 @@ describe("provider documentation complaint intelligence (19N.11 Batch 8)", () =>
   });
 
   it("preserves chip toggle wiring for Batch 8 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.12 Batch 9)", () => {
+  it("maps Batch 9 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.mvc).toBe(MVC_COLLISION_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.assault).toBe(ASSAULT_TRAUMA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.neck_pain_trauma).toBe(NECK_PAIN_TRAUMA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.back_pain).toBe(BACK_PAIN_TRAUMA_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 9 template", () => {
+    for (const bundle of [
+      MVC_COLLISION_COMPLAINT_INTEL,
+      ASSAULT_TRAUMA_COMPLAINT_INTEL,
+      NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+      BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 9 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH9_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const mvcKeys = flattenComplaintIntelligenceKeys(MVC_COLLISION_COMPLAINT_INTEL);
+    const assaultKeys = flattenComplaintIntelligenceKeys(ASSAULT_TRAUMA_COMPLAINT_INTEL);
+    const neckKeys = flattenComplaintIntelligenceKeys(NECK_PAIN_TRAUMA_COMPLAINT_INTEL);
+    const backKeys = flattenComplaintIntelligenceKeys(BACK_PAIN_TRAUMA_COMPLAINT_INTEL);
+    for (const key of mvcKeys) expect(key).toContain(".mvcCollision.");
+    for (const key of assaultKeys) expect(key).toContain(".assaultTrauma.");
+    for (const key of neckKeys) expect(key).toContain(".neckPainTrauma.");
+    for (const key of backKeys) expect(key).toContain(".backPainTrauma.");
+  });
+
+  it("does not leak unrelated complaint chips into Batch 9 trauma bundles", () => {
+    const mvcKeys = flattenComplaintIntelligenceKeys(MVC_COLLISION_COMPLAINT_INTEL);
+    const assaultKeys = flattenComplaintIntelligenceKeys(ASSAULT_TRAUMA_COMPLAINT_INTEL);
+    const neckKeys = flattenComplaintIntelligenceKeys(NECK_PAIN_TRAUMA_COMPLAINT_INTEL);
+    const backKeys = flattenComplaintIntelligenceKeys(BACK_PAIN_TRAUMA_COMPLAINT_INTEL);
+    expect(mvcKeys.some((key) => key.includes(".psychiatricBehavioral."))).toBe(false);
+    expect(mvcKeys.some((key) => key.includes(".flankPain."))).toBe(false);
+    expect(mvcKeys.some((key) => key.includes(".asthmaWheezing."))).toBe(false);
+    expect(assaultKeys.some((key) => key.includes(".medicationRefill."))).toBe(false);
+    expect(assaultKeys.some((key) => key.includes(".adultDiarrhea."))).toBe(false);
+    expect(assaultKeys.some((key) => key.includes(".adultNauseaVomiting."))).toBe(false);
+    expect(neckKeys.some((key) => key.includes(".headache.hpiThunderclapOnset"))).toBe(false);
+    expect(neckKeys.some((key) => key.includes(".headache."))).toBe(false);
+    expect(backKeys.some((key) => key.includes(".flankPain.diffRenalColic"))).toBe(false);
+    expect(backKeys.some((key) => key.includes(".flankPain."))).toBe(false);
+    expect(backKeys.some((key) => key.includes(".backPainTrauma.diffRenalInjury"))).toBe(true);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 9 bundle", () => {
+    for (const bundle of [
+      MVC_COLLISION_COMPLAINT_INTEL,
+      ASSAULT_TRAUMA_COMPLAINT_INTEL,
+      NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+      BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 9 templates expose expected intelligence entry points", () => {
+    const mvc = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "mvc");
+    const assault = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "assault");
+    const neck = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "neck_pain_trauma");
+    const back = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "back_pain");
+    expect(mvc?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriverPassenger"
+    );
+    expect(mvc?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.mvcCollision.diffCervicalSpineInjury"
+    );
+    expect(assault?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.assaultTrauma.diffStrangulationInjury"
+    );
+    expect(neck?.complaintIntelligence?.mdmClinicalRationale).toContain(
+      "providerDocumentationComplaintIntel.neckPainTrauma.mdmNexusCanadianCspineConsiderationsReviewed"
+    );
+    expect(back?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome"
+    );
+    expect(mvc?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaMvcMechanismReminder");
+    expect(assault?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaAssaultSafetyReminder");
+    expect(neck?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaNeckSpineCspineReminder");
+    expect(back?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaBackSpineRedFlagsReminder");
+  });
+
+  it("leaves Batch 1–8 intelligence bundles unchanged", () => {
+    expect(FALL_COMPLAINT_INTEL.hpi).toContain("providerDocumentationComplaintIntel.fall.hpiMechanicalFall");
+    expect(HEAD_INJURY_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.headInjury.diffConcussion"
+    );
+    expect(ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiNauseaDurationReviewed"
+    );
+  });
+
+  it("uses i18n keys for all Batch 9 complaint intelligence fragments", () => {
+    for (const bundle of [
+      MVC_COLLISION_COMPLAINT_INTEL,
+      ASSAULT_TRAUMA_COMPLAINT_INTEL,
+      NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+      BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(MVC_COLLISION_COMPLAINT_INTEL)).not.toMatch(
+      /billingLevel|CPT|autoBill|chargeCapture/i
+    );
+  });
+
+  it("preserves chip toggle wiring for Batch 9 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"

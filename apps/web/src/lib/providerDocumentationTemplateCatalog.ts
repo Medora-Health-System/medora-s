@@ -29,6 +29,10 @@ import {
   ADULT_DIARRHEA_COMPLAINT_INTEL,
   MEDICATION_REFILL_COMPLAINT_INTEL,
   OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+  MVC_COLLISION_COMPLAINT_INTEL,
+  ASSAULT_TRAUMA_COMPLAINT_INTEL,
+  NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -221,7 +225,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     {
       cardiovascular: ["erMseExamChips.cardioRrr"],
       abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaMvcMechanismReminder",
+      "providerDocumentationPromptReminders.traumaCspine",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    MVC_COLLISION_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "assault",
@@ -231,7 +242,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posHeadache", "erMseRosChips.posAbdominalPain"],
     ["providerDocumentationWorkspace.stickerRosNoNeckStiffness"],
     { mdmConsultsDiscussed: ["erMseMdmChips.conNursing", "erMseMdmGuidance.lawEnforcementIfApplicable"] },
-    { skin: ["erMseExamChips.skinLacerationPresent", "erMseExamChips.skinWarmDry"] }
+    { skin: ["erMseExamChips.skinLacerationPresent", "erMseExamChips.skinWarmDry"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaAssaultSafetyReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    ASSAULT_TRAUMA_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "head_injury",
@@ -302,7 +319,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posWeakness"],
     ["erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoBowelBladder"],
     { mdmDataReviewed: ["erMseMdmChips.planImaging"] },
-    { musculoskeletal: ["erMseExamChips.mskTendernessPresent"], neuroPsych: ["erMseExamChips.neuroFollowsCommands"] }
+    { musculoskeletal: ["erMseExamChips.mskTendernessPresent"], neuroPsych: ["erMseExamChips.neuroFollowsCommands"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaBackSpineRedFlagsReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    BACK_PAIN_TRAUMA_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "neck_pain_trauma",
@@ -312,7 +335,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posWeakness"],
     ["providerDocumentationWorkspace.stickerRosNoNeckStiffness", "erMseRosChips.negDeniesWeakness"],
     { mdmDataReviewed: ["erMseMdmChips.planImaging", "erMseMdmGuidance.cspineClearanceConsidered"] },
-    { heent: ["erMseExamChips.heentHeadAtraumatic"], musculoskeletal: ["providerDocumentationWorkspace.stickerExamLimitedRom"] }
+    { heent: ["erMseExamChips.heentHeadAtraumatic"], musculoskeletal: ["providerDocumentationWorkspace.stickerExamLimitedRom"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaNeckSpineCspineReminder",
+      "providerDocumentationPromptReminders.traumaCspine",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    NECK_PAIN_TRAUMA_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "crush_injury",
