@@ -35,6 +35,7 @@ export * from "./ndcNormalize.js";
 export * from "./mar/marClinicalAction.js";
 export * from "./mar/medicationAdministrationEffectiveTime.js";
 export * from "./mar/medicationAdministrationInfusionMar.js";
+export * from "./mar/medicationAdministrationInjectionSite.js";
 export * from "./orders/orderItemDisplayLabels.js";
 export * from "./orders/careProcedureEffectiveClinicalTime.js";
 export * from "./orders/labRadiologyEffectiveClinicalTime.js";

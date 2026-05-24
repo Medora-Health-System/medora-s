@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
+import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
@@ -636,6 +637,11 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   /// ER-3: optional NDC string (accepted formats normalized server-side).
   ndc: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** IM administration site (required server-side when marAction=administered and route is IM). */
+  injectionSite: z.preprocess(
+    emptyStrToUndefined,
+    z.enum(imInjectionSiteValues).optional()
+  ),
   /** Required when documented allergies exist on the visit and MAR outcome is administered (server-enforced). */
   safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
   /** Phase 15F-B: optional clinical administration time at create (ISO-8601 UTC); `administeredAt` stays documented time. */

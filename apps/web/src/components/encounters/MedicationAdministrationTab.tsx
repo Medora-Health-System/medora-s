@@ -22,6 +22,11 @@ import {
   mergeAdvancedMedicationLineWithDraft,
   isMedicationInfusionCandidate,
   medicationAdministrationCountsAsCompletedAdministration,
+  imInjectionSiteValues,
+  isIntramuscularMarRoute,
+  marModalRequiresInjectionSite,
+  validateImInjectionSiteForMarCreate,
+  type ImInjectionSiteId,
   type MedicationInfusionCandidateInput,
   type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
@@ -270,9 +275,18 @@ function actionLabel(a: MarAction, tr: (k: string) => string): string {
   return tr(`marTab.actions.${a}`);
 }
 
-function buildMarNotes(action: MarAction, routeLine: string | undefined, userNotes: string, tr: (k: string) => string): string {
+function buildMarNotes(
+  action: MarAction,
+  routeLine: string | undefined,
+  userNotes: string,
+  tr: (k: string) => string,
+  injectionSite?: ImInjectionSiteId | ""
+): string {
   const lines = [`${tr("marTab.noteActionPrefix")} ${actionLabel(action, tr)}`];
   if (routeLine?.trim()) lines.push(`${tr("marTab.noteRoutePrefix")} ${routeLine.trim()}`);
+  if (injectionSite) {
+    lines.push(`${tr("marTab.noteInjectionSitePrefix")} ${tr(`marTab.injectionSites.${injectionSite}`)}`);
+  }
   const n = userNotes.trim();
   if (n) lines.push(n);
   return lines.join("\n");
@@ -336,6 +350,7 @@ export function MedicationAdministrationTab({
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
+  const [modalInjectionSite, setModalInjectionSite] = useState<ImInjectionSiteId | "">("");
   const [modalNotes, setModalNotes] = useState("");
   const [modalDoseValue, setModalDoseValue] = useState("");
   const [modalDoseUnit, setModalDoseUnit] = useState("");
@@ -809,6 +824,19 @@ export function MedicationAdministrationTab({
     });
   }, [modalItem, modalAction, taskRows, modalDoseValue, modalRoute, modalAdminQty]);
 
+  const modalResolvedRoute = modalRoute.trim() || modalItem?.routeHint || "";
+  const modalRequiresInjectionSite = marModalRequiresInjectionSite({
+    marAction: modalAction,
+    route: modalResolvedRoute,
+  });
+
+  useEffect(() => {
+    if (!modalItem) return;
+    if (!isIntramuscularMarRoute(modalResolvedRoute)) {
+      setModalInjectionSite("");
+    }
+  }, [modalItem, modalResolvedRoute]);
+
   const advancedMarWarningCount = marAdvancedMedicationSafetyWarnings.length;
   useEffect(() => {
     if (!modalItem) return;
@@ -835,6 +863,7 @@ export function MedicationAdministrationTab({
     setModalSubmitError(null);
     setModalAction(hideAdmin ? "refused" : "administered");
     setModalRoute(row.routeHint);
+    setModalInjectionSite("");
     setModalNotes("");
     setModalDoseValue("");
     setModalDoseUnit(row.billingUnitHint);
@@ -882,6 +911,24 @@ export function MedicationAdministrationTab({
       setModalSubmitError(t("marTab.errInfusionUseStartStop"));
       return;
     }
+    const routeLine = modalRoute.trim() || modalItem.routeHint;
+    const imSiteValidation = validateImInjectionSiteForMarCreate({
+      marAction: modalAction,
+      route: routeLine,
+      injectionSite: modalInjectionSite || undefined,
+      notes: modalNotes,
+      userNotesOnly: true,
+    });
+    if (imSiteValidation) {
+      setModalSubmitError(
+        t(
+          imSiteValidation.code === "injection_site_other_notes_required"
+            ? "marTab.errInjectionSiteOtherNotesRequired"
+            : "marTab.errInjectionSiteRequired"
+        )
+      );
+      return;
+    }
     const documentedAt = new Date();
     const linkedOrderItem = orderItemById.get(orderItemId);
     const linkedOrder = orders
@@ -925,6 +972,10 @@ export function MedicationAdministrationTab({
     setError(null);
     try {
       const routeLine = modalRoute.trim() || modalItem.routeHint;
+      const requiresInjectionSite = marModalRequiresInjectionSite({
+        marAction: modalAction,
+        route: routeLine,
+      });
       const effectiveFields =
         modalAction === "administered"
           ? buildMarCreateEffectiveTimeRequestFields({
@@ -944,7 +995,14 @@ export function MedicationAdministrationTab({
         ...(modalBillingQty.trim() ? { billingQuantity: Number(modalBillingQty) } : {}),
         ...(modalNdc.trim() ? { ndc: modalNdc.trim() } : {}),
         ...(modalDoseUnit.trim() ? { quantityUnit: modalDoseUnit.trim() } : {}),
-        notes: buildMarNotes(modalAction, routeLine, modalNotes, t),
+        notes: buildMarNotes(
+          modalAction,
+          routeLine,
+          modalNotes,
+          t,
+          requiresInjectionSite ? modalInjectionSite || undefined : undefined
+        ),
+        ...(requiresInjectionSite && modalInjectionSite ? { injectionSite: modalInjectionSite } : {}),
         ...(modalAction === "administered" && marAllergyDocSummary && marAllergySafetyAck
           ? { safetyAcknowledgedMedicationAllergies: true }
           : {}),
@@ -1845,6 +1903,37 @@ export function MedicationAdministrationTab({
               }}
             />
 
+            {modalRequiresInjectionSite ? (
+              <>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  {t("marTab.injectionSiteLabel")} *
+                </label>
+                <select
+                  value={modalInjectionSite}
+                  onChange={(e) => setModalInjectionSite(e.target.value as ImInjectionSiteId | "")}
+                  disabled={submitting}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    marginBottom: 14,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 16,
+                    boxSizing: "border-box",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <option value="">{t("marTab.injectionSitePlaceholder")}</option>
+                  {imInjectionSiteValues.map((siteId) => (
+                    <option key={siteId} value={siteId}>
+                      {t(`marTab.injectionSites.${siteId}`)}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
+
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.ndcLabel")}
             </label>
@@ -2231,6 +2320,15 @@ export function MedicationAdministrationTab({
                 disabled={(() => {
                   if (submitting) return true;
                   if (!modalItem || modalAction !== "administered") return false;
+                  if (
+                    marModalRequiresInjectionSite({
+                      marAction: modalAction,
+                      route: modalRoute.trim() || modalItem.routeHint,
+                    }) &&
+                    !modalInjectionSite
+                  ) {
+                    return true;
+                  }
                   if (marAllergyDocSummary && !marAllergySafetyAck) return true;
                   if (
                     medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) &&

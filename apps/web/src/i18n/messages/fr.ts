@@ -13328,6 +13328,23 @@ export default {
     actionHeading: "Action",
     noteActionPrefix: "Action :",
     noteRoutePrefix: "Voie :",
+    noteInjectionSitePrefix: "Site d'injection :",
+    injectionSiteLabel: "Site d'injection",
+    injectionSitePlaceholder: "Sélectionner le site d'injection…",
+    errInjectionSiteRequired: "Le site d'injection est obligatoire pour une administration IM.",
+    errInjectionSiteOtherNotesRequired:
+      "Documentez le site d'injection dans les notes lorsque « Autre » est sélectionné.",
+    injectionSites: {
+      right_deltoid: "Deltoïde droit",
+      left_deltoid: "Deltoïde gauche",
+      right_vastus_lateralis: "Vaste latéral droit",
+      left_vastus_lateralis: "Vaste latéral gauche",
+      right_ventrogluteal: "Ventroglutéal droit",
+      left_ventrogluteal: "Ventroglutéal gauche",
+      right_dorsogluteal: "Dorsoglutéal droit",
+      left_dorsogluteal: "Dorsoglutéal gauche",
+      other: "Autre / documenté dans les notes",
+    },
     actions: {
       administered: "Administré",
       refused: "Patient refusé",

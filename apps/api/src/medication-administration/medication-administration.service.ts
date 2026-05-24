@@ -34,6 +34,8 @@ import {
   suggestInfusionBilling,
   toMedicationAdministrationEffectiveTimeIsoUtc,
   validateMedicationAdministrationEffectiveTime,
+  validateImInjectionSiteForMarCreate,
+  mergeInjectionSiteIntoMarNotes,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -413,6 +415,16 @@ export class MedicationAdministrationService {
     const marActionResolved: MarClinicalAction =
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
 
+    const imSiteValidation = validateImInjectionSiteForMarCreate({
+      marAction: marActionResolved,
+      route: data.route,
+      injectionSite: data.injectionSite,
+      notes: data.notes,
+    });
+    if (imSiteValidation) {
+      throw new BadRequestException(imSiteValidation.message);
+    }
+
     if (
       orderItemId &&
       linkedMedicationLine &&
@@ -540,6 +552,13 @@ export class MedicationAdministrationService {
         ? administeredAtEffective.toISOString()
         : new Date(administeredAtEffective).toISOString();
 
+    const persistedNotes =
+      marActionResolved === "administered" && data.injectionSite
+        ? mergeInjectionSiteIntoMarNotes(data.notes, data.injectionSite, "fr")
+        : data.notes?.trim()
+          ? data.notes.trim()
+          : null;
+
     const marAuditMetadata: Record<string, unknown> = {
       marOutcome: marActionResolved,
       administeredBy: administeredByUserId,
@@ -547,6 +566,7 @@ export class MedicationAdministrationService {
     };
     if (doseStr) marAuditMetadata.dose = doseStr;
     if (safeRoute) marAuditMetadata.route = safeRoute;
+    if (data.injectionSite) marAuditMetadata.injectionSite = data.injectionSite;
     if (data.safetyAcknowledgedMedicationAllergies === true) {
       marAuditMetadata.safetyAcknowledgedMedicationAllergies = true;
     }
@@ -577,7 +597,7 @@ export class MedicationAdministrationService {
               : MedicationAdministrationInfusionPhase.INFUSION_STOP
             : null,
           infusionSessionKey: serviceOptions?.infusionMar?.infusionSessionKey?.trim() || null,
-          notes: data.notes?.trim() ? data.notes.trim() : null,
+          notes: persistedNotes,
           ...effectiveCreate.prismaFields,
         },
         include: {
