@@ -9,9 +9,9 @@ import {
   PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS,
   PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS,
   PROVIDER_DOCUMENTATION_TEMPLATES,
-  appendDocumentationFragment,
   applyCompleteNormalPhysicalExamPrefill,
   applyCompleteNormalRosPrefill,
+  toggleDocumentationFragment,
   applyProviderDocumentationTemplate,
   buildProviderDocumentationCompleteness,
   buildProviderDocumentationPreviewSections,
@@ -613,17 +613,19 @@ export function ProviderDocumentationWorkspace({
   const patch = (patchValue: Partial<ProviderDocumentationWorkspaceState>) => {
     onChange({ ...value, ...patchValue });
   };
-  const appendField = (field: keyof ProviderDocumentationWorkspaceState, fragmentKey: string) => {
+  const toggleField = (field: keyof ProviderDocumentationWorkspaceState, fragmentKey: string) => {
     const current = value[field];
     if (typeof current !== "string") return;
-    patch({ [field]: appendDocumentationFragment(current, t(fragmentKey)) } as Partial<ProviderDocumentationWorkspaceState>);
+    patch({
+      [field]: toggleDocumentationFragment(current, t(fragmentKey)),
+    } as Partial<ProviderDocumentationWorkspaceState>);
   };
-  const appendExam = (sectionId: ProviderDocumentationExamSectionId, fragmentKey: string) => {
+  const toggleExam = (sectionId: ProviderDocumentationExamSectionId, fragmentKey: string) => {
     onChange({
       ...value,
       physicalExam: {
         ...value.physicalExam,
-        [sectionId]: appendDocumentationFragment(value.physicalExam[sectionId], t(fragmentKey)),
+        [sectionId]: toggleDocumentationFragment(value.physicalExam[sectionId], t(fragmentKey)),
       },
     });
   };
@@ -782,7 +784,7 @@ export function ProviderDocumentationWorkspace({
     if (!chips.length) return null;
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(chip.field, chip.fragmentKey), {
+        {chipRow(chips, (chip) => toggleField(chip.field, chip.fragmentKey), {
           getFieldText: (chip) => String(value[(chip as TemplateFieldChip).field] ?? ""),
         })}
       </ChipGroupView>
@@ -802,7 +804,7 @@ export function ProviderDocumentationWorkspace({
         </p>
         {groups.map((group) => (
           <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
-            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+            {chipRow(group.chips, (chip) => toggleExam(group.sectionId, chip.fragmentKey), {
               tone: "green",
               fieldText: value.physicalExam[group.sectionId],
             })}
@@ -821,7 +823,7 @@ export function ProviderDocumentationWorkspace({
     const chips = template.guidance[guidanceKey]!.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
+        {chipRow(chips, (chip) => toggleField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
       </ChipGroupView>
     );
   };
@@ -845,7 +847,7 @@ export function ProviderDocumentationWorkspace({
     const chips = template.guidance.reassessment.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.activeTemplateSmartSentences")}>
-        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), {
+        {chipRow(chips, (chip) => toggleExam("reassessment", chip.fragmentKey), {
           tone: "green",
           fieldText: value.physicalExam.reassessment,
         })}
@@ -873,7 +875,7 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t(titleKey)}>
-        {chipRow(chips, (chip) => appendField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
+        {chipRow(chips, (chip) => toggleField(field, chip.fragmentKey), { fieldText: String(value[field] ?? "") })}
       </ChipGroupView>
     );
   };
@@ -889,7 +891,7 @@ export function ProviderDocumentationWorkspace({
       <div style={{ marginBottom: 10 }}>
         {groups.map((group) => (
           <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
-            {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+            {chipRow(group.chips, (chip) => toggleExam(group.sectionId, chip.fragmentKey), {
               tone: "green",
               fieldText: value.physicalExam[group.sectionId],
             })}
@@ -904,7 +906,7 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionReassessment")}>
-        {chipRow(chips, (chip) => appendExam("reassessment", chip.fragmentKey), {
+        {chipRow(chips, (chip) => toggleExam("reassessment", chip.fragmentKey), {
           tone: "green",
           fieldText: value.physicalExam.reassessment,
         })}
@@ -917,7 +919,7 @@ export function ProviderDocumentationWorkspace({
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t("providerDocumentationWorkspace.complaintIntelSectionDisposition")}>
-        {chipRow(chips, (chip) => appendField("followUpDisposition", chip.fragmentKey), {
+        {chipRow(chips, (chip) => toggleField("followUpDisposition", chip.fragmentKey), {
           fieldText: value.followUpDisposition,
         })}
       </ChipGroupView>
@@ -1175,14 +1177,14 @@ export function ProviderDocumentationWorkspace({
             {complaintIntelligenceFieldChips(activeTemplate, "hpi", "providerDocumentationWorkspace.complaintIntelSectionHpi")}
             {hpiChipGroups.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
                   fieldText: value.hpi,
                 })}
               </ChipGroupView>
             ))}
             {encounterMode === "OBSERVATION" ? (
               <ChipGroupView title={t("providerDocumentationWorkspace.observationChips")}>
-                {chipRow(OBSERVATION_CHIPS, (chip) => appendField("hpi", chip.fragmentKey), {
+                {chipRow(OBSERVATION_CHIPS, (chip) => toggleField("hpi", chip.fragmentKey), {
                   tone: "green",
                   fieldText: value.hpi,
                 })}
@@ -1243,7 +1245,7 @@ export function ProviderDocumentationWorkspace({
                 {group.field === "rosImportantNegatives" ? (
                   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#92400e" }}>{t("providerDocumentationWorkspace.negativesWarning")}</p>
                 ) : null}
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
                   tone: group.field === "rosImportantNegatives" ? "warn" : undefined,
                   fieldText: String(value[group.field] ?? ""),
                 })}
@@ -1328,7 +1330,7 @@ export function ProviderDocumentationWorkspace({
                     }}
                   />
                 </Field>
-                {chipRow(group.chips, (chip) => appendExam(group.sectionId, chip.fragmentKey), {
+                {chipRow(group.chips, (chip) => toggleExam(group.sectionId, chip.fragmentKey), {
                   tone: "green",
                   fieldText: value.physicalExam[group.sectionId],
                 })}
@@ -1376,7 +1378,7 @@ export function ProviderDocumentationWorkspace({
             )}
             {MDM_CHIPS.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => appendField(group.field, chip.fragmentKey), {
+                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
                   fieldText: String(value[group.field] ?? ""),
                 })}
               </ChipGroupView>

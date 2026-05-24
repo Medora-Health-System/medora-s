@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import {
   appendDocumentationFragment,
   documentationFragmentPresentInField,
+  removeDocumentationFragment,
+  toggleDocumentationFragment,
   PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_ROS_TEXT,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
@@ -71,6 +73,30 @@ describe("providerDocumentationModel", () => {
   it("detects whether a documentation fragment is already present in a field", () => {
     expect(documentationFragmentPresentInField("nausea; vomiting", "vomiting")).toBe(true);
     expect(documentationFragmentPresentInField("nausea; vomiting", "fever")).toBe(false);
+  });
+
+  it("removes exact documentation fragments while preserving unrelated typed text", () => {
+    expect(removeDocumentationFragment("soft; non-tender; patient reports chronic pain", "soft")).toBe(
+      "non-tender; patient reports chronic pain"
+    );
+    expect(removeDocumentationFragment("soft; non-tender; patient reports chronic pain", "non-tender")).toBe(
+      "soft; patient reports chronic pain"
+    );
+    expect(removeDocumentationFragment("soft; non-tender", "soft")).toBe("non-tender");
+    expect(removeDocumentationFragment("soft; non-tender", "non-tender")).toBe("soft");
+    expect(removeDocumentationFragment("soft", "soft")).toBe("");
+  });
+
+  it("cleans semicolons and spaces when removing documentation fragments", () => {
+    expect(removeDocumentationFragment("soft;  non-tender  ", "soft")).toBe("non-tender");
+    expect(removeDocumentationFragment("  soft  ", "Soft")).toBe("");
+  });
+
+  it("toggles documentation fragments between insert and remove", () => {
+    expect(toggleDocumentationFragment("", "soft")).toBe("soft");
+    expect(toggleDocumentationFragment("soft", "soft")).toBe("");
+    expect(toggleDocumentationFragment("soft; non-tender", "soft")).toBe("non-tender");
+    expect(toggleDocumentationFragment("non-tender", "soft")).toBe("non-tender; soft");
   });
 
   it("resolves ED and observation titles and timeline labels safely", () => {

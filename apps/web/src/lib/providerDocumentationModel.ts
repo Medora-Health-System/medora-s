@@ -507,30 +507,49 @@ function normalizeFragment(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function splitDocumentationFragments(fieldText: string): string[] {
+  const currentTrimmed = fieldText.trim();
+  if (!currentTrimmed) return [];
+  return currentTrimmed
+    .split(/\s*;\s*/u)
+    .map((part) => normalizeFragment(part))
+    .filter(Boolean);
+}
+
+function joinDocumentationFragments(parts: string[]): string {
+  return parts.join("; ");
+}
+
 export function appendDocumentationFragment(current: string, fragment: string): string {
   const clean = normalizeFragment(fragment);
   if (!clean) return current;
-  const currentTrimmed = current.trim();
-  if (!currentTrimmed) return clean;
-  const parts = currentTrimmed
-    .split(/\s*;\s*/u)
-    .map((p) => normalizeFragment(p))
-    .filter(Boolean);
-  const alreadyPresent = parts.some((p) => p.toLocaleLowerCase() === clean.toLocaleLowerCase());
-  if (alreadyPresent) return current;
-  return `${currentTrimmed}; ${clean}`;
+  const parts = splitDocumentationFragments(current);
+  const alreadyPresent = parts.some((part) => part.toLocaleLowerCase() === clean.toLocaleLowerCase());
+  if (alreadyPresent) return current.trim() ? joinDocumentationFragments(parts) : clean;
+  return joinDocumentationFragments([...parts, clean]);
+}
+
+export function removeDocumentationFragment(current: string, fragment: string): string {
+  const clean = normalizeFragment(fragment);
+  if (!clean) return current;
+  const parts = splitDocumentationFragments(current);
+  const filtered = parts.filter((part) => part.toLocaleLowerCase() !== clean.toLocaleLowerCase());
+  if (filtered.length === parts.length) return current;
+  return joinDocumentationFragments(filtered);
+}
+
+export function toggleDocumentationFragment(current: string, fragment: string): string {
+  if (documentationFragmentPresentInField(current, fragment)) {
+    return removeDocumentationFragment(current, fragment);
+  }
+  return appendDocumentationFragment(current, fragment);
 }
 
 export function documentationFragmentPresentInField(fieldText: string, fragment: string): boolean {
   const clean = normalizeFragment(fragment);
   if (!clean) return false;
-  const currentTrimmed = fieldText.trim();
-  if (!currentTrimmed) return false;
-  const parts = currentTrimmed
-    .split(/\s*;\s*/u)
-    .map((p) => normalizeFragment(p))
-    .filter(Boolean);
-  return parts.some((p) => p.toLocaleLowerCase() === clean.toLocaleLowerCase());
+  const parts = splitDocumentationFragments(fieldText);
+  return parts.some((part) => part.toLocaleLowerCase() === clean.toLocaleLowerCase());
 }
 
 export const PROVIDER_DOCUMENTATION_COMPLETE_NORMAL_PHYSICAL_EXAM_FRAGMENTS: Record<
