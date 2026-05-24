@@ -25,6 +25,10 @@ import {
   HYPERGLYCEMIA_COMPLAINT_INTEL,
   HYPERTENSION_COMPLAINT_INTEL,
   ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+  ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+  ADULT_DIARRHEA_COMPLAINT_INTEL,
+  MEDICATION_REFILL_COMPLAINT_INTEL,
+  OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -708,7 +712,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
       heent: ["erMseExamChips.heentDryMm"],
       abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "providerDocumentationWorkspace.stickerExamBowelSoundsPresent"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultNauseaVomitingGiReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL
   ),
   adultTemplate(
     "adult_diarrhea",
@@ -726,7 +736,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       general: ["erMseExamChips.genAlert"],
       abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
       heent: ["erMseExamChips.heentDryMm"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultDiarrheaInfectiousReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    ADULT_DIARRHEA_COMPLAINT_INTEL
   ),
   adultTemplate(
     "adult_seizure",
@@ -973,7 +989,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmDataReviewed: ["erMseMdmGuidance.prescriptionDrugManagementReviewed", "erMseMdmGuidance.externalRecordsReviewed"],
       mdmPlanSummary: ["erMseMdmGuidance.medicationContinuationDiscussed"],
     },
-    { general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"] }
+    { general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultMedicationRefillSafetyReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    MEDICATION_REFILL_COMPLAINT_INTEL
   ),
   adultTemplate(
     "allergic_reaction_rash",
@@ -1046,9 +1068,11 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       followUpDisposition: ["providerDocumentationSmartSentences.observationDischargeReadiness"],
     },
     promptReminderKeys: [
+      "providerDocumentationPromptReminders.adultObservationReassessmentReminder",
       "providerDocumentationPromptReminders.observationPendingResults",
       "providerDocumentationPromptReminders.emtalaReassessment",
     ],
+    complaintIntelligence: OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
   },
 ];
 

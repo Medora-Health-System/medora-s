@@ -17,6 +17,8 @@
  *   pediatric abdominal pain red flags; caregiver historian documentation standards.
  * - Batch 7: IDSA UTI concepts; ADA hyperglycemia/DKA; AHA/ACC hypertension emergency; allergy/anaphylaxis;
  *   dermatologic rash red-flag documentation.
+ * - Batch 8: ED nausea/vomiting and diarrhea documentation; medication refill medico-legal standards;
+ *   observation/reassessment and discharge readiness documentation.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -68,6 +70,10 @@ const uti = (key: string) => `providerDocumentationComplaintIntel.utiUrinarySymp
 const hyper = (key: string) => `providerDocumentationComplaintIntel.hyperglycemia.${key}`;
 const ht = (key: string) => `providerDocumentationComplaintIntel.hypertension.${key}`;
 const allergy = (key: string) => `providerDocumentationComplaintIntel.allergicReactionRash.${key}`;
+const adultNv = (key: string) => `providerDocumentationComplaintIntel.adultNauseaVomiting.${key}`;
+const adultDiarrhea = (key: string) => `providerDocumentationComplaintIntel.adultDiarrhea.${key}`;
+const medRefill = (key: string) => `providerDocumentationComplaintIntel.medicationRefill.${key}`;
+const obsReassess = (key: string) => `providerDocumentationComplaintIntel.observationReassessment.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -2581,6 +2587,386 @@ export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationCompla
   ],
 });
 
+/** Adult nausea / vomiting — GI red flag and dehydration documentation framework. */
+export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    adultNv("hpiNauseaDurationReviewed"),
+    adultNv("hpiVomitingDurationReviewed"),
+    adultNv("hpiNumberOfEpisodesReviewed"),
+    adultNv("hpiInabilityToToleratePo"),
+    adultNv("hpiAbdominalPainReviewed"),
+    adultNv("hpiFeverReviewed"),
+    adultNv("hpiDiarrheaReviewed"),
+    adultNv("hpiHeadacheReviewed"),
+    adultNv("hpiPregnancyConcernReviewed"),
+    adultNv("hpiSickContactsReviewed"),
+    adultNv("hpiRecentFoodExposureReviewed"),
+    adultNv("hpiRecentMedicationChangeReviewed"),
+    adultNv("hpiAlcoholSubstanceUseReviewed"),
+  ],
+  rosImportantPositives: [
+    adultNv("rosNausea"),
+    adultNv("rosVomiting"),
+    adultNv("rosAbdominalPain"),
+    adultNv("rosDiarrhea"),
+    adultNv("rosFever"),
+    adultNv("rosDizziness"),
+    adultNv("rosDecreasedOralIntake"),
+  ],
+  rosImportantNegatives: [
+    adultNv("rosDeniesSevereAbdominalPain"),
+    adultNv("rosDeniesHematemesis"),
+    adultNv("rosDeniesBiliousEmesis"),
+    adultNv("rosDeniesChestPain"),
+    adultNv("rosDeniesSevereHeadache"),
+    adultNv("rosDeniesPregnancyConcern"),
+  ],
+  rosRedFlags: [
+    adultNv("rfDehydrationConcern"),
+    adultNv("rfGiBleedConcern"),
+    adultNv("rfBowelObstructionConcern"),
+    adultNv("rfSurgicalAbdomenConcern"),
+    adultNv("rfIntracranialProcessConcern"),
+    adultNv("rfDkaMetabolicConcern"),
+    adultNv("rfPregnancyRelatedVomitingConcern"),
+  ],
+  physicalExam: {
+    general: [adultNv("examUncomfortableAppearing"), adultNv("examNonToxicAppearing")],
+    heent: [adultNv("examDryMucousMembranes")],
+    abdomen: [
+      adultNv("examAbdomenSoft"),
+      adultNv("examAbdomenNonTender"),
+      adultNv("examEpigastricTenderness"),
+      adultNv("examNoGuarding"),
+      adultNv("examNoReboundTenderness"),
+    ],
+    neuroPsych: [adultNv("examNeurologicallyIntact")],
+  },
+  mdmWorkingAssessment: [
+    adultNv("mdmSurgicalAbdomenConsidered"),
+    adultNv("mdmDehydrationConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    adultNv("diffViralGastroenteritis"),
+    adultNv("diffGastritis"),
+    adultNv("diffFoodborneIllness"),
+    adultNv("diffDehydration"),
+    adultNv("diffBowelObstruction"),
+    adultNv("diffAppendicitis"),
+    adultNv("diffCholecystitis"),
+    adultNv("diffPancreatitis"),
+    adultNv("diffDkaMetabolicAbnormality"),
+    adultNv("diffPregnancyRelatedVomiting"),
+  ],
+  mdmDataReviewed: [
+    adultNv("mdmLabsReviewedIfObtained"),
+    adultNv("mdmElectrolytesReviewed"),
+    adultNv("mdmPregnancyTestingReviewedIfApplicable"),
+  ],
+  mdmClinicalRationale: [
+    adultNv("mdmHydrationStatusAssessed"),
+    adultNv("mdmAbdominalImagingConsideredIfRedFlags"),
+    adultNv("mdmPoChallengePerformed"),
+    adultNv("mdmSerialReassessmentPerformed"),
+  ],
+  mdmPlanSummary: [
+    adultNv("mdmAntiemeticTherapyAdministeredConsidered"),
+    adultNv("mdmIvFluidsAdministeredConsidered"),
+  ],
+  mdmAdmitObserveDischarge: [adultNv("mdmAdmissionConsideredPersistentVomitingDehydration")],
+  reassessment: [
+    adultNv("reassessNauseaImproved"),
+    adultNv("reassessVomitingControlled"),
+    adultNv("reassessToleratingOralIntake"),
+    adultNv("reassessAbdominalExamReassuring"),
+    adultNv("reassessHydrationStatusImproved"),
+  ],
+  followUpDisposition: [
+    adultNv("dispDischargeAfterSuccessfulPoChallenge"),
+    adultNv("dispReturnPersistentVomiting"),
+    adultNv("dispReturnSevereAbdominalPain"),
+    adultNv("dispReturnBloodInVomitOrStool"),
+    adultNv("dispFollowUpRecommended"),
+  ],
+});
+
+/** Adult diarrhea — infectious diarrhea / C. diff documentation framework. */
+export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    adultDiarrhea("hpiDiarrheaDurationReviewed"),
+    adultDiarrhea("hpiStoolFrequencyReviewed"),
+    adultDiarrhea("hpiWateryDiarrhea"),
+    adultDiarrhea("hpiBloodyDiarrheaReviewed"),
+    adultDiarrhea("hpiFeverReviewed"),
+    adultDiarrhea("hpiAbdominalPainReviewed"),
+    adultDiarrhea("hpiRecentAntibioticsReviewed"),
+    adultDiarrhea("hpiRecentTravelReviewed"),
+    adultDiarrhea("hpiSickContactsReviewed"),
+    adultDiarrhea("hpiFoodExposureReviewed"),
+    adultDiarrhea("hpiImmunocompromisedStatusReviewed"),
+    adultDiarrhea("hpiHydrationOralIntakeReviewed"),
+  ],
+  rosImportantPositives: [
+    adultDiarrhea("rosDiarrhea"),
+    adultDiarrhea("rosAbdominalCramping"),
+    adultDiarrhea("rosFever"),
+    adultDiarrhea("rosNausea"),
+    adultDiarrhea("rosVomiting"),
+    adultDiarrhea("rosDecreasedOralIntake"),
+  ],
+  rosImportantNegatives: [
+    adultDiarrhea("rosDeniesBloodyStool"),
+    adultDiarrhea("rosDeniesSevereAbdominalPain"),
+    adultDiarrhea("rosDeniesPersistentVomiting"),
+    adultDiarrhea("rosDeniesSyncope"),
+    adultDiarrhea("rosDeniesRecentAntibiotics"),
+    adultDiarrhea("rosDeniesTravelExposure"),
+  ],
+  rosRedFlags: [
+    adultDiarrhea("rfBloodyDiarrhea"),
+    adultDiarrhea("rfSevereDehydrationConcern"),
+    adultDiarrhea("rfSepsisConcern"),
+    adultDiarrhea("rfCDifficileConcern"),
+    adultDiarrhea("rfImmunocompromisedPatient"),
+    adultDiarrhea("rfSevereAbdominalPainPeritonealSigns"),
+  ],
+  physicalExam: {
+    general: [
+      adultDiarrhea("examNonToxicAppearing"),
+      adultDiarrhea("examNormalPerfusion"),
+      adultDiarrhea("examNoAcuteDistress"),
+    ],
+    heent: [adultDiarrhea("examDryMucousMembranes")],
+    abdomen: [
+      adultDiarrhea("examAbdomenSoft"),
+      adultDiarrhea("examMildDiffuseTenderness"),
+      adultDiarrhea("examNoGuarding"),
+      adultDiarrhea("examNoReboundTenderness"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    adultDiarrhea("mdmCDifficileRiskReviewed"),
+    adultDiarrhea("mdmSepsisConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    adultDiarrhea("diffViralGastroenteritis"),
+    adultDiarrhea("diffBacterialEnteritis"),
+    adultDiarrhea("diffFoodborneIllness"),
+    adultDiarrhea("diffCDifficileColitis"),
+    adultDiarrhea("diffDehydration"),
+    adultDiarrhea("diffInflammatoryBowelDiseaseFlare"),
+    adultDiarrhea("diffAppendicitis"),
+    adultDiarrhea("diffDiverticulitis"),
+    adultDiarrhea("diffMedicationRelatedDiarrhea"),
+  ],
+  mdmDataReviewed: [
+    adultDiarrhea("mdmStoolTestingConsideredBasedOnRisk"),
+    adultDiarrhea("mdmLabsReviewedIfObtained"),
+  ],
+  mdmClinicalRationale: [
+    adultDiarrhea("mdmHydrationStatusAssessed"),
+    adultDiarrhea("mdmAbdominalImagingConsideredIfRedFlags"),
+    adultDiarrhea("mdmReturnPrecautionsDiscussed"),
+    adultDiarrhea("mdmSerialReassessmentPerformed"),
+  ],
+  mdmPlanSummary: [
+    adultDiarrhea("mdmIvFluidsConsideredAdministered"),
+    adultDiarrhea("mdmAntibioticsConsideredOnlyIfIndicated"),
+  ],
+  reassessment: [
+    adultDiarrhea("reassessSymptomsStableImproved"),
+    adultDiarrhea("reassessToleratingOralIntake"),
+    adultDiarrhea("reassessHydrationStatusReassessed"),
+    adultDiarrhea("reassessAbdominalExamReassuring"),
+  ],
+  followUpDisposition: [
+    adultDiarrhea("dispDischargeHydrationInstructions"),
+    adultDiarrhea("dispReturnBloodyStool"),
+    adultDiarrhea("dispReturnWorseningAbdominalPain"),
+    adultDiarrhea("dispReturnDehydrationSymptoms"),
+    adultDiarrhea("dispFollowUpRecommended"),
+  ],
+});
+
+/** Medication refill — medico-legal refill documentation framework. */
+export const MEDICATION_REFILL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    medRefill("hpiMedicationNameReviewed"),
+    medRefill("hpiDoseReviewed"),
+    medRefill("hpiLastDoseReviewed"),
+    medRefill("hpiReasonForRunningOutReviewed"),
+    medRefill("hpiPrescribingClinicianReviewed"),
+    medRefill("hpiChronicConditionReviewed"),
+    medRefill("hpiSymptomsFromMissedMedicationReviewed"),
+    medRefill("hpiAdverseEffectsReviewed"),
+    medRefill("hpiControlledSubstanceStatusReviewed"),
+    medRefill("hpiPdmpReviewedIfApplicable"),
+    medRefill("hpiFollowUpAccessReviewed"),
+  ],
+  rosImportantPositives: [
+    medRefill("rosMedicationRelatedSymptoms"),
+    medRefill("rosWithdrawalSymptomsReviewed"),
+    medRefill("rosChronicConditionSymptomsReviewed"),
+    medRefill("rosPainSymptomsReviewedIfApplicable"),
+  ],
+  rosImportantNegatives: [
+    medRefill("rosDeniesChestPain"),
+    medRefill("rosDeniesShortnessOfBreath"),
+    medRefill("rosDeniesNeurologicSymptoms"),
+    medRefill("rosDeniesSevereWithdrawalSymptoms"),
+    medRefill("rosDeniesSuicidalIdeationIfRelevant"),
+    medRefill("rosDeniesAdverseMedicationReaction"),
+  ],
+  rosRedFlags: [
+    medRefill("rfControlledSubstanceRefillRequest"),
+    medRefill("rfWithdrawalConcern"),
+    medRefill("rfMedicationMisuseConcern"),
+    medRefill("rfUnsafeChronicDiseaseControl"),
+    medRefill("rfInabilityToAccessPrimaryCare"),
+    medRefill("rfHighRiskMedicationRequest"),
+  ],
+  physicalExam: {
+    general: [
+      medRefill("examNoAcuteDistress"),
+      medRefill("examVitalSignsReviewed"),
+      medRefill("examAlertAndOriented"),
+    ],
+    respiratory: [medRefill("examNoRespiratoryDistress")],
+    neuroPsych: [medRefill("examNoFocalNeurologicDeficit")],
+    cardiovascular: [medRefill("examChronicConditionFocusedExamPerformed")],
+  },
+  mdmWorkingAssessment: [
+    medRefill("mdmChronicConditionStabilityAssessed"),
+    medRefill("mdmRefillAppropriatenessAssessed"),
+  ],
+  mdmDifferentialSynthesis: [
+    medRefill("diffMedicationLapse"),
+    medRefill("diffChronicDiseaseMedicationNeed"),
+    medRefill("diffWithdrawalSyndrome"),
+    medRefill("diffMedicationAdverseEffect"),
+    medRefill("diffUncontrolledChronicCondition"),
+    medRefill("diffSubstanceMisuseDiversionConcern"),
+  ],
+  mdmDataReviewed: [
+    medRefill("mdmMedicationHistoryReviewed"),
+    medRefill("mdmPharmacyPrescriptionHistoryReviewedIfAvailable"),
+    medRefill("mdmPdmpReviewedIfControlledSubstanceApplicable"),
+  ],
+  mdmClinicalRationale: [
+    medRefill("mdmRisksBenefitsOfRefillDiscussed"),
+    medRefill("mdmControlledSubstancePrescribingPolicyDiscussed"),
+    medRefill("mdmFollowUpWithPcpSpecialistEmphasized"),
+    medRefill("mdmRedFlagSymptomsReviewed"),
+    medRefill("mdmAlternativeTreatmentOfferedIfRefillNotAppropriate"),
+  ],
+  mdmPlanSummary: [medRefill("mdmLimitedBridgeRefillConsidered")],
+  reassessment: [
+    medRefill("reassessPatientRemainsStable"),
+    medRefill("reassessNoEmergentConditionIdentified"),
+    medRefill("reassessFollowUpPlanReviewed"),
+    medRefill("reassessMedicationInstructionsReviewed"),
+  ],
+  followUpDisposition: [
+    medRefill("dispLimitedRefillProvidedIfAppropriate"),
+    medRefill("dispRefillDeclinedWithExplanationIfUnsafe"),
+    medRefill("dispPrimaryCareFollowUpRequired"),
+    medRefill("dispReturnPrecautionsDiscussed"),
+    medRefill("dispMedicationSafetyInstructionsProvided"),
+  ],
+});
+
+/** Observation reassessment — interval reassessment and discharge readiness documentation framework. */
+export const OBSERVATION_REASSESSMENT_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    obsReassess("hpiObservationReasonReviewed"),
+    obsReassess("hpiIntervalSymptomsReviewed"),
+    obsReassess("hpiResponseToTreatmentReviewed"),
+    obsReassess("hpiRepeatVitalSignsReviewed"),
+    obsReassess("hpiPainStatusReviewed"),
+    obsReassess("hpiOralIntakeReviewed"),
+    obsReassess("hpiAmbulationStatusReviewed"),
+    obsReassess("hpiFamilyCaregiverUpdateReviewed"),
+    obsReassess("hpiConsultantRecommendationsReviewed"),
+    obsReassess("hpiPendingTestResultsReviewed"),
+  ],
+  rosImportantPositives: [
+    obsReassess("rosPersistentSymptoms"),
+    obsReassess("rosImprovedSymptoms"),
+    obsReassess("rosPainImproved"),
+    obsReassess("rosNauseaImproved"),
+    obsReassess("rosDizzinessImproved"),
+    obsReassess("rosShortnessOfBreathImproved"),
+  ],
+  rosImportantNegatives: [
+    obsReassess("rosDeniesWorseningSymptoms"),
+    obsReassess("rosDeniesNewChestPain"),
+    obsReassess("rosDeniesNewShortnessOfBreath"),
+    obsReassess("rosDeniesNewNeurologicSymptoms"),
+    obsReassess("rosDeniesPersistentVomiting"),
+  ],
+  rosRedFlags: [
+    obsReassess("rfWorseningClinicalStatus"),
+    obsReassess("rfAbnormalRepeatVitals"),
+    obsReassess("rfUncontrolledPain"),
+    obsReassess("rfInabilityToToleratePo"),
+    obsReassess("rfUnsafeAmbulation"),
+    obsReassess("rfNewConcerningSymptoms"),
+    obsReassess("rfPendingCriticalResult"),
+  ],
+  physicalExam: {
+    general: [obsReassess("examImprovedAppearance"), obsReassess("examNoAcuteDistress")],
+    respiratory: [obsReassess("examRepeatCardiopulmonaryExamStable")],
+    abdomen: [obsReassess("examRepeatAbdominalExamStable")],
+    neuroPsych: [
+      obsReassess("examRepeatNeurologicExamStable"),
+      obsReassess("examAmbulatoryWithoutDifficulty"),
+      obsReassess("examToleratingOralIntake"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    obsReassess("mdmDischargeReadinessAssessed"),
+    obsReassess("mdmObservationFailureConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    obsReassess("diffImprovingAcuteCondition"),
+    obsReassess("diffPersistentSymptomsRequiringAdmission"),
+    obsReassess("diffTreatmentResponseIncomplete"),
+    obsReassess("diffEvolvingDiagnosis"),
+    obsReassess("diffDischargeReadiness"),
+    obsReassess("diffObservationFailure"),
+  ],
+  mdmDataReviewed: [
+    obsReassess("mdmPendingStudiesReviewed"),
+    obsReassess("mdmConsultantRecommendationsReviewed"),
+    obsReassess("mdmRepeatVitalsReviewed"),
+  ],
+  mdmClinicalRationale: [
+    obsReassess("mdmIntervalReassessmentPerformed"),
+    obsReassess("mdmResponseToTherapyReviewed"),
+    obsReassess("mdmRepeatExamDocumented"),
+    obsReassess("mdmSharedDecisionMakingDocumented"),
+  ],
+  mdmAdmitObserveDischarge: [
+    obsReassess("mdmAdmissionConsidered"),
+    obsReassess("mdmObservationContinuedConsidered"),
+  ],
+  reassessment: [
+    obsReassess("reassessSymptomsImproved"),
+    obsReassess("reassessRepeatExamStable"),
+    obsReassess("reassessVitalsStable"),
+    obsReassess("reassessPatientAmbulatory"),
+    obsReassess("reassessToleratingOralIntake"),
+    obsReassess("reassessFamilyCaregiverComfortableWithPlan"),
+  ],
+  followUpDisposition: [
+    obsReassess("dispDischargedAfterObservationImprovement"),
+    obsReassess("dispAdmissionDueToPersistentSymptoms"),
+    obsReassess("dispObservationContinued"),
+    obsReassess("dispReturnPrecautionsReviewed"),
+    obsReassess("dispFollowUpArrangedRecommended"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -2609,6 +2995,10 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   hyperglycemia: HYPERGLYCEMIA_COMPLAINT_INTEL,
   hypertension: HYPERTENSION_COMPLAINT_INTEL,
   allergic_reaction_rash: ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+  adult_nausea_vomiting: ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+  adult_diarrhea: ADULT_DIARRHEA_COMPLAINT_INTEL,
+  medication_refill: MEDICATION_REFILL_COMPLAINT_INTEL,
+  observation_reassessment: OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -2640,6 +3030,12 @@ export const BATCH7_COMPLAINT_TEMPLATE_IDS = [
   "hypertension",
   "allergic_reaction_rash",
 ] as const;
+export const BATCH8_COMPLAINT_TEMPLATE_IDS = [
+  "adult_nausea_vomiting",
+  "adult_diarrhea",
+  "medication_refill",
+  "observation_reassessment",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -2648,6 +3044,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH5_COMPLAINT_TEMPLATE_IDS,
   ...BATCH6_COMPLAINT_TEMPLATE_IDS,
   ...BATCH7_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH8_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;

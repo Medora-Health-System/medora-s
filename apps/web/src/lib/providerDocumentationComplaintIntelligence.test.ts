@@ -33,6 +33,11 @@ import {
   HYPERTENSION_COMPLAINT_INTEL,
   ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
   BATCH7_COMPLAINT_TEMPLATE_IDS,
+  BATCH8_COMPLAINT_TEMPLATE_IDS,
+  ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+  ADULT_DIARRHEA_COMPLAINT_INTEL,
+  MEDICATION_REFILL_COMPLAINT_INTEL,
+  OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
   FALL_COMPLAINT_INTEL,
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
@@ -998,6 +1003,152 @@ describe("provider documentation complaint intelligence (19N.10 Batch 7)", () =>
   });
 
   it("preserves chip toggle wiring for Batch 7 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.11 Batch 8)", () => {
+  it("maps Batch 8 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.adult_nausea_vomiting).toBe(ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.adult_diarrhea).toBe(ADULT_DIARRHEA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.medication_refill).toBe(MEDICATION_REFILL_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.observation_reassessment).toBe(OBSERVATION_REASSESSMENT_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 8 template", () => {
+    for (const bundle of [
+      ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+      ADULT_DIARRHEA_COMPLAINT_INTEL,
+      MEDICATION_REFILL_COMPLAINT_INTEL,
+      OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 8 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH8_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const nvKeys = flattenComplaintIntelligenceKeys(ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL);
+    const diarrheaKeys = flattenComplaintIntelligenceKeys(ADULT_DIARRHEA_COMPLAINT_INTEL);
+    const refillKeys = flattenComplaintIntelligenceKeys(MEDICATION_REFILL_COMPLAINT_INTEL);
+    const obsKeys = flattenComplaintIntelligenceKeys(OBSERVATION_REASSESSMENT_COMPLAINT_INTEL);
+    for (const key of nvKeys) expect(key).toContain(".adultNauseaVomiting.");
+    for (const key of diarrheaKeys) expect(key).toContain(".adultDiarrhea.");
+    for (const key of refillKeys) expect(key).toContain(".medicationRefill.");
+    for (const key of obsKeys) expect(key).toContain(".observationReassessment.");
+  });
+
+  it("does not leak unrelated complaint chips into Batch 8 bundles", () => {
+    const nvKeys = flattenComplaintIntelligenceKeys(ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL);
+    const diarrheaKeys = flattenComplaintIntelligenceKeys(ADULT_DIARRHEA_COMPLAINT_INTEL);
+    const refillKeys = flattenComplaintIntelligenceKeys(MEDICATION_REFILL_COMPLAINT_INTEL);
+    const obsKeys = flattenComplaintIntelligenceKeys(OBSERVATION_REASSESSMENT_COMPLAINT_INTEL);
+    expect(nvKeys.some((key) => key.includes(".pediatricVomitingDiarrhea."))).toBe(false);
+    expect(diarrheaKeys.some((key) => key.includes(".observationReassessment."))).toBe(false);
+    expect(refillKeys.some((key) => key.includes(".psychiatricBehavioral."))).toBe(false);
+    expect(refillKeys.some((key) => key.includes(".psychiatricBehavioral.hpiSuicidalIdeationReported"))).toBe(false);
+    expect(refillKeys.some((key) => key.includes("providerDocumentationComplaintIntel.medicationRefill.mdmPdmpReviewedIfControlledSubstanceApplicable"))).toBe(true);
+    expect(obsKeys.some((key) => key.includes(".medicationRefill."))).toBe(false);
+    expect(obsKeys.some((key) => key.includes(".adultDiarrhea."))).toBe(false);
+    expect(obsKeys.some((key) => key.includes(".adultNauseaVomiting."))).toBe(false);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 8 bundle", () => {
+    for (const bundle of [
+      ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+      ADULT_DIARRHEA_COMPLAINT_INTEL,
+      MEDICATION_REFILL_COMPLAINT_INTEL,
+      OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 8 templates expose expected intelligence entry points", () => {
+    const nv = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "adult_nausea_vomiting");
+    const diarrhea = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "adult_diarrhea");
+    const refill = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "medication_refill");
+    const obs = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "observation_reassessment");
+    expect(nv?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiNauseaDurationReviewed"
+    );
+    expect(nv?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.adultNauseaVomiting.diffBowelObstruction"
+    );
+    expect(diarrhea?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.adultDiarrhea.diffCDifficileColitis"
+    );
+    expect(refill?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.medicationRefill.diffMedicationLapse"
+    );
+    expect(obs?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.observationReassessment.diffDischargeReadiness"
+    );
+    expect(nv?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultNauseaVomitingGiReminder");
+    expect(diarrhea?.promptReminderKeys).toContain(
+      "providerDocumentationPromptReminders.adultDiarrheaInfectiousReminder"
+    );
+    expect(refill?.promptReminderKeys).toContain(
+      "providerDocumentationPromptReminders.adultMedicationRefillSafetyReminder"
+    );
+    expect(obs?.promptReminderKeys).toContain(
+      "providerDocumentationPromptReminders.adultObservationReassessmentReminder"
+    );
+  });
+
+  it("leaves Batch 1–7 intelligence bundles unchanged", () => {
+    expect(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiCaregiverHistorianUsed"
+    );
+    expect(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.allergicReactionRash.diffAnaphylaxis"
+    );
+    expect(UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.utiUrinarySymptoms.diffPyelonephritis"
+    );
+  });
+
+  it("uses i18n keys for all Batch 8 complaint intelligence fragments", () => {
+    for (const bundle of [
+      ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL,
+      ADULT_DIARRHEA_COMPLAINT_INTEL,
+      MEDICATION_REFILL_COMPLAINT_INTEL,
+      OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(MEDICATION_REFILL_COMPLAINT_INTEL)).not.toMatch(
+      /billingLevel|CPT|autoBill|chargeCapture/i
+    );
+  });
+
+  it("preserves chip toggle wiring for Batch 8 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"
