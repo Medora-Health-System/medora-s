@@ -15,10 +15,10 @@ import {
   toggleDocumentationFragment,
 } from "./providerDocumentationModel";
 import {
-  HPI_GENERIC_LOCATION_CHIP_GROUP_TITLE_KEY,
+  HPI_DIMENSION_TITLE_KEYS,
   resolveHpiChipGroupsForTemplate,
-  templateUsesComplaintSpecificLocationChips,
-} from "./providerDocumentationTemplateLocationChips";
+  templateUsesCustomHpiDimensions,
+} from "./providerDocumentationTemplateHpiDimensions";
 
 const workspaceSource = readFileSync(
   new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
@@ -54,7 +54,7 @@ const mockResolveFragment = (key: string) => {
 
 const baseHpiChipGroups = [
   {
-    titleKey: HPI_GENERIC_LOCATION_CHIP_GROUP_TITLE_KEY,
+    titleKey: HPI_DIMENSION_TITLE_KEYS.location,
     field: "hpi" as const,
     chips: [{ labelKey: "erMseHpiChips.locChestPain", fragmentKey: "erMseHpiChips.locChestPain" }],
   },
@@ -163,15 +163,15 @@ describe("providerDocumentationChipUx", () => {
 
   it("shows chest-pain-specific location chips instead of generic pain locations", () => {
     const groups = resolveHpiChipGroupsForTemplate("chest_pain", baseHpiChipGroups);
-    const locationGroup = groups.find((group) => group.titleKey === HPI_GENERIC_LOCATION_CHIP_GROUP_TITLE_KEY);
+    const locationGroup = groups.find((group) => group.titleKey === HPI_DIMENSION_TITLE_KEYS.location);
     expect(locationGroup?.chips.some((chip) => chip.fragmentKey.includes("chestPain.midChest"))).toBe(true);
     expect(locationGroup?.chips.some((chip) => chip.fragmentKey === "erMseHpiChips.locChestPain")).toBe(false);
-    expect(templateUsesComplaintSpecificLocationChips("chest_pain")).toBe(true);
+    expect(templateUsesCustomHpiDimensions("chest_pain")).toBe(true);
   });
 
   it("shows abdominal-pain-specific location chips", () => {
     const groups = resolveHpiChipGroupsForTemplate("abdominal_pain", baseHpiChipGroups);
-    const locationGroup = groups.find((group) => group.titleKey === HPI_GENERIC_LOCATION_CHIP_GROUP_TITLE_KEY);
+    const locationGroup = groups.find((group) => group.titleKey === HPI_DIMENSION_TITLE_KEYS.location);
     expect(locationGroup?.chips.some((chip) => chip.fragmentKey.includes("abdominal.rightUpperQuadrant"))).toBe(
       true
     );
@@ -181,18 +181,18 @@ describe("providerDocumentationChipUx", () => {
   it("shows dyspnea context chips for SOB instead of generic pain locations", () => {
     const groups = resolveHpiChipGroupsForTemplate("sob", baseHpiChipGroups);
     const contextGroup = groups.find(
-      (group) => group.titleKey === "providerDocumentationWorkspace.chipDyspneaContext"
+      (group) => group.titleKey === HPI_DIMENSION_TITLE_KEYS.dyspneaContext
     );
     expect(contextGroup?.chips.some((chip) => chip.fragmentKey.includes("sob.atRest"))).toBe(true);
     expect(contextGroup?.chips.some((chip) => chip.fragmentKey.includes("sob.withExertion"))).toBe(true);
     expect(contextGroup?.chips.some((chip) => chip.fragmentKey === "erMseHpiChips.locChestPain")).toBe(false);
   });
 
-  it("keeps generic location chips as fallback for templates without complaint-specific locations", () => {
+  it("keeps generic location chips as fallback for templates without custom dimensions", () => {
     const groups = resolveHpiChipGroupsForTemplate("fever", baseHpiChipGroups);
-    const locationGroup = groups.find((group) => group.titleKey === HPI_GENERIC_LOCATION_CHIP_GROUP_TITLE_KEY);
+    const locationGroup = groups.find((group) => group.titleKey === HPI_DIMENSION_TITLE_KEYS.location);
     expect(locationGroup?.chips[0]?.fragmentKey).toBe("erMseHpiChips.locChestPain");
-    expect(templateUsesComplaintSpecificLocationChips("fever")).toBe(false);
+    expect(templateUsesCustomHpiDimensions("fever")).toBe(false);
   });
 
   it("removes the physical exam reminder box while keeping MDM advisory reminders", () => {

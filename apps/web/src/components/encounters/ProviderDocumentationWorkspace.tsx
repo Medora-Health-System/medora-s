@@ -61,7 +61,7 @@ import {
   isDocumentationChipSelected,
   resolveDocumentationChipStyles,
 } from "@/lib/providerDocumentationChipSelection";
-import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateLocationChips";
+import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateHpiDimensions";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
