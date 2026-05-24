@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import DepartmentOrderDetail from "@/components/worklists/DepartmentOrderDetail";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useI18n } from "@/lib/i18n";
 
 export default function LabOrderDetailPage() {
+  const { t } = useI18n();
   const params = useParams();
   const orderId = params.orderId as string;
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
@@ -23,7 +25,7 @@ export default function LabOrderDetailPage() {
   const effectiveFacilityId =
     facilityId ?? (facilityIdFromHook?.trim() ? facilityIdFromHook : null);
 
-  if (!ready) return <p style={{ padding: 24 }}>Chargement…</p>;
+  if (!ready) return <p style={{ padding: 24 }}>{t("common.loading")}</p>;
 
   return (
     <DepartmentOrderDetail kind="lab" orderId={orderId} listHref="/app/lab-worklist" facilityId={effectiveFacilityId} />

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 
 const btnPrimary: React.CSSProperties = {
   padding: "10px 18px",
@@ -25,6 +26,8 @@ export function PharmacyInventoryToolbar({
   onAdvancedCreate?: () => void;
   canManage: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       style={{
@@ -37,31 +40,31 @@ export function PharmacyInventoryToolbar({
       }}
     >
       <div>
-        <h1 style={{ margin: "0 0 8px 0" }}>Inventaire pharmacie</h1>
+        <h1 style={{ margin: "0 0 8px 0" }}>{t("pharmacyInventoryToolbar.title")}</h1>
         <p style={{ margin: 0, color: "#555", fontSize: 14 }}>
-          Recherchez un médicament, ajoutez du stock, réceptionnez ou ajustez.{" "}
-          <Link href="/app/pharmacy/dispense">Dispensation</Link>
+          {t("pharmacyInventoryToolbar.intro")}{" "}
+          <Link href="/app/pharmacy/dispense">{t("pharmacyInventoryToolbar.linkDispense")}</Link>
           {" · "}
-          <Link href="/app/pharmacy/low-stock">Stock faible</Link>
+          <Link href="/app/pharmacy/low-stock">{t("pharmacyInventoryToolbar.linkLowStock")}</Link>
           {" · "}
-          <Link href="/app/pharmacy/expiring">Expiration proche</Link>
+          <Link href="/app/pharmacy/expiring">{t("pharmacyInventoryToolbar.linkExpiring")}</Link>
         </p>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <Link href="/app/pharmacy/low-stock" style={{ ...btnPrimary, backgroundColor: "#444" }}>
-          Voir alertes
+          {t("pharmacyInventoryToolbar.viewAlerts")}
         </Link>
         <button type="button" onClick={onRefresh} style={btnPrimary}>
-          Actualiser
+          {t("pharmacyInventoryToolbar.refresh")}
         </button>
         {canManage && (
           <>
             <button type="button" onClick={onQuickAdd} style={btnPrimary}>
-              Ajout rapide au stock
+              {t("pharmacyInventoryToolbar.quickAdd")}
             </button>
             {onAdvancedCreate && (
               <button type="button" onClick={onAdvancedCreate} style={{ ...btnPrimary, backgroundColor: "#444" }}>
-                Créer un article (avancé)
+                {t("pharmacyInventoryToolbar.advancedCreate")}
               </button>
             )}
           </>

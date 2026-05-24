@@ -26,6 +26,8 @@ export default {
     loadError: "Impossible de charger",
     searchPatient: "Rechercher un patient",
     apply: "Appliquer",
+    offlineBanner: "Hors ligne",
+    syncingBanner: "Synchronisation en cours",
   },
   worklistDepartments: {
     shared: {
@@ -881,6 +883,24 @@ export default {
     unitPlaceholder: "Ex. comprimé, flacon",
     submitCreating: "Enregistrement…",
     submitCreate: "Créer",
+  },
+  pharmacyInventoryToolbar: {
+    title: "Inventaire pharmacie",
+    intro: "Recherchez un médicament, ajoutez du stock, réceptionnez ou ajustez.",
+    linkDispense: "Dispensation",
+    linkLowStock: "Stock faible",
+    linkExpiring: "Expiration proche",
+    viewAlerts: "Voir alertes",
+    refresh: "Actualiser",
+    quickAdd: "Ajout rapide au stock",
+    advancedCreate: "Créer un article (avancé)",
+  },
+  pharmacyInventoryFilters: {
+    searchPlaceholder: "Rechercher un médicament",
+    activeOnly: "Actifs seulement",
+    lowStockOnly: "Stock faible",
+    expiringOnly: "Expiration proche",
+    apply: "Appliquer",
   },
   pharmacyExpiringPage: {
     title: "Stock à péremption",

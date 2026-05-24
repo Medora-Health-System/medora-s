@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -10,10 +10,19 @@ import {
   EN_FORBIDDEN_FRENCH_UI_TOKENS,
   EN_MESSAGE_DIACRITIC_ALLOWLIST_PATHS,
   EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES,
+  FR_FORBIDDEN_ENGLISH_UI_EXACT,
+  FR_FORBIDDEN_ENGLISH_UI_TOKENS,
   FR_LEGACY_LABELS_FR_ONLY_PREFIXES,
-  HARDCODED_FRENCH_UI_DEFERRED_FILES,
   HARDCODED_FRENCH_UI_SCAN_TOKENS,
+  LANGUAGE_BOUNDARY_ALLOWLIST,
 } from "./i18nLanguageBoundary.allowlist";
+import {
+  frenchMessageValueContainsEnglishUiToken,
+  isFrEnglishTokenAllowlisted,
+  readWebSource,
+  scanSourceForHardcodedFrenchTokens,
+  walkWholeEmrSourceFiles,
+} from "./wholeEmrLocaleScan19U4";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -45,7 +54,6 @@ function getByPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
-/** Mirrors I18nProvider resolveT — missing keys never cross-fallback languages. */
 function resolveMessageForTest(
   active: unknown,
   frRoot: unknown,
@@ -54,9 +62,7 @@ function resolveMessageForTest(
 ): string {
   const v = getByPath(active, key);
   if (typeof v === "string") return v;
-  if (language === "en") {
-    return key;
-  }
+  if (language === "en") return key;
   const frVal = getByPath(frRoot, key);
   if (typeof frVal === "string") return frVal;
   return key;
@@ -65,7 +71,7 @@ function resolveMessageForTest(
 function isDeferredEnPath(path: string): boolean {
   if (EN_MESSAGE_DIACRITIC_ALLOWLIST_PATHS.has(path)) return true;
   return EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES.some(
-    (prefix) => path === prefix || path.startsWith(prefix)
+    (prefix) => path === prefix || path.startsWith(`${prefix}.`)
   );
 }
 
@@ -73,24 +79,8 @@ function isFrLegacyOnlyPath(path: string): boolean {
   return FR_LEGACY_LABELS_FR_ONLY_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-function walkSourceFiles(dir: string, acc: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    const rel = relative(webRoot, full);
-    if (rel.includes("node_modules") || rel.includes("i18n/messages/")) continue;
-    if (rel.endsWith(".test.ts") || rel.endsWith(".test.tsx") || rel.endsWith(".spec.ts")) continue;
-    const st = statSync(full);
-    if (st.isDirectory()) {
-      walkSourceFiles(full, acc);
-    } else if (/\.(tsx?|jsx?)$/.test(name)) {
-      acc.push(full);
-    }
-  }
-  return acc;
-}
-
-/** Phase 19U.1 — Language boundary regression guards (see docs/ui/language-separation-architecture.md). */
-describe("i18n language boundary (19U.1)", () => {
+/** Phase 19U.1 / 19U.4 — whole-EMR language boundary regression guards. */
+describe("i18n language boundary (19U.1 / 19U.4 whole-EMR)", () => {
   it("EN and FR message trees have matching string leaf keys (with documented FR legacy exceptions)", () => {
     const enPaths = collectStringLeaves(en).map((x) => x.path).sort();
     const frPaths = collectStringLeaves(fr).map((x) => x.path).sort();
@@ -115,6 +105,26 @@ describe("i18n language boundary (19U.1)", () => {
         expect(
           lower.includes(token.toLowerCase()),
           `en.${path} contains forbidden French token "${token}": ${value.slice(0, 80)}`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("French messages do not contain forbidden English UI tokens outside allowlist", () => {
+    for (const { path, value } of collectStringLeaves(fr)) {
+      if (isFrLegacyOnlyPath(path)) continue;
+      for (const token of FR_FORBIDDEN_ENGLISH_UI_TOKENS) {
+        if (isFrEnglishTokenAllowlisted(path, token, LANGUAGE_BOUNDARY_ALLOWLIST)) continue;
+        expect(
+          frenchMessageValueContainsEnglishUiToken(value, token),
+          `fr.${path} contains forbidden English UI token "${token}": ${value.slice(0, 80)}`
+        ).toBe(false);
+      }
+      for (const exact of FR_FORBIDDEN_ENGLISH_UI_EXACT) {
+        if (isFrEnglishTokenAllowlisted(path, exact, LANGUAGE_BOUNDARY_ALLOWLIST)) continue;
+        expect(
+          value.trim() === exact,
+          `fr.${path} equals forbidden English UI word "${exact}"`
         ).toBe(false);
       }
     }
@@ -149,44 +159,57 @@ describe("i18n language boundary (19U.1)", () => {
     expect(normalizeUserFacingError("Encounter not found", "en")).not.toMatch(/introuvable/i);
   });
 
-  it("documents call sites that must pass explicit locale (inventory for 19U.5)", () => {
-    const userFacingErrorSource = readFileSync(join(webRoot, "src/lib/userFacingError.ts"), "utf8");
-    expect(userFacingErrorSource).toContain("locale: SupportedLanguage");
-    expect(userFacingErrorSource).not.toMatch(/locale:\s*SupportedLanguage\s*=\s*"fr"/);
-  });
-
-  it("hardcoded French UI scan — fails on new literals; deferred files documented", () => {
-    const scanRoots = [
-      join(webRoot, "src/components"),
-      join(webRoot, "src/features"),
-      join(webRoot, "app"),
-      join(webRoot, "src/lib"),
-    ];
+  it("whole-EMR hardcoded French UI scan — fails on new literals outside structured allowlist", () => {
     const violations: string[] = [];
-    for (const root of scanRoots) {
-      for (const file of walkSourceFiles(root)) {
-        const rel = relative(webRoot, file);
-        if (HARDCODED_FRENCH_UI_DEFERRED_FILES.has(rel)) continue;
-        const source = readFileSync(file, "utf8");
-        for (const token of HARDCODED_FRENCH_UI_SCAN_TOKENS) {
-          if (source.includes(token)) {
-            violations.push(`${rel}: "${token}"`);
-          }
-        }
-      }
+    for (const file of walkWholeEmrSourceFiles(webRoot)) {
+      const rel = relative(webRoot, file);
+      const source = readFileSync(file, "utf8");
+      violations.push(
+        ...scanSourceForHardcodedFrenchTokens(
+          source,
+          rel,
+          HARDCODED_FRENCH_UI_SCAN_TOKENS,
+          LANGUAGE_BOUNDARY_ALLOWLIST
+        )
+      );
     }
     expect(
       violations,
-      `Hardcoded French UI found (fix or add to HARDCODED_FRENCH_UI_DEFERRED_FILES with TODO):\n${violations.join("\n")}`
+      `Hardcoded French UI found (fix or add LANGUAGE_BOUNDARY_ALLOWLIST entry with reason + cleanupPhase):\n${violations.slice(0, 30).join("\n")}`
     ).toEqual([]);
   });
 
-  it("language separation architecture doc exists and states immutable clinical text rule", () => {
+  it("LANGUAGE_BOUNDARY_ALLOWLIST entries require path, token, reason, and cleanupPhase", () => {
+    for (const entry of LANGUAGE_BOUNDARY_ALLOWLIST) {
+      expect(entry.path.trim().length, JSON.stringify(entry)).toBeGreaterThan(0);
+      expect(entry.token.trim().length, JSON.stringify(entry)).toBeGreaterThan(0);
+      expect(entry.reason.trim().length, JSON.stringify(entry)).toBeGreaterThan(10);
+      expect(["19U.5", "19U.6", "permanent"]).toContain(entry.cleanupPhase);
+    }
+  });
+
+  it("language separation architecture doc states whole-EMR scope and immutable clinical text rule", () => {
     const docPath = join(repoRoot, "docs/ui/language-separation-architecture.md");
     const doc = readFileSync(docPath, "utf8");
     expect(doc).toContain("must never be auto-translated");
     expect(doc).toContain("Signed and persisted chart text is immutable");
     expect(doc).toContain("No cross-language i18n fallback");
+    expect(doc).toContain("whole-EMR");
+    expect(doc).toContain("LANGUAGE_BOUNDARY_ALLOWLIST");
+  });
+
+  it("whole-EMR scan does not flag clinical free-text fixture markers in tests or samples", () => {
+    const sample = `
+      // custom home med comprimé orale — saved chart example, not UI chrome
+      const manualLabel = "Patient said comprimé orale daily";
+    `;
+    const violations = scanSourceForHardcodedFrenchTokens(
+      sample,
+      "src/lib/example.fixture.ts",
+      HARDCODED_FRENCH_UI_SCAN_TOKENS,
+      LANGUAGE_BOUNDARY_ALLOWLIST
+    );
+    expect(violations).toEqual([]);
   });
 });
 

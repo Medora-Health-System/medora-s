@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
 
 const inputStyle: React.CSSProperties = {
   padding: "8px 12px",
@@ -34,6 +35,8 @@ export function PharmacyInventoryFilters({
   onExpiringOnlyChange?: (v: boolean) => void;
   onApply: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       style={{
@@ -50,18 +53,18 @@ export function PharmacyInventoryFilters({
     >
       <input
         type="text"
-        placeholder="Rechercher un médicament"
+        placeholder={t("pharmacyInventoryFilters.searchPlaceholder")}
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         style={inputStyle}
       />
       <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
         <input type="checkbox" checked={activeOnly} onChange={(e) => onActiveOnlyChange(e.target.checked)} />
-        Actifs seulement
+        {t("pharmacyInventoryFilters.activeOnly")}
       </label>
       <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
         <input type="checkbox" checked={lowStockOnly} onChange={(e) => onLowStockOnlyChange(e.target.checked)} />
-        Stock faible
+        {t("pharmacyInventoryFilters.lowStockOnly")}
       </label>
       <label style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
         <input
@@ -71,7 +74,7 @@ export function PharmacyInventoryFilters({
           disabled={!onExpiringOnlyChange}
           style={!onExpiringOnlyChange ? { opacity: 0.6 } : undefined}
         />
-        Expiration proche
+        {t("pharmacyInventoryFilters.expiringOnly")}
       </label>
       <button
         type="button"
@@ -86,7 +89,7 @@ export function PharmacyInventoryFilters({
           fontSize: 14,
         }}
       >
-        Appliquer
+        {t("pharmacyInventoryFilters.apply")}
       </button>
     </div>
   );

@@ -29,8 +29,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
       <body style={{ margin: 0, fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif" }}>
-        <OfflineRuntime />
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider>
+          <OfflineRuntime />
+          {children}
+        </I18nProvider>
       </body>
     </html>
   );
