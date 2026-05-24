@@ -62,6 +62,16 @@ import {
   resolveDocumentationChipStyles,
 } from "@/lib/providerDocumentationChipSelection";
 import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateHpiDimensions";
+import {
+  DYNAMIC_SUGGESTION_CATEGORY_ORDER,
+  DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS,
+  getProviderDocumentationDynamicSuggestions,
+} from "@/lib/providerDocumentationDynamicIntelligence";
+import {
+  DYNAMIC_CLUSTER_SEVERITY_TITLE_KEYS,
+  excludeClusterSuggestionsFromDynamicSuggestions,
+  getProviderDocumentationDynamicClinicalClusters,
+} from "@/lib/providerDocumentationDynamicClinicalClusters";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -401,6 +411,22 @@ export function ProviderDocumentationWorkspace({
     () => resolveHpiChipGroupsForTemplate(value.activeTemplateId, HPI_CHIPS),
     [value.activeTemplateId]
   );
+  const dynamicClusters = useMemo(
+    () =>
+      getProviderDocumentationDynamicClinicalClusters({
+        templateId: value.activeTemplateId,
+        state: value,
+      }),
+    [value]
+  );
+  const dynamicSuggestions = useMemo(() => {
+    const suggestions = getProviderDocumentationDynamicSuggestions({
+      templateId: value.activeTemplateId,
+      state: value,
+    });
+    return excludeClusterSuggestionsFromDynamicSuggestions(suggestions, dynamicClusters);
+  }, [dynamicClusters, value]);
+  const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(() => new Set());
   const completeness = useMemo(
     () =>
       buildProviderDocumentationCompleteness({
@@ -1390,6 +1416,177 @@ export function ProviderDocumentationWorkspace({
             {complaintIntelligenceFieldChips(activeTemplate, "mdmPlanSummary", "providerDocumentationWorkspace.complaintIntelSectionMdmPlan")}
             {complaintIntelligenceFieldChips(activeTemplate, "mdmImmediateActionsRationale", "providerDocumentationWorkspace.complaintIntelSectionMdmActions")}
             {complaintIntelligenceFieldChips(activeTemplate, "mdmAdmitObserveDischarge", "providerDocumentationWorkspace.complaintIntelSectionMdmDisposition")}
+            {dynamicClusters.length > 0 ? (
+              <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicClustersTitle")}>
+                {dynamicClusters.map((cluster) => {
+                  const collapsed = collapsedClusterIds.has(cluster.id);
+                  const severityStyles =
+                    cluster.severity === "high"
+                      ? { background: "#ffedd5", color: "#c2410c", borderColor: "#fdba74" }
+                      : cluster.severity === "moderate"
+                        ? { background: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" }
+                        : { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" };
+                  return (
+                    <div
+                      key={cluster.id}
+                      style={{
+                        marginBottom: 8,
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 10,
+                        padding: 8,
+                        background: "#fafafa",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>{t(cluster.titleKey)}</span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: 9999,
+                              border: "1px solid",
+                              ...severityStyles,
+                            }}
+                          >
+                            {t(DYNAMIC_CLUSTER_SEVERITY_TITLE_KEYS[cluster.severity])}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedClusterIds((previous) => {
+                              const next = new Set(previous);
+                              if (next.has(cluster.id)) next.delete(cluster.id);
+                              else next.add(cluster.id);
+                              return next;
+                            })
+                          }
+                          style={{
+                            ...chipStyle,
+                            fontSize: 10,
+                            padding: "2px 8px",
+                            background: "#fff",
+                            borderColor: "#cbd5e1",
+                            color: "#475569",
+                          }}
+                        >
+                          {collapsed
+                            ? t("providerDocumentationWorkspace.dynamicClustersExpand")
+                            : t("providerDocumentationWorkspace.dynamicClustersCollapse")}
+                        </button>
+                      </div>
+                      {!collapsed ? (
+                        <>
+                          <div style={{ fontSize: 10, color: "#64748b", marginTop: 6, marginBottom: 2 }}>
+                            {t("providerDocumentationWorkspace.dynamicClustersMatchedBecause")}
+                          </div>
+                          <ul style={{ margin: "0 0 8px", paddingLeft: 16, fontSize: 11, color: "#475569" }}>
+                            {cluster.matchedTriggerReasonKeys.map((reasonKey) => (
+                              <li key={reasonKey}>{t(reasonKey)}</li>
+                            ))}
+                          </ul>
+                          {DYNAMIC_SUGGESTION_CATEGORY_ORDER.map((category) => {
+                            const items = cluster.suggestions.filter((suggestion) => suggestion.category === category);
+                            if (items.length === 0) return null;
+                            return (
+                              <div key={`${cluster.id}-${category}`} style={{ marginBottom: 6 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+                                  {t(DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS[category])}
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {items.map((suggestion) => {
+                                    const fieldValue = String(value[suggestion.targetField] ?? "");
+                                    const fragment = t(suggestion.fragmentKey);
+                                    const selected = isDocumentationChipSelected(fieldValue, fragment);
+                                    const toneStyles = resolveDocumentationChipStyles({
+                                      selected,
+                                      readOnly: Boolean(readOnly),
+                                    });
+                                    return (
+                                      <button
+                                        key={suggestion.fragmentKey}
+                                        type="button"
+                                        disabled={readOnly}
+                                        aria-pressed={selected}
+                                        onClick={() => toggleField(suggestion.targetField, suggestion.fragmentKey)}
+                                        style={{
+                                          ...chipStyle,
+                                          background: toneStyles.background,
+                                          borderColor: toneStyles.borderColor,
+                                          color: toneStyles.color,
+                                          borderWidth: selected ? 2 : 1,
+                                          cursor: readOnly ? "not-allowed" : "pointer",
+                                        }}
+                                      >
+                                        {selected ? "✓ " : ""}
+                                        {t(suggestion.labelKey)}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </ProviderDocumentationChipPanel>
+            ) : null}
+            {dynamicSuggestions.length > 0 ? (
+              <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicSuggestionsTitle")}>
+                {DYNAMIC_SUGGESTION_CATEGORY_ORDER.map((category) => {
+                  const items = dynamicSuggestions.filter((suggestion) => suggestion.category === category);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={category} style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#475569", marginBottom: 4 }}>
+                        {t(DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS[category])}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {items.map((suggestion) => {
+                          const fieldValue = String(value[suggestion.targetField] ?? "");
+                          const fragment = t(suggestion.fragmentKey);
+                          const selected = isDocumentationChipSelected(fieldValue, fragment);
+                          const toneStyles = resolveDocumentationChipStyles({
+                            selected,
+                            readOnly: Boolean(readOnly),
+                          });
+                          return (
+                            <div key={suggestion.fragmentKey}>
+                              <button
+                                type="button"
+                                disabled={readOnly}
+                                aria-pressed={selected}
+                                onClick={() => toggleField(suggestion.targetField, suggestion.fragmentKey)}
+                                style={{
+                                  ...chipStyle,
+                                  background: toneStyles.background,
+                                  borderColor: toneStyles.borderColor,
+                                  color: toneStyles.color,
+                                  borderWidth: selected ? 2 : 1,
+                                  cursor: readOnly ? "not-allowed" : "pointer",
+                                }}
+                              >
+                                {selected ? "✓ " : ""}
+                                {t(suggestion.labelKey)}
+                              </button>
+                              <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, marginLeft: 2 }}>
+                                {t("providerDocumentationWorkspace.dynamicSuggestionReasonPrefix")}{" "}
+                                {t(suggestion.reasonKey)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </ProviderDocumentationChipPanel>
+            ) : null}
             <p style={{ margin: "8px 0", fontSize: 11, color: "#64748b" }}>
               {t("providerDocumentationWorkspace.chipsSafetyComment")}
             </p>
