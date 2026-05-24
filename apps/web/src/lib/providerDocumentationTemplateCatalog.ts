@@ -8,9 +8,12 @@ import {
   ABDOMINAL_COMPLAINT_INTEL,
   CHEST_PAIN_COMPLAINT_INTEL,
   DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+  FLANK_PAIN_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
+  PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
+  WEAKNESS_COMPLAINT_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import {
@@ -744,7 +747,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmClinicalRationale: ["erMseMdmGuidance.behavioralRiskAddressed", "erMseMdmGuidance.medicalClearanceConsidered"],
       reassessment: ["providerDocumentationSmartSentences.behavioralReassessment"],
       followUpDisposition: ["providerDocumentationSmartSentences.safetyPlanDiscussed"],
-    }
+    },
+    [
+      "providerDocumentationPromptReminders.adultPsychSafetyRisk",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL
   ),
   adultTemplate(
     "urinary_symptoms",
@@ -776,7 +784,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
       mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
     },
-    { abdomen: ["erMseExamChips.abdSoft", "providerDocumentationWorkspace.stickerExamNoCvaTenderness"] }
+    { abdomen: ["erMseExamChips.abdSoft", "providerDocumentationWorkspace.stickerExamNoCvaTenderness"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultFlankPainWorkup",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    FLANK_PAIN_COMPLAINT_INTEL
   ),
   adultTemplate(
     "weakness",
@@ -791,7 +805,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
     },
     { neuroPsych: ["erMseExamChips.neuroFollowsCommands", "erMseExamChips.neuroFocalDeficitNoted"] },
-    ADULT_GUIDANCE_NEURO
+    ADULT_GUIDANCE_NEURO,
+    [
+      "providerDocumentationPromptReminders.adultWeaknessWorkup",
+      "providerDocumentationPromptReminders.adultNeuroRepeatExam",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    WEAKNESS_COMPLAINT_INTEL
   ),
   adultTemplate(
     "hyperglycemia",

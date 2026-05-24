@@ -8,11 +8,15 @@ import {
   COMPLAINT_INTEL_BY_TEMPLATE_ID,
   COMPLAINT_INTEL_TEMPLATE_IDS,
   DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+  FLANK_PAIN_COMPLAINT_INTEL,
   complaintIntelligenceHasDuplicateKeys,
   flattenComplaintIntelligenceKeys,
   HEADACHE_COMPLAINT_INTEL,
+  PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
+  WEAKNESS_COMPLAINT_INTEL,
+  BATCH3_COMPLAINT_TEMPLATE_IDS,
 } from "./providerDocumentationComplaintIntelligence";
 import {
   applyProviderDocumentationTemplate,
@@ -279,6 +283,154 @@ describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => 
     );
     expect(source).toContain("toggleDocumentationFragment");
     expect(source).toContain("aria-pressed");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => {
+  it("maps Batch 3 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.psychiatric_behavioral).toBe(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.weakness).toBe(WEAKNESS_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.flank_pain).toBe(FLANK_PAIN_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 3 template", () => {
+    for (const bundle of [
+      PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+      WEAKNESS_COMPLAINT_INTEL,
+      FLANK_PAIN_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 3 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH3_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const psychKeys = flattenComplaintIntelligenceKeys(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL);
+    const weaknessKeys = flattenComplaintIntelligenceKeys(WEAKNESS_COMPLAINT_INTEL);
+    const flankKeys = flattenComplaintIntelligenceKeys(FLANK_PAIN_COMPLAINT_INTEL);
+    for (const key of psychKeys) expect(key).toContain(".psychiatricBehavioral.");
+    for (const key of weaknessKeys) expect(key).toContain(".weakness.");
+    for (const key of flankKeys) expect(key).toContain(".flankPain.");
+    expect(psychKeys.some((key) => weaknessKeys.includes(key))).toBe(false);
+    expect(weaknessKeys.some((key) => flankKeys.includes(key))).toBe(false);
+  });
+
+  it("keeps Batch 3 intelligence free of other complaint namespaces", () => {
+    const foreignNamespaces = [
+      ".chestPain.",
+      ".abdominal.",
+      ".sob.",
+      ".stroke.",
+      ".headache.",
+      ".dizzinessSyncope.",
+    ];
+    for (const bundle of [
+      PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+      WEAKNESS_COMPLAINT_INTEL,
+      FLANK_PAIN_COMPLAINT_INTEL,
+    ]) {
+      const keys = flattenComplaintIntelligenceKeys(bundle);
+      for (const ns of foreignNamespaces) {
+        expect(keys.some((key) => key.includes(ns))).toBe(false);
+      }
+    }
+  });
+
+  it("does not leak complaint-specific chips across Batch 3 templates", () => {
+    const psychKeys = flattenComplaintIntelligenceKeys(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL);
+    const weaknessKeys = flattenComplaintIntelligenceKeys(WEAKNESS_COMPLAINT_INTEL);
+    const flankKeys = flattenComplaintIntelligenceKeys(FLANK_PAIN_COMPLAINT_INTEL);
+    expect(psychKeys.some((key) => key.includes(".flankPain."))).toBe(false);
+    expect(weaknessKeys.some((key) => key.includes(".psychiatricBehavioral."))).toBe(false);
+    expect(flankKeys.some((key) => key.includes(".stroke."))).toBe(false);
+    expect(flankKeys.some((key) => key.includes(".chestPain."))).toBe(false);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 3 bundle", () => {
+    for (const bundle of [
+      PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+      WEAKNESS_COMPLAINT_INTEL,
+      FLANK_PAIN_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 3 templates expose expected intelligence entry points", () => {
+    const psych = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "psychiatric_behavioral");
+    const weakness = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "weakness");
+    const flank = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "flank_pain");
+    expect(psych?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
+    );
+    expect(weakness?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.weakness.diffStrokeTia"
+    );
+    expect(flank?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
+    );
+    expect(psych?.complaintIntelligence?.reassessment?.length).toBeGreaterThanOrEqual(5);
+    expect(weakness?.complaintIntelligence?.followUpDisposition?.length).toBeGreaterThanOrEqual(5);
+    expect(flank?.complaintIntelligence?.followUpDisposition?.length).toBeGreaterThanOrEqual(5);
+    expect(psych?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultPsychSafetyRisk");
+    expect(weakness?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultWeaknessWorkup");
+    expect(flank?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultFlankPainWorkup");
+    expect(flank?.promptReminderKeys).not.toContain("providerDocumentationPromptReminders.chestPainHeartScoreReminder");
+  });
+
+  it("leaves Batch 1 and Batch 2 intelligence bundles unchanged", () => {
+    expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+    );
+    expect(CHEST_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.chestPain.diffStemiNstemi"
+    );
+    expect(HEADACHE_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage"
+    );
+  });
+
+  it("uses i18n keys for all Batch 3 complaint intelligence fragments", () => {
+    for (const bundle of [
+      PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+      WEAKNESS_COMPLAINT_INTEL,
+      FLANK_PAIN_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL)).not.toMatch(
+      /billingLevel|CPT|autoBill|chargeCapture/i
+    );
+  });
+
+  it("preserves chip toggle wiring for Batch 3 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
     expect(source).toContain("complaintIntelligenceReassessmentChips");
     expect(source).toContain("complaintIntelligenceDispositionChips");
   });

@@ -7,6 +7,8 @@
  * - Batch 1: ACC/AHA chest pain; SAEM M4 chest pain / dyspnea / abdominal pain.
  * - Batch 2: AHA/ASA acute ischemic stroke early management (last known well, time-sensitive workflow);
  *   ACEP headache policy (thunderclap, meningismus, red flags); ACEP syncope policy (ECG, orthostatics, serious causes).
+ * - Batch 3: ACEP psychiatric emergency evaluation (suicide/homicide risk, safety, medical clearance);
+ *   SAEM weakness differential approach; ED renal colic / flank pain workup standards.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -39,6 +41,9 @@ const abd = (key: string) => `providerDocumentationComplaintIntel.abdominal.${ke
 const stroke = (key: string) => `providerDocumentationComplaintIntel.stroke.${key}`;
 const headache = (key: string) => `providerDocumentationComplaintIntel.headache.${key}`;
 const dizz = (key: string) => `providerDocumentationComplaintIntel.dizzinessSyncope.${key}`;
+const psych = (key: string) => `providerDocumentationComplaintIntel.psychiatricBehavioral.${key}`;
+const weak = (key: string) => `providerDocumentationComplaintIntel.weakness.${key}`;
+const flank = (key: string) => `providerDocumentationComplaintIntel.flankPain.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -705,6 +710,329 @@ export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL: ProviderDocumentationComplaintIn
   ],
 });
 
+/** Psychiatric / behavioral — ACEP psychiatric emergency / safety documentation framework. */
+export const PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    psych("hpiSuicidalIdeationReported"),
+    psych("hpiHomicidalIdeationReported"),
+    psych("hpiHallucinationsReported"),
+    psych("hpiParanoiaReported"),
+    psych("hpiAgitationReported"),
+    psych("hpiAnxietySymptomsReported"),
+    psych("hpiDepressiveSymptomsReported"),
+    psych("hpiSubstanceUseReviewed"),
+    psych("hpiMedicationNonadherenceReviewed"),
+    psych("hpiRecentStressorReported"),
+    psych("hpiPriorPsychiatricHistoryReviewed"),
+    psych("hpiPriorSuicideAttemptReviewed"),
+    psych("hpiAccessToWeaponsReviewed"),
+    psych("hpiInvoluntaryHoldCriteriaConsidered"),
+    psych("hpiCollateralInformationReviewed"),
+  ],
+  rosImportantPositives: [
+    psych("rosAnxiety"),
+    psych("rosDepression"),
+    psych("rosHallucinations"),
+    psych("rosSuicidalThoughts"),
+    psych("rosHomicidalThoughts"),
+    psych("rosInsomnia"),
+    psych("rosSubstanceUse"),
+  ],
+  rosImportantNegatives: [
+    psych("rosDeniesSuicidalIdeation"),
+    psych("rosDeniesHomicidalIdeation"),
+    psych("rosDeniesHallucinations"),
+    psych("rosDeniesIngestion"),
+    psych("rosDeniesTrauma"),
+  ],
+  rosRedFlags: [
+    psych("rfActiveSuicidalIdeation"),
+    psych("rfHomicidalIdeation"),
+    psych("rfCommandHallucinations"),
+    psych("rfSevereAgitation"),
+    psych("rfIntoxicationConcern"),
+    psych("rfOverdoseIngestionConcern"),
+    psych("rfUnableToContractForSafety"),
+    psych("rfUnsafeDischargeEnvironment"),
+  ],
+  physicalExam: {
+    general: [psych("examNoAcuteMedicalDistress")],
+    neuroPsych: [
+      psych("examAlertOriented"),
+      psych("examCooperative"),
+      psych("examAgitated"),
+      psych("examTearful"),
+      psych("examAnxious"),
+      psych("examDepressedAffect"),
+      psych("examPressuredSpeech"),
+      psych("examDisorganizedThoughtProcess"),
+      psych("examHallucinationsNoted"),
+      psych("examNoFocalNeuroDeficit"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    psych("mdmSuicideRiskAssessed"),
+    psych("mdmHomicidalRiskAssessed"),
+  ],
+  mdmDifferentialSynthesis: [
+    psych("diffSuicidalIdeation"),
+    psych("diffHomicidalIdeation"),
+    psych("diffPsychosis"),
+    psych("diffMajorDepression"),
+    psych("diffAnxietyPanicReaction"),
+    psych("diffSubstanceIntoxication"),
+    psych("diffSubstanceWithdrawal"),
+    psych("diffMedicationEffect"),
+    psych("diffDeliriumMedicalCause"),
+    psych("diffBehavioralCrisis"),
+  ],
+  mdmDataReviewed: [
+    psych("mdmCollateralInformationReviewed"),
+    psych("mdmMedicalClearanceEvaluationPerformed"),
+    psych("mdmIntoxicationWithdrawalConsidered"),
+  ],
+  mdmClinicalRationale: [
+    psych("mdmSafetyPlanConsidered"),
+    psych("mdmInvoluntaryHoldConsidered"),
+    psych("mdmObservationRequiredForSafety"),
+  ],
+  mdmPlanSummary: [
+    psych("mdmPsychiatricConsultationRequested"),
+    psych("mdmTransferAdmissionPsychStabilizationConsidered"),
+    psych("mdmPatientPlacedOnSafetyPrecautions"),
+  ],
+  mdmImmediateActionsRationale: [psych("mdmSafetyPrecautionsInitiatedIfIndicated")],
+  mdmAdmitObserveDischarge: [
+    psych("mdmPsychiatricAdmissionConsidered"),
+    psych("mdmPsychiatricTransferConsidered"),
+    psych("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    psych("reassessBehaviorReassessed"),
+    psych("reassessPatientCalmOnReassessment"),
+    psych("reassessSafetyStatusReassessed"),
+    psych("reassessAgitationImproved"),
+    psych("reassessContinuesToRequireObservation"),
+  ],
+  followUpDisposition: [
+    psych("dispPsychiatricAdmissionConsidered"),
+    psych("dispPsychiatricTransferConsidered"),
+    psych("dispDischargedWithSafetyPlan"),
+    psych("dispCrisisResourcesProvided"),
+    psych("dispReturnPrecautionsDiscussed"),
+    psych("dispPatientNotSafeForDischarge"),
+    psych("dispInvoluntaryHoldDispositionDocumented"),
+  ],
+});
+
+/** Weakness — broad ED weakness differential (SAEM / neurologic-medical clearance framework). */
+export const WEAKNESS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    weak("hpiGeneralizedWeakness"),
+    weak("hpiFocalWeakness"),
+    weak("hpiAcuteOnset"),
+    weak("hpiGradualOnset"),
+    weak("hpiAssociatedDizziness"),
+    weak("hpiAssociatedFatigue"),
+    weak("hpiAssociatedFever"),
+    weak("hpiPoorOralIntake"),
+    weak("hpiRecentIllness"),
+    weak("hpiMedicationChangeReviewed"),
+    weak("hpiNeurologicSymptomsReviewed"),
+    weak("hpiFallRiskReviewed"),
+    weak("hpiBaselineFunctionalStatusReviewed"),
+    weak("hpiCaregiverHistorianUsedIfApplicable"),
+  ],
+  rosImportantPositives: [
+    weak("rosWeakness"),
+    weak("rosFatigue"),
+    weak("rosDizziness"),
+    weak("rosFever"),
+    weak("rosDecreasedAppetite"),
+    weak("rosGaitDifficulty"),
+  ],
+  rosImportantNegatives: [
+    weak("rosDeniesFocalNeuroDeficit"),
+    weak("rosDeniesChestPain"),
+    weak("rosDeniesShortnessOfBreath"),
+    weak("rosDeniesSyncope"),
+    weak("rosDeniesFever"),
+    weak("rosDeniesTrauma"),
+  ],
+  rosRedFlags: [
+    weak("rfFocalWeakness"),
+    weak("rfAlteredMentalStatus"),
+    weak("rfInabilityToAmbulate"),
+    weak("rfSepsisConcern"),
+    weak("rfStrokeConcern"),
+    weak("rfSevereDehydrationConcern"),
+  ],
+  physicalExam: {
+    general: [weak("examAlertOriented"), weak("examNoAcuteDistress"), weak("examNoRespiratoryDistress")],
+    heent: [weak("examDryMucousMembranes")],
+    cardiovascular: [weak("examTachycardic")],
+    neuroPsych: [
+      weak("examNoFocalNeuroDeficit"),
+      weak("examFocalWeaknessNoted"),
+      weak("examStrengthSymmetric"),
+      weak("examGaitSteady"),
+      weak("examGaitUnstable"),
+    ],
+  },
+  mdmWorkingAssessment: [weak("mdmBroadWeaknessDifferentialConsidered")],
+  mdmDifferentialSynthesis: [
+    weak("diffDehydration"),
+    weak("diffElectrolyteAbnormality"),
+    weak("diffInfectionSepsis"),
+    weak("diffAnemia"),
+    weak("diffStrokeTia"),
+    weak("diffAcsEquivalent"),
+    weak("diffMedicationAdverseEffect"),
+    weak("diffDeconditioning"),
+    weak("diffHypoHyperglycemia"),
+    weak("diffRenalDysfunction"),
+  ],
+  mdmDataReviewed: [
+    weak("mdmLabsReviewed"),
+    weak("mdmElectrolytesReviewed"),
+    weak("mdmEcgReviewed"),
+    weak("mdmGlucoseReviewedIfObtained"),
+  ],
+  mdmClinicalRationale: [
+    weak("mdmInfectionEvaluationPerformed"),
+    weak("mdmNeurologicExamReassessed"),
+    weak("mdmSafeDischargeAbilityAssessed"),
+  ],
+  mdmPlanSummary: [
+    weak("mdmIvFluidsAdministeredIfIndicated"),
+    weak("mdmAmbulationTrialPerformed"),
+    weak("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [weak("mdmFallPrecautionsIfIndicated")],
+  mdmAdmitObserveDischarge: [
+    weak("mdmAdmissionConsidered"),
+    weak("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    weak("reassessWeaknessImprovedAfterTreatment"),
+    weak("reassessAmbulatoryReassessmentPerformed"),
+    weak("reassessRepeatNeuroExamUnchanged"),
+    weak("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    weak("dispDischargedAfterImprovement"),
+    weak("dispAdmissionForWeaknessEvaluation"),
+    weak("dispObservationConsidered"),
+    weak("dispReturnPrecautionsDiscussed"),
+    weak("dispFollowUpRecommended"),
+  ],
+});
+
+/** Flank pain / renal colic — ED urologic emergency workup framework. */
+export const FLANK_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    flank("hpiFlankPain"),
+    flank("hpiColickyPain"),
+    flank("hpiRadiatingToGroin"),
+    flank("hpiSuddenOnset"),
+    flank("hpiNauseaVomiting"),
+    flank("hpiHematuriaReported"),
+    flank("hpiDysuriaReported"),
+    flank("hpiFeverReviewed"),
+    flank("hpiPriorKidneyStoneHistory"),
+    flank("hpiPregnancyConcernReviewed"),
+    flank("hpiUrinaryRetentionReviewed"),
+    flank("hpiSolitaryKidneyHistoryReviewed"),
+  ],
+  rosImportantPositives: [
+    flank("rosFlankPain"),
+    flank("rosHematuria"),
+    flank("rosDysuria"),
+    flank("rosNausea"),
+    flank("rosVomiting"),
+    flank("rosFever"),
+    flank("rosUrinaryFrequency"),
+  ],
+  rosImportantNegatives: [
+    flank("rosDeniesFever"),
+    flank("rosDeniesDysuria"),
+    flank("rosDeniesTesticularPain"),
+    flank("rosDeniesAbdominalPain"),
+    flank("rosDeniesPregnancyConcern"),
+    flank("rosDeniesUrinaryRetention"),
+  ],
+  rosRedFlags: [
+    flank("rfFeverWithFlankPain"),
+    flank("rfSolitaryKidneyConcern"),
+    flank("rfUncontrolledPain"),
+    flank("rfPersistentVomiting"),
+    flank("rfAcuteKidneyInjuryConcern"),
+    flank("rfObstructingStoneConcern"),
+    flank("rfInfectedStoneConcern"),
+  ],
+  physicalExam: {
+    general: [flank("examUncomfortableAppearing"), flank("examDehydratedAppearance")],
+    abdomen: [
+      flank("examCvaTendernessPresent"),
+      flank("examAbdomenSoft"),
+      flank("examAbdomenNonTender"),
+      flank("examSuprapubicTenderness"),
+      flank("examNoPeritonealSigns"),
+      flank("examTesticularExamConsideredIfIndicated"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    flank("mdmRenalColicConsidered"),
+    flank("mdmInfectedStoneConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    flank("diffRenalColic"),
+    flank("diffUreterolithiasis"),
+    flank("diffPyelonephritis"),
+    flank("diffUti"),
+    flank("diffObstructingInfectedStone"),
+    flank("diffMusculoskeletalPain"),
+    flank("diffAppendicitis"),
+    flank("diffOvarianTesticularPathology"),
+    flank("diffAbdominalAorticAneurysm"),
+    flank("diffRenalInsufficiency"),
+  ],
+  mdmDataReviewed: [
+    flank("mdmUrinalysisReviewed"),
+    flank("mdmRenalFunctionReviewed"),
+    flank("mdmCtRenalStoneProtocolReviewed"),
+    flank("mdmUltrasoundReviewedIfObtained"),
+  ],
+  mdmClinicalRationale: [
+    flank("mdmPainControlProvided"),
+    flank("mdmAntiemeticTherapyProvided"),
+    flank("mdmOutpatientUrologyFollowUpDiscussed"),
+  ],
+  mdmPlanSummary: [
+    flank("mdmUrologyConsultationConsidered"),
+    flank("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [flank("mdmIvFluidsIfIndicated")],
+  mdmAdmitObserveDischarge: [
+    flank("mdmAdmissionConsidered"),
+    flank("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    flank("reassessPainImprovedAfterTreatment"),
+    flank("reassessNauseaImprovedAfterTreatment"),
+    flank("reassessToleratingOralIntake"),
+    flank("reassessRepeatFlankExamUnchanged"),
+    flank("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    flank("dispDischargedWithUrologyFollowUp"),
+    flank("dispAdmissionInfectedObstructingStoneConsidered"),
+    flank("dispReturnForFeverVomitingUncontrolledPain"),
+    flank("dispReturnPrecautionsDiscussed"),
+    flank("dispUrineStrainerInstructionsDiscussedIfApplicable"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -714,13 +1042,22 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   stroke_symptoms: STROKE_SYMPTOMS_COMPLAINT_INTEL,
   headache: HEADACHE_COMPLAINT_INTEL,
   dizziness_syncope: DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+  psychiatric_behavioral: PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+  weakness: WEAKNESS_COMPLAINT_INTEL,
+  flank_pain: FLANK_PAIN_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
 export const BATCH2_COMPLAINT_TEMPLATE_IDS = ["stroke_symptoms", "headache", "dizziness_syncope"] as const;
+export const BATCH3_COMPLAINT_TEMPLATE_IDS = [
+  "psychiatric_behavioral",
+  "weakness",
+  "flank_pain",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH3_COMPLAINT_TEMPLATE_IDS,
 ] as const;
 
 export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationComplaintIntelligence): string[] {
