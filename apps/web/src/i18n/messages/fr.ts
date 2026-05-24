@@ -13647,6 +13647,7 @@ export default {
   medicationSoftSafety: {
     panelTitle: "Alertes sécurité médicamenteuse (information)",
     panelTitleInline: "Alertes sécurité médicamenteuse",
+    therapeuticClassLabel: "Classe thérapeutique",
     ruleFallback: "Avertissement {ruleId} — vérifier dose, voie et identité du produit.",
     categoryTag: {
       HIGH_RISK: "Haut risque",
@@ -13980,6 +13981,8 @@ export default {
     selectedMedDosage: "Dosage",
     selectedMedStrengthPlaceholder: "ex. 500 mg",
     selectedMedDosageForm: "Forme",
+    selectedMedTherapeuticClass: "Classe thérapeutique",
+    selectedMedCatalogRoute: "Voie catalogue",
     selectedMedRoute: "Voie",
     selectedMedSig: "Posologie",
     selectedMedSigPlaceholder: "ex. 1 cp × 2/j",

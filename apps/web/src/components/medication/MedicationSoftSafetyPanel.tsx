@@ -7,6 +7,7 @@ import {
   type MedicationSafetyWarning,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 import type { CreateOrderLineItem } from "@/components/orders/createOrderModal/types";
 
 export function orderLineToMedicationSafetyCatalogInput(line: CreateOrderLineItem): MedicationSafetyCatalogInput {
@@ -56,12 +57,19 @@ function translateCategory(t: (key: string) => string, category: MedicationSafet
 export function MedicationSoftSafetyPanel({
   warnings,
   density = "default",
+  therapeuticClass,
 }: {
   warnings: MedicationSafetyWarning[];
   density?: "default" | "compact";
+  /** Raw catalog therapeutic class — display-only normalization; not used for rule matching. */
+  therapeuticClass?: string | null;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const visible = warnings.filter((w) => w.category !== "CONTROLLED_SUBSTANCE");
+  const therapeuticClassDisplay =
+    visible.length > 0 && therapeuticClass?.trim()
+      ? normalizeMedicationDisplayForLocale(therapeuticClass, language)
+      : "";
   if (visible.length === 0) return null;
 
   const heading =
@@ -82,6 +90,11 @@ export function MedicationSoftSafetyPanel({
       }}
     >
       <div style={{ fontWeight: 800, marginBottom: 6, color: "#92400e" }}>{heading}</div>
+      {therapeuticClassDisplay ? (
+        <div style={{ fontSize: 12, color: "#92400e", marginBottom: visible.length > 0 ? 8 : 0 }}>
+          {t("medicationSoftSafety.therapeuticClassLabel")}: {therapeuticClassDisplay}
+        </div>
+      ) : null}
       <ul style={{ margin: 0, paddingLeft: 18 }}>
         {visible.map((w) => (
           <li key={`${w.category}-${w.ruleId}`} style={{ marginBottom: 4 }}>

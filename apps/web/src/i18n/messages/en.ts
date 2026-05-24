@@ -13638,6 +13638,7 @@ export default {
   medicationSoftSafety: {
     panelTitle: "Medication safety notices (informational)",
     panelTitleInline: "Medication safety notices",
+    therapeuticClassLabel: "Therapeutic class",
     ruleFallback: "Notice {ruleId} — verify dose, route, and product identity.",
     categoryTag: {
       HIGH_RISK: "High risk",
@@ -13968,6 +13969,8 @@ export default {
     selectedMedDosage: "Strength",
     selectedMedStrengthPlaceholder: "e.g., 500 mg",
     selectedMedDosageForm: "Dosage form",
+    selectedMedTherapeuticClass: "Therapeutic class",
+    selectedMedCatalogRoute: "Catalog route",
     selectedMedRoute: "Route",
     selectedMedSig: "Directions",
     selectedMedSigPlaceholder: "e.g., 1 tablet BID",

@@ -341,6 +341,7 @@ export function MedicationAdministrationTab({
     softSafetyWarnings: MedicationSafetyWarning[];
     advancedSafetyLine: AdvancedMedicationSafetyLine;
     routeHint: string;
+    therapeuticClass?: string | null;
     ndcHint: string;
     billingUnitHint: string;
     orderedQuantity: number | null;
@@ -691,6 +692,7 @@ export function MedicationAdministrationTab({
       const { safetyCatalogInput, ...rest } = row;
       return {
         ...rest,
+        therapeuticClass: safetyCatalogInput.therapeuticClass ?? null,
         softSafetyWarnings: getMedicationSafetyWarnings(safetyCatalogInput, {
           siblingMedications: siblingInputs.filter((_, i) => i !== idx),
         }),
@@ -855,6 +857,7 @@ export function MedicationAdministrationTab({
       softSafetyWarnings: row.softSafetyWarnings,
       advancedSafetyLine: row.advancedSafetyLine,
       routeHint: row.routeHint,
+      therapeuticClass: row.therapeuticClass,
       ndcHint: row.ndcHint,
       billingUnitHint: row.billingUnitHint,
       orderedQuantity: row.orderedQuantity,
@@ -1857,7 +1860,11 @@ export function MedicationAdministrationTab({
                       {t("mar.viewSafetyDetails")}
                     </summary>
                     <div style={{ marginTop: 10 }}>
-                      <MedicationSoftSafetyPanel warnings={modalItem.softSafetyWarnings} density="compact" />
+                      <MedicationSoftSafetyPanel
+                        warnings={modalItem.softSafetyWarnings}
+                        density="compact"
+                        therapeuticClass={modalItem.therapeuticClass}
+                      />
                       {modalAction === "administered" ? (
                         <AdvancedMedicationSafetyPanel warnings={marAdvancedMedicationSafetyWarnings} density="compact" />
                       ) : null}

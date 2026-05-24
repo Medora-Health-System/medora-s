@@ -7,6 +7,7 @@ import {
   MedicationSoftSafetyPanel,
   medicationSoftSafetyWarningsForOrderLine,
 } from "@/components/medication/MedicationSoftSafetyPanel";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -74,7 +75,7 @@ export function SelectedMedicationItems({
   onIvRouteConfirmationChange?: (lineId: string, confirmed: boolean) => void;
   onErQuantityConfirmationChange?: (lineId: string, confirmed: boolean) => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
 
   if (items.length === 0) return null;
@@ -126,7 +127,10 @@ export function SelectedMedicationItems({
                   </p>
                 </div>
               ) : null}
-              <MedicationSoftSafetyPanel warnings={medicationSoftSafetyWarningsForOrderLine(item, items)} />
+              <MedicationSoftSafetyPanel
+                warnings={medicationSoftSafetyWarningsForOrderLine(item, items)}
+                therapeuticClass={item._safetyCatalog?.therapeuticClass}
+              />
             </div>
             {erAdministerOnly ? (
               <div style={{ marginBottom: 10, fontSize: 13, color: "#475569" }}>
@@ -180,12 +184,24 @@ export function SelectedMedicationItems({
                   <input
                     type="text"
                     readOnly
-                    value={item._dosageForm ?? ""}
+                    value={normalizeMedicationDisplayForLocale(item._dosageForm, language)}
                     placeholder="—"
                     style={{ ...inputSm, backgroundColor: "#f7f7f7", color: "#444" }}
                   />
                 </div>
               )}
+              {!item.isManual && item._safetyCatalog?.therapeuticClass?.trim() ? (
+                <div>
+                  <span style={labelSm}>{t("createOrderModal.selectedMedTherapeuticClass")}</span>
+                  <input
+                    type="text"
+                    readOnly
+                    value={normalizeMedicationDisplayForLocale(item._safetyCatalog.therapeuticClass, language)}
+                    placeholder="—"
+                    style={{ ...inputSm, backgroundColor: "#f7f7f7", color: "#444" }}
+                  />
+                </div>
+              ) : null}
               <div>
                 <span style={labelSm}>{t("createOrderModal.selectedMedRoute")}</span>
                 <select
@@ -203,6 +219,12 @@ export function SelectedMedicationItems({
                   <option value="IVP">IVP</option>
                   <option value="IVPB">IVPB</option>
                 </select>
+                {item._route?.trim() ? (
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>
+                    {t("createOrderModal.selectedMedCatalogRoute")}:{" "}
+                    {normalizeMedicationDisplayForLocale(item._route, language)}
+                  </div>
+                ) : null}
               </div>
               <div>
                 <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
