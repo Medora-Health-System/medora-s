@@ -17,6 +17,11 @@ import {
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
   WEAKNESS_COMPLAINT_INTEL,
   BATCH3_COMPLAINT_TEMPLATE_IDS,
+  BATCH4_COMPLAINT_TEMPLATE_IDS,
+  URI_RESPIRATORY_COMPLAINT_INTEL,
+  FEVER_COMPLAINT_INTEL,
+  COUGH_COMPLAINT_INTEL,
+  ASTHMA_WHEEZING_COMPLAINT_INTEL,
 } from "./providerDocumentationComplaintIntelligence";
 import {
   applyProviderDocumentationTemplate,
@@ -426,6 +431,160 @@ describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => 
   });
 
   it("preserves chip toggle wiring for Batch 3 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.7 Batch 4)", () => {
+  it("maps Batch 4 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.adult_uri_respiratory).toBe(URI_RESPIRATORY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.uri_respiratory).toBe(URI_RESPIRATORY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.fever).toBe(FEVER_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.cough).toBe(COUGH_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.asthma_wheezing).toBe(ASTHMA_WHEEZING_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 4 template", () => {
+    for (const bundle of [
+      URI_RESPIRATORY_COMPLAINT_INTEL,
+      FEVER_COMPLAINT_INTEL,
+      COUGH_COMPLAINT_INTEL,
+      ASTHMA_WHEEZING_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 4 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH4_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const uriKeys = flattenComplaintIntelligenceKeys(URI_RESPIRATORY_COMPLAINT_INTEL);
+    const feverKeys = flattenComplaintIntelligenceKeys(FEVER_COMPLAINT_INTEL);
+    const coughKeys = flattenComplaintIntelligenceKeys(COUGH_COMPLAINT_INTEL);
+    const asthmaKeys = flattenComplaintIntelligenceKeys(ASTHMA_WHEEZING_COMPLAINT_INTEL);
+    for (const key of uriKeys) expect(key).toContain(".uriRespiratory.");
+    for (const key of feverKeys) expect(key).toContain(".fever.");
+    for (const key of coughKeys) expect(key).toContain(".cough.");
+    for (const key of asthmaKeys) expect(key).toContain(".asthmaWheezing.");
+  });
+
+  it("keeps Batch 4 intelligence free of other complaint namespaces", () => {
+    const foreignNamespaces = [
+      ".chestPain.",
+      ".flankPain.",
+      ".psychiatricBehavioral.",
+      ".stroke.",
+      ".weakness.",
+    ];
+    for (const bundle of [
+      URI_RESPIRATORY_COMPLAINT_INTEL,
+      FEVER_COMPLAINT_INTEL,
+      COUGH_COMPLAINT_INTEL,
+      ASTHMA_WHEEZING_COMPLAINT_INTEL,
+    ]) {
+      const keys = flattenComplaintIntelligenceKeys(bundle);
+      for (const ns of foreignNamespaces) {
+        expect(keys.some((key) => key.includes(ns))).toBe(false);
+      }
+    }
+  });
+
+  it("does not leak complaint-specific chips across Batch 4 templates", () => {
+    const uriKeys = flattenComplaintIntelligenceKeys(URI_RESPIRATORY_COMPLAINT_INTEL);
+    const feverKeys = flattenComplaintIntelligenceKeys(FEVER_COMPLAINT_INTEL);
+    const coughKeys = flattenComplaintIntelligenceKeys(COUGH_COMPLAINT_INTEL);
+    const asthmaKeys = flattenComplaintIntelligenceKeys(ASTHMA_WHEEZING_COMPLAINT_INTEL);
+    expect(uriKeys.some((key) => key.includes(".asthmaWheezing.rfSilentChestConcern"))).toBe(false);
+    expect(feverKeys.some((key) => key.includes(".flankPain."))).toBe(false);
+    expect(coughKeys.some((key) => key.includes(".chestPain."))).toBe(false);
+    expect(asthmaKeys.some((key) => key.includes(".psychiatricBehavioral."))).toBe(false);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 4 bundle", () => {
+    for (const bundle of [
+      URI_RESPIRATORY_COMPLAINT_INTEL,
+      FEVER_COMPLAINT_INTEL,
+      COUGH_COMPLAINT_INTEL,
+      ASTHMA_WHEEZING_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 4 templates expose expected intelligence entry points", () => {
+    const uri = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "adult_uri_respiratory");
+    const fever = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "fever");
+    const cough = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "cough");
+    const asthma = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "asthma_wheezing");
+    expect(uri?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion"
+    );
+    expect(fever?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.fever.diffSepsis"
+    );
+    expect(cough?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.cough.diffPneumonia"
+    );
+    expect(asthma?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.asthmaWheezing.diffAsthmaExacerbation"
+    );
+    expect(uri?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultUriInfectiousWorkup");
+    expect(fever?.promptReminderKeys).toContain("providerDocumentationPromptReminders.feverSourceSepsisReminder");
+    expect(cough?.promptReminderKeys).toContain("providerDocumentationPromptReminders.coughRespiratoryWorkup");
+    expect(asthma?.promptReminderKeys).toContain("providerDocumentationPromptReminders.asthmaExacerbationReminder");
+    expect(cough?.promptReminderKeys).not.toContain("providerDocumentationPromptReminders.chestPainHeartScoreReminder");
+  });
+
+  it("leaves Batch 1–3 intelligence bundles unchanged", () => {
+    expect(FLANK_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
+    );
+    expect(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
+    );
+    expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+    );
+  });
+
+  it("uses i18n keys for all Batch 4 complaint intelligence fragments", () => {
+    for (const bundle of [
+      URI_RESPIRATORY_COMPLAINT_INTEL,
+      FEVER_COMPLAINT_INTEL,
+      COUGH_COMPLAINT_INTEL,
+      ASTHMA_WHEEZING_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(ASTHMA_WHEEZING_COMPLAINT_INTEL)).not.toMatch(/billingLevel|CPT|autoBill|chargeCapture/i);
+  });
+
+  it("preserves chip toggle wiring for Batch 4 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"

@@ -9,6 +9,10 @@ import {
   CHEST_PAIN_COMPLAINT_INTEL,
   DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
   FLANK_PAIN_COMPLAINT_INTEL,
+  FEVER_COMPLAINT_INTEL,
+  COUGH_COMPLAINT_INTEL,
+  ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  URI_RESPIRATORY_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -84,7 +88,8 @@ function pediatricTemplate(
   fields: ReturnType<typeof mergeFields>,
   physicalExam: ReturnType<typeof mergeExam>,
   guidance: ProviderDocumentationTemplateGuidance = PEDIATRIC_GUIDANCE,
-  promptReminderKeys?: string[]
+  promptReminderKeys?: string[],
+  complaintIntelligence?: ProviderDocumentationComplaintIntelligence
 ): TemplateSpec {
   return {
     id,
@@ -109,6 +114,7 @@ function pediatricTemplate(
       "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
       "providerDocumentationPromptReminders.pediatricToxicityAppearance",
     ],
+    complaintIntelligence,
   };
 }
 
@@ -327,7 +333,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesSob", "erMseRosChips.negDeniesVomiting"],
     ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfRespDistress"],
     { mdmWorkingAssessment: ["erMseMdmChips.waInfectious"], mdmDataReviewed: ["erMseMdmChips.planLabs"] },
-    { skin: ["erMseExamChips.skinWarmDry"] }
+    { skin: ["erMseExamChips.skinWarmDry"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.feverSourceSepsisReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    FEVER_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "uri_respiratory",
@@ -338,7 +351,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesChestPain", "providerDocumentationWorkspace.stickerRosNoHemoptysis"],
     ["erMseRosChips.rfRespDistress"],
     { mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waCardiopulmonary"] },
-    { respiratory: ["erMseExamChips.respClearBs", "erMseExamChips.respWheezing"] }
+    { respiratory: ["erMseExamChips.respClearBs", "erMseExamChips.respWheezing"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultUriInfectiousWorkup",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    URI_RESPIRATORY_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "nausea_vomiting",
@@ -382,7 +402,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesChestPain"],
     ["erMseRosChips.rfRespDistress"],
     { mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"], mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary"] },
-    { respiratory: ["erMseExamChips.respWheezing", "erMseExamChips.respIncreasedWob"] }
+    { respiratory: ["erMseExamChips.respWheezing", "erMseExamChips.respIncreasedWob"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.asthmaExacerbationReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    ASTHMA_WHEEZING_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "seizure",
@@ -462,7 +489,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesChestPain"],
     ["erMseRosChips.rfRespDistress"],
     { mdmWorkingAssessment: ["erMseMdmChips.waInfectious"] },
-    { respiratory: ["erMseExamChips.respClearBs"] }
+    { respiratory: ["erMseExamChips.respClearBs"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.coughRespiratoryWorkup",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    COUGH_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "croup",
@@ -589,7 +623,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       general: ["erMseExamChips.genAlert"],
       heent: ["erMseExamChips.heentOropharynxClear"],
       respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultUriInfectiousWorkup",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    URI_RESPIRATORY_COMPLAINT_INTEL
   ),
   adultTemplate(
     "adult_nausea_vomiting",
