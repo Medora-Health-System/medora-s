@@ -8,6 +8,7 @@ import {
   COMPLAINT_INTEL_BY_TEMPLATE_ID,
   COMPLAINT_INTEL_TEMPLATE_IDS,
   DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+  complaintIntelligenceHasDuplicateKeys,
   flattenComplaintIntelligenceKeys,
   HEADACHE_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -141,7 +142,7 @@ describe("provider documentation complaint intelligence (19N.3 Batch 1)", () => 
   });
 });
 
-describe("provider documentation complaint intelligence (19N.4 Batch 2)", () => {
+describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => {
   it("maps Batch 2 templates to complaint intelligence bundles", () => {
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.stroke_symptoms).toBe(STROKE_SYMPTOMS_COMPLAINT_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.headache).toBe(HEADACHE_COMPLAINT_INTEL);
@@ -201,18 +202,61 @@ describe("provider documentation complaint intelligence (19N.4 Batch 2)", () => 
     expect(stroke?.complaintIntelligence?.hpi).toContain(
       "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
     );
+    expect(stroke?.complaintIntelligence?.physicalExam?.neuroPsych).toContain(
+      "providerDocumentationComplaintIntel.stroke.examNihssPerformed"
+    );
     expect(stroke?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.stroke.diffIschemicStroke"
+      "providerDocumentationComplaintIntel.stroke.diffBellPalsy"
     );
     expect(headache?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage"
+      "providerDocumentationComplaintIntel.headache.diffPostTraumaticHeadache"
     );
     expect(dizz?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.dizzinessSyncope.diffCardiacArrhythmia"
+      "providerDocumentationComplaintIntel.dizzinessSyncope.diffBppv"
     );
+    expect(stroke?.complaintIntelligence?.reassessment?.length).toBeGreaterThanOrEqual(4);
+    expect(headache?.complaintIntelligence?.followUpDisposition?.length).toBeGreaterThanOrEqual(5);
+    expect(dizz?.complaintIntelligence?.followUpDisposition?.length).toBeGreaterThanOrEqual(5);
     expect(stroke?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultStrokeTimeSensitive");
     expect(headache?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultHeadacheRedFlags");
     expect(dizz?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultSyncopeWorkup");
+    expect(headache?.promptReminderKeys).not.toContain("providerDocumentationPromptReminders.chestPainHeartScoreReminder");
+  });
+
+  it("keeps Batch 2 intelligence free of other complaint namespaces", () => {
+    for (const bundle of [
+      STROKE_SYMPTOMS_COMPLAINT_INTEL,
+      HEADACHE_COMPLAINT_INTEL,
+      DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+    ]) {
+      const keys = flattenComplaintIntelligenceKeys(bundle);
+      expect(keys.some((key) => key.includes(".chestPain."))).toBe(false);
+      expect(keys.some((key) => key.includes(".abdominal."))).toBe(false);
+      expect(keys.some((key) => key.includes(".sob."))).toBe(false);
+    }
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 2 bundle", () => {
+    for (const bundle of [
+      STROKE_SYMPTOMS_COMPLAINT_INTEL,
+      HEADACHE_COMPLAINT_INTEL,
+      DIZZINESS_SYNCOPE_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("leaves Batch 1 intelligence bundles unchanged", () => {
+    expect(CHEST_PAIN_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+    );
+    expect(SOB_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.sob.diffPe"
+    );
+    expect(ABDOMINAL_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.abdominal.diffAppendicitis"
+    );
+    expect(complaintIntelligenceHasDuplicateKeys(CHEST_PAIN_COMPLAINT_INTEL)).toBe(false);
   });
 
   it("uses i18n keys for all Batch 2 complaint intelligence fragments", () => {
@@ -226,5 +270,16 @@ describe("provider documentation complaint intelligence (19N.4 Batch 2)", () => 
       }
     }
     expect(JSON.stringify(STROKE_SYMPTOMS_COMPLAINT_INTEL)).not.toMatch(/billingLevel|CPT|autoBill|chargeCapture/i);
+  });
+
+  it("preserves chip toggle wiring for complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("aria-pressed");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
   });
 });
