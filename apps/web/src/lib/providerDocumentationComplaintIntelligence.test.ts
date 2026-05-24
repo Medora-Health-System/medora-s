@@ -28,6 +28,11 @@ import {
   PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+  HYPERGLYCEMIA_COMPLAINT_INTEL,
+  HYPERTENSION_COMPLAINT_INTEL,
+  ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+  BATCH7_COMPLAINT_TEMPLATE_IDS,
   FALL_COMPLAINT_INTEL,
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
@@ -851,6 +856,148 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
   });
 
   it("preserves chip toggle wiring for Batch 6 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.10 Batch 7)", () => {
+  it("maps Batch 7 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.urinary_symptoms).toBe(UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.hyperglycemia).toBe(HYPERGLYCEMIA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.hypertension).toBe(HYPERTENSION_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.allergic_reaction_rash).toBe(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 7 template", () => {
+    for (const bundle of [
+      UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+      HYPERGLYCEMIA_COMPLAINT_INTEL,
+      HYPERTENSION_COMPLAINT_INTEL,
+      ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 7 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH7_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const utiKeys = flattenComplaintIntelligenceKeys(UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL);
+    const hyperKeys = flattenComplaintIntelligenceKeys(HYPERGLYCEMIA_COMPLAINT_INTEL);
+    const htKeys = flattenComplaintIntelligenceKeys(HYPERTENSION_COMPLAINT_INTEL);
+    const allergyKeys = flattenComplaintIntelligenceKeys(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL);
+    for (const key of utiKeys) expect(key).toContain(".utiUrinarySymptoms.");
+    for (const key of hyperKeys) expect(key).toContain(".hyperglycemia.");
+    for (const key of htKeys) expect(key).toContain(".hypertension.");
+    for (const key of allergyKeys) expect(key).toContain(".allergicReactionRash.");
+  });
+
+  it("does not leak unrelated complaint chips into Batch 7 bundles", () => {
+    const utiKeys = flattenComplaintIntelligenceKeys(UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL);
+    const hyperKeys = flattenComplaintIntelligenceKeys(HYPERGLYCEMIA_COMPLAINT_INTEL);
+    const htKeys = flattenComplaintIntelligenceKeys(HYPERTENSION_COMPLAINT_INTEL);
+    const allergyKeys = flattenComplaintIntelligenceKeys(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL);
+    expect(utiKeys.some((key) => key.includes(".flankPain."))).toBe(false);
+    expect(utiKeys.some((key) => key.includes(".flankPain.diffRenalColic"))).toBe(false);
+    expect(hyperKeys.some((key) => key.includes(".hypertension."))).toBe(false);
+    expect(hyperKeys.some((key) => key.includes(".allergicReactionRash."))).toBe(false);
+    expect(htKeys.some((key) => key.includes(".hyperglycemia.diffDka"))).toBe(false);
+    expect(htKeys.some((key) => key.includes(".hyperglycemia."))).toBe(false);
+    expect(allergyKeys.some((key) => key.includes(".psychiatricBehavioral."))).toBe(false);
+    expect(allergyKeys.some((key) => key.includes(".stroke."))).toBe(false);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 7 bundle", () => {
+    for (const bundle of [
+      UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+      HYPERGLYCEMIA_COMPLAINT_INTEL,
+      HYPERTENSION_COMPLAINT_INTEL,
+      ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 7 templates expose expected intelligence entry points", () => {
+    const uti = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "urinary_symptoms");
+    const hyper = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "hyperglycemia");
+    const ht = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "hypertension");
+    const allergy = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "allergic_reaction_rash");
+    expect(uti?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.utiUrinarySymptoms.hpiDysuria"
+    );
+    expect(uti?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.utiUrinarySymptoms.diffPyelonephritis"
+    );
+    expect(hyper?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.hyperglycemia.diffDka"
+    );
+    expect(ht?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.hypertension.diffHypertensiveEmergency"
+    );
+    expect(allergy?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.allergicReactionRash.diffAnaphylaxis"
+    );
+    expect(uti?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultUtiUrinaryWorkupReminder");
+    expect(hyper?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultHyperglycemiaDkaReminder");
+    expect(ht?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultHypertensionEmergencyReminder");
+    expect(allergy?.promptReminderKeys).toContain(
+      "providerDocumentationPromptReminders.adultAllergicAnaphylaxisReminder"
+    );
+  });
+
+  it("leaves Batch 1–6 intelligence bundles unchanged", () => {
+    expect(FLANK_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
+    );
+    expect(PEDIATRIC_FEVER_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.pediatricFever.hpiCaregiverHistorianUsed"
+    );
+    expect(FRACTURE_CONCERN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.fractureConcern.diffFracture"
+    );
+  });
+
+  it("uses i18n keys for all Batch 7 complaint intelligence fragments", () => {
+    for (const bundle of [
+      UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+      HYPERGLYCEMIA_COMPLAINT_INTEL,
+      HYPERTENSION_COMPLAINT_INTEL,
+      ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL)).not.toMatch(
+      /billingLevel|CPT|autoBill|chargeCapture/i
+    );
+  });
+
+  it("preserves chip toggle wiring for Batch 7 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"

@@ -21,6 +21,10 @@ import {
   PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+  HYPERGLYCEMIA_COMPLAINT_INTEL,
+  HYPERTENSION_COMPLAINT_INTEL,
+  ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -866,7 +870,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     {
       general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
       abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender", "providerDocumentationWorkspace.stickerExamNoCvaTenderness"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultUtiUrinaryWorkupReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL
   ),
   adultTemplate(
     "flank_pain",
@@ -922,7 +932,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmGuidance.prescriptionDrugManagementReviewed"],
       mdmPlanSummary: ["erMseMdmChips.actFluids", "erMseMdmChips.planReassess"],
     },
-    { general: ["erMseExamChips.genAlert"], heent: ["erMseExamChips.heentDryMm"] }
+    { general: ["erMseExamChips.genAlert"], heent: ["erMseExamChips.heentDryMm"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultHyperglycemiaDkaReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    HYPERGLYCEMIA_COMPLAINT_INTEL
   ),
   adultTemplate(
     "hypertension",
@@ -936,7 +952,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary", "erMseMdmGuidance.chronicIllnessExacerbationConsidered"],
       mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmGuidance.prescriptionDrugManagementReviewed"],
     },
-    { cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioTachycardic"], neuroPsych: ["erMseExamChips.neuroAlertOriented"] }
+    { cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioTachycardic"], neuroPsych: ["erMseExamChips.neuroAlertOriented"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultHypertensionEmergencyReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    HYPERTENSION_COMPLAINT_INTEL
   ),
   adultTemplate(
     "medication_refill",
@@ -972,7 +994,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
       skin: ["erMseExamChips.skinRashPresent", "providerDocumentationWorkspace.stickerExamUrticariaPresent"],
       heent: ["providerDocumentationWorkspace.stickerExamNoOropharyngealSwelling"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultAllergicAnaphylaxisReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    ALLERGIC_REACTION_RASH_COMPLAINT_INTEL
   ),
   {
     id: "observation_reassessment",

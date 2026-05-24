@@ -15,6 +15,8 @@
  *   orthopedic extremity injury and neurovascular exam documentation.
  * - Batch 6: AAP pediatric fever guidance; pediatric dehydration/gastroenteritis; pediatric asthma/wheezing;
  *   pediatric abdominal pain red flags; caregiver historian documentation standards.
+ * - Batch 7: IDSA UTI concepts; ADA hyperglycemia/DKA; AHA/ACC hypertension emergency; allergy/anaphylaxis;
+ *   dermatologic rash red-flag documentation.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -62,6 +64,10 @@ const pedFeb = (key: string) => `providerDocumentationComplaintIntel.pediatricFe
 const pedAbd = (key: string) => `providerDocumentationComplaintIntel.pediatricAbdominalPain.${key}`;
 const pedAsthma = (key: string) => `providerDocumentationComplaintIntel.pediatricAsthmaWheezing.${key}`;
 const pedGastro = (key: string) => `providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.${key}`;
+const uti = (key: string) => `providerDocumentationComplaintIntel.utiUrinarySymptoms.${key}`;
+const hyper = (key: string) => `providerDocumentationComplaintIntel.hyperglycemia.${key}`;
+const ht = (key: string) => `providerDocumentationComplaintIntel.hypertension.${key}`;
+const allergy = (key: string) => `providerDocumentationComplaintIntel.allergicReactionRash.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -2215,6 +2221,366 @@ export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationC
   ],
 });
 
+/** UTI / urinary symptoms — cystitis / pyelonephritis documentation framework. */
+export const UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    uti("hpiDysuria"),
+    uti("hpiUrinaryFrequency"),
+    uti("hpiUrinaryUrgency"),
+    uti("hpiSuprapubicPain"),
+    uti("hpiFlankPainReviewed"),
+    uti("hpiFeverReviewed"),
+    uti("hpiHematuriaReviewed"),
+    uti("hpiNauseaVomitingReviewed"),
+    uti("hpiPregnancyConcernReviewed"),
+    uti("hpiRecurrentUtiHistoryReviewed"),
+    uti("hpiCatheterUseReviewed"),
+    uti("hpiImmunocompromisedStatusReviewed"),
+  ],
+  rosImportantPositives: [
+    uti("rosDysuria"),
+    uti("rosFrequency"),
+    uti("rosUrgency"),
+    uti("rosHematuria"),
+    uti("rosSuprapubicPain"),
+    uti("rosFlankPain"),
+    uti("rosFever"),
+    uti("rosNauseaVomiting"),
+  ],
+  rosImportantNegatives: [
+    uti("rosDeniesFlankPain"),
+    uti("rosDeniesFever"),
+    uti("rosDeniesVomiting"),
+    uti("rosDeniesVaginalSymptoms"),
+    uti("rosDeniesTesticularPain"),
+    uti("rosDeniesPregnancyConcern"),
+  ],
+  rosRedFlags: [
+    uti("rfPyelonephritisConcern"),
+    uti("rfSepsisConcern"),
+    uti("rfObstructingStoneConcern"),
+    uti("rfPregnancyWithUrinarySymptoms"),
+    uti("rfImmunocompromisedPatient"),
+    uti("rfUrinaryRetention"),
+  ],
+  physicalExam: {
+    general: [uti("examWellAppearing"), uti("examFebrileAppearance"), uti("examNoAcuteDistress")],
+    abdomen: [
+      uti("examSuprapubicTenderness"),
+      uti("examCvaTenderness"),
+      uti("examAbdomenSoft"),
+      uti("examAbdomenNonTender"),
+      uti("examNoPeritonealSigns"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    uti("mdmPyelonephritisConsidered"),
+    uti("mdmSepsisFromUrinarySourceConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    uti("diffCystitis"),
+    uti("diffPyelonephritis"),
+    uti("diffUreterolithiasis"),
+    uti("diffStiUrethritis"),
+    uti("diffVaginitis"),
+    uti("diffProstatitis"),
+    uti("diffUrinaryRetention"),
+    uti("diffSepsisFromUrinarySource"),
+  ],
+  mdmDataReviewed: [
+    uti("mdmUrinalysisReviewed"),
+    uti("mdmUrineCultureConsidered"),
+    uti("mdmPregnancyTestingReviewedIfApplicable"),
+    uti("mdmRenalFunctionReviewedIfIndicated"),
+  ],
+  mdmClinicalRationale: [
+    uti("mdmObstructingStoneConsidered"),
+    uti("mdmAntibioticsConsideredBasedOnPresentation"),
+    uti("mdmOutpatientTreatmentDiscussed"),
+    uti("mdmSerialReassessmentPerformed"),
+  ],
+  mdmAdmitObserveDischarge: [uti("mdmAdmissionConsideredSystemicIllness")],
+  reassessment: [
+    uti("reassessPainImproved"),
+    uti("reassessToleratingOralIntake"),
+    uti("reassessAfebrileStable"),
+    uti("reassessNoWorseningFlankPain"),
+  ],
+  followUpDisposition: [
+    uti("dispDischargeAntibioticsIfIndicated"),
+    uti("dispReturnFeverFlankPainVomiting"),
+    uti("dispHydrationInstructionsDiscussed"),
+    uti("dispFollowUpRecommended"),
+  ],
+});
+
+/** Hyperglycemia — DKA / HHS documentation framework. */
+export const HYPERGLYCEMIA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    hyper("hpiElevatedGlucoseNoted"),
+    hyper("hpiDiabetesHistoryReviewed"),
+    hyper("hpiMedicationAdherenceReviewed"),
+    hyper("hpiInsulinUseReviewed"),
+    hyper("hpiRecentIllnessReviewed"),
+    hyper("hpiPolyuria"),
+    hyper("hpiPolydipsia"),
+    hyper("hpiNauseaVomiting"),
+    hyper("hpiAbdominalPain"),
+    hyper("hpiWeakness"),
+    hyper("hpiAlteredMentalStatusReviewed"),
+    hyper("hpiDehydrationSymptomsReviewed"),
+  ],
+  rosImportantPositives: [
+    hyper("rosPolyuria"),
+    hyper("rosPolydipsia"),
+    hyper("rosNausea"),
+    hyper("rosVomiting"),
+    hyper("rosAbdominalPain"),
+    hyper("rosWeakness"),
+    hyper("rosFatigue"),
+  ],
+  rosImportantNegatives: [
+    hyper("rosDeniesChestPain"),
+    hyper("rosDeniesShortnessOfBreath"),
+    hyper("rosDeniesFever"),
+    hyper("rosDeniesVomiting"),
+    hyper("rosDeniesAlteredMentalStatus"),
+  ],
+  rosRedFlags: [
+    hyper("rfDkaConcern"),
+    hyper("rfHhsConcern"),
+    hyper("rfAlteredMentalStatus"),
+    hyper("rfDehydrationConcern"),
+    hyper("rfInfectionTriggerConcern"),
+    hyper("rfSevereElectrolyteAbnormality"),
+  ],
+  physicalExam: {
+    general: [
+      hyper("examAlertAndOriented"),
+      hyper("examDryMucousMembranes"),
+      hyper("examTachycardic"),
+      hyper("examWellAppearing"),
+    ],
+    respiratory: [hyper("examNoRespiratoryDistress"), hyper("examKussmaulRespirationsConcern")],
+    abdomen: [hyper("examAbdomenSoft")],
+    neuroPsych: [hyper("examNoFocalNeurologicDeficit")],
+  },
+  mdmWorkingAssessment: [hyper("mdmDkaConsidered"), hyper("mdmHhsConsidered")],
+  mdmDifferentialSynthesis: [
+    hyper("diffUncomplicatedHyperglycemia"),
+    hyper("diffDka"),
+    hyper("diffHhs"),
+    hyper("diffDehydration"),
+    hyper("diffInfectionTriggeredHyperglycemia"),
+    hyper("diffMedicationNonadherence"),
+    hyper("diffSteroidInducedHyperglycemia"),
+    hyper("diffElectrolyteAbnormality"),
+  ],
+  mdmDataReviewed: [
+    hyper("mdmGlucoseReviewed"),
+    hyper("mdmKetonesReviewedIfObtained"),
+    hyper("mdmAnionGapReviewed"),
+    hyper("mdmElectrolytesReviewed"),
+    hyper("mdmRenalFunctionReviewed"),
+  ],
+  mdmClinicalRationale: [
+    hyper("mdmInfectionTriggerEvaluated"),
+    hyper("mdmInsulinTherapyConsideredAdministered"),
+    hyper("mdmSerialReassessmentPerformed"),
+  ],
+  mdmPlanSummary: [hyper("mdmIvFluidsAdministered")],
+  mdmAdmitObserveDischarge: [hyper("mdmAdmissionConsidered")],
+  reassessment: [
+    hyper("reassessGlucoseImproved"),
+    hyper("reassessHydrationStatusImproved"),
+    hyper("reassessMentalStatusStable"),
+    hyper("reassessElectrolytesReviewed"),
+    hyper("reassessToleratingOralIntake"),
+  ],
+  followUpDisposition: [
+    hyper("dispOutpatientDiabetesFollowUpRecommended"),
+    hyper("dispMedicationAdherenceDiscussed"),
+    hyper("dispReturnVomitingAmsWorseningSymptoms"),
+    hyper("dispAdmissionConsideredDkaHhsPersistentLabs"),
+  ],
+});
+
+/** Hypertension — hypertensive urgency/emergency documentation framework. */
+export const HYPERTENSION_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    ht("hpiElevatedBloodPressureNoted"),
+    ht("hpiMedicationAdherenceReviewed"),
+    ht("hpiMissedMedicationsReviewed"),
+    ht("hpiHeadacheReviewed"),
+    ht("hpiChestPainReviewed"),
+    ht("hpiShortnessOfBreathReviewed"),
+    ht("hpiNeuroSymptomsReviewed"),
+    ht("hpiVisionChangesReviewed"),
+    ht("hpiRenalDiseaseHistoryReviewed"),
+    ht("hpiPregnancyConcernReviewedIfApplicable"),
+  ],
+  rosImportantPositives: [
+    ht("rosHeadache"),
+    ht("rosChestPain"),
+    ht("rosShortnessOfBreath"),
+    ht("rosVisionChanges"),
+    ht("rosDizziness"),
+    ht("rosNeurologicSymptoms"),
+  ],
+  rosImportantNegatives: [
+    ht("rosDeniesChestPain"),
+    ht("rosDeniesShortnessOfBreath"),
+    ht("rosDeniesFocalNeurologicDeficit"),
+    ht("rosDeniesVisionLoss"),
+    ht("rosDeniesSevereHeadache"),
+    ht("rosDeniesDecreasedUrineOutput"),
+  ],
+  rosRedFlags: [
+    ht("rfHypertensiveEmergencyConcern"),
+    ht("rfNeurologicDeficit"),
+    ht("rfChestPain"),
+    ht("rfPulmonaryEdemaConcern"),
+    ht("rfAcuteKidneyInjuryConcern"),
+    ht("rfPregnancyRelatedHypertensionConcern"),
+  ],
+  physicalExam: {
+    general: [ht("examNoAcuteDistress")],
+    neuroPsych: [ht("examNeurologicallyIntact"), ht("examNoFocalDeficit"), ht("examVisionSymptomsAssessed")],
+    respiratory: [ht("examLungsClear"), ht("examNoRespiratoryDistress")],
+    cardiovascular: [ht("examRegularRateAndRhythm"), ht("examNoPeripheralEdema")],
+  },
+  mdmWorkingAssessment: [
+    ht("mdmEndOrganSymptomsAssessed"),
+    ht("mdmHypertensiveEmergencyConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    ht("diffAsymptomaticHypertension"),
+    ht("diffHypertensiveUrgency"),
+    ht("diffHypertensiveEmergency"),
+    ht("diffAcs"),
+    ht("diffStrokeTia"),
+    ht("diffAcuteKidneyInjury"),
+    ht("diffMedicationNonadherence"),
+    ht("diffPainAnxietyRelatedElevation"),
+  ],
+  mdmDataReviewed: [
+    ht("mdmRepeatBloodPressureReviewed"),
+    ht("mdmEcgReviewedIfIndicated"),
+    ht("mdmRenalFunctionReviewedIfObtained"),
+    ht("mdmTroponinReviewedIfChestPain"),
+  ],
+  mdmClinicalRationale: [
+    ht("mdmNeurologicExamDocumented"),
+    ht("mdmMedicationRefillRestartConsidered"),
+    ht("mdmOutpatientFollowUpEmphasized"),
+    ht("mdmSerialReassessmentPerformed"),
+  ],
+  mdmAdmitObserveDischarge: [ht("mdmAdmissionConsideredEndOrganInjury")],
+  reassessment: [
+    ht("reassessRepeatBloodPressureObtained"),
+    ht("reassessSymptomsReassessed"),
+    ht("reassessNoNewEndOrganSymptoms"),
+    ht("reassessStableOutpatientFollowUp"),
+  ],
+  followUpDisposition: [
+    ht("dispOutpatientBpFollowUpRecommended"),
+    ht("dispMedicationAdherenceDiscussed"),
+    ht("dispReturnChestPainSobNeuroSymptoms"),
+    ht("dispAdmissionConsideredHypertensiveEmergency"),
+  ],
+});
+
+/** Allergic reaction / rash — anaphylaxis and dermatologic red-flag documentation framework. */
+export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    allergy("hpiRashOnsetReviewed"),
+    allergy("hpiAllergenExposureReviewed"),
+    allergy("hpiMedicationExposureReviewed"),
+    allergy("hpiFoodExposureReviewed"),
+    allergy("hpiInsectStingReviewed"),
+    allergy("hpiItchingReported"),
+    allergy("hpiSwellingReviewed"),
+    allergy("hpiThroatTightnessReviewed"),
+    allergy("hpiWheezingReviewed"),
+    allergy("hpiPriorAnaphylaxisHistoryReviewed"),
+    allergy("hpiEpinephrineUseReviewed"),
+  ],
+  rosImportantPositives: [
+    allergy("rosRash"),
+    allergy("rosItching"),
+    allergy("rosSwelling"),
+    allergy("rosWheezing"),
+    allergy("rosThroatTightness"),
+    allergy("rosNauseaVomiting"),
+  ],
+  rosImportantNegatives: [
+    allergy("rosDeniesShortnessOfBreath"),
+    allergy("rosDeniesThroatSwelling"),
+    allergy("rosDeniesWheezing"),
+    allergy("rosDeniesVomiting"),
+    allergy("rosDeniesSyncope"),
+    allergy("rosDeniesMucosalLesions"),
+  ],
+  rosRedFlags: [
+    allergy("rfAnaphylaxisConcern"),
+    allergy("rfAirwaySwellingConcern"),
+    allergy("rfHypotension"),
+    allergy("rfWheezingBronchospasm"),
+    allergy("rfMucosalInvolvement"),
+    allergy("rfStevensJohnsonTenConcern"),
+    allergy("rfPurpuraPetechiaeConcern"),
+  ],
+  physicalExam: {
+    general: [allergy("examNoHypotension")],
+    respiratory: [
+      allergy("examNoRespiratoryDistress"),
+      allergy("examAirwayPatent"),
+      allergy("examWheezingPresent"),
+    ],
+    heent: [allergy("examNoTongueLipSwelling"), allergy("examMucosalLesionsPresent")],
+    skin: [allergy("examUrticariaPresent"), allergy("examMaculopapularRash"), allergy("examSkinWarmDry")],
+  },
+  mdmWorkingAssessment: [
+    allergy("mdmAnaphylaxisCriteriaAssessed"),
+    allergy("mdmAirwayInvolvementAssessed"),
+  ],
+  mdmDifferentialSynthesis: [
+    allergy("diffAllergicReaction"),
+    allergy("diffAnaphylaxis"),
+    allergy("diffUrticaria"),
+    allergy("diffContactDermatitis"),
+    allergy("diffViralExanthem"),
+    allergy("diffCellulitis"),
+    allergy("diffMedicationReaction"),
+    allergy("diffStevensJohnsonTen"),
+    allergy("diffPetechialPurpuricRash"),
+  ],
+  mdmClinicalRationale: [
+    allergy("mdmTriggerAvoidanceDiscussed"),
+    allergy("mdmObservationPeriodConsidered"),
+    allergy("mdmSerialReassessmentPerformed"),
+  ],
+  mdmPlanSummary: [
+    allergy("mdmEpinephrineConsideredAdministered"),
+    allergy("mdmAntihistamineTherapyConsideredAdministered"),
+    allergy("mdmSteroidTherapyConsidered"),
+  ],
+  mdmImmediateActionsRationale: [allergy("mdmEpinephrinePrescriptionConsideredIfIndicated")],
+  reassessment: [
+    allergy("reassessRashImproving"),
+    allergy("reassessAirwayRemainsPatent"),
+    allergy("reassessNoRespiratoryDistress"),
+    allergy("reassessVitalSignsStable"),
+    allergy("reassessSymptomsImprovedAfterTreatment"),
+  ],
+  followUpDisposition: [
+    allergy("dispReturnBreathingDifficultyThroatSwelling"),
+    allergy("dispAllergenAvoidanceDiscussed"),
+    allergy("dispEpinephrineAutoinjectorInstructionsIfPrescribed"),
+    allergy("dispFollowUpRecommended"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -2239,6 +2605,10 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   head_injury: HEAD_INJURY_COMPLAINT_INTEL,
   laceration: LACERATION_COMPLAINT_INTEL,
   fracture_concern: FRACTURE_CONCERN_COMPLAINT_INTEL,
+  urinary_symptoms: UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
+  hyperglycemia: HYPERGLYCEMIA_COMPLAINT_INTEL,
+  hypertension: HYPERTENSION_COMPLAINT_INTEL,
+  allergic_reaction_rash: ALLERGIC_REACTION_RASH_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -2264,6 +2634,12 @@ export const BATCH6_COMPLAINT_TEMPLATE_IDS = [
   "asthma_wheezing",
   "nausea_vomiting",
 ] as const;
+export const BATCH7_COMPLAINT_TEMPLATE_IDS = [
+  "urinary_symptoms",
+  "hyperglycemia",
+  "hypertension",
+  "allergic_reaction_rash",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -2271,6 +2647,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH4_COMPLAINT_TEMPLATE_IDS,
   ...BATCH5_COMPLAINT_TEMPLATE_IDS,
   ...BATCH6_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH7_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;
