@@ -43,6 +43,13 @@ import {
   ASSAULT_TRAUMA_COMPLAINT_INTEL,
   NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
   BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  BATCH10_COMPLAINT_TEMPLATE_IDS,
+  CRUSH_INJURY_COMPLAINT_INTEL,
+  PENETRATING_INJURY_COMPLAINT_INTEL,
+  BURN_INJURY_COMPLAINT_INTEL,
+  PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
+  MALE_GENITAL_COMPLAINT_INTEL,
+  FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
   FALL_COMPLAINT_INTEL,
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
@@ -1295,6 +1302,176 @@ describe("provider documentation complaint intelligence (19N.12 Batch 9)", () =>
   });
 
   it("preserves chip toggle wiring for Batch 9 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.13 Batch 10)", () => {
+  const batch10Bundles = [
+    CRUSH_INJURY_COMPLAINT_INTEL,
+    PENETRATING_INJURY_COMPLAINT_INTEL,
+    BURN_INJURY_COMPLAINT_INTEL,
+    PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
+    MALE_GENITAL_COMPLAINT_INTEL,
+    FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
+  ] as const;
+
+  it("maps Batch 10 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.crush_injury).toBe(CRUSH_INJURY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.penetrating_injury).toBe(PENETRATING_INJURY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.burn).toBe(BURN_INJURY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.pediatric_trauma).toBe(PEDIATRIC_TRAUMA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.male_genital_complaint).toBe(MALE_GENITAL_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.female_pelvic_gyn_complaint).toBe(
+      FEMALE_PELVIC_GYN_COMPLAINT_INTEL
+    );
+  });
+
+  it("includes all 7 required intelligence categories per Batch 10 template", () => {
+    for (const bundle of batch10Bundles) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 10 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH10_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const crushKeys = flattenComplaintIntelligenceKeys(CRUSH_INJURY_COMPLAINT_INTEL);
+    const penKeys = flattenComplaintIntelligenceKeys(PENETRATING_INJURY_COMPLAINT_INTEL);
+    const burnKeys = flattenComplaintIntelligenceKeys(BURN_INJURY_COMPLAINT_INTEL);
+    const pedTraumaKeys = flattenComplaintIntelligenceKeys(PEDIATRIC_TRAUMA_COMPLAINT_INTEL);
+    const maleKeys = flattenComplaintIntelligenceKeys(MALE_GENITAL_COMPLAINT_INTEL);
+    const femaleKeys = flattenComplaintIntelligenceKeys(FEMALE_PELVIC_GYN_COMPLAINT_INTEL);
+    for (const key of crushKeys) expect(key).toContain(".crushInjury.");
+    for (const key of penKeys) expect(key).toContain(".penetratingInjury.");
+    for (const key of burnKeys) expect(key).toContain(".burnInjury.");
+    for (const key of pedTraumaKeys) expect(key).toContain(".pediatricTrauma.");
+    for (const key of maleKeys) expect(key).toContain(".maleGenitalComplaint.");
+    for (const key of femaleKeys) expect(key).toContain(".femalePelvicGynComplaint.");
+  });
+
+  it("does not leak unrelated complaint chips into genital or trauma bundles", () => {
+    const maleKeys = flattenComplaintIntelligenceKeys(MALE_GENITAL_COMPLAINT_INTEL);
+    const femaleKeys = flattenComplaintIntelligenceKeys(FEMALE_PELVIC_GYN_COMPLAINT_INTEL);
+    const crushKeys = flattenComplaintIntelligenceKeys(CRUSH_INJURY_COMPLAINT_INTEL);
+    expect(maleKeys.some((key) => key.includes(".chestPain."))).toBe(false);
+    expect(maleKeys.some((key) => key.includes(".strokeSymptoms."))).toBe(false);
+    expect(maleKeys.some((key) => key.includes(".mvcCollision."))).toBe(false);
+    expect(femaleKeys.some((key) => key.includes(".headache."))).toBe(false);
+    expect(femaleKeys.some((key) => key.includes(".assaultTrauma."))).toBe(false);
+    expect(femaleKeys.some((key) => key.includes(".crushInjury."))).toBe(false);
+    expect(crushKeys.some((key) => key.includes(".maleGenitalComplaint."))).toBe(false);
+    expect(crushKeys.some((key) => key.includes(".femalePelvicGynComplaint."))).toBe(false);
+  });
+
+  it("pelvic/GYN bundle uses summary exam chips without auto-inserting sensitive findings", () => {
+    const femaleKeys = flattenComplaintIntelligenceKeys(FEMALE_PELVIC_GYN_COMPLAINT_INTEL);
+    expect(femaleKeys).toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examExternalExamSummaryDocumented"
+    );
+    expect(femaleKeys).toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examDeferredWithReasonIfDeferred"
+    );
+    expect(femaleKeys).not.toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examDetailedSpeculumFindingsAuto"
+    );
+    const applied = applyProviderDocumentationTemplate({
+      state: emptyProviderDocumentationWorkspaceState(),
+      templateId: "female_pelvic_gyn_complaint",
+      resolveFragment: (key) => key,
+    });
+    expect(JSON.stringify(applied)).not.toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint");
+  });
+
+  it("registers male and female genital templates in the adult group", () => {
+    const male = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "male_genital_complaint");
+    const female = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "female_pelvic_gyn_complaint");
+    expect(male?.majorGroup).toBe("ADULT");
+    expect(female?.majorGroup).toBe("ADULT");
+    expect(male?.labelKey).toBe("providerDocumentationWorkspace.templateMaleGenitalComplaint");
+    expect(female?.labelKey).toBe("providerDocumentationWorkspace.templateFemalePelvicGynComplaint");
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 10 bundle", () => {
+    for (const bundle of batch10Bundles) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 10 templates expose expected intelligence entry points", () => {
+    const crush = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "crush_injury");
+    const penetrating = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "penetrating_injury");
+    const burn = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "burn");
+    const pedTrauma = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "pediatric_trauma");
+    const male = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "male_genital_complaint");
+    const female = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "female_pelvic_gyn_complaint");
+    expect(crush?.complaintIntelligence?.hpi).toContain(
+      "providerDocumentationComplaintIntel.crushInjury.hpiCrushMechanism"
+    );
+    expect(penetrating?.complaintIntelligence?.rosRedFlags).toContain(
+      "providerDocumentationComplaintIntel.penetratingInjury.rfRetainedForeignBody"
+    );
+    expect(burn?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.burnInjury.diffInhalationInjury"
+    );
+    expect(pedTrauma?.complaintIntelligence?.rosRedFlags).toContain(
+      "providerDocumentationComplaintIntel.pediatricTrauma.rfNonAccidentalTraumaConcern"
+    );
+    expect(male?.complaintIntelligence?.rosRedFlags).toContain(
+      "providerDocumentationComplaintIntel.maleGenitalComplaint.rfTesticularTorsionConcern"
+    );
+    expect(female?.complaintIntelligence?.mdmClinicalRationale).toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmChaperoneDocumentationIncluded"
+    );
+    expect(crush?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaCrushRhabdoReminder");
+    expect(male?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultMaleGenitalTorsionReminder");
+    expect(female?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultFemalePelvicGynReminder");
+  });
+
+  it("leaves Batch 1–9 intelligence bundles unchanged", () => {
+    expect(MVC_COLLISION_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriverPassenger"
+    );
+    expect(BACK_PAIN_TRAUMA_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome"
+    );
+  });
+
+  it("uses i18n keys for all Batch 10 complaint intelligence fragments", () => {
+    for (const bundle of batch10Bundles) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(MALE_GENITAL_COMPLAINT_INTEL)).not.toMatch(
+      /billingLevel|CPT|autoBill|chargeCapture/i
+    );
+  });
+
+  it("preserves chip toggle wiring for Batch 10 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"

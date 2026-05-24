@@ -21,6 +21,8 @@
  *   observation/reassessment and discharge readiness documentation.
  * - Batch 9: ACEP blunt trauma documentation; NEXUS/Canadian C-spine concepts; IPV/assault safety;
  *   spinal red flags and neurovascular exam documentation.
+ * - Batch 10: ATLS crush/penetrating/burn documentation; pediatric trauma red flags;
+ *   testicular torsion and pelvic/GYN ED documentation with chaperone-aware helpers.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -80,6 +82,12 @@ const mvcIntel = (key: string) => `providerDocumentationComplaintIntel.mvcCollis
 const assaultIntel = (key: string) => `providerDocumentationComplaintIntel.assaultTrauma.${key}`;
 const neckTrauma = (key: string) => `providerDocumentationComplaintIntel.neckPainTrauma.${key}`;
 const backTrauma = (key: string) => `providerDocumentationComplaintIntel.backPainTrauma.${key}`;
+const crushIntel = (key: string) => `providerDocumentationComplaintIntel.crushInjury.${key}`;
+const penIntel = (key: string) => `providerDocumentationComplaintIntel.penetratingInjury.${key}`;
+const burnIntel = (key: string) => `providerDocumentationComplaintIntel.burnInjury.${key}`;
+const pedTraumaIntel = (key: string) => `providerDocumentationComplaintIntel.pediatricTrauma.${key}`;
+const maleGenIntel = (key: string) => `providerDocumentationComplaintIntel.maleGenitalComplaint.${key}`;
+const femaleGynIntel = (key: string) => `providerDocumentationComplaintIntel.femalePelvicGynComplaint.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -3361,6 +3369,518 @@ export const BACK_PAIN_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintInt
   ],
 });
 
+export const CRUSH_INJURY_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    crushIntel("hpiCrushMechanism"),
+    crushIntel("hpiDurationOfCompression"),
+    crushIntel("hpiBodyPartInvolved"),
+    crushIntel("hpiPainSwelling"),
+    crushIntel("hpiNumbnessTingling"),
+    crushIntel("hpiWeakness"),
+    crushIntel("hpiUrineColorReviewed"),
+    crushIntel("hpiTimeSinceInjury"),
+    crushIntel("hpiOccupationalIndustrialInjury"),
+    crushIntel("hpiAbilityToMoveExtremity"),
+  ],
+  rosImportantPositives: [
+    crushIntel("rosPain"),
+    crushIntel("rosSwelling"),
+    crushIntel("rosNumbnessTingling"),
+    crushIntel("rosWeakness"),
+    crushIntel("rosDarkUrineConcern"),
+  ],
+  rosImportantNegatives: [
+    crushIntel("rosDeniesNumbness"),
+    crushIntel("rosDeniesWeakness"),
+    crushIntel("rosDeniesOpenWound"),
+    crushIntel("rosDeniesDecreasedPulses"),
+  ],
+  rosRedFlags: [
+    crushIntel("rfCompartmentSyndromeConcern"),
+    crushIntel("rfRhabdomyolysisConcern"),
+    crushIntel("rfNeurovascularCompromise"),
+    crushIntel("rfOpenFractureConcern"),
+    crushIntel("rfSevereSwelling"),
+    crushIntel("rfDarkUrine"),
+    crushIntel("rfDecreasedPulses"),
+  ],
+  physicalExam: {
+    musculoskeletal: [
+      crushIntel("examSwelling"),
+      crushIntel("examTenderness"),
+      crushIntel("examCompartmentsSoft"),
+      crushIntel("examCompartmentsFirm"),
+    ],
+    cardiovascular: [crushIntel("examDistalPulsesIntact"), crushIntel("examCapRefillNormal")],
+    neuroPsych: [crushIntel("examSensationIntact"), crushIntel("examMotorFunctionIntact")],
+    skin: [crushIntel("examOpenWoundPresent"), crushIntel("examOpenWoundAbsent")],
+  },
+  mdmWorkingAssessment: [
+    crushIntel("mdmCompartmentSyndromeConsidered"),
+    crushIntel("mdmRhabdomyolysisConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    crushIntel("diffContusion"),
+    crushIntel("diffFracture"),
+    crushIntel("diffCompartmentSyndrome"),
+    crushIntel("diffRhabdomyolysis"),
+    crushIntel("diffNeurovascularInjury"),
+    crushIntel("diffCrushSyndrome"),
+    crushIntel("diffSoftTissueInjury"),
+  ],
+  mdmDataReviewed: [
+    crushIntel("mdmCkRenalFunctionConsideredReviewed"),
+    crushIntel("mdmXrayReviewedIfObtained"),
+  ],
+  mdmClinicalRationale: [crushIntel("mdmNeurovascularExamDocumented"), crushIntel("mdmSerialReassessmentPerformed")],
+  mdmPlanSummary: [crushIntel("mdmIvFluidsConsideredAdministered")],
+  mdmAdmitObserveDischarge: [
+    crushIntel("mdmOrthopedicConsultationConsidered"),
+    crushIntel("mdmAdmissionObservationConsidered"),
+  ],
+  reassessment: [
+    crushIntel("reassessPainReassessed"),
+    crushIntel("reassessNeurovascularExamUnchanged"),
+    crushIntel("reassessCompartmentsReassessed"),
+    crushIntel("reassessSwellingStable"),
+  ],
+  followUpDisposition: [
+    crushIntel("dispReturnWorseningPainSwellingNumbness"),
+    crushIntel("dispOrthoFollowUp"),
+    crushIntel("dispAdmissionObservationIfRhabdoCompartmentConcern"),
+  ],
+});
+
+export const PENETRATING_INJURY_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    penIntel("hpiPenetratingMechanism"),
+    penIntel("hpiObjectWeaponType"),
+    penIntel("hpiBodyRegionInvolved"),
+    penIntel("hpiTimeSinceInjury"),
+    penIntel("hpiBleedingControlled"),
+    penIntel("hpiDepthTrajectoryConcern"),
+    penIntel("hpiForeignBodyConcern"),
+    penIntel("hpiTetanusStatusReviewed"),
+    penIntel("hpiAnticoagulationReviewed"),
+    penIntel("hpiAssaultSafetyReviewedIfApplicable"),
+  ],
+  rosImportantPositives: [
+    penIntel("rosBleeding"),
+    penIntel("rosPain"),
+    penIntel("rosNumbness"),
+    penIntel("rosWeakness"),
+    penIntel("rosShortnessOfBreath"),
+  ],
+  rosImportantNegatives: [
+    penIntel("rosDeniesActiveBleeding"),
+    penIntel("rosDeniesNumbness"),
+    penIntel("rosDeniesWeakness"),
+    penIntel("rosDeniesShortnessOfBreath"),
+    penIntel("rosDeniesAbdominalPain"),
+  ],
+  rosRedFlags: [
+    penIntel("rfUncontrolledBleeding"),
+    penIntel("rfVascularInjuryConcern"),
+    penIntel("rfPneumothoraxConcern"),
+    penIntel("rfIntraAbdominalInjuryConcern"),
+    penIntel("rfRetainedForeignBody"),
+    penIntel("rfNeurovascularCompromise"),
+    penIntel("rfUnsafeDischargeEnvironment"),
+  ],
+  physicalExam: {
+    skin: [penIntel("examWoundLocation"), penIntel("examBleedingControlled"), penIntel("examNoExpandingHematoma")],
+    cardiovascular: [penIntel("examDistalPulsesIntact")],
+    neuroPsych: [penIntel("examSensationIntact"), penIntel("examMotorIntact")],
+    abdomen: [penIntel("examAbdomenExamIfRelevant")],
+    respiratory: [penIntel("examNoRespiratoryDistress")],
+  },
+  mdmWorkingAssessment: [
+    penIntel("mdmVascularInjuryConsidered"),
+    penIntel("mdmIntraAbdominalInjuryConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    penIntel("diffSuperficialPunctureLaceration"),
+    penIntel("diffRetainedForeignBody"),
+    penIntel("diffVascularInjury"),
+    penIntel("diffNerveInjury"),
+    penIntel("diffTendonInjury"),
+    penIntel("diffPneumothorax"),
+    penIntel("diffIntraAbdominalInjury"),
+    penIntel("diffOpenFracture"),
+  ],
+  mdmClinicalRationale: [
+    penIntel("mdmWoundExploredAsAppropriate"),
+    penIntel("mdmTetanusReviewed"),
+    penIntel("mdmNeurovascularExamDocumented"),
+    penIntel("mdmSafetyLawEnforcementReviewedIfAssaultRelated"),
+  ],
+  mdmDataReviewed: [penIntel("mdmImagingConsideredForForeignBodyTrajectory")],
+  mdmPlanSummary: [
+    penIntel("mdmAntibioticsConsidered"),
+    penIntel("mdmTraumaSurgeryConsultationConsidered"),
+    penIntel("mdmSerialReassessmentPerformed"),
+  ],
+  reassessment: [
+    penIntel("reassessBleedingRemainsControlled"),
+    penIntel("reassessNeurovascularExamStable"),
+    penIntel("reassessPainImproved"),
+    penIntel("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    penIntel("dispWoundCareInstructions"),
+    penIntel("dispInfectionBleedingReturnPrecautions"),
+    penIntel("dispSpecialistFollowUpIfNeeded"),
+  ],
+});
+
+export const BURN_INJURY_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    burnIntel("hpiBurnMechanism"),
+    burnIntel("hpiThermalChemicalElectrical"),
+    burnIntel("hpiTimeSinceBurn"),
+    burnIntel("hpiLocation"),
+    burnIntel("hpiEstimatedSizeTbsa"),
+    burnIntel("hpiDepthReviewed"),
+    burnIntel("hpiInhalationExposureReviewed"),
+    burnIntel("hpiCircumferentialBurnReviewed"),
+    burnIntel("hpiTetanusStatusReviewed"),
+    burnIntel("hpiPainSeverity"),
+  ],
+  rosImportantPositives: [
+    burnIntel("rosPain"),
+    burnIntel("rosShortnessOfBreath"),
+    burnIntel("rosCough"),
+    burnIntel("rosHoarseness"),
+    burnIntel("rosFacialBurnSymptoms"),
+  ],
+  rosImportantNegatives: [
+    burnIntel("rosDeniesShortnessOfBreath"),
+    burnIntel("rosDeniesHoarseness"),
+    burnIntel("rosDeniesCough"),
+    burnIntel("rosDeniesThroatTightness"),
+  ],
+  rosRedFlags: [
+    burnIntel("rfInhalationInjuryConcern"),
+    burnIntel("rfFacialAirwayBurn"),
+    burnIntel("rfCircumferentialBurn"),
+    burnIntel("rfHandFaceGenitalBurn"),
+    burnIntel("rfElectricalBurn"),
+    burnIntel("rfChemicalBurn"),
+    burnIntel("rfLargeTbsa"),
+    burnIntel("rfPediatricBurnConcern"),
+  ],
+  physicalExam: {
+    skin: [
+      burnIntel("examErythema"),
+      burnIntel("examBlistering"),
+      burnIntel("examFullThicknessConcern"),
+      burnIntel("examCircumferentialInvolvement"),
+    ],
+    heent: [burnIntel("examAirwayNormalNoSoot")],
+    neuroPsych: [burnIntel("examSensationIntactDecreased")],
+    cardiovascular: [burnIntel("examDistalPerfusionIntact")],
+  },
+  mdmWorkingAssessment: [
+    burnIntel("mdmInhalationInjuryAssessed"),
+    burnIntel("mdmBurnDepthAssessed"),
+  ],
+  mdmDifferentialSynthesis: [
+    burnIntel("diffSuperficialBurn"),
+    burnIntel("diffPartialThicknessBurn"),
+    burnIntel("diffFullThicknessBurn"),
+    burnIntel("diffChemicalBurn"),
+    burnIntel("diffElectricalInjury"),
+    burnIntel("diffInhalationInjury"),
+    burnIntel("diffInfectionRisk"),
+  ],
+  mdmClinicalRationale: [
+    burnIntel("mdmTbsaEstimated"),
+    burnIntel("mdmTetanusReviewed"),
+    burnIntel("mdmDressingInstructionsProvided"),
+    burnIntel("mdmSerialReassessmentPerformed"),
+  ],
+  mdmPlanSummary: [
+    burnIntel("mdmPainControlProvided"),
+    burnIntel("mdmWoundCarePerformed"),
+  ],
+  mdmAdmitObserveDischarge: [burnIntel("mdmBurnCenterConsultationTransferConsidered")],
+  reassessment: [
+    burnIntel("reassessPainImproved"),
+    burnIntel("reassessBurnDressed"),
+    burnIntel("reassessPerfusionUnchanged"),
+    burnIntel("reassessAirwayRemainsStable"),
+  ],
+  followUpDisposition: [
+    burnIntel("dispBurnCareInstructions"),
+    burnIntel("dispReturnInfectionWorseningPain"),
+    burnIntel("dispBurnClinicFollowUp"),
+    burnIntel("dispTransferAdmissionIfHighRiskBurn"),
+  ],
+});
+
+export const PEDIATRIC_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    pedTraumaIntel("hpiCaregiverHistorianUsed"),
+    pedTraumaIntel("hpiMechanismReviewed"),
+    pedTraumaIntel("hpiWitnessedUnwitnessedInjury"),
+    pedTraumaIntel("hpiFallHeightReviewed"),
+    pedTraumaIntel("hpiHeadStrike"),
+    pedTraumaIntel("hpiLocVomitingReviewed"),
+    pedTraumaIntel("hpiBehaviorChangeReviewed"),
+    pedTraumaIntel("hpiAmbulatoryStatusReviewed"),
+    pedTraumaIntel("hpiPainLocationReviewed"),
+    pedTraumaIntel("hpiNonAccidentalTraumaConcernConsideredWhenAppropriate"),
+  ],
+  rosImportantPositives: [
+    pedTraumaIntel("rosPain"),
+    pedTraumaIntel("rosVomiting"),
+    pedTraumaIntel("rosHeadache"),
+    pedTraumaIntel("rosLethargy"),
+    pedTraumaIntel("rosAbdominalPain"),
+    pedTraumaIntel("rosExtremityPain"),
+  ],
+  rosImportantNegatives: [
+    pedTraumaIntel("rosDeniesLossOfConsciousness"),
+    pedTraumaIntel("rosDeniesPersistentVomiting"),
+    pedTraumaIntel("rosDeniesFocalWeakness"),
+    pedTraumaIntel("rosDeniesAbdominalPain"),
+    pedTraumaIntel("rosDeniesBehaviorChange"),
+  ],
+  rosRedFlags: [
+    pedTraumaIntel("rfAlteredMentalStatus"),
+    pedTraumaIntel("rfPersistentVomiting"),
+    pedTraumaIntel("rfNonAccidentalTraumaConcern"),
+    pedTraumaIntel("rfHighRiskMechanism"),
+    pedTraumaIntel("rfFocalNeurologicDeficit"),
+    pedTraumaIntel("rfAbdominalTraumaConcern"),
+    pedTraumaIntel("rfInabilityToAmbulate"),
+  ],
+  physicalExam: {
+    general: [
+      pedTraumaIntel("examChildNonToxicInteractive"),
+      pedTraumaIntel("examAgeAppropriateBehavior"),
+    ],
+    heent: [pedTraumaIntel("examScalpInjury")],
+    abdomen: [pedTraumaIntel("examAbdominalTenderness")],
+    musculoskeletal: [pedTraumaIntel("examExtremityTenderness")],
+    neuroPsych: [
+      pedTraumaIntel("examNeuroExamAgeAppropriate"),
+      pedTraumaIntel("examGaitAmbulationIfAppropriate"),
+    ],
+    skin: [pedTraumaIntel("examBruisingPatternReviewedIfClinicallyIndicated")],
+  },
+  mdmWorkingAssessment: [
+    pedTraumaIntel("mdmHeadInjuryConsidered"),
+    pedTraumaIntel("mdmAbdominalInjuryConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    pedTraumaIntel("diffContusion"),
+    pedTraumaIntel("diffFracture"),
+    pedTraumaIntel("diffConcussion"),
+    pedTraumaIntel("diffIntracranialInjury"),
+    pedTraumaIntel("diffAbdominalInjury"),
+    pedTraumaIntel("diffNatConcern"),
+    pedTraumaIntel("diffSprainStrain"),
+  ],
+  mdmClinicalRationale: [
+    pedTraumaIntel("mdmCaregiverHistoryReviewed"),
+    pedTraumaIntel("mdmMechanismAssessed"),
+    pedTraumaIntel("mdmPediatricHeadInjuryDecisionConsiderations"),
+    pedTraumaIntel("mdmChildProtectionConcernConsideredIfIndicated"),
+    pedTraumaIntel("mdmCaregiverCounselingDocumented"),
+  ],
+  mdmDataReviewed: [pedTraumaIntel("mdmImagingConsideredReviewed")],
+  mdmPlanSummary: [pedTraumaIntel("mdmSerialReassessmentPerformed")],
+  reassessment: [
+    pedTraumaIntel("reassessChildRemainsInteractive"),
+    pedTraumaIntel("reassessPainImproved"),
+    pedTraumaIntel("reassessRepeatExamStable"),
+    pedTraumaIntel("reassessToleratingPo"),
+  ],
+  followUpDisposition: [
+    pedTraumaIntel("dispCaregiverReturnPrecautions"),
+    pedTraumaIntel("dispReturnVomitingConfusionWorseningPain"),
+    pedTraumaIntel("dispPediatricFollowUpRecommended"),
+    pedTraumaIntel("dispAdmissionTransferConsideredIfConcerningFindings"),
+  ],
+});
+
+export const MALE_GENITAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    maleGenIntel("hpiTesticularPain"),
+    maleGenIntel("hpiScrotalSwelling"),
+    maleGenIntel("hpiDysuria"),
+    maleGenIntel("hpiPenileDischarge"),
+    maleGenIntel("hpiTraumaReviewed"),
+    maleGenIntel("hpiOnsetSuddenGradual"),
+    maleGenIntel("hpiNauseaVomiting"),
+    maleGenIntel("hpiSexualHistoryReviewedIfClinicallyAppropriate"),
+    maleGenIntel("hpiStiExposureReviewed"),
+    maleGenIntel("hpiUrinarySymptomsReviewed"),
+  ],
+  rosImportantPositives: [
+    maleGenIntel("rosTesticularPain"),
+    maleGenIntel("rosScrotalSwelling"),
+    maleGenIntel("rosDysuria"),
+    maleGenIntel("rosPenileDischarge"),
+    maleGenIntel("rosNausea"),
+    maleGenIntel("rosFever"),
+  ],
+  rosImportantNegatives: [
+    maleGenIntel("rosDeniesFever"),
+    maleGenIntel("rosDeniesPenileDischarge"),
+    maleGenIntel("rosDeniesTrauma"),
+    maleGenIntel("rosDeniesUrinaryRetention"),
+    maleGenIntel("rosDeniesSeverePain"),
+  ],
+  rosRedFlags: [
+    maleGenIntel("rfTesticularTorsionConcern"),
+    maleGenIntel("rfSevereSuddenTesticularPain"),
+    maleGenIntel("rfHighRidingTesticleConcern"),
+    maleGenIntel("rfAbsentCremastericReflexConcern"),
+    maleGenIntel("rfScrotalTrauma"),
+    maleGenIntel("rfFournierGangreneConcern"),
+    maleGenIntel("rfUrinaryRetention"),
+  ],
+  physicalExam: {
+    general: [maleGenIntel("examChaperoneOfferedPresentIfApplicable")],
+    abdomen: [maleGenIntel("examInguinalHerniaAssessed")],
+    skin: [
+      maleGenIntel("examTesticularTenderness"),
+      maleGenIntel("examScrotalSwelling"),
+      maleGenIntel("examPenileDischarge"),
+      maleGenIntel("examNoSkinNecrosis"),
+      maleGenIntel("examCremastericReflexDocumentedIfPerformed"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    maleGenIntel("mdmTesticularTorsionConsidered"),
+    maleGenIntel("mdmStiConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    maleGenIntel("diffTesticularTorsion"),
+    maleGenIntel("diffEpididymitis"),
+    maleGenIntel("diffOrchitis"),
+    maleGenIntel("diffStiUrethritis"),
+    maleGenIntel("diffInguinalHernia"),
+    maleGenIntel("diffScrotalTrauma"),
+    maleGenIntel("diffHydroceleVaricocele"),
+    maleGenIntel("diffFournierGangrene"),
+  ],
+  mdmDataReviewed: [
+    maleGenIntel("mdmUrinalysisReviewed"),
+    maleGenIntel("mdmScrotalUltrasoundConsideredReviewed"),
+  ],
+  mdmClinicalRationale: [
+    maleGenIntel("mdmStiTestingTreatmentConsidered"),
+    maleGenIntel("mdmAntibioticsConsidered"),
+    maleGenIntel("mdmChaperoneDocumentationIncluded"),
+  ],
+  mdmPlanSummary: [maleGenIntel("mdmUrologyConsultationConsidered")],
+  mdmAdmitObserveDischarge: [maleGenIntel("mdmEmergentTransferConsultConsideredIfTorsionConcern")],
+  reassessment: [
+    maleGenIntel("reassessPainReassessed"),
+    maleGenIntel("reassessVitalSignsStable"),
+    maleGenIntel("reassessUltrasoundLabResultsReviewed"),
+  ],
+  followUpDisposition: [
+    maleGenIntel("dispUrologyFollowUp"),
+    maleGenIntel("dispStiPrecautionsIfRelevant"),
+    maleGenIntel("dispReturnWorseningPainSwellingFever"),
+    maleGenIntel("dispEmergentReturnTorsionSymptoms"),
+  ],
+});
+
+export const FEMALE_PELVIC_GYN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    femaleGynIntel("hpiPelvicPain"),
+    femaleGynIntel("hpiVaginalBleeding"),
+    femaleGynIntel("hpiVaginalDischarge"),
+    femaleGynIntel("hpiPregnancyConcern"),
+    femaleGynIntel("hpiLmpReviewed"),
+    femaleGynIntel("hpiDysuriaReviewed"),
+    femaleGynIntel("hpiStiExposureReviewed"),
+    femaleGynIntel("hpiAbdominalPainReviewed"),
+    femaleGynIntel("hpiFeverReviewed"),
+    femaleGynIntel("hpiSexualAssaultConcernReviewedIfClinicallyAppropriate"),
+  ],
+  rosImportantPositives: [
+    femaleGynIntel("rosPelvicPain"),
+    femaleGynIntel("rosVaginalBleeding"),
+    femaleGynIntel("rosVaginalDischarge"),
+    femaleGynIntel("rosAbdominalPain"),
+    femaleGynIntel("rosFever"),
+    femaleGynIntel("rosDysuria"),
+  ],
+  rosImportantNegatives: [
+    femaleGynIntel("rosDeniesHeavyBleeding"),
+    femaleGynIntel("rosDeniesSeverePain"),
+    femaleGynIntel("rosDeniesFever"),
+    femaleGynIntel("rosDeniesSyncope"),
+    femaleGynIntel("rosDeniesPregnancyConcern"),
+  ],
+  rosRedFlags: [
+    femaleGynIntel("rfEctopicPregnancyConcern"),
+    femaleGynIntel("rfHeavyVaginalBleeding"),
+    femaleGynIntel("rfPidConcern"),
+    femaleGynIntel("rfOvarianTorsionConcern"),
+    femaleGynIntel("rfSexualAssaultConcern"),
+    femaleGynIntel("rfPregnancyComplicationConcern"),
+    femaleGynIntel("rfSepsisConcern"),
+  ],
+  physicalExam: {
+    general: [femaleGynIntel("examChaperonePresentOffered")],
+    abdomen: [femaleGynIntel("examAbdominalTendernessIfPerformed")],
+    skin: [
+      femaleGynIntel("examExternalExamSummaryDocumented"),
+      femaleGynIntel("examSpeculumExamSummaryDocumented"),
+      femaleGynIntel("examBimanualExamSummaryDocumented"),
+      femaleGynIntel("examCervicalMotionTenderness"),
+      femaleGynIntel("examAdnexalTenderness"),
+      femaleGynIntel("examDischargeNoted"),
+      femaleGynIntel("examBleedingNoted"),
+      femaleGynIntel("examDeferredWithReasonIfDeferred"),
+    ],
+  },
+  mdmWorkingAssessment: [
+    femaleGynIntel("mdmEctopicPregnancyConsidered"),
+    femaleGynIntel("mdmPidConsidered"),
+  ],
+  mdmDifferentialSynthesis: [
+    femaleGynIntel("diffEctopicPregnancy"),
+    femaleGynIntel("diffPregnancyRelatedBleeding"),
+    femaleGynIntel("diffPid"),
+    femaleGynIntel("diffOvarianTorsionCyst"),
+    femaleGynIntel("diffCervicitisSti"),
+    femaleGynIntel("diffUti"),
+    femaleGynIntel("diffVaginitis"),
+    femaleGynIntel("diffAbnormalUterineBleeding"),
+    femaleGynIntel("diffAppendicitis"),
+  ],
+  mdmDataReviewed: [
+    femaleGynIntel("mdmPregnancyTestingReviewed"),
+    femaleGynIntel("mdmPelvicUltrasoundConsideredReviewed"),
+  ],
+  mdmClinicalRationale: [
+    femaleGynIntel("mdmStiTestingTreatmentConsidered"),
+    femaleGynIntel("mdmChaperoneDocumentationIncluded"),
+    femaleGynIntel("mdmSafetySexualAssaultResourcesConsideredIfApplicable"),
+  ],
+  mdmPlanSummary: [femaleGynIntel("mdmObGynConsultationConsidered")],
+  reassessment: [
+    femaleGynIntel("reassessPainReassessed"),
+    femaleGynIntel("reassessBleedingStatusReassessed"),
+    femaleGynIntel("reassessVitalsStable"),
+    femaleGynIntel("reassessTestResultsReviewed"),
+  ],
+  followUpDisposition: [
+    femaleGynIntel("dispObGynFollowUp"),
+    femaleGynIntel("dispReturnHeavyBleedingWorseningPainSyncopeFever"),
+    femaleGynIntel("dispStiPrecautionsIfRelevant"),
+    femaleGynIntel("dispDischargeAfterReassuringEvaluation"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -3397,6 +3917,12 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   assault: ASSAULT_TRAUMA_COMPLAINT_INTEL,
   neck_pain_trauma: NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
   back_pain: BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  crush_injury: CRUSH_INJURY_COMPLAINT_INTEL,
+  penetrating_injury: PENETRATING_INJURY_COMPLAINT_INTEL,
+  burn: BURN_INJURY_COMPLAINT_INTEL,
+  pediatric_trauma: PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
+  male_genital_complaint: MALE_GENITAL_COMPLAINT_INTEL,
+  female_pelvic_gyn_complaint: FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -3440,6 +3966,14 @@ export const BATCH9_COMPLAINT_TEMPLATE_IDS = [
   "neck_pain_trauma",
   "back_pain",
 ] as const;
+export const BATCH10_COMPLAINT_TEMPLATE_IDS = [
+  "crush_injury",
+  "penetrating_injury",
+  "burn",
+  "pediatric_trauma",
+  "male_genital_complaint",
+  "female_pelvic_gyn_complaint",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -3450,6 +3984,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH7_COMPLAINT_TEMPLATE_IDS,
   ...BATCH8_COMPLAINT_TEMPLATE_IDS,
   ...BATCH9_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH10_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;

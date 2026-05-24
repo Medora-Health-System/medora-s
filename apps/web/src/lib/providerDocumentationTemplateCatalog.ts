@@ -33,6 +33,12 @@ import {
   ASSAULT_TRAUMA_COMPLAINT_INTEL,
   NECK_PAIN_TRAUMA_COMPLAINT_INTEL,
   BACK_PAIN_TRAUMA_COMPLAINT_INTEL,
+  CRUSH_INJURY_COMPLAINT_INTEL,
+  PENETRATING_INJURY_COMPLAINT_INTEL,
+  BURN_INJURY_COMPLAINT_INTEL,
+  PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
+  MALE_GENITAL_COMPLAINT_INTEL,
+  FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -352,7 +358,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posWeakness", "erMseRosChips.rfBleeding"],
     ["providerDocumentationWorkspace.stickerRosNoNumbness"],
     { mdmImmediateActionsRationale: ["erMseMdmChips.actIvMonitor", "erMseMdmChips.actPain"] },
-    { musculoskeletal: ["erMseExamChips.mskSwellingPresent", "providerDocumentationWorkspace.stickerExamNvIntact"] }
+    { musculoskeletal: ["erMseExamChips.mskSwellingPresent", "providerDocumentationWorkspace.stickerExamNvIntact"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaCrushRhabdoReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    CRUSH_INJURY_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "penetrating_injury",
@@ -362,7 +374,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.rfBleeding", "erMseRosChips.posAbdominalPain"],
     ["erMseRosChips.negDeniesSyncope"],
     { mdmImmediateActionsRationale: ["erMseMdmChips.actIvMonitor", "erMseMdmChips.actSafety"] },
-    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdGuarding"], skin: ["erMseExamChips.skinLacerationPresent"] }
+    { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdGuarding"], skin: ["erMseExamChips.skinLacerationPresent"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaPenetratingInjuryReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    PENETRATING_INJURY_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "burn",
@@ -372,7 +390,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posSob"],
     ["erMseRosChips.negDeniesSob", "providerDocumentationWorkspace.stickerRosNoThroatTightness"],
     { mdmPlanSummary: ["erMseMdmChips.actFluids", "erMseMdmChips.planReassess"] },
-    { skin: ["erMseExamChips.skinWarmDry", "providerDocumentationWorkspace.stickerExamBurnWoundPresent"], respiratory: ["erMseExamChips.respNoDistress"] }
+    { skin: ["erMseExamChips.skinWarmDry", "providerDocumentationWorkspace.stickerExamBurnWoundPresent"], respiratory: ["erMseExamChips.respNoDistress"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaBurnAirwayReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    BURN_INJURY_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "fracture_concern",
@@ -550,10 +574,12 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     physicalExam: mergeExam(PEDIATRIC_EXAM_GENERAL, TRAUMA_EXAM_NEURO_MSK),
     guidance: { ...TRAUMA_GUIDANCE, ...PEDIATRIC_GUIDANCE },
     promptReminderKeys: [
+      "providerDocumentationPromptReminders.traumaPediatricTraumaReminder",
       "providerDocumentationPromptReminders.traumaMechanism",
       "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
       "providerDocumentationPromptReminders.traumaReassessment",
     ],
+    complaintIntelligence: PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
   },
   pediatricTemplate(
     "abdominal_pain_pediatric",
@@ -923,6 +949,52 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       "providerDocumentationPromptReminders.emtalaReassessment",
     ],
     UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL
+  ),
+  adultTemplate(
+    "male_genital_complaint",
+    "providerDocumentationWorkspace.templateMaleGenitalComplaint",
+    "providerDocumentationWorkspace.templateMaleGenitalComplaintHelp",
+    ["providerDocumentationWorkspace.stickerHpiDysuria", "erMseHpiChips.timSuddenOnset"],
+    ["providerDocumentationWorkspace.stickerRosDysuria", "erMseRosChips.posAbdominalPain"],
+    ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesWeakness"],
+    ["erMseRosChips.rfSeverePain", "erMseRosChips.rfPregnancyConcern"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultMaleGenitalTorsionReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    MALE_GENITAL_COMPLAINT_INTEL
+  ),
+  adultTemplate(
+    "female_pelvic_gyn_complaint",
+    "providerDocumentationWorkspace.templateFemalePelvicGynComplaint",
+    "providerDocumentationWorkspace.templateFemalePelvicGynComplaintHelp",
+    ["erMseHpiChips.locAbdominalPain", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posAbdominalPain", "providerDocumentationWorkspace.stickerRosDysuria"],
+    ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSob"],
+    ["erMseRosChips.rfSeverePain", "erMseRosChips.rfPregnancyConcern", "erMseRosChips.rfHypotensionConcern"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent"],
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.adultFemalePelvicGynReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    FEMALE_PELVIC_GYN_COMPLAINT_INTEL
   ),
   adultTemplate(
     "flank_pain",

@@ -78,7 +78,9 @@ export type ProviderDocumentationTemplateId =
   | "hypertension"
   | "medication_refill"
   | "allergic_reaction_rash"
-  | "observation_reassessment";
+  | "observation_reassessment"
+  | "male_genital_complaint"
+  | "female_pelvic_gyn_complaint";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
