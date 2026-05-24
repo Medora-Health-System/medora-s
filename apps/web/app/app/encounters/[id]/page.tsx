@@ -661,7 +661,7 @@ export default function EncounterDetailPage() {
         if (process.env.NODE_ENV === "development") {
           console.warn("[encounterDetail] échec chargement consultation", { encounterId, facilityId, error });
         }
-        const msg = normalizeUserFacingError(error instanceof Error ? error.message : null);
+        const msg = normalizeUserFacingError(error instanceof Error ? error.message : null, language);
         if (!cancelled) setEncounterFetchError(msg || t("encounterChrome.errLoadEncounter"));
         const cached = await getCachedRecord<any>("encounter_summaries", cacheKey);
         if (!cancelled) {
@@ -703,7 +703,7 @@ export default function EncounterDetailPage() {
       } catch (e) {
         if (!cancelled) {
           setAuditTimelineError(
-            normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterChrome.errAuditTimelineLoad")
+            normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterChrome.errAuditTimelineLoad")
           );
           setAuditTimelineItems(null);
         }
@@ -1000,7 +1000,7 @@ export default function EncounterDetailPage() {
         setShowObservationOrderTemplateModal(true);
       }
     } catch (e) {
-      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
+      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null, language);
       alert(msg || t("encounterChrome.modals.admissionSaveFailed"));
     } finally {
       setSavingAdmission(false);
@@ -4050,7 +4050,7 @@ function ClinicVisitTab({
       setMessage({
         type: "err",
         text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errSave"),
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterClinicTab.errSave"),
       });
     } finally {
       setAddendumSaving(false);
@@ -4073,7 +4073,7 @@ function ClinicVisitTab({
       setMessage({
         type: "err",
         text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errSign"),
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterClinicTab.errSign"),
       });
     } finally {
       setSigningDoc(false);
@@ -4099,7 +4099,7 @@ function ClinicVisitTab({
       setMessage({
         type: "err",
         text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterClinicTab.errUnlock"),
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterClinicTab.errUnlock"),
       });
     } finally {
       setUnlocking(false);
@@ -4151,7 +4151,7 @@ function ClinicVisitTab({
     } catch (e: any) {
       setMessage({
         type: "err",
-        text: normalizeUserFacingError(e?.message) || t("encounterClinicTab.errSave"),
+        text: normalizeUserFacingError(e?.message, language) || t("encounterClinicTab.errSave"),
       });
       throw e;
     } finally {
@@ -5524,7 +5524,7 @@ function PathwaysTab({
     } catch (error: any) {
       alert(
         `${t("encounterChrome.pathways.activateFailed")} ${
-          normalizeUserFacingError(error?.message) || t("encounterChrome.pathways.confirmUnknownError")
+          normalizeUserFacingError(error?.message, language) || t("encounterChrome.pathways.confirmUnknownError")
         }`
       );
     } finally {
@@ -5995,7 +5995,7 @@ function OrdersTab({
       setOrdersFeedback({
         type: "err",
         text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("encounterChrome.ordersTab.cancelFailed"),
       });
     } finally {
@@ -6521,7 +6521,7 @@ function OrdersTab({
               await onOrdersUpdated?.();
             } catch (e: unknown) {
               throw new Error(
-                normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+                normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
                   t("encounterChrome.ordersTab.careClinicalTime.saveFailed")
               );
             } finally {
