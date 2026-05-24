@@ -7246,6 +7246,141 @@ export default {
       admissionTransferConsidered: "admission/transfer considered",
     },
   },
+  providerDocumentationQualityGuardrails: {
+    panelTitle: "Documentation quality review",
+    panelHelp: "Advisory suggestions only — signing is not blocked.",
+    severityHigh: "High",
+    severityWarning: "Warning",
+    severityInfo: "Info",
+    jumpToSection: "Go to section",
+    signReviewHint: "Review suggestions below before finalizing if helpful.",
+    items: {
+      acsMissingReassessment: {
+        title: "Repeat reassessment",
+        description: "High-risk chest pain pattern may benefit from repeat reassessment documentation.",
+      },
+      acsMissingHeartScore: {
+        title: "Risk stratification",
+        description: "Consider documenting HEART score or risk stratification discussion.",
+      },
+      acsMissingDisposition: {
+        title: "Disposition rationale",
+        description: "Consider documenting admission, observation, or discharge rationale.",
+      },
+      respiratoryMissingExam: {
+        title: "Repeat respiratory exam",
+        description: "High-risk respiratory pattern may benefit from repeat lung/work-of-breathing documentation.",
+      },
+      respiratoryMissingOxygenReassessment: {
+        title: "Oxygen reassessment",
+        description: "Consider documenting oxygen requirement or pulse ox reassessment.",
+      },
+      respiratoryMissingDisposition: {
+        title: "Disposition rationale",
+        description: "Consider documenting disposition rationale for respiratory distress.",
+      },
+      strokeMissingLkw: {
+        title: "Last known well",
+        description: "Stroke symptoms pattern may benefit from last-known-well documentation.",
+      },
+      strokeMissingNeuroReassessment: {
+        title: "Repeat neurologic exam",
+        description: "Consider documenting repeat neurologic reassessment.",
+      },
+      strokeMissingDisposition: {
+        title: "Transfer/admission rationale",
+        description: "Consider documenting transfer, admission, or observation rationale.",
+      },
+      surgicalAbdomenMissingSerialExam: {
+        title: "Serial abdominal exams",
+        description: "Surgical abdomen pattern may benefit from serial abdominal exam documentation.",
+      },
+      surgicalAbdomenMissingConsult: {
+        title: "Surgical consultation",
+        description: "Consider documenting surgical consultation consideration.",
+      },
+      surgicalAbdomenMissingReassessment: {
+        title: "Reassessment",
+        description: "Consider documenting interval reassessment for abdominal pain.",
+      },
+      pediatricMissingHydrationReassessment: {
+        title: "Hydration reassessment",
+        description: "Consider documenting hydration status reassessment.",
+      },
+      pediatricMissingCaregiverPrecautions: {
+        title: "Caregiver return precautions",
+        description: "Consider documenting caregiver return precautions.",
+      },
+      pediatricMissingPoReassessment: {
+        title: "PO tolerance reassessment",
+        description: "GI symptoms present — consider documenting oral hydration challenge or PO tolerance reassessment.",
+      },
+      torsionMissingUltrasound: {
+        title: "Ultrasound consideration",
+        description: "Testicular torsion concern may benefit from emergent ultrasound documentation.",
+      },
+      torsionMissingUrologyConsult: {
+        title: "Urology consultation",
+        description: "Consider documenting urology consultation consideration.",
+      },
+      torsionMissingDisposition: {
+        title: "Emergent disposition",
+        description: "Consider documenting emergent transfer or admission rationale.",
+      },
+      ectopicMissingPregnancyTesting: {
+        title: "Pregnancy testing",
+        description: "Ectopic pregnancy concern may benefit from pregnancy testing documentation.",
+      },
+      ectopicMissingUltrasound: {
+        title: "Pelvic ultrasound",
+        description: "Consider documenting pelvic ultrasound review or consideration.",
+      },
+      ectopicMissingConsultDisposition: {
+        title: "OB/GYN consultation or disposition",
+        description: "Consider documenting OB/GYN consultation or disposition rationale.",
+      },
+      psychMissingSafetyPlanning: {
+        title: "Safety planning",
+        description: "Psychiatric safety pattern may benefit from safety planning documentation.",
+      },
+      psychMissingReassessment: {
+        title: "Behavioral reassessment",
+        description: "Consider documenting repeat behavioral or safety reassessment.",
+      },
+      psychMissingConsultDisposition: {
+        title: "Psychiatric consultation/disposition",
+        description: "Consider documenting psychiatric consultation or disposition rationale.",
+      },
+      spineMissingNeuroReassessment: {
+        title: "Repeat neurologic reassessment",
+        description: "Spine red-flag pattern may benefit from repeat neurologic reassessment.",
+      },
+      spineMissingImagingConsult: {
+        title: "MRI/spine consultation",
+        description: "Consider documenting emergent MRI or spine consultation consideration.",
+      },
+      spineMissingDisposition: {
+        title: "Disposition rationale",
+        description: "Consider documenting admission or transfer rationale.",
+      },
+      generalMissingMdm: {
+        title: "Medical decision making",
+        description: "Consider documenting medical decision making.",
+      },
+      generalMissingReassessment: {
+        title: "Reassessment",
+        description: "High-risk template may benefit from reassessment documentation.",
+      },
+      generalMissingDisposition: {
+        title: "Disposition rationale",
+        description: "Consider documenting disposition rationale.",
+      },
+      generalMissingReturnPrecautions: {
+        title: "Return precautions",
+        description: "Consider documenting return precautions or follow-up instructions.",
+      },
+    },
+  },
   providerDocumentationComplaintIntel: {
     chestPain: {
       hpiExertional: "exertional chest pain",

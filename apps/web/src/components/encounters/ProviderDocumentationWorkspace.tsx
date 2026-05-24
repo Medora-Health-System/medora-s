@@ -72,6 +72,12 @@ import {
   excludeClusterSuggestionsFromDynamicSuggestions,
   getProviderDocumentationDynamicClinicalClusters,
 } from "@/lib/providerDocumentationDynamicClinicalClusters";
+import {
+  DOCUMENTATION_GUARDRAIL_SECTION_LABEL_KEYS,
+  DOCUMENTATION_GUARDRAIL_SEVERITY_ORDER,
+  evaluateDocumentationQualityGuardrails,
+  type DocumentationGuardrail,
+} from "@/lib/providerDocumentationQualityGuardrails";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -426,7 +432,17 @@ export function ProviderDocumentationWorkspace({
     });
     return excludeClusterSuggestionsFromDynamicSuggestions(suggestions, dynamicClusters);
   }, [dynamicClusters, value]);
+  const qualityGuardrails = useMemo(
+    () =>
+      evaluateDocumentationQualityGuardrails({
+        templateId: value.activeTemplateId,
+        state: value,
+        dynamicClusters,
+      }),
+    [dynamicClusters, value]
+  );
   const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(() => new Set());
+  const [qualityGuardrailsExpanded, setQualityGuardrailsExpanded] = useState(true);
   const completeness = useMemo(
     () =>
       buildProviderDocumentationCompleteness({
@@ -723,6 +739,163 @@ export function ProviderDocumentationWorkspace({
     });
   };
   const isAccordionExpanded = (sectionId: ProviderDocumentationAccordionSectionId) => expandedSections.has(sectionId);
+  const jumpToGuardrailSection = (sectionId: ProviderDocumentationAccordionSectionId) => {
+    setExpandedSections((previous) => {
+      const next = new Set(previous);
+      next.add(sectionId);
+      return next;
+    });
+    if (typeof document === "undefined") return;
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-testid="provider-documentation-accordion-${sectionId}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  const handleSignClick = () => {
+    if (qualityGuardrails.length > 0 && !signedOrFinalized) {
+      setExpandedSections((previous) => {
+        const next = new Set(previous);
+        next.add("actions");
+        return next;
+      });
+      setQualityGuardrailsExpanded(true);
+      if (typeof document !== "undefined") {
+        requestAnimationFrame(() => {
+          document
+            .querySelector('[data-testid="provider-documentation-quality-guardrails"]')
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+      }
+    }
+    void onSign?.();
+  };
+  const guardrailSeverityLabelKey = (severity: DocumentationGuardrail["severity"]) =>
+    severity === "high"
+      ? "providerDocumentationQualityGuardrails.severityHigh"
+      : severity === "warning"
+        ? "providerDocumentationQualityGuardrails.severityWarning"
+        : "providerDocumentationQualityGuardrails.severityInfo";
+  const guardrailSeverityStyles = (severity: DocumentationGuardrail["severity"]) =>
+    severity === "high"
+      ? { background: "#ffedd5", color: "#c2410c", borderColor: "#fdba74" }
+      : severity === "warning"
+        ? { background: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" }
+        : { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" };
+  const renderQualityGuardrailsPanel = (compact = false) => {
+    if (qualityGuardrails.length === 0 || signedOrFinalized) return null;
+    const grouped = DOCUMENTATION_GUARDRAIL_SEVERITY_ORDER.map((severity) => ({
+      severity,
+      items: qualityGuardrails.filter((guardrail) => guardrail.severity === severity),
+    })).filter((group) => group.items.length > 0);
+    return (
+      <div
+        data-testid="provider-documentation-quality-guardrails"
+        style={{
+          marginBottom: compact ? 0 : 10,
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          padding: 8,
+          background: "#fafafa",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
+              {t("providerDocumentationQualityGuardrails.panelTitle")}
+            </div>
+            <div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>
+              {t("providerDocumentationQualityGuardrails.panelHelp")}
+            </div>
+          </div>
+          {!compact ? (
+            <button
+              type="button"
+              onClick={() => setQualityGuardrailsExpanded((expanded) => !expanded)}
+              style={{
+                ...chipStyle,
+                fontSize: 10,
+                padding: "2px 8px",
+                background: "#fff",
+                borderColor: "#cbd5e1",
+                color: "#475569",
+              }}
+            >
+              {qualityGuardrailsExpanded
+                ? t("providerDocumentationWorkspace.dynamicClustersCollapse")
+                : t("providerDocumentationWorkspace.dynamicClustersExpand")}
+            </button>
+          ) : null}
+        </div>
+        {qualityGuardrailsExpanded ? (
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
+            {grouped.map((group) => (
+              <div key={group.severity}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>
+                  {t(guardrailSeverityLabelKey(group.severity)).toUpperCase()}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {group.items.map((guardrail) => {
+                    const severityStyle = guardrailSeverityStyles(guardrail.severity);
+                    return (
+                      <div
+                        key={guardrail.id}
+                        style={{
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 8,
+                          padding: "6px 8px",
+                          background: "#fff",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#334155" }}>{t(guardrail.titleKey)}</span>
+                          <span
+                            style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: "1px 6px",
+                              borderRadius: 9999,
+                              border: "1px solid",
+                              ...severityStyle,
+                            }}
+                          >
+                            {t(guardrailSeverityLabelKey(guardrail.severity))}
+                          </span>
+                        </div>
+                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "#475569", lineHeight: 1.4 }}>
+                          {t(guardrail.descriptionKey)}
+                        </p>
+                        {guardrail.suggestedSection ? (
+                          <button
+                            type="button"
+                            onClick={() => jumpToGuardrailSection(guardrail.suggestedSection!)}
+                            style={{
+                              marginTop: 4,
+                              padding: 0,
+                              border: "none",
+                              background: "transparent",
+                              color: "#2563eb",
+                              fontSize: 10,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              textDecoration: "underline",
+                            }}
+                          >
+                            {t("providerDocumentationQualityGuardrails.jumpToSection")}:{" "}
+                            {t(DOCUMENTATION_GUARDRAIL_SECTION_LABEL_KEYS[guardrail.suggestedSection])}
+                          </button>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
   const focusRelativeDictationTarget = (direction: 1 | -1) => {
     if (typeof document === "undefined") return;
     const activeId = document.activeElement?.id;
@@ -990,10 +1163,38 @@ export function ProviderDocumentationWorkspace({
               <button
                 type="button"
                 disabled={readOnly || signing || !canSubmitSignature}
-                onClick={() => void onSign()}
+                onClick={handleSignClick}
                 style={primaryButton(readOnly || signing || !canSubmitSignature)}
               >
                 {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
+              </button>
+            ) : null}
+            {qualityGuardrails.length > 0 && !signedOrFinalized ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setExpandedSections((previous) => {
+                    const next = new Set(previous);
+                    next.add("actions");
+                    return next;
+                  });
+                  setQualityGuardrailsExpanded(true);
+                  if (typeof document !== "undefined") {
+                    requestAnimationFrame(() => {
+                      document
+                        .querySelector('[data-testid="provider-documentation-quality-guardrails"]')
+                        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    });
+                  }
+                }}
+                style={{
+                  ...secondaryButton(false),
+                  borderColor: "#fdba74",
+                  color: "#c2410c",
+                  background: "#fff7ed",
+                }}
+              >
+                {t("providerDocumentationQualityGuardrails.panelTitle")} ({qualityGuardrails.length})
               </button>
             ) : null}
           </div>
@@ -1664,6 +1865,12 @@ export function ProviderDocumentationWorkspace({
             <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.signSafetyHelp")}
             </p>
+            {renderQualityGuardrailsPanel()}
+            {qualityGuardrails.length > 0 && !signedOrFinalized ? (
+              <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+                {t("providerDocumentationQualityGuardrails.signReviewHint")}
+              </p>
+            ) : null}
             {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
               <p style={{ margin: "0 0 8px", fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
                 {t("providerDocumentationWorkspace.signWarningsAdvisory")}

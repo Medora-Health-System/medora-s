@@ -7236,6 +7236,141 @@ export default {
       admissionTransferConsidered: "admission/transfert envisagé",
     },
   },
+  providerDocumentationQualityGuardrails: {
+    panelTitle: "Revue qualité de la documentation",
+    panelHelp: "Suggestions consultatives uniquement — la signature n'est pas bloquée.",
+    severityHigh: "Élevé",
+    severityWarning: "Attention",
+    severityInfo: "Info",
+    jumpToSection: "Aller à la section",
+    signReviewHint: "Revoyez les suggestions ci-dessous avant de finaliser si utile.",
+    items: {
+      acsMissingReassessment: {
+        title: "Réévaluation répétée",
+        description: "Le profil douleur thoracique à risque élevé peut bénéficier d'une réévaluation documentée.",
+      },
+      acsMissingHeartScore: {
+        title: "Stratification du risque",
+        description: "Envisagez de documenter le score HEART ou la discussion de stratification du risque.",
+      },
+      acsMissingDisposition: {
+        title: "Justification de sortie",
+        description: "Envisagez de documenter la justification d'admission, d'observation ou de sortie.",
+      },
+      respiratoryMissingExam: {
+        title: "Examen respiratoire répété",
+        description: "Le profil respiratoire à risque élevé peut bénéficier d'un examen pulmonaire/travail respiratoire répété.",
+      },
+      respiratoryMissingOxygenReassessment: {
+        title: "Réévaluation de l'oxygène",
+        description: "Envisagez de documenter le besoin en oxygène ou la réévaluation de la SpO₂.",
+      },
+      respiratoryMissingDisposition: {
+        title: "Justification de sortie",
+        description: "Envisagez de documenter la justification de sortie pour la détresse respiratoire.",
+      },
+      strokeMissingLkw: {
+        title: "Dernier moment connu",
+        description: "Le profil neurologique peut bénéficier d'une documentation du dernier moment connu.",
+      },
+      strokeMissingNeuroReassessment: {
+        title: "Examen neurologique répété",
+        description: "Envisagez de documenter une réévaluation neurologique répétée.",
+      },
+      strokeMissingDisposition: {
+        title: "Transfert/admission",
+        description: "Envisagez de documenter la justification de transfert, d'admission ou d'observation.",
+      },
+      surgicalAbdomenMissingSerialExam: {
+        title: "Examens abdominaux sériels",
+        description: "Le profil abdomen chirurgical peut bénéficier d'examens abdominaux sériels documentés.",
+      },
+      surgicalAbdomenMissingConsult: {
+        title: "Consultation chirurgicale",
+        description: "Envisagez de documenter la consultation chirurgicale envisagée.",
+      },
+      surgicalAbdomenMissingReassessment: {
+        title: "Réévaluation",
+        description: "Envisagez de documenter la réévaluation intervalle pour la douleur abdominale.",
+      },
+      pediatricMissingHydrationReassessment: {
+        title: "Réévaluation de l'hydratation",
+        description: "Envisagez de documenter la réévaluation du statut d'hydratation.",
+      },
+      pediatricMissingCaregiverPrecautions: {
+        title: "Précautions de retour pour les soignants",
+        description: "Envisagez de documenter les précautions de retour pour les soignants.",
+      },
+      pediatricMissingPoReassessment: {
+        title: "Réévaluation de la tolérance PO",
+        description: "Symptômes GI présents — envisagez de documenter un essai d'hydratation orale ou la tolérance PO.",
+      },
+      torsionMissingUltrasound: {
+        title: "Échographie",
+        description: "La suspicion de torsion testiculaire peut bénéficier d'une échographie urgente documentée.",
+      },
+      torsionMissingUrologyConsult: {
+        title: "Consultation urologique",
+        description: "Envisagez de documenter la consultation urologique envisagée.",
+      },
+      torsionMissingDisposition: {
+        title: "Sortie urgente",
+        description: "Envisagez de documenter la justification de transfert ou d'admission urgente.",
+      },
+      ectopicMissingPregnancyTesting: {
+        title: "Test de grossesse",
+        description: "La suspicion de grossesse ectopique peut bénéficier d'un test de grossesse documenté.",
+      },
+      ectopicMissingUltrasound: {
+        title: "Échographie pelvienne",
+        description: "Envisagez de documenter la revue ou la considération d'une échographie pelvienne.",
+      },
+      ectopicMissingConsultDisposition: {
+        title: "Consultation OB/GYN ou sortie",
+        description: "Envisagez de documenter la consultation OB/GYN ou la justification de sortie.",
+      },
+      psychMissingSafetyPlanning: {
+        title: "Plan de sécurité",
+        description: "Le profil de sécurité psychiatrique peut bénéficier d'un plan de sécurité documenté.",
+      },
+      psychMissingReassessment: {
+        title: "Réévaluation comportementale",
+        description: "Envisagez de documenter une réévaluation comportementale ou de sécurité répétée.",
+      },
+      psychMissingConsultDisposition: {
+        title: "Consultation/disposition psychiatrique",
+        description: "Envisagez de documenter la consultation psychiatrique ou la justification de sortie.",
+      },
+      spineMissingNeuroReassessment: {
+        title: "Réévaluation neurologique répétée",
+        description: "Le profil drapeau rouge rachidien peut bénéficier d'une réévaluation neurologique répétée.",
+      },
+      spineMissingImagingConsult: {
+        title: "IRM/consultation rachis",
+        description: "Envisagez de documenter une IRM urgente ou une consultation rachis envisagée.",
+      },
+      spineMissingDisposition: {
+        title: "Justification de sortie",
+        description: "Envisagez de documenter la justification d'admission ou de transfert.",
+      },
+      generalMissingMdm: {
+        title: "Décision médicale",
+        description: "Envisagez de documenter la décision médicale (MDM).",
+      },
+      generalMissingReassessment: {
+        title: "Réévaluation",
+        description: "Ce modèle à risque élevé peut bénéficier d'une documentation de réévaluation.",
+      },
+      generalMissingDisposition: {
+        title: "Justification de sortie",
+        description: "Envisagez de documenter la justification de sortie.",
+      },
+      generalMissingReturnPrecautions: {
+        title: "Précautions de retour",
+        description: "Envisagez de documenter les précautions de retour ou les consignes de suivi.",
+      },
+    },
+  },
   providerDocumentationComplaintIntel: {
     chestPain: {
       hpiExertional: "douleur thoracique d'effort",
