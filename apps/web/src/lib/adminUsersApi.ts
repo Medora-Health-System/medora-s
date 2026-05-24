@@ -46,7 +46,7 @@ async function adminApiFetch(
       if (txt?.trim()) message = txt;
     }
     throw new Error(
-      normalizeUserFacingError(message) || `La requête a échoué (${response.status}).`
+      normalizeUserFacingError(message, "fr") || `La requête a échoué (${response.status}).`
     );
   }
 

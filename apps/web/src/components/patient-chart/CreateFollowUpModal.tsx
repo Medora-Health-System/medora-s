@@ -148,7 +148,7 @@ export function CreateFollowUpModal({
       setTimeout(() => onSuccess(), 600);
     } catch (err: unknown) {
       setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
           t("createFollowUpModal.createFailed")
       );
     } finally {

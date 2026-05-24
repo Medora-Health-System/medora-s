@@ -26,9 +26,13 @@ function getByPath(obj: unknown, path: string): unknown {
   return cur;
 }
 
+/**
+ * Resolve a dotted message key for the active locale only.
+ * Missing keys return the key path — never fall back to the other language catalog (19U.1).
+ */
 function resolveT(
   active: unknown,
-  frRoot: unknown,
+  _frRoot: unknown,
   key: string,
   language: SupportedLanguage
 ): string {
@@ -37,8 +41,6 @@ function resolveT(
   if (language === "en") {
     return key;
   }
-  const frVal = getByPath(frRoot, key);
-  if (typeof frVal === "string") return frVal;
   return key;
 }
 
@@ -94,7 +96,7 @@ export function I18nProvider({
   const t = useCallback(
     (key: string) => {
       const activeRoot = messagesByLang[language];
-      return resolveT(activeRoot, frMessages, key, language);
+      return resolveT(activeRoot, null, key, language);
     },
     [language]
   );

@@ -148,7 +148,7 @@ function FormShell({
       await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });
     } catch (e) {
       setSubmitErr(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erProcedureLauncher.saveError")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("erProcedureLauncher.saveError")
       );
     } finally {
       setSubmitting(false);

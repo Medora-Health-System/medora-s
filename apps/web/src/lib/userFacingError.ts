@@ -221,9 +221,14 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
  * Sinon tente les règles ci-dessus ; en dernier recours renvoie un message générique.
  */
 /** Retourne une chaîne vide si `message` est vide, pour permettre `normalize(x) || « repli »`. */
+/**
+ * Map API / proxy errors to user-facing copy for the given locale.
+ * Locale is required — pass `useI18n().language` in UI code (Phase 19U.1).
+ * Non-UI modules without UI context should pass an explicit locale; do not omit.
+ */
 export function normalizeUserFacingError(
   message: string | undefined | null,
-  locale: SupportedLanguage = "fr"
+  locale: SupportedLanguage
 ): string {
   if (message == null) return "";
   const s = String(message).trim();

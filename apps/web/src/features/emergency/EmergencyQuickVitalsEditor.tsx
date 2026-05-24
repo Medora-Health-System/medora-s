@@ -138,7 +138,7 @@ export function EmergencyQuickVitalsEditor({
           ? (latestRaw as Record<string, unknown>)
           : null;
       if (!latest) {
-        setMsg(normalizeUserFacingError(null) || t("erQuickVitals.saveError"));
+        setMsg(normalizeUserFacingError(null, language) || t("erQuickVitals.saveError"));
         return;
       }
 
@@ -222,7 +222,7 @@ export function EmergencyQuickVitalsEditor({
         setMsg(t("erTriage.panel.staleConflict"));
       } else {
         setMsg(
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erQuickVitals.saveError")
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("erQuickVitals.saveError")
         );
       }
     } finally {

@@ -338,7 +338,9 @@ export function SharedCatalogAutocomplete({
                   <div style={{ fontWeight: 600 }}>
                     <HighlightMatch text={displayLine} needle={needle} />
                     {item.type === "MEDICATION" && item.isEssential && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>Essentiel</span>
+                      <span style={{ marginLeft: 6, fontSize: 11, color: "#1976d2" }}>
+                        {t("pharmacyMedicationSearch.essentialBadge")}
+                      </span>
                     )}
                     {item.type === "MEDICATION" && item.isFavorite && (
                       <span style={{ marginLeft: 6, fontSize: 12 }} aria-hidden>

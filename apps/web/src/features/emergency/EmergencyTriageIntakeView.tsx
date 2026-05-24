@@ -168,7 +168,7 @@ export function EmergencyTriageIntakeView() {
       setError(t("emergencyTriageIntake.errUnexpectedResponse"));
     } catch (e) {
       setError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyTriageIntake.errCreateFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("emergencyTriageIntake.errCreateFailed")
       );
     } finally {
       setSubmitting(false);

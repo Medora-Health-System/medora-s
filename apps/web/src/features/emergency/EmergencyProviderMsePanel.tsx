@@ -765,7 +765,7 @@ export function EmergencyProviderMsePanel({
       setSaveFeedback({
         variant: "error",
         message:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("erMseProviderPanel.saveErrorFallback"),
       });
       throw e;
@@ -819,7 +819,7 @@ export function EmergencyProviderMsePanel({
       setSaveFeedback({
         variant: "error",
         message:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("erMseProviderPanel.saveErrorFallback"),
       });
     } finally {
@@ -845,7 +845,7 @@ export function EmergencyProviderMsePanel({
       setSaveFeedback({
         variant: "error",
         message:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("encounterClinicTab.errSign"),
       });
     } finally {
@@ -892,7 +892,7 @@ export function EmergencyProviderMsePanel({
       setHandoffFeedback({
         variant: "error",
         message:
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erMseProviderPanel.handoffError"),
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("erMseProviderPanel.handoffError"),
       });
     } finally {
       setHandoffSaving(false);

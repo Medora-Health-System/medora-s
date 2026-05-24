@@ -566,7 +566,7 @@ export function HospitalizationBoardView() {
     } catch (error) {
       console.error("Failed to discharge inpatient encounter:", error);
       setFetchError(
-        normalizeUserFacingError(error instanceof Error ? error.message : null) ||
+        normalizeUserFacingError(error instanceof Error ? error.message : null, language) ||
           t("hospitalizationBoard.dischargeFailed")
       );
     } finally {

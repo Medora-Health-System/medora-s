@@ -34,7 +34,10 @@ export function getCatalogSearchItemDisplayLabel(
   return item.code?.trim() || "";
 }
 
-/** Full single-line label (primary + `secondaryText`), for chips, controlled inputs, and order modal lines. */
+/**
+ * Full single-line label (primary + `secondaryText`), for chips, controlled inputs, and order modal lines.
+ * Phase 19U.2: normalize `secondaryText` / metadata by locale before append — do not render raw FR catalog labels in EN UI.
+ */
 export function catalogSearchItemFullDisplayLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,

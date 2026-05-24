@@ -37,7 +37,7 @@ async function roiFetch(
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(normalizeUserFacingError(message) || message);
+    throw new Error(normalizeUserFacingError(message, "fr") || message);
   }
 
   if (response.status === 204) return null;
@@ -176,7 +176,7 @@ export async function fetchRoiMonitoringSummary(
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(normalizeUserFacingError(message) || message);
+    throw new Error(normalizeUserFacingError(message, "fr") || message);
   }
   return (await parseApiResponse(response)) as {
     byStatus: { status: string; count: number }[];

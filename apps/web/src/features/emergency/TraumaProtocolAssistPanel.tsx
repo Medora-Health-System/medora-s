@@ -139,7 +139,7 @@ export function TraumaProtocolAssistPanel({
   const mapOrderCreateError = useCallback(
     (err: unknown): string => {
       const msg = err instanceof Error ? err.message : "";
-      return normalizeUserFacingError(msg.trim() || null) || t("erProtocolAssist.orderCreateFailed");
+      return normalizeUserFacingError(msg.trim() || null, "fr") || t("erProtocolAssist.orderCreateFailed");
     },
     [t]
   );

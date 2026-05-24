@@ -427,7 +427,7 @@ export function EmergencyTriagePanel({
       setTriage(null);
       setFormData(emptyForm());
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.loadError")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("erTriage.panel.loadError")
       );
     } finally {
       setLoading(false);
@@ -528,7 +528,7 @@ export function EmergencyTriagePanel({
         setSaveInfo(t("erTriage.panel.staleConflict"));
       } else {
         setSaveInfo(
-          normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erTriage.panel.saveError")
+          normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("erTriage.panel.saveError")
         );
       }
     } finally {

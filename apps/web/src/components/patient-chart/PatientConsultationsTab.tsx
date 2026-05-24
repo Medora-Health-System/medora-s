@@ -19,7 +19,7 @@ function CreateEncounterModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [formData, setFormData] = useState({
     type: "OUTPATIENT",
     visitReason: "",
@@ -66,7 +66,7 @@ function CreateEncounterModal({
       onSuccess();
     } catch (err) {
       setError(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) ||
+        normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
           t("patientConsultationsTab.create.createFailed")
       );
     } finally {
@@ -230,7 +230,7 @@ export function PatientConsultationsTab({
     } catch (e) {
       setEncounters([]);
       const msg =
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("patientConsultationsTab.loadError");
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("patientConsultationsTab.loadError");
       setLoadError(msg);
     } finally {
       setLoading(false);

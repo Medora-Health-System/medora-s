@@ -221,9 +221,13 @@ function emptyResolvedOrderSetItems(): ResolvedOrderSetItems {
   };
 }
 
-function mapOrderCreateError(err: unknown, t: (k: string) => string): string {
+function mapOrderCreateError(
+  err: unknown,
+  t: (k: string) => string,
+  language: SupportedLanguage
+): string {
   const msg = err instanceof Error ? err.message : "";
-  return normalizeUserFacingError(msg.trim() || null) || t("createOrderModal.mapOrderCreateError");
+  return normalizeUserFacingError(msg.trim() || null, language) || t("createOrderModal.mapOrderCreateError");
 }
 
 function catalogLineLabel(
@@ -1636,7 +1640,7 @@ export function CreateOrderModal({
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setError(mapOrderCreateError(err, t));
+      setError(mapOrderCreateError(err, t, language));
     } finally {
       setLoading(false);
       setBulkCreateProgress(null);
@@ -1735,7 +1739,7 @@ export function CreateOrderModal({
           if (isEncounterMustBeOpenForOrderError(raw)) {
             await onRefetchEncounter?.();
           }
-          const reason = mapOrderCreateError(err, t);
+          const reason = mapOrderCreateError(err, t, language);
           const nextStaged: Record<OrderTypeKey, CreateOrderLineItem[]> = {
             LAB: successfulTypes.includes("LAB") ? [] : [...snapshot.LAB],
             IMAGING: successfulTypes.includes("IMAGING") ? [] : [...snapshot.IMAGING],
@@ -1803,7 +1807,7 @@ export function CreateOrderModal({
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setError(mapOrderCreateError(err, t));
+      setError(mapOrderCreateError(err, t, language));
     } finally {
       setLoading(false);
       setBulkCreateProgress(null);

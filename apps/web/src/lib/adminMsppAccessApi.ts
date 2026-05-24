@@ -36,7 +36,7 @@ async function adminApiFetch(path: string, options: RequestInit = {}): Promise<u
     } catch {
       if (txt?.trim()) message = txt;
     }
-    throw new Error(normalizeUserFacingError(message) || `La requête a échoué (${response.status}).`);
+    throw new Error(normalizeUserFacingError(message, "fr") || `La requête a échoué (${response.status}).`);
   }
 
   return await parseApiResponse(response);

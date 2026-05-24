@@ -283,7 +283,7 @@ export function EmergencyProcedureLauncherModal({
       await afterProcedureDocumentSaveSuccess({ onRecorded, onClose });
     } catch (err) {
       setSubmitErr(
-        normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erProcedureLauncher.saveError")
+        normalizeUserFacingError(err instanceof Error ? err.message : null, "fr") || t("erProcedureLauncher.saveError")
       );
     } finally {
       setSubmitting(false);

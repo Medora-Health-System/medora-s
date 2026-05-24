@@ -161,7 +161,7 @@ export function ErHandoffV1Editor({
   /** Locked / closed / view-only: same fields, no save. */
   readOnly?: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [handoffSaving, setHandoffSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [handoffForm, setHandoffForm] = useState<ErHandoffV1Stored>(() =>
@@ -258,12 +258,12 @@ export function ErHandoffV1Editor({
       await Promise.resolve(onUpdated());
     } catch (e) {
       setError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.handoffSaveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterOperational.handoffSaveFailed")
       );
     } finally {
       setHandoffSaving(false);
     }
-  }, [encounterId, facilityId, handoffForm, nursingAssessment, onSaved, onUpdated, readOnly, t]);
+  }, [encounterId, facilityId, handoffForm, language, nursingAssessment, onSaved, onUpdated, readOnly, t]);
 
   const disabled = handoffSaving || readOnly;
 

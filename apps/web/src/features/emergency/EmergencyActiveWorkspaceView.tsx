@@ -316,7 +316,7 @@ export function EmergencyActiveWorkspaceView() {
 
     } catch (e) {
       console.error(e);
-      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
+      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null, language);
       setError(msg || t("emergencyWorkspace.errLoadEncounter"));
       const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
       if (cached?.data) {

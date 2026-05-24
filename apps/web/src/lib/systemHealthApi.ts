@@ -70,7 +70,7 @@ export async function fetchSystemHealth(facilityId: string): Promise<SystemHealt
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`, "fr") || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as SystemHealthPayload;
 }
@@ -83,7 +83,7 @@ export async function postSystemHealthTestAlert(facilityId: string): Promise<Sys
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`, "fr") || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as SystemHealthTestAlertResponse;
 }

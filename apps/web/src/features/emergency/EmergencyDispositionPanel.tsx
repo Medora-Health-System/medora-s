@@ -372,7 +372,7 @@ export function EmergencyDispositionPanel({
     } catch (e) {
       console.error(e);
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyDisposition.saveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("emergencyDisposition.saveFailed")
       );
     } finally {
       setSaving(false);
@@ -405,7 +405,7 @@ export function EmergencyDispositionPanel({
       setSaveInfo(t("emergencyDisposition.cancelAdmissionSuccess"));
     } catch (e) {
       setCancelError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
           t("emergencyDisposition.cancelAdmissionFailed")
       );
     } finally {

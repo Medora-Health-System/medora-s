@@ -175,7 +175,7 @@ export function EmergencyErNursingHandoffPanel({
     } catch (e) {
       console.error(e);
       setExecSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyErNursingHandoff.execSaveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("emergencyErNursingHandoff.execSaveFailed")
       );
     } finally {
       setSavingExec(false);

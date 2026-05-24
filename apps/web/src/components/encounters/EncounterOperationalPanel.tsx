@@ -125,7 +125,7 @@ export function EncounterOperationalPanel({
         }
         await Promise.resolve(onUpdated());
       } catch (e) {
-        setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterOperational.saveFailed"));
+        setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
       } finally {
         setSaving(false);
       }

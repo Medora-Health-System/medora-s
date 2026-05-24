@@ -105,7 +105,7 @@ function ResolveDiagnosisButton({
   diagnosisId: string;
   onResolved: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const handleResolve = async () => {
@@ -117,7 +117,7 @@ function ResolveDiagnosisButton({
       onResolved();
     } catch (e: unknown) {
       const msg =
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("patientChartUi.resolveDxFailed");
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("patientChartUi.resolveDxFailed");
       setError(msg);
     } finally {
       setLoading(false);

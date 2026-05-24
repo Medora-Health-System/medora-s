@@ -354,7 +354,7 @@ export function NursingAssessmentTab({
       onUpdate();
     } catch (e) {
       setError(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("nursingAssessmentTab.errSave")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("nursingAssessmentTab.errSave")
       );
     } finally {
       setSaving(false);

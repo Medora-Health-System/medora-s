@@ -96,7 +96,7 @@ export function EmergencyErNotesPanel({
       alert(queued ? t("encounterChrome.notesTab.saveQueued") : t("encounterChrome.notesTab.saveOk"));
     } catch (e) {
       alert(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("encounterChrome.notesTab.saveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterChrome.notesTab.saveFailed")
       );
     } finally {
       setSaving(false);

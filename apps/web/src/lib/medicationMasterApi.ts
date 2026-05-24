@@ -194,7 +194,7 @@ async function medicationMasterFetch<T>(path: string, facilityId: string): Promi
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`, "fr") || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as T;
 }

@@ -39,7 +39,7 @@ export async function fetchCatalogAuditDashboard(facilityId: string): Promise<Ad
   });
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`, "fr") || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as AdminCatalogAuditPayload;
 }
@@ -74,7 +74,7 @@ export async function patchCatalogClassification(
   );
   if (!res.ok) {
     const txt = await res.text().catch(() => "");
-    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`) || `HTTP ${res.status}`);
+    throw new Error(normalizeUserFacingError(txt || `HTTP ${res.status}`, "fr") || `HTTP ${res.status}`);
   }
   return (await parseApiResponse(res)) as AdminCatalogAuditRow;
 }

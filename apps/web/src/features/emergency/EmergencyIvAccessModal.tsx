@@ -292,7 +292,7 @@ export function EmergencyIvAccessModal({
         setRemoved(parsed.removed);
       }
     } catch (e) {
-      setLoadErr(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("erIvAccess.loadError"));
+      setLoadErr(normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("erIvAccess.loadError"));
       setActive([]);
       setRemoved([]);
     } finally {
@@ -340,7 +340,7 @@ export function EmergencyIvAccessModal({
       setNotes("");
       setInsertedAtLocal(toDatetimeLocalValue(new Date()));
     } catch (err) {
-      setSubmitErr(normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erIvAccess.submitError"));
+      setSubmitErr(normalizeUserFacingError(err instanceof Error ? err.message : null, language) || t("erIvAccess.submitError"));
     } finally {
       setSubmitting(false);
     }
@@ -371,7 +371,7 @@ export function EmergencyIvAccessModal({
       setRemovedAtLocal(toDatetimeLocalValue(new Date()));
       await reload();
     } catch (err) {
-      setSubmitErr(normalizeUserFacingError(err instanceof Error ? err.message : null) || t("erIvAccess.submitError"));
+      setSubmitErr(normalizeUserFacingError(err instanceof Error ? err.message : null, language) || t("erIvAccess.submitError"));
     } finally {
       setSubmitting(false);
     }

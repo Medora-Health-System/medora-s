@@ -1420,7 +1420,7 @@ export function EmergencyNursingReassessmentPanel({
             triageSideError = t("erTriage.panel.staleConflict");
           } else {
             triageSideError =
-              normalizeUserFacingError(e instanceof Error ? e.message : null) ||
+              normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
               t("emergencyNursingReassessment.triageBedsideSaveFailed");
           }
         }
@@ -1457,7 +1457,7 @@ export function EmergencyNursingReassessmentPanel({
     } catch (e) {
       console.error(e);
       setSaveInfo(
-        normalizeUserFacingError(e instanceof Error ? e.message : null) || t("emergencyNursingReassessment.saveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("emergencyNursingReassessment.saveFailed")
       );
     } finally {
       setSaving(false);

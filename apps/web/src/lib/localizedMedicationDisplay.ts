@@ -29,7 +29,8 @@ function normalizeKey(value: string): string {
 
 /**
  * Normalize catalog French clinical labels to English when locale is EN.
- * Unknown values pass through unchanged.
+ * Raw catalog metadata (route, form, class) must pass through here before display (19U.1).
+ * Unknown values pass through unchanged — expand maps in Phase 19U.2.
  */
 export function normalizeMedicationDisplayForLocale(
   value: string | null | undefined,

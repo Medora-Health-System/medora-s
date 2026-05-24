@@ -210,7 +210,7 @@ export default function DepartmentOrderDetail({
       setOrder(asApiObject(data));
     } catch (e: unknown) {
       setOrder(null);
-      setError(normalizeUserFacingError(e instanceof Error ? e.message : null) || t("orderDetail.loadError"));
+      setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("orderDetail.loadError"));
     } finally {
       setLoading(false);
     }
@@ -969,7 +969,7 @@ function LineCard({
         text: t("orderDetail.feedbackSaved"),
       });
     } catch (e: unknown) {
-      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null);
+      const msg = normalizeUserFacingError(e instanceof Error ? e.message : null, language);
       setFeedback({
         type: "err",
         text: msg || t("orderDetail.feedbackSaveFailed"),
