@@ -6,6 +6,7 @@ import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import { HomeMedicationEntryModal } from "./HomeMedicationEntryModal";
+import { DrugAllergySearchPanel } from "./DrugAllergySearchPanel";
 import {
   formatHomeMedicationSummaryLine,
   formatHomeMedicationSearchSubtitle,
@@ -133,27 +134,7 @@ const MED_HOME_SEARCH_MIN_CHARS = 2;
 const MED_HOME_SEARCH_DEBOUNCE_MS = 320;
 const MED_HOME_SEARCH_LIMIT = 12;
 
-/** i18n keys under `erTriage.v1.*` — append-only text for allergy details (no structured codes). */
-const ALLERGY_QUICK_ALLERGEN_I18N_KEYS = [
-  "allergyQuickPenicillin",
-  "allergyQuickSulfa",
-  "allergyQuickAspirin",
-  "allergyQuickNsaid",
-  "allergyQuickIodinatedContrast",
-  "allergyQuickPeanuts",
-  "allergyQuickShellfish",
-  "allergyQuickEggs",
-  "allergyQuickOther",
-] as const;
-
-const ALLERGY_QUICK_REACTION_I18N_KEYS = [
-  "allergyReactionRash",
-  "allergyReactionHives",
-  "allergyReactionAnaphylaxis",
-  "allergyReactionSob",
-  "allergyReactionNausea",
-  "allergyReactionUnknown",
-] as const;
+/** i18n keys under `erTriage.v1.*` — legacy reaction quick-picks removed in 19T.1. */
 
 /** Past medical history quick-picks — append localized labels to `pastMedicalHistory` only. */
 const HISTORY_PMH_I18N_KEYS = [
@@ -360,6 +341,7 @@ export function EmergencyTriageV1Sections({
           const items = await searchCatalog(facilityId.trim(), "MEDICATION", {
             q,
             limit: MED_HOME_SEARCH_LIMIT,
+            purpose: "documentation",
           });
           if (medHomeSearchReq.current === reqId) {
             setMedHomeSearchResults(items);
@@ -386,21 +368,12 @@ export function EmergencyTriageV1Sections({
 
   const saveHomeMedicationEntry = useCallback(
     (entry: HomeMedicationEntryForm) => {
-      const line = formatHomeMedicationSummaryLine(entry, t);
+      const line = formatHomeMedicationSummaryLine(entry, t, language);
       if (!line) return;
       patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, line) });
       setHomeMedEntryCatalogItem(null);
     },
-    [er.medicationsSummary, patchErV1, t]
-  );
-
-  const appendAllergyQuickText = useCallback(
-    (i18nSuffix: string) => {
-      const label = t(`erTriage.v1.${i18nSuffix}`).trim();
-      if (!label) return;
-      patchErV1({ additionalAllergyInfo: appendIfNotPresent(er.additionalAllergyInfo, label) });
-    },
-    [er.additionalAllergyInfo, patchErV1, t]
+    [er.medicationsSummary, language, patchErV1, t]
   );
 
   const [historyPmhFilter, setHistoryPmhFilter] = useState("");
@@ -937,6 +910,27 @@ export function EmergencyTriageV1Sections({
             ) : null}
           </div>
           <div>
+            <label style={labelStyle}>{t("erTriage.v1.medicationAllergiesDetail")}</label>
+            <textarea
+              value={er.medicationAllergiesDetail}
+              onChange={(e) => patchErV1({ medicationAllergiesDetail: e.target.value })}
+              disabled={formDisabled}
+              rows={3}
+              maxLength={4000}
+              style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+            />
+            {facilityId?.trim() ? (
+              <DrugAllergySearchPanel
+                facilityId={facilityId.trim()}
+                disabled={formDisabled}
+                medicationAllergiesDetail={er.medicationAllergiesDetail}
+                additionalAllergyInfo={er.additionalAllergyInfo}
+                allergyDetailSelections={er.allergyDetailSelections}
+                onSaveAllergies={(patch) => patchErV1(patch)}
+              />
+            ) : null}
+          </div>
+          <div>
             <label style={labelStyle}>{t("erTriage.v1.allergyExtra")}</label>
             <textarea
               value={er.additionalAllergyInfo}
@@ -948,7 +942,7 @@ export function EmergencyTriageV1Sections({
               placeholder={t("erTriage.v1.allergyExtraPlaceholder")}
             />
             <ErTriageDocChipRow>
-              {ER_TRIAGE_ALLERGY_CHIP_DEFS.map((def) => {
+              {ER_TRIAGE_ALLERGY_CHIP_DEFS.filter((def) => def.code !== "DRUG_ALLERGY").map((def) => {
                 const label = t(`erTriage.v1.${def.i18nKey}`);
                 return (
                   <ErTriageDocChip
@@ -969,28 +963,6 @@ export function EmergencyTriageV1Sections({
                   />
                 );
               })}
-            </ErTriageDocChipRow>
-            <p style={{ ...sectionHeading, fontSize: 10, marginTop: 6 }}>{t("erTriage.v1.allergenSectionTitle")}</p>
-            <ErTriageDocChipRow>
-              {ALLERGY_QUICK_ALLERGEN_I18N_KEYS.map((k) => (
-                <ErTriageDocChip
-                  key={k}
-                  label={t(`erTriage.v1.${k}`)}
-                  disabled={formDisabled}
-                  onClick={() => appendAllergyQuickText(k)}
-                />
-              ))}
-            </ErTriageDocChipRow>
-            <p style={{ ...sectionHeading, fontSize: 10, marginTop: 10 }}>{t("erTriage.v1.reactionsSectionTitle")}</p>
-            <ErTriageDocChipRow>
-              {ALLERGY_QUICK_REACTION_I18N_KEYS.map((k) => (
-                <ErTriageDocChip
-                  key={k}
-                  label={t(`erTriage.v1.${k}`)}
-                  disabled={formDisabled}
-                  onClick={() => appendAllergyQuickText(k)}
-                />
-              ))}
             </ErTriageDocChipRow>
           </div>
           <div style={grid2}>

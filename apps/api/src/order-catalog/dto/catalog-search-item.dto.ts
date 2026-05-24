@@ -61,6 +61,8 @@ export type CatalogSearchItemDto = {
   };
 };
 
+export const catalogSearchPurposeSchema = z.enum(["order", "documentation"]).optional().default("order");
+
 export const catalogSearchQuerySchema = z.object({
   q: z
     .string()
@@ -72,6 +74,8 @@ export const catalogSearchQuerySchema = z.object({
     .union([z.literal("true"), z.literal("false"), z.literal("1"), z.literal("0")])
     .optional()
     .transform((v) => v === "true" || v === "1"),
+  /** `documentation` skips order-search activation gate (triage home med / allergy history). */
+  purpose: catalogSearchPurposeSchema,
 });
 
 export type CatalogSearchQuery = z.infer<typeof catalogSearchQuerySchema>;

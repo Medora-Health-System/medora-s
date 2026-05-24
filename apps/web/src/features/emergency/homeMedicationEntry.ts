@@ -1,5 +1,10 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
+import {
+  formatHomeMedicationSummaryForLocale,
+  formatMedicationOptionForLocale,
+  normalizeMedicationDisplayForLocale,
+} from "@/lib/localizedMedicationDisplay";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 
 export type HomeMedicationStatus = "" | "active" | "inactive" | "in_error";
@@ -132,28 +137,9 @@ export function formatHomeMedicationSearchSubtitle(
   language: SupportedLanguage,
   t: (key: string) => string
 ): string {
-  const meta = item.metadata ?? {};
-  const strength = meta.strength?.trim();
-  const form = meta.dosageForm?.trim();
-  const route = meta.route?.trim();
-  const therapeuticClass = meta.therapeuticClass?.trim();
-
-  const parts: string[] = [];
-  if (strength && form) {
-    parts.push(`${strength} ${form}`);
-  } else if (item.secondaryText?.trim()) {
-    parts.push(item.secondaryText.trim());
-  } else {
-    if (strength) parts.push(strength);
-    if (form) parts.push(form);
-  }
-  if (route) parts.push(route);
-  if (therapeuticClass) parts.push(therapeuticClass);
-
-  if (parts.length === 0) {
-    return t("erTriage.homeMed.searchDetailsUnavailable");
-  }
-  return parts.join(" — ");
+  const { subtitle } = formatMedicationOptionForLocale(item, language, t);
+  if (!subtitle) return t("erTriage.homeMed.searchDetailsUnavailable");
+  return subtitle;
 }
 
 function parseDoseFromStrengthChip(chip: string): { doseValue: string; doseUnit: string } {
@@ -178,10 +164,10 @@ export function homeMedicationEntryFormFromCatalog(
     catalogId: item.id,
     medicationName: getCatalogSearchItemDisplayLabel(item, language, t),
     status: "active",
-    strength,
-    dosageForm: meta.dosageForm?.trim() ?? "",
-    route: meta.route?.trim() ?? "",
-    therapeuticClass: meta.therapeuticClass?.trim() ?? "",
+    strength: normalizeMedicationDisplayForLocale(strength, language),
+    dosageForm: normalizeMedicationDisplayForLocale(meta.dosageForm?.trim() ?? "", language),
+    route: normalizeMedicationDisplayForLocale(meta.route?.trim() ?? "", language),
+    therapeuticClass: normalizeMedicationDisplayForLocale(meta.therapeuticClass?.trim() ?? "", language),
     doseUnit: doseUnitGuess,
     source: t("erTriage.homeMed.sourceCatalog"),
     catalogDetailsAvailable,
@@ -201,64 +187,13 @@ export function applyHomeMedicationDoseChip(
   };
 }
 
-function doseSegment(entry: HomeMedicationEntryForm): string {
-  if (entry.doseValue.trim() && entry.doseUnit.trim()) {
-    return `${entry.doseValue.trim()} ${entry.doseUnit.trim()}`;
-  }
-  if (entry.strength.trim()) return entry.strength.trim();
-  return "";
-}
 
-function hasConfirmedDoseOrFrequency(entry: HomeMedicationEntryForm): boolean {
-  return Boolean(
-    doseSegment(entry) ||
-      entry.frequency.trim() ||
-      entry.route.trim() ||
-      entry.dosageForm.trim()
-  );
-}
-
-/**
- * Readable one-line home medication summary appended to triage `medicationsSummary`.
- * Does not create orders, MAR events, or billing.
- */
 export function formatHomeMedicationSummaryLine(
   entry: HomeMedicationEntryForm,
-  t: (key: string) => string
+  t: (key: string) => string,
+  language: SupportedLanguage = "fr"
 ): string {
-  const name = entry.medicationName.trim();
-  if (!name) return "";
-
-  if (!hasConfirmedDoseOrFrequency(entry)) {
-    return `${name} — ${t("erTriage.homeMed.summaryNotConfirmed")}`;
-  }
-
-  const headParts: string[] = [name];
-  const dose = doseSegment(entry);
-  if (dose) headParts.push(dose);
-  if (entry.dosageForm.trim()) headParts.push(entry.dosageForm.trim());
-
-  const routeFreq: string[] = [];
-  if (entry.route.trim()) routeFreq.push(entry.route.trim());
-  if (entry.frequency.trim()) routeFreq.push(entry.frequency.trim());
-  if (routeFreq.length) headParts.push(routeFreq.join(" "));
-
-  let line = headParts.join(" ");
-
-  if (entry.compliance) {
-    line += ` — ${t(`erTriage.homeMed.compliance.${entry.compliance}`)}`;
-  }
-  if (entry.lastTaken) {
-    line += `; ${t("erTriage.homeMed.lastTakenPrefix")} ${t(`erTriage.homeMed.lastTaken.${entry.lastTaken}`)}`;
-  }
-  if (entry.indication.trim()) {
-    line += ` (${entry.indication.trim()})`;
-  }
-  if (entry.notes.trim()) {
-    line += `. ${entry.notes.trim()}`;
-  }
-
-  return line.replace(/\s+/g, " ").trim();
+  return formatHomeMedicationSummaryForLocale(entry, language, t);
 }
 
 export function homeMedicationEntryFormIsValid(entry: HomeMedicationEntryForm): boolean {

@@ -12,6 +12,10 @@ import {
 } from "../order-catalog/catalog-search-rank.util";
 import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-search.mapper";
 import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
+import {
+  buildCatalogMedicationSearchWhere,
+  expandMedicationSearchQuery,
+} from "./medication-catalog-search.util";
 
 /** One medication row from DB with its match tier (direct search vs alias-only path). */
 type ScoredMedicationRow = { row: CatalogMedication; tier: number };
@@ -41,31 +45,33 @@ export class MedicationCatalogService {
    */
   async search(
     facilityId: string,
-    query: { q: string; limit: number; favoritesFirst?: boolean }
+    query: {
+      q: string;
+      limit: number;
+      favoritesFirst?: boolean;
+      purpose?: "order" | "documentation";
+    }
   ): Promise<{ items: CatalogSearchItemDto[] }> {
     const q = query.q.trim().toLowerCase();
     const limit = Math.min(query.limit, 50);
+    const purpose = query.purpose ?? "order";
     if (!q) return { items: [] };
+
+    const searchTerms = expandMedicationSearchQuery(q);
+    const textWhere = buildCatalogMedicationSearchWhere(searchTerms);
 
     const byCatalog = await this.prisma.catalogMedication.findMany({
       where: {
         isActive: true,
-        OR: [
-          { code: { contains: q, mode: "insensitive" } },
-          { name: { contains: q, mode: "insensitive" } },
-          { genericName: { contains: q, mode: "insensitive" } },
-          { displayNameEn: { contains: q, mode: "insensitive" } },
-          { displayNameFr: { contains: q, mode: "insensitive" } },
-          { strength: { contains: q, mode: "insensitive" } },
-          { searchText: { contains: q, mode: "insensitive" } },
-        ],
+        ...textWhere,
       },
       orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
       take: limit * 3,
     });
 
+    const aliasOr = searchTerms.map((term) => ({ alias: { contains: term, mode: "insensitive" as const } }));
     const byAlias = await this.prisma.medicationAlias.findMany({
-      where: { alias: { contains: q, mode: "insensitive" } },
+      where: { OR: aliasOr },
       select: { catalogMedicationId: true },
       distinct: ["catalogMedicationId"],
     });
@@ -91,7 +97,9 @@ export class MedicationCatalogService {
       scored.push({ row, tier });
     }
 
-    const canonicalAliasCatalogIds = await this.canonicalRead.findCatalogIdsViaCanonicalAlias(q);
+    const canonicalAliasCatalogIds = (
+      await Promise.all(searchTerms.map((term) => this.canonicalRead.findCatalogIdsViaCanonicalAlias(term)))
+    ).flat();
     const missingCanonicalIds = canonicalAliasCatalogIds.filter((id) => !directIds.has(id));
     if (missingCanonicalIds.length > 0) {
       const extraRows = await this.prisma.catalogMedication.findMany({
@@ -112,11 +120,13 @@ export class MedicationCatalogService {
     );
 
     let sliced = scored.slice(0, limit).map((s) => s.row);
-    const eligibleCatalogIds = await this.activationGovernance.filterProviderSearchCatalogIds(
-      facilityId,
-      sliced.map((m) => m.id)
-    );
-    sliced = sliced.filter((m) => eligibleCatalogIds.has(m.id));
+    if (purpose !== "documentation") {
+      const eligibleCatalogIds = await this.activationGovernance.filterProviderSearchCatalogIds(
+        facilityId,
+        sliced.map((m) => m.id)
+      );
+      sliced = sliced.filter((m) => eligibleCatalogIds.has(m.id));
+    }
 
     const favoriteIds = query.favoritesFirst
       ? await this.getFavoriteCatalogIds(facilityId, sliced.map((m) => m.id))

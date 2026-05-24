@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 import {
-  HOME_MED_COMPLIANCE_CHIP_CODES,
   HOME_MED_FREQUENCY_CHIP_CODES,
   HOME_MED_LAST_TAKEN_CHIP_CODES,
   applyHomeMedicationDoseChip,
@@ -12,7 +12,6 @@ import {
   extractHomeMedicationDoseStrengthChips,
   homeMedicationEntryFormFromCatalog,
   homeMedicationEntryFormIsValid,
-  type HomeMedicationCompliance,
   type HomeMedicationEntryForm,
   type HomeMedicationLastTaken,
   type HomeMedicationStatus,
@@ -95,7 +94,13 @@ export function HomeMedicationEntryModal({
     setSubmitError(null);
   }, [catalogItem, language, t]);
 
-  const doseChips = useMemo(() => extractHomeMedicationDoseStrengthChips(catalogItem), [catalogItem]);
+  const doseChips = useMemo(
+    () =>
+      extractHomeMedicationDoseStrengthChips(catalogItem).map((chip) =>
+        normalizeMedicationDisplayForLocale(chip, language)
+      ),
+    [catalogItem, language]
+  );
 
   const patch = (partial: Partial<HomeMedicationEntryForm>) => {
     setForm((prev) => ({ ...prev, ...partial }));
@@ -115,6 +120,9 @@ export function HomeMedicationEntryModal({
     { value: "inactive", label: t("erTriage.homeMed.status.inactive") },
     { value: "in_error", label: t("erTriage.homeMed.status.in_error") },
   ];
+
+  const displayStrength = normalizeMedicationDisplayForLocale(form.strength, language);
+  const displayRoute = normalizeMedicationDisplayForLocale(form.route, language);
 
   return (
     <div
@@ -141,9 +149,9 @@ export function HomeMedicationEntryModal({
           backgroundColor: "#fff",
           borderRadius: 12,
           border: "1px solid #e2e8f0",
-          maxWidth: 560,
+          maxWidth: 480,
           width: "100%",
-          maxHeight: "92vh",
+          maxHeight: "90vh",
           overflow: "auto",
           padding: 16,
           boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
@@ -211,7 +219,7 @@ export function HomeMedicationEntryModal({
             <label style={labelStyle}>{t("erTriage.homeMed.field.strength")}</label>
             <input
               type="text"
-              value={form.strength}
+              value={displayStrength}
               onChange={(e) => patch({ strength: e.target.value })}
               disabled={disabled}
               style={inputStyle}
@@ -248,7 +256,7 @@ export function HomeMedicationEntryModal({
                   <QuickChip
                     key={chip}
                     label={chip}
-                    active={form.strength.trim() === chip}
+                    active={displayStrength === chip}
                     disabled={disabled}
                     onClick={() => patch(applyHomeMedicationDoseChip(form, chip))}
                   />
@@ -261,7 +269,7 @@ export function HomeMedicationEntryModal({
             <label style={labelStyle}>{t("erTriage.homeMed.field.route")}</label>
             <input
               type="text"
-              value={form.route}
+              value={displayRoute}
               onChange={(e) => patch({ route: e.target.value })}
               disabled={disabled}
               style={inputStyle}
@@ -292,17 +300,6 @@ export function HomeMedicationEntryModal({
                 />
               ))}
             </ChipRow>
-          </div>
-
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.indication")}</label>
-            <input
-              type="text"
-              value={form.indication}
-              onChange={(e) => patch({ indication: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
           </div>
 
           <div>
@@ -341,131 +338,6 @@ export function HomeMedicationEntryModal({
                 />
               ))}
             </ChipRow>
-          </div>
-
-          <div style={{ gridColumn: "1 / -1" }}>
-            <span style={{ ...labelStyle, marginBottom: 0 }}>{t("erTriage.homeMed.chipsCompliance")}</span>
-            <ChipRow>
-              {HOME_MED_COMPLIANCE_CHIP_CODES.map((code) => (
-                <QuickChip
-                  key={code}
-                  label={t(`erTriage.homeMed.compliance.${code}`)}
-                  active={form.compliance === code}
-                  disabled={disabled}
-                  onClick={() => patch({ compliance: code as HomeMedicationCompliance })}
-                />
-              ))}
-            </ChipRow>
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.dosageForm")}</label>
-            <input
-              type="text"
-              value={form.dosageForm}
-              onChange={(e) => patch({ dosageForm: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.therapeuticClass")}</label>
-            <input
-              type="text"
-              value={form.therapeuticClass}
-              onChange={(e) => patch({ therapeuticClass: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.quantity")}</label>
-            <input
-              type="text"
-              value={form.quantity}
-              onChange={(e) => patch({ quantity: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.refillsRemaining")}</label>
-            <input
-              type="text"
-              value={form.refillsRemaining}
-              onChange={(e) => patch({ refillsRemaining: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.duration")}</label>
-            <input
-              type="text"
-              value={form.duration}
-              onChange={(e) => patch({ duration: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.endDate")}</label>
-            <input
-              type="date"
-              value={form.endDate}
-              onChange={(e) => patch({ endDate: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.lastFillDate")}</label>
-            <input
-              type="date"
-              value={form.lastFillDate}
-              onChange={(e) => patch({ lastFillDate: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.source")}</label>
-            <input
-              type="text"
-              value={form.source}
-              onChange={(e) => patch({ source: e.target.value })}
-              disabled={disabled}
-              style={inputStyle}
-            />
-          </div>
-
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.patientInstructions")}</label>
-            <textarea
-              value={form.patientInstructions}
-              onChange={(e) => patch({ patientInstructions: e.target.value })}
-              disabled={disabled}
-              rows={2}
-              style={{ ...inputStyle, minHeight: 56, resize: "vertical" }}
-            />
-          </div>
-
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={labelStyle}>{t("erTriage.homeMed.field.notes")}</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => patch({ notes: e.target.value })}
-              disabled={disabled}
-              rows={2}
-              style={{ ...inputStyle, minHeight: 56, resize: "vertical" }}
-            />
           </div>
         </div>
 

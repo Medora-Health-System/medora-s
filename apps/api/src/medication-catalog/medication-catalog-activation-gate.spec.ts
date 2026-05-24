@@ -61,4 +61,28 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     const res = await service.search("fac-1", { q: "fe", limit: 20 });
     expect(res.items.map((i) => i.id)).toEqual(["cat-enabled"]);
   });
+
+  it("skips order-search activation gate when purpose is documentation", async () => {
+    prisma.catalogMedication.findMany.mockResolvedValue([
+      {
+        id: "cat-inactive",
+        code: "A",
+        name: "Acetaminophen",
+        genericName: null,
+        displayNameEn: null,
+        displayNameFr: null,
+        strength: "500mg",
+        searchText: "acetaminophen",
+        isEssential: false,
+        sortPriority: 0,
+        isActive: true,
+      },
+    ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "fe", limit: 20, purpose: "documentation" });
+    expect(res.items.map((i) => i.id)).toEqual(["cat-inactive"]);
+    expect(activationGovernance.filterProviderSearchCatalogIds).not.toHaveBeenCalled();
+  });
 });
