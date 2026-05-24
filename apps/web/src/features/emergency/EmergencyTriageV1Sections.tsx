@@ -5,6 +5,12 @@ import { useI18n } from "@/lib/i18n";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { HomeMedicationEntryModal } from "./HomeMedicationEntryModal";
+import {
+  formatHomeMedicationSummaryLine,
+  formatHomeMedicationSearchSubtitle,
+  type HomeMedicationEntryForm,
+} from "./homeMedicationEntry";
 import type {
   ErAbcOption,
   ErTraumaActivationCriterionId,
@@ -331,6 +337,7 @@ export function EmergencyTriageV1Sections({
   const [medHomeSearchInput, setMedHomeSearchInput] = useState("");
   const [medHomeSearchResults, setMedHomeSearchResults] = useState<CatalogSearchItem[]>([]);
   const [medHomeSearchLoading, setMedHomeSearchLoading] = useState(false);
+  const [homeMedEntryCatalogItem, setHomeMedEntryCatalogItem] = useState<CatalogSearchItem | null>(null);
   const medHomeSearchReq = useRef(0);
 
   useEffect(() => {
@@ -371,15 +378,20 @@ export function EmergencyTriageV1Sections({
     return () => window.clearTimeout(timer);
   }, [medHomeSearchInput, facilityId]);
 
-  const appendMedicationFromCatalog = useCallback(
-    (item: CatalogSearchItem) => {
-      const label = getCatalogSearchItemDisplayLabel(item, language, t).trim();
-      if (!label) return;
-      patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, label) });
-      setMedHomeSearchInput("");
-      setMedHomeSearchResults([]);
+  const openHomeMedicationEntry = useCallback((item: CatalogSearchItem) => {
+    setHomeMedEntryCatalogItem(item);
+    setMedHomeSearchInput("");
+    setMedHomeSearchResults([]);
+  }, []);
+
+  const saveHomeMedicationEntry = useCallback(
+    (entry: HomeMedicationEntryForm) => {
+      const line = formatHomeMedicationSummaryLine(entry, t);
+      if (!line) return;
+      patchErV1({ medicationsSummary: appendIfNotPresent(er.medicationsSummary, line) });
+      setHomeMedEntryCatalogItem(null);
     },
-    [er.medicationsSummary, language, patchErV1, t]
+    [er.medicationsSummary, patchErV1, t]
   );
 
   const appendAllergyQuickText = useCallback(
@@ -449,6 +461,7 @@ export function EmergencyTriageV1Sections({
   );
 
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {v1Any ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -888,12 +901,15 @@ export function EmergencyTriageV1Sections({
                       backgroundColor: "#fff",
                     }}
                   >
-                    {medHomeSearchResults.map((item) => (
+                    {medHomeSearchResults.map((item) => {
+                      const primary = getCatalogSearchItemDisplayLabel(item, language, t);
+                      const subtitle = formatHomeMedicationSearchSubtitle(item, language, t);
+                      return (
                       <li key={item.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                         <button
                           type="button"
                           disabled={formDisabled}
-                          onClick={() => appendMedicationFromCatalog(item)}
+                          onClick={() => openHomeMedicationEntry(item)}
                           style={{
                             width: "100%",
                             textAlign: "left",
@@ -905,10 +921,16 @@ export function EmergencyTriageV1Sections({
                             color: "#334155",
                           }}
                         >
-                          {getCatalogSearchItemDisplayLabel(item, language, t)}
+                          <div style={{ fontWeight: 600, color: "#0f172a" }}>{primary}</div>
+                          {subtitle ? (
+                            <div style={{ marginTop: 2, fontSize: 11, color: "#64748b", lineHeight: 1.35 }}>
+                              {subtitle}
+                            </div>
+                          ) : null}
                         </button>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 ) : null}
               </div>
@@ -1233,5 +1255,14 @@ export function EmergencyTriageV1Sections({
         </div>
       </details>
     </div>
+    {homeMedEntryCatalogItem ? (
+      <HomeMedicationEntryModal
+        catalogItem={homeMedEntryCatalogItem}
+        disabled={formDisabled}
+        onCancel={() => setHomeMedEntryCatalogItem(null)}
+        onSave={saveHomeMedicationEntry}
+      />
+    ) : null}
+    </>
   );
 }
