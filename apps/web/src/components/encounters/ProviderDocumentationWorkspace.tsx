@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import {
   PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS,
   PROVIDER_DOCUMENTATION_DICTATION_SECTION_TARGETS,
@@ -152,13 +151,55 @@ const inputBase: React.CSSProperties = {
 
 const stickyActionHeaderStyle: React.CSSProperties = {
   position: "sticky",
-  top: 12,
+  top: 8,
   zIndex: 40,
-  background: "rgba(255, 255, 255, 0.98)",
-  border: MEDORA_CARD_SHELL.border,
-  borderRadius: MEDORA_CARD_SHELL.radius,
-  boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12)",
-  padding: "9px 12px",
+  background: "#fff",
+  border: "1px solid #e2e8f0",
+  borderRadius: 12,
+  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.08)",
+  padding: "8px 12px",
+};
+
+const compactSecondaryButton = (disabled: boolean): React.CSSProperties => ({
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  padding: "5px 10px",
+  minHeight: 32,
+  background: "#fff",
+  color: disabled ? "#94a3b8" : "#334155",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer",
+  fontFamily: "inherit",
+  lineHeight: 1.2,
+});
+
+const compactPrimaryButton = (disabled: boolean): React.CSSProperties => ({
+  border: "1px solid #2563eb",
+  borderRadius: 8,
+  padding: "5px 10px",
+  minHeight: 32,
+  background: disabled ? "#f1f5f9" : "#2563eb",
+  color: disabled ? "#94a3b8" : "#fff",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: disabled ? "not-allowed" : "pointer",
+  fontFamily: "inherit",
+  lineHeight: 1.2,
+});
+
+const compactNavButton: React.CSSProperties = {
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  padding: "4px 8px",
+  minHeight: 30,
+  background: "#fff",
+  color: "#334155",
+  fontSize: 12,
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "inherit",
+  lineHeight: 1.2,
 };
 
 const chipStyle: React.CSSProperties = {
@@ -1253,28 +1294,52 @@ export function ProviderDocumentationWorkspace({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div
-        style={stickyActionHeaderStyle}
-      >
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
-              {t(providerDocumentationTitleKey(encounterMode))}
-            </h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+        {t(providerDocumentationTitleKey(encounterMode))}
+      </h2>
+      <div style={stickyActionHeaderStyle} data-testid="provider-documentation-sticky-header">
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#0f766e", minWidth: 0, lineHeight: 1.3 }}>
+            {activeTemplate
+              ? t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))
+              : t("providerDocumentationWorkspace.noActiveTemplate")}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
             <button
               type="button"
               disabled={readOnly}
               onClick={() => setShowTemplates((visible) => !visible)}
-              style={secondaryButton(readOnly)}
+              style={compactSecondaryButton(readOnly)}
             >
               {t("providerDocumentationWorkspace.templates")}
             </button>
-            <button type="button" disabled={readOnly || !onClear} onClick={onClear} style={secondaryButton(readOnly || !onClear)}>{t("providerDocumentationWorkspace.clear")}</button>
-            <button type="button" onClick={() => setShowPreview((v) => !v)} style={secondaryButton(false)}>{t("providerDocumentationWorkspace.preview")}</button>
-            <button type="button" disabled={readOnly || saving} onClick={() => void runManualSave()} style={primaryButton(readOnly || saving)}>
+            <button
+              type="button"
+              disabled={readOnly || !onClear}
+              onClick={onClear}
+              style={compactSecondaryButton(readOnly || !onClear)}
+            >
+              {t("providerDocumentationWorkspace.clear")}
+            </button>
+            <button type="button" onClick={() => setShowPreview((v) => !v)} style={compactSecondaryButton(false)}>
+              {t("providerDocumentationWorkspace.preview")}
+            </button>
+            <button
+              type="button"
+              disabled={readOnly || saving}
+              onClick={() => void runManualSave()}
+              style={compactPrimaryButton(readOnly || saving)}
+              data-testid="provider-documentation-save-button"
+            >
               {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
             </button>
             {onSign ? (
@@ -1282,7 +1347,8 @@ export function ProviderDocumentationWorkspace({
                 type="button"
                 disabled={readOnly || signing || !canSubmitSignature}
                 onClick={handleSignClick}
-                style={primaryButton(readOnly || signing || !canSubmitSignature)}
+                style={compactPrimaryButton(readOnly || signing || !canSubmitSignature)}
+                data-testid="provider-documentation-sign-button"
               >
                 {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
               </button>
@@ -1306,7 +1372,7 @@ export function ProviderDocumentationWorkspace({
                   }
                 }}
                 style={{
-                  ...secondaryButton(false),
+                  ...compactSecondaryButton(false),
                   borderColor: "#fdba74",
                   color: "#c2410c",
                   background: "#fff7ed",
@@ -1317,59 +1383,33 @@ export function ProviderDocumentationWorkspace({
             ) : null}
           </div>
         </div>
-        {lockedMessage ? <p style={{ margin: "10px 0 0", fontSize: 12, color: "#92400e" }}>{lockedMessage}</p> : null}
-        {activeTemplate ? (
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#0f766e", fontWeight: 700 }}>
-            {t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))}
-          </p>
-        ) : null}
-        {saveMessage ? (
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: saveMessage.variant === "error" ? "#b91c1c" : "#15803d" }}>
-            {saveMessage.text}
-          </p>
-        ) : null}
-        <p style={{ margin: "10px 0 0", fontSize: 11, color: autosaveStatus === "failed" ? "#b91c1c" : autosaveStatus === "unsaved" ? "#92400e" : "#64748b", lineHeight: 1.45 }}>
-          {t(autosaveStatusLabelKey(autosaveStatus))}
-          {autosaveSavedAt ? ` · ${new Date(autosaveSavedAt).toLocaleTimeString()}` : ""}
-          {draftRestoredAt ? ` · ${t("providerDocumentationWorkspace.draftRestored")}` : ""}
-        </p>
-        {signedMetadata ? (
-          <p style={{ margin: "10px 0 0", fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
-            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
-          </p>
-        ) : null}
-        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-          <strong>{t("providerDocumentationWorkspace.dictationReady")}</strong>
-          {t("providerDocumentationWorkspace.dictationInstruction")
-            ? ` — ${t("providerDocumentationWorkspace.dictationInstruction")}`
-            : ""}
-          {activeDictationSection ? (
-            <>
-              {" · "}
-              {t("providerDocumentationWorkspace.dictationActiveSection")}{" "}
-              {t(
-                DICTATION_NAV_TARGETS.find((target) => target.sectionId === activeDictationSection)?.labelKey ??
-                  "providerDocumentationWorkspace.dictationReady"
-              )}
-            </>
-          ) : null}
-          {t("providerDocumentationWorkspace.dictationDragonHelp")
-            ? ` · ${t("providerDocumentationWorkspace.dictationDragonHelp")}`
-            : ""}
-        </p>
-        <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
-            <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={secondaryButton(false)}>
-              {t("providerDocumentationWorkspace.dictationPreviousSection")}
+        <div
+          data-testid="provider-documentation-header-nav"
+          style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}
+        >
+          <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={compactNavButton}>
+            {t("providerDocumentationWorkspace.dictationPreviousSection")}
+          </button>
+          <button type="button" onClick={() => focusRelativeDictationTarget(1)} style={compactNavButton}>
+            {t("providerDocumentationWorkspace.dictationNextSection")}
+          </button>
+          {DICTATION_NAV_TARGETS.map((target) => (
+            <button
+              key={target.id}
+              type="button"
+              onClick={() => focusDictationSection(target.sectionId)}
+              style={compactNavButton}
+            >
+              {t(target.labelKey)}
             </button>
-            <button type="button" onClick={() => focusRelativeDictationTarget(1)} style={secondaryButton(false)}>
-              {t("providerDocumentationWorkspace.dictationNextSection")}
-            </button>
-            {DICTATION_NAV_TARGETS.map((target) => (
-              <button key={target.id} type="button" onClick={() => focusDictationSection(target.sectionId)} style={secondaryButton(false)}>
-                {t(target.labelKey)}
-              </button>
-            ))}
+          ))}
         </div>
+        {lockedMessage ? (
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#92400e", lineHeight: 1.35 }}>{lockedMessage}</p>
+        ) : null}
+        {saveMessage?.variant === "error" ? (
+          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#b91c1c", lineHeight: 1.35 }}>{saveMessage.text}</p>
+        ) : null}
         {showTemplates ? (
           <div
             data-testid="provider-documentation-template-picker"
@@ -2304,31 +2344,5 @@ function autosaveStatusLabelKey(status: ProviderDocumentationAutosaveStatus): st
     .split("_")
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join("")}`;
-}
-
-function secondaryButton(disabled: boolean): React.CSSProperties {
-  return {
-    border: "1px solid #e2e8f0",
-    borderRadius: 10,
-    padding: "7px 12px",
-    background: "#fff",
-    color: disabled ? "#94a3b8" : "#334155",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
-}
-
-function primaryButton(disabled: boolean): React.CSSProperties {
-  return {
-    border: "1px solid #2563eb",
-    borderRadius: 10,
-    padding: "7px 12px",
-    background: disabled ? "#f1f5f9" : "#2563eb",
-    color: disabled ? "#94a3b8" : "#fff",
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
 }
 

@@ -538,17 +538,18 @@ describe("providerDocumentationModel", () => {
     );
   });
 
-  it("renders dictation hints, navigation targets, and microphone focus affordances without changing save behavior", () => {
+  it("renders dictation navigation targets and microphone focus affordances without changing save behavior", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"
     );
-    expect(source).toContain("dictationReady");
-    expect(source).toContain("dictationInstruction");
+    const stickyHeaderStart = source.indexOf('data-testid="provider-documentation-sticky-header"');
+    const stickyHeaderEnd = source.indexOf('display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)"');
+    const stickyHeader = source.slice(stickyHeaderStart, stickyHeaderEnd);
+    expect(stickyHeader).not.toContain("dictationReady");
+    expect(stickyHeader).not.toContain("autosaveStatusLabelKey");
     expect(source).toContain("dictationNextSection");
     expect(source).toContain("dictationPreviousSection");
-    expect(source).toContain("dictationActiveSection");
-    expect(source).toContain("dictationDragonHelp");
     expect(source).toContain("voiceReadyField");
     expect(source).toContain("dictationFocusField");
     expect(source).toContain("dictationReadOnlyField");
