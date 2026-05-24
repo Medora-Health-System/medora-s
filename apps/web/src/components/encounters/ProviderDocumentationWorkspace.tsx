@@ -78,6 +78,11 @@ import {
   evaluateDocumentationQualityGuardrails,
   type DocumentationGuardrail,
 } from "@/lib/providerDocumentationQualityGuardrails";
+import {
+  computeDocumentationReadinessScore,
+  DOCUMENTATION_READINESS_LEVEL_LABEL_KEYS,
+  type DocumentationReadinessLevel,
+} from "@/lib/providerDocumentationReadinessScore";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -441,6 +446,16 @@ export function ProviderDocumentationWorkspace({
       }),
     [dynamicClusters, value]
   );
+  const documentationReadiness = useMemo(
+    () =>
+      computeDocumentationReadinessScore({
+        templateId: value.activeTemplateId,
+        state: value,
+        guardrails: qualityGuardrails,
+        dynamicClusters,
+      }),
+    [dynamicClusters, qualityGuardrails, value]
+  );
   const [collapsedClusterIds, setCollapsedClusterIds] = useState<Set<string>>(() => new Set());
   const [qualityGuardrailsExpanded, setQualityGuardrailsExpanded] = useState(true);
   const completeness = useMemo(
@@ -782,6 +797,109 @@ export function ProviderDocumentationWorkspace({
       : severity === "warning"
         ? { background: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" }
         : { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" };
+  const readinessLevelStyles = (level: DocumentationReadinessLevel) =>
+    level === "strong"
+      ? { background: "#dcfce7", color: "#166534", borderColor: "#86efac" }
+      : level === "moderate"
+        ? { background: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" }
+        : { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" };
+  const readinessSummaryKey = (level: DocumentationReadinessLevel) =>
+    level === "strong"
+      ? "providerDocumentationReadinessScore.summaryStrong"
+      : level === "moderate"
+        ? "providerDocumentationReadinessScore.summaryModerate"
+        : "providerDocumentationReadinessScore.summaryLow";
+  const renderDocumentationReadinessPanel = () => {
+    if (signedOrFinalized) return null;
+    const levelStyle = readinessLevelStyles(documentationReadiness.level);
+    const topWarnings = qualityGuardrails
+      .filter((guardrail) => guardrail.severity === "high" || guardrail.severity === "warning")
+      .slice(0, 3);
+    return (
+      <div
+        data-testid="provider-documentation-readiness-score"
+        style={{
+          marginBottom: 10,
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          padding: 8,
+          background: "#fafafa",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#334155" }}>
+            {t("providerDocumentationReadinessScore.panelTitle")}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "#0f172a" }}>{documentationReadiness.score}%</span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 9999,
+                border: "1px solid",
+                ...levelStyle,
+              }}
+            >
+              {t(DOCUMENTATION_READINESS_LEVEL_LABEL_KEYS[documentationReadiness.level])}
+            </span>
+          </div>
+        </div>
+        <p style={{ margin: "6px 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
+          {t(readinessSummaryKey(documentationReadiness.level))}
+        </p>
+        {documentationReadiness.strongSections.length > 0 ? (
+          <div style={{ marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#166534", marginBottom: 2 }}>
+              {t("providerDocumentationReadinessScore.strongSections")}
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#334155" }}>
+              {documentationReadiness.strongSections.map((sectionKey) => (
+                <li key={sectionKey}>{t(sectionKey)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {documentationReadiness.needsAttentionSections.length > 0 ? (
+          <div style={{ marginBottom: 6 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#92400e", marginBottom: 2 }}>
+              {t("providerDocumentationReadinessScore.needsAttentionSections")}
+            </div>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#334155" }}>
+              {documentationReadiness.needsAttentionSections.map((sectionKey) => (
+                <li key={sectionKey}>{t(sectionKey)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {documentationReadiness.warningCount > 0 ? (
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", marginBottom: 2 }}>
+              {t("providerDocumentationReadinessScore.warnings")}
+            </div>
+            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>
+              {t("providerDocumentationReadinessScore.warningCount").replace(
+                "{count}",
+                String(documentationReadiness.warningCount)
+              )}
+              {documentationReadiness.highSeverityWarningCount > 0
+                ? ` · ${t("providerDocumentationReadinessScore.highSeverityWarningCount").replace(
+                    "{count}",
+                    String(documentationReadiness.highSeverityWarningCount)
+                  )}`
+                : ""}
+            </p>
+            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 11, color: "#475569" }}>
+              {topWarnings.map((guardrail) => (
+                <li key={guardrail.id}>{t(guardrail.descriptionKey)}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
   const renderQualityGuardrailsPanel = (compact = false) => {
     if (qualityGuardrails.length === 0 || signedOrFinalized) return null;
     const grouped = DOCUMENTATION_GUARDRAIL_SEVERITY_ORDER.map((severity) => ({
@@ -1865,6 +1983,7 @@ export function ProviderDocumentationWorkspace({
             <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("providerDocumentationWorkspace.signSafetyHelp")}
             </p>
+            {renderDocumentationReadinessPanel()}
             {renderQualityGuardrailsPanel()}
             {qualityGuardrails.length > 0 && !signedOrFinalized ? (
               <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>

@@ -7381,6 +7381,28 @@ export default {
       },
     },
   },
+  providerDocumentationReadinessScore: {
+    panelTitle: "Documentation readiness",
+    strongSections: "Strong",
+    needsAttentionSections: "Needs attention",
+    warnings: "Warnings",
+    warningCount: "{count} advisory warning(s)",
+    highSeverityWarningCount: "{count} high-priority advisory warning(s)",
+    summaryLow: "Documentation may benefit from additional detail before signature.",
+    summaryStrong: "Documentation appears well-supported based on completed sections.",
+    summaryModerate: "Documentation is partially complete — review sections below if helpful.",
+    levelLow: "Low",
+    levelModerate: "Moderate",
+    levelStrong: "Strong",
+    sections: {
+      chiefComplaintHpi: "Chief complaint / HPI",
+      ros: "ROS",
+      physicalExam: "Physical exam",
+      mdm: "MDM",
+      reassessment: "Reassessment",
+      dispositionPlan: "Disposition / plan",
+    },
+  },
   providerDocumentationComplaintIntel: {
     chestPain: {
       hpiExertional: "exertional chest pain",

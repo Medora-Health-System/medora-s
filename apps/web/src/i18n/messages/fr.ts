@@ -7371,6 +7371,28 @@ export default {
       },
     },
   },
+  providerDocumentationReadinessScore: {
+    panelTitle: "Préparation de la documentation",
+    strongSections: "Solide",
+    needsAttentionSections: "À compléter",
+    warnings: "Avertissements",
+    warningCount: "{count} avertissement(s) consultatif(s)",
+    highSeverityWarningCount: "{count} avertissement(s) consultatif(s) prioritaire(s)",
+    summaryLow: "La documentation peut bénéficier de détails supplémentaires avant signature.",
+    summaryStrong: "La documentation paraît bien étayée d'après les sections complétées.",
+    summaryModerate: "Documentation partiellement complète — revoyez les sections ci-dessous si utile.",
+    levelLow: "Faible",
+    levelModerate: "Modérée",
+    levelStrong: "Solide",
+    sections: {
+      chiefComplaintHpi: "Motif / HPI",
+      ros: "Revues ciblées",
+      physicalExam: "Examen physique",
+      mdm: "MDM",
+      reassessment: "Réévaluation",
+      dispositionPlan: "Sortie / plan",
+    },
+  },
   providerDocumentationComplaintIntel: {
     chestPain: {
       hpiExertional: "douleur thoracique d'effort",
