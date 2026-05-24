@@ -11,6 +11,8 @@
  *   SAEM weakness differential approach; ED renal colic / flank pain workup standards.
  * - Batch 4: CDC/IDSA respiratory infection guidance; ED pneumonia/URI documentation; GINA/NHLBI asthma concepts;
  *   sepsis/red-flag fever documentation standards.
+ * - Batch 5: ACEP trauma/head injury guidance; C-spine/CT head decision documentation; wound/laceration standards;
+ *   orthopedic extremity injury and neurovascular exam documentation.
  *
  * All fragments are click-to-insert only; never auto-inserted on template apply.
  */
@@ -50,6 +52,10 @@ const uri = (key: string) => `providerDocumentationComplaintIntel.uriRespiratory
 const feb = (key: string) => `providerDocumentationComplaintIntel.fever.${key}`;
 const coughIntel = (key: string) => `providerDocumentationComplaintIntel.cough.${key}`;
 const asthma = (key: string) => `providerDocumentationComplaintIntel.asthmaWheezing.${key}`;
+const fallIntel = (key: string) => `providerDocumentationComplaintIntel.fall.${key}`;
+const headInj = (key: string) => `providerDocumentationComplaintIntel.headInjury.${key}`;
+const lac = (key: string) => `providerDocumentationComplaintIntel.laceration.${key}`;
+const frac = (key: string) => `providerDocumentationComplaintIntel.fractureConcern.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
 export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -1406,6 +1412,396 @@ export const ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationComplaintInte
   ],
 });
 
+/** Fall — mechanism, syncope, head/spine injury documentation framework. */
+export const FALL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    fallIntel("hpiMechanicalFall"),
+    fallIntel("hpiFallFromStanding"),
+    fallIntel("hpiFallFromHeight"),
+    fallIntel("hpiUnwitnessedFall"),
+    fallIntel("hpiWitnessedFall"),
+    fallIntel("hpiLossOfConsciousnessReviewed"),
+    fallIntel("hpiHeadStrikeReported"),
+    fallIntel("hpiAnticoagulantUseReviewed"),
+    fallIntel("hpiAlcoholIntoxicationReviewed"),
+    fallIntel("hpiDizzinessBeforeFall"),
+    fallIntel("hpiSyncopeBeforeFall"),
+    fallIntel("hpiBaselineMobilityReviewed"),
+    fallIntel("hpiPainLocationReviewed"),
+    fallIntel("hpiAmbulatoryStatusAfterFall"),
+  ],
+  rosImportantPositives: [
+    fallIntel("rosPainAfterFall"),
+    fallIntel("rosHeadache"),
+    fallIntel("rosDizziness"),
+    fallIntel("rosNeckPain"),
+    fallIntel("rosBackPain"),
+    fallIntel("rosExtremityPain"),
+    fallIntel("rosLossOfConsciousness"),
+  ],
+  rosImportantNegatives: [
+    fallIntel("rosDeniesLossOfConsciousness"),
+    fallIntel("rosDeniesChestPainBeforeFall"),
+    fallIntel("rosDeniesShortnessOfBreathBeforeFall"),
+    fallIntel("rosDeniesFocalWeakness"),
+    fallIntel("rosDeniesNumbness"),
+    fallIntel("rosDeniesVomiting"),
+  ],
+  rosRedFlags: [
+    fallIntel("rfAnticoagulatedHeadInjury"),
+    fallIntel("rfAlteredMentalStatus"),
+    fallIntel("rfPersistentVomiting"),
+    fallIntel("rfFocalNeurologicDeficit"),
+    fallIntel("rfUnstableGait"),
+    fallIntel("rfPossibleSyncope"),
+    fallIntel("rfSevereNeckBackPain"),
+  ],
+  physicalExam: {
+    general: [fallIntel("examAlertOriented"), fallIntel("examNoAcuteDistress")],
+    heent: [fallIntel("examScalpTenderness"), fallIntel("examCervicalSpineTenderness")],
+    musculoskeletal: [
+      fallIntel("examNoMidlineSpinalTenderness"),
+      fallIntel("examExtremityTenderness"),
+      fallIntel("examNoDeformity"),
+    ],
+    neuroPsych: [
+      fallIntel("examNeurovascularlyIntact"),
+      fallIntel("examGaitAssessed"),
+      fallIntel("examNoFocalNeuroDeficit"),
+    ],
+  },
+  mdmWorkingAssessment: [fallIntel("mdmSyncopeEvaluationConsidered"), fallIntel("mdmHeadInjuryConsidered")],
+  mdmDifferentialSynthesis: [
+    fallIntel("diffMechanicalFall"),
+    fallIntel("diffSyncope"),
+    fallIntel("diffHeadInjury"),
+    fallIntel("diffIntracranialHemorrhage"),
+    fallIntel("diffCervicalSpineInjury"),
+    fallIntel("diffFracture"),
+    fallIntel("diffSprainStrain"),
+    fallIntel("diffContusion"),
+    fallIntel("diffIntoxicationRelatedFall"),
+    fallIntel("diffGaitInstability"),
+  ],
+  mdmDataReviewed: [
+    fallIntel("mdmCtHeadConsideredReviewed"),
+    fallIntel("mdmCspineImagingConsideredReviewed"),
+    fallIntel("mdmExtremityImagingConsideredReviewed"),
+  ],
+  mdmClinicalRationale: [
+    fallIntel("mdmMechanismOfInjuryReviewed"),
+    fallIntel("mdmAnticoagulationStatusReviewed"),
+    fallIntel("mdmNeurovascularExamDocumented"),
+    fallIntel("mdmFallRiskDiscussed"),
+  ],
+  mdmPlanSummary: [
+    fallIntel("mdmAmbulatoryReassessmentPerformed"),
+    fallIntel("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [fallIntel("mdmFallPrecautionsIfIndicated")],
+  mdmAdmitObserveDischarge: [
+    fallIntel("mdmAdmissionObservationConsidered"),
+  ],
+  reassessment: [
+    fallIntel("reassessPainImprovedAfterTreatment"),
+    fallIntel("reassessNeurologicExamUnchanged"),
+    fallIntel("reassessAmbulatoryReassessmentPerformed"),
+    fallIntel("reassessVitalSignsStable"),
+  ],
+  followUpDisposition: [
+    fallIntel("dispDischargedWithFallPrecautions"),
+    fallIntel("dispReturnHeadacheVomitingConfusion"),
+    fallIntel("dispFollowUpRecommended"),
+    fallIntel("dispAdmissionObservationConsidered"),
+    fallIntel("dispCaregiverInstructionsDiscussedIfApplicable"),
+  ],
+});
+
+/** Head injury — ACEP head injury / concussion documentation framework. */
+export const HEAD_INJURY_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    headInj("hpiHeadStrikeReported"),
+    headInj("hpiLossOfConsciousnessReviewed"),
+    headInj("hpiNoLossOfConsciousnessReported"),
+    headInj("hpiVomitingReviewed"),
+    headInj("hpiHeadacheReported"),
+    headInj("hpiAnticoagulantUseReviewed"),
+    headInj("hpiSeizureActivityReviewed"),
+    headInj("hpiAmnesiaReviewed"),
+    headInj("hpiIntoxicationReviewed"),
+    headInj("hpiMechanismReviewed"),
+    headInj("hpiWorseningHeadache"),
+    headInj("hpiNeurologicSymptomsReviewed"),
+  ],
+  rosImportantPositives: [
+    headInj("rosHeadache"),
+    headInj("rosVomiting"),
+    headInj("rosDizziness"),
+    headInj("rosConfusion"),
+    headInj("rosVisionChanges"),
+    headInj("rosNeckPain"),
+  ],
+  rosImportantNegatives: [
+    headInj("rosDeniesLossOfConsciousness"),
+    headInj("rosDeniesVomiting"),
+    headInj("rosDeniesSeizure"),
+    headInj("rosDeniesFocalWeakness"),
+    headInj("rosDeniesNumbness"),
+    headInj("rosDeniesVisionLoss"),
+  ],
+  rosRedFlags: [
+    headInj("rfAnticoagulatedHeadInjury"),
+    headInj("rfPersistentVomiting"),
+    headInj("rfWorseningHeadache"),
+    headInj("rfAlteredMentalStatus"),
+    headInj("rfFocalNeurologicDeficit"),
+    headInj("rfSeizureAfterInjury"),
+    headInj("rfSkullFractureConcern"),
+  ],
+  physicalExam: {
+    general: [headInj("examAlertOriented")],
+    heent: [
+      headInj("examScalpHematoma"),
+      headInj("examScalpLaceration"),
+      headInj("examPupilsEqualReactive"),
+      headInj("examCervicalSpineNonTender"),
+    ],
+    neuroPsych: [
+      headInj("examCranialNervesGrosslyIntact"),
+      headInj("examNoFocalNeuroDeficit"),
+      headInj("examNormalGait"),
+      headInj("examGcsDocumented"),
+    ],
+  },
+  mdmWorkingAssessment: [headInj("mdmConcussionConsidered"), headInj("mdmIntracranialHemorrhageConsidered")],
+  mdmDifferentialSynthesis: [
+    headInj("diffConcussion"),
+    headInj("diffIntracranialHemorrhage"),
+    headInj("diffSkullFracture"),
+    headInj("diffCervicalSpineInjury"),
+    headInj("diffScalpLaceration"),
+    headInj("diffContusion"),
+    headInj("diffPostTraumaticHeadache"),
+  ],
+  mdmDataReviewed: [headInj("mdmImagingReviewedIfObtained")],
+  mdmClinicalRationale: [
+    headInj("mdmCtHeadConsideredBasedOnRiskFactors"),
+    headInj("mdmHeadInjuryDecisionRuleConsidered"),
+    headInj("mdmAnticoagulationRiskReviewed"),
+    headInj("mdmConcussionPrecautionsDiscussed"),
+    headInj("mdmReturnPrecautionsEmphasized"),
+  ],
+  mdmPlanSummary: [
+    headInj("mdmNeurologicExamReassessed"),
+    headInj("mdmObservationConsidered"),
+    headInj("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [headInj("mdmHeadInjuryPrecautionsIfIndicated")],
+  mdmAdmitObserveDischarge: [headInj("mdmAdmissionObservationConsidered")],
+  reassessment: [
+    headInj("reassessNeurologicStatusStable"),
+    headInj("reassessHeadacheImproved"),
+    headInj("reassessNoVomitingInEd"),
+    headInj("reassessRepeatExamUnchanged"),
+  ],
+  followUpDisposition: [
+    headInj("dispDischargeHeadInjuryPrecautions"),
+    headInj("dispReturnVomitingConfusionWorseningHeadache"),
+    headInj("dispAvoidHighRiskActivityUntilCleared"),
+    headInj("dispFollowUpRecommended"),
+    headInj("dispObservationAdmissionConsidered"),
+  ],
+});
+
+/** Laceration — wound exploration / repair documentation framework. */
+export const LACERATION_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    lac("hpiLacerationLocationReviewed"),
+    lac("hpiMechanismOfInjuryReviewed"),
+    lac("hpiTimeSinceInjuryReviewed"),
+    lac("hpiBleedingControlled"),
+    lac("hpiForeignBodyConcernReviewed"),
+    lac("hpiContaminationReviewed"),
+    lac("hpiTetanusStatusReviewed"),
+    lac("hpiBiteInjuryReviewed"),
+    lac("hpiNeurovascularSymptomsReviewed"),
+    lac("hpiFunctionalDeficitReviewed"),
+  ],
+  rosImportantPositives: [
+    lac("rosWoundPain"),
+    lac("rosBleeding"),
+    lac("rosForeignBodySensation"),
+    lac("rosNumbness"),
+    lac("rosDecreasedRangeOfMotion"),
+  ],
+  rosImportantNegatives: [
+    lac("rosDeniesNumbness"),
+    lac("rosDeniesWeakness"),
+    lac("rosDeniesForeignBodySensation"),
+    lac("rosDeniesUncontrolledBleeding"),
+    lac("rosDeniesBiteExposure"),
+  ],
+  rosRedFlags: [
+    lac("rfTendonInjuryConcern"),
+    lac("rfNeurovascularInjuryConcern"),
+    lac("rfOpenFractureConcern"),
+    lac("rfRetainedForeignBodyConcern"),
+    lac("rfBiteWoundInfectionRisk"),
+    lac("rfHeavilyContaminatedWound"),
+  ],
+  physicalExam: {
+    skin: [
+      lac("examLacerationVisualized"),
+      lac("examBleedingControlled"),
+      lac("examWoundDepthAssessed"),
+      lac("examNoForeignBodyVisualized"),
+      lac("examNoSignsOfInfection"),
+    ],
+    musculoskeletal: [lac("examTendonFunctionIntact"), lac("examFullRangeOfMotion")],
+    neuroPsych: [
+      lac("examDistalSensationIntact"),
+      lac("examDistalPulsesCapRefillIntact"),
+    ],
+  },
+  mdmWorkingAssessment: [lac("mdmSimpleLacerationConsidered"), lac("mdmComplexLacerationConsidered")],
+  mdmDifferentialSynthesis: [
+    lac("diffSimpleLaceration"),
+    lac("diffComplexLaceration"),
+    lac("diffTendonInjury"),
+    lac("diffNerveInjury"),
+    lac("diffVascularInjury"),
+    lac("diffRetainedForeignBody"),
+    lac("diffOpenFracture"),
+    lac("diffBiteWound"),
+  ],
+  mdmDataReviewed: [lac("mdmImagingConsideredForForeignBodyFracture")],
+  mdmClinicalRationale: [
+    lac("mdmWoundExploredAsAppropriate"),
+    lac("mdmTetanusStatusReviewed"),
+    lac("mdmAntibioticsConsideredContaminationBite"),
+    lac("mdmRepairOptionsDiscussed"),
+    lac("mdmNeurovascularExamDocumented"),
+    lac("mdmReturnPrecautionsDiscussed"),
+  ],
+  mdmPlanSummary: [
+    lac("mdmProcedureDocumentationCompletedIfRepaired"),
+    lac("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [lac("mdmHemostasisAchievedIfIndicated")],
+  mdmAdmitObserveDischarge: [lac("mdmAdmissionConsideredIfComplex")],
+  reassessment: [
+    lac("reassessBleedingControlled"),
+    lac("reassessNeurovascularStatusUnchangedAfterRepair"),
+    lac("reassessPatientToleratedProcedure"),
+    lac("reassessDressingApplied"),
+  ],
+  followUpDisposition: [
+    lac("dispWoundCareInstructionsProvided"),
+    lac("dispSutureStapleRemovalTimingDiscussed"),
+    lac("dispInfectionReturnPrecautionsDiscussed"),
+    lac("dispFollowUpRecommended"),
+  ],
+});
+
+/** Fracture concern / extremity injury — orthopedic trauma documentation framework. */
+export const FRACTURE_CONCERN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
+  hpi: [
+    frac("hpiInjuryMechanismReviewed"),
+    frac("hpiPainLocationReviewed"),
+    frac("hpiSwellingReported"),
+    frac("hpiDeformityReported"),
+    frac("hpiInabilityToBearWeight"),
+    frac("hpiLimitedRangeOfMotion"),
+    frac("hpiNumbnessTinglingReviewed"),
+    frac("hpiDominantHandReviewedIfUpperExtremity"),
+    frac("hpiPriorInjurySurgeryReviewed"),
+    frac("hpiOpenWoundReviewed"),
+  ],
+  rosImportantPositives: [
+    frac("rosExtremityPain"),
+    frac("rosSwelling"),
+    frac("rosBruising"),
+    frac("rosDeformity"),
+    frac("rosDecreasedRangeOfMotion"),
+    frac("rosNumbnessTingling"),
+  ],
+  rosImportantNegatives: [
+    frac("rosDeniesNumbness"),
+    frac("rosDeniesWeakness"),
+    frac("rosDeniesOpenWound"),
+    frac("rosDeniesHeadInjury"),
+    frac("rosDeniesNeckBackPain"),
+  ],
+  rosRedFlags: [
+    frac("rfOpenFractureConcern"),
+    frac("rfNeurovascularCompromise"),
+    frac("rfCompartmentSyndromeConcern"),
+    frac("rfDislocationConcern"),
+    frac("rfSevereDeformity"),
+    frac("rfInabilityToAmbulate"),
+  ],
+  physicalExam: {
+    musculoskeletal: [
+      frac("examTendernessPresent"),
+      frac("examSwellingPresent"),
+      frac("examDeformityPresent"),
+      frac("examRangeOfMotionLimited"),
+      frac("examCompartmentsSoft"),
+    ],
+    skin: [frac("examSkinIntact"), frac("examOpenWoundPresent")],
+    neuroPsych: [
+      frac("examDistalPulsesIntact"),
+      frac("examCapillaryRefillNormal"),
+      frac("examSensationIntact"),
+      frac("examMotorFunctionIntact"),
+    ],
+  },
+  mdmWorkingAssessment: [frac("mdmFractureConsidered"), frac("mdmDislocationConsidered")],
+  mdmDifferentialSynthesis: [
+    frac("diffFracture"),
+    frac("diffDislocation"),
+    frac("diffSprain"),
+    frac("diffStrain"),
+    frac("diffContusion"),
+    frac("diffTendonInjury"),
+    frac("diffLigamentInjury"),
+    frac("diffCompartmentSyndrome"),
+    frac("diffNeurovascularInjury"),
+  ],
+  mdmDataReviewed: [frac("mdmXrayReviewed")],
+  mdmClinicalRationale: [
+    frac("mdmNeurovascularExamDocumented"),
+    frac("mdmCompartmentSyndromeConsidered"),
+    frac("mdmPainControlProvided"),
+    frac("mdmAmbulatoryStatusAssessed"),
+    frac("mdmReturnPrecautionsDiscussed"),
+  ],
+  mdmPlanSummary: [
+    frac("mdmSplintAppliedIfIndicated"),
+    frac("mdmReductionConsidered"),
+    frac("mdmOrthopedicFollowUpDiscussed"),
+    frac("mdmSerialReassessmentPerformed"),
+  ],
+  mdmImmediateActionsRationale: [frac("mdmImmobilizationIfIndicated")],
+  mdmAdmitObserveDischarge: [
+    frac("mdmAdmissionConsultConsidered"),
+    frac("mdmObservationConsidered"),
+  ],
+  reassessment: [
+    frac("reassessPainImproved"),
+    frac("reassessNeurovascularExamUnchangedAfterSplint"),
+    frac("reassessSplintCheckedForComfort"),
+    frac("reassessAmbulatoryStatusReassessed"),
+  ],
+  followUpDisposition: [
+    frac("dispDischargedWithSplintPrecautions"),
+    frac("dispOrthopedicFollowUpRecommended"),
+    frac("dispReturnWorseningPainNumbnessColorChange"),
+    frac("dispNonWeightBearingInstructionsDiscussedIfApplicable"),
+    frac("dispAdmissionConsultConsidered"),
+  ],
+});
+
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>
 > = {
@@ -1423,6 +1819,10 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   fever: FEVER_COMPLAINT_INTEL,
   cough: COUGH_COMPLAINT_INTEL,
   asthma_wheezing: ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  fall: FALL_COMPLAINT_INTEL,
+  head_injury: HEAD_INJURY_COMPLAINT_INTEL,
+  laceration: LACERATION_COMPLAINT_INTEL,
+  fracture_concern: FRACTURE_CONCERN_COMPLAINT_INTEL,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -1438,11 +1838,18 @@ export const BATCH4_COMPLAINT_TEMPLATE_IDS = [
   "cough",
   "asthma_wheezing",
 ] as const;
+export const BATCH5_COMPLAINT_TEMPLATE_IDS = [
+  "fall",
+  "head_injury",
+  "laceration",
+  "fracture_concern",
+] as const;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
   ...BATCH3_COMPLAINT_TEMPLATE_IDS,
   ...BATCH4_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH5_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
 ] as const;
 

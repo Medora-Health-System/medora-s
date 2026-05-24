@@ -18,10 +18,15 @@ import {
   WEAKNESS_COMPLAINT_INTEL,
   BATCH3_COMPLAINT_TEMPLATE_IDS,
   BATCH4_COMPLAINT_TEMPLATE_IDS,
+  BATCH5_COMPLAINT_TEMPLATE_IDS,
   URI_RESPIRATORY_COMPLAINT_INTEL,
   FEVER_COMPLAINT_INTEL,
   COUGH_COMPLAINT_INTEL,
   ASTHMA_WHEEZING_COMPLAINT_INTEL,
+  FALL_COMPLAINT_INTEL,
+  HEAD_INJURY_COMPLAINT_INTEL,
+  LACERATION_COMPLAINT_INTEL,
+  FRACTURE_CONCERN_COMPLAINT_INTEL,
 } from "./providerDocumentationComplaintIntelligence";
 import {
   applyProviderDocumentationTemplate,
@@ -585,6 +590,155 @@ describe("provider documentation complaint intelligence (19N.7 Batch 4)", () => 
   });
 
   it("preserves chip toggle wiring for Batch 4 complaint intelligence panels", () => {
+    const source = readFileSync(
+      new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
+      "utf8"
+    );
+    expect(source).toContain("toggleDocumentationFragment");
+    expect(source).toContain("complaintIntelligenceReassessmentChips");
+    expect(source).toContain("complaintIntelligenceDispositionChips");
+  });
+});
+
+describe("provider documentation complaint intelligence (19N.8 Batch 5)", () => {
+  it("maps Batch 5 templates to complaint intelligence bundles", () => {
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.fall).toBe(FALL_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.head_injury).toBe(HEAD_INJURY_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.laceration).toBe(LACERATION_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.fracture_concern).toBe(FRACTURE_CONCERN_COMPLAINT_INTEL);
+  });
+
+  it("includes all 7 required intelligence categories per Batch 5 template", () => {
+    for (const bundle of [
+      FALL_COMPLAINT_INTEL,
+      HEAD_INJURY_COMPLAINT_INTEL,
+      LACERATION_COMPLAINT_INTEL,
+      FRACTURE_CONCERN_COMPLAINT_INTEL,
+    ]) {
+      expect(bundle.hpi?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantPositives?.length).toBeGreaterThan(0);
+      expect(bundle.rosImportantNegatives?.length).toBeGreaterThan(0);
+      expect(bundle.rosRedFlags?.length).toBeGreaterThan(0);
+      expect(Object.values(bundle.physicalExam ?? {}).flat().length).toBeGreaterThan(0);
+      expect(bundle.mdmDifferentialSynthesis?.length).toBeGreaterThan(0);
+      expect(bundle.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+      expect(bundle.reassessment?.length).toBeGreaterThan(0);
+      expect(bundle.followUpDisposition?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("does not auto-insert Batch 5 complaint intelligence on template apply", () => {
+    for (const templateId of BATCH5_COMPLAINT_TEMPLATE_IDS) {
+      const next = applyProviderDocumentationTemplate({
+        state: emptyProviderDocumentationWorkspaceState(),
+        templateId,
+        resolveFragment: (key) => key,
+      });
+      expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel");
+    }
+  });
+
+  it("prevents cross-template intelligence leakage by key namespace", () => {
+    const fallKeys = flattenComplaintIntelligenceKeys(FALL_COMPLAINT_INTEL);
+    const headKeys = flattenComplaintIntelligenceKeys(HEAD_INJURY_COMPLAINT_INTEL);
+    const lacKeys = flattenComplaintIntelligenceKeys(LACERATION_COMPLAINT_INTEL);
+    const fracKeys = flattenComplaintIntelligenceKeys(FRACTURE_CONCERN_COMPLAINT_INTEL);
+    for (const key of fallKeys) expect(key).toContain(".fall.");
+    for (const key of headKeys) expect(key).toContain(".headInjury.");
+    for (const key of lacKeys) expect(key).toContain(".laceration.");
+    for (const key of fracKeys) expect(key).toContain(".fractureConcern.");
+  });
+
+  it("keeps Batch 5 intelligence free of unrelated complaint namespaces", () => {
+    const foreignNamespaces = [
+      ".psychiatricBehavioral.",
+      ".flankPain.",
+      ".stroke.",
+      ".chestPain.",
+      ".asthmaWheezing.",
+      ".fever.",
+    ];
+    for (const bundle of [
+      FALL_COMPLAINT_INTEL,
+      HEAD_INJURY_COMPLAINT_INTEL,
+      LACERATION_COMPLAINT_INTEL,
+      FRACTURE_CONCERN_COMPLAINT_INTEL,
+    ]) {
+      const keys = flattenComplaintIntelligenceKeys(bundle);
+      for (const ns of foreignNamespaces) {
+        expect(keys.some((key) => key.includes(ns))).toBe(false);
+      }
+    }
+  });
+
+  it("does not leak complaint-specific chips across Batch 5 templates", () => {
+    expect(flattenComplaintIntelligenceKeys(FALL_COMPLAINT_INTEL).some((k) => k.includes(".psychiatricBehavioral."))).toBe(false);
+    expect(flattenComplaintIntelligenceKeys(FALL_COMPLAINT_INTEL).some((k) => k.includes(".flankPain."))).toBe(false);
+    expect(flattenComplaintIntelligenceKeys(HEAD_INJURY_COMPLAINT_INTEL).some((k) => k.includes(".chestPain."))).toBe(false);
+    expect(flattenComplaintIntelligenceKeys(LACERATION_COMPLAINT_INTEL).some((k) => k.includes(".asthmaWheezing."))).toBe(false);
+    expect(flattenComplaintIntelligenceKeys(LACERATION_COMPLAINT_INTEL).some((k) => k.includes(".uriRespiratory."))).toBe(false);
+    expect(flattenComplaintIntelligenceKeys(FRACTURE_CONCERN_COMPLAINT_INTEL).some((k) => k.includes(".fever.diffSepsis"))).toBe(false);
+  });
+
+  it("does not duplicate intelligence fragment keys within a Batch 5 bundle", () => {
+    for (const bundle of [
+      FALL_COMPLAINT_INTEL,
+      HEAD_INJURY_COMPLAINT_INTEL,
+      LACERATION_COMPLAINT_INTEL,
+      FRACTURE_CONCERN_COMPLAINT_INTEL,
+    ]) {
+      expect(complaintIntelligenceHasDuplicateKeys(bundle)).toBe(false);
+    }
+  });
+
+  it("catalog Batch 5 templates expose expected intelligence entry points", () => {
+    const fall = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "fall");
+    const head = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "head_injury");
+    const lac = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "laceration");
+    const frac = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "fracture_concern");
+    expect(fall?.complaintIntelligence?.hpi).toContain("providerDocumentationComplaintIntel.fall.hpiMechanicalFall");
+    expect(head?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.headInjury.diffConcussion"
+    );
+    expect(lac?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.laceration.diffSimpleLaceration"
+    );
+    expect(frac?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.fractureConcern.diffFracture"
+    );
+    expect(fall?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaFallSyncopeReminder");
+    expect(head?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaHeadInjuryRedFlags");
+    expect(lac?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaLacerationWoundCare");
+    expect(frac?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaFractureOrthopedicReminder");
+  });
+
+  it("leaves Batch 1–4 intelligence bundles unchanged", () => {
+    expect(URI_RESPIRATORY_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion"
+    );
+    expect(FLANK_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
+    );
+    expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+    );
+  });
+
+  it("uses i18n keys for all Batch 5 complaint intelligence fragments", () => {
+    for (const bundle of [
+      FALL_COMPLAINT_INTEL,
+      HEAD_INJURY_COMPLAINT_INTEL,
+      LACERATION_COMPLAINT_INTEL,
+      FRACTURE_CONCERN_COMPLAINT_INTEL,
+    ]) {
+      for (const key of flattenComplaintIntelligenceKeys(bundle)) {
+        expect(key.startsWith("providerDocumentationComplaintIntel.")).toBe(true);
+      }
+    }
+    expect(JSON.stringify(FRACTURE_CONCERN_COMPLAINT_INTEL)).not.toMatch(/billingLevel|CPT|autoBill|chargeCapture/i);
+  });
+
+  it("preserves chip toggle wiring for Batch 5 complaint intelligence panels", () => {
     const source = readFileSync(
       new URL("../components/encounters/ProviderDocumentationWorkspace.tsx", import.meta.url),
       "utf8"

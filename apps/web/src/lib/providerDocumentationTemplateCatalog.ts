@@ -13,6 +13,10 @@ import {
   COUGH_COMPLAINT_INTEL,
   ASTHMA_WHEEZING_COMPLAINT_INTEL,
   URI_RESPIRATORY_COMPLAINT_INTEL,
+  FALL_COMPLAINT_INTEL,
+  HEAD_INJURY_COMPLAINT_INTEL,
+  LACERATION_COMPLAINT_INTEL,
+  FRACTURE_CONCERN_COMPLAINT_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -49,7 +53,8 @@ function traumaTemplate(
   fields: ReturnType<typeof mergeFields>,
   physicalExam: ReturnType<typeof mergeExam>,
   guidance: ProviderDocumentationTemplateGuidance = TRAUMA_GUIDANCE,
-  promptReminderKeys?: string[]
+  promptReminderKeys?: string[],
+  complaintIntelligence?: ProviderDocumentationComplaintIntelligence
 ): TemplateSpec {
   return {
     id,
@@ -74,6 +79,7 @@ function traumaTemplate(
       "providerDocumentationPromptReminders.traumaCspine",
       "providerDocumentationPromptReminders.traumaReassessment",
     ],
+    complaintIntelligence,
   };
 }
 
@@ -183,7 +189,14 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posWeakness"],
     ["erMseRosChips.negDeniesSyncope", "erMseHpiChipsTrauma.negDeniesHeadStrike"],
     {},
-    { musculoskeletal: ["erMseExamChips.mskTendernessPresent"] }
+    { musculoskeletal: ["erMseExamChips.mskTendernessPresent"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaFallSyncopeReminder",
+      "providerDocumentationPromptReminders.traumaAnticoagulant",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    FALL_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "mvc",
@@ -231,7 +244,8 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       "providerDocumentationPromptReminders.traumaHeadInjuryRedFlags",
       "providerDocumentationPromptReminders.traumaAnticoagulant",
       "providerDocumentationPromptReminders.traumaReassessment",
-    ]
+    ],
+    HEAD_INJURY_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "laceration",
@@ -244,7 +258,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     {
       skin: ["erMseExamChips.skinLacerationPresent", "providerDocumentationWorkspace.stickerExamCapRefillIntact"],
       neuroPsych: ["providerDocumentationWorkspace.stickerExamNvIntact"],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaLacerationWoundCare",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    LACERATION_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "trauma_musculoskeletal",
@@ -320,7 +340,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.posWeakness"],
     ["providerDocumentationWorkspace.stickerRosNoNumbness"],
     { mdmDataReviewed: ["erMseMdmChips.planImaging"] },
-    { musculoskeletal: ["erMseExamChips.mskDeformityNoted", "providerDocumentationWorkspace.stickerExamNvIntact"] }
+    { musculoskeletal: ["erMseExamChips.mskDeformityNoted", "providerDocumentationWorkspace.stickerExamNvIntact"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaFractureOrthopedicReminder",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    FRACTURE_CONCERN_COMPLAINT_INTEL
   ),
 
   // ── PEDIATRIC ───────────────────────────────────────────────────────────
