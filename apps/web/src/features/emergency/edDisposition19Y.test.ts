@@ -12,6 +12,7 @@ import {
   BATCH_1_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_2_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_3_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_4_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -24,6 +25,16 @@ import {
   scanProviderDischargeTemplateUnsafePhrases,
   validateProviderDischargeTemplateRegistry,
 } from "./providerDischargeTemplateRegistryValidator";
+import {
+  foreignTemplateBodyFailsIntegrityRule,
+  PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY,
+  validateProviderDischargeTemplateContentIntegrity,
+} from "./providerDischargeTemplateContentIntegrity";
+import {
+  applyProviderDischargeTemplateToCardByDiagnosis,
+  ensureProviderDischargeCardForRef,
+  expectedProviderDischargeTemplateIdForDiagnosis,
+} from "./providerDischargeCardTemplateSync";
 import {
   buildProviderDischargeTemplateHashPayload,
   computeProviderDischargeTemplateAppliedHash,
@@ -45,13 +56,16 @@ import {
 } from "./providerDischargeSharedPlanningMerge";
 import {
   createDiagnosisDocFromRef,
+  evaluateProviderDischargeCardIdentitySync,
   getSelectedDiagnosisDocs,
   hydrateProviderDischargeDocumentationForm,
   emptyProviderDischargeDocumentationForm,
   mergeProviderDischargeDocumentationIntoDischargeJson,
   newDefaultFollowUpRow,
   normalizeProviderDischargeDiagnosisCards,
+  PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION,
   sortProviderDischargeDiagnosisCards,
+  stampProviderDischargeCardCreationIdentity,
   validateProviderDischargeDocumentation,
   type ProviderDischargeDocumentationForm,
 } from "./providerDischargeDocumentationModel";
@@ -1154,6 +1168,696 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.5A discharge template autofill correctness", () => {
+    const woundTemplate = () => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "wound_laceration_v1")!;
+    const asthmaTemplate = () => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "asthma_exacerbation_v1")!;
+    const bronchitisTemplate = () => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "bronchitis_v1")!;
+
+    it("J45.901 resolves to asthma_exacerbation_v1", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+      });
+      expect(resolved.template.id).toBe("asthma_exacerbation_v1");
+    });
+
+    it("J45.901 applied EN text contains asthma/breathing language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-asthma",
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions}`.toLowerCase();
+      expect(blob).toMatch(/asthma|wheezing|breathing/);
+    });
+
+    it("J45.901 applied EN text does NOT contain wound/laceration/dressing language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-asthma",
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions} ${card.medicationTreatment}`.toLowerCase();
+      expect(blob).not.toMatch(/wound|laceration|dressing/);
+    });
+
+    it("J45.901 applied FR text contains asthma/asthme language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-asthma",
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions}`.toLowerCase();
+      expect(blob).toMatch(/asthme|respiratoires/);
+    });
+
+    it("J45.901 applied FR text does NOT contain plaie/lacération/pansement", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-asthma",
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions} ${card.medicationTreatment}`.toLowerCase();
+      expect(blob).not.toMatch(/plaie|lacération|pansement/);
+    });
+
+    it("J40 resolves to bronchitis_v1", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: "J40",
+        displayName: "Bronchitis",
+      });
+      expect(resolved.template.id).toBe("bronchitis_v1");
+    });
+
+    it("J40 applied EN text contains bronchitis/cough language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-bronch",
+        code: "J40",
+        displayName: "Bronchitis",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions}`.toLowerCase();
+      expect(blob).toMatch(/bronchitis|cough|breathing/);
+    });
+
+    it("J40 applied EN text does NOT contain wound/laceration/dressing language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-bronch",
+        code: "J40",
+        displayName: "Bronchitis",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions} ${card.medicationTreatment}`.toLowerCase();
+      expect(blob).not.toMatch(/wound|laceration|dressing/);
+    });
+
+    it("J40 applied FR text contains bronchite/toux language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-bronch",
+        code: "J40",
+        displayName: "Bronchitis",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions}`.toLowerCase();
+      expect(blob).toMatch(/bronchite|toux/);
+    });
+
+    it("J40 applied FR text does NOT contain plaie/lacération/pansement", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-bronch",
+        code: "J40",
+        displayName: "Bronchitis",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions} ${card.medicationTreatment}`.toLowerCase();
+      expect(blob).not.toMatch(/plaie|lacération|pansement/);
+    });
+
+    it("wound/laceration diagnoses still resolve to wound_laceration_v1", () => {
+      for (const code of ["S01.01", "S41.012", "T14.1"]) {
+        const resolved = resolveProviderDischargeTemplateForDiagnosis({ code, displayName: "Laceration" });
+        expect(resolved.template.id).toBe("wound_laceration_v1");
+      }
+    });
+
+    it("wound/laceration text still contains wound/laceration language", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-wound",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const blob = `${card.description} ${card.diagnosisInstructions}`.toLowerCase();
+      expect(blob).toMatch(/wound|laceration/);
+    });
+
+    it("every registry template passes expected content marker validation", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(validateProviderDischargeTemplateContentIntegrity(template)).toEqual([]);
+      }
+    });
+
+    it("every non-generic registry template has a content integrity rule", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        if (template.id === "generic_ed_discharge_v1") continue;
+        expect(PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY[template.id]).toBeTruthy();
+      }
+    });
+
+    it("wound template body fails asthma integrity if mis-pointed", () => {
+      expect(foreignTemplateBodyFailsIntegrityRule(woundTemplate(), "asthma_exacerbation_v1")).toBe(true);
+      expect(foreignTemplateBodyFailsIntegrityRule(asthmaTemplate(), "asthma_exacerbation_v1")).toBe(false);
+    });
+
+    it("resolver returns distinct template IDs for asthma, bronchitis, wound, chest pain", () => {
+      const ids = [
+        resolveProviderDischargeTemplateForDiagnosis({ code: "J45.901", displayName: "Asthma exacerbation" }).template.id,
+        resolveProviderDischargeTemplateForDiagnosis({ code: "J40", displayName: "Bronchitis" }).template.id,
+        resolveProviderDischargeTemplateForDiagnosis({ code: "S01.01", displayName: "Laceration" }).template.id,
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" }).template.id,
+      ];
+      expect(new Set(ids).size).toBe(4);
+    });
+
+    it("ensure card sync updates only the matching diagnosis card with correct template", () => {
+      const woundCard = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-shared",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const form = emptyProviderDischargeDocumentationForm();
+      form.diagnosisDocs = [woundCard];
+
+      const asthmaRef = {
+        encounterDiagnosisId: "dx-shared",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      const synced = ensureProviderDischargeCardForRef(form, asthmaRef, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.id).toBe(woundCard.id);
+      expect(synced.templateMeta?.templateId).toBe("asthma_exacerbation_v1");
+      expect(synced.description.toLowerCase()).toContain("asthma");
+      expect(synced.description.toLowerCase()).not.toContain("laceration");
+    });
+
+    it("ensure card sync cannot keep wound text on asthma card after diagnosis identity change", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const staleCard = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-shared",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      staleCard.code = "J45.901";
+      staleCard.displayName = "Asthma exacerbation";
+      form.diagnosisDocs = [staleCard];
+
+      const ref = {
+        encounterDiagnosisId: "dx-shared",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      const synced = ensureProviderDischargeCardForRef(form, ref, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(expectedProviderDischargeTemplateIdForDiagnosis("J45.901", "Asthma exacerbation")).toBe(
+        "asthma_exacerbation_v1"
+      );
+      expect(synced.description.toLowerCase()).toContain("asthma");
+      expect(synced.description.toLowerCase()).not.toMatch(/wound|laceration|dressing/);
+    });
+
+    it("shared return precautions/follow-up still merge at bottom only", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const template = bronchitisTemplate();
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template, "en"));
+      expect(merged.returnPrecautions.trim()).not.toBe("");
+      expect(form.diagnosisDocs).toEqual([]);
+    });
+
+    it("provider-entered text is not overwritten unless explicit refresh", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "J45.901",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: false,
+        locale: "en",
+      });
+      card.description = "Clinician-authored asthma note";
+      card.templateMeta = {
+        templateId: "asthma_exacerbation_v1",
+        templateVersion: "1.0.0",
+        matchLevel: "icdFamily",
+        sourceReferences: [],
+        providerConfirmed: true,
+      };
+      const next = applyProviderDischargeTemplateToCardByDiagnosis(card, {
+        locale: "en",
+        overwriteExisting: false,
+      });
+      expect(next.description).toBe("Clinician-authored asthma note");
+    });
+
+    it("legacy wound flat fields re-sync to asthma template when diagnosis ref changes", () => {
+      const form = hydrateProviderDischargeDocumentationForm({
+        dischargeDiagnosisSummary: "Your laceration or wound was evaluated in the emergency department.",
+        dischargeInstructions: "Keep the wound clean and dry.",
+        medicationInstructions: "Take wound-related antibiotics only as prescribed.",
+        providerDischargeDiagnosisRefs: [
+          { encounterDiagnosisId: "dx-legacy", code: "J45.901", label: "Asthma exacerbation", isPrimary: true },
+        ],
+      });
+      expect(form.diagnosisDocs[0]!.code).toBe("J45.901");
+      expect(form.diagnosisDocs[0]!.description.toLowerCase()).toContain("laceration");
+
+      const synced = ensureProviderDischargeCardForRef(form, form.diagnosisRefs[0]!, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.templateMeta?.templateId).toBe("asthma_exacerbation_v1");
+      expect(synced.description.toLowerCase()).toContain("asthma");
+      expect(synced.description.toLowerCase()).not.toContain("laceration");
+    });
+  });
+
+  describe("19Y.5B diagnosis identity immutability guard", () => {
+    it("new cards stamp immutable creation identity and sync version", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const ref = {
+        encounterDiagnosisId: "dx-new",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      const card = ensureProviderDischargeCardForRef(form, ref, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(card.resolvedDiagnosisCodeAtCreation).toBe("J45.901");
+      expect(card.resolvedDiagnosisLabelAtCreation).toBe("Asthma exacerbation");
+      expect(card.resolvedTemplateIdAtCreation).toBe("asthma_exacerbation_v1");
+      expect(card.cardTemplateSyncVersion).toBe(PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION);
+    });
+
+    it("creation identity fields are not overwritten on later sync", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const woundRef = {
+        encounterDiagnosisId: "dx-shared",
+        code: "S01.01",
+        label: "Laceration",
+        isPrimary: true,
+      };
+      const woundCard = ensureProviderDischargeCardForRef(form, woundRef, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(woundCard.resolvedDiagnosisCodeAtCreation).toBe("S01.01");
+      expect(woundCard.resolvedTemplateIdAtCreation).toBe("wound_laceration_v1");
+
+      const asthmaRef = {
+        encounterDiagnosisId: "dx-shared",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      form.diagnosisDocs = [woundCard];
+      const synced = ensureProviderDischargeCardForRef(form, asthmaRef, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.resolvedDiagnosisCodeAtCreation).toBe("S01.01");
+      expect(synced.resolvedDiagnosisLabelAtCreation).toBe("Laceration");
+      expect(synced.resolvedTemplateIdAtCreation).toBe("wound_laceration_v1");
+      expect(synced.code).toBe("J45.901");
+      expect(synced.templateMeta?.templateId).toBe("asthma_exacerbation_v1");
+    });
+
+    it("identity validator allows auto-sync when diagnosis drifts and providerConfirmed is false", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      const stamped = stampProviderDischargeCardCreationIdentity(card, {
+        code: "S01.01",
+        label: "Laceration",
+        templateId: "wound_laceration_v1",
+      });
+      const ref = {
+        encounterDiagnosisId: "dx-1",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      const evaluation = evaluateProviderDischargeCardIdentitySync(stamped, ref);
+      expect(evaluation.diagnosisIdentityDrifted).toBe(true);
+      expect(evaluation.allowAutoSync).toBe(true);
+      expect(evaluation.staleDiagnosisIdentityWarning).toBe(false);
+    });
+
+    it("identity validator surfaces warning-only state when providerConfirmed is true", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      card.templateMeta = {
+        ...card.templateMeta!,
+        providerConfirmed: true,
+      };
+      const stamped = stampProviderDischargeCardCreationIdentity(card, {
+        code: "S01.01",
+        label: "Laceration",
+        templateId: "wound_laceration_v1",
+      });
+      const ref = {
+        encounterDiagnosisId: "dx-1",
+        code: "J45.901",
+        label: "Asthma exacerbation",
+        isPrimary: true,
+      };
+      const evaluation = evaluateProviderDischargeCardIdentitySync(stamped, ref);
+      expect(evaluation.diagnosisIdentityDrifted).toBe(true);
+      expect(evaluation.allowAutoSync).toBe(false);
+      expect(evaluation.staleDiagnosisIdentityWarning).toBe(true);
+
+      const form = emptyProviderDischargeDocumentationForm();
+      form.diagnosisDocs = [stamped];
+      const synced = ensureProviderDischargeCardForRef(form, ref, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.staleDiagnosisIdentityWarning).toBe(true);
+      expect(synced.description.toLowerCase()).toContain("laceration");
+      expect(synced.templateMeta?.templateId).toBe("wound_laceration_v1");
+    });
+
+    it("creation identity metadata persists through save merge", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const ref = {
+        encounterDiagnosisId: "dx-save",
+        code: "J40",
+        label: "Bronchitis",
+        isPrimary: true,
+      };
+      const card = ensureProviderDischargeCardForRef(form, ref, {
+        applyTemplate: true,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      form.diagnosisRefs = [ref];
+      form.diagnosisDocs = [card];
+      const merged = mergeProviderDischargeDocumentationIntoDischargeJson({}, form, {
+        documentedAt: "2026-05-18T18:00:00.000Z",
+        documentedByDisplayName: "Dr Test",
+      });
+      const docs = merged.providerDischargeDiagnosisDocs as Record<string, unknown>[];
+      expect(docs[0]!.resolvedDiagnosisCodeAtCreation).toBe("J40");
+      expect(docs[0]!.resolvedDiagnosisLabelAtCreation).toBe("Bronchitis");
+      expect(docs[0]!.resolvedTemplateIdAtCreation).toBe("bronchitis_v1");
+      expect(docs[0]!.cardTemplateSyncVersion).toBe(PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION);
+    });
+
+    it("legacy cards backfill creation identity once without mutating after drift", () => {
+      const legacy = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-legacy",
+        code: "S01.01",
+        displayName: "Laceration",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      expect(legacy.resolvedDiagnosisCodeAtCreation).toBeUndefined();
+
+      const form = emptyProviderDischargeDocumentationForm();
+      form.diagnosisDocs = [legacy];
+      const ref = {
+        encounterDiagnosisId: "dx-legacy",
+        code: "S01.01",
+        label: "Laceration",
+        isPrimary: true,
+      };
+      const synced = ensureProviderDischargeCardForRef(form, ref, {
+        applyTemplate: false,
+        locale: "en",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.resolvedDiagnosisCodeAtCreation).toBe("S01.01");
+      expect(synced.cardTemplateSyncVersion).toBe(PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION);
+
+      const driftRef = { ...ref, code: "J40", label: "Bronchitis" };
+      const drifted = ensureProviderDischargeCardForRef(
+        { ...form, diagnosisDocs: [synced] },
+        driftRef,
+        { applyTemplate: true, locale: "en", isPrimary: true, displayOrder: 0 }
+      );
+      expect(drifted.resolvedDiagnosisCodeAtCreation).toBe("S01.01");
+      expect(drifted.code).toBe("J40");
+    });
+  });
+
+  describe("19Y.6 Batch 4 higher-risk ED diagnosis templates", () => {
+    const batch4Templates = () =>
+      BATCH_4_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 10 Batch 4 templates exist", () => {
+      expect(BATCH_4_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_4_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("each Batch 4 template has EN and FR suggestedText", () => {
+      for (const template of batch4Templates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("each Batch 4 template has governance metadata", () => {
+      for (const template of batch4Templates()) {
+        expect(template.version.trim()).not.toBe("");
+        expect(template.clinicalReviewStatus).toBe("draft");
+        expect(template.effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(template.sourceReferences.length).toBeGreaterThan(0);
+        expect(template.specialtyCategory?.trim()).toBeTruthy();
+        expect(template.riskCategory?.trim()).toBeTruthy();
+      }
+    });
+
+    it("all Batch 4 templates pass registry validator", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("Batch 4 registry has no unsafe phrases in EN or FR", () => {
+      for (const template of batch4Templates()) {
+        expect(scanProviderDischargeTemplateUnsafePhrases(template, "en")).toEqual([]);
+        expect(scanProviderDischargeTemplateUnsafePhrases(template, "fr")).toEqual([]);
+      }
+    });
+
+    it("unsafe phrase scanner blocks stroke ruled out language", () => {
+      const hits = scanProviderDischargeTemplateUnsafePhrases(
+        syntheticRegistryTemplate({
+          id: "unsafe-stroke-ruled-out",
+          suggestedText: {
+            en: {
+              description: "Stroke ruled out today.",
+              diagnosisInstructions: "Rest.",
+              medicationTreatment: "None.",
+              returnPrecautions: "Return if worse.",
+            },
+            fr: {
+              description: "Texte.",
+              diagnosisInstructions: "Repos.",
+              medicationTreatment: "Aucun.",
+              returnPrecautions: "Reconsultez.",
+            },
+          },
+        }),
+        "en"
+      );
+      expect(hits.length).toBeGreaterThan(0);
+    });
+
+    it("TIA/stroke-like G45 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "G45.9", displayName: "TIA" });
+      expect(resolved.template.id).toBe("tia_stroke_like_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("TIA/stroke-like keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: "Z00.00",
+        displayName: "transient ischemic attack",
+      });
+      expect(resolved.template.id).toBe("tia_stroke_like_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("seizure R56 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R56.9", displayName: "Seizure" });
+      expect(resolved.template.id).toBe("seizure_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("palpitations R00.2 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R00.2", displayName: "Palpitations" });
+      expect(resolved.template.id).toBe("palpitations_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("shortness of breath R06.02 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R06.02", displayName: "Dyspnea" });
+      expect(resolved.template.id).toBe("shortness_of_breath_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("chest wall pain R07.89 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.89", displayName: "Chest wall pain" });
+      expect(resolved.template.id).toBe("chest_wall_pain_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("epistaxis R04.0 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R04.0", displayName: "Epistaxis" });
+      expect(resolved.template.id).toBe("epistaxis_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("hypoglycemia E16.2 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "E16.2", displayName: "Hypoglycemia" });
+      expect(resolved.template.id).toBe("hypoglycemia_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("hyperglycemia R73 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R73.9", displayName: "Hyperglycemia" });
+      expect(resolved.template.id).toBe("hyperglycemia_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("alcohol intoxication F10 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "F10.129", displayName: "Intoxication" });
+      expect(resolved.template.id).toBe("alcohol_intoxication_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("anxiety/panic F41 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "F41.9", displayName: "Anxiety" });
+      expect(resolved.template.id).toBe("anxiety_panic_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("exact match beats family for chest wall vs chest pain R07 codes", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.89", displayName: "Costochondritis" });
+      expect(resolved.template.id).toBe("chest_wall_pain_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("applying Batch 4 template fills diagnosis-card fields only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R56.9",
+        displayName: "Seizure",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R56.9", displayName: "Seizure" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
+      expect(next.description.trim()).not.toBe("");
+      expect(next.returnPrecautions).toBe("");
+      expect(next.followUps).toEqual([]);
+    });
+
+    it("Batch 4 shared return precautions merge at bottom only", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "tia_stroke_like_v1")!;
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template, "en"));
+      expect(merged.returnPrecautions).toContain("facial droop");
+      expect(merged.followUps.length).toBeGreaterThan(0);
+    });
+
+    it("provider-entered text is not overwritten on Batch 4 apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R00.2",
+        displayName: "Palpitations",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      card.description = "Clinician palpitations note";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R00.2", displayName: "Palpitations" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
+      expect(next.description).toBe("Clinician palpitations note");
+    });
+
+    it("React UI does not contain Batch 4 template paragraphs", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
+        expect(uiSource).not.toContain(fragment);
+      }
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -1533,7 +2237,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("c65dea47d507190ff7afd80c6b4dc51d711fa44c5090c2133d01ec76326b062d");
+      expect(hash).toBe("2ccb798962c9afc170f70d34cd35851e59ef0039c1657a035ef799e8e34f05e4");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -1543,7 +2247,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("4d60ebaac3c9c856b421b42c6ec165b5623d42e113129620d424ca9878c8ccec");
+      expect(hash).toBe("ed0300b92c7c314017f8a200b1b2510633361ae71cc5d9026d480b79bbab37ad");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

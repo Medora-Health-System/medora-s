@@ -78,6 +78,15 @@ export type ProviderDischargeDiagnosisCard = {
   /** Legacy compatibility fields. */
   sourceTemplateId?: string;
   sourceVersion?: string;
+
+  /** Phase 19Y.5B — immutable diagnosis identity snapshot at first card materialization. */
+  resolvedTemplateIdAtCreation?: string;
+  resolvedDiagnosisCodeAtCreation?: string;
+  resolvedDiagnosisLabelAtCreation?: string;
+  /** Sync algorithm version — may advance during governed migrations; creation fields stay immutable. */
+  cardTemplateSyncVersion?: string;
+  /** Metadata-only: live diagnosis diverged from creation snapshot while providerConfirmed blocks auto-sync. */
+  staleDiagnosisIdentityWarning?: boolean;
 };
 
 /** @deprecated Alias — use ProviderDischargeDiagnosisCard */
@@ -137,6 +146,67 @@ export const WORK_SCHOOL_QUICK_OPTIONS = [
   "NO_WORK_SCHOOL_UNTIL_CLEARED",
   "ACTIVITY_RESTRICTION",
 ] as const;
+
+/** Current card template sync algorithm — bump only with governed migration plans. */
+export const PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION = "19Y.5A" as const;
+
+export function hasProviderDischargeCardCreationIdentity(
+  card: ProviderDischargeDiagnosisCard
+): boolean {
+  return Boolean(
+    card.resolvedDiagnosisCodeAtCreation?.trim() ||
+      card.resolvedDiagnosisLabelAtCreation?.trim() ||
+      card.resolvedTemplateIdAtCreation?.trim()
+  );
+}
+
+export function stampProviderDischargeCardCreationIdentity(
+  card: ProviderDischargeDiagnosisCard,
+  input: { code: string; label: string; templateId?: string | null }
+): ProviderDischargeDiagnosisCard {
+  if (hasProviderDischargeCardCreationIdentity(card)) return card;
+  return {
+    ...card,
+    resolvedDiagnosisCodeAtCreation: input.code,
+    resolvedDiagnosisLabelAtCreation: input.label,
+    ...(input.templateId?.trim() ? { resolvedTemplateIdAtCreation: input.templateId.trim() } : {}),
+    cardTemplateSyncVersion: PROVIDER_DISCHARGE_CARD_TEMPLATE_SYNC_VERSION,
+  };
+}
+
+export function providerDischargeCardDiagnosisIdentityDriftedFromCreation(
+  card: ProviderDischargeDiagnosisCard,
+  ref: ProviderDischargeDiagnosisRef
+): boolean {
+  const creationCode = card.resolvedDiagnosisCodeAtCreation?.trim();
+  const creationLabel = card.resolvedDiagnosisLabelAtCreation?.trim();
+  if (creationCode || creationLabel) {
+    if (creationCode && creationCode !== ref.code) return true;
+    if (creationLabel && creationLabel !== ref.label) return true;
+    return false;
+  }
+  return card.code !== ref.code || card.displayName !== ref.label;
+}
+
+export type ProviderDischargeCardIdentitySyncEvaluation = {
+  diagnosisIdentityDrifted: boolean;
+  allowAutoSync: boolean;
+  staleDiagnosisIdentityWarning: boolean;
+};
+
+/** Identity immutability guard — governs auto-sync vs warning-only when encounter diagnosis edits. */
+export function evaluateProviderDischargeCardIdentitySync(
+  card: ProviderDischargeDiagnosisCard,
+  ref: ProviderDischargeDiagnosisRef
+): ProviderDischargeCardIdentitySyncEvaluation {
+  const diagnosisIdentityDrifted = providerDischargeCardDiagnosisIdentityDriftedFromCreation(card, ref);
+  const providerConfirmed = card.templateMeta?.providerConfirmed === true;
+  return {
+    diagnosisIdentityDrifted,
+    allowAutoSync: diagnosisIdentityDrifted && !providerConfirmed,
+    staleDiagnosisIdentityWarning: diagnosisIdentityDrifted && providerConfirmed,
+  };
+}
 
 const JSON_KEYS = {
   patientLeftEdAt: "patientLeftEdAt",
@@ -306,6 +376,15 @@ function readDiagnosisDoc(raw: unknown, index: number): ProviderDischargeDiagnos
     sourceVersion:
       typeof o.sourceVersion === "string" ? o.sourceVersion.trim()
       : templateMeta?.templateVersion,
+    resolvedTemplateIdAtCreation:
+      typeof o.resolvedTemplateIdAtCreation === "string" ? o.resolvedTemplateIdAtCreation.trim() : undefined,
+    resolvedDiagnosisCodeAtCreation:
+      typeof o.resolvedDiagnosisCodeAtCreation === "string" ? o.resolvedDiagnosisCodeAtCreation.trim() : undefined,
+    resolvedDiagnosisLabelAtCreation:
+      typeof o.resolvedDiagnosisLabelAtCreation === "string" ? o.resolvedDiagnosisLabelAtCreation.trim() : undefined,
+    cardTemplateSyncVersion:
+      typeof o.cardTemplateSyncVersion === "string" ? o.cardTemplateSyncVersion.trim() : undefined,
+    staleDiagnosisIdentityWarning: o.staleDiagnosisIdentityWarning === true,
   };
 }
 
@@ -626,6 +705,15 @@ function serializeDiagnosisDoc(doc: ProviderDischargeDiagnosisCard): Record<stri
   if (doc.templateMeta) out.templateMeta = doc.templateMeta;
   if (doc.sourceTemplateId) out.sourceTemplateId = doc.sourceTemplateId;
   if (doc.sourceVersion) out.sourceVersion = doc.sourceVersion;
+  if (doc.resolvedTemplateIdAtCreation) out.resolvedTemplateIdAtCreation = doc.resolvedTemplateIdAtCreation;
+  if (doc.resolvedDiagnosisCodeAtCreation) {
+    out.resolvedDiagnosisCodeAtCreation = doc.resolvedDiagnosisCodeAtCreation;
+  }
+  if (doc.resolvedDiagnosisLabelAtCreation) {
+    out.resolvedDiagnosisLabelAtCreation = doc.resolvedDiagnosisLabelAtCreation;
+  }
+  if (doc.cardTemplateSyncVersion) out.cardTemplateSyncVersion = doc.cardTemplateSyncVersion;
+  if (doc.staleDiagnosisIdentityWarning === true) out.staleDiagnosisIdentityWarning = true;
   return out;
 }
 

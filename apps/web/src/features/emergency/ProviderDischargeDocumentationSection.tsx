@@ -7,17 +7,16 @@ import { useI18n } from "@/lib/i18n";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacyApi";
 import {
-  applyProviderDischargeTemplateToCard,
-  buildProviderDischargeCardFromDiagnosis,
-  resolveProviderDischargeTemplateForDiagnosis,
-} from "./providerDischargeTemplateRegistry";
+  applyProviderDischargeTemplateToCardByDiagnosis,
+  ensureProviderDischargeCardForRef,
+} from "./providerDischargeCardTemplateSync";
+import { resolveProviderDischargeTemplateForDiagnosis } from "./providerDischargeTemplateRegistry";
 import {
   extractSharedFieldsFromTemplate,
   mergeSharedFieldsFromSelectedTemplates,
   mergeTemplateSharedFieldsIntoForm,
 } from "./providerDischargeSharedPlanningMerge";
 import {
-  findDiagnosisDocForRef,
   getSelectedDiagnosisDocs,
   mergeProviderDischargeDocumentationIntoDischargeJson,
   newDefaultFollowUpRow,
@@ -505,9 +504,10 @@ export function ProviderDischargeDocumentationSection({
         displayName: doc.displayName,
       });
       if (resolved.matchLevel === "generic" && !overwriteExisting) return;
-      const cardPatch = applyProviderDischargeTemplateToCard(doc, resolved, {
+      const cardPatch = applyProviderDischargeTemplateToCardByDiagnosis(doc, {
         locale: language,
         overwriteExisting,
+        forceOverwrite: overwriteExisting,
         providerConfirmed,
         actor: { appliedAt: new Date().toISOString() },
       });
@@ -534,22 +534,14 @@ export function ProviderDischargeDocumentationSection({
         label: row.description?.trim() || row.code,
         isPrimary,
       };
-      const existing = findDiagnosisDocForRef(providerForm, ref);
-      if (existing) {
-        if (applyTemplate) applyTemplateToDoc(existing.id, false, false);
-        return existing;
-      }
-      return buildProviderDischargeCardFromDiagnosis({
-        sourceEncounterDiagnosisId: row.id,
-        code: row.code,
-        displayName: row.description?.trim() || row.code,
-        displayOrder: row.sortOrder,
-        isPrimaryDiagnosis: isPrimary,
-        applyTemplateSuggestion: applyTemplate,
+      return ensureProviderDischargeCardForRef(providerForm, ref, {
+        applyTemplate,
         locale: language,
+        isPrimary,
+        displayOrder: row.sortOrder,
       });
     },
-    [applyTemplateToDoc, language, providerForm]
+    [language, providerForm]
   );
 
   const mergeSharedFromSelectedDiagnoses = useCallback(

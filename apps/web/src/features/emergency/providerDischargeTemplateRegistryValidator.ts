@@ -21,6 +21,7 @@ import {
   GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
   type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
+import { validateProviderDischargeTemplateContentIntegrity } from "./providerDischargeTemplateContentIntegrity";
 
 export type ProviderDischargeClinicalReviewStatus = "draft" | "reviewed" | "approved";
 
@@ -328,6 +329,9 @@ export function validateProviderDischargeTemplateRegistry(
     }
 
     errors.push(...scanProviderDischargeTemplateUnsafePhrases(template));
+    if (isLocalizedSuggestedText(template.suggestedText)) {
+      errors.push(...validateProviderDischargeTemplateContentIntegrity(template));
+    }
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);
