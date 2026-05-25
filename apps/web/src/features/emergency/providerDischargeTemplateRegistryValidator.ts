@@ -25,6 +25,7 @@ import { validateProviderDischargeTemplateContentIntegrity } from "./providerDis
 import {
   validateProviderDischargePediatricTemplateGovernance,
   validateProviderDischargeTemplateAgeRange,
+  scanProviderDischargePediatricTemplateGovernanceWarnings,
 } from "./providerDischargeTemplatePediatricGovernance";
 
 export type ProviderDischargeClinicalReviewStatus = "draft" | "reviewed" | "approved";
@@ -170,6 +171,12 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
         keyword: [...(template.diagnosisMappings.keyword ?? [])].map(normalizeKeyword).sort(),
       },
       sourceReferenceLabels: template.sourceReferences.map((ref) => ref.label.trim()).sort(),
+      escalationSeverity: template.escalationSeverity ?? null,
+      minimumEscalationLevel: template.minimumEscalationLevel ?? null,
+      requiresReevaluationWarning: template.requiresReevaluationWarning ?? null,
+      requiresCaregiverObservationWindow: template.requiresCaregiverObservationWindow ?? null,
+      caregiverObservationWindowHours: template.caregiverObservationWindowHours ?? null,
+      requiredDangerSignCategories: [...(template.requiredDangerSignCategories ?? [])].sort(),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -338,6 +345,7 @@ export function validateProviderDischargeTemplateRegistry(
     }
     errors.push(...validateProviderDischargeTemplateAgeRange(template));
     errors.push(...validateProviderDischargePediatricTemplateGovernance(template));
+    warnings.push(...scanProviderDischargePediatricTemplateGovernanceWarnings(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

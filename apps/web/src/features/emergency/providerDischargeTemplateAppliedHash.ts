@@ -29,6 +29,13 @@ export type ProviderDischargeTemplateHashSource = {
   clinicalReviewStatus?: "draft" | "reviewed" | "approved";
   effectiveFrom?: string;
   effectiveTo?: string;
+  /** Phase 19Y.7A — pediatric safety semantics included in applied hash when present. */
+  escalationSeverity?: "routine" | "urgent" | "emergency";
+  minimumEscalationLevel?: "routine" | "urgent" | "emergency";
+  requiresReevaluationWarning?: boolean;
+  requiresCaregiverObservationWindow?: boolean;
+  caregiverObservationWindowHours?: number;
+  requiredDangerSignCategories?: readonly string[];
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -61,6 +68,12 @@ export type ProviderDischargeTemplateHashPayload = {
   clinicalReviewStatus?: "draft" | "reviewed" | "approved";
   effectiveFrom?: string;
   effectiveTo?: string;
+  escalationSeverity?: "routine" | "urgent" | "emergency";
+  minimumEscalationLevel?: "routine" | "urgent" | "emergency";
+  requiresReevaluationWarning?: boolean;
+  requiresCaregiverObservationWindow?: boolean;
+  caregiverObservationWindowHours?: number;
+  requiredDangerSignCategories?: string[];
 };
 
 function stableStringify(value: unknown): string {
@@ -122,6 +135,20 @@ export function buildProviderDischargeTemplateHashPayload(
   if (template.clinicalReviewStatus) payload.clinicalReviewStatus = template.clinicalReviewStatus;
   if (template.effectiveFrom?.trim()) payload.effectiveFrom = template.effectiveFrom.trim();
   if (template.effectiveTo?.trim()) payload.effectiveTo = template.effectiveTo.trim();
+  if (template.escalationSeverity) payload.escalationSeverity = template.escalationSeverity;
+  if (template.minimumEscalationLevel) payload.minimumEscalationLevel = template.minimumEscalationLevel;
+  if (template.requiresReevaluationWarning === true) {
+    payload.requiresReevaluationWarning = true;
+  }
+  if (template.requiresCaregiverObservationWindow === true) {
+    payload.requiresCaregiverObservationWindow = true;
+  }
+  if (template.caregiverObservationWindowHours !== undefined) {
+    payload.caregiverObservationWindowHours = template.caregiverObservationWindowHours;
+  }
+  if (template.requiredDangerSignCategories?.length) {
+    payload.requiredDangerSignCategories = [...template.requiredDangerSignCategories].sort();
+  }
 
   return payload;
 }

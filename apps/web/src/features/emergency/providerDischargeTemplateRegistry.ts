@@ -6,6 +6,7 @@
 import {
   computeProviderDischargeTemplateAppliedHash,
 } from "./providerDischargeTemplateAppliedHash";
+import type { ProviderDischargePediatricDangerSignCategory } from "./providerDischargeTemplatePediatricGovernance";
 import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
@@ -99,6 +100,12 @@ export type ProviderDischargeTemplate = {
   /** Phase 19Y.6A / 19Y.7 — pediatric-only governance metadata. */
   requiresCaregiverAcknowledgement?: boolean;
   escalationSeverity?: ProviderDischargeEscalationSeverity;
+  /** Phase 19Y.7A — minimum escalation language/content floor for pediatric safety. */
+  minimumEscalationLevel?: ProviderDischargeEscalationSeverity;
+  requiresReevaluationWarning?: boolean;
+  requiresCaregiverObservationWindow?: boolean;
+  caregiverObservationWindowHours?: number;
+  requiredDangerSignCategories?: readonly ProviderDischargePediatricDangerSignCategory[];
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -1214,6 +1221,15 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric fever discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiredDangerSignCategories: [
+      "dehydration",
+      "breathing_difficulty",
+      "lethargy",
+      "seizure",
+      "trouble_waking",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       icdExact: ["R50.9"],
       icdFamily: ["R50"],
@@ -1239,6 +1255,13 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric viral syndrome discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "routine",
+    minimumEscalationLevel: "routine",
+    requiredDangerSignCategories: [
+      "dehydration",
+      "breathing_difficulty",
+      "lethargy",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       icdExact: ["B34.9", "R68.89"],
       keyword: ["pediatric viral", "viral syndrome child", "child viral illness"],
@@ -1260,6 +1283,14 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric URI discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "routine",
+    minimumEscalationLevel: "routine",
+    requiredDangerSignCategories: [
+      "breathing_difficulty",
+      "dehydration",
+      "blue_lips",
+      "poor_intake",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       icdExact: ["J00"],
       icdFamily: ["J00"],
@@ -1282,6 +1313,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric otitis media discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiredDangerSignCategories: ["lethargy", "worsening_symptoms"],
     diagnosisMappings: {
       icdExact: ["H66.90"],
       keyword: ["pediatric otitis", "child ear infection", "otitis media child", "otalgie enfant"],
@@ -1306,6 +1339,13 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric gastroenteritis discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiredDangerSignCategories: [
+      "dehydration",
+      "persistent_vomiting",
+      "lethargy",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       icdExact: ["A08.39"],
       keyword: ["pediatric gastroenteritis", "child vomiting diarrhea", "gastro-entérite enfant"],
@@ -1327,6 +1367,13 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric mild dehydration discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiredDangerSignCategories: [
+      "dehydration",
+      "lethargy",
+      "trouble_waking",
+      "persistent_vomiting",
+    ],
     diagnosisMappings: {
       icdExact: ["P74.1"],
       keyword: ["pediatric dehydration", "child dehydration", "déshydratation enfant"],
@@ -1348,6 +1395,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric constipation discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "routine",
+    minimumEscalationLevel: "routine",
+    requiredDangerSignCategories: ["persistent_vomiting", "worsening_symptoms"],
     diagnosisMappings: {
       icdExact: ["K59.03"],
       keyword: ["pediatric constipation", "child constipation", "constipation enfant"],
@@ -1369,6 +1418,13 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric asthma exacerbation discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiresReevaluationWarning: true,
+    requiredDangerSignCategories: [
+      "breathing_difficulty",
+      "blue_lips",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       keyword: ["pediatric asthma", "child wheezing", "pediatric wheezing", "asthme enfant"],
     },
@@ -1392,6 +1448,12 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric rash discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "urgent",
+    minimumEscalationLevel: "urgent",
+    requiredDangerSignCategories: [
+      "breathing_difficulty",
+      "lethargy",
+      "worsening_symptoms",
+    ],
     diagnosisMappings: {
       icdExact: ["R21"],
       keyword: ["pediatric rash", "child rash", "infant rash", "éruption enfant"],
@@ -1413,6 +1475,16 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Pediatric minor head injury discharge documentation",
     ...PEDIATRIC_TEMPLATE_GOVERNANCE,
     escalationSeverity: "emergency",
+    minimumEscalationLevel: "urgent",
+    requiresReevaluationWarning: true,
+    requiresCaregiverObservationWindow: true,
+    caregiverObservationWindowHours: 24,
+    requiredDangerSignCategories: [
+      "persistent_vomiting",
+      "confusion_behavior",
+      "trouble_waking",
+      "seizure",
+    ],
     diagnosisMappings: {
       icdExact: ["S00.93XA"],
       keyword: ["pediatric head injury", "child head injury", "minor head injury child", "traumatisme crânien enfant"],

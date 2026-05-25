@@ -22,9 +22,13 @@ import {
 } from "./providerDischargeTemplateRegistry";
 import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
+  scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
   scanProviderDischargePediatricCaregiverWording,
   scanProviderDischargePediatricEscalationLanguage,
+  scanProviderDischargePediatricNeurologicWarnings,
+  scanProviderDischargePediatricRequiredDangerSignCategories,
+  scanProviderDischargePediatricTemplateGovernanceWarnings,
   validateProviderDischargePediatricTemplateGovernance,
   validateProviderDischargeTemplateAgeRange,
 } from "./providerDischargeTemplatePediatricGovernance";
@@ -2185,6 +2189,220 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.7A pediatric clinical safety hardening", () => {
+    const batchTemplates = () =>
+      BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("pediatric templates validate with new governance fields", () => {
+      for (const template of batchTemplates()) {
+        expect(template.minimumEscalationLevel).toMatch(/^(routine|urgent|emergency)$/);
+        expect(template.requiredDangerSignCategories?.length).toBeGreaterThan(0);
+      }
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("observation window hours validation works for minor head injury", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      expect(head.requiresCaregiverObservationWindow).toBe(true);
+      expect(head.caregiverObservationWindowHours).toBe(24);
+      expect(validateProviderDischargePediatricTemplateGovernance(head)).toEqual([]);
+    });
+
+    it("invalid observation window fails when hours missing or non-positive", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      const missingHours = { ...head, caregiverObservationWindowHours: undefined };
+      expect(
+        validateProviderDischargePediatricTemplateGovernance(missingHours).some((e) =>
+          e.includes("caregiverObservationWindowHours")
+        )
+      ).toBe(true);
+
+      const zeroHours = { ...head, caregiverObservationWindowHours: 0 };
+      expect(validateProviderDischargePediatricTemplateGovernance(zeroHours).length).toBeGreaterThan(0);
+
+      const orphanHours = syntheticPediatricTemplate({
+        id: "pediatric_orphan_window_v1",
+        requiresCaregiverObservationWindow: undefined,
+        caregiverObservationWindowHours: 12,
+      });
+      expect(
+        validateProviderDischargePediatricTemplateGovernance(orphanHours).some((e) =>
+          e.includes("requiresCaregiverObservationWindow")
+        )
+      ).toBe(true);
+    });
+
+    it("emergency escalation cannot downgrade to routine minimumEscalationLevel", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      const downgraded = { ...head, minimumEscalationLevel: "routine" as const };
+      expect(
+        validateProviderDischargePediatricTemplateGovernance(downgraded).some((e) =>
+          e.includes("cannot set minimumEscalationLevel to routine")
+        )
+      ).toBe(true);
+    });
+
+    it("minor head injury template requires observation window metadata", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      expect(head.requiresCaregiverObservationWindow).toBe(true);
+      expect(head.requiresReevaluationWarning).toBe(true);
+      expect(head.minimumEscalationLevel).toBe("urgent");
+      expect(head.escalationSeverity).toBe("emergency");
+    });
+
+    it("minor head injury includes neurologic danger signs EN/FR", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        const body = head.suggestedText[locale];
+        expect(scanProviderDischargePediatricRequiredDangerSignCategories(head, locale, body)).toEqual([]);
+      }
+    });
+
+    it("fever template includes dehydration warnings EN/FR", () => {
+      const fever = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_fever_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        const body = fever.suggestedText[locale];
+        expect(scanProviderDischargePediatricDehydrationDangerSigns(fever.id, locale, body)).toEqual([]);
+      }
+    });
+
+    it("gastroenteritis includes dehydration warnings EN/FR", () => {
+      const gastro = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_gastroenteritis_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        const body = gastro.suggestedText[locale];
+        expect(scanProviderDischargePediatricDehydrationDangerSigns(gastro.id, locale, body)).toEqual([]);
+      }
+    });
+
+    it("pediatric asthma includes breathing escalation wording", () => {
+      const asthma = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_asthma_exacerbation_v1")!;
+      expect(asthma.requiresReevaluationWarning).toBe(true);
+      for (const locale of ["en", "fr"] as const) {
+        const body = asthma.suggestedText[locale];
+        expect(scanProviderDischargePediatricRequiredDangerSignCategories(asthma, locale, body)).toEqual([]);
+        expect(scanProviderDischargePediatricEscalationLanguage(asthma.id, locale, body)).toEqual([]);
+      }
+    });
+
+    it("pediatric templates missing urgent escalation fail", () => {
+      const body = syntheticPediatricTemplate({ id: "pediatric_no_escalation_v1" }).suggestedText.en;
+      const bad = { ...body, returnPrecautions: "Follow up with your clinician if concerned." };
+      expect(scanProviderDischargePediatricEscalationLanguage("pediatric_no_escalation_v1", "en", bad).length).toBeGreaterThan(
+        0
+      );
+    });
+
+    it("pediatric templates missing required danger categories fail", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      const bad = { ...head.suggestedText.en, returnPrecautions: "Return if pain worsens." };
+      expect(
+        scanProviderDischargePediatricRequiredDangerSignCategories(head, "en", bad).some((e) => e.includes("seizure"))
+      ).toBe(true);
+    });
+
+    it("pediatric neurologic validator emits warnings for missing wording and none for head injury", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_minor_head_injury_v1")!;
+      expect(scanProviderDischargePediatricNeurologicWarnings(head.id, "en", head.suggestedText.en)).toEqual([]);
+
+      const sparse = syntheticPediatricTemplate({ id: "pediatric_neuro_sparse_v1" });
+      expect(
+        scanProviderDischargePediatricNeurologicWarnings(
+          "pediatric_fever_v1",
+          "en",
+          sparse.suggestedText.en
+        ).length
+      ).toBeGreaterThan(0);
+
+      const registryWarnings = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(scanProviderDischargePediatricTemplateGovernanceWarnings(head)).toEqual([]);
+      expect(registryWarnings.warnings.some((w) => w.includes("neurologic warning"))).toBe(true);
+    });
+
+    it("pediatric dehydration validator works EN", () => {
+      const fever = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_fever_v1")!;
+      expect(
+        scanProviderDischargePediatricDehydrationDangerSigns(fever.id, "en", fever.suggestedText.en)
+      ).toEqual([]);
+      const bad = { ...fever.suggestedText.en, returnPrecautions: "Return immediately if breathing worsens." };
+      expect(scanProviderDischargePediatricDehydrationDangerSigns(fever.id, "en", bad).length).toBeGreaterThan(0);
+    });
+
+    it("pediatric dehydration validator works FR", () => {
+      const fever = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_fever_v1")!;
+      expect(
+        scanProviderDischargePediatricDehydrationDangerSigns(fever.id, "fr", fever.suggestedText.fr)
+      ).toEqual([]);
+      const bad = {
+        ...fever.suggestedText.fr,
+        description: "Test.",
+        diagnosisInstructions: "Suivez les consignes.",
+        medicationTreatment: "Médicaments selon prescription.",
+        returnPrecautions: "Retournez immédiatement si la respiration s'aggrave.",
+        caregiverInstructions: "Surveillez votre enfant.",
+      };
+      expect(scanProviderDischargePediatricDehydrationDangerSigns(fever.id, "fr", bad).length).toBeGreaterThan(0);
+    });
+
+    it("snapshot hashes update intentionally when pediatric safety semantics change", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const mutated = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.map((t) =>
+          t.id === "pediatric_fever_v1" ?
+            { ...t, minimumEscalationLevel: "emergency" as const }
+          : t
+        ),
+        "en"
+      );
+      expect(mutated).not.toBe(base);
+    });
+
+    it("templateAppliedHash includes pediatric governance semantics", () => {
+      const fever = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_fever_v1")!;
+      const baseHash = computeProviderDischargeTemplateAppliedHash(fever, "en");
+      const payload = buildProviderDischargeTemplateHashPayload(fever, "en");
+      expect(payload.minimumEscalationLevel).toBe("urgent");
+      expect(payload.requiredDangerSignCategories?.length).toBeGreaterThan(0);
+
+      const stripped = {
+        ...fever,
+        minimumEscalationLevel: undefined,
+        requiredDangerSignCategories: undefined,
+      };
+      expect(computeProviderDischargeTemplateAppliedHash(stripped, "en")).not.toBe(baseHash);
+    });
+
+    it("existing adult templates still validate", () => {
+      const adultIds = [
+        ...BATCH_1_ED_DISCHARGE_TEMPLATE_IDS,
+        ...BATCH_2_ED_DISCHARGE_TEMPLATE_IDS,
+        ...BATCH_3_ED_DISCHARGE_TEMPLATE_IDS,
+        ...BATCH_4_ED_DISCHARGE_TEMPLATE_IDS,
+      ];
+      const adults = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => adultIds.includes(t.id as never));
+      const result = validateProviderDischargeTemplateRegistry(adults);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("governance snapshot includes pediatric safety semantics fields", () => {
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const head = snapshot.find((row) => row.id === "pediatric_minor_head_injury_v1") as Record<string, unknown>;
+      expect(head.minimumEscalationLevel).toBe("urgent");
+      expect(head.requiresCaregiverObservationWindow).toBe(true);
+      expect(head.caregiverObservationWindowHours).toBe(24);
+      expect(head.requiredDangerSignCategories).toEqual([
+        "confusion_behavior",
+        "persistent_vomiting",
+        "seizure",
+        "trouble_waking",
+      ]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -2564,7 +2782,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("6b6f991789ec7e9f62ae38e239a3e12e8845e2811c074c293f7ef3dfbe018fa0");
+      expect(hash).toBe("c1850cfc9949d0bfecd787de08d91537b827cd6ced46251116f5dac81e140953");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -2574,7 +2792,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("c99b65e0a8186881359b79f2ae92e78758d3c5adcc454be2903577b10299f8d3");
+      expect(hash).toBe("1ceb711b9bfc1646759ce7662d0843dcae9a17a971805f4c73c5501ec7d58b16");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
