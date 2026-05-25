@@ -1,6 +1,5 @@
 /**
- * Phase 19Y.6A — pediatric discharge template governance (metadata + validators only).
- * No pediatric diagnosis templates in registry yet.
+ * Phase 19Y.6A / 19Y.7 — pediatric discharge template governance (metadata + validators).
  */
 
 import type {
@@ -243,6 +242,16 @@ export function validateProviderDischargePediatricTemplateGovernance(
       errors.push(`${prefix} pediatric template must set ageRange.label to pediatric or adolescent`);
     }
     return errors;
+  }
+
+  if (!template.escalationSeverity) {
+    errors.push(`${prefix} pediatric template missing escalationSeverity`);
+  } else if (
+    template.escalationSeverity !== "routine" &&
+    template.escalationSeverity !== "urgent" &&
+    template.escalationSeverity !== "emergency"
+  ) {
+    errors.push(`${prefix} invalid escalationSeverity: ${String(template.escalationSeverity)}`);
   }
 
   for (const locale of ["en", "fr"] as const) {

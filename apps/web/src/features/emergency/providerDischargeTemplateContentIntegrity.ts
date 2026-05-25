@@ -166,6 +166,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["anxiety", "panic"], fr: ["anxiété", "angoisse"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  pediatric_fever_v1: {
+    mustIncludeAny: { en: ["fever", "child"], fr: ["fièvre", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_viral_syndrome_v1: {
+    mustIncludeAny: { en: ["viral", "child"], fr: ["virale", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_uri_v1: {
+    mustIncludeAny: { en: ["respiratory", "child"], fr: ["respiratoires", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_otitis_media_v1: {
+    mustIncludeAny: { en: ["ear pain", "otitis"], fr: ["otalgie", "otite"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_gastroenteritis_v1: {
+    mustIncludeAny: { en: ["vomiting", "diarrhea"], fr: ["vomissements", "diarrhée"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_mild_dehydration_v1: {
+    mustIncludeAny: { en: ["dehydration", "child"], fr: ["déshydratation", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_constipation_v1: {
+    mustIncludeAny: { en: ["constipation", "child"], fr: ["constipation", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_asthma_exacerbation_v1: {
+    mustIncludeAny: { en: ["asthma", "wheezing", "breathing"], fr: ["asthme", "respiratoires"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_rash_v1: {
+    mustIncludeAny: { en: ["rash", "child"], fr: ["éruption", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_minor_head_injury_v1: {
+    mustIncludeAny: { en: ["head injury", "child"], fr: ["traumatisme crânien", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

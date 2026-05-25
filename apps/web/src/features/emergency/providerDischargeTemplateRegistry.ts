@@ -38,6 +38,16 @@ import {
   NAUSEA_VOMITING_SUGGESTED_TEXT,
   OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
   PALPITATIONS_SUGGESTED_TEXT,
+  PEDIATRIC_ASTHMA_EXACERBATION_SUGGESTED_TEXT,
+  PEDIATRIC_CONSTIPATION_SUGGESTED_TEXT,
+  PEDIATRIC_FEVER_SUGGESTED_TEXT,
+  PEDIATRIC_GASTROENTERITIS_SUGGESTED_TEXT,
+  PEDIATRIC_MILD_DEHYDRATION_SUGGESTED_TEXT,
+  PEDIATRIC_MINOR_HEAD_INJURY_SUGGESTED_TEXT,
+  PEDIATRIC_OTITIS_MEDIA_SUGGESTED_TEXT,
+  PEDIATRIC_RASH_SUGGESTED_TEXT,
+  PEDIATRIC_URI_SUGGESTED_TEXT,
+  PEDIATRIC_VIRAL_SYNDROME_SUGGESTED_TEXT,
   PNEUMONIA_SUGGESTED_TEXT,
   SEIZURE_SUGGESTED_TEXT,
   SHORTNESS_OF_BREATH_SUGGESTED_TEXT,
@@ -75,6 +85,8 @@ export type ProviderDischargeTemplateAgeRange = {
   label: ProviderDischargeTemplateAgeRangeLabel;
 };
 
+export type ProviderDischargeEscalationSeverity = "routine" | "urgent" | "emergency";
+
 export type ProviderDischargeTemplate = {
   id: string;
   version: string;
@@ -84,6 +96,9 @@ export type ProviderDischargeTemplate = {
   riskCategory?: string;
   /** Phase 19Y.6A — optional age governance; required for pediatric templates. */
   ageRange?: ProviderDischargeTemplateAgeRange;
+  /** Phase 19Y.6A / 19Y.7 — pediatric-only governance metadata. */
+  requiresCaregiverAcknowledgement?: boolean;
+  escalationSeverity?: ProviderDischargeEscalationSeverity;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -158,12 +173,34 @@ export const BATCH_4_ED_DISCHARGE_TEMPLATE_IDS = [
   "anxiety_panic_v1",
 ] as const;
 
+/** Phase 19Y.7 — pediatric-safe ED discharge template batch 5. */
+export const BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS = [
+  "pediatric_fever_v1",
+  "pediatric_viral_syndrome_v1",
+  "pediatric_uri_v1",
+  "pediatric_otitis_media_v1",
+  "pediatric_gastroenteritis_v1",
+  "pediatric_mild_dehydration_v1",
+  "pediatric_constipation_v1",
+  "pediatric_asthma_exacerbation_v1",
+  "pediatric_rash_v1",
+  "pediatric_minor_head_injury_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
 const BATCH_GOVERNANCE_DRAFT = {
   clinicalReviewStatus: "draft" as const,
   effectiveFrom: GOVERNANCE_EFFECTIVE_FROM,
+};
+
+const PEDIATRIC_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  ageRange: { label: "pediatric" as const, minAgeDays: 0, maxAgeDays: 17 * 365 },
+  requiresCaregiverAcknowledgement: true as const,
+  specialtyCategory: "pediatrics",
+  riskCategory: "moderate",
 };
 
 /** @deprecated Use BATCH_GOVERNANCE_DRAFT */
@@ -1172,6 +1209,226 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: ANXIETY_PANIC_SUGGESTED_TEXT,
   },
   {
+    id: "pediatric_fever_v1",
+    version: "1.0.0",
+    title: "Pediatric fever discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      icdExact: ["R50.9"],
+      icdFamily: ["R50"],
+      keyword: ["pediatric fever", "child fever", "infant fever", "fièvre enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fever",
+        url: "https://medlineplus.gov/fever.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("pf-pcp", "PRIMARY_CARE", "within 1–3 days if fever persists"),
+      registryFollowUp("pf-peds", "PEDIATRICS", "as clinically appropriate"),
+    ],
+    suggestedText: PEDIATRIC_FEVER_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_viral_syndrome_v1",
+    version: "1.0.0",
+    title: "Pediatric viral syndrome discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "routine",
+    diagnosisMappings: {
+      icdExact: ["B34.9", "R68.89"],
+      keyword: ["pediatric viral", "viral syndrome child", "child viral illness"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Viral infections",
+        url: "https://medlineplus.gov/viralinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("pvs-pcp", "PRIMARY_CARE", "if symptoms persist beyond expected recovery")],
+    suggestedText: PEDIATRIC_VIRAL_SYNDROME_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_uri_v1",
+    version: "1.0.0",
+    title: "Pediatric URI discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "routine",
+    diagnosisMappings: {
+      icdExact: ["J00"],
+      icdFamily: ["J00"],
+      keyword: ["pediatric uri", "pediatric upper respiratory", "child cold", "rhume enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Common cold",
+        url: "https://medlineplus.gov/commoncold.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("puri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: PEDIATRIC_URI_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_otitis_media_v1",
+    version: "1.0.0",
+    title: "Pediatric otitis media discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      icdExact: ["H66.90"],
+      keyword: ["pediatric otitis", "child ear infection", "otitis media child", "otalgie enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Ear infections",
+        url: "https://medlineplus.gov/earinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("pot-peds", "PEDIATRICS", "within 1–2 weeks"),
+      registryFollowUp("pot-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: PEDIATRIC_OTITIS_MEDIA_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_gastroenteritis_v1",
+    version: "1.0.0",
+    title: "Pediatric gastroenteritis discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      icdExact: ["A08.39"],
+      keyword: ["pediatric gastroenteritis", "child vomiting diarrhea", "gastro-entérite enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Viral gastroenteritis",
+        url: "https://medlineplus.gov/viralgastroenteritis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("pg-pcp", "PRIMARY_CARE", "if symptoms persist beyond expected recovery")],
+    suggestedText: PEDIATRIC_GASTROENTERITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_mild_dehydration_v1",
+    version: "1.0.0",
+    title: "Pediatric mild dehydration discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      icdExact: ["P74.1"],
+      keyword: ["pediatric dehydration", "child dehydration", "déshydratation enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dehydration",
+        url: "https://medlineplus.gov/dehydration.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("pmd-pcp", "PRIMARY_CARE", "if hydration concerns persist")],
+    suggestedText: PEDIATRIC_MILD_DEHYDRATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_constipation_v1",
+    version: "1.0.0",
+    title: "Pediatric constipation discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "routine",
+    diagnosisMappings: {
+      icdExact: ["K59.03"],
+      keyword: ["pediatric constipation", "child constipation", "constipation enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Constipation in children",
+        url: "https://medlineplus.gov/constipationinchildren.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("pc-pcp", "PRIMARY_CARE", "if symptoms persist")],
+    suggestedText: PEDIATRIC_CONSTIPATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_asthma_exacerbation_v1",
+    version: "1.0.0",
+    title: "Pediatric asthma exacerbation discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      keyword: ["pediatric asthma", "child wheezing", "pediatric wheezing", "asthme enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Asthma in children",
+        url: "https://medlineplus.gov/asthmainchildren.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("pa-peds", "PEDIATRICS", "within 1–2 weeks"),
+      registryFollowUp("pa-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: PEDIATRIC_ASTHMA_EXACERBATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_rash_v1",
+    version: "1.0.0",
+    title: "Pediatric rash discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "urgent",
+    diagnosisMappings: {
+      icdExact: ["R21"],
+      keyword: ["pediatric rash", "child rash", "infant rash", "éruption enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Rashes",
+        url: "https://medlineplus.gov/rashes.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("pr-pcp", "PRIMARY_CARE", "if rash spreads or concerns develop")],
+    suggestedText: PEDIATRIC_RASH_SUGGESTED_TEXT,
+  },
+  {
+    id: "pediatric_minor_head_injury_v1",
+    version: "1.0.0",
+    title: "Pediatric minor head injury discharge documentation",
+    ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+    escalationSeverity: "emergency",
+    diagnosisMappings: {
+      icdExact: ["S00.93XA"],
+      keyword: ["pediatric head injury", "child head injury", "minor head injury child", "traumatisme crânien enfant"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Head injuries",
+        url: "https://medlineplus.gov/headinjuries.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("ph-pcp", "PRIMARY_CARE", "if new or worsening symptoms develop")],
+    suggestedText: PEDIATRIC_MINOR_HEAD_INJURY_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -1262,6 +1519,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour une hyperglycémie (élévation de la glycémie)",
   "Vous avez été pris en charge aux urgences pour une intoxication alcoolique",
   "Vous avez été pris en charge aux urgences pour de l'anxiété ou des signes de crise d'angoisse",
+  "Your child was evaluated in the emergency department for fever",
+  "Your child was evaluated in the emergency department for a viral illness",
+  "Your child was evaluated in the emergency department for upper respiratory symptoms",
+  "Your child was evaluated in the emergency department for ear pain consistent with otitis media",
+  "Your child was evaluated in the emergency department for vomiting or diarrhea",
+  "Your child was evaluated in the emergency department for mild dehydration",
+  "Your child was evaluated in the emergency department for constipation",
+  "Your child was evaluated in the emergency department for wheezing or breathing symptoms related to asthma",
+  "Your child was evaluated in the emergency department for a rash",
+  "Your child was evaluated in the emergency department after a minor head injury",
+  "Votre enfant a été pris en charge aux urgences pour de la fièvre",
+  "Votre enfant a été pris en charge aux urgences pour une maladie virale",
+  "Votre enfant a été pris en charge aux urgences pour des signes respiratoires supérieurs",
+  "Votre enfant a été pris en charge aux urgences pour une otalgie compatible avec une otite moyenne",
+  "Votre enfant a été pris en charge aux urgences pour des vomissements ou une diarrhée",
+  "Votre enfant a été pris en charge aux urgences pour une déshydratation légère",
+  "Votre enfant a été pris en charge aux urgences pour une constipation",
+  "Votre enfant a été pris en charge aux urgences pour une respiration sifflante ou des signes respiratoires liés à l'asthme",
+  "Votre enfant a été pris en charge aux urgences pour une éruption cutanée",
+  "Votre enfant a été pris en charge aux urgences après un traumatisme crânien mineur",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };
@@ -1319,13 +1596,19 @@ export function resolveProviderDischargeTemplateForDiagnosis(input: {
     return { template: bestFamily.template, matchLevel: "icdFamily" };
   }
 
+  let bestKeyword: { template: ProviderDischargeTemplate; tokenLen: number } | null = null;
   for (const template of nonGenericTemplates()) {
     for (const keyword of template.diagnosisMappings.keyword ?? []) {
       const token = normalizeMatchToken(keyword);
       if (token && labelText.includes(token)) {
-        return { template, matchLevel: "keyword" };
+        if (!bestKeyword || token.length > bestKeyword.tokenLen) {
+          bestKeyword = { template, tokenLen: token.length };
+        }
       }
     }
+  }
+  if (bestKeyword) {
+    return { template: bestKeyword.template, matchLevel: "keyword" };
   }
 
   return { template: genericTemplate(), matchLevel: "generic" };

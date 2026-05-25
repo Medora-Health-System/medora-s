@@ -13,6 +13,7 @@ import {
   BATCH_2_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_3_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_4_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -184,6 +185,8 @@ function syntheticPediatricTemplate(
   return syntheticRegistryTemplate({
     id,
     ageRange: { label: "pediatric", maxAgeDays: 17 * 365 },
+    escalationSeverity: "urgent",
+    requiresCaregiverAcknowledgement: true,
     suggestedText: {
       en: {
         description: "Your child was evaluated in the emergency department for this concern.",
@@ -2095,6 +2098,93 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.7 Batch 5 pediatric-safe ED discharge templates", () => {
+    const batchTemplates = () =>
+      BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 10 pediatric templates exist", () => {
+      expect(BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("full registry validates with pediatric batch included", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("each pediatric template has EN/FR bodies, ageRange, caregiverInstructions, and escalationSeverity", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+        expect(template.ageRange?.label).toBe("pediatric");
+        expect(template.suggestedText.en.caregiverInstructions?.trim()).toBeTruthy();
+        expect(template.suggestedText.fr.caregiverInstructions?.trim()).toBeTruthy();
+        expect(template.escalationSeverity).toMatch(/^(routine|urgent|emergency)$/);
+        expect(template.requiresCaregiverAcknowledgement).toBe(true);
+      }
+    });
+
+    it("each pediatric template passes pediatric governance scans", () => {
+      for (const template of batchTemplates()) {
+        const errors = validateProviderDischargePediatricTemplateGovernance(template);
+        expect(errors, template.id).toEqual([]);
+      }
+    });
+
+    it("pediatric fever R50.9 resolves to pediatric fever template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R50.9", displayName: "Fever" });
+      expect(resolved.template.id).toBe("pediatric_fever_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("pediatric asthma keyword resolves to pediatric asthma template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        displayName: "Pediatric asthma flare",
+      });
+      expect(resolved.template.id).toBe("pediatric_asthma_exacerbation_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("pediatric otitis H66.90 resolves to pediatric otitis template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: "H66.90",
+        displayName: "Otitis media",
+      });
+      expect(resolved.template.id).toBe("pediatric_otitis_media_v1");
+    });
+
+    it("template apply uses active locale and stores appliedLocale + hash", () => {
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pediatric_fever_v1")!;
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-pf",
+        code: "R50.9",
+        displayName: "Fever",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description).toContain("Votre enfant");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("no React UI paragraph hardcoding for pediatric templates", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toContain("Your child was evaluated in the emergency department for fever");
+      expect(uiSource).not.toContain("Votre enfant a été pris en charge aux urgences pour de la fièvre");
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -2474,7 +2564,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("2ccb798962c9afc170f70d34cd35851e59ef0039c1657a035ef799e8e34f05e4");
+      expect(hash).toBe("6b6f991789ec7e9f62ae38e239a3e12e8845e2811c074c293f7ef3dfbe018fa0");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -2484,7 +2574,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("ed0300b92c7c314017f8a200b1b2510633361ae71cc5d9026d480b79bbab37ad");
+      expect(hash).toBe("c99b65e0a8186881359b79f2ae92e78758d3c5adcc454be2903577b10299f8d3");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
