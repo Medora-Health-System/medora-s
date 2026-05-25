@@ -28,6 +28,7 @@ import {
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
 import { hashCanonicalJson, sha256Hex, canonicalizeForHash } from "./chart-export-hash.util";
+import { buildEdClinicalTimelineForChartExport } from "./ed-clinical-timeline.util";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
 import {
@@ -382,6 +383,8 @@ export type ChartExportManifest = {
     items: Array<{
       id: string;
       eventType: string;
+      displayEventType?: string;
+      displayLabelFr?: string;
       createdAt: string;
       createdByDisplayFr: string | null;
       payloadJson: unknown;
@@ -422,6 +425,22 @@ export type ChartExportManifest = {
     }>;
   };
   deferredDomains: Array<{ domain: string; reason: string }>;
+  /** Phase 19W.2 — chronological ED clinical timeline (read-only aggregation). */
+  edClinicalTimeline?: {
+    items: Array<{
+      id: string;
+      sortKey: string;
+      timestampIso: string | null;
+      category: string;
+      categoryLabel: string;
+      actorName: string | null;
+      actorRoleTitle: string | null;
+      summary: string;
+      sourceType: string;
+      sourceId: string;
+      isUndated: boolean;
+    }>;
+  } | null;
 };
 
 const PROVIDER_DOCUMENTATION_NAMESPACE_KEY = "erProviderMseV1";
@@ -1325,6 +1344,8 @@ export class EncounterChartExportService {
         },
       });
     }
+
+    manifest.edClinicalTimeline = buildEdClinicalTimelineForChartExport(manifest, "en");
 
     return manifest;
   }

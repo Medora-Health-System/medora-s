@@ -36,6 +36,12 @@ import {
   type ErPrintInitialNursingSection,
   type ErPrintNursingDischargeSection,
 } from "@/features/emergency/erInitialNursingAssessmentSummary";
+import {
+  buildProviderDocumentationPrintSection,
+  buildVisitSummaryProviderDocumentationBlock,
+  type ErPrintProviderDocumentationSection,
+} from "@/features/emergency/erProviderDocumentationSummary";
+import type { EdClinicalTimelineEntry } from "@medora/shared";
 import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 
 export type ErPrintTriageSnapshot = {
@@ -214,6 +220,8 @@ export function getErPrintPacketHtml(params: {
   medicationOrderRows?: ErEdSummaryMedicationOrderRow[] | null;
   marEventRows?: ErEdSummaryMarEventRow[] | null;
   procedureSummaries?: string[] | null;
+  providerDocumentationSection?: ErPrintProviderDocumentationSection | null;
+  clinicalTimelineEntries?: EdClinicalTimelineEntry[] | null;
 }): string {
   const {
     patient,
@@ -234,6 +242,8 @@ export function getErPrintPacketHtml(params: {
     medicationOrderRows,
     marEventRows,
     procedureSummaries,
+    providerDocumentationSection: providerDocumentationSectionParam,
+    clinicalTimelineEntries,
   } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -289,6 +299,21 @@ export function getErPrintPacketHtml(params: {
   const nursingDischargeDocumentation =
     nursingDischargeDocumentationParam ??
     buildNursingDischargePrintSection(encounter.nursingAssessment, language);
+  const providerDocumentationSection =
+    providerDocumentationSectionParam ??
+    (() => {
+      const block = buildVisitSummaryProviderDocumentationBlock({
+        nursingAssessment: encounter.nursingAssessment,
+        locale: language,
+        providerDocumentationStatus: encounter.providerDocumentationStatus,
+        providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+        providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr,
+        providerAddenda: encounter.providerAddenda,
+      });
+      return block && block.sections.length > 0
+        ? buildProviderDocumentationPrintSection(block, language)
+        : null;
+    })();
 
   const body: string[] = [];
 
@@ -502,6 +527,16 @@ export function getErPrintPacketHtml(params: {
     procedureSummaries.forEach((summary) => {
       body.push(`<p style="margin: 8px 0; font-size: 13px; line-height: 1.45;">${esc(summary)}</p>`);
     });
+  }
+
+  if (providerDocumentationSection && providerDocumentationSection.sections.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionProviderDocumentation"));
+    appendProviderDocumentationBlock(body, language, providerDocumentationSection);
+  }
+
+  if (Array.isArray(clinicalTimelineEntries) && clinicalTimelineEntries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionClinicalTimeline"));
+    appendClinicalTimelineBlock(body, language, clinicalTimelineEntries);
   }
 
   body.push(h2(language, "printOutput.erPacket.sectionSignatures"));
@@ -727,6 +762,60 @@ function appendDocumentationHistoryBlock(
       body.push(`<p style="margin: 4px 0; font-size: 13px; color: #444;">${esc(printT(language, keys.emptyKey))}</p>`);
     }
   });
+}
+
+function appendProviderDocumentationBlock(
+  body: string[],
+  language: SupportedLanguage,
+  section: ErPrintProviderDocumentationSection
+): void {
+  body.push(
+    `<p style="margin: 6px 0; font-size: 13px; line-height: 1.45;"><strong>${esc(
+      printT(language, "printOutput.erPacket.providerDocumentationStatus")
+    )}</strong> ${esc(section.statusLine)}</p>`
+  );
+  if (section.signedLine) {
+    body.push(`<p style="margin: 6px 0; font-size: 13px; line-height: 1.45;">${esc(section.signedLine)}</p>`);
+  } else if (section.savedLine) {
+    body.push(`<p style="margin: 6px 0; font-size: 13px; line-height: 1.45;">${esc(section.savedLine)}</p>`);
+  }
+  section.sections.forEach((sec) => {
+    body.push(`<p style="margin: 10px 0 4px 0; font-size: 13px; font-weight: 700;">${esc(sec.label)}</p>`);
+    body.push(`<p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap;">${esc(sec.text)}</p>`);
+  });
+  section.addenda.forEach((add) => {
+    body.push(
+      `<p style="margin: 8px 0; font-size: 13px; line-height: 1.45; font-style: italic;">${esc(
+        `${add.by} — ${add.at}: ${add.text}`
+      )}</p>`
+    );
+  });
+}
+
+function appendClinicalTimelineBlock(
+  body: string[],
+  language: SupportedLanguage,
+  entries: EdClinicalTimelineEntry[]
+): void {
+  let lastUndated = false;
+  for (const entry of entries) {
+    if (entry.isUndated && !lastUndated) {
+      body.push(
+        `<p style="margin: 12px 0 6px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; color: #444;">${esc(
+          printT(language, "printOutput.erPacket.clinicalTimelineUndatedHeader")
+        )}</p>`
+      );
+      lastUndated = true;
+    }
+    const actor = entry.actorDisplay ? ` — ${entry.actorDisplay}` : "";
+    const time = entry.displayTime ?? "—";
+    body.push(
+      `<p style="margin: 6px 0 2px 0; font-size: 13px; line-height: 1.45;"><strong>${esc(
+        time
+      )} — ${esc(entry.categoryLabel)}</strong>${esc(actor)}</p>`
+    );
+    body.push(`<p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.45; color: #333;">${esc(entry.summary)}</p>`);
+  }
 }
 
 function appendInitialNursingAssessmentBlock(

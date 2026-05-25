@@ -76,8 +76,9 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     unifiedTimeline: null,
     auditTimelineSummary: { items: [], capped: false },
     followUps: { items: [] },
-    deferredDomains: [{ domain: "pathways", reason: "deferred_to_phase_5f" }],
-  };
+      deferredDomains: [{ domain: "pathways", reason: "deferred_to_phase_5f" }],
+      edClinicalTimeline: null,
+    };
   return { ...defaults, ...overrides };
 }
 

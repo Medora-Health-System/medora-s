@@ -20,6 +20,11 @@ import {
   type ErPrintDocumentationHistoryEntry,
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
+import { buildErClinicalTimeline } from "@/features/emergency/erClinicalTimeline";
+import {
+  buildProviderDocumentationPrintSection,
+  buildVisitSummaryProviderDocumentationBlock,
+} from "@/features/emergency/erProviderDocumentationSummary";
 import {
   buildErEdSummaryMarEventRows,
   buildErEdSummaryMedicationOrderRows,
@@ -168,6 +173,7 @@ export function EmergencyErSummaryClosureSurface({
     let admissionSummaryEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     let dispositionSupplementEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     let triageAssessmentEntries: ErPrintDocumentationHistoryEntry[] | null = null;
+    let nursingReassessmentApiEntries: NursingReassessmentApiEntry[] | null = null;
     try {
       const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
         facilityId,
@@ -177,6 +183,7 @@ export function EmergencyErSummaryClosureSurface({
           ? (data as { entries?: unknown }).entries
           : null;
       if (Array.isArray(entries) && entries.length > 0) {
+        nursingReassessmentApiEntries = entries as NursingReassessmentApiEntry[];
         /**
          * Reuse the Summary model's history builder so the print output uses the SAME
          * structured-preview lines and narrative excerpt as the on-screen Summary card. This
@@ -257,22 +264,26 @@ export function EmergencyErSummaryClosureSurface({
     let medicationOrderRows = null;
     let marEventRows = null;
     let procedureSummaries: string[] | null = null;
+    let ordersRaw: unknown[] = [];
+    let adminsRaw: unknown[] = [];
+    let procedureEntriesRaw: unknown[] = [];
     try {
-      const [ordersRaw, adminsRaw, proceduresRaw] = await Promise.all([
+      const [ordersFetched, adminsFetched, proceduresRaw] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/procedures`, { facilityId }),
       ]);
-      const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
-      const admins = Array.isArray(adminsRaw) ? adminsRaw : [];
-      medicationOrderRows = buildErEdSummaryMedicationOrderRows({ orders, language, t });
-      marEventRows = buildErEdSummaryMarEventRows({ admins, language, t });
+      ordersRaw = Array.isArray(ordersFetched) ? ordersFetched : [];
+      adminsRaw = Array.isArray(adminsFetched) ? adminsFetched : [];
+      medicationOrderRows = buildErEdSummaryMedicationOrderRows({ orders: ordersRaw, language, t });
+      marEventRows = buildErEdSummaryMarEventRows({ admins: adminsRaw, language, t });
       const procedureEntries =
         proceduresRaw && typeof proceduresRaw === "object" && !Array.isArray(proceduresRaw)
           ? (proceduresRaw as { entries?: unknown }).entries
           : null;
-      if (Array.isArray(procedureEntries)) {
-        procedureSummaries = procedureEntries
+      procedureEntriesRaw = Array.isArray(procedureEntries) ? procedureEntries : [];
+      if (procedureEntriesRaw.length > 0) {
+        procedureSummaries = procedureEntriesRaw
           .map((entry) => {
             if (!entry || typeof entry !== "object") return null;
             const row = entry as Record<string, unknown>;
@@ -297,6 +308,32 @@ export function EmergencyErSummaryClosureSurface({
     } catch {
       /* Non-fatal: print proceeds without medication/procedure sections. */
     }
+    const printSummaryModel = buildEmergencyVisitSummaryModel(
+      encounter,
+      triageSnapshot,
+      null,
+      language,
+      nursingReassessmentApiEntries,
+      null
+    );
+    const clinicalTimeline = buildErClinicalTimeline({
+      locale: language,
+      t,
+      encounter,
+      triageSnapshot,
+      nursingReassessmentHistory: printSummaryModel.nursingReassessmentHistory,
+      orders: ordersRaw,
+      marAdmins: adminsRaw,
+      procedureEntries: procedureEntriesRaw,
+    });
+    const providerDocBlock = buildVisitSummaryProviderDocumentationBlock({
+      nursingAssessment: encounter.nursingAssessment,
+      locale: language,
+      providerDocumentationStatus: encounter.providerDocumentationStatus,
+      providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+      providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr,
+      providerAddenda: encounter.providerAddenda,
+    });
     printErPacket({
       patient: p,
       encounter: {
@@ -324,6 +361,10 @@ export function EmergencyErSummaryClosureSurface({
       medicationOrderRows,
       marEventRows,
       procedureSummaries,
+      providerDocumentationSection: providerDocBlock
+        ? buildProviderDocumentationPrintSection(providerDocBlock, language)
+        : null,
+      clinicalTimelineEntries: clinicalTimeline.all,
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t]);
 

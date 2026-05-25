@@ -171,6 +171,32 @@ function h2(title: string): string {
   return `<h2>${esc(title)}</h2>`;
 }
 
+function edClinicalTimelineHtml(
+  edClinicalTimeline: ChartExportManifest["edClinicalTimeline"]
+): string {
+  if (!edClinicalTimeline?.items.length) {
+    return `<p class="muted">${esc(NO_DATA)}</p>`;
+  }
+  const parts: string[] = [];
+  let lastUndated = false;
+  for (const entry of edClinicalTimeline.items) {
+    if (entry.isUndated && !lastUndated) {
+      parts.push(`<p class="muted"><strong>Undated documentation</strong></p>`);
+      lastUndated = true;
+    }
+    const actor = entry.actorName
+      ? entry.actorRoleTitle
+        ? `${entry.actorName}, ${entry.actorRoleTitle}`
+        : entry.actorName
+      : null;
+    const meta = [entry.timestampIso, entry.categoryLabel, actor].filter(Boolean).join(" — ");
+    parts.push(
+      `<div class="note-section"><p class="muted">${esc(meta)}</p><div class="pre-text">${esc(entry.summary)}</div></div>`
+    );
+  }
+  return parts.join("");
+}
+
 function section(title: string, inner: string): string {
   return `<section class="sec">${h2(title)}${inner}</section>`;
 }
@@ -282,6 +308,8 @@ export function renderEncounterChartExportHtml(
     ${observationStayHtml}
     <h3>Initial nursing documentation</h3>
     ${nursingDocumentationHtml(enc.nursingDocumentation)}
+    <h3>Clinical timeline</h3>
+    ${edClinicalTimelineHtml(manifest.edClinicalTimeline ?? null)}
     <h3>Nursing assessment / structured JSON</h3>
     ${enc.nursingAssessment != null ? jsonPreBlock(enc.nursingAssessment) : `<p class="muted">${esc(NO_DATA)}</p>`}
     <h3>Discharge summary JSON</h3>

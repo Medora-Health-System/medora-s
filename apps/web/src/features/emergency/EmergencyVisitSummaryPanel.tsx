@@ -24,6 +24,8 @@ import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/Ente
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
 import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMarSummaryCard";
+import { buildErClinicalTimeline } from "./erClinicalTimeline";
+import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/shared";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -40,6 +42,103 @@ const lineStyle: React.CSSProperties = {
   color: "#334155",
   lineHeight: 1.45,
 };
+
+const CLINICAL_TIMELINE_COLLAPSE = 10;
+
+function ClinicalTimelineCard({
+  timeline,
+  t,
+}: {
+  timeline: EdClinicalTimelineResult;
+  t: (k: string) => string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const datedVisible = expanded ? timeline.dated : timeline.dated.slice(0, CLINICAL_TIMELINE_COLLAPSE);
+  const hiddenCount = Math.max(0, timeline.dated.length - CLINICAL_TIMELINE_COLLAPSE);
+
+  const renderEntry = (entry: EdClinicalTimelineEntry) => (
+    <div
+      key={entry.id}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 2,
+        padding: "6px 0",
+        borderBottom: "1px solid #f1f5f9",
+      }}
+    >
+      <p style={{ ...lineStyle, margin: 0, fontSize: 12 }}>
+        <strong style={{ color: "#0f172a" }}>
+          {entry.displayTime ?? "—"} — {entry.categoryLabel}
+        </strong>
+        {entry.actorDisplay ? (
+          <span style={{ color: "#64748b" }}> — {entry.actorDisplay}</span>
+        ) : null}
+      </p>
+      <p style={{ ...lineStyle, margin: 0, fontSize: 12, color: "#475569" }}>{entry.summary}</p>
+    </div>
+  );
+
+  if (timeline.all.length === 0) return null;
+
+  return (
+    <MedoraCard leftAccentColor="#6366f1" variant="default">
+      <MedoraCardInner>
+        <p style={sectionTitle}>{t("emergencyVisitSummaryPanel.clinicalTimelineTitle")}</p>
+        <p style={{ ...lineStyle, margin: "4px 0 8px 0", fontSize: 12, color: "#64748b" }}>
+          {t("emergencyVisitSummaryPanel.clinicalTimelineSubline")}
+        </p>
+        <div>{datedVisible.map(renderEntry)}</div>
+        {timeline.undated.length > 0 ? (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ ...sectionTitle, marginBottom: 6 }}>
+              {t("emergencyVisitSummaryPanel.clinicalTimelineUndated")}
+            </p>
+            {timeline.undated.map(renderEntry)}
+          </div>
+        ) : null}
+        {hiddenCount > 0 && !expanded ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            style={{
+              marginTop: 8,
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "1px solid #c7d2fe",
+              background: "#eef2ff",
+              color: "#4338ca",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("emergencyVisitSummaryPanel.clinicalTimelineShowAll")}
+          </button>
+        ) : null}
+        {expanded && timeline.dated.length > CLINICAL_TIMELINE_COLLAPSE ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            style={{
+              marginTop: 8,
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              background: "#f8fafc",
+              color: "#475569",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("emergencyVisitSummaryPanel.clinicalTimelineShowLess")}
+          </button>
+        ) : null}
+      </MedoraCardInner>
+    </MedoraCard>
+  );
+}
 
 const linkPill: React.CSSProperties = {
   display: "inline-flex",
@@ -410,6 +509,9 @@ export function EmergencyVisitSummaryPanel({
   const [reassessmentEvents, setReassessmentEvents] = useState<NursingReassessmentApiEntry[]>([]);
   const [reassessmentEventsLoadFailed, setReassessmentEventsLoadFailed] = useState(false);
   const [documentationEvents, setDocumentationEvents] = useState<ClinicalDocumentationEventApiEntry[]>([]);
+  const [timelineOrders, setTimelineOrders] = useState<unknown[]>([]);
+  const [timelineMarAdmins, setTimelineMarAdmins] = useState<unknown[]>([]);
+  const [timelineProcedures, setTimelineProcedures] = useState<unknown[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,6 +567,38 @@ export function EmergencyVisitSummaryPanel({
     };
   }, [encounterId, facilityId, resultsRefresh]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [ordersRaw, adminsRaw, proceduresRaw] = await Promise.all([
+          apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
+          apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+          proceduresFetchEnabled
+            ? apiFetch(`/encounters/${encounterId}/procedures`, { facilityId })
+            : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        setTimelineOrders(Array.isArray(ordersRaw) ? ordersRaw : []);
+        setTimelineMarAdmins(Array.isArray(adminsRaw) ? adminsRaw : []);
+        const procedureEntries =
+          proceduresRaw && typeof proceduresRaw === "object" && !Array.isArray(proceduresRaw)
+            ? (proceduresRaw as { entries?: unknown }).entries
+            : null;
+        setTimelineProcedures(Array.isArray(procedureEntries) ? procedureEntries : []);
+      } catch {
+        if (!cancelled) {
+          setTimelineOrders([]);
+          setTimelineMarAdmins([]);
+          setTimelineProcedures([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, resultsRefresh, proceduresFetchEnabled]);
+
   const onLabRadSnapshot = useCallback((s: EncounterResultsLabRadSnapshot) => {
     setResultsSnap(s);
   }, []);
@@ -482,6 +616,55 @@ export function EmergencyVisitSummaryPanel({
     [encounter, triageSnapshot, resultsSnap, language, reassessmentEvents, documentationEvents]
   );
 
+  const clinicalTimeline = useMemo(() => {
+    const resultAcknowledgements =
+      resultsSnap?.rows
+        ?.map((row, idx) => {
+          const item = row.item;
+          const result = item?.result;
+          const acknowledgedAt =
+            result && typeof result === "object"
+              ? (result as { acknowledgedByProviderAt?: string | null }).acknowledgedByProviderAt
+              : null;
+          if (!acknowledgedAt) return null;
+          const label =
+            typeof item?.displayLabel === "string"
+              ? item.displayLabel
+              : typeof item?.manualLabel === "string"
+                ? item.manualLabel
+                : "Result";
+          return {
+            id: `result-${idx}`,
+            label,
+            acknowledgedAt,
+            acknowledgedBy: null,
+          };
+        })
+        .filter((r): r is NonNullable<typeof r> => r != null) ?? [];
+
+    return buildErClinicalTimeline({
+      locale: language,
+      t,
+      encounter,
+      triageSnapshot,
+      nursingReassessmentHistory: model.nursingReassessmentHistory,
+      orders: timelineOrders,
+      marAdmins: timelineMarAdmins,
+      procedureEntries: timelineProcedures,
+      resultAcknowledgements,
+    });
+  }, [
+    encounter,
+    triageSnapshot,
+    language,
+    t,
+    model.nursingReassessmentHistory,
+    timelineOrders,
+    timelineMarAdmins,
+    timelineProcedures,
+    resultsSnap,
+  ]);
+
   const hasStructuredContent = useMemo(() => {
     return Boolean(
       model.motifPresentation ||
@@ -493,6 +676,7 @@ export function EmergencyVisitSummaryPanel({
         model.nursingDischargeDocumentation ||
         model.handoff ||
         model.emtala ||
+        clinicalTimeline.all.length > 0 ||
         model.timeline.length > 0 ||
         model.nursingReassessmentHistory.length > 0 ||
         model.providerMseHistory.length > 0 ||
@@ -502,7 +686,7 @@ export function EmergencyVisitSummaryPanel({
         model.dispositionSupplementHistory.length > 0 ||
         model.triageAssessmentHistory.length > 0
     );
-  }, [model]);
+  }, [model, clinicalTimeline.all.length]);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -721,6 +905,10 @@ export function EmergencyVisitSummaryPanel({
           />
         ) : null}
         {model.emtala ? <SummaryBlockCard accent="#0e7490" block={model.emtala} /> : null}
+
+        {clinicalTimeline.all.length > 0 ? (
+          <ClinicalTimelineCard timeline={clinicalTimeline} t={t} />
+        ) : null}
 
         {model.timeline.length > 0 ? (
           <MedoraCard leftAccentColor="#94a3b8" variant="default">

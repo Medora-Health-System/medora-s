@@ -27,6 +27,11 @@ import {
   erProviderMseFormFromEncounter,
 } from "./emergencyProviderMseV1";
 import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
+import {
+  buildVisitSummaryProviderDocumentationBlock,
+  providerDocumentationToVisitSummaryBlock,
+  type VisitSummaryProviderDocumentationBlock,
+} from "./erProviderDocumentationSummary";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
@@ -118,6 +123,8 @@ export type EmergencyVisitSummaryModel = {
   /** Initial nursing assessment (`nursingEvalV1`) — distinct from reassessment history. */
   initialNursingAssessment: VisitSummaryTextBlock | null;
   resumeInfirmier: VisitSummaryTextBlock | null;
+  /** Structured provider documentation with status/metadata — drives evaluationMedicale display. */
+  providerDocumentation: VisitSummaryProviderDocumentationBlock | null;
   evaluationMedicale: VisitSummaryTextBlock | null;
   resultats: VisitSummaryResultsBlock | null;
   disposition: VisitSummaryTextBlock | null;
@@ -996,74 +1003,60 @@ export function buildEmergencyVisitSummaryModel(
     });
   }
 
-  const providerWorkspace = buildProviderDocumentationDisplayModel({
+  const providerDocumentation = buildVisitSummaryProviderDocumentationBlock({
     nursingAssessment: nav,
-    locale: locale === "en" ? "en" : "fr",
+    locale,
+    providerDocumentationStatus: encounter.providerDocumentationStatus,
+    providerDocumentationSignedAt: encounter.providerDocumentationSignedAt,
+    providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr,
+    providerAddenda: encounter.providerAddenda,
   });
-  const providerForm = erProviderMseFormFromEncounter(nav);
-  const providerPreview = providerWorkspace ? null : buildErProviderMsePreviewModel(providerForm, locale);
-  const providerSecs = providerWorkspace
-    ? providerWorkspace.sections.map((section) => ({
-        id: section.id,
-        title: section.label,
-        lines: section.text.split("\n").filter(Boolean),
-      }))
-    : nonEmptyPreviewSections(providerPreview?.sections.filter((s) => s.id !== "empty") ?? []);
-  let evaluationMedicale =
-    providerSecs.length > 0
-      ? flattenSectionsToBlock(vs(locale, "providerFlattenTitle"), providerSecs, locale, 22)
-      : null;
-  if (!evaluationMedicale && providerPreview?.oneLineSummary.trim()) {
-    evaluationMedicale = {
-      title: vs(locale, "providerNarrativeOnlyTitle"),
-      lines: [trunc(providerPreview.oneLineSummary)],
-    };
-  }
-  if (evaluationMedicale) {
-    const providerMetaLines: string[] = [];
-    const docStatus = (encounter.providerDocumentationStatus ?? "").trim();
-    if (docStatus === "SIGNED" && encounter.providerDocumentationSignedAt) {
-      const signedAt = formatIsoForLocale(encounter.providerDocumentationSignedAt, locale);
-      const signedBy = (encounter.providerDocumentationSignedByDisplayFr ?? "").trim();
-      providerMetaLines.push(
-        signedBy
-          ? interpolate(vs(locale, "providerSignedLine"), { name: signedBy, time: signedAt })
-          : interpolate(vs(locale, "providerSignedAtLine"), { time: signedAt })
-      );
-    } else if (providerWorkspace?.savedAt) {
-      const savedAt = formatIsoForLocale(providerWorkspace.savedAt, locale);
-      const savedBy = (providerWorkspace.savedBy ?? "").trim();
-      providerMetaLines.push(
-        savedBy
-          ? interpolate(vs(locale, "providerSavedLine"), { name: savedBy, time: savedAt })
-          : interpolate(vs(locale, "providerSavedAtLine"), { time: savedAt })
-      );
-    }
-    const addenda = Array.isArray(encounter.providerAddenda) ? encounter.providerAddenda : [];
-    for (const addendum of addenda.slice(0, 5)) {
-      const text = typeof addendum.text === "string" ? addendum.text.trim() : "";
-      if (!text) continue;
-      const when = formatIsoForLocale(addendum.createdAt, locale);
-      const by = (addendum.createdByDisplayFr ?? "").trim();
-      providerMetaLines.push(
-        by
-          ? interpolate(vs(locale, "providerAddendumLine"), { name: by, time: when, text: trunc(text, 240) })
-          : interpolate(vs(locale, "providerAddendumAtLine"), { time: when, text: trunc(text, 240) })
-      );
-    }
-    if (providerMetaLines.length > 0) {
+  let evaluationMedicale = providerDocumentation
+    ? providerDocumentationToVisitSummaryBlock(providerDocumentation, locale)
+    : null;
+  if (!evaluationMedicale) {
+    const providerForm = erProviderMseFormFromEncounter(nav);
+    const providerPreview = buildErProviderMsePreviewModel(providerForm, locale);
+    const providerSecs = nonEmptyPreviewSections(providerPreview?.sections.filter((s) => s.id !== "empty") ?? []);
+    evaluationMedicale =
+      providerSecs.length > 0
+        ? flattenSectionsToBlock(vs(locale, "providerFlattenTitle"), providerSecs, locale, 22)
+        : null;
+    if (!evaluationMedicale && providerPreview?.oneLineSummary.trim()) {
       evaluationMedicale = {
-        ...evaluationMedicale,
-        lines: [...evaluationMedicale.lines, ...providerMetaLines],
+        title: vs(locale, "providerNarrativeOnlyTitle"),
+        lines: [trunc(providerPreview.oneLineSummary)],
       };
     }
+    if (evaluationMedicale) {
+      const sigP = readSignatureFromNursingBlob("erProviderMseV1", nav, locale);
+      if (sigP) {
+        evaluationMedicale = {
+          ...evaluationMedicale,
+          lines: [
+            ...evaluationMedicale.lines,
+            interpolate(vs(locale, "signatureTimeJoin"), { name: sigP.label, time: sigP.at }),
+          ],
+        };
+      }
+    }
   }
-  const sigP = readSignatureFromNursingBlob("erProviderMseV1", nav, locale);
-  if (sigP) {
-    timeline.push({
-      label: vs(locale, "timelineProviderEvalSaved"),
-      value: interpolate(vs(locale, "signatureTimeJoin"), { name: sigP.label, time: sigP.at }),
-    });
+  if (evaluationMedicale && providerDocumentation) {
+    const sigP = readSignatureFromNursingBlob("erProviderMseV1", nav, locale);
+    if (sigP && !providerDocumentation.signedAt) {
+      timeline.push({
+        label: vs(locale, "timelineProviderEvalSaved"),
+        value: interpolate(vs(locale, "signatureTimeJoin"), { name: sigP.label, time: sigP.at }),
+      });
+    }
+  } else {
+    const sigP = readSignatureFromNursingBlob("erProviderMseV1", nav, locale);
+    if (sigP) {
+      timeline.push({
+        label: vs(locale, "timelineProviderEvalSaved"),
+        value: interpolate(vs(locale, "signatureTimeJoin"), { name: sigP.label, time: sigP.at }),
+      });
+    }
   }
 
   const discharge = hydrateDischargeFormFromEncounterJson(encounter.dischargeSummaryJson);
@@ -1235,6 +1228,7 @@ export function buildEmergencyVisitSummaryModel(
     triageResume,
     initialNursingAssessment,
     resumeInfirmier,
+    providerDocumentation,
     evaluationMedicale,
     resultats,
     disposition,
