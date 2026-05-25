@@ -67,6 +67,15 @@ const ROLE_LANDING: Array<{ role: string; path: string }> = [
 const DEFAULT_LANDING = "/app/trackboard";
 
 /**
+ * Phase 19V — default post-login landing for clinical trackboard roles.
+ * ED trackboard is the primary operational home after sign-in.
+ */
+export const DEFAULT_POST_LOGIN_PATH = "/app/emergency/trackboard";
+
+/** Facility roles that should land on the trackboard after normal sign-in (not role-home dashboards). */
+const TRACKBOARD_DEFAULT_ROLES: readonly string[] = ["ADMIN", "PROVIDER", "RN"];
+
+/**
  * Landing path → i18n key (`landingHome.*` in `messages/en.ts` and `messages/fr.ts`).
  * Used for role-home previews (e.g. admin user editor); unknown paths fall back to the raw path.
  */
@@ -81,6 +90,7 @@ export const LANDING_HOME_I18N_KEY_BY_PATH: Record<string, string> = {
   "/app/billing": "landingHome.previewBilling",
   "/app/fracture": "landingHome.previewFracture",
   "/app/trackboard": "landingHome.previewTrackboard",
+  "/app/emergency/trackboard": "landingHome.previewTrackboard",
 };
 
 export function getLandingHomeLabel(path: string, t: (key: string) => string): string {
@@ -202,6 +212,19 @@ function normalizeRoleSet(roles: string[]): Set<string> {
   return new Set(roles.map((r) => (r ?? "").toUpperCase().trim()).filter(Boolean));
 }
 
+function hasTrackboardDefaultLanding(set: Set<string>): boolean {
+  return TRACKBOARD_DEFAULT_ROLES.some((role) => set.has(role));
+}
+
+function isDefaultLandingPath(pathname: string): boolean {
+  return (
+    pathname === DEFAULT_LANDING ||
+    pathname.startsWith(`${DEFAULT_LANDING}/`) ||
+    pathname === DEFAULT_POST_LOGIN_PATH ||
+    pathname.startsWith(`${DEFAULT_POST_LOGIN_PATH}/`)
+  );
+}
+
 function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   const { prefix, exact } = rule;
   if (exact) return pathname === prefix;
@@ -260,6 +283,9 @@ export function getLandingRouteForRoles(roles: string[]): string {
     }
     return "/app/mspp/dashboard";
   }
+  if (hasTrackboardDefaultLanding(set)) {
+    return DEFAULT_POST_LOGIN_PATH;
+  }
   for (const { role, path } of ROLE_LANDING) {
     if (set.has(role)) return path;
   }
@@ -303,12 +329,9 @@ export function isAppPathAllowedForRoles(
   // Brief /app visit before layout redirects to role home
   if (pathname === "/app" && set.size > 0) return true;
 
-  // Edge-case roles: landing is DEFAULT_LANDING (trackboard)
-  if (
-    (pathname === DEFAULT_LANDING || pathname.startsWith(`${DEFAULT_LANDING}/`)) &&
-    set.size > 0 &&
-    getLandingRouteForRoles(roles) === DEFAULT_LANDING
-  ) {
+  // Edge-case roles: landing is a trackboard path
+  const landing = getLandingRouteForRoles(roles);
+  if (isDefaultLandingPath(pathname) && set.size > 0 && isDefaultLandingPath(landing)) {
     return true;
   }
 

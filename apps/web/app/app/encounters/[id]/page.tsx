@@ -154,6 +154,10 @@ import {
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import { getLandingRouteForRoles, isAppPathAllowedForRoles } from "@/lib/landingRoute";
+import {
+  readEncounterUiState,
+  writeEncounterUiState,
+} from "@/lib/encounterUiState";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { isEncounterLocked } from "@/lib/encounterLock";
@@ -683,13 +687,48 @@ export default function EncounterDetailPage() {
       typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
     if (tabParam && ENCOUNTER_TAB_IDS.has(tabParam)) {
       setActiveTab(tabParam);
+    } else if (typeof window !== "undefined") {
+      const persisted = readEncounterUiState(window.sessionStorage, encounterId);
+      if (persisted?.activeTab && ENCOUNTER_TAB_IDS.has(persisted.activeTab)) {
+        setActiveTab(persisted.activeTab);
+      } else if (roles.includes("PROVIDER") || roles.includes("ADMIN")) {
+        setActiveTab("clinic");
+      } else if (roles.includes("RN")) {
+        setActiveTab("triage");
+      }
+      if (persisted?.scrollY != null && !tabParam) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: persisted.scrollY, behavior: "auto" });
+        });
+      }
     } else if (roles.includes("PROVIDER") || roles.includes("ADMIN")) {
       setActiveTab("clinic");
     } else if (roles.includes("RN")) {
       setActiveTab("triage");
     }
     setTabBootstrapped(true);
-  }, [encounter, facilityId, rolesReady, roles, tabBootstrapped]);
+  }, [encounter, encounterId, facilityId, rolesReady, roles, tabBootstrapped]);
+
+  useEffect(() => {
+    if (!tabBootstrapped || !encounterId || typeof window === "undefined") return;
+    writeEncounterUiState(window.sessionStorage, encounterId, { activeTab });
+  }, [activeTab, encounterId, tabBootstrapped]);
+
+  useEffect(() => {
+    if (!tabBootstrapped || !encounterId || typeof window === "undefined") return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        writeEncounterUiState(window.sessionStorage, encounterId, { scrollY: window.scrollY });
+      }, 300);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (timer) clearTimeout(timer);
+    };
+  }, [encounterId, tabBootstrapped]);
 
   useEffect(() => {
     if (activeTab !== "history" || !encounterId || !facilityId) return;
@@ -4003,32 +4042,45 @@ function ClinicVisitTab({
     setPlan(next.treatmentPlan);
   }, []);
 
-  useEffect(() => {
-    setVisitReason(encounter.visitReason || encounter.chiefComplaint || "");
-    setImpression(encounter.clinicianImpression || encounter.providerNote || "");
-    setPlan(encounter.treatmentPlan || "");
-    setFollowUp(encounter.followUpDate ? new Date(encounter.followUpDate).toISOString().slice(0, 10) : "");
-    const pe = parsePhysicianEvalV1FromEncounter(encounter);
-    setProviderActiveTemplateId(readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)?.activeTemplateId ?? null);
-    setProviderWorkspaceDraft(hydrateProviderDocumentationWorkspaceState({ encounter }));
+  const clinicEncounterSyncRef = useRef({
+    encounterId: encounter.id,
+    docSigned: isEncounterLocked(encounter),
+  });
+
+  const syncClinicFieldsFromEncounter = useCallback((enc: typeof encounter) => {
+    setVisitReason(enc.visitReason || enc.chiefComplaint || "");
+    setImpression(enc.clinicianImpression || enc.providerNote || "");
+    setPlan(enc.treatmentPlan || "");
+    setFollowUp(enc.followUpDate ? new Date(enc.followUpDate).toISOString().slice(0, 10) : "");
+    const pe = parsePhysicianEvalV1FromEncounter(enc);
+    setProviderActiveTemplateId(
+      readProviderDocumentationWorkspaceMetadata(enc.nursingAssessment)?.activeTemplateId ?? null
+    );
+    setProviderWorkspaceDraft(hydrateProviderDocumentationWorkspaceState({ encounter: enc }));
     setHpi(pe.hpi);
     setRos(pe.ros);
     setPhysicalExam(pe.physicalExam);
     setMdm(pe.mdm);
+  }, []);
+
+  useEffect(() => {
+    const docSignedNow = isEncounterLocked(encounter);
+    const sync = clinicEncounterSyncRef.current;
+    const encounterChanged = sync.encounterId !== encounter.id;
+    const signStateChanged = sync.docSigned !== docSignedNow;
+
+    if (encounterChanged || signStateChanged) {
+      sync.encounterId = encounter.id;
+      sync.docSigned = docSignedNow;
+      syncClinicFieldsFromEncounter(encounter);
+    }
   }, [
+    encounter,
     encounter.id,
-    encounter.updatedAt,
-    encounter.visitReason,
-    encounter.chiefComplaint,
-    encounter.clinicianImpression,
-    encounter.providerNote,
-    encounter.treatmentPlan,
-    encounter.followUpDate,
     encounter.nursingAssessment,
     encounter.providerDocumentationStatus,
     encounter.providerDocumentationSignedAt,
-    encounter.providerDocumentationSignedByDisplayFr,
-    encounter.providerAddenda,
+    syncClinicFieldsFromEncounter,
   ]);
 
   const handleAddAddendum = async () => {

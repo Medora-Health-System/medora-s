@@ -82,6 +82,10 @@ import {
   DOCUMENTATION_READINESS_LEVEL_LABEL_KEYS,
   type DocumentationReadinessLevel,
 } from "@/lib/providerDocumentationReadinessScore";
+import {
+  readEncounterUiState,
+  writeEncounterUiState,
+} from "@/lib/encounterUiState";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -450,6 +454,8 @@ export function ProviderDocumentationWorkspace({
     () => new Set(["hpi"])
   );
   const initializedDefaultExpandRef = useRef(false);
+  const uiStatePersistReadyRef = useRef(false);
+  const uiStatePersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestSignatureRef = useRef(providerDocumentationStateSignature(value));
   const lastSavedSignatureRef = useRef(providerDocumentationStateSignature(value));
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -546,14 +552,54 @@ export function ProviderDocumentationWorkspace({
   useEffect(() => {
     if (initializedDefaultExpandRef.current) return;
     initializedDefaultExpandRef.current = true;
-    setExpandedSections(
-      new Set(
-        defaultExpandedAccordionSections({
-          missingSectionIds: completeness.missingSections,
-        })
-      )
-    );
-  }, [completeness.missingSections]);
+    if (typeof window !== "undefined") {
+      const persisted = readEncounterUiState(window.sessionStorage, encounterId);
+      if (persisted?.expandedAccordionSections?.length) {
+        setExpandedSections(
+          new Set(persisted.expandedAccordionSections as ProviderDocumentationAccordionSectionId[])
+        );
+      } else {
+        setExpandedSections(
+          new Set(
+            defaultExpandedAccordionSections({
+              missingSectionIds: completeness.missingSections,
+            })
+          )
+        );
+      }
+      if (persisted?.activeDocSection) {
+        setActiveDictationSection(persisted.activeDocSection as ProviderDocumentationDictationSectionId);
+      }
+    } else {
+      setExpandedSections(
+        new Set(
+          defaultExpandedAccordionSections({
+            missingSectionIds: completeness.missingSections,
+          })
+        )
+      );
+    }
+    uiStatePersistReadyRef.current = true;
+  }, [completeness.missingSections, encounterId]);
+
+  useEffect(() => {
+    if (!uiStatePersistReadyRef.current || typeof window === "undefined") return;
+    if (uiStatePersistTimerRef.current) clearTimeout(uiStatePersistTimerRef.current);
+    uiStatePersistTimerRef.current = setTimeout(() => {
+      uiStatePersistTimerRef.current = null;
+      writeEncounterUiState(window.sessionStorage, encounterId, {
+        expandedAccordionSections: [...expandedSections],
+        activeDocSection: activeDictationSection ?? undefined,
+        templateId: value.activeTemplateId ?? undefined,
+      });
+    }, 300);
+    return () => {
+      if (uiStatePersistTimerRef.current) {
+        clearTimeout(uiStatePersistTimerRef.current);
+        uiStatePersistTimerRef.current = null;
+      }
+    };
+  }, [activeDictationSection, encounterId, expandedSections, value.activeTemplateId]);
 
   useEffect(() => {
     latestSignatureRef.current = currentSignature;
