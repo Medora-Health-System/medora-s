@@ -24,6 +24,8 @@ export const providerDischargeDocumentation19YEn = {
     requiredFollowUp: "At least one follow-up row (specialty, provider, or timing) is required for each selected discharge diagnosis.",
     saveBlocked: "Complete all required discharge documentation fields for each selected diagnosis before saving.",
   },
+  applySuggestion: "Apply / refresh suggestion",
+  applySuggestionHint: "Fills empty fields from the matched documentation template. Does not overwrite your existing text unless you refresh.",
   addFollowUp: "+ Add follow-up",
   followUpProviderPlaceholder: "Provider / facility",
   followUpTimingPlaceholder: "Timing / date",

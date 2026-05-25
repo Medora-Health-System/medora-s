@@ -24,6 +24,8 @@ export const providerDischargeDocumentation19YFr = {
     requiredFollowUp: "Au moins un suivi (spécialité, professionnel ou délai) est obligatoire pour chaque diagnostic de sortie sélectionné.",
     saveBlocked: "Complétez tous les champs obligatoires pour chaque diagnostic sélectionné avant d'enregistrer.",
   },
+  applySuggestion: "Appliquer / actualiser la suggestion",
+  applySuggestionHint: "Remplit les champs vides à partir du modèle correspondant. Ne remplace pas votre texte existant sauf si vous actualisez.",
   addFollowUp: "+ Ajouter un suivi",
   followUpProviderPlaceholder: "Professionnel / établissement",
   followUpTimingPlaceholder: "Délai / date",

@@ -9,7 +9,7 @@ import {
   getSelectedDiagnosisDocs,
   hydrateProviderDischargeDocumentationForm,
   readProviderDischargeDocumentationMeta,
-  type ProviderDischargeDiagnosisDoc,
+  type ProviderDischargeDiagnosisCard,
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
 import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
@@ -47,8 +47,8 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
   return parts.join(" · ");
 }
 
-function appendDiagnosisDocLines(lines: string[], doc: ProviderDischargeDiagnosisDoc, locale: SupportedLanguage) {
-  const primarySuffix = "";
+function appendDiagnosisDocLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
+  const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
   lines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
   pushLine(lines, p(locale, "description"), doc.description);

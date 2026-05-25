@@ -7,18 +7,18 @@ import { useI18n } from "@/lib/i18n";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
 import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacyApi";
 import {
-  buildEducationSuggestionFromTemplate,
-  matchProviderDischargeEducationTemplate,
-} from "./providerDischargeEducationTemplates";
+  applyProviderDischargeTemplateToCard,
+  buildProviderDischargeCardFromDiagnosis,
+  resolveProviderDischargeTemplateForDiagnosis,
+} from "./providerDischargeTemplateRegistry";
 import {
-  createDiagnosisDocFromRef,
   findDiagnosisDocForRef,
+  getSelectedDiagnosisDocs,
   mergeProviderDischargeDocumentationIntoDischargeJson,
   newDefaultFollowUpRow,
-  newFollowUpRowId,
   PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES,
   WORK_SCHOOL_QUICK_OPTIONS,
-  type ProviderDischargeDiagnosisDoc,
+  type ProviderDischargeDiagnosisCard,
   type ProviderDischargeDiagnosisRef,
   type ProviderDischargeDocumentationForm,
   type ProviderDischargeFollowUpRow,
@@ -94,15 +94,17 @@ function DiagnosisDocumentationCard({
   validationErrors,
   facilityId,
   onPatchDoc,
+  onApplyTemplate,
 }: {
-  doc: ProviderDischargeDiagnosisDoc;
+  doc: ProviderDischargeDiagnosisCard;
   disabled: boolean;
   validationErrors?: Partial<Record<string, string>>;
   facilityId: string;
-  onPatchDoc: (docId: string, patch: Partial<ProviderDischargeDiagnosisDoc>) => void;
+  onPatchDoc: (docId: string, patch: Partial<ProviderDischargeDiagnosisCard>) => void;
+  onApplyTemplate: (docId: string, overwriteExisting: boolean) => void;
 }) {
   const { t, language } = useI18n();
-  const cardTitle = `${doc.code} — ${doc.displayName}`;
+  const cardTitle = `${doc.code} — ${doc.displayName}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
 
   const patchFollowUpRow = (rowId: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
     onPatchDoc(doc.id, {
@@ -144,6 +146,25 @@ function DiagnosisDocumentationCard({
       }}
     >
       <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{cardTitle}</p>
+      {!disabled ?
+        <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => onApplyTemplate(doc.id, false)}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              background: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {t("providerDischargeDocumentation19Y.applySuggestion")}
+          </button>
+        </div>
+      : null}
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
@@ -419,7 +440,7 @@ export function ProviderDischargeDocumentationSection({
   );
 
   const patchDiagnosisDoc = useCallback(
-    (docId: string, patch: Partial<ProviderDischargeDiagnosisDoc>) => {
+    (docId: string, patch: Partial<ProviderDischargeDiagnosisCard>) => {
       patchProvider({
         diagnosisDocs: providerForm.diagnosisDocs.map((d) => (d.id === docId ? { ...d, ...patch } : d)),
       });
@@ -428,39 +449,45 @@ export function ProviderDischargeDocumentationSection({
   );
 
   const applyTemplateToDoc = useCallback(
-    (docId: string, ref: ProviderDischargeDiagnosisRef) => {
+    (docId: string, overwriteExisting: boolean, providerConfirmed: boolean) => {
       const doc = providerForm.diagnosisDocs.find((d) => d.id === docId);
       if (!doc) return;
-      const template = matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label });
-      if (!template) return;
-      const suggestion = buildEducationSuggestionFromTemplate(template);
-      const patch: Partial<ProviderDischargeDiagnosisDoc> = { sourceTemplateId: template.id };
-      if (!doc.description.trim()) patch.description = suggestion.description;
-      if (!doc.diagnosisInstructions.trim()) patch.diagnosisInstructions = suggestion.instructions;
-      if (!doc.returnPrecautions.trim()) patch.returnPrecautions = suggestion.returnPrecautions;
-      patchDiagnosisDoc(docId, patch);
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: doc.code,
+        displayName: doc.displayName,
+      });
+      if (resolved.matchLevel === "generic" && !overwriteExisting) return;
+      const next = applyProviderDischargeTemplateToCard(doc, resolved, {
+        overwriteExisting,
+        providerConfirmed,
+        actor: { appliedAt: new Date().toISOString() },
+      });
+      patchDiagnosisDoc(docId, next);
     },
     [patchDiagnosisDoc, providerForm.diagnosisDocs]
   );
 
-  const ensureDocForRef = useCallback(
-    (ref: ProviderDischargeDiagnosisRef, applyTemplate: boolean): ProviderDischargeDiagnosisDoc => {
+  const ensureDocForRow = useCallback(
+    (row: DxRow, isPrimary: boolean, applyTemplate: boolean): ProviderDischargeDiagnosisCard => {
+      const ref: ProviderDischargeDiagnosisRef = {
+        encounterDiagnosisId: row.id,
+        code: row.code,
+        label: row.description?.trim() || row.code,
+        isPrimary,
+      };
       const existing = findDiagnosisDocForRef(providerForm, ref);
       if (existing) {
-        if (applyTemplate) applyTemplateToDoc(existing.id, ref);
+        if (applyTemplate) applyTemplateToDoc(existing.id, false, false);
         return existing;
       }
-      const created = createDiagnosisDocFromRef(ref);
-      const template = applyTemplate ?
-        matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label })
-      : null;
-      if (template) {
-        created.sourceTemplateId = template.id;
-        const suggestion = buildEducationSuggestionFromTemplate(template);
-        created.description = suggestion.description;
-        created.diagnosisInstructions = suggestion.instructions;
-        created.returnPrecautions = suggestion.returnPrecautions;
-      }
+      const created = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: row.id,
+        code: row.code,
+        displayName: row.description?.trim() || row.code,
+        displayOrder: row.sortOrder,
+        isPrimaryDiagnosis: isPrimary,
+        applyTemplateSuggestion: applyTemplate,
+      });
       return created;
     },
     [applyTemplateToDoc, providerForm]
@@ -476,12 +503,12 @@ export function ProviderDischargeDocumentationSection({
       label: primary.description?.trim() || primary.code,
       isPrimary: true,
     };
-    const doc = ensureDocForRef(ref, true);
+    const doc = ensureDocForRow(primary, true, true);
     patchProvider({
       diagnosisRefs: [ref],
       diagnosisDocs: [...providerForm.diagnosisDocs.filter((d) => d.id !== doc.id), doc],
     });
-  }, [encounterDiagnoses, ensureDocForRef, patchProvider, providerForm.diagnosisDocs, providerForm.diagnosisRefs.length]);
+  }, [encounterDiagnoses, ensureDocForRow, patchProvider, providerForm.diagnosisDocs, providerForm.diagnosisRefs.length]);
 
   useEffect(() => {
     autoPopulatePrimary();
@@ -493,10 +520,7 @@ export function ProviderDischargeDocumentationSection({
   );
 
   const selectedCards = useMemo(
-    () =>
-      providerForm.diagnosisRefs
-        .map((ref) => findDiagnosisDocForRef(providerForm, ref))
-        .filter((d): d is ProviderDischargeDiagnosisDoc => d != null),
+    () => getSelectedDiagnosisDocs(providerForm),
     [providerForm]
   );
 
@@ -508,13 +532,14 @@ export function ProviderDischargeDocumentationSection({
       });
       return;
     }
+    const isPrimary = providerForm.diagnosisRefs.length === 0;
     const ref: ProviderDischargeDiagnosisRef = {
       encounterDiagnosisId: row.id,
       code: row.code,
       label: row.description?.trim() || row.code,
-      isPrimary: providerForm.diagnosisRefs.length === 0,
+      isPrimary,
     };
-    const doc = ensureDocForRef(ref, true);
+    const doc = ensureDocForRow(row, isPrimary, true);
     const nextDocs = providerForm.diagnosisDocs.some((d) => d.id === doc.id) ?
       providerForm.diagnosisDocs.map((d) => (d.id === doc.id ? doc : d))
     : [...providerForm.diagnosisDocs, doc];
@@ -598,6 +623,7 @@ export function ProviderDischargeDocumentationSection({
             facilityId={facilityId}
             validationErrors={validationErrors?.byDocId[doc.id]}
             onPatchDoc={patchDiagnosisDoc}
+            onApplyTemplate={(docId, overwrite) => applyTemplateToDoc(docId, overwrite, true)}
           />
         ))}
       </div>
