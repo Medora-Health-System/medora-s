@@ -48,6 +48,7 @@ import {
   hydrateProviderDischargeDocumentationForm,
   type ProviderDischargeValidationErrors,
 } from "@/features/emergency/providerDischargeDocumentationModel";
+import { buildProviderDischargeDocumentationPreviewSections } from "@/features/emergency/providerDischargeDocumentationSummary";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
@@ -96,6 +97,9 @@ const sectionHeading: React.CSSProperties = {
 const PREVIEW_ACCENTS: Record<string, string> = {
   mode: "#64748b",
   discharge: "#475569",
+  providerDoc: "#0f766e",
+  providerPlanning: "#0369a1",
+  providerMeta: "#64748b",
   admission: "#6a1b9a",
   erExtra: "#b45309",
   empty: "#cbd5e1",
@@ -272,25 +276,34 @@ export function EmergencyDispositionPanel({
     return opt?.label ?? dischargeForm.dischargeMode.trim();
   }, [OUTCOME_OPTIONS, outcomeUi, dischargeForm.dischargeMode]);
 
-  const previewModel = useMemo(
-    () =>
-      buildErDispositionPreviewModel(
-        dischargeForm,
-        admissionForm,
-        supplementForm,
-        outcomeUi,
-        dispositionPreviewLabels,
-        dischargeModeDisplayLabel
-      ),
-    [
+  const previewModel = useMemo(() => {
+    const base = buildErDispositionPreviewModel(
       dischargeForm,
       admissionForm,
       supplementForm,
       outcomeUi,
       dispositionPreviewLabels,
-      dischargeModeDisplayLabel,
-    ]
-  );
+      dischargeModeDisplayLabel
+    );
+    const providerSections = buildProviderDischargeDocumentationPreviewSections(
+      providerDischargeDoc,
+      encounter.dischargeSummaryJson,
+      language
+    );
+    if (!providerSections.length) return base;
+    const sections = [...base.sections.filter((s) => s.id !== "discharge"), ...providerSections];
+    return { ...base, sections };
+  }, [
+    dischargeForm,
+    admissionForm,
+    supplementForm,
+    outcomeUi,
+    dispositionPreviewLabels,
+    dischargeModeDisplayLabel,
+    providerDischargeDoc,
+    encounter.dischargeSummaryJson,
+    language,
+  ]);
 
   const storedSig = useMemo(
     () => readDispositionSignatureFromEncounter(encounter.nursingAssessment),
@@ -386,7 +399,8 @@ export function EmergencyDispositionPanel({
           body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
             encounter.dischargeSummaryJson,
             providerDischargeDoc,
-            { documentedAt: signature.savedAt, documentedByDisplayName: savedByDisplayName }
+            { documentedAt: signature.savedAt, documentedByDisplayName: savedByDisplayName },
+            mergedDischarge
           );
         } else {
           body.dischargeSummaryJson = mergedDischarge;

@@ -215,7 +215,29 @@ const JSON_KEYS = {
   documentedAt: "providerDischargeDocumentedAt",
   documentedBy: "providerDischargeDocumentedByDisplayName",
   documentedByTitle: "providerDischargeDocumentedByTitle",
+  dispositionSchemaVersion: "dispositionSchemaVersion",
 } as const;
+
+/** Phase 19Z.1A — additive canonical disposition schema marker (optional on read). */
+export const ER_DISPOSITION_SCHEMA_VERSION = "19Z.1A" as const;
+
+export function readDispositionSchemaVersion(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const v = (raw as Record<string, unknown>)[JSON_KEYS.dispositionSchemaVersion];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
+
+/** True when structured 19Y provider discharge documentation is present in discharge JSON. */
+export function hasStructuredProviderDischargeDocumentation(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+  const o = raw as Record<string, unknown>;
+  const docs = o[JSON_KEYS.diagnosisDocs];
+  if (Array.isArray(docs) && docs.length > 0) return true;
+  const refs = o[JSON_KEYS.diagnosisRefs];
+  if (Array.isArray(refs) && refs.length > 0) return true;
+  const documentedAt = o[JSON_KEYS.documentedAt];
+  return typeof documentedAt === "string" && documentedAt.trim().length > 0;
+}
 
 export function emptyProviderDischargeDocumentationForm(): ProviderDischargeDocumentationForm {
   return {
@@ -737,12 +759,16 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
 
   if (rollup) {
     setOrDelete("dischargeDiagnosisSummary", rollup.description);
+    setOrDelete("disposition", rollup.description);
     setOrDelete("dischargeInstructions", rollup.diagnosisInstructions);
     setOrDelete("medicationInstructions", rollup.medicationTreatment);
+    setOrDelete("medicationsGiven", rollup.medicationTreatment);
   } else {
     setOrDelete("dischargeDiagnosisSummary", "");
+    setOrDelete("disposition", "");
     setOrDelete("dischargeInstructions", "");
     setOrDelete("medicationInstructions", "");
+    setOrDelete("medicationsGiven", "");
   }
 
   setOrDelete("returnPrecautions", form.returnPrecautions);
@@ -777,10 +803,56 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
     out[JSON_KEYS.documentedBy] = meta.documentedByDisplayName;
     if (meta.documentedByTitle?.trim()) out[JSON_KEYS.documentedByTitle] = meta.documentedByTitle.trim();
     else delete out[JSON_KEYS.documentedByTitle];
+    out[JSON_KEYS.dispositionSchemaVersion] = ER_DISPOSITION_SCHEMA_VERSION;
   }
 
   return out;
 }
+
+/** Core discharge summary fields that trackboard, preview, and summary read (not 19Y-only keys). */
+export const CANONICAL_ER_DISPOSITION_DISCHARGE_KEYS = [
+  "dischargeMode",
+  "disposition",
+  "exitCondition",
+  "dischargeInstructions",
+  "medicationsGiven",
+  "followUp",
+  "returnIfWorse",
+  "patientDestination",
+] as const;
+
+/**
+ * Phase 19Z.1 — overlay canonical ER disposition fields from `mergeErDischargeForEncounterPatch`
+ * onto provider 19Y save JSON (fixes missing `dischargeMode` on provider-only save path).
+ */
+export function mergeCanonicalErDispositionIntoDischargeJson(
+  providerDischargeJson: Record<string, unknown>,
+  canonicalDischargePatch: Record<string, unknown> | null | undefined
+): Record<string, unknown> {
+  if (!canonicalDischargePatch) return providerDischargeJson;
+  const out = { ...providerDischargeJson };
+  for (const key of CANONICAL_ER_DISPOSITION_DISCHARGE_KEYS) {
+    if (!(key in canonicalDischargePatch)) continue;
+    const raw = canonicalDischargePatch[key];
+    if (typeof raw === "string") {
+      const v = raw.trim();
+      if (v) out[key] = v;
+      else delete out[key];
+    } else if (raw !== undefined && raw !== null) {
+      out[key] = raw;
+    }
+  }
+  return out;
+}
+
+/** Stable textarea ids for Dragon / microphone focus (UI only). */
+export const providerDischargeDictationTextareaId = {
+  diagnosisDescription: (docId: string) => `prov-discharge-dx-${docId}-description`,
+  diagnosisInstructions: (docId: string) => `prov-discharge-dx-${docId}-instructions`,
+  medicationTreatment: (docId: string) => `prov-discharge-dx-${docId}-medication`,
+  returnPrecautions: "prov-discharge-return-precautions",
+  returnWorkSchool: "prov-discharge-return-work-school",
+} as const;
 
 /** Apply provider discharge fields onto legacy DischargeFormState for unified save. */
 export function applyProviderDischargeDocumentationToDischargeForm(
@@ -791,8 +863,10 @@ export function applyProviderDischargeDocumentationToDischargeForm(
   if (!rollup) return dischargeForm;
   return {
     ...dischargeForm,
+    disposition: rollup.description,
     dischargeDiagnosisSummary: rollup.description,
     dischargeInstructions: rollup.diagnosisInstructions,
+    medicationsGiven: rollup.medicationTreatment,
     medicationInstructions: rollup.medicationTreatment,
     returnPrecautions: providerForm.returnPrecautions,
     workSchoolNote: providerForm.returnWorkSchool,

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
 import { MedicationAutocomplete } from "@/components/pharmacy/MedicationAutocomplete";
+import { DictationFieldLabel } from "@/components/clinical/DictationFieldLabel";
 import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacyApi";
 import {
   applyProviderDischargeTemplateToCardByDiagnosis,
@@ -18,8 +19,10 @@ import {
 } from "./providerDischargeSharedPlanningMerge";
 import {
   getSelectedDiagnosisDocs,
+  mergeCanonicalErDispositionIntoDischargeJson,
   mergeProviderDischargeDocumentationIntoDischargeJson,
   newDefaultFollowUpRow,
+  providerDischargeDictationTextareaId,
   PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES,
   WORK_SCHOOL_QUICK_OPTIONS,
   type ProviderDischargeDiagnosisCard,
@@ -118,6 +121,11 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
   };
 
   const fieldError = (key: string) => validationErrors?.[key];
+  const descriptionId = providerDischargeDictationTextareaId.diagnosisDescription(doc.id);
+  const instructionsId = providerDischargeDictationTextareaId.diagnosisInstructions(doc.id);
+  const medicationId = providerDischargeDictationTextareaId.medicationTreatment(doc.id);
+  const dictationLabel = t("providerDocumentationWorkspace.dictationFocusField");
+  const dictationReadOnly = t("providerDocumentationWorkspace.dictationReadOnlyField");
 
   return (
     <div
@@ -152,8 +160,15 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.descriptionRequired")}</label>
+          <DictationFieldLabel
+            label={t("providerDischargeDocumentation19Y.descriptionRequired")}
+            dictationTargetId={descriptionId}
+            dictationLabel={dictationLabel}
+            readOnly={disabled}
+            readOnlyLabel={dictationReadOnly}
+          />
           <textarea
+            id={descriptionId}
             value={doc.description}
             disabled={disabled}
             rows={3}
@@ -170,8 +185,15 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
         </div>
 
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.diagnosisInstructionsRequired")}</label>
+          <DictationFieldLabel
+            label={t("providerDischargeDocumentation19Y.diagnosisInstructionsRequired")}
+            dictationTargetId={instructionsId}
+            dictationLabel={dictationLabel}
+            readOnly={disabled}
+            readOnlyLabel={dictationReadOnly}
+          />
           <textarea
+            id={instructionsId}
             value={doc.diagnosisInstructions}
             disabled={disabled}
             rows={3}
@@ -188,7 +210,13 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
         </div>
 
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.medicationTreatmentRequired")}</label>
+          <DictationFieldLabel
+            label={t("providerDischargeDocumentation19Y.medicationTreatmentRequired")}
+            dictationTargetId={medicationId}
+            dictationLabel={dictationLabel}
+            readOnly={disabled}
+            readOnlyLabel={dictationReadOnly}
+          />
           {!disabled ?
             <div style={{ marginBottom: 8 }}>
               <MedicationAutocomplete
@@ -199,6 +227,7 @@ const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCar
             </div>
           : null}
           <textarea
+            id={medicationId}
             value={doc.medicationTreatment}
             disabled={disabled}
             rows={3}
@@ -234,6 +263,10 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
   onPatchShared: (patch: Partial<Pick<ProviderDischargeDocumentationForm, "returnPrecautions" | "returnWorkSchool" | "followUps">>) => void;
 }) {
   const { t } = useI18n();
+  const dictationLabel = t("providerDocumentationWorkspace.dictationFocusField");
+  const dictationReadOnly = t("providerDocumentationWorkspace.dictationReadOnlyField");
+  const precautionsId = providerDischargeDictationTextareaId.returnPrecautions;
+  const workSchoolId = providerDischargeDictationTextareaId.returnWorkSchool;
 
   const patchFollowUpRow = (rowId: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
     onPatchShared({
@@ -271,8 +304,15 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.returnPrecautionsRequired")}</label>
+          <DictationFieldLabel
+            label={t("providerDischargeDocumentation19Y.returnPrecautionsRequired")}
+            dictationTargetId={precautionsId}
+            dictationLabel={dictationLabel}
+            readOnly={disabled}
+            readOnlyLabel={dictationReadOnly}
+          />
           <textarea
+            id={precautionsId}
             value={returnPrecautions}
             disabled={disabled}
             rows={3}
@@ -289,7 +329,13 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
         </div>
 
         <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.workSchool")}</label>
+          <DictationFieldLabel
+            label={t("providerDischargeDocumentation19Y.workSchool")}
+            dictationTargetId={workSchoolId}
+            dictationLabel={dictationLabel}
+            readOnly={disabled}
+            readOnlyLabel={dictationReadOnly}
+          />
           {!disabled ?
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
               {WORK_SCHOOL_QUICK_OPTIONS.map((opt) => (
@@ -313,6 +359,7 @@ const SharedDischargePlanningSection = React.memo(function SharedDischargePlanni
             </div>
           : null}
           <textarea
+            id={workSchoolId}
             value={returnWorkSchool}
             disabled={disabled}
             rows={2}
@@ -717,9 +764,15 @@ export function ProviderDischargeDocumentationSection({
 export function buildProviderDischargeJsonForSave(
   dischargeSummaryJson: unknown,
   providerForm: ProviderDischargeDocumentationForm,
-  meta: { documentedAt: string; documentedByDisplayName: string; documentedByTitle?: string }
+  meta: { documentedAt: string; documentedByDisplayName: string; documentedByTitle?: string },
+  canonicalDischargePatch?: Record<string, unknown> | null
 ): Record<string, unknown> {
-  return mergeProviderDischargeDocumentationIntoDischargeJson(dischargeSummaryJson, providerForm, meta);
+  const providerJson = mergeProviderDischargeDocumentationIntoDischargeJson(
+    dischargeSummaryJson,
+    providerForm,
+    meta
+  );
+  return mergeCanonicalErDispositionIntoDischargeJson(providerJson, canonicalDischargePatch);
 }
 
 export { validateProviderDischargeDocumentation } from "./providerDischargeDocumentationModel";

@@ -4,12 +4,14 @@
 
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
+import type { ErDispositionPreviewSection } from "./emergencyDispositionV1";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 import {
   getSelectedDiagnosisDocs,
   hydrateProviderDischargeDocumentationForm,
   readProviderDischargeDocumentationMeta,
   type ProviderDischargeDiagnosisCard,
+  type ProviderDischargeDocumentationForm,
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
 import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
@@ -169,4 +171,70 @@ export function buildNursingDischargeExecutionSummaryBlock19Y(
   pushLine(lines, p(locale, "nursingNote"), exec.dischargeSortieExecutionNote);
 
   return { title: p(locale, "nursingSummaryBlockTitle"), lines };
+}
+
+function previewPushLine(lines: string[], label: string, value: string | null | undefined) {
+  const v = (value ?? "").trim();
+  if (!v) return;
+  lines.push(`${label} : ${v.length > 500 ? `${v.slice(0, 500)}…` : v}`);
+}
+
+/** Right-side disposition preview — provider 19Y documentation without governance metadata. */
+export function buildProviderDischargeDocumentationPreviewSections(
+  providerForm: ProviderDischargeDocumentationForm,
+  dischargeSummaryJson: unknown,
+  locale: SupportedLanguage
+): ErDispositionPreviewSection[] {
+  const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);
+  const selectedDocs = getSelectedDiagnosisDocs(providerForm);
+  const sections: ErDispositionPreviewSection[] = [];
+
+  const metaLines: string[] = [];
+  if (meta.documentedByDisplayName && meta.documentedAt) {
+    const title = meta.documentedByTitle?.trim();
+    const who = title ? `${meta.documentedByDisplayName} (${title})` : meta.documentedByDisplayName;
+    metaLines.push(`${p(locale, "documentedBy")} : ${who} — ${formatIso(meta.documentedAt, locale)}`);
+  }
+  if (providerForm.patientLeftEdAt.trim()) {
+    previewPushLine(metaLines, p(locale, "patientLeftEd"), formatIso(providerForm.patientLeftEdAt, locale));
+  }
+  if (metaLines.length) {
+    sections.push({ id: "providerMeta", title: p(locale, "summaryBlockTitle"), lines: metaLines });
+  }
+
+  if (selectedDocs.length) {
+    const docLines: string[] = [];
+    for (const doc of selectedDocs) {
+      const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
+      docLines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
+      previewPushLine(docLines, p(locale, "description"), doc.description);
+      previewPushLine(docLines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
+      previewPushLine(docLines, p(locale, "medicationTreatment"), doc.medicationTreatment);
+      if (doc !== selectedDocs[selectedDocs.length - 1]) docLines.push("");
+    }
+    sections.push({
+      id: "providerDoc",
+      title: p(locale, "diagnosisDocumentationSection"),
+      lines: docLines,
+    });
+  }
+
+  const planningLines: string[] = [];
+  previewPushLine(planningLines, p(locale, "returnPrecautions"), providerForm.returnPrecautions);
+  previewPushLine(planningLines, p(locale, "workSchool"), providerForm.returnWorkSchool);
+  if (providerForm.followUps.length) {
+    planningLines.push(p(locale, "followUp"));
+    for (const row of providerForm.followUps) {
+      planningLines.push(`• ${formatFollowUpRow(row, locale)}`);
+    }
+  }
+  if (planningLines.length) {
+    sections.push({
+      id: "providerPlanning",
+      title: p(locale, "dischargePlanningSection"),
+      lines: planningLines,
+    });
+  }
+
+  return sections;
 }
