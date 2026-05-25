@@ -27,6 +27,11 @@ import {
   validateProviderDischargeTemplateAgeRange,
   scanProviderDischargePediatricTemplateGovernanceWarnings,
 } from "./providerDischargeTemplatePediatricGovernance";
+import {
+  normalizeObGynSafetyForHash,
+  validateProviderDischargeObGynTemplateGovernance,
+  scanProviderDischargeObGynTemplateGovernanceWarnings,
+} from "./providerDischargeTemplateObGynGovernance";
 
 export type ProviderDischargeClinicalReviewStatus = "draft" | "reviewed" | "approved";
 
@@ -177,6 +182,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       requiresCaregiverObservationWindow: template.requiresCaregiverObservationWindow ?? null,
       caregiverObservationWindowHours: template.caregiverObservationWindowHours ?? null,
       requiredDangerSignCategories: [...(template.requiredDangerSignCategories ?? [])].sort(),
+      obGynSafety: normalizeObGynSafetyForHash(template.obGynSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -346,6 +352,8 @@ export function validateProviderDischargeTemplateRegistry(
     errors.push(...validateProviderDischargeTemplateAgeRange(template));
     errors.push(...validateProviderDischargePediatricTemplateGovernance(template));
     warnings.push(...scanProviderDischargePediatricTemplateGovernanceWarnings(template));
+    errors.push(...validateProviderDischargeObGynTemplateGovernance(template));
+    warnings.push(...scanProviderDischargeObGynTemplateGovernanceWarnings(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

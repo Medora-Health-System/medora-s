@@ -9,6 +9,8 @@ import type {
   ProviderDischargeTemplateSuggestedTextBody,
 } from "./providerDischargeTemplateLocale";
 import { getProviderDischargeSuggestedTextBody } from "./providerDischargeTemplateLocale";
+import { normalizeObGynSafetyForHash } from "./providerDischargeTemplateObGynGovernance";
+import type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -36,6 +38,7 @@ export type ProviderDischargeTemplateHashSource = {
   requiresCaregiverObservationWindow?: boolean;
   caregiverObservationWindowHours?: number;
   requiredDangerSignCategories?: readonly string[];
+  obGynSafety?: ProviderDischargeTemplateObGynSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -74,6 +77,7 @@ export type ProviderDischargeTemplateHashPayload = {
   requiresCaregiverObservationWindow?: boolean;
   caregiverObservationWindowHours?: number;
   requiredDangerSignCategories?: string[];
+  obGynSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -149,6 +153,8 @@ export function buildProviderDischargeTemplateHashPayload(
   if (template.requiredDangerSignCategories?.length) {
     payload.requiredDangerSignCategories = [...template.requiredDangerSignCategories].sort();
   }
+  const obGynSafety = normalizeObGynSafetyForHash(template.obGynSafety);
+  if (obGynSafety) payload.obGynSafety = obGynSafety;
 
   return payload;
 }

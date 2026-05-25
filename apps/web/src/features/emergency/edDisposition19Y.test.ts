@@ -22,6 +22,11 @@ import {
   type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
 import {
+  scanProviderDischargeObGynEscalationLanguage,
+  scanProviderDischargeObGynPregnancyForbiddenPhrases,
+  validateProviderDischargeObGynTemplateGovernance,
+} from "./providerDischargeTemplateObGynGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -214,6 +219,57 @@ function syntheticPediatricTemplate(
         caregiverInstructions:
           "Parent/tuteur : surveillez l'enfant de près et suivez les instructions du clinicien.",
       },
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_OBGYN_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a gynecologic concern. Pregnancy-related symptoms may require close follow-up.",
+    diagnosisInstructions:
+      "Symptoms may evolve after an emergency visit. Take medications only as directed. Follow up with OB/GYN as directed.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for heavy bleeding, severe pelvic pain, fainting, shoulder pain, fever, or worsening symptoms. Seek emergency care when concerned.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un motif gynécologique. Les signes liés à une grossesse peuvent nécessiter un suivi rapproché.",
+    diagnosisInstructions:
+      "Les signes peuvent évoluer après une visite aux urgences. Prenez les médicaments uniquement selon les indications reçues. Suivez le suivi OB/GYN selon les directives.",
+    medicationTreatment: "Prenez les médicaments uniquement selon la prescription ou les indications reçues.",
+    returnPrecautions:
+      "Retournez immédiatement en cas de saignement abondant, de douleur pelvienne intense, d'évanouissement, de douleur à l'épaule, de fièvre ou d'aggravation des signes. Consultez en urgence si inquiétude.",
+  },
+} as const;
+
+function syntheticObGynTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "obgyn",
+    suggestedText: {
+      en: { ...SYNTHETIC_OBGYN_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_OBGYN_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "obgyn-follow",
+        specialty: "OBGYN",
+        timing: "within 1–2 days",
+      },
+    ],
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresBleedingPrecautions: true,
+      requiresPelvicPainPrecautions: true,
+      requiresOBGynFollowUp: true,
     },
     ...rest,
   });
@@ -2540,6 +2596,204 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.9 OB/GYN discharge template governance hardening", () => {
+    it("ProviderDischargeTemplate supports obGynSafety metadata", () => {
+      const template = syntheticObGynTemplate({ id: "obgyn_metadata_v1" });
+      expect(template.obGynSafety?.pregnancySensitive).toBe(true);
+      expect(template.obGynSafety?.requiresOBGynFollowUp).toBe(true);
+    });
+
+    it("OB/GYN synthetic template without obGynSafety fails", () => {
+      const template = syntheticRegistryTemplate({
+        id: "obgyn_missing_safety_v1",
+        specialtyCategory: "obgyn",
+      });
+      const errors = validateProviderDischargeObGynTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define obGynSafety"))).toBe(true);
+    });
+
+    it("pregnancy-sensitive template missing pregnancy status documentation flag fails", () => {
+      const template = syntheticObGynTemplate({
+        id: "obgyn_pregnancy_doc_v1",
+        obGynSafety: {
+          pregnancySensitive: true,
+          requiresOBGynFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeObGynTemplateGovernance(template).some((e) =>
+          e.includes("requiresPregnancyStatusDocumentation")
+        )
+      ).toBe(true);
+    });
+
+    it("ectopic-sensitive template missing ectopic precautions fails", () => {
+      const template = syntheticObGynTemplate({
+        id: "obgyn_ectopic_watch_v1",
+        obGynSafety: {
+          pregnancySensitive: true,
+          requiresPregnancyStatusDocumentation: true,
+          requiresOBGynFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeObGynTemplateGovernance(template).some((e) =>
+          e.includes("requiresEctopicPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("bleeding-sensitive template missing bleeding precautions fails", () => {
+      const template = syntheticObGynTemplate({
+        id: "obgyn_bleeding_watch_v1",
+        obGynSafety: {
+          pregnancySensitive: true,
+          requiresPregnancyStatusDocumentation: true,
+          requiresOBGynFollowUp: true,
+          requiresBleedingPrecautions: false,
+        },
+      });
+      expect(
+        validateProviderDischargeObGynTemplateGovernance(template).some((e) =>
+          e.includes("requiresBleedingPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("pelvic-pain template missing pelvic pain precautions fails", () => {
+      const template = syntheticObGynTemplate({
+        id: "obgyn_pelvic_pain_v1",
+        obGynSafety: {
+          pregnancySensitive: true,
+          requiresPregnancyStatusDocumentation: true,
+          requiresOBGynFollowUp: true,
+          requiresPelvicPainPrecautions: false,
+        },
+      });
+      expect(
+        validateProviderDischargeObGynTemplateGovernance(template).some((e) =>
+          e.includes("requiresPelvicPainPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("OB/GYN follow-up requirement fails when no OB/GYN follow-up row exists", () => {
+      const template = syntheticObGynTemplate({
+        id: "obgyn_followup_missing_v1",
+        defaultFollowUps: [],
+        obGynSafety: {
+          pregnancySensitive: true,
+          requiresPregnancyStatusDocumentation: true,
+          requiresOBGynFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeObGynTemplateGovernance(template).some((e) =>
+          e.includes("requiresOBGynFollowUp but no OB/GYN")
+        )
+      ).toBe(true);
+    });
+
+    it("OB/GYN follow-up requirement passes with OB/GYN row", () => {
+      const template = syntheticObGynTemplate({ id: "obgyn_followup_ok_v1" });
+      expect(validateProviderDischargeObGynTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("forbidden phrase ectopic ruled out fails", () => {
+      const body = syntheticObGynTemplate({ id: "obgyn_bad_ectopic_v1" }).suggestedText.en;
+      const bad = { ...body, returnPrecautions: "Ectopic ruled out during this visit." };
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_bad_ectopic_v1", "en", bad).some((e) =>
+          e.includes("ectopic-ruled-out")
+        )
+      ).toBe(true);
+    });
+
+    it("forbidden phrase pregnancy ruled out fails", () => {
+      const body = syntheticObGynTemplate({ id: "obgyn_bad_pregnancy_v1" }).suggestedText.en;
+      const bad = { ...body, diagnosisInstructions: "Pregnancy ruled out today." };
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_bad_pregnancy_v1", "en", bad).some((e) =>
+          e.includes("pregnancy-ruled-out")
+        )
+      ).toBe(true);
+    });
+
+    it("forbidden phrase hCG negative fails", () => {
+      const body = syntheticObGynTemplate({ id: "obgyn_bad_hcg_v1" }).suggestedText.en;
+      const bad = { ...body, diagnosisInstructions: "hCG negative in the ED." };
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_bad_hcg_v1", "en", bad).some((e) =>
+          e.includes("hcg-negative")
+        )
+      ).toBe(true);
+    });
+
+    it("forbidden phrase ultrasound normal fails", () => {
+      const body = syntheticObGynTemplate({ id: "obgyn_bad_us_v1" }).suggestedText.en;
+      const bad = { ...body, description: "Ultrasound normal during evaluation." };
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_bad_us_v1", "en", bad).some((e) =>
+          e.includes("ultrasound-normal")
+        )
+      ).toBe(true);
+    });
+
+    it("safe escalation wording passes EN", () => {
+      const template = syntheticObGynTemplate({ id: "obgyn_escalation_en_v1" });
+      expect(
+        scanProviderDischargeObGynEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("safe escalation wording passes FR", () => {
+      const template = syntheticObGynTemplate({ id: "obgyn_escalation_fr_v1" });
+      expect(
+        scanProviderDischargeObGynEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("obGynSafety metadata included in registry snapshot/hash", () => {
+      const template = syntheticObGynTemplate({ id: "obgyn_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.obGynSafety).toEqual({
+        pregnancySensitive: true,
+        requiresBleedingPrecautions: true,
+        requiresOBGynFollowUp: true,
+        requiresPelvicPainPrecautions: true,
+        requiresPregnancyStatusDocumentation: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "obgyn_hash_v1") as Record<string, unknown>;
+      expect(row.obGynSafety).toEqual(payload.obGynSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withObGyn = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withObGyn).not.toBe(base);
+    });
+
+    it("existing adult and pediatric templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -2919,7 +3173,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("b215db26f8b8857996124c8ac0043a257246ae4d4417dea094c25b47e7cae66d");
+      expect(hash).toBe("50b774d247a3f25fbc94aae0d393a930d421bc5e0040b1830b70fe2f5f25eff5");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -2929,7 +3183,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("598749a21d7f2d634cfb4da03cdf7d350a08b4844bab8ff0d59ee54d95caed7f");
+      expect(hash).toBe("647c2d61b54bb17d4bc54911ecb647af863f818ea78d8b7a90bf005863403f7f");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
