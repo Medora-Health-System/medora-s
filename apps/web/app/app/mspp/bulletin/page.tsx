@@ -60,7 +60,7 @@ import {
 const CHART_MAX = 14;
 
 export default function MsppBulletinHebdomadairePage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const canMspp = msppRoles.length > 0;
 
@@ -135,7 +135,7 @@ export default function MsppBulletinHebdomadairePage() {
 
   const diseaseRows = diseases?.diseases ?? [];
   const geoRows = geo?.regions ?? [];
-  const trendData = buildTrendChartData(trends?.buckets ?? []);
+  const trendData = buildTrendChartData(trends?.buckets ?? [], language);
   const diseaseChartData = buildDiseaseBarData(diseaseRows, { maxRows: CHART_MAX });
   const diseaseChartTruncated = diseaseRows.length > CHART_MAX;
   const deptChartData = buildDepartmentBarDataFromGeo(geoRows, { maxRows: CHART_MAX });

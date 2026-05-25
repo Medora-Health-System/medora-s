@@ -5,6 +5,7 @@ import { Modal, Field, inputStyle } from "./Modal";
 import { receiveStock, type InventoryItemRow } from "@/lib/pharmacyApi";
 import { useI18n } from "@/lib/i18n";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
+import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
 
 const btnPrimary: React.CSSProperties = {
   padding: "10px 18px",
@@ -86,7 +87,11 @@ export function ReceiveStockModal({
           {medName || item.catalogMedication?.code || item.sku} {strength && ` · ${strength}`}
         </div>
         {(dosageForm || route) && (
-          <div style={{ fontSize: 13, color: "#666" }}>{[dosageForm, route].filter(Boolean).join(" · ")}</div>
+          <div style={{ fontSize: 13, color: "#666" }}>
+            {[normalizeMedicationDisplayForLocale(dosageForm, language), normalizeMedicationDisplayForLocale(route, language)]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
         )}
         <div style={{ marginTop: 4, fontSize: 13 }}>
           {t("pharmacyReceiveStock.currentStock").replace("{qty}", String(item.quantityOnHand))}

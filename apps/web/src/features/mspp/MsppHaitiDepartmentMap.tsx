@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import type { FeatureCollection } from "geojson";
 import type { MsppGeographyResponse } from "@/lib/msppApi";
+import { useI18n } from "@/lib/i18n";
 import { MSPP_CHART_WELL, MSPP_EMPTY_STATE } from "@/features/mspp/msppUiChrome";
 import { findMsppRegionForHaitiFeature, type HaitiDeptFeatureProps } from "./msppHaitiGeoMatch";
 
@@ -31,6 +32,7 @@ export function MsppHaitiDepartmentMap({
   regions: MsppGeographyResponse["regions"];
   loading: boolean;
 }) {
+  const { t } = useI18n();
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [tip, setTip] = useState<TipState>(null);
@@ -51,13 +53,13 @@ export function MsppHaitiDepartmentMap({
       .catch(() => {
         if (!cancelled) {
           setGeojson(null);
-          setGeoError("Impossible de charger la carte des départements.");
+          setGeoError(t("msppDepartmentMap.geoLoadError"));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const maxCount = useMemo(() => Math.max(0, ...regions.map((r) => r.approvedCount), 1), [regions]);
 
@@ -101,7 +103,7 @@ export function MsppHaitiDepartmentMap({
   const clearTip = useCallback(() => setTip(null), []);
 
   if (loading) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Chargement…</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{t("msppDepartmentMap.loading")}</p>;
   }
 
   if (geoError) {
@@ -119,7 +121,7 @@ export function MsppHaitiDepartmentMap({
   }
 
   if (!geojson) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Chargement de la carte…</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{t("msppDepartmentMap.loadingGeo")}</p>;
   }
 
   return (
@@ -134,7 +136,7 @@ export function MsppHaitiDepartmentMap({
         >
           <svg
             role="img"
-            aria-label="Carte des départements d’Haïti, intensité selon les cas approuvés"
+            aria-label={t("msppDepartmentMap.mapAria")}
             viewBox={`0 0 ${MAP_W} ${MAP_H}`}
             width="100%"
             height="100%"
@@ -145,8 +147,7 @@ export function MsppHaitiDepartmentMap({
           </svg>
         </div>
         <p style={{ fontSize: 12, color: "#64748b", marginTop: 12, marginBottom: 0, lineHeight: 1.45 }}>
-          Fond de carte : Natural Earth 10m (domaine public). Gris : aucune ligne correspondante dans les données affichées
-          (filtre département appliqué).
+          {t("msppDepartmentMap.footnote")}
         </p>
       </div>
       {tip && (
@@ -168,7 +169,7 @@ export function MsppHaitiDepartmentMap({
           }}
         >
           <div style={{ fontWeight: 600 }}>{tip.name}</div>
-          <div>Cas approuvés : {tip.count}</div>
+          <div>{t("msppDepartmentMap.tooltipApprovedCases").replace("{count}", String(tip.count))}</div>
         </div>
       )}
     </div>

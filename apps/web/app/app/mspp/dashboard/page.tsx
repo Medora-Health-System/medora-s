@@ -56,7 +56,7 @@ import {
 const DISEASE_CHART_MAX = 18;
 
 export default function MsppDashboardPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const [summary, setSummary] = useState<MsppSummaryResponse | null>(null);
   const [trends, setTrends] = useState<MsppTrendsResponse | null>(null);
@@ -92,7 +92,7 @@ export default function MsppDashboardPage() {
       setCommuneSignals(comm);
       setEscalations(esc);
     } catch {
-      setError("Impossible de charger les indicateurs.");
+      setError(t("msppDashboardPage.errorLoad"));
       setSummary(null);
       setTrends(null);
       setDiseases(null);
@@ -103,36 +103,36 @@ export default function MsppDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [canMspp]);
+  }, [canMspp, t]);
 
   useEffect(() => {
     if (ready && canMspp) void load();
     else if (ready && !canMspp) setLoading(false);
   }, [ready, canMspp, load]);
 
-  const trendData = buildTrendChartData(trends?.buckets ?? []);
+  const trendData = buildTrendChartData(trends?.buckets ?? [], language);
   const diseaseBarData = buildDiseaseBarData(diseases?.diseases ?? [], { maxRows: DISEASE_CHART_MAX });
   const diseaseTruncated = (diseases?.diseases.length ?? 0) > DISEASE_CHART_MAX;
 
   if (!ready) {
     return (
       <div style={MSPP_PAGE_SHELL}>
-        <p style={{ color: "#64748b", marginTop: 0 }}>Chargement…</p>
+        <p style={{ color: "#64748b", marginTop: 0 }}>{t("msppDashboardPage.loading")}</p>
       </div>
     );
   }
   if (!canMspp) {
     return (
       <div style={MSPP_PAGE_SHELL}>
-        <h1 style={MSPP_PAGE_TITLE}>MSPP — Tableau de bord</h1>
-        <p style={{ color: "#64748b", marginTop: 0 }}>Vous n&apos;avez pas accès au portail MSPP.</p>
+        <h1 style={MSPP_PAGE_TITLE}>{t("msppDashboardPage.pageTitle")}</h1>
+        <p style={{ color: "#64748b", marginTop: 0 }}>{t("msppDashboardPage.accessDenied")}</p>
       </div>
     );
   }
 
   return (
     <div style={MSPP_PAGE_SHELL}>
-      <h1 style={MSPP_PAGE_TITLE}>MSPP — Tableau de bord</h1>
+      <h1 style={MSPP_PAGE_TITLE}>{t("msppDashboardPage.pageTitle")}</h1>
       <p style={MSPP_PAGE_SUBTITLE}>
         Vue nationale (agrégats approuvés au niveau central). Les liens ci-dessous mènent au rapport détaillé et à la file
         de validation.
@@ -183,13 +183,13 @@ export default function MsppDashboardPage() {
       )}
 
       <div style={MSPP_SECTION_CARD}>
-        <h2 style={MSPP_SECTION_TITLE}>Indicateurs (cas approuvés centralement)</h2>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppDashboardPage.sectionKpiTitle")}</h2>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppDashboardPage.loading")}</p>
         ) : (
           <div style={MSPP_KPI_GRID}>
             <div style={MSPP_KPI_TILE}>
-              <div style={MSPP_KPI_LABEL}>Total approuvé</div>
+              <div style={MSPP_KPI_LABEL}>{t("msppDashboardPage.kpiTotalApproved")}</div>
               <div style={MSPP_KPI_VALUE}>{summary?.totalApproved ?? "—"}</div>
             </div>
           </div>
@@ -197,41 +197,41 @@ export default function MsppDashboardPage() {
       </div>
 
       <div style={MSPP_SECTION_CARD}>
-        <h2 style={MSPP_SECTION_TITLE}>Cas approuvés dans le temps</h2>
-        <p style={MSPP_SECTION_SUBTITLE}>Agrégation mensuelle selon la date de revue centrale (UTC).</p>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppDashboardPage.sectionTrendTitle")}</h2>
+        <p style={MSPP_SECTION_SUBTITLE}>{t("msppDashboardPage.sectionTrendSubtitle")}</p>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppDashboardPage.loading")}</p>
         ) : (
           <MsppTrendLineChart data={trendData} />
         )}
       </div>
 
       <div style={MSPP_SECTION_CARD}>
-        <h2 style={MSPP_SECTION_TITLE}>Cas approuvés par maladie</h2>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppDashboardPage.sectionDiseaseTitle")}</h2>
         {diseaseTruncated && (
           <p style={MSPP_SECTION_SUBTITLE}>
-            Affichage des {DISEASE_CHART_MAX} maladies les plus représentées (tri par nombre décroissant).
+            {t("msppDashboardPage.chartTruncatedNote").replace("{n}", String(DISEASE_CHART_MAX))}
           </p>
         )}
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppDashboardPage.loading")}</p>
         ) : (
           <MsppDiseaseBarChart data={diseaseBarData} />
         )}
       </div>
 
       <div style={{ ...MSPP_SECTION_CARD, marginBottom: 0 }}>
-        <h2 style={MSPP_SECTION_TITLE}>Répartition par département géographique</h2>
+        <h2 style={MSPP_SECTION_TITLE}>{t("msppDashboardPage.sectionDeptTitle")}</h2>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppDashboardPage.loading")}</p>
         ) : summary && summary.byDepartment.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={MSPP_TABLE}>
               <thead>
                 <tr>
-                  <th style={MSPP_TABLE_HEAD_CELL}>Département</th>
-                  <th style={MSPP_TABLE_HEAD_CELL}>Code</th>
-                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>Nombre</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppDashboardPage.colDepartment")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppDashboardPage.colCode")}</th>
+                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>{t("msppDashboardPage.colCount")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -248,7 +248,7 @@ export default function MsppDashboardPage() {
             </table>
           </div>
         ) : (
-          <p style={MSPP_EMPTY_STATE}>Aucune donnée agrégée.</p>
+          <p style={MSPP_EMPTY_STATE}>{t("msppDashboardPage.emptyAggregates")}</p>
         )}
       </div>
     </div>

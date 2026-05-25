@@ -54,7 +54,7 @@ import {
 const CHART_MAX = 18;
 
 export default function MsppRapportPage() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { ready, msppRoles } = useFacilityAndRoles();
   const canMspp = msppRoles.length > 0;
 
@@ -85,7 +85,7 @@ export default function MsppRapportPage() {
       setGeo(g);
       setTrends(t);
     } catch {
-      setError("Impossible de charger les rapports.");
+      setError(t("msppRapportPage.errorLoad"));
       setSummary(null);
       setDiseases(null);
       setGeo(null);
@@ -93,7 +93,7 @@ export default function MsppRapportPage() {
     } finally {
       setLoading(false);
     }
-  }, [canMspp]);
+  }, [canMspp, t]);
 
   useEffect(() => {
     if (ready && canMspp) void load();
@@ -134,7 +134,7 @@ export default function MsppRapportPage() {
       );
     }) ?? [];
 
-  const trendData = buildTrendChartData(trends?.buckets ?? []);
+  const trendData = buildTrendChartData(trends?.buckets ?? [], language);
   const diseaseChartData = buildDiseaseBarData(diseaseRows, { maxRows: CHART_MAX });
   const diseaseChartTruncated = diseaseRows.length > CHART_MAX;
   const deptChartData = buildDepartmentBarDataFromGeo(geoRows, { maxRows: CHART_MAX });
@@ -143,22 +143,22 @@ export default function MsppRapportPage() {
   if (!ready) {
     return (
       <div style={MSPP_PAGE_SHELL}>
-        <p style={{ color: "#64748b", marginTop: 0 }}>Chargement…</p>
+        <p style={{ color: "#64748b", marginTop: 0 }}>{t("msppRapportPage.loading")}</p>
       </div>
     );
   }
   if (!canMspp) {
     return (
       <div style={MSPP_PAGE_SHELL}>
-        <h1 style={MSPP_PAGE_TITLE}>MSPP — Rapport</h1>
-        <p style={{ color: "#64748b", marginTop: 0 }}>Vous n&apos;avez pas accès au portail MSPP.</p>
+        <h1 style={MSPP_PAGE_TITLE}>{t("msppRapportPage.pageTitle")}</h1>
+        <p style={{ color: "#64748b", marginTop: 0 }}>{t("msppRapportPage.accessDenied")}</p>
       </div>
     );
   }
 
-  /** Impression MSPP : date toujours formatée en français (expérience exclusivement FR). */
+  const printDateLocale = language === "en" ? "en-US" : "fr-FR";
   const printGeneratedLine = interpolateNarrative(t("msppRapportPrint.printHeaderGenerated"), {
-    date: new Date().toLocaleString("fr-FR"),
+    date: new Date().toLocaleString(printDateLocale),
   });
 
   return (
@@ -204,11 +204,8 @@ export default function MsppRapportPage() {
           <p className="mspp-rapport-print-header-meta">{t("msppRapportPrint.printHeaderScope")}</p>
         </div>
 
-        <h1 style={MSPP_PAGE_TITLE}>MSPP — Rapport</h1>
-        <p style={MSPP_PAGE_SUBTITLE}>
-          Agrégats nationaux basés uniquement sur les dossiers <strong>approuvés au niveau central</strong> (pas de données
-          par établissement dans cette vue).
-        </p>
+        <h1 style={MSPP_PAGE_TITLE}>{t("msppRapportPage.pageTitle")}</h1>
+        <p style={MSPP_PAGE_SUBTITLE}>{t("msppRapportPage.subtitle")}</p>
 
         <MsppMinisterSignalBlock
           loading={loading}
@@ -253,10 +250,10 @@ export default function MsppRapportPage() {
         </div>
 
         <div className="mspp-no-print" style={MSPP_SECTION_CARD}>
-          <h2 style={MSPP_SECTION_TITLE}>Filtres (côté interface)</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionFiltersTitle")}</h2>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", marginTop: 4 }}>
           <label style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            <span style={MSPP_FILTER_LABEL}>Maladie (code ou libellé)</span>
+            <span style={MSPP_FILTER_LABEL}>{t("msppRapportPage.filterDisease")}</span>
             <input
               value={filterDisease}
               onChange={(e) => setFilterDisease(e.target.value)}
@@ -264,12 +261,12 @@ export default function MsppRapportPage() {
             />
           </label>
           <label style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-            <span style={MSPP_FILTER_LABEL}>Département</span>
+            <span style={MSPP_FILTER_LABEL}>{t("msppRapportPage.filterDepartment")}</span>
             <input value={filterDept} onChange={(e) => setFilterDept(e.target.value)} style={MSPP_INPUT} />
           </label>
         </div>
           <p style={{ fontSize: 12, color: "#64748b", marginBottom: 0, marginTop: 14 }}>
-            Filtre par période : non disponible pour l’instant (API nationale sans paramètres de dates).
+            {t("msppRapportPage.filterPeriodNote")}
           </p>
         </div>
 
@@ -280,13 +277,13 @@ export default function MsppRapportPage() {
         )}
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Synthèse</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionSummaryTitle")}</h2>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : (
           <div style={MSPP_KPI_GRID}>
             <div style={MSPP_KPI_TILE}>
-              <div style={MSPP_KPI_LABEL}>Total approuvé (national)</div>
+              <div style={MSPP_KPI_LABEL}>{t("msppRapportPage.kpiTotalApproved")}</div>
               <div style={MSPP_KPI_VALUE}>{summary?.totalApproved ?? "—"}</div>
             </div>
           </div>
@@ -294,13 +291,10 @@ export default function MsppRapportPage() {
         </div>
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Tendance mensuelle (cas approuvés)</h2>
-        <p style={MSPP_SECTION_SUBTITLE}>
-          Basé sur la date de revue centrale. Les filtres ci-dessus ne s’appliquent pas à cette série (agrégat national
-          intégral).
-        </p>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionTrendTitle")}</h2>
+        <p style={MSPP_SECTION_SUBTITLE}>{t("msppRapportPage.sectionTrendSubtitle")}</p>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : (
           <>
             <div className="mspp-rapport-screen-charts">
@@ -316,14 +310,14 @@ export default function MsppRapportPage() {
         </div>
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Graphique — répartition par maladie</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionDiseaseChartTitle")}</h2>
         {diseaseChartTruncated && (
           <p style={MSPP_SECTION_SUBTITLE}>
-            Affichage des {CHART_MAX} entrées les plus représentées parmi les lignes filtrées.
+            {t("msppRapportPage.chartTruncatedDiseaseNote").replace("{n}", String(CHART_MAX))}
           </p>
         )}
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : (
           <>
             <div className="mspp-rapport-screen-charts">
@@ -339,14 +333,14 @@ export default function MsppRapportPage() {
         </div>
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Graphique — répartition par département géographique</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionDeptChartTitle")}</h2>
         {deptChartTruncated && (
           <p style={MSPP_SECTION_SUBTITLE}>
-            Affichage des {CHART_MAX} départements les plus représentés parmi les lignes filtrées.
+            {t("msppRapportPage.chartTruncatedDeptNote").replace("{n}", String(CHART_MAX))}
           </p>
         )}
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : (
           <>
             <div className="mspp-rapport-screen-charts">
@@ -362,26 +356,25 @@ export default function MsppRapportPage() {
         </div>
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Carte — départements (Haïti)</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionMapTitle")}</h2>
         <p style={MSPP_SECTION_SUBTITLE}>
-          Intensité du remplissage selon les cas approuvés (même filtre « Département » que le tableau et le graphique
-          ci-dessus). Passez le curseur sur un département pour voir le détail.
+          {t("msppRapportPage.sectionMapSubtitle")}
         </p>
           <MsppHaitiDepartmentMap regions={geoRows} loading={loading} />
         </div>
 
         <div style={MSPP_SECTION_CARD} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Par maladie (agrégat approuvé)</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionDiseaseTableTitle")}</h2>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : diseaseRows.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={MSPP_TABLE}>
               <thead>
                 <tr>
-                  <th style={MSPP_TABLE_HEAD_CELL}>Code</th>
-                  <th style={MSPP_TABLE_HEAD_CELL}>Maladie</th>
-                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>Nombre</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppRapportPage.colCode")}</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppRapportPage.colDisease")}</th>
+                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>{t("msppRapportPage.colCount")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -398,22 +391,22 @@ export default function MsppRapportPage() {
             </table>
           </div>
         ) : (
-          <p style={MSPP_EMPTY_STATE}>Aucune ligne.</p>
+          <p style={MSPP_EMPTY_STATE}>{t("msppRapportPage.emptyRows")}</p>
         )}
         </div>
 
         <div style={{ ...MSPP_SECTION_CARD, marginBottom: 0 }} className="mspp-print-section">
-          <h2 style={MSPP_SECTION_TITLE}>Par département géographique</h2>
+          <h2 style={MSPP_SECTION_TITLE}>{t("msppRapportPage.sectionDeptTableTitle")}</h2>
         {loading ? (
-          <p style={{ color: "#64748b", margin: 0 }}>Chargement…</p>
+          <p style={{ color: "#64748b", margin: 0 }}>{t("msppRapportPage.loading")}</p>
         ) : geoRows.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
             <table style={MSPP_TABLE}>
               <thead>
                 <tr>
-                  <th style={MSPP_TABLE_HEAD_CELL}>Département</th>
+                  <th style={MSPP_TABLE_HEAD_CELL}>{t("msppRapportPage.colDepartment")}</th>
                   <th style={MSPP_TABLE_HEAD_CELL}>Code</th>
-                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>Cas approuvés</th>
+                  <th style={{ ...MSPP_TABLE_HEAD_CELL, textAlign: "right" }}>{t("msppRapportPage.colApprovedCases")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -430,7 +423,7 @@ export default function MsppRapportPage() {
             </table>
           </div>
         ) : (
-          <p style={MSPP_EMPTY_STATE}>Aucune ligne.</p>
+          <p style={MSPP_EMPTY_STATE}>{t("msppRapportPage.emptyRows")}</p>
         )}
         </div>
       </div>

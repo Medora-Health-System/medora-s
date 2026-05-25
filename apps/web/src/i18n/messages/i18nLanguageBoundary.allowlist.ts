@@ -1,5 +1,5 @@
 /**
- * Phase 19U.1 / 19U.4 — controlled language boundary exceptions.
+ * Phase 19U.1 / 19U.4 / 19U.5 — controlled language boundary exceptions.
  * Every deferral requires: scope, path, exact token (* = entire file), reason, cleanupPhase.
  */
 
@@ -29,167 +29,6 @@ export const LANGUAGE_BOUNDARY_ALLOWLIST: readonly LanguageBoundaryAllowlistEntr
     token: "*",
     reason: "Official MSPP ministry proper noun retains French diacritics in EN catalog.",
     cleanupPhase: "permanent",
-  },
-  {
-    scope: "enMessage",
-    path: "msppValidationAnalyticsPage",
-    token: "*",
-    reason: "MSPP analytics EN section still French UI — translate in 19U.5.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "enMessage",
-    path: "msppAuditPage",
-    token: "*",
-    reason: "MSPP audit EN section still French UI — translate in 19U.5.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "enMessage",
-    path: "msppRapportPrint",
-    token: "*",
-    reason: "MSPP print report EN section still French UI — translate in 19U.5.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "enMessage",
-    path: "diseaseReports",
-    token: "*",
-    reason: "Disease reports EN section still French UI — translate in 19U.5.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/components/patient-chart/PatientVaccinationsTab.tsx",
-    token: "Chargement",
-    reason: "Patient chart vaccinations tab needs i18n pass.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/components/patient-chart/PatientVaccinationsTab.tsx",
-    token: "Enregistrer",
-    reason: "Patient chart vaccinations tab needs i18n pass.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/pathways/components/PathwaySessionSummary.tsx",
-    token: "En attente",
-    reason: "Pathway session summary status chips need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/pathways/components/PathwaySessionSummary.tsx",
-    token: "En pause",
-    reason: "Pathway session summary status chips need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/pathways/components/PathwayMilestoneRow.tsx",
-    token: "En attente",
-    reason: "Pathway milestone row status label needs i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/mspp/MsppReportingCharts.tsx",
-    token: "Cas approuvés",
-    reason: "MSPP chart series labels need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/mspp/MsppHaitiHeatmap.tsx",
-    token: "Chargement",
-    reason: "MSPP heatmap loading copy needs i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/mspp/MsppHaitiHeatmap.tsx",
-    token: "Cas approuvés",
-    reason: "MSPP heatmap tooltip copy needs i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/mspp/MsppHaitiDepartmentMap.tsx",
-    token: "Chargement",
-    reason: "MSPP department map loading copy needs i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/mspp/MsppHaitiDepartmentMap.tsx",
-    token: "Cas approuvés",
-    reason: "MSPP department map tooltip copy needs i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/mspp/dashboard/page.tsx",
-    token: "Chargement",
-    reason: "MSPP dashboard page loading states need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/mspp/dashboard/page.tsx",
-    token: "Cas approuvés",
-    reason: "MSPP dashboard section headings need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/mspp/rapport/page.tsx",
-    token: "Chargement",
-    reason: "MSPP rapport page loading states need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/mspp/rapport/page.tsx",
-    token: "Cas approuvés",
-    reason: "MSPP rapport table headers need i18n.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/public-health/vaccinations/page.tsx",
-    token: "Chargement",
-    reason: "Public health vaccinations page needs i18n pass.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/public-health/vaccinations/page.tsx",
-    token: "Enregistrer",
-    reason: "Public health vaccinations page needs i18n pass.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "app/app/public-health/vaccinations/page.tsx",
-    token: "Rechercher",
-    reason: "Public health vaccinations patient search needs i18n pass.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/features/emergency/EmergencyNursingReassessmentPanel.tsx",
-    token: "*",
-    reason: "Large nursing reassessment panel — phased i18n in 19U.5; comment-only token hits skipped by scanner.",
-    cleanupPhase: "19U.5",
-  },
-  {
-    scope: "hardcodedFrenchSource",
-    path: "src/components/pharmacy/ReceiveStockModal.tsx",
-    token: "*",
-    reason: "Catalog form/route display normalization deferred — 19U.5 pharmacy pass.",
-    cleanupPhase: "19U.5",
   },
 ];
 
@@ -365,15 +204,10 @@ export const CATALOG_LEAK_SCAN_DEFERRED_FILES = new Set<string>([
   "app/app/admin/medication-master/page.tsx",
   "app/app/admin/medication-governance/duplicates/page.tsx",
   "src/components/admin/MedicationMasterValidationReview.tsx",
-  "src/components/pharmacy/ReceiveStockModal.tsx",
   ...HARDCODED_FRENCH_UI_DEFERRED_FILES,
 ]);
 
 export const CATALOG_LEAK_KNOWN_DEFERRED_SURFACES = [
-  {
-    relPath: "src/components/pharmacy/ReceiveStockModal.tsx",
-    reason: "Raw catalogMedication.dosageForm/route render — fix in 19U.5",
-  },
   {
     relPath: "src/components/pharmacy/MedicationSuggestionList.tsx",
     reason: "Non-MEDICATION fallback joins raw secondaryText/metadata — pharmacy search is MEDICATION-only",
@@ -450,5 +284,15 @@ export const LOCALE_REGRESSION_COMPONENT_CONTRACTS = [
     mustImportAny: ["normalizeMedicationDisplayForLocale"],
     mustContain: ["normalizeMedicationDisplayForLocale(therapeuticClass, language)"],
     mustNotContain: [],
+  },
+  {
+    relPath: "src/components/pharmacy/ReceiveStockModal.tsx",
+    description: "Receive stock catalog form/route display",
+    mustImportAny: ["normalizeMedicationDisplayForLocale"],
+    mustContain: [
+      "normalizeMedicationDisplayForLocale(dosageForm, language)",
+      "normalizeMedicationDisplayForLocale(route, language)",
+    ],
+    mustNotContain: ["[dosageForm, route].filter(Boolean).join"],
   },
 ] as const;

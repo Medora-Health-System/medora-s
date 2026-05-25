@@ -1,17 +1,20 @@
 /**
- * French UI labels for order/order-item status (backend enums unchanged).
+ * Locale-aware UI labels for order/order-item status (backend enums unchanged).
  * Worklists and department UIs use {@link getOrderItemStatusLabel}.
  * Chart / dossier patient use {@link getOrderItemChartLabel} so terminal workflow
- * states always collapse to « Terminée » without duplicating logic in each screen.
+ * states always collapse to the completed label without duplicating logic per screen.
  */
-export const ORDER_ITEM_STATUS_LABELS: Record<string, string> = {
-  PENDING: "En attente",
-  ACKNOWLEDGED: "Reçu",
-  IN_PROGRESS: "En cours",
-  COMPLETED: "Terminée",
-  CANCELLED: "Annulée",
-  RESULTED: "Terminée",
-  VERIFIED: "Terminée",
+import type { SupportedLanguage } from "@/i18n/config";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
+
+const ORDER_ITEM_STATUS_I18N_KEYS: Record<string, string> = {
+  PENDING: "orderItemStatus.PENDING",
+  ACKNOWLEDGED: "orderItemStatus.ACKNOWLEDGED",
+  IN_PROGRESS: "orderItemStatus.IN_PROGRESS",
+  COMPLETED: "orderItemStatus.COMPLETED",
+  CANCELLED: "orderItemStatus.CANCELLED",
+  RESULTED: "orderItemStatus.RESULTED",
+  VERIFIED: "orderItemStatus.VERIFIED",
 };
 
 /** COMPLETED / RESULTED / VERIFIED — chart copy only; backend enums unchanged. */
@@ -20,17 +23,18 @@ export function isOrderItemDoneForChart(status: string | null | undefined): bool
   return status === "COMPLETED" || status === "RESULTED" || status === "VERIFIED";
 }
 
-export function getOrderItemStatusLabel(status: string): string {
-  return ORDER_ITEM_STATUS_LABELS[status] ?? "—";
+export function getOrderItemStatusLabel(status: string, language: SupportedLanguage): string {
+  const key = ORDER_ITEM_STATUS_I18N_KEYS[status];
+  if (key) {
+    const msg = i18nMessage(language, key);
+    if (msg !== key) return msg;
+  }
+  return status || "—";
 }
 
-/**
- * Dossier patient / timeline / impression : garantit « Terminée » pour les états
- * terminaux même si la table de libellés évolue.
- */
-export function getOrderItemChartLabel(status: string): string {
+export function getOrderItemChartLabel(status: string, language: SupportedLanguage): string {
   if (isOrderItemDoneForChart(status)) {
-    return ORDER_ITEM_STATUS_LABELS.COMPLETED;
+    return i18nMessage(language, "orderItemStatus.COMPLETED");
   }
-  return getOrderItemStatusLabel(status);
+  return getOrderItemStatusLabel(status, language);
 }

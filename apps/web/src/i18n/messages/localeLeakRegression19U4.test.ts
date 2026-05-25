@@ -153,13 +153,8 @@ describe("MSPP/admin locale regression markers (19U.4)", () => {
     expect(en.msppSurveillance.panelTitle).not.toMatch(/indicateurs simples/i);
   });
 
-  it("deferred MSPP EN sections are documented in allowlist only", () => {
-    expect(EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES.some((p) => p.startsWith("msppAuditPage"))).toBe(
-      true
-    );
-    expect(EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES.some((p) => p.startsWith("diseaseReports"))).toBe(
-      true
-    );
+  it("19U.5 removed deferred MSPP EN section allowlist entries", () => {
+    expect(EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES).toEqual([]);
   });
 
   it("medication admin pages use t() for field labels, not hardcoded French chrome", () => {

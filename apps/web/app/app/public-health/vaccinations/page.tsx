@@ -160,14 +160,14 @@ export default function PublicHealthVaccinationsPage() {
       if (encounterId) body.encounterId = encounterId;
       if (nextDueAt) body.nextDueAt = `${nextDueAt}T12:00:00.000Z`;
       const row = await recordVaccination(facilityId, body);
-      setMessage({ type: "ok", text: "Vaccination enregistrée." });
+      setMessage({ type: "ok", text: t("publicHealthVaccinationsPage.saveOk") });
       setRecentThisSession((prev) => [row, ...prev]);
       setNotes("");
       fetchVaccinationsDueSoon(facilityId).then((res) =>
         setDueSoon({ items: res.items || [], windowEnd: res.windowEnd })
       );
     } catch (e: any) {
-      setMessage({ type: "err", text: e?.message || "Enregistrement impossible." });
+      setMessage({ type: "err", text: e?.message || t("publicHealthVaccinationsPage.saveFailed") });
     } finally {
       setSubmitting(false);
     }
@@ -247,25 +247,25 @@ export default function PublicHealthVaccinationsPage() {
 
   return (
     <div>
-      <h1 style={{ marginTop: 0 }}>Enregistrer une vaccination</h1>
+      <h1 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.pageTitle")}</h1>
       <p style={{ color: "#555", fontSize: 14, marginBottom: 20 }}>
-        <Link href="/app/public-health/summary">Résumé</Link>
+        <Link href="/app/public-health/summary">{t("publicHealthVaccinationsPage.navSummary")}</Link>
         {" · "}
-        <Link href="/app/public-health/disease-reports">Déclarations maladies</Link>
+        <Link href="/app/public-health/disease-reports">{t("publicHealthVaccinationsPage.navDiseaseReports")}</Link>
       </p>
 
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Patient</h3>
+        <h3 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.patientSection")}</h3>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <input
             style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-            placeholder="Rechercher par nom, NIR, téléphone"
+            placeholder={t("publicHealthVaccinationsPage.searchPlaceholder")}
             value={patientQuery}
             onChange={(e) => setPatientQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && searchPatients()}
           />
           <button type="button" onClick={searchPatients} style={btnPrimary}>
-            {loadingPatients ? "…" : "Rechercher"}
+            {loadingPatients ? "…" : t("publicHealthVaccinationsPage.searchButton")}
           </button>
         </div>
         {patients.length > 0 && (
@@ -274,7 +274,7 @@ export default function PublicHealthVaccinationsPage() {
             value={patientId}
             onChange={(e) => setPatientId(e.target.value)}
           >
-            <option value="">Choisir un patient</option>
+            <option value="">{t("publicHealthVaccinationsPage.choosePatient")}</option>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.lastName}, {p.firstName}
@@ -286,20 +286,20 @@ export default function PublicHealthVaccinationsPage() {
       </div>
 
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Consultation (optionnel)</h3>
+        <h3 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.encounterSection")}</h3>
         {!patientId ? (
-          <p style={{ color: "#888" }}>Sélectionnez d&apos;abord un patient.</p>
+          <p style={{ color: "#888" }}>{t("publicHealthVaccinationsPage.selectPatientFirst")}</p>
         ) : loadingEnc ? (
-          <p>Chargement…</p>
+          <p>{t("publicHealthVaccinationsPage.loading")}</p>
         ) : encounters.length === 0 ? (
-          <p style={{ color: "#666" }}>Aucune consultation. Vous pouvez quand même enregistrer sans lier.</p>
+          <p style={{ color: "#666" }}>{t("publicHealthVaccinationsPage.noEncounters")}</p>
         ) : (
           <select
             style={{ ...inputStyle, marginBottom: 0 }}
             value={encounterId}
             onChange={(e) => setEncounterId(e.target.value)}
           >
-            <option value="">— Aucune —</option>
+            <option value="">{t("publicHealthVaccinationsPage.encounterNone")}</option>
             {encounters.map((enc) => (
               <option key={enc.id} value={enc.id}>
                 {tEncounterType(t, enc.type)} — {tEncounterStatus(t, enc.status)} —{" "}
@@ -311,8 +311,8 @@ export default function PublicHealthVaccinationsPage() {
       </div>
 
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Vaccin</h3>
-        <Field label="Vaccin">
+        <h3 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.vaccineSection")}</h3>
+        <Field label={t("publicHealthVaccinationsPage.vaccineLabel")}>
           <select
             style={inputStyle}
             value={vaccineCatalogId}
@@ -329,7 +329,7 @@ export default function PublicHealthVaccinationsPage() {
             )}
           </select>
         </Field>
-        <Field label="Numéro de dose (optionnel)">
+        <Field label={t("publicHealthVaccinationsPage.doseLabel")}>
           <input
             type="number"
             min={1}
@@ -338,14 +338,14 @@ export default function PublicHealthVaccinationsPage() {
             onChange={(e) => setDoseNumber(e.target.value)}
           />
         </Field>
-        <Field label="Numéro de lot (optionnel)">
+        <Field label={t("publicHealthVaccinationsPage.lotLabel")}>
           <input
             style={inputStyle}
             value={lotNumber}
             onChange={(e) => setLotNumber(e.target.value)}
           />
         </Field>
-        <Field label="Date d'administration">
+        <Field label={t("publicHealthVaccinationsPage.administeredDateLabel")}>
           <input
             type="date"
             style={inputStyle}
@@ -353,7 +353,7 @@ export default function PublicHealthVaccinationsPage() {
             onChange={(e) => setAdministeredAt(e.target.value)}
           />
         </Field>
-        <Field label="Prochaine dose (optionnel)">
+        <Field label={t("publicHealthVaccinationsPage.nextDueLabel")}>
           <input
             type="date"
             style={inputStyle}
@@ -361,7 +361,7 @@ export default function PublicHealthVaccinationsPage() {
             onChange={(e) => setNextDueAt(e.target.value)}
           />
         </Field>
-        <Field label="Notes (optionnel)">
+        <Field label={t("publicHealthVaccinationsPage.notesLabel")}>
           <textarea
             style={{ ...inputStyle, minHeight: 64 }}
             value={notes}
@@ -374,7 +374,7 @@ export default function PublicHealthVaccinationsPage() {
           onClick={handleSubmit}
           style={btnPrimary}
         >
-          {submitting ? "Enregistrement…" : "Enregistrer la vaccination"}
+          {submitting ? t("publicHealthVaccinationsPage.submitting") : t("publicHealthVaccinationsPage.submitButton")}
         </button>
       </div>
 
@@ -394,14 +394,14 @@ export default function PublicHealthVaccinationsPage() {
 
       {recentThisSession.length > 0 && (
         <div style={cardStyle}>
-          <h3 style={{ marginTop: 0 }}>Enregistrées cette session</h3>
+          <h3 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.sessionRecentTitle")}</h3>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 8, textAlign: "left" }}>Patient</th>
-                <th style={{ padding: 8, textAlign: "left" }}>Vaccin</th>
-                <th style={{ padding: 8, textAlign: "left" }}>Dose</th>
-                <th style={{ padding: 8, textAlign: "left" }}>Date</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colPatient")}</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colVaccine")}</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colDose")}</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colDate")}</th>
               </tr>
             </thead>
             <tbody>
@@ -423,18 +423,18 @@ export default function PublicHealthVaccinationsPage() {
       )}
 
       <div style={cardStyle}>
-        <h3 style={{ marginTop: 0 }}>Vaccins dus dans les 30 prochains jours</h3>
+        <h3 style={{ marginTop: 0 }}>{t("publicHealthVaccinationsPage.dueSoonTitle")}</h3>
         {loadingDueSoon ? (
-          <p>Chargement…</p>
+          <p>{t("publicHealthVaccinationsPage.loading")}</p>
         ) : dueSoon.items.length === 0 ? (
-          <p style={{ color: "#666" }}>Aucun vaccin à prévoir dans les 30 prochains jours.</p>
+          <p style={{ color: "#666" }}>{t("publicHealthVaccinationsPage.dueSoonEmpty")}</p>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 8, textAlign: "left" }}>Patient</th>
-                <th style={{ padding: 8, textAlign: "left" }}>Vaccin</th>
-                <th style={{ padding: 8, textAlign: "left" }}>Prochaine dose</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colPatient")}</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colVaccine")}</th>
+                <th style={{ padding: 8, textAlign: "left" }}>{t("publicHealthVaccinationsPage.colNextDue")}</th>
               </tr>
             </thead>
             <tbody>

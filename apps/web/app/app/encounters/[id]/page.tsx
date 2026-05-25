@@ -6252,7 +6252,7 @@ function OrdersTab({
                                   : "#666",
                       }}
                     >
-                      {getOrderItemChartLabel(orderStatusBadgeKey)}
+                      {getOrderItemChartLabel(orderStatusBadgeKey, language)}
                     </span>
                     {order.status === "CANCELLED" &&
                     ((order as { cancelledByDisplayFr?: string | null }).cancelledByDisplayFr ||

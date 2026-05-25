@@ -227,4 +227,11 @@ describe("19U.1 cleaned EN MSPP sections", () => {
     expect(en.msppSurveillance.panelTitle).toMatch(/Monitoring/i);
     expect(en.msppSurveillance.panelTitle).not.toMatch(/indicateurs simples/i);
   });
+
+  it("19U.5 MSPP deferred EN sections are translated", () => {
+    expect(en.msppValidationAnalyticsPage.kpiPendingDept).toBe("Pending (department)");
+    expect(en.msppAuditPage.loadError).toBe("Could not load history.");
+    expect(en.msppRapportPrint.printHeaderTitle).toMatch(/MSPP report/i);
+    expect(EN_MESSAGE_FRENCH_TOKEN_DEFERRED_PREFIXES).toEqual([]);
+  });
 });

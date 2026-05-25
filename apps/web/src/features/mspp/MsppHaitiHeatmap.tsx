@@ -59,7 +59,7 @@ export function MsppHaitiHeatmap({
       .catch(() => {
         if (!cancelled) {
           setGeojson(null);
-          setGeoError("Impossible de charger la carte des départements.");
+          setGeoError(t("msppSanitarySignals.mapGeoLoadError"));
         }
       });
     return () => {

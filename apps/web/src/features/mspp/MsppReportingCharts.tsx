@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import { MSPP_CHART_WELL, MSPP_EMPTY_STATE } from "@/features/mspp/msppUiChrome";
 import {
   Bar,
@@ -14,23 +16,32 @@ import {
   YAxis,
 } from "recharts";
 
-/** Formate une clé mois `YYYY-MM` (UTC) pour l’axe — libellés en français. */
-export function formatMsppMonthLabelFr(isoMonth: string): string {
+/** Format a UTC month key `YYYY-MM` for chart axes. */
+export function formatMsppMonthLabel(isoMonth: string, language: SupportedLanguage): string {
+  const locale = language === "en" ? "en-US" : "fr-FR";
   const parts = isoMonth.split("-");
   const y = parts[0];
   const m = parts[1];
   if (!y || !m) return isoMonth;
   const d = new Date(Date.UTC(Number(y), Number(m) - 1, 1));
-  return d.toLocaleDateString("fr-FR", { month: "short", year: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString(locale, { month: "short", year: "numeric", timeZone: "UTC" });
+}
+
+/** @deprecated Use {@link formatMsppMonthLabel} with active locale. */
+export function formatMsppMonthLabelFr(isoMonth: string): string {
+  return formatMsppMonthLabel(isoMonth, "fr");
 }
 
 export type MsppTrendPoint = { month: string; count: number; label: string };
 
-export function buildTrendChartData(buckets: Array<{ month: string; count: number }>): MsppTrendPoint[] {
+export function buildTrendChartData(
+  buckets: Array<{ month: string; count: number }>,
+  language: SupportedLanguage = "fr"
+): MsppTrendPoint[] {
   return buckets.map((b) => ({
     month: b.month,
     count: b.count,
-    label: formatMsppMonthLabelFr(b.month),
+    label: formatMsppMonthLabel(b.month, language),
   }));
 }
 
@@ -38,9 +49,21 @@ const chartBox: React.CSSProperties = { width: "100%", height: 280 };
 
 const axisStyle = { fontSize: 12, fill: "#64748b" };
 
+function useMsppChartLabels() {
+  const { t } = useI18n();
+  return {
+    emptyTrend: t("msppReportingCharts.emptyTrend"),
+    emptyDisease: t("msppReportingCharts.emptyDisease"),
+    emptyDepartment: t("msppReportingCharts.emptyDepartment"),
+    seriesApprovedCases: t("msppReportingCharts.seriesApprovedCases"),
+    seriesCases: t("msppReportingCharts.seriesCases"),
+  };
+}
+
 export function MsppTrendLineChart({ data }: { data: MsppTrendPoint[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la courbe temporelle.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyTrend}</p>;
   }
   return (
     <div style={MSPP_CHART_WELL}>
@@ -51,11 +74,18 @@ export function MsppTrendLineChart({ data }: { data: MsppTrendPoint[] }) {
             <XAxis dataKey="label" tick={axisStyle} interval="preserveStartEnd" />
             <YAxis allowDecimals={false} tick={axisStyle} width={40} />
             <Tooltip
-              formatter={(value) => [value ?? "—", "Cas approuvés"]}
+              formatter={(value) => [value ?? "—", labels.seriesApprovedCases]}
               labelFormatter={(label) => String(label)}
               contentStyle={{ fontSize: 13 }}
             />
-            <Line type="monotone" dataKey="count" name="Cas approuvés" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} />
+            <Line
+              type="monotone"
+              dataKey="count"
+              name={labels.seriesApprovedCases}
+              stroke="#1d4ed8"
+              strokeWidth={2}
+              dot={{ r: 3 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -79,8 +109,9 @@ export function buildDiseaseBarData(
 }
 
 export function MsppDiseaseBarChart({ data }: { data: MsppDiseaseBarRow[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par maladie.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyDisease}</p>;
   }
   return (
     <div style={MSPP_CHART_WELL}>
@@ -102,7 +133,7 @@ export function MsppDiseaseBarChart({ data }: { data: MsppDiseaseBarRow[] }) {
               interval={0}
             />
             <Tooltip
-              formatter={(value) => [value ?? "—", "Cas"]}
+              formatter={(value) => [value ?? "—", labels.seriesCases]}
               labelFormatter={(_, payload) => {
                 const row = payload?.[0]?.payload as MsppDiseaseBarRow | undefined;
                 if (!row) return "";
@@ -110,7 +141,7 @@ export function MsppDiseaseBarChart({ data }: { data: MsppDiseaseBarRow[] }) {
               }}
               contentStyle={{ fontSize: 13 }}
             />
-            <Bar dataKey="count" name="Cas" fill="#0f766e" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="count" name={labels.seriesCases} fill="#0f766e" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -147,8 +178,9 @@ export function buildDepartmentBarDataFromGeo(
 }
 
 export function MsppDepartmentBarChart({ data }: { data: MsppDeptBarRow[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par département.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyDepartment}</p>;
   }
   return (
     <div style={MSPP_CHART_WELL}>
@@ -170,7 +202,7 @@ export function MsppDepartmentBarChart({ data }: { data: MsppDeptBarRow[] }) {
               interval={0}
             />
             <Tooltip
-              formatter={(value) => [value ?? "—", "Cas approuvés"]}
+              formatter={(value) => [value ?? "—", labels.seriesApprovedCases]}
               labelFormatter={(_, payload) => {
                 const row = payload?.[0]?.payload as MsppDeptBarRow | undefined;
                 if (!row) return "";
@@ -179,7 +211,7 @@ export function MsppDepartmentBarChart({ data }: { data: MsppDeptBarRow[] }) {
               }}
               contentStyle={{ fontSize: 13 }}
             />
-            <Bar dataKey="count" name="Cas approuvés" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="count" name={labels.seriesApprovedCases} fill="#7c3aed" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -187,20 +219,16 @@ export function MsppDepartmentBarChart({ data }: { data: MsppDeptBarRow[] }) {
   );
 }
 
-/** Largeur fixe (mm A4 ~ contenu) — impression / PDF sans ResponsiveContainer. */
 const RAPPORT_PRINT_CHART_WIDTH = 680;
 
 function rapportPrintBarHeight(rowCount: number): number {
   return Math.min(420, 40 + rowCount * 28);
 }
 
-/**
- * Même données que {@link MsppTrendLineChart} — rendu figé pour l’impression (SVG dimensionné explicitement).
- * Ne pas utiliser pour l’écran : préférer la version responsive.
- */
 export function MsppTrendLineChartPrint({ data }: { data: MsppTrendPoint[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la courbe temporelle.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyTrend}</p>;
   }
   const h = 270;
   return (
@@ -215,20 +243,27 @@ export function MsppTrendLineChartPrint({ data }: { data: MsppTrendPoint[] }) {
         <XAxis dataKey="label" tick={axisStyle} interval="preserveStartEnd" />
         <YAxis allowDecimals={false} tick={axisStyle} width={40} />
         <Tooltip
-          formatter={(value) => [value ?? "—", "Cas approuvés"]}
+          formatter={(value) => [value ?? "—", labels.seriesApprovedCases]}
           labelFormatter={(label) => String(label)}
           contentStyle={{ fontSize: 13 }}
         />
-        <Line type="monotone" dataKey="count" name="Cas approuvés" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} />
+        <Line
+          type="monotone"
+          dataKey="count"
+          name={labels.seriesApprovedCases}
+          stroke="#1d4ed8"
+          strokeWidth={2}
+          dot={{ r: 3 }}
+        />
       </LineChart>
     </div>
   );
 }
 
-/** Barres horizontales — dimensions fixes pour PDF / aperçu d’impression. */
 export function MsppDiseaseBarChartPrint({ data }: { data: MsppDiseaseBarRow[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par maladie.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyDisease}</p>;
   }
   const h = rapportPrintBarHeight(data.length);
   return (
@@ -251,7 +286,7 @@ export function MsppDiseaseBarChartPrint({ data }: { data: MsppDiseaseBarRow[] }
           interval={0}
         />
         <Tooltip
-          formatter={(value) => [value ?? "—", "Cas"]}
+          formatter={(value) => [value ?? "—", labels.seriesCases]}
           labelFormatter={(_, payload) => {
             const row = payload?.[0]?.payload as MsppDiseaseBarRow | undefined;
             if (!row) return "";
@@ -259,15 +294,16 @@ export function MsppDiseaseBarChartPrint({ data }: { data: MsppDiseaseBarRow[] }
           }}
           contentStyle={{ fontSize: 13 }}
         />
-        <Bar dataKey="count" name="Cas" fill="#0f766e" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" name={labels.seriesCases} fill="#0f766e" radius={[0, 4, 4, 0]} />
       </BarChart>
     </div>
   );
 }
 
 export function MsppDepartmentBarChartPrint({ data }: { data: MsppDeptBarRow[] }) {
+  const labels = useMsppChartLabels();
   if (data.length === 0) {
-    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>Aucune donnée pour la répartition par département.</p>;
+    return <p style={{ ...MSPP_EMPTY_STATE, margin: 0 }}>{labels.emptyDepartment}</p>;
   }
   const h = rapportPrintBarHeight(data.length);
   return (
@@ -290,7 +326,7 @@ export function MsppDepartmentBarChartPrint({ data }: { data: MsppDeptBarRow[] }
           interval={0}
         />
         <Tooltip
-          formatter={(value) => [value ?? "—", "Cas approuvés"]}
+          formatter={(value) => [value ?? "—", labels.seriesApprovedCases]}
           labelFormatter={(_, payload) => {
             const row = payload?.[0]?.payload as MsppDeptBarRow | undefined;
             if (!row) return "";
@@ -299,7 +335,7 @@ export function MsppDepartmentBarChartPrint({ data }: { data: MsppDeptBarRow[] }
           }}
           contentStyle={{ fontSize: 13 }}
         />
-        <Bar dataKey="count" name="Cas approuvés" fill="#7c3aed" radius={[0, 4, 4, 0]} />
+        <Bar dataKey="count" name={labels.seriesApprovedCases} fill="#7c3aed" radius={[0, 4, 4, 0]} />
       </BarChart>
     </div>
   );
