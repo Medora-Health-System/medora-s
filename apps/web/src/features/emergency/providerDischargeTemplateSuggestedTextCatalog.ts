@@ -596,6 +596,246 @@ export const MINOR_HEAD_INJURY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggeste
     }
   );
 
+export const TIA_STROKE_LIKE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for TIA or stroke-like symptoms. Symptoms may recur or evolve; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Take medicines only as prescribed or directed during this visit. Avoid driving or unsafe activities if instructed or if symptoms recur. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take stroke-prevention or other medicines only as prescribed or directed during this visit. Do not start, stop, or change medicines without clinician guidance.",
+      returnPrecautions:
+        "Return immediately for new or recurrent weakness or numbness, facial droop, trouble speaking, vision change, severe headache, confusion, or trouble walking.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un AIT ou des signes évoquant un accident vasculaire cérébral. Les signes peuvent récidiver ou évoluer ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Prenez les médicaments uniquement selon la prescription ou les indications données pendant cette visite. Évitez de conduire ou les activités à risque si cela vous a été conseillé ou si les signes réapparaissent. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les traitements de prévention vasculaire ou autres médicaments uniquement selon la prescription ou les indications reçues pendant cette visite. N'introduisez ni n'arrêtez un traitement sans avis médical.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de nouvelle faiblesse ou engourdissement, d'asymétrie du visage, de trouble de la parole, de trouble visuel, de céphalée intense, de confusion ou de difficulté à marcher.",
+    }
+  );
+
+export const SEIZURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department after a seizure. Further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Rest as directed. Avoid driving, swimming alone, climbing, or operating machinery until cleared by your clinician if applicable. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take seizure or other medicines only as prescribed or directed during this visit. Do not miss doses unless your clinician advised you otherwise.",
+      returnPrecautions:
+        "Return immediately for recurrent seizure, prolonged seizure activity, injury, severe headache, confusion, fever with neck stiffness, or weakness or numbness.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences après une crise convulsive. Un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Reposez-vous selon les indications reçues. Évitez de conduire, de nager seul, de grimper ou d'utiliser des machines tant que votre clinicien ne vous a pas autorisé, si applicable. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les antépileptiques ou autres médicaments uniquement selon la prescription ou les indications données pendant cette visite. Ne sautez pas de doses sauf avis contraire de votre clinicien.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de nouvelle crise, de crise prolongée, de blessure, de céphalée intense, de confusion, de fièvre avec raideur de la nuque, ou de faiblesse ou engourdissement.",
+    }
+  );
+
+export const PALPITATIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for palpitations. Symptoms may recur; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Rest as needed and avoid caffeine or stimulants unless your clinician advised otherwise. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take heart-rate or other medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return immediately for chest pain, shortness of breath, fainting, worsening palpitations, weakness, or new neurologic symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des palpitations. Les signes peuvent récidiver ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Reposez-vous selon vos besoins et évitez caféine ou stimulants sauf avis contraire de votre clinicien. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les médicaments cardiaques ou autres traitements uniquement selon la prescription ou les indications données pendant cette visite.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de douleur thoracique, d'essoufflement, d'évanouissement, de palpitations aggravées, de faiblesse ou de nouveaux signes neurologiques.",
+    }
+  );
+
+export const SHORTNESS_OF_BREATH_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for shortness of breath. Breathing symptoms may recur or evolve; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Rest and pace activity as directed. Use inhalers or oxygen only as prescribed. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take breathing medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return immediately for worsening breathing, chest pain, fainting, blue lips, confusion, fever, or new swelling.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un essoufflement. Les signes respiratoires peuvent récidiver ou évoluer ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Reposez-vous et adaptez votre activité selon les indications reçues. Utilisez les inhalateurs ou l'oxygène uniquement selon la prescription. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les médicaments respiratoires uniquement selon la prescription ou les indications données pendant cette visite.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas d'essoufflement aggravé, de douleur thoracique, d'évanouissement, de lèvres bleues, de confusion, de fièvre ou de nouveaux gonflements.",
+    }
+  );
+
+export const CHEST_WALL_PAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for chest wall pain. Symptoms may persist briefly; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Avoid heavy lifting or activities that worsen pain unless your clinician advised otherwise. Use heat or ice as directed. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take pain medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return immediately for worsening chest pain, shortness of breath, sweating, fainting, new weakness, or pain that does not behave like prior musculoskeletal pain.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur pariétale thoracique. Les signes peuvent persister brièvement ; un suivi ambulatoire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Évitez les efforts ou activités qui aggravent la douleur sauf avis contraire de votre clinicien. Appliquez chaleur ou froid selon les indications. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les antidouleurs uniquement selon la prescription ou les indications données pendant cette visite.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de douleur thoracique aggravée, d'essoufflement, de transpiration, d'évanouissement, de nouvelle faiblesse, ou de douleur atypique par rapport à vos douleurs musculo-squelettiques habituelles.",
+    }
+  );
+
+export const EPISTAXIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for epistaxis (nosebleed). Outpatient follow-up is recommended if bleeding recurs when clinically appropriate.",
+      diagnosisInstructions:
+        "Avoid nose blowing, heavy lifting, or straining as directed. Use saline spray or humidification if advised. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take medicines only as prescribed or directed during this visit. Report blood-thinning medicines to your clinician.",
+      returnPrecautions:
+        "Return for care if bleeding does not stop, you feel dizzy or faint, vomit blood, have trouble breathing, have recurrent heavy bleeding, or bleed while on blood thinners.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un épistaxis (saignement de nez). Un suivi ambulatoire est recommandé en cas de récidive lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Évitez de vous moucher fort, les efforts ou la tension abdominale selon les indications reçues. Utilisez un spray salin ou l'humidification si conseillé. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les médicaments uniquement selon la prescription ou les indications données pendant cette visite. Signalez les anticoagulants à votre clinicien.",
+      returnPrecautions:
+        "Reconsultez aux urgences si le saignement ne s'arrête pas, si vous vous sentez étourdi ou vous évanouissez, si vous vomissez du sang, si vous avez du mal à respirer, si les saignements abondants récidivent, ou si vous saignez sous anticoagulant.",
+    }
+  );
+
+export const HYPOGLYCEMIA_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for hypoglycemia (low blood sugar). Low blood sugar may recur; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Eat regular meals and carry fast-acting sugar as directed if you have diabetes or are at risk. Avoid driving if you feel unwell. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take diabetes or other medicines only as prescribed or directed during this visit. Do not change insulin or diabetes medicines without clinician guidance.",
+      returnPrecautions:
+        "Return for care if low blood sugar recurs, you become confused, faint, have a seizure, cannot eat or drink, or vomit.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une hypoglycémie (baisse de la glycémie). Une hypoglycémie peut récidiver ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Prenez vos repas régulièrement et gardez une source de sucre rapide sur vous si indiqué. Évitez de conduire si vous ne vous sentez pas bien. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les traitements du diabète ou autres médicaments uniquement selon la prescription ou les indications reçues pendant cette visite. Ne modifiez pas l'insuline ou les antidiabétiques sans avis médical.",
+      returnPrecautions:
+        "Reconsultez aux urgences si l'hypoglycémie récidive, si vous êtes confus, si vous vous évanouissez, si vous avez une crise, si vous ne pouvez pas manger ou boire, ou si vous vomissez.",
+    }
+  );
+
+export const HYPERGLYCEMIA_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for hyperglycemia (high blood sugar). Blood sugar may remain elevated; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Take medicines and monitor blood sugar as directed. Stay hydrated unless restricted. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take diabetes or other medicines only as prescribed or directed during this visit. Do not change insulin or diabetes medicines without clinician guidance.",
+      returnPrecautions:
+        "Return for care if you vomit, develop abdominal pain, become confused, feel weak, have trouble breathing, have very high readings, or cannot tolerate fluids or medications.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une hyperglycémie (élévation de la glycémie). La glycémie peut rester élevée ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Prenez vos médicaments et surveillez la glycémie selon les indications reçues. Maintenez une bonne hydratation sauf restriction. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les traitements du diabète ou autres médicaments uniquement selon la prescription ou les indications reçues pendant cette visite. Ne modifiez pas l'insuline ou les antidiabétiques sans avis médical.",
+      returnPrecautions:
+        "Reconsultez aux urgences si vous vomissez, si une douleur abdominale apparaît, si vous êtes confus, si vous vous affaiblissez, si vous avez du mal à respirer, si les valeurs sont très élevées, ou si vous ne tolérez pas les liquides ou les médicaments.",
+    }
+  );
+
+export const ALCOHOL_INTOXICATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for alcohol intoxication. Further outpatient follow-up and support resources may be appropriate when clinically indicated.",
+      diagnosisInstructions:
+        "Avoid driving or operating machinery. Do not mix alcohol with sedating medicines. Rest and hydrate as tolerated. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return for care if you become confused, vomit repeatedly, have trouble breathing, are injured, symptoms worsen, or withdrawal symptoms develop.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une intoxication alcoolique. Un suivi ambulatoire et des ressources de soutien peuvent être appropriés lorsque c'est cliniquement indiqué.",
+      diagnosisInstructions:
+        "Évitez de conduire ou d'utiliser des machines. Ne mélangez pas l'alcool avec des médicaments sédatifs. Reposez-vous et hydratez-vous selon vos tolérances. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les médicaments uniquement selon la prescription ou les indications données pendant cette visite.",
+      returnPrecautions:
+        "Reconsultez aux urgences si vous devenez confus, si vous vomissez de façon répétée, si vous avez du mal à respirer, si vous êtes blessé, si les signes s'aggravent, ou si des signes de sevrage apparaissent.",
+    }
+  );
+
+export const ANXIETY_PANIC_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for anxiety or panic symptoms. Symptoms may recur; further outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Use coping strategies as directed. Avoid driving or unsafe activities if you feel unwell. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take anxiety or other medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return immediately for chest pain, shortness of breath, fainting, thoughts of self-harm, worsening anxiety, or inability to function.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour de l'anxiété ou des signes de crise d'angoisse. Les signes peuvent récidiver ; un suivi ambulatoire complémentaire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Utilisez les stratégies de gestion indiquées. Évitez de conduire ou les activités à risque si vous ne vous sentez pas bien. Les consignes de retour en cas d'aggravation ou de signes inquiétants ont été revues.",
+      medicationTreatment:
+        "Prenez les anxiolytiques ou autres médicaments uniquement selon la prescription ou les indications données pendant cette visite.",
+      returnPrecautions:
+        "Reconsultez immédiatement aux urgences en cas de douleur thoracique, d'essoufflement, d'évanouissement, d'idées auto-agressives, d'anxiété aggravée ou d'incapacité à fonctionner.",
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {
