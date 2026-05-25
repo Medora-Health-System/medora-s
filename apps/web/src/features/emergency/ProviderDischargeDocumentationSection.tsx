@@ -12,6 +12,11 @@ import {
   resolveProviderDischargeTemplateForDiagnosis,
 } from "./providerDischargeTemplateRegistry";
 import {
+  extractSharedFieldsFromTemplate,
+  mergeSharedFieldsFromSelectedTemplates,
+  mergeTemplateSharedFieldsIntoForm,
+} from "./providerDischargeSharedPlanningMerge";
+import {
   findDiagnosisDocForRef,
   getSelectedDiagnosisDocs,
   mergeProviderDischargeDocumentationIntoDischargeJson,
@@ -88,7 +93,7 @@ function appendMedicationLine(current: string, line: string): string {
   return c ? `${c}\n${l}` : l;
 }
 
-function DiagnosisDocumentationCard({
+const DiagnosisDocumentationCard = React.memo(function DiagnosisDocumentationCard({
   doc,
   disabled,
   validationErrors,
@@ -106,31 +111,11 @@ function DiagnosisDocumentationCard({
   const { t, language } = useI18n();
   const cardTitle = `${doc.code} — ${doc.displayName}${doc.isPrimaryDiagnosis ? ` (${t("providerDischargeDocumentation19Y.primary")})` : ""}`;
 
-  const patchFollowUpRow = (rowId: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
-    onPatchDoc(doc.id, {
-      followUps: doc.followUps.map((r) => (r.id === rowId ? { ...r, ...patch } : r)),
-    });
-  };
-
-  const addFollowUpRow = () => {
-    onPatchDoc(doc.id, { followUps: [...doc.followUps, newDefaultFollowUpRow()] });
-  };
-
-  const removeFollowUpRow = (rowId: string) => {
-    onPatchDoc(doc.id, { followUps: doc.followUps.filter((r) => r.id !== rowId) });
-  };
-
   const onMedicationPick = (med: MedicationSearchItem) => {
     const displayName = medicationSearchLabel(med, language, t);
     const dose = med.metadata?.strength?.trim() ?? "";
     const line = dose ? `${displayName} ${dose}` : displayName;
     onPatchDoc(doc.id, { medicationTreatment: appendMedicationLine(doc.medicationTreatment, line) });
-  };
-
-  const appendWorkSchoolQuick = (option: (typeof WORK_SCHOOL_QUICK_OPTIONS)[number]) => {
-    const text = t(`providerDischargeDocumentation19Y.workSchoolQuick.${option}`);
-    const current = (doc.returnWorkSchool ?? "").trim();
-    onPatchDoc(doc.id, { returnWorkSchool: current ? `${current}\n${text}` : text });
   };
 
   const fieldError = (key: string) => validationErrors?.[key];
@@ -229,22 +214,78 @@ function DiagnosisDocumentationCard({
             <p style={errorStyle}>{fieldError("medicationTreatment")}</p>
           : null}
         </div>
+      </div>
+    </div>
+  );
+});
 
+const SharedDischargePlanningSection = React.memo(function SharedDischargePlanningSection({
+  returnPrecautions,
+  returnWorkSchool,
+  followUps,
+  disabled,
+  validationErrors,
+  onPatchShared,
+}: {
+  returnPrecautions: string;
+  returnWorkSchool: string;
+  followUps: ProviderDischargeFollowUpRow[];
+  disabled: boolean;
+  validationErrors?: Partial<Record<string, string>>;
+  onPatchShared: (patch: Partial<Pick<ProviderDischargeDocumentationForm, "returnPrecautions" | "returnWorkSchool" | "followUps">>) => void;
+}) {
+  const { t } = useI18n();
+
+  const patchFollowUpRow = (rowId: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
+    onPatchShared({
+      followUps: followUps.map((r) => (r.id === rowId ? { ...r, ...patch } : r)),
+    });
+  };
+
+  const addFollowUpRow = () => {
+    onPatchShared({ followUps: [...followUps, newDefaultFollowUpRow()] });
+  };
+
+  const removeFollowUpRow = (rowId: string) => {
+    onPatchShared({ followUps: followUps.filter((r) => r.id !== rowId) });
+  };
+
+  const appendWorkSchoolQuick = (option: (typeof WORK_SCHOOL_QUICK_OPTIONS)[number]) => {
+    const text = t(`providerDischargeDocumentation19Y.workSchoolQuick.${option}`);
+    const current = returnWorkSchool.trim();
+    onPatchShared({ returnWorkSchool: current ? `${current}\n${text}` : text });
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: "12px 14px",
+        borderRadius: 10,
+        border: "1px solid #cbd5e1",
+        backgroundColor: "#f1f5f9",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+        {t("providerDischargeDocumentation19Y.dischargePlanningSection")}
+      </p>
+
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
         <div>
           <label style={labelStyle}>{t("providerDischargeDocumentation19Y.returnPrecautionsRequired")}</label>
           <textarea
-            value={doc.returnPrecautions}
+            value={returnPrecautions}
             disabled={disabled}
             rows={3}
             style={{
               ...taStyle,
               backgroundColor: disabled ? "#f1f5f9" : "#fff",
-              borderColor: fieldError("returnPrecautions") ? "#b91c1c" : "#e2e8f0",
+              borderColor: validationErrors?.returnPrecautions ? "#b91c1c" : "#e2e8f0",
             }}
-            onChange={(e) => onPatchDoc(doc.id, { returnPrecautions: e.target.value })}
+            onChange={(e) => onPatchShared({ returnPrecautions: e.target.value })}
           />
-          {fieldError("returnPrecautions") ?
-            <p style={errorStyle}>{fieldError("returnPrecautions")}</p>
+          {validationErrors?.returnPrecautions ?
+            <p style={errorStyle}>{validationErrors.returnPrecautions}</p>
           : null}
         </div>
 
@@ -273,11 +314,11 @@ function DiagnosisDocumentationCard({
             </div>
           : null}
           <textarea
-            value={doc.returnWorkSchool ?? ""}
+            value={returnWorkSchool}
             disabled={disabled}
             rows={2}
             style={{ ...taStyle, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
-            onChange={(e) => onPatchDoc(doc.id, { returnWorkSchool: e.target.value })}
+            onChange={(e) => onPatchShared({ returnWorkSchool: e.target.value })}
           />
         </div>
 
@@ -304,10 +345,10 @@ function DiagnosisDocumentationCard({
               </button>
             : null}
           </div>
-          {fieldError("followUps") ?
-            <p style={{ ...errorStyle, marginTop: 6 }}>{fieldError("followUps")}</p>
+          {validationErrors?.followUps ?
+            <p style={{ ...errorStyle, marginTop: 6 }}>{validationErrors.followUps}</p>
           : null}
-          {doc.followUps.map((row) => (
+          {followUps.map((row) => (
             <div
               key={row.id}
               style={{
@@ -379,7 +420,7 @@ function DiagnosisDocumentationCard({
       </div>
     </div>
   );
-}
+});
 
 export function ProviderDischargeDocumentationSection({
   facilityId,
@@ -448,6 +489,13 @@ export function ProviderDischargeDocumentationSection({
     [patchProvider, providerForm.diagnosisDocs]
   );
 
+  const patchSharedPlanning = useCallback(
+    (patch: Partial<Pick<ProviderDischargeDocumentationForm, "returnPrecautions" | "returnWorkSchool" | "followUps">>) => {
+      patchProvider(patch);
+    },
+    [patchProvider]
+  );
+
   const applyTemplateToDoc = useCallback(
     (docId: string, overwriteExisting: boolean, providerConfirmed: boolean) => {
       const doc = providerForm.diagnosisDocs.find((d) => d.id === docId);
@@ -457,14 +505,20 @@ export function ProviderDischargeDocumentationSection({
         displayName: doc.displayName,
       });
       if (resolved.matchLevel === "generic" && !overwriteExisting) return;
-      const next = applyProviderDischargeTemplateToCard(doc, resolved, {
+      const cardPatch = applyProviderDischargeTemplateToCard(doc, resolved, {
         overwriteExisting,
         providerConfirmed,
         actor: { appliedAt: new Date().toISOString() },
       });
-      patchDiagnosisDoc(docId, next);
+      const sharedPatch = mergeTemplateSharedFieldsIntoForm(providerForm, extractSharedFieldsFromTemplate(resolved.template), {
+        overwriteExisting,
+      });
+      patchProvider({
+        diagnosisDocs: providerForm.diagnosisDocs.map((d) => (d.id === docId ? cardPatch : d)),
+        ...sharedPatch,
+      });
     },
-    [patchDiagnosisDoc, providerForm.diagnosisDocs]
+    [patchProvider, providerForm]
   );
 
   const ensureDocForRow = useCallback(
@@ -480,7 +534,7 @@ export function ProviderDischargeDocumentationSection({
         if (applyTemplate) applyTemplateToDoc(existing.id, false, false);
         return existing;
       }
-      const created = buildProviderDischargeCardFromDiagnosis({
+      return buildProviderDischargeCardFromDiagnosis({
         sourceEncounterDiagnosisId: row.id,
         code: row.code,
         displayName: row.description?.trim() || row.code,
@@ -488,9 +542,20 @@ export function ProviderDischargeDocumentationSection({
         isPrimaryDiagnosis: isPrimary,
         applyTemplateSuggestion: applyTemplate,
       });
-      return created;
     },
     [applyTemplateToDoc, providerForm]
+  );
+
+  const mergeSharedFromSelectedDiagnoses = useCallback(
+    (form: ProviderDischargeDocumentationForm) => {
+      const templates = getSelectedDiagnosisDocs(form)
+        .map((doc) => resolveProviderDischargeTemplateForDiagnosis({ code: doc.code, displayName: doc.displayName }))
+        .filter((r) => r.matchLevel !== "generic")
+        .map((r) => extractSharedFieldsFromTemplate(r.template));
+      if (!templates.length) return form;
+      return { ...form, ...mergeSharedFieldsFromSelectedTemplates(form, templates) };
+    },
+    []
   );
 
   const autoPopulatePrimary = useCallback(() => {
@@ -504,11 +569,14 @@ export function ProviderDischargeDocumentationSection({
       isPrimary: true,
     };
     const doc = ensureDocForRow(primary, true, true);
-    patchProvider({
+    let nextForm: ProviderDischargeDocumentationForm = {
+      ...providerForm,
       diagnosisRefs: [ref],
       diagnosisDocs: [...providerForm.diagnosisDocs.filter((d) => d.id !== doc.id), doc],
-    });
-  }, [encounterDiagnoses, ensureDocForRow, patchProvider, providerForm.diagnosisDocs, providerForm.diagnosisRefs.length]);
+    };
+    nextForm = mergeSharedFromSelectedDiagnoses(nextForm);
+    patchProvider(nextForm);
+  }, [encounterDiagnoses, ensureDocForRow, mergeSharedFromSelectedDiagnoses, patchProvider, providerForm]);
 
   useEffect(() => {
     autoPopulatePrimary();
@@ -523,6 +591,8 @@ export function ProviderDischargeDocumentationSection({
     () => getSelectedDiagnosisDocs(providerForm),
     [providerForm]
   );
+
+  const showSharedPlanning = selectedCards.length > 0;
 
   const toggleDiagnosis = (row: DxRow) => {
     const exists = providerForm.diagnosisRefs.find((d) => d.encounterDiagnosisId === row.id);
@@ -543,10 +613,13 @@ export function ProviderDischargeDocumentationSection({
     const nextDocs = providerForm.diagnosisDocs.some((d) => d.id === doc.id) ?
       providerForm.diagnosisDocs.map((d) => (d.id === doc.id ? doc : d))
     : [...providerForm.diagnosisDocs, doc];
-    patchProvider({
+    let nextForm: ProviderDischargeDocumentationForm = {
+      ...providerForm,
       diagnosisRefs: [...providerForm.diagnosisRefs, ref],
       diagnosisDocs: nextDocs,
-    });
+    };
+    nextForm = mergeSharedFromSelectedDiagnoses(nextForm);
+    patchProvider(nextForm);
   };
 
   return (
@@ -626,6 +699,17 @@ export function ProviderDischargeDocumentationSection({
             onApplyTemplate={(docId, overwrite) => applyTemplateToDoc(docId, overwrite, true)}
           />
         ))}
+
+        {showSharedPlanning ?
+          <SharedDischargePlanningSection
+            returnPrecautions={providerForm.returnPrecautions}
+            returnWorkSchool={providerForm.returnWorkSchool}
+            followUps={providerForm.followUps}
+            disabled={disabled}
+            validationErrors={validationErrors?.shared}
+            onPatchShared={patchSharedPlanning}
+          />
+        : null}
       </div>
     </div>
   );

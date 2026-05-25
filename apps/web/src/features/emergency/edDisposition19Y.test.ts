@@ -20,9 +20,17 @@ import {
   providerDischargeTemplateHashCanonicalString,
 } from "./providerDischargeTemplateAppliedHash";
 import {
+  extractSharedFieldsFromTemplate,
+  mergeDedupedFollowUpRows,
+  mergeSharedFieldsFromSelectedTemplates,
+  mergeTemplateSharedFieldsIntoForm,
+  mergeUniquePrecautionText,
+} from "./providerDischargeSharedPlanningMerge";
+import {
   createDiagnosisDocFromRef,
   getSelectedDiagnosisDocs,
   hydrateProviderDischargeDocumentationForm,
+  emptyProviderDischargeDocumentationForm,
   mergeProviderDischargeDocumentationIntoDischargeJson,
   newDefaultFollowUpRow,
   normalizeProviderDischargeDiagnosisCards,
@@ -63,8 +71,9 @@ function completeCard(
     diagnosisInstructions: `Instructions for ${code}`,
     medicationTreatment: `Medication for ${code}`,
     treatment: "",
-    returnPrecautions: `Precautions for ${code}`,
-    followUps: [{ ...newDefaultFollowUpRow(), timing: "1 week" }],
+    returnPrecautions: "",
+    returnWorkSchool: "",
+    followUps: [],
     medicationLines: [],
   };
 }
@@ -83,6 +92,19 @@ function formWithThreeSelected(): ProviderDischargeDocumentationForm {
       completeCard("doc-2", "dx-2", "R10.9", "Abdominal pain, unspecified", { displayOrder: 1 }),
       completeCard("doc-3", "dx-3", "S01.01", "Laceration of scalp", { displayOrder: 2 }),
     ],
+    returnPrecautions: "Shared return precautions",
+    returnWorkSchool: "May return tomorrow",
+    followUps: [{ ...newDefaultFollowUpRow(), timing: "1 week" }],
+  });
+}
+
+function normalizeTestForm(
+  partial: Partial<ProviderDischargeDocumentationForm> &
+    Pick<ProviderDischargeDocumentationForm, "diagnosisRefs" | "diagnosisDocs">
+): ProviderDischargeDocumentationForm {
+  return normalizeProviderDischargeDiagnosisCards({
+    ...emptyProviderDischargeDocumentationForm(),
+    ...partial,
   });
 }
 
@@ -122,8 +144,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("first encounter diagnosis is primary by default when normalized", () => {
-      const form = normalizeProviderDischargeDiagnosisCards({
-        patientLeftEdAt: "",
+      const form = normalizeTestForm({
         diagnosisRefs: [{ encounterDiagnosisId: "dx-1", code: "R07.9", label: "Chest pain", isPrimary: true }],
         diagnosisDocs: [
           {
@@ -157,8 +178,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("missing displayOrder hydrates from selected diagnosis order", () => {
-      const form = normalizeProviderDischargeDiagnosisCards({
-        patientLeftEdAt: "",
+      const form = normalizeTestForm({
         diagnosisRefs: [
           { encounterDiagnosisId: "dx-a", code: "A", label: "A" },
           { encounterDiagnosisId: "dx-b", code: "B", label: "B" },
@@ -173,8 +193,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("missing isPrimaryDiagnosis hydrates with first selected card primary", () => {
-      const form = normalizeProviderDischargeDiagnosisCards({
-        patientLeftEdAt: "",
+      const form = normalizeTestForm({
         diagnosisRefs: [
           { encounterDiagnosisId: "dx-a", code: "A", label: "A", isPrimary: true },
           { encounterDiagnosisId: "dx-b", code: "B", label: "B" },
@@ -520,6 +539,218 @@ describe("edDisposition19Y", () => {
           documentedByDisplayName: "Dr Test",
         })
       );
+      expect(json).not.toContain('"orderId"');
+      expect(json).not.toContain('"marAction"');
+    });
+  });
+
+  describe("19Y.2B shared discharge planning layout", () => {
+    const uiSource = readFileSync(
+      join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+      "utf8"
+    );
+    const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
+    const abdominalTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "abdominal_pain_family_v1")!;
+
+    it("each selected diagnosis renders one card", () => {
+      expect(getSelectedDiagnosisDocs(formWithThreeSelected())).toHaveLength(3);
+    });
+
+    it("diagnosis card UI contains Description / Instructions / Medication-treatment", () => {
+      expect(uiSource).toContain("descriptionRequired");
+      expect(uiSource).toContain("diagnosisInstructionsRequired");
+      expect(uiSource).toContain("medicationTreatmentRequired");
+    });
+
+    it("diagnosis card UI does NOT contain Return precautions field", () => {
+      const cardBlock = uiSource.slice(uiSource.indexOf("DiagnosisDocumentationCard"), uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(cardBlock).not.toContain("returnPrecautionsRequired");
+    });
+
+    it("diagnosis card UI does NOT contain Follow-up field", () => {
+      const cardBlock = uiSource.slice(uiSource.indexOf("DiagnosisDocumentationCard"), uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(cardBlock).not.toContain("followUpRequired");
+    });
+
+    it("diagnosis card UI does NOT contain Return to work/school field", () => {
+      const cardBlock = uiSource.slice(uiSource.indexOf("DiagnosisDocumentationCard"), uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(cardBlock).not.toContain("workSchoolQuick");
+    });
+
+    it("shared Discharge planning section renders once", () => {
+      expect(uiSource).toContain("<SharedDischargePlanningSection");
+      expect(uiSource.match(/<SharedDischargePlanningSection/g)?.length).toBe(1);
+      expect(uiSource).toContain("dischargePlanningSection");
+    });
+
+    it("shared section contains Return precautions", () => {
+      const sharedBlock = uiSource.slice(uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(sharedBlock).toContain("returnPrecautionsRequired");
+    });
+
+    it("shared section contains Return to work/school", () => {
+      const sharedBlock = uiSource.slice(uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(sharedBlock).toContain("workSchoolQuick");
+    });
+
+    it("shared section contains Follow-up", () => {
+      const sharedBlock = uiSource.slice(uiSource.indexOf("SharedDischargePlanningSection"));
+      expect(sharedBlock).toContain("followUpRequired");
+    });
+
+    it("return precautions merge from multiple selected diagnosis templates", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const merged = mergeSharedFieldsFromSelectedTemplates(form, [
+        extractSharedFieldsFromTemplate(chestTemplate),
+        extractSharedFieldsFromTemplate(abdominalTemplate),
+      ]);
+      expect(merged.returnPrecautions).toContain(chestTemplate.suggestedText.returnPrecautions.slice(0, 24));
+      expect(merged.returnPrecautions).toContain(abdominalTemplate.suggestedText.returnPrecautions.slice(0, 24));
+    });
+
+    it("return precautions dedupe duplicate sentences", () => {
+      const sentence = "Return to the emergency department for worsening symptoms.";
+      const merged = mergeUniquePrecautionText(sentence, [sentence, sentence]);
+      expect(merged.split("\n").filter(Boolean)).toHaveLength(1);
+    });
+
+    it("follow-up suggestions merge/dedupe from multiple diagnoses", () => {
+      const row = { ...newDefaultFollowUpRow(), specialty: "CARDIOLOGY", providerOrFacility: "Dr A", timing: "1 week" };
+      const merged = mergeDedupedFollowUpRows([row], [{ ...row, id: "other-id" }]);
+      expect(merged).toHaveLength(1);
+    });
+
+    it("provider-entered shared return precautions are not overwritten", () => {
+      const form = { ...formWithThreeSelected(), returnPrecautions: "Provider custom precautions" };
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chestTemplate));
+      expect(merged.returnPrecautions).toBe("Provider custom precautions");
+    });
+
+    it("save blocks if any diagnosis card missing description", () => {
+      const form = formWithThreeSelected();
+      form.diagnosisDocs[1]!.description = "";
+      expect(validateProviderDischargeDocumentation(form, validationMessages)).not.toBeNull();
+    });
+
+    it("save blocks if any diagnosis card missing instructions", () => {
+      const form = formWithThreeSelected();
+      form.diagnosisDocs[1]!.diagnosisInstructions = "";
+      expect(validateProviderDischargeDocumentation(form, validationMessages)).not.toBeNull();
+    });
+
+    it("save blocks if any diagnosis card missing medication/treatment", () => {
+      const form = formWithThreeSelected();
+      form.diagnosisDocs[1]!.medicationTreatment = "";
+      expect(validateProviderDischargeDocumentation(form, validationMessages)).not.toBeNull();
+    });
+
+    it("save blocks if shared return precautions missing", () => {
+      const form = formWithThreeSelected();
+      form.returnPrecautions = "";
+      const errors = validateProviderDischargeDocumentation(form, validationMessages);
+      expect(errors?.shared?.returnPrecautions).toBeTruthy();
+    });
+
+    it("save blocks if shared follow-up missing", () => {
+      const form = formWithThreeSelected();
+      form.followUps = [{ ...newDefaultFollowUpRow() }];
+      const errors = validateProviderDischargeDocumentation(form, validationMessages);
+      expect(errors?.shared?.followUps).toBeTruthy();
+    });
+
+    it("save does NOT require return precautions inside each card", () => {
+      const form = formWithThreeSelected();
+      for (const doc of form.diagnosisDocs) doc.returnPrecautions = "";
+      expect(validateProviderDischargeDocumentation(form, validationMessages)).toBeNull();
+    });
+
+    it("legacy per-card returnPrecautions/followUps hydrate into shared fields", () => {
+      const form = hydrateProviderDischargeDocumentationForm({
+        providerDischargeDiagnosisDocs: [
+          {
+            id: "d1",
+            sourceEncounterDiagnosisId: "dx-1",
+            code: "R07.9",
+            displayName: "Chest pain",
+            isPrimaryDiagnosis: true,
+            displayOrder: 0,
+            description: "Saved",
+            diagnosisInstructions: "Saved",
+            medicationTreatment: "Saved",
+            returnPrecautions: "Legacy card precautions",
+            followUps: [{ id: "f1", specialty: "PRIMARY_CARE", name: "PCP", timing: "1w", phone: "", address: "", comments: "" }],
+          },
+        ],
+        providerDischargeDiagnosisRefs: [{ encounterDiagnosisId: "dx-1", code: "R07.9", label: "Chest pain", isPrimary: true }],
+      });
+      expect(form.returnPrecautions).toContain("Legacy card precautions");
+      expect(form.followUps.some((r) => r.timing === "1w")).toBe(true);
+    });
+
+    it("new save writes shared returnPrecautions/followUps once", () => {
+      const merged = mergeProviderDischargeDocumentationIntoDischargeJson({}, formWithThreeSelected(), {
+        documentedAt: "2026-05-18T18:00:00.000Z",
+        documentedByDisplayName: "Dr A",
+      });
+      expect(merged.returnPrecautions).toBe("Shared return precautions");
+      expect(merged.providerDischargeFollowUps).toHaveLength(1);
+      const doc = (merged.providerDischargeDiagnosisDocs as Record<string, unknown>[])[0]!;
+      expect(doc.returnPrecautions).toBeUndefined();
+      expect(doc.followUps).toBeUndefined();
+    });
+
+    it("summary renders return precautions/follow-up once", () => {
+      const merged = mergeProviderDischargeDocumentationIntoDischargeJson({}, formWithThreeSelected(), {
+        documentedAt: "2026-05-18T18:00:00.000Z",
+        documentedByDisplayName: "Dr A",
+      });
+      const block = buildProviderDischargeDocumentationSummaryBlock(merged, "en");
+      const text = block!.lines.join("\n");
+      expect(text).toContain("Discharge planning");
+      expect(text.match(/Return precautions/g)?.length).toBe(1);
+      expect(text.match(/Follow-up/g)?.length).toBe(1);
+    });
+
+    it("ER packet uses same summary builder (return precautions once)", () => {
+      const merged = mergeProviderDischargeDocumentationIntoDischargeJson({}, formWithThreeSelected(), {
+        documentedAt: "2026-05-18T18:00:00.000Z",
+        documentedByDisplayName: "Dr A",
+      });
+      const block = buildProviderDischargeDocumentationSummaryBlock(merged, "fr");
+      const text = block!.lines.join("\n");
+      expect(text).toContain("Planification de sortie");
+      expect(text.match(/Consignes de retour/g)?.length).toBe(1);
+    });
+
+    it("chart export remains backward compatible with legacy per-card fields", () => {
+      const legacy = hydrateProviderDischargeDocumentationForm({
+        providerDischargeDiagnosisDocs: [
+          {
+            id: "d1",
+            sourceEncounterDiagnosisId: "dx-1",
+            code: "R07.9",
+            displayName: "Chest pain",
+            description: "x",
+            diagnosisInstructions: "x",
+            medicationTreatment: "x",
+            returnPrecautions: "Legacy card",
+            followUps: [{ id: "f1", specialty: "PRIMARY_CARE", name: "PCP", timing: "1w", phone: "", address: "", comments: "" }],
+          },
+        ],
+      });
+      expect(legacy.returnPrecautions).toContain("Legacy card");
+    });
+
+    it("card keys remain stable by doc id", () => {
+      expect(uiSource).toContain("key={doc.id}");
+      expect(uiSource).toContain("React.memo");
+    });
+
+    it("no orders/eRx/MAR created from shared planning merge", () => {
+      const json = JSON.stringify(mergeProviderDischargeDocumentationIntoDischargeJson({}, formWithThreeSelected(), {
+        documentedAt: new Date().toISOString(),
+        documentedByDisplayName: "Dr Test",
+      }));
       expect(json).not.toContain('"orderId"');
       expect(json).not.toContain('"marAction"');
     });

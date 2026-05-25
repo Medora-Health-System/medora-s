@@ -47,18 +47,34 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
   return parts.join(" · ");
 }
 
-function appendDiagnosisDocLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
+function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
   const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
   lines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
   pushLine(lines, p(locale, "description"), doc.description);
   pushLine(lines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
   pushLine(lines, p(locale, "medicationTreatment"), doc.medicationTreatment);
-  pushLine(lines, p(locale, "returnPrecautions"), doc.returnPrecautions);
-  pushLine(lines, p(locale, "workSchool"), doc.returnWorkSchool);
-  if (doc.followUps.length) {
+}
+
+function appendSharedPlanningLines(
+  lines: string[],
+  form: ReturnType<typeof hydrateProviderDischargeDocumentationForm>,
+  locale: SupportedLanguage
+) {
+  const hasPlanning =
+    Boolean(form.returnPrecautions.trim()) ||
+    Boolean(form.returnWorkSchool.trim()) ||
+    form.followUps.some((r) => r.providerOrFacility.trim() || r.timing.trim());
+
+  if (!hasPlanning) return;
+
+  lines.push("");
+  lines.push(p(locale, "dischargePlanningSection"));
+  pushLine(lines, p(locale, "returnPrecautions"), form.returnPrecautions);
+  pushLine(lines, p(locale, "workSchool"), form.returnWorkSchool);
+  if (form.followUps.length) {
     lines.push(p(locale, "followUp"));
-    for (const row of doc.followUps) {
+    for (const row of form.followUps) {
       lines.push(`• ${formatFollowUpRow(row, locale)}`);
     }
   }
@@ -90,11 +106,19 @@ export function buildProviderDischargeDocumentationSummaryBlock(
   pushLine(lines, p(locale, "patientLeftEd"), form.patientLeftEdAt ? formatIso(form.patientLeftEdAt, locale) : "");
 
   if (selectedDocs.length) {
+    lines.push("");
+    lines.push(p(locale, "diagnosisDocumentationSection"));
     for (const doc of selectedDocs) {
-      appendDiagnosisDocLines(lines, doc, locale);
+      appendDiagnosisCardLines(lines, doc, locale);
     }
+    appendSharedPlanningLines(lines, form, locale);
   } else if (form.diagnosisDocs.length === 1) {
-    appendDiagnosisDocLines(lines, form.diagnosisDocs[0]!, locale);
+    lines.push("");
+    lines.push(p(locale, "diagnosisDocumentationSection"));
+    appendDiagnosisCardLines(lines, form.diagnosisDocs[0]!, locale);
+    appendSharedPlanningLines(lines, form, locale);
+  } else {
+    appendSharedPlanningLines(lines, form, locale);
   }
 
   if (lines.length === 0) return null;

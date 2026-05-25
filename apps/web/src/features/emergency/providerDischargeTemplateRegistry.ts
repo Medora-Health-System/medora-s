@@ -9,7 +9,6 @@ import {
 import {
   newDefaultFollowUpRow,
   newDiagnosisDocId,
-  newFollowUpRowId,
   type ProviderDischargeDiagnosisCard,
   type ProviderDischargeFollowUpRow,
   type ProviderDischargeMedicationLine,
@@ -295,7 +294,7 @@ export function buildProviderDischargeCardFromDiagnosis(
     treatment: "",
     returnPrecautions: "",
     returnWorkSchool: "",
-    followUps: [newDefaultFollowUpRow()],
+    followUps: [],
     medicationLines: [],
   };
 
@@ -335,20 +334,6 @@ export function applyProviderDischargeTemplateToCard(
   if (overwrite || !next.diagnosisInstructions.trim()) next.diagnosisInstructions = text.diagnosisInstructions;
   if (overwrite || !next.medicationTreatment.trim()) next.medicationTreatment = text.medicationTreatment;
   if (text.treatment && (overwrite || !(next.treatment ?? "").trim())) next.treatment = text.treatment;
-  if (overwrite || !next.returnPrecautions.trim()) next.returnPrecautions = text.returnPrecautions;
-  if (text.returnWorkSchool && (overwrite || !(next.returnWorkSchool ?? "").trim())) {
-    next.returnWorkSchool = text.returnWorkSchool;
-  }
-
-  if (
-    template.defaultFollowUps?.length &&
-    (overwrite || !next.followUps.some((r) => r.providerOrFacility.trim() || r.timing.trim()))
-  ) {
-    next.followUps = template.defaultFollowUps.map((row) => ({
-      ...row,
-      id: newFollowUpRowId(),
-    }));
-  }
 
   next.templateMeta = {
     templateId: template.id,
