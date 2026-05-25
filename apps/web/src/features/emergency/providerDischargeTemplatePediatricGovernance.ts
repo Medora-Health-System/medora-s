@@ -80,7 +80,7 @@ export const PROVIDER_DISCHARGE_PEDIATRIC_DANGER_SIGN_PHRASES: Record<
     fr: ["vomissements persistants", "vomissements répétés", "vomissements empêchent"],
   },
   trouble_waking: {
-    en: ["difficult to wake", "trouble waking", "cannot wake"],
+    en: ["difficult to wake", "trouble waking", "cannot wake", "difficulty waking"],
     fr: ["difficile à réveiller", "difficulté à réveiller"],
   },
   blue_lips: {
@@ -89,7 +89,7 @@ export const PROVIDER_DISCHARGE_PEDIATRIC_DANGER_SIGN_PHRASES: Record<
   },
   poor_intake: {
     en: ["poor fluid intake", "poor intake", "cannot keep fluids down", "feeding"],
-    fr: ["boit mal", "apports hydriques insuffisants", "ne peut pas boire", "alimentation"],
+    fr: ["boit mal", "apports hydriques insuffisants", "ne peut pas boire", "alimentation", "s'alimenter"],
   },
   worsening_symptoms: {
     en: ["worsening symptoms", "symptoms worsen", "worsening"],
@@ -104,6 +104,9 @@ export const PROVIDER_DISCHARGE_PEDIATRIC_DEHYDRATION_DANGER_TEMPLATE_IDS = new 
   "pediatric_uri_v1",
   "pediatric_gastroenteritis_v1",
   "pediatric_mild_dehydration_v1",
+  "pediatric_vomiting_v1",
+  "pediatric_dehydration_escalation_v1",
+  "pediatric_influenza_like_illness_v1",
 ]);
 
 export const PROVIDER_DISCHARGE_PEDIATRIC_DEHYDRATION_DANGER_EN_PHRASES = [
@@ -135,6 +138,10 @@ export const PROVIDER_DISCHARGE_PEDIATRIC_NEUROLOGIC_WARNING_TEMPLATE_IDS = new 
   "pediatric_fever_v1",
   "pediatric_mild_dehydration_v1",
   "pediatric_gastroenteritis_v1",
+  "pediatric_febrile_seizure_v1",
+  "pediatric_concussion_v1",
+  "pediatric_dehydration_escalation_v1",
+  "pediatric_vomiting_v1",
 ]);
 
 export const PROVIDER_DISCHARGE_PEDIATRIC_NEUROLOGIC_SEIZURE_EN = ["seizure", "convulsion"] as const;

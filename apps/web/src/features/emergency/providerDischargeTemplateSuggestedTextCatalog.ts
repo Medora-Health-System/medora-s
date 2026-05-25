@@ -1098,6 +1098,266 @@ export const PEDIATRIC_MINOR_HEAD_INJURY_SUGGESTED_TEXT: ProviderDischargeTempla
     }
   );
 
+export const PEDIATRIC_FEBRILE_SEIZURE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department after a febrile seizure. Febrile seizures can recur; caregiver observation and timely follow-up are important after an emergency visit.",
+      diagnosisInstructions:
+        "Caregiver should follow comfort and monitoring instructions as directed during this visit. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 for another seizure, a seizure lasting longer than expected, trouble breathing, neck stiffness, very lethargic behavior, persistent or worsening fever, unusual behavior or confusion, or worsening symptoms. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: monitor breathing, alertness, temperature, and activity closely. Follow instructions from your child's clinician and keep follow-up with pediatrics or primary care.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences après une crise convulsive fébrile. Une récidive est possible ; la surveillance par le responsable et un suivi rapide sont importants après une visite aux urgences.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes de confort et de surveillance selon les indications reçues. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 en cas de nouvelle crise convulsive, d'une crise plus longue que prévu, de difficulté respiratoire, de raideur de la nuque, de léthargie marquée, de fièvre persistante ou qui s'aggrave, de comportement inhabituel ou de confusion, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez de près la respiration, la vigilance, la température et l'activité. Suivez les instructions du clinicien de votre enfant et respectez le suivi en pédiatrie ou en soins primaires.",
+    }
+  );
+
+export const PEDIATRIC_ABDOMINAL_PAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for abdominal pain. Abdominal pain in children can change after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Caregiver should follow diet, comfort, and monitoring instructions as directed during this visit. Return precautions were reviewed with the caregiver.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if pain worsens, pain moves to the lower right abdomen, repeated vomiting occurs, fever develops or persists, blood appears in stool or vomit, signs of dehydration appear, the abdomen becomes swollen, your child becomes lethargic, or symptoms worsen. Caregiver should seek immediate care when worried.",
+      caregiverInstructions:
+        "Caregiver: note whether pain, vomiting, fever, or activity changes. Follow instructions from your child's clinician and keep follow-up appointments.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une douleur abdominale. La douleur abdominale chez l'enfant peut évoluer après une visite aux urgences ; un suivi ambulatoire est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes alimentaires, de confort et de surveillance selon les indications reçues. Les consignes de retour ont été revues avec le responsable.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si la douleur s'aggrave, si elle se déplace vers le bas-ventre droit, en cas de vomissements répétés, de fièvre nouvelle ou persistante, de sang dans les selles ou les vomissements, de signes de déshydratation, de distension abdominale, de léthargie ou d'aggravation des signes. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : notez toute modification de la douleur, des vomissements, de la fièvre ou de l'activité. Suivez les instructions du clinicien de votre enfant et respectez les rendez-vous de suivi.",
+    }
+  );
+
+export const PEDIATRIC_VOMITING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for vomiting. Vomiting may persist briefly after an emergency visit; caregiver monitoring of hydration and comfort is important.",
+      diagnosisInstructions:
+        "Caregiver should focus on hydration and diet as directed during this visit. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 for green or bloody vomit, severe abdominal pain, signs of dehydration, lethargy, persistent vomiting, inability to keep fluids down, or worsening symptoms. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: offer small amounts of fluids as directed and monitor urine output, tears, and activity.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour des vomissements. Les vomissements peuvent persister brièvement après une visite aux urgences ; la surveillance de l'hydratation et du confort par le responsable est importante.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit privilégier l'hydratation et l'alimentation selon les indications reçues. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 en cas de vomissements verts ou sanglants, de douleur abdominale intense, de signes de déshydratation, de léthargie, de vomissements persistants, d'incapacité à boire, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : proposez de petites quantités de liquide selon les indications et surveillez la diurèse, les larmes et l'activité.",
+    }
+  );
+
+export const PEDIATRIC_DEHYDRATION_ESCALATION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for worsening dehydration concerns. Continued hydration and close caregiver monitoring are essential after an emergency visit.",
+      diagnosisInstructions:
+        "Caregiver should give fluids as directed during this visit. Monitor urine, tears, mouth moisture, alertness, and activity. Return precautions were reviewed with the caregiver.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if urination decreases significantly, your child has dry mouth or no tears, is very lethargic or difficult to wake, cannot keep fluids down, has persistent vomiting, or symptoms worsen. Caregiver should seek immediate care when worried.",
+      caregiverInstructions:
+        "Caregiver: encourage fluids as directed and watch for fewer wet diapers, dry mouth, sunken eyes, or decreased activity.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une déshydratation préoccupante. L'hydratation continue et une surveillance étroite par le responsable sont essentielles après une visite aux urgences.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit donner des liquides selon les indications reçues. Surveillez la diurèse, les larmes, l'humidité buccale, la vigilance et l'activité. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si la diurèse diminue nettement, si votre enfant a la bouche sèche ou ne produit plus de larmes, est très léthargique ou difficile à réveiller, ne peut pas boire, a des vomissements persistants, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : encouragez les liquides selon les indications et surveillez une baisse des changes humides, une bouche sèche, des yeux enfoncés ou une baisse d'activité.",
+    }
+  );
+
+export const PEDIATRIC_RSV_BRONCHIOLITIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for bronchiolitis or an RSV-related respiratory illness. Breathing symptoms may change after an emergency visit; caregiver monitoring is important.",
+      diagnosisInstructions:
+        "Caregiver should follow comfort and breathing support instructions as directed during this visit. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if breathing worsens, retractions or heavy work of breathing develop, lips turn blue, poor feeding or poor fluid intake occurs, pauses in breathing are noticed, signs of dehydration appear, or symptoms worsen. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: monitor breathing, feeding, hydration, and activity. Follow instructions from your child's clinician and keep follow-up with pediatrics.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une bronchiolite ou une infection respiratoire liée au VRS. Les signes respiratoires peuvent évoluer après une visite aux urgences ; la surveillance par le responsable est importante.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes de confort et de soutien respiratoire selon les indications reçues. Les consignes de retour ont été revues avec le responsable.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si la respiration s'aggrave, si des tirages ou une difficulté respiratoire importante apparaissent, si les lèvres deviennent bleues, si l'alimentation ou l'hydratation diminue, en cas de pauses respiratoires, de signes de déshydratation, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez la respiration, l'alimentation, l'hydratation et l'activité. Suivez les instructions du clinicien de votre enfant et respectez le suivi en pédiatrie.",
+    }
+  );
+
+export const PEDIATRIC_CROUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for croup. Croup symptoms often change with activity and time of day; caregiver monitoring after an emergency visit is important.",
+      diagnosisInstructions:
+        "Caregiver should follow comfort and breathing instructions as directed during this visit. Return precautions were reviewed with the caregiver.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if stridor is present at rest, breathing worsens, lips turn blue, drooling increases, your child becomes lethargic, or symptoms worsen. Caregiver should seek immediate care when worried.",
+      caregiverInstructions:
+        "Caregiver: monitor breathing sounds, activity, and hydration. Follow instructions from your child's clinician.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour un croup. Les signes du croup peuvent varier selon l'activité et le moment de la journée ; la surveillance par le responsable après une visite aux urgences est importante.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes de confort et de respiration selon les indications reçues. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si un stridor est présent au repos, si la respiration s'aggrave, si les lèvres deviennent bleues, si la salivation excessive augmente, si votre enfant devient léthargique, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez les bruits respiratoires, l'activité et l'hydratation. Suivez les instructions du clinicien de votre enfant.",
+    }
+  );
+
+export const PEDIATRIC_ALLERGIC_REACTION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for an allergic reaction. Allergic symptoms can recur or worsen; caregiver monitoring and follow-up are important after an emergency visit.",
+      diagnosisInstructions:
+        "Caregiver should follow allergy and medication instructions as directed during this visit. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 for swelling of the lips, tongue, or throat, trouble breathing, repeated vomiting, fainting or collapse, a rapidly worsening rash, or other concerning symptoms. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: watch for return of hives, swelling, breathing changes, or vomiting. Follow instructions from your child's clinician and avoid known triggers as directed.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une réaction allergique. Les signes allergiques peuvent récidiver ou s'aggraver ; la surveillance par le responsable et un suivi sont importants après une visite aux urgences.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes sur l'allergie et les médicaments selon les indications reçues. Les consignes de retour ont été revues avec le responsable.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 en cas de gonflement des lèvres, de la langue ou de la gorge, de difficulté respiratoire, de vomissements répétés, d'évanouissement, d'éruption qui s'aggrave rapidement, ou d'autres signes inquiétants. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez toute réapparition d'urticaire, de gonflement, de modification respiratoire ou de vomissements. Suivez les instructions du clinicien de votre enfant et évitez les déclencheurs connus selon les indications.",
+    }
+  );
+
+export const PEDIATRIC_CONCUSSION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for a concussion. Caregiver observation at home is important after a head injury; follow-up is recommended if new or worsening symptoms develop.",
+      diagnosisInstructions:
+        "Caregiver should follow activity and observation instructions as directed during this visit. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 for repeated vomiting, worsening headache, confusion, seizure, trouble waking your child, unusual behavior or behavior change, weakness, or worsening symptoms. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: observe your child closely as directed. Limit activity only as instructed by your clinician and keep follow-up appointments.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une commotion cérébrale. La surveillance par le responsable à domicile est importante après un traumatisme crânien ; un suivi est recommandé si de nouveaux signes ou une aggravation apparaissent.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes d'activité et de surveillance selon les indications reçues. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 en cas de vomissements répétés, de céphalée aggravée, de confusion, de crise convulsive, de difficulté à réveiller votre enfant, de comportement inhabituel ou de changement de comportement, de faiblesse, ou d'aggravation des signes. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : observez votre enfant de près selon les indications reçues. Limitez l'activité seulement selon les consignes du clinicien et respectez les rendez-vous de suivi.",
+    }
+  );
+
+export const PEDIATRIC_WHEEZING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for wheezing or noisy breathing. Breathing symptoms may recur; caregiver monitoring and follow-up with pediatrics are recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Caregiver should follow breathing and medication instructions as directed during this visit. Return precautions were reviewed with the caregiver.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if breathing worsens, rescue medicine is needed more often than directed, lips turn blue, your child has trouble speaking or feeding because of breathing, or symptoms worsen. Caregiver should seek immediate care when worried.",
+      caregiverInstructions:
+        "Caregiver: watch for increased wheezing, cough, or work of breathing. Follow rescue and maintenance medicine instructions exactly as directed.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour une respiration sifflante ou bruyante. Les signes respiratoires peuvent récidiver ; la surveillance par le responsable et un suivi en pédiatrie sont recommandés lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit suivre les consignes respiratoires et médicamenteuses selon les indications reçues. Les consignes de retour ont été revues avec l'accompagnant.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si la respiration s'aggrave, si un médicament de secours est nécessaire plus souvent que prévu, si les lèvres deviennent bleues, si votre enfant a du mal à parler ou à s'alimenter à cause de la respiration, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez toute augmentation des sibilances, de la toux ou de la difficulté respiratoire. Suivez exactement les consignes pour les médicaments de secours et d'entretien.",
+    }
+  );
+
+export const PEDIATRIC_INFLUENZA_LIKE_ILLNESS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "Your child was evaluated in the emergency department for influenza-like illness. Symptoms may persist after an emergency visit; caregiver monitoring and outpatient follow-up are recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Caregiver should provide supportive care as directed during this visit. Monitor temperature, hydration, breathing, and activity. Return precautions were reviewed with the guardian.",
+      medicationTreatment: PEDIATRIC_MED_EN,
+      returnPrecautions:
+        "Return immediately or call 911 if your child has trouble breathing, signs of dehydration, persistent or worsening fever, very lethargic behavior, difficulty waking, or worsening symptoms. Caregiver should seek immediate care when concerned.",
+      caregiverInstructions:
+        "Caregiver: monitor fever, fluids, breathing, and activity. Follow instructions from your child's clinician and keep follow-up with pediatrics or primary care.",
+    },
+    {
+      description:
+        "Votre enfant a été pris en charge aux urgences pour un tableau grippal. Les signes peuvent persister après une visite aux urgences ; la surveillance par le responsable et un suivi ambulatoire sont recommandés lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Le parent ou tuteur doit prodiguer des soins de confort selon les indications reçues. Surveillez la température, l'hydratation, la respiration et l'activité. Les consignes de retour ont été revues avec le responsable.",
+      medicationTreatment: PEDIATRIC_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement aux urgences ou appelez le 911 si votre enfant a du mal à respirer, présente des signes de déshydratation, a une fièvre persistante ou qui s'aggrave, est très léthargique, est difficile à réveiller, ou si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+      caregiverInstructions:
+        "Parent/tuteur : surveillez la fièvre, les liquides, la respiration et l'activité. Suivez les instructions du clinicien de votre enfant et respectez le suivi en pédiatrie ou en soins primaires.",
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

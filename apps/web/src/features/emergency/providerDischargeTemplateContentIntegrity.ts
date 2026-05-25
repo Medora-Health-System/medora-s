@@ -206,6 +206,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["head injury", "child"], fr: ["traumatisme crânien", "enfant"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  pediatric_febrile_seizure_v1: {
+    mustIncludeAny: { en: ["febrile seizure", "seizure"], fr: ["convulsive fébrile", "crise"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_abdominal_pain_v1: {
+    mustIncludeAny: { en: ["abdominal pain", "child"], fr: ["douleur abdominale", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_vomiting_v1: {
+    mustIncludeAny: { en: ["vomiting", "child"], fr: ["vomissements", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_dehydration_escalation_v1: {
+    mustIncludeAny: { en: ["dehydration", "child"], fr: ["déshydratation", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_rsv_bronchiolitis_v1: {
+    mustIncludeAny: { en: ["bronchiolitis", "rsv", "breathing"], fr: ["bronchiolite", "vrs", "respiratoire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_croup_v1: {
+    mustIncludeAny: { en: ["croup", "child"], fr: ["croup", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_allergic_reaction_v1: {
+    mustIncludeAny: { en: ["allergic reaction", "child"], fr: ["réaction allergique", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_concussion_v1: {
+    mustIncludeAny: { en: ["concussion", "child"], fr: ["commotion", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_wheezing_v1: {
+    mustIncludeAny: { en: ["wheezing", "breathing"], fr: ["sifflante", "respiratoires"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  pediatric_influenza_like_illness_v1: {
+    mustIncludeAny: { en: ["influenza", "child"], fr: ["grippal", "enfant"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {
