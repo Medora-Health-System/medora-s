@@ -8,8 +8,9 @@ import {
   matchProviderDischargeEducationTemplate,
 } from "./providerDischargeEducationTemplates";
 import {
-  buildProviderDischargeCardFromDiagnosis,
   applyProviderDischargeTemplateToCard,
+  BATCH_1_ED_DISCHARGE_TEMPLATE_IDS,
+  buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
   resolveProviderDischargeTemplateForDiagnosis,
@@ -260,7 +261,7 @@ describe("edDisposition19Y", () => {
     it("family match beats keyword match", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R10.9", displayName: "Nausea" });
       expect(resolved.matchLevel).toBe("icdFamily");
-      expect(resolved.template.id).toBe("abdominal_pain_family_v1");
+      expect(resolved.template.id).toBe("abdominal_pain_v1");
     });
 
     it("keyword match beats generic fallback", () => {
@@ -269,7 +270,7 @@ describe("edDisposition19Y", () => {
         displayName: "abdominal pain after meal",
       });
       expect(resolved.matchLevel).toBe("keyword");
-      expect(resolved.template.id).toBe("abdominal_pain_keyword_v1");
+      expect(resolved.template.id).toBe("abdominal_pain_v1");
     });
 
     it("generic fallback works when no other match exists", () => {
@@ -293,7 +294,7 @@ describe("edDisposition19Y", () => {
         overwriteExisting: true,
       });
       expect(next.templateMeta?.templateId).toBe("chest_pain_v1");
-      expect(next.templateMeta?.templateVersion).toBe("1.0.0");
+      expect(next.templateMeta?.templateVersion).toBe("1.1.0");
       expect(next.templateMeta?.matchLevel).toBe("icdExact");
       expect(next.templateMeta?.sourceReferences.length).toBeGreaterThan(0);
       expect(next.templateMeta?.providerConfirmed).toBe(true);
@@ -544,13 +545,219 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.3 Batch 1 ED diagnosis templates", () => {
+    const FORBIDDEN_FABRICATED_PATTERNS = [
+      /troponin/i,
+      /\bACS ruled out\b/i,
+      /\bCT (was|is) normal\b/i,
+      /\bpatient improved\b/i,
+      /\bconsult (was|performed)\b/i,
+      /critical care provided/i,
+      /\b992\d{2}\b/,
+      /\bCPT\b/,
+      /\bE\/M level\b/i,
+    ];
+
+    const batchTemplates = () =>
+      BATCH_1_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 6 Batch 1 templates exist", () => {
+      expect(BATCH_1_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(6);
+      for (const id of BATCH_1_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("each Batch 1 template has version", () => {
+      for (const template of batchTemplates()) {
+        expect(template.version.trim()).not.toBe("");
+      }
+    });
+
+    it("each Batch 1 template has sourceReferences", () => {
+      for (const template of batchTemplates()) {
+        expect(template.sourceReferences.length).toBeGreaterThan(0);
+      }
+    });
+
+    it("each Batch 1 template has specialtyCategory", () => {
+      for (const template of batchTemplates()) {
+        expect(template.specialtyCategory?.trim()).toBeTruthy();
+      }
+    });
+
+    it("each Batch 1 template has riskCategory", () => {
+      for (const template of batchTemplates()) {
+        expect(template.riskCategory?.trim()).toBeTruthy();
+      }
+    });
+
+    it("each Batch 1 template produces deterministic templateAppliedHash", () => {
+      for (const template of batchTemplates()) {
+        const a = computeProviderDischargeTemplateAppliedHash(template);
+        const b = computeProviderDischargeTemplateAppliedHash(template);
+        expect(a).toBe(b);
+        expect(a).toMatch(/^[a-f0-9]{64}$/);
+      }
+    });
+
+    it("chest pain exact R07.9 resolves to chest pain template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      expect(resolved.template.id).toBe("chest_pain_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("chest pain R07 family resolves to chest pain template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.2", displayName: "Precordial pain" });
+      expect(resolved.template.id).toBe("chest_pain_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("abdominal pain R10 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R10.84", displayName: "Generalized pain" });
+      expect(resolved.template.id).toBe("abdominal_pain_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("headache R51 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "Headache" });
+      expect(resolved.template.id).toBe("headache_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("URI/cough J06 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J06.9", displayName: "URI" });
+      expect(resolved.template.id).toBe("uri_cough_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("URI/cough R05 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R05.9", displayName: "Cough" });
+      expect(resolved.template.id).toBe("uri_cough_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("UTI N39.0 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "N39.0", displayName: "UTI" });
+      expect(resolved.template.id).toBe("uti_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("UTI R30 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R30.0", displayName: "Dysuria" });
+      expect(resolved.template.id).toBe("uti_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("wound/laceration injury families resolve correctly", () => {
+      for (const code of ["S01.01", "S41.012", "S61.1", "T14.1"]) {
+        const resolved = resolveProviderDischargeTemplateForDiagnosis({ code, displayName: "Laceration" });
+        expect(resolved.template.id).toBe("wound_laceration_v1");
+        expect(["icdExact", "icdFamily"]).toContain(resolved.matchLevel);
+      }
+    });
+
+    it("exact match beats family", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "N39.0", displayName: "UTI" });
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("family beats keyword", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "migraine headache" });
+      expect(resolved.matchLevel).toBe("icdFamily");
+      expect(resolved.template.id).toBe("headache_v1");
+    });
+
+    it("keyword beats generic", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "persistent cough" });
+      expect(resolved.matchLevel).toBe("keyword");
+      expect(resolved.template.id).toBe("uri_cough_v1");
+    });
+
+    it("generic fallback remains safe/empty", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "Unspecified" });
+      expect(resolved.matchLevel).toBe("generic");
+      expect(resolved.template.suggestedText.description).toBe("");
+      expect(resolved.template.suggestedText.returnPrecautions).toBe("");
+    });
+
+    it("template text does not contain fabricated test/result language", () => {
+      for (const template of batchTemplates()) {
+        const blob = JSON.stringify(template.suggestedText);
+        for (const pattern of FORBIDDEN_FABRICATED_PATTERNS) {
+          expect(blob).not.toMatch(pattern);
+        }
+      }
+    });
+
+    it("template text does not contain billing code / CPT / E/M level language", () => {
+      for (const template of batchTemplates()) {
+        const blob = JSON.stringify(template);
+        expect(blob).not.toMatch(/\b992\d{2}\b/);
+        expect(blob).not.toMatch(/\bCPT\b/);
+        expect(blob).not.toMatch(/E\/M level/i);
+      }
+    });
+
+    it("React UI files do not contain template paragraphs", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
+        expect(uiSource).not.toContain(fragment);
+      }
+    });
+
+    it("applying template fills diagnosis-card fields only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: true });
+      expect(next.description.trim()).not.toBe("");
+      expect(next.diagnosisInstructions.trim()).not.toBe("");
+      expect(next.medicationTreatment.trim()).not.toBe("");
+      expect(next.returnPrecautions).toBe("");
+      expect(next.followUps).toEqual([]);
+    });
+
+    it("return precautions/follow-up merge into shared bottom planning only", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chest));
+      expect(merged.returnPrecautions).toContain("Return immediately");
+      expect(merged.followUps.length).toBeGreaterThan(0);
+    });
+
+    it("provider-entered text is not overwritten on template apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R51.9",
+        displayName: "Headache",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      card.description = "Clinician note retained";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "Headache" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
+      expect(next.description).toBe("Clinician note retained");
+    });
+  });
+
   describe("19Y.2B shared discharge planning layout", () => {
     const uiSource = readFileSync(
       join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
       "utf8"
     );
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
-    const abdominalTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "abdominal_pain_family_v1")!;
+    const abdominalTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "abdominal_pain_v1")!;
 
     it("each selected diagnosis renders one card", () => {
       expect(getSelectedDiagnosisDocs(formWithThreeSelected())).toHaveLength(3);
