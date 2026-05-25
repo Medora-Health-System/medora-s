@@ -38,9 +38,14 @@ import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
 import {
   buildInitialNursingAssessmentSummaryBlock,
-  buildNursingDischargeDocumentationBlock,
   readInitialNursingEvalSignature,
 } from "./erInitialNursingAssessmentSummary";
+import {
+  buildNursingDischargeExecutionSummaryBlock19Y,
+  buildProviderDischargeDocumentationSummaryBlock,
+} from "./providerDischargeDocumentationSummary";
+import { readProviderDischargeDocumentationMeta } from "./providerDischargeDocumentationModel";
+import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
 import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
 import {
   ER_HANDOFF_V1_KEY,
@@ -142,6 +147,8 @@ export type EmergencyVisitSummaryModel = {
   nursingReassessmentLatestId: string | null;
   /** Nursing discharge execution (sortie) when documented. */
   nursingDischargeDocumentation: VisitSummaryTextBlock | null;
+  /** Provider discharge documentation (Phase 19Y). */
+  providerDischargeDocumentation: VisitSummaryTextBlock | null;
   providerMseHistory: VisitSummaryDocumentationHistoryEntry[];
   providerMseLatestId: string | null;
   handoffHistory: VisitSummaryDocumentationHistoryEntry[];
@@ -967,7 +974,24 @@ export function buildEmergencyVisitSummaryModel(
 
   const nav = encounter.nursingAssessment;
   const initialNursingAssessment = buildInitialNursingAssessmentSummaryBlock(nav, locale);
-  const nursingDischargeDocumentation = buildNursingDischargeDocumentationBlock(nav, locale);
+  const nursingDischargeDocumentation = buildNursingDischargeExecutionSummaryBlock19Y(nav, locale);
+  const providerDischargeDocumentation = buildProviderDischargeDocumentationSummaryBlock(
+    encounter.dischargeSummaryJson,
+    locale
+  );
+  const providerDischargeMeta = readProviderDischargeDocumentationMeta(encounter.dischargeSummaryJson);
+  if (providerDischargeMeta.documentedAt && providerDischargeMeta.documentedByDisplayName) {
+    const who = providerDischargeMeta.documentedByTitle?.trim()
+      ? `${providerDischargeMeta.documentedByDisplayName} (${providerDischargeMeta.documentedByTitle})`
+      : providerDischargeMeta.documentedByDisplayName;
+    timeline.push({
+      label: vs(locale, "timelineProviderDischargeDocumented"),
+      value: interpolate(vs(locale, "signatureTimeJoin"), {
+        name: who,
+        time: formatIsoForLocale(providerDischargeMeta.documentedAt, locale),
+      }),
+    });
+  }
   const sigInitialNursing = readInitialNursingEvalSignature(nav);
   if (sigInitialNursing) {
     const nameWithRole = sigInitialNursing.roleTitle
@@ -978,6 +1002,17 @@ export function buildEmergencyVisitSummaryModel(
       value: interpolate(vs(locale, "signatureTimeJoin"), {
         name: nameWithRole,
         time: formatIsoForLocale(sigInitialNursing.documentedAtIso, locale),
+      }),
+    });
+  }
+
+  const execStored = readNursingDischargeExecutionStored(nav);
+  if (execStored) {
+    timeline.push({
+      label: vs(locale, "timelineNursingDischargeExecution"),
+      value: interpolate(vs(locale, "signatureTimeJoin"), {
+        name: execStored.dischargeSortieCompletedByDisplayName,
+        time: formatIsoForLocale(execStored.dischargeSortieCompletedAt, locale),
       }),
     });
   }
@@ -1238,6 +1273,7 @@ export function buildEmergencyVisitSummaryModel(
     nursingReassessmentHistory,
     nursingReassessmentLatestId,
     nursingDischargeDocumentation,
+    providerDischargeDocumentation,
     providerMseHistory,
     providerMseLatestId,
     handoffHistory,

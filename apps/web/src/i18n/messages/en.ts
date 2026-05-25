@@ -1,4 +1,5 @@
 import { erTriageMessagesEn } from "./erTriage.en";
+import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 
 export default {
   common: {
@@ -12685,6 +12686,7 @@ export default {
     uploadFormatsHint:
       "Formats: PDF (dedicated field), PNG, JPEG or WebP. Max ~1.5 MB per file (server limit after encoding). Total JSON text + attachments: max 2.5 million characters.",
   },
+  providerDischargeDocumentation19Y: providerDischargeDocumentation19YEn,
   emergencyDisposition: {
     preview: {
       dischargeModeLinePrefix: "Discharge disposition (chart):",

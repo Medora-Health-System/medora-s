@@ -43,6 +43,9 @@ import {
 } from "@/features/emergency/erProviderDocumentationSummary";
 import type { EdClinicalTimelineEntry } from "@medora/shared";
 import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
+import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
+import { readNursingDischargeExecutionStored } from "@/features/emergency/nursingDischargeExecutionModel";
+import { i18nMessage } from "@/lib/i18nMessagesLookup";
 
 export type ErPrintTriageSnapshot = {
   vitalsJson?: unknown;
@@ -123,6 +126,19 @@ function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | nu
   }
   if (d.patientInstructionsGiven === true) return true;
   return false;
+}
+
+function appendProviderDischargeDocumentationPrint(
+  body: string[],
+  language: SupportedLanguage,
+  dischargeSummaryJson: unknown
+): void {
+  const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language);
+  if (!block) return;
+  body.push(`<h2 style="margin: 16px 0 8px 0; font-size: 15px;">${esc(block.title)}</h2>`);
+  for (const ln of block.lines) {
+    body.push(`<p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap;">${esc(ln)}</p>`);
+  }
 }
 
 function appendPatientDischargeInstructionsPrint(
@@ -405,7 +421,7 @@ export function getErPrintPacketHtml(params: {
     }
   }
 
-  appendPatientDischargeInstructionsPrint(body, language, loc, d);
+  appendProviderDischargeDocumentationPrint(body, language, encounter.dischargeSummaryJson);
 
   body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
   appendEmtalaBlock(body, language, loc, emtalaDerived);
@@ -477,7 +493,7 @@ export function getErPrintPacketHtml(params: {
 
   if (nursingDischargeDocumentation) {
     body.push(h2(language, "printOutput.erPacket.sectionNursingDischargeDocumentation"));
-    appendNursingDischargeDocumentationBlock(body, language, nursingDischargeDocumentation);
+    appendNursingDischargeDocumentationBlock(body, language, nursingDischargeDocumentation, encounter.nursingAssessment);
   }
 
   if (Array.isArray(medicationOrderRows) && medicationOrderRows.length > 0) {
@@ -841,7 +857,8 @@ function appendInitialNursingAssessmentBlock(
 function appendNursingDischargeDocumentationBlock(
   body: string[],
   language: SupportedLanguage,
-  section: ErPrintNursingDischargeSection
+  section: ErPrintNursingDischargeSection,
+  nursingAssessment?: unknown
 ): void {
   body.push(
     line(
@@ -849,6 +866,28 @@ function appendNursingDischargeDocumentationBlock(
       `${section.documentedBy} — ${section.documentedAt}`
     )
   );
+  const exec = nursingAssessment ? readNursingDischargeExecutionStored(nursingAssessment) : null;
+  if (exec?.nursingDestination) {
+    body.push(
+      line(
+        i18nMessage(language, "providerDischargeDocumentation19Y.nursingDestinationLabel"),
+        i18nMessage(language, `providerDischargeDocumentation19Y.nursingDestination.${exec.nursingDestination}`)
+      )
+    );
+  }
+  if (exec?.nursingConditionAtDischarge) {
+    body.push(
+      line(
+        i18nMessage(language, "providerDischargeDocumentation19Y.nursingConditionLabel"),
+        i18nMessage(language, `providerDischargeDocumentation19Y.nursingCondition.${exec.nursingConditionAtDischarge}`)
+      )
+    );
+  }
+  if (exec?.nursingTeachingReviewed?.length) {
+    for (const item of exec.nursingTeachingReviewed) {
+      body.push(`<p style="margin: 0 0 4px 0; font-size: 13px;">• ${esc(i18nMessage(language, `providerDischargeDocumentation19Y.nursingTeaching.${item}`))}</p>`);
+    }
+  }
   if (section.executionNote) {
     body.push(
       line(printT(language, "printOutput.erPacket.executionNote"), section.executionNote)

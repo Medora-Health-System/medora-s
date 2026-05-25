@@ -338,6 +338,14 @@ export const encounterDischargeFieldsSchema = z.object({
   instructionsGivenBy: z.string().max(256).optional(),
   /** ISO-8601 timestamp string */
   instructionsGivenAt: z.string().max(48).optional(),
+  /** Phase 19Y — provider discharge documentation (JSON only). */
+  patientLeftEdAt: z.string().max(48).optional(),
+  providerDischargeDiagnosisRefs: z.array(z.record(z.string(), z.unknown())).max(32).optional(),
+  providerDischargeFollowUps: z.array(z.record(z.string(), z.unknown())).max(16).optional(),
+  providerDischargeMedicationLines: z.array(z.record(z.string(), z.unknown())).max(32).optional(),
+  providerDischargeDocumentedAt: z.string().max(48).optional(),
+  providerDischargeDocumentedByDisplayName: z.string().max(256).optional(),
+  providerDischargeDocumentedByTitle: z.string().max(128).optional(),
 });
 
 export type EncounterDischargeFields = z.infer<typeof encounterDischargeFieldsSchema>;

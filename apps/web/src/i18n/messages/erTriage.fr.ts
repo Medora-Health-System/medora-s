@@ -516,6 +516,8 @@ export const erTriageMessagesFr = {
     timelineTriageCompleted: "Triage complété",
     timelineTriageUpdated: "Triage (mis à jour)",
     timelineInitialNursingSaved: "Évaluation infirmière initiale (saisie)",
+    timelineProviderDischargeDocumented: "Documentation médicale de sortie (enregistrée)",
+    timelineNursingDischargeExecution: "Exécution infirmière de sortie (enregistrée)",
     timelineNursingReassessmentSaved: "Réévaluation infirmière (saisie)",
     initialNursingBlockTitle: "Évaluation infirmière initiale",
     nursingDischargeBlockTitle: "Documentation infirmière de sortie",

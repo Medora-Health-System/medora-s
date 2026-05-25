@@ -673,6 +673,7 @@ export function EmergencyVisitSummaryPanel({
         model.resumeInfirmier ||
         model.evaluationMedicale ||
         model.disposition ||
+        model.providerDischargeDocumentation ||
         model.nursingDischargeDocumentation ||
         model.handoff ||
         model.emtala ||
@@ -860,6 +861,9 @@ export function EmergencyVisitSummaryPanel({
         ) : null}
 
         {model.disposition ? <SummaryBlockCard accent="#64748b" block={model.disposition} /> : null}
+        {model.providerDischargeDocumentation ?
+          <SummaryBlockCard accent="#4f46e5" block={model.providerDischargeDocumentation} />
+        : null}
         {model.nursingDischargeDocumentation ? (
           <SummaryBlockCard accent="#0891b2" block={model.nursingDischargeDocumentation} />
         ) : null}

@@ -38,7 +38,14 @@ import {
   emtalaDispositionComplementFromNursing,
   type EmtalaDispositionComplementForm,
 } from "./erEmtalaV1";
-import { PatientDischargeInstructionsClosureCard } from "@/features/emergency/PatientDischargeInstructionsClosureCard";
+import {
+  buildProviderDischargeJsonForSave,
+  ProviderDischargeDocumentationSection,
+} from "@/features/emergency/ProviderDischargeDocumentationSection";
+import {
+  applyProviderDischargeDocumentationToDischargeForm,
+  hydrateProviderDischargeDocumentationForm,
+} from "@/features/emergency/providerDischargeDocumentationModel";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
@@ -173,6 +180,9 @@ export function EmergencyDispositionPanel({
     emptyEmtalaDispositionComplementForm()
   );
   const [outcomeUi, setOutcomeUi] = useState<ErDispositionOutcomeUi>("HOME");
+  const [providerDischargeDoc, setProviderDischargeDoc] = useState(() =>
+    hydrateProviderDischargeDocumentationForm(encounter.dischargeSummaryJson)
+  );
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
 
@@ -201,6 +211,7 @@ export function EmergencyDispositionPanel({
     const dischargeModeSynced =
       d.dischargeMode.trim().length > 0 ? d.dischargeMode : outcomeUiToDischargeMode(inferred);
     setDischargeForm({ ...d, dischargeMode: dischargeModeSynced });
+    setProviderDischargeDoc(hydrateProviderDischargeDocumentationForm(encounter.dischargeSummaryJson));
     setAdmissionForm(a);
     setSupplementForm(sup);
     setOutcomeUi(inferred);
@@ -283,7 +294,23 @@ export function EmergencyDispositionPanel({
   );
 
   const patchDischarge = useCallback((patch: Partial<DischargeFormState>) => {
-    setDischargeForm((f) => ({ ...f, ...patch }));
+    setDischargeForm((f) => {
+      const next = { ...f, ...patch };
+      setProviderDischargeDoc((pd) => ({
+        ...pd,
+        description: next.dischargeDiagnosisSummary,
+        diagnosisInstructions: next.dischargeInstructions,
+        medicationTreatmentText: next.medicationInstructions,
+        returnPrecautions: next.returnPrecautions,
+        workSchoolNote: next.workSchoolNote,
+      }));
+      return next;
+    });
+  }, []);
+
+  const onProviderDischargeDocChange = useCallback((next: typeof providerDischargeDoc) => {
+    setProviderDischargeDoc(next);
+    setDischargeForm((f) => applyProviderDischargeDocumentationToDischargeForm(f, next));
   }, []);
 
   const patchAdmission = useCallback((patch: Partial<AdmissionFormState>) => {
@@ -332,7 +359,22 @@ export function EmergencyDispositionPanel({
        * DISCHARGE_SUMMARY_SAVED timeline noise). Trackboard disposition uses admission packet + erDispositionV1.
        */
       if (mergedDischarge !== null && outcomeUi !== "ADMISSION") {
-        body.dischargeSummaryJson = mergedDischarge;
+        if (canEditMedicalDischarge) {
+          body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
+            encounter.dischargeSummaryJson,
+            {
+              ...providerDischargeDoc,
+              description: dischargeForm.dischargeDiagnosisSummary,
+              diagnosisInstructions: dischargeForm.dischargeInstructions,
+              medicationTreatmentText: dischargeForm.medicationInstructions,
+              returnPrecautions: dischargeForm.returnPrecautions,
+              workSchoolNote: dischargeForm.workSchoolNote,
+            },
+            { documentedAt: signature.savedAt, documentedByDisplayName: savedByDisplayName }
+          );
+        } else {
+          body.dischargeSummaryJson = mergedDischarge;
+        }
       }
       if (
         outcomeUi === "ADMISSION" &&
@@ -445,6 +487,9 @@ export function EmergencyDispositionPanel({
     [encounter.nursingAssessment]
   );
   const showObservationHandoffStatus = showAdmissionFields && hasSavedAdmission;
+  const showProviderDischargeDocumentation =
+    outcomeUi !== "ADMISSION" && (outcomeUi === "HOME" || outcomeUi === "AMA" || outcomeUi === "LWBS" || outcomeUi === "OTHER" || outcomeUi === "TRANSFER");
+
   const showTransferExtra = outcomeUi === "TRANSFER";
   const showAmaExtra = outcomeUi === "AMA";
   const showLwbsExtra = outcomeUi === "LWBS";
@@ -589,63 +634,16 @@ export function EmergencyDispositionPanel({
               </p>
             ) : null}
 
-            <div>
-              <p style={sectionHeading}>{t("emergencyDisposition.sectionDischargeShared")}</p>
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelDispositionMedical")}</label>
-                  {ta(2, dischargeForm.disposition, (v) => patchDischarge({ disposition: v }), medDisabled)}
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelDischargeInstructionsMedical")}</label>
-                  {ta(2, dischargeForm.dischargeInstructions, (v) => patchDischarge({ dischargeInstructions: v }), medDisabled)}
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelFollowUpMedical")}</label>
-                  {ta(2, dischargeForm.followUp, (v) => patchDischarge({ followUp: v }), medDisabled)}
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelMedicationsMedical")}</label>
-                  {ta(2, dischargeForm.medicationsGiven, (v) => patchDischarge({ medicationsGiven: v }), medDisabled)}
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelExitConditionNursing")}</label>
-                  {ta(2, dischargeForm.exitCondition, (v) => patchDischarge({ exitCondition: v }), nurDisabled)}
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelDestinationNursing")}</label>
-                  <input
-                    type="text"
-                    value={dischargeForm.patientDestination}
-                    onChange={(e) => patchDischarge({ patientDestination: e.target.value })}
-                    disabled={nurDisabled}
-                    style={{ ...inputBase, backgroundColor: nurDisabled ? "#f8fafc" : "#fff" }}
-                    placeholder={t("emergencyDisposition.placeholderDestination")}
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>{t("emergencyDisposition.labelReturnIfWorseNursing")}</label>
-                  {ta(2, dischargeForm.returnIfWorse, (v) => patchDischarge({ returnIfWorse: v }), nurDisabled)}
-                </div>
-                {!canEditMedicalDischarge ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.hintMedicalFields")}</p>
-                ) : null}
-                {!canEditNursingDischarge ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("emergencyDisposition.hintNursingFields")}</p>
-                ) : null}
-              </div>
-            </div>
-
-            <PatientDischargeInstructionsClosureCard
-              encounterId={encounterId}
-              facilityId={facilityId}
-              dischargeSummaryJson={encounter.dischargeSummaryJson}
-              encounterStatus={encounter.status}
-              canEditNursingDischarge={canEditNursingDischarge}
-              canEditMedicalDischarge={canEditMedicalDischarge}
-              formDisabled={formDisabled}
-              onSaved={onSaved}
-            />
+            {showProviderDischargeDocumentation ?
+              <ProviderDischargeDocumentationSection
+                facilityId={facilityId}
+                patientId={encounter.patient?.id}
+                encounterId={encounterId}
+                providerForm={providerDischargeDoc}
+                onProviderFormChange={onProviderDischargeDocChange}
+                disabled={medDisabled}
+              />
+            : null}
 
             {showAdmissionFields && canPrescribe ? (
               <div>

@@ -57,6 +57,7 @@ import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyP
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
+import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
@@ -1412,17 +1413,17 @@ export function EmergencyActiveWorkspaceView() {
                 canEditNursingDischarge={canEditNursingDischarge}
                 canEditMedicalDischarge={canEditMedicalDischarge}
               />
-              <div style={{ marginTop: 10 }}>
-                <EmergencyErNursingHandoffPanel
-                  encounter={encounter}
-                  encounterId={encounterId}
-                  facilityId={fid}
-                  onSaved={onEmbeddedEncounterUpdate}
-                  canRecordDischargeSortieExecution={canRecordDischargeSortieExecution}
-                  onSummaryClosureClick={goToErSummaryClosure}
-                  facilityName={facilityName}
-                />
-              </div>
+              {canRecordDischargeSortieExecution ?
+                <div style={{ marginTop: 10 }}>
+                  <NursingDischargeExecutionSection
+                    encounterId={encounterId}
+                    facilityId={fid}
+                    nursingAssessment={encounter.nursingAssessment}
+                    onSaved={onEmbeddedEncounterUpdate}
+                    canEdit={canRecordDischargeSortieExecution && encounter.status === "OPEN"}
+                  />
+                </div>
+              : null}
             </>
           ) : null}
 
