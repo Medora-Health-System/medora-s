@@ -13,19 +13,29 @@ import {
 } from "./providerDischargeTemplateLocale";
 import {
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
+  ALLERGIC_REACTION_SUGGESTED_TEXT,
+  ASTHMA_EXACERBATION_SUGGESTED_TEXT,
   BACK_PAIN_SUGGESTED_TEXT,
+  BRONCHITIS_SUGGESTED_TEXT,
   CELLULITIS_SUGGESTED_TEXT,
   CHEST_PAIN_SUGGESTED_TEXT,
+  CONSTIPATION_SUGGESTED_TEXT,
+  COPD_EXACERBATION_SUGGESTED_TEXT,
   DEHYDRATION_SUGGESTED_TEXT,
   DENTAL_PAIN_SUGGESTED_TEXT,
   GASTROENTERITIS_SUGGESTED_TEXT,
   GENERIC_ED_DISCHARGE_SUGGESTED_TEXT,
   HEADACHE_SUGGESTED_TEXT,
   HYPERTENSION_SUGGESTED_TEXT,
+  KIDNEY_STONE_SUGGESTED_TEXT,
+  MINOR_HEAD_INJURY_SUGGESTED_TEXT,
   NAUSEA_VOMITING_SUGGESTED_TEXT,
   OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
+  PNEUMONIA_SUGGESTED_TEXT,
+  SYNCOPE_SUGGESTED_TEXT,
   URI_COUGH_SUGGESTED_TEXT,
   UTI_SUGGESTED_TEXT,
+  VERTIGO_DIZZINESS_SUGGESTED_TEXT,
   WOUND_LACERATION_SUGGESTED_TEXT,
 } from "./providerDischargeTemplateSuggestedTextCatalog";
 import {
@@ -97,6 +107,20 @@ export const BATCH_2_ED_DISCHARGE_TEMPLATE_IDS = [
   "hypertension_v1",
   "cellulitis_v1",
   "dehydration_v1",
+] as const;
+
+/** Phase 19Y.5 — moderate-risk ED diagnosis template batch 3. */
+export const BATCH_3_ED_DISCHARGE_TEMPLATE_IDS = [
+  "asthma_exacerbation_v1",
+  "copd_exacerbation_v1",
+  "bronchitis_v1",
+  "pneumonia_v1",
+  "syncope_v1",
+  "vertigo_dizziness_v1",
+  "kidney_stone_v1",
+  "constipation_v1",
+  "allergic_reaction_v1",
+  "minor_head_injury_v1",
 ] as const;
 
 const ACCESSED_AT = "2026-05-18";
@@ -545,6 +569,292 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: DEHYDRATION_SUGGESTED_TEXT,
   },
   {
+    id: "asthma_exacerbation_v1",
+    version: "1.0.0",
+    title: "Asthma exacerbation discharge documentation",
+    specialtyCategory: "pulmonology",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["J45"],
+      keyword: ["asthma", "wheezing", "asthma exacerbation"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Asthma",
+        url: "https://medlineplus.gov/asthma.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "NHLBI — Asthma",
+        url: "https://www.nhlbi.nih.gov/health/asthma",
+        publisher: "U.S. National Heart, Lung, and Blood Institute (NHLBI)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("asthma-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("asthma-pulm", "PULMONOLOGY", "for recurrent or severe symptoms"),
+    ],
+    suggestedText: ASTHMA_EXACERBATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "copd_exacerbation_v1",
+    version: "1.0.0",
+    title: "COPD exacerbation discharge documentation",
+    specialtyCategory: "pulmonology",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["J44"],
+      keyword: ["copd", "chronic obstructive pulmonary disease", "copd exacerbation"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — COPD",
+        url: "https://medlineplus.gov/copd.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "NHLBI — COPD",
+        url: "https://www.nhlbi.nih.gov/health/copd",
+        publisher: "U.S. National Heart, Lung, and Blood Institute (NHLBI)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("copd-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("copd-pulm", "PULMONOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: COPD_EXACERBATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "bronchitis_v1",
+    version: "1.0.0",
+    title: "Bronchitis discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["J20", "J40"],
+      keyword: ["bronchitis"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Bronchitis",
+        url: "https://medlineplus.gov/bronchitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Antibiotic use and common illnesses",
+        url: "https://www.cdc.gov/antibiotic-use/common-illnesses.html",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("bronchitis-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: BRONCHITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "pneumonia_v1",
+    version: "1.0.0",
+    title: "Pneumonia discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["J18", "J15", "J16", "J17"],
+      keyword: ["pneumonia"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pneumonia",
+        url: "https://medlineplus.gov/pneumonia.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Pneumonia",
+        url: "https://www.cdc.gov/pneumonia/index.html",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("pneumonia-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("pneumonia-pulm", "PULMONOLOGY", "for recurrent or complicated illness"),
+    ],
+    suggestedText: PNEUMONIA_SUGGESTED_TEXT,
+  },
+  {
+    id: "syncope_v1",
+    version: "1.0.0",
+    title: "Syncope discharge documentation",
+    specialtyCategory: "cardiology",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["R55"],
+      keyword: ["syncope", "fainting", "passed out"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fainting",
+        url: "https://medlineplus.gov/fainting.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("syncope-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("syncope-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: SYNCOPE_SUGGESTED_TEXT,
+  },
+  {
+    id: "vertigo_dizziness_v1",
+    version: "1.0.0",
+    title: "Vertigo / dizziness discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["R42"],
+      icdFamily: ["H81"],
+      keyword: ["dizziness", "vertigo", "lightheaded"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dizziness and vertigo",
+        url: "https://medlineplus.gov/dizzinessandvertigo.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("vertigo-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("vertigo-ent", "ENT", "for persistent vestibular symptoms"),
+      registryFollowUp("vertigo-neuro", "NEUROLOGY", "for persistent or recurrent symptoms"),
+    ],
+    suggestedText: VERTIGO_DIZZINESS_SUGGESTED_TEXT,
+  },
+  {
+    id: "kidney_stone_v1",
+    version: "1.0.0",
+    title: "Kidney stone / flank pain discharge documentation",
+    specialtyCategory: "urology",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["N20", "R31"],
+      keyword: ["kidney stone", "renal colic", "flank pain"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Kidney stones",
+        url: "https://medlineplus.gov/kidneystones.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("stone-urology", "UROLOGY", "within several days or as directed"),
+      registryFollowUp("stone-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: KIDNEY_STONE_SUGGESTED_TEXT,
+  },
+  {
+    id: "constipation_v1",
+    version: "1.0.0",
+    title: "Constipation discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["K59.00"],
+      icdFamily: ["K59"],
+      keyword: ["constipation"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Constipation",
+        url: "https://medlineplus.gov/constipation.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("constipation-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("constipation-gi", "GASTROENTEROLOGY", "for persistent or recurrent symptoms"),
+    ],
+    suggestedText: CONSTIPATION_SUGGESTED_TEXT,
+  },
+  {
+    id: "allergic_reaction_v1",
+    version: "1.0.0",
+    title: "Allergic reaction (non-anaphylaxis) discharge documentation",
+    specialtyCategory: "allergy_immunology",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["T78.40", "L50"],
+      keyword: ["allergic reaction", "hives", "urticaria", "rash allergy"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Allergy",
+        url: "https://medlineplus.gov/allergy.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "MedlinePlus — Hives",
+        url: "https://medlineplus.gov/hives.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("allergy-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("allergy-imm", "PRIMARY_CARE", "Allergy / Immunology if recurrent or trigger unclear"),
+    ],
+    suggestedText: ALLERGIC_REACTION_SUGGESTED_TEXT,
+  },
+  {
+    id: "minor_head_injury_v1",
+    version: "1.0.0",
+    title: "Minor head injury / concussion discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["S06.0", "S09"],
+      keyword: ["concussion", "minor head injury", "head injury"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Concussion",
+        url: "https://medlineplus.gov/concussion.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — HEADS UP concussion information",
+        url: "https://www.cdc.gov/heads-up/index.html",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("head-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("head-neuro", "NEUROLOGY", "for persistent concussion symptoms"),
+    ],
+    suggestedText: MINOR_HEAD_INJURY_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -595,6 +905,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour une pression artérielle élevée ou une hypertension",
   "Vous avez été pris en charge aux urgences pour une infection cutanée ou une cellulite",
   "Vous avez été pris en charge aux urgences pour une déshydratation",
+  "You were evaluated in the emergency department for an asthma exacerbation",
+  "You were evaluated in the emergency department for a COPD exacerbation",
+  "You were evaluated in the emergency department for bronchitis",
+  "You were evaluated in the emergency department for pneumonia",
+  "You were evaluated in the emergency department after fainting or syncope",
+  "You were evaluated in the emergency department for dizziness or vertigo",
+  "You were evaluated in the emergency department for kidney stone symptoms or flank pain",
+  "You were evaluated in the emergency department for constipation",
+  "You were evaluated in the emergency department for an allergic reaction without anaphylaxis",
+  "You were evaluated in the emergency department for a minor head injury or concussion",
+  "Vous avez été pris en charge aux urgences pour une exacerbation d'asthme",
+  "Vous avez été pris en charge aux urgences pour une exacerbation de BPCO",
+  "Vous avez été pris en charge aux urgences pour une bronchite",
+  "Vous avez été pris en charge aux urgences pour une pneumonie",
+  "Vous avez été pris en charge aux urgences après un malaise ou un épisode syncopal",
+  "Vous avez été pris en charge aux urgences pour des vertiges ou des étourdissements",
+  "Vous avez été pris en charge aux urgences pour des signes évocateurs de calcul rénal ou une douleur lombaire/flanc",
+  "Vous avez été pris en charge aux urgences pour une constipation",
+  "Vous avez été pris en charge aux urgences pour une réaction allergique sans anaphylaxie",
+  "Vous avez été pris en charge aux urgences pour un traumatisme crânien mineur ou une commotion",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

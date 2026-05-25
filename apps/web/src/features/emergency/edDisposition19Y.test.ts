@@ -11,6 +11,7 @@ import {
   applyProviderDischargeTemplateToCard,
   BATCH_1_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_2_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_3_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -977,6 +978,182 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.5 Batch 3 moderate-risk ED diagnosis templates", () => {
+    const batch3Templates = () =>
+      BATCH_3_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 10 Batch 3 templates exist", () => {
+      expect(BATCH_3_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_3_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("each Batch 3 template has EN and FR suggestedText", () => {
+      for (const template of batch3Templates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("each Batch 3 template has governance metadata", () => {
+      for (const template of batch3Templates()) {
+        expect(template.version.trim()).not.toBe("");
+        expect(template.clinicalReviewStatus).toBe("draft");
+        expect(template.effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(template.sourceReferences.length).toBeGreaterThan(0);
+        expect(template.specialtyCategory?.trim()).toBeTruthy();
+        expect(template.riskCategory?.trim()).toBeTruthy();
+      }
+    });
+
+    it("all Batch 3 templates pass registry validator", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("Batch 3 registry has no unsafe phrases in EN or FR", () => {
+      for (const template of batch3Templates()) {
+        expect(scanProviderDischargeTemplateUnsafePhrases(template, "en")).toEqual([]);
+        expect(scanProviderDischargeTemplateUnsafePhrases(template, "fr")).toEqual([]);
+      }
+    });
+
+    it("asthma J45 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J45.909", displayName: "Asthma" });
+      expect(resolved.template.id).toBe("asthma_exacerbation_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("asthma keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "wheezing" });
+      expect(resolved.template.id).toBe("asthma_exacerbation_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("COPD J44 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J44.9", displayName: "COPD" });
+      expect(resolved.template.id).toBe("copd_exacerbation_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("bronchitis J20 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J20.9", displayName: "Bronchitis" });
+      expect(resolved.template.id).toBe("bronchitis_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("pneumonia J18 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J18.9", displayName: "Pneumonia" });
+      expect(resolved.template.id).toBe("pneumonia_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("syncope R55 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R55", displayName: "Syncope" });
+      expect(resolved.template.id).toBe("syncope_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("dizziness R42 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R42", displayName: "Dizziness" });
+      expect(resolved.template.id).toBe("vertigo_dizziness_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("vertigo H81 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "H81.10", displayName: "Vertigo" });
+      expect(resolved.template.id).toBe("vertigo_dizziness_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("kidney stone N20 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "N20.0", displayName: "Kidney stone" });
+      expect(resolved.template.id).toBe("kidney_stone_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("constipation K59 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "K59.00", displayName: "Constipation" });
+      expect(resolved.template.id).toBe("constipation_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("allergic reaction T78.40 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "T78.40XA", displayName: "Allergic reaction" });
+      expect(resolved.template.id).toBe("allergic_reaction_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("allergic reaction L50 keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "L50.9", displayName: "hives" });
+      expect(resolved.template.id).toBe("allergic_reaction_v1");
+      expect(["icdFamily", "keyword"]).toContain(resolved.matchLevel);
+    });
+
+    it("minor head injury S06.0 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "S06.0X0A", displayName: "Concussion" });
+      expect(resolved.template.id).toBe("minor_head_injury_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("exact match beats family when both apply", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R55", displayName: "Fainting" });
+      expect(resolved.template.id).toBe("syncope_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("applying Batch 3 template fills diagnosis-card fields only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "J45.909",
+        displayName: "Asthma exacerbation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "J45.909", displayName: "Asthma exacerbation" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
+      expect(next.description.trim()).not.toBe("");
+      expect(next.returnPrecautions).toBe("");
+      expect(next.followUps).toEqual([]);
+    });
+
+    it("Batch 3 shared return precautions merge at bottom only", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pneumonia_v1")!;
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template, "en"));
+      expect(merged.returnPrecautions).toContain("shortness of breath");
+      expect(merged.followUps.length).toBeGreaterThan(0);
+    });
+
+    it("provider-entered text is not overwritten on Batch 3 apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R55",
+        displayName: "Syncope",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      card.description = "Clinician syncope note";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R55", displayName: "Syncope" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
+      expect(next.description).toBe("Clinician syncope note");
+    });
+
+    it("React UI does not contain Batch 3 template paragraphs", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
+        expect(uiSource).not.toContain(fragment);
+      }
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -1356,7 +1533,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("2113992c6e80836b5e550c8101ec086ef8649d5d6c70c032ca7eb2ec40cc595a");
+      expect(hash).toBe("c65dea47d507190ff7afd80c6b4dc51d711fa44c5090c2133d01ec76326b062d");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -1366,7 +1543,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("63d5a40811c2ae7338b2925d6fdb76363ddd4e562fb57fd7fdcb2e76f0578250");
+      expect(hash).toBe("4d60ebaac3c9c856b421b42c6ec165b5623d42e113129620d424ca9878c8ccec");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
