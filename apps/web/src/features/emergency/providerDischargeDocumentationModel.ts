@@ -6,6 +6,8 @@
 import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import type { DischargeFormState } from "@/lib/encounterDischarge";
 import { hydrateSharedFieldsIntoForm } from "./providerDischargeSharedPlanningMerge";
+
+export type ProviderDischargeDiagnosisRef = {
   encounterDiagnosisId?: string;
   code: string;
   label: string;
@@ -354,16 +356,22 @@ function buildLegacyDocFromFlatFields(
 export function normalizeProviderDischargeDiagnosisCards(
   form: ProviderDischargeDocumentationForm
 ): ProviderDischargeDocumentationForm {
-  if (form.diagnosisDocs.length === 0) return form;
+  const withShared: ProviderDischargeDocumentationForm = {
+    ...form,
+    returnPrecautions: form.returnPrecautions ?? "",
+    returnWorkSchool: form.returnWorkSchool ?? "",
+    followUps: form.followUps?.length ? form.followUps : [newDefaultFollowUpRow()],
+  };
+  if (withShared.diagnosisDocs.length === 0) return withShared;
 
   const refOrder = new Map<string, number>();
-  form.diagnosisRefs.forEach((ref, idx) => {
+  withShared.diagnosisRefs.forEach((ref, idx) => {
     if (ref.encounterDiagnosisId) refOrder.set(ref.encounterDiagnosisId, idx);
   });
 
-  let primaryAssigned = form.diagnosisDocs.some((d) => d.isPrimaryDiagnosis);
+  let primaryAssigned = withShared.diagnosisDocs.some((d) => d.isPrimaryDiagnosis);
 
-  const diagnosisDocs = form.diagnosisDocs.map((doc, idx) => {
+  const diagnosisDocs = withShared.diagnosisDocs.map((doc, idx) => {
     const sourceId = doc.sourceEncounterDiagnosisId || doc.encounterDiagnosisId || doc.id;
     const refIdx = refOrder.get(sourceId);
     const displayOrder = doc.displayOrder >= 0 ? doc.displayOrder : refIdx ?? idx;
@@ -374,7 +382,7 @@ export function normalizeProviderDischargeDiagnosisCards(
       primaryAssigned = true;
     } else if (
       !primaryAssigned &&
-      form.diagnosisRefs.find((r) => r.isPrimary)?.encounterDiagnosisId === sourceId
+      withShared.diagnosisRefs.find((r) => r.isPrimary)?.encounterDiagnosisId === sourceId
     ) {
       isPrimaryDiagnosis = true;
       primaryAssigned = true;
@@ -397,7 +405,7 @@ export function normalizeProviderDischargeDiagnosisCards(
     finalDocs = finalDocs.map((d) => (d.id === firstId ? { ...d, isPrimaryDiagnosis: true } : d));
   }
 
-  return { ...form, diagnosisDocs: finalDocs };
+  return { ...withShared, diagnosisDocs: finalDocs };
 }
 
 export function sortProviderDischargeDiagnosisCards(
@@ -429,7 +437,18 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
 
   if (structuredDocs.length > 0) {
     base.diagnosisDocs = structuredDocs;
-    return normalizeProviderDischargeDiagnosisCards(base);
+    const topLevelFollowUps = readStringArray(o.providerDischargeFollowUps)
+      .map(readFollowUpRow)
+      .filter((x): x is ProviderDischargeFollowUpRow => x != null);
+    return hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
+      returnPrecautions:
+        typeof o.providerDischargeReturnPrecautions === "string" ? o.providerDischargeReturnPrecautions
+        : parsed?.returnPrecautions ?? "",
+      returnWorkSchool:
+        typeof o.providerDischargeReturnWorkSchool === "string" ? o.providerDischargeReturnWorkSchool
+        : parsed?.workSchoolNote ?? "",
+      followUps: topLevelFollowUps.length ? topLevelFollowUps : undefined,
+    });
   }
 
   const legacyFollowUps = readStringArray(o.providerDischargeFollowUps)
@@ -443,7 +462,11 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
     base.diagnosisDocs = [legacyDoc];
   }
 
-  return normalizeProviderDischargeDiagnosisCards(base);
+  return hydrateSharedFieldsIntoForm(normalizeProviderDischargeDiagnosisCards(base), {
+    returnPrecautions: parsed?.returnPrecautions ?? "",
+    returnWorkSchool: parsed?.workSchoolNote ?? "",
+    followUps: legacyFollowUps.length ? legacyFollowUps : undefined,
+  });
 }
 
 export type ProviderDischargeDocumentationMeta = {
@@ -532,19 +555,15 @@ export function validateProviderDischargeDocumentation(
         description: messages.requiredDescription,
         diagnosisInstructions: messages.requiredInstructions,
         medicationTreatment: messages.requiredMedication,
-        returnPrecautions: messages.requiredReturnPrecautions,
-        followUps: messages.requiredFollowUp,
       };
       hasError = true;
       continue;
     }
 
-    const errors: Partial<Record<ProviderDischargeDocFieldKey, string>> = {};
+    const errors: Partial<Record<ProviderDischargeCardFieldKey, string>> = {};
     if (!doc.description.trim()) errors.description = messages.requiredDescription;
     if (!doc.diagnosisInstructions.trim()) errors.diagnosisInstructions = messages.requiredInstructions;
     if (!doc.medicationTreatment.trim()) errors.medicationTreatment = messages.requiredMedication;
-    if (!doc.returnPrecautions.trim()) errors.returnPrecautions = messages.requiredReturnPrecautions;
-    if (!doc.followUps.some(followUpRowIsComplete)) errors.followUps = messages.requiredFollowUp;
 
     if (Object.keys(errors).length > 0) {
       byDocId[doc.id] = errors;
@@ -552,7 +571,13 @@ export function validateProviderDischargeDocumentation(
     }
   }
 
-  return hasError ? { byDocId } : null;
+  const shared: Partial<Record<ProviderDischargeSharedFieldKey, string>> = {};
+  if (!form.returnPrecautions.trim()) shared.returnPrecautions = messages.requiredReturnPrecautions;
+  if (!form.followUps.some(followUpRowIsComplete)) shared.followUps = messages.requiredFollowUp;
+  if (Object.keys(shared).length > 0) hasError = true;
+
+  if (!hasError) return null;
+  return { byDocId, ...(Object.keys(shared).length ? { shared } : {}) };
 }
 
 function serializeFollowUpRow(row: ProviderDischargeFollowUpRow): Record<string, unknown> {
@@ -591,13 +616,10 @@ function serializeDiagnosisDoc(doc: ProviderDischargeDiagnosisCard): Record<stri
     description: doc.description,
     diagnosisInstructions: doc.diagnosisInstructions,
     medicationTreatment: doc.medicationTreatment,
-    returnPrecautions: doc.returnPrecautions,
-    followUps: doc.followUps.map(serializeFollowUpRow),
     medicationLines: doc.medicationLines.map(serializeMedicationLine),
   };
   if (doc.encounterDiagnosisId) out.encounterDiagnosisId = doc.encounterDiagnosisId;
   if (doc.treatment?.trim()) out.treatment = doc.treatment.trim();
-  if (doc.returnWorkSchool?.trim()) out.returnWorkSchool = doc.returnWorkSchool.trim();
   if (doc.templateMeta) out.templateMeta = doc.templateMeta;
   if (doc.sourceTemplateId) out.sourceTemplateId = doc.sourceTemplateId;
   if (doc.sourceVersion) out.sourceVersion = doc.sourceVersion;
@@ -626,15 +648,14 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
     setOrDelete("dischargeDiagnosisSummary", rollup.description);
     setOrDelete("dischargeInstructions", rollup.diagnosisInstructions);
     setOrDelete("medicationInstructions", rollup.medicationTreatment);
-    setOrDelete("returnPrecautions", rollup.returnPrecautions);
-    setOrDelete("workSchoolNote", rollup.returnWorkSchool ?? "");
   } else {
     setOrDelete("dischargeDiagnosisSummary", "");
     setOrDelete("dischargeInstructions", "");
     setOrDelete("medicationInstructions", "");
-    setOrDelete("returnPrecautions", "");
-    setOrDelete("workSchoolNote", "");
   }
+
+  setOrDelete("returnPrecautions", form.returnPrecautions);
+  setOrDelete("workSchoolNote", form.returnWorkSchool);
 
   const leftAt = form.patientLeftEdAt.trim();
   if (leftAt) out[JSON_KEYS.patientLeftEdAt] = leftAt;
@@ -649,7 +670,15 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
     delete out[JSON_KEYS.diagnosisDocs];
   }
 
-  delete out.providerDischargeFollowUps;
+  if (form.followUps.length) {
+    out.providerDischargeFollowUps = form.followUps.map(serializeFollowUpRow);
+  } else {
+    delete out.providerDischargeFollowUps;
+  }
+
+  setOrDelete("providerDischargeReturnPrecautions", form.returnPrecautions);
+  setOrDelete("providerDischargeReturnWorkSchool", form.returnWorkSchool);
+
   delete out.providerDischargeMedicationLines;
 
   if (meta) {
@@ -674,8 +703,8 @@ export function applyProviderDischargeDocumentationToDischargeForm(
     dischargeDiagnosisSummary: rollup.description,
     dischargeInstructions: rollup.diagnosisInstructions,
     medicationInstructions: rollup.medicationTreatment,
-    returnPrecautions: rollup.returnPrecautions,
-    workSchoolNote: rollup.returnWorkSchool ?? "",
+    returnPrecautions: providerForm.returnPrecautions,
+    workSchoolNote: providerForm.returnWorkSchool,
   };
 }
 
@@ -719,7 +748,7 @@ export function createDiagnosisDocFromRef(
     treatment: "",
     returnPrecautions: "",
     returnWorkSchool: "",
-    followUps: [newDefaultFollowUpRow()],
+    followUps: [],
     medicationLines: [],
     sourceTemplateId: ref.educationTemplateId,
   };
