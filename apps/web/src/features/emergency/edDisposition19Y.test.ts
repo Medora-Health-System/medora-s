@@ -10,6 +10,7 @@ import {
 import {
   applyProviderDischargeTemplateToCard,
   BATCH_1_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_2_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -802,6 +803,161 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.4 Batch 2 high-volume ED diagnosis templates", () => {
+    const batch2Templates = () =>
+      BATCH_2_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 8 Batch 2 templates exist", () => {
+      expect(BATCH_2_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(8);
+      for (const id of BATCH_2_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("each Batch 2 template has governance metadata", () => {
+      for (const template of batch2Templates()) {
+        expect(template.version.trim()).not.toBe("");
+        expect(template.clinicalReviewStatus).toBe("draft");
+        expect(template.effectiveFrom).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect(template.sourceReferences.length).toBeGreaterThan(0);
+        expect(template.specialtyCategory?.trim()).toBeTruthy();
+        expect(template.riskCategory?.trim()).toBeTruthy();
+      }
+    });
+
+    it("all Batch 2 templates pass registry validator", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("Batch 2 registry has no unsafe phrases", () => {
+      for (const template of batch2Templates()) {
+        expect(scanProviderDischargeTemplateUnsafePhrases(template)).toEqual([]);
+      }
+    });
+
+    it("nausea/vomiting R11 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R11.2", displayName: "Nausea" });
+      expect(resolved.template.id).toBe("nausea_vomiting_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("nausea/vomiting keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "persistent vomiting" });
+      expect(resolved.template.id).toBe("nausea_vomiting_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("gastroenteritis R19.7 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R19.7", displayName: "Diarrhea" });
+      expect(resolved.template.id).toBe("gastroenteritis_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("gastroenteritis A08 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "A08.4", displayName: "Viral gastroenteritis" });
+      expect(resolved.template.id).toBe("gastroenteritis_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("back pain M54 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "M54.5", displayName: "Low back pain" });
+      expect(resolved.template.id).toBe("back_pain_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("dental pain keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "severe toothache" });
+      expect(resolved.template.id).toBe("dental_pain_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("otitis/pharyngitis H66 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "H66.9", displayName: "Otitis media" });
+      expect(resolved.template.id).toBe("otitis_pharyngitis_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("hypertension I10 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "I10", displayName: "Hypertension" });
+      expect(resolved.template.id).toBe("hypertension_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("cellulitis L03 family resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "L03.90", displayName: "Cellulitis" });
+      expect(resolved.template.id).toBe("cellulitis_v1");
+      expect(resolved.matchLevel).toBe("icdFamily");
+    });
+
+    it("dehydration E86.0 exact resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "E86.0", displayName: "Dehydration" });
+      expect(resolved.template.id).toBe("dehydration_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("dehydration keyword resolves correctly", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "volume depletion" });
+      expect(resolved.template.id).toBe("dehydration_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("generic fallback still works after Batch 2 expansion", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "Unspecified" });
+      expect(resolved.matchLevel).toBe("generic");
+    });
+
+    it("applying Batch 2 template fills diagnosis-card fields only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R11.2",
+        displayName: "Nausea and vomiting",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R11.2", displayName: "Nausea and vomiting" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: true });
+      expect(next.description.trim()).not.toBe("");
+      expect(next.returnPrecautions).toBe("");
+      expect(next.followUps).toEqual([]);
+    });
+
+    it("Batch 2 shared return precautions merge at bottom only", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "dehydration_v1")!;
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template));
+      expect(merged.returnPrecautions).toContain("cannot keep fluids down");
+      expect(merged.followUps.length).toBeGreaterThan(0);
+    });
+
+    it("provider-entered text is not overwritten on Batch 2 apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "M54.5",
+        displayName: "Back pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      card.description = "Clinician-authored back pain note";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "M54.5", displayName: "Back pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
+      expect(next.description).toBe("Clinician-authored back pain note");
+    });
+
+    it("React UI does not contain Batch 2 template paragraphs", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
+        expect(uiSource).not.toContain(fragment);
+      }
+    });
+  });
+
   describe("19Y.3A template governance & clinical safety", () => {
     const registryValidation = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
 
@@ -1000,7 +1156,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("de5cecf77a8009cd79a9366a2c23452d10ed5301d362df20990558f9da488ba5");
+      expect(hash).toBe("1831abb32f20be28e5b4074e74eb8d70b7af469e781827aba9c7099bb4cc60dc");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

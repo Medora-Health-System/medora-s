@@ -70,13 +70,28 @@ export const BATCH_1_ED_DISCHARGE_TEMPLATE_IDS = [
   "wound_laceration_v1",
 ] as const;
 
+/** Phase 19Y.4 — high-volume ED diagnosis template batch 2. */
+export const BATCH_2_ED_DISCHARGE_TEMPLATE_IDS = [
+  "nausea_vomiting_v1",
+  "gastroenteritis_v1",
+  "back_pain_v1",
+  "dental_pain_v1",
+  "otitis_pharyngitis_v1",
+  "hypertension_v1",
+  "cellulitis_v1",
+  "dehydration_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
-const BATCH_1_GOVERNANCE = {
+const BATCH_GOVERNANCE_DRAFT = {
   clinicalReviewStatus: "draft" as const,
   effectiveFrom: GOVERNANCE_EFFECTIVE_FROM,
 };
+
+/** @deprecated Use BATCH_GOVERNANCE_DRAFT */
+const BATCH_1_GOVERNANCE = BATCH_GOVERNANCE_DRAFT;
 
 function registryFollowUp(
   id: string,
@@ -355,6 +370,294 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     },
   },
   {
+    id: "nausea_vomiting_v1",
+    version: "1.0.0",
+    title: "Nausea / vomiting discharge documentation",
+    specialtyCategory: "emergency_medicine",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["R11"],
+      keyword: ["nausea", "vomiting", "emesis"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Nausea and vomiting",
+        url: "https://medlineplus.gov/nauseaandvomiting.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("nausea-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for nausea or vomiting. Symptoms may evolve after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Start with small sips of clear fluids as tolerated. Advance diet slowly as directed. Rest as needed. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take anti-nausea or other medicines only as prescribed or directed during this visit. Do not start new medications without clinician guidance.",
+      returnPrecautions:
+        "Return for care if vomiting persists, you cannot keep fluids down, you see blood in vomit, develop severe or worsening abdominal pain, fever, signs of dehydration, weakness, fainting, or other concerning symptoms.",
+    },
+  },
+  {
+    id: "gastroenteritis_v1",
+    version: "1.0.0",
+    title: "Gastroenteritis / diarrhea discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["R19.7"],
+      icdFamily: ["R19", "A08"],
+      keyword: ["diarrhea", "gastroenteritis", "loose stool"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Gastroenteritis",
+        url: "https://medlineplus.gov/gastroenteritis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "MedlinePlus — Diarrhea",
+        url: "https://medlineplus.gov/diarrhea.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Antibiotic use and common illnesses",
+        url: "https://www.cdc.gov/antibiotic-use/common-illnesses.html",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("gastro-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for diarrhea or gastroenteritis. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Stay hydrated with oral rehydration fluids or clear liquids as tolerated. Wash hands frequently to reduce spread. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take anti-diarrheal, anti-nausea, or antibiotic medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return for care if you develop bloody stool, severe abdominal pain, persistent fever, dehydration, inability to keep fluids down, worsening weakness, or other concerning symptoms.",
+    },
+  },
+  {
+    id: "back_pain_v1",
+    version: "1.0.0",
+    title: "Back pain / sciatica discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["M54"],
+      keyword: ["back pain", "low back pain", "sciatica"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Back pain",
+        url: "https://medlineplus.gov/backpain.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "MedlinePlus — Sciatica",
+        url: "https://medlineplus.gov/sciatica.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("back-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("back-ortho", "ORTHOPEDICS", "for persistent or recurrent symptoms"),
+    ],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for back pain. Symptoms may evolve after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Avoid heavy lifting or twisting unless your clinician advised otherwise. Use heat or ice as directed. Return to activity gradually. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take pain or muscle-relaxant medicines only as prescribed or directed during this visit. Avoid sedating medicines before driving unless cleared by your clinician.",
+      returnPrecautions:
+        "Return immediately for new leg weakness, numbness in the groin or saddle area, bowel or bladder dysfunction, fever, rapidly worsening pain, inability to walk, or other concerning neurologic symptoms.",
+    },
+  },
+  {
+    id: "dental_pain_v1",
+    version: "1.0.0",
+    title: "Dental pain discharge documentation",
+    specialtyCategory: "dental",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["K08", "K04"],
+      keyword: ["dental pain", "tooth pain", "dental infection", "toothache"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Tooth disorders",
+        url: "https://medlineplus.gov/toothdisorders.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("dental-fu", "PRIMARY_CARE", "within several days", "Dentist or oral surgery as directed"),
+    ],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for dental or tooth pain. Definitive dental care is usually needed on an outpatient basis; follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Maintain oral hygiene as tolerated. Avoid chewing on the affected side if advised. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take pain or antibiotic medicines only as prescribed or directed during this visit. Do not share antibiotics or stop early unless your clinician advised you to do so.",
+      returnPrecautions:
+        "Return for care if you develop facial swelling, trouble swallowing, trouble breathing, fever, worsening pain, or spreading redness or swelling.",
+    },
+  },
+  {
+    id: "otitis_pharyngitis_v1",
+    version: "1.0.0",
+    title: "Otitis / pharyngitis discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["H66", "J02"],
+      keyword: ["ear pain", "otitis", "sore throat", "pharyngitis"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Ear infections",
+        url: "https://medlineplus.gov/earinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "MedlinePlus — Pharyngitis",
+        url: "https://medlineplus.gov/pharyngitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("otitis-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("otitis-ent", "ENT", "for recurrent or worsening symptoms"),
+    ],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for ear pain or sore throat. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Rest and stay hydrated. Use comfort measures as directed. Finish antibiotics only if they were prescribed for you. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take pain, fever, or antibiotic medicines only as prescribed or directed during this visit.",
+      returnPrecautions:
+        "Return for care if you develop trouble breathing or swallowing, neck swelling, drooling, persistent fever, worsening pain, dehydration, or other concerning symptoms.",
+    },
+  },
+  {
+    id: "hypertension_v1",
+    version: "1.0.0",
+    title: "Hypertension / elevated blood pressure discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["I10", "R03.0"],
+      icdFamily: ["I10"],
+      keyword: ["hypertension", "elevated blood pressure", "high blood pressure"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — High blood pressure",
+        url: "https://medlineplus.gov/highbloodpressure.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("htn-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("htn-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for elevated blood pressure or hypertension. Blood pressure can vary; ongoing outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Take blood pressure medicines only as prescribed or directed. Limit salt if your clinician advised you to do so. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take blood pressure or related medicines only as prescribed or directed during this visit. Do not stop or change blood pressure medicines without clinician guidance.",
+      returnPrecautions:
+        "Return immediately for chest pain, shortness of breath, severe headache, neurologic symptoms, vision changes, confusion, weakness, or other concerning symptoms.",
+    },
+  },
+  {
+    id: "cellulitis_v1",
+    version: "1.0.0",
+    title: "Cellulitis / skin infection discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdFamily: ["L03"],
+      keyword: ["cellulitis", "skin infection", "abscess"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Cellulitis",
+        url: "https://medlineplus.gov/cellulitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("cellulitis-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("cellulitis-wound", "WOUND_CARE", "if worsening or recurrent"),
+    ],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for a skin infection or cellulitis. Outpatient follow-up is recommended to monitor response to treatment when clinically appropriate.",
+      diagnosisInstructions:
+        "Keep the affected area clean and elevated as directed. Mark the edge of redness if your clinician advised you to do so. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take antibiotics and pain medicines only as prescribed or directed during this visit. Finish antibiotics unless your clinician told you otherwise.",
+      returnPrecautions:
+        "Return for care if redness spreads, fever develops, pain or swelling increases, pus or drainage appears, red streaking occurs, you cannot tolerate medications, or symptoms worsen.",
+    },
+  },
+  {
+    id: "dehydration_v1",
+    version: "1.0.0",
+    title: "Dehydration discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["E86.0"],
+      keyword: ["dehydration", "volume depletion"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dehydration",
+        url: "https://medlineplus.gov/dehydration.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("dehydration-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: {
+      description:
+        "You were evaluated in the emergency department for dehydration. Fluid balance may take time to restore; outpatient follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Drink fluids as tolerated unless your clinician restricted fluids. Use oral rehydration solutions if directed. Rest as needed. Return precautions for worsening or concerning symptoms were reviewed.",
+      medicationTreatment:
+        "Take medicines only as prescribed or directed during this visit. Continue fluids as instructed.",
+      returnPrecautions:
+        "Return for care if you cannot keep fluids down, faint, become confused, have decreased urination, develop worsening weakness, persistent fever, worsening vomiting or diarrhea, or other concerning symptoms.",
+    },
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -387,6 +690,14 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "You were evaluated in the emergency department for cough or upper respiratory symptoms",
   "You were evaluated in the emergency department for urinary symptoms",
   "Your laceration or wound was evaluated in the emergency department",
+  "You were evaluated in the emergency department for nausea or vomiting",
+  "You were evaluated in the emergency department for diarrhea or gastroenteritis",
+  "You were evaluated in the emergency department for back pain",
+  "You were evaluated in the emergency department for dental or tooth pain",
+  "You were evaluated in the emergency department for ear pain or sore throat",
+  "You were evaluated in the emergency department for elevated blood pressure or hypertension",
+  "You were evaluated in the emergency department for a skin infection or cellulitis",
+  "You were evaluated in the emergency department for dehydration",
   "Return immediately or call emergency services for returning or worsening chest pain",
 ] as const;
 
