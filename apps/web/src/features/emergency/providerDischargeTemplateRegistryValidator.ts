@@ -22,6 +22,10 @@ import {
   type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
 import { validateProviderDischargeTemplateContentIntegrity } from "./providerDischargeTemplateContentIntegrity";
+import {
+  validateProviderDischargePediatricTemplateGovernance,
+  validateProviderDischargeTemplateAgeRange,
+} from "./providerDischargeTemplatePediatricGovernance";
 
 export type ProviderDischargeClinicalReviewStatus = "draft" | "reviewed" | "approved";
 
@@ -332,6 +336,8 @@ export function validateProviderDischargeTemplateRegistry(
     if (isLocalizedSuggestedText(template.suggestedText)) {
       errors.push(...validateProviderDischargeTemplateContentIntegrity(template));
     }
+    errors.push(...validateProviderDischargeTemplateAgeRange(template));
+    errors.push(...validateProviderDischargePediatricTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

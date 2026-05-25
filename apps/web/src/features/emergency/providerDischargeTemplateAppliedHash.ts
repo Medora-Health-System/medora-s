@@ -41,6 +41,7 @@ export type ProviderDischargeTemplateHashPayload = {
   returnPrecautions: string;
   returnWorkSchool?: string;
   treatment?: string;
+  caregiverInstructions?: string;
   defaultFollowUps?: Array<{
     specialty: string;
     providerOrFacility: string;
@@ -110,6 +111,9 @@ export function buildProviderDischargeTemplateHashPayload(
 
   if (text.returnWorkSchool?.trim()) payload.returnWorkSchool = text.returnWorkSchool.trim();
   if (text.treatment?.trim()) payload.treatment = text.treatment.trim();
+  if (text.caregiverInstructions?.trim()) {
+    payload.caregiverInstructions = text.caregiverInstructions.trim();
+  }
   if (template.defaultFollowUps?.length) {
     payload.defaultFollowUps = template.defaultFollowUps.map(normalizeFollowUpForHash);
   }

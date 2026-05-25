@@ -14,6 +14,8 @@ export type ProviderDischargeTemplateSuggestedTextBody = {
   returnPrecautions: string;
   returnWorkSchool?: string;
   treatment?: string;
+  /** Phase 19Y.6A — required for pediatric templates; appended to diagnosisInstructions on apply. */
+  caregiverInstructions?: string;
 };
 
 export type ProviderDischargeTemplateSuggestedText = {
@@ -83,6 +85,7 @@ export function suggestedTextBodyBlob(body: ProviderDischargeTemplateSuggestedTe
     body.returnPrecautions,
     body.returnWorkSchool ?? "",
     body.treatment ?? "",
+    body.caregiverInstructions ?? "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -157,6 +160,7 @@ export function isNonEmptySuggestedTextBody(body: ProviderDischargeTemplateSugge
       body.medicationTreatment.trim() ||
       body.returnPrecautions.trim() ||
       (body.returnWorkSchool ?? "").trim() ||
-      (body.treatment ?? "").trim()
+      (body.treatment ?? "").trim() ||
+      (body.caregiverInstructions ?? "").trim()
   );
 }

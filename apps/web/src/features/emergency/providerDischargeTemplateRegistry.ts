@@ -54,6 +54,7 @@ import {
   type ProviderDischargeDiagnosisCard,
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
+import { buildAppliedDiagnosisInstructionsFromTemplateBody } from "./providerDischargeTemplatePediatricGovernance";
 
 export type ProviderDischargeTemplateMatchLevel = "icdExact" | "icdFamily" | "keyword" | "generic";
 
@@ -66,6 +67,14 @@ export type ProviderDischargeTemplateSourceReference = {
   accessedAt?: string;
 };
 
+export type ProviderDischargeTemplateAgeRangeLabel = "pediatric" | "adolescent" | "adult" | "all_ages";
+
+export type ProviderDischargeTemplateAgeRange = {
+  minAgeDays?: number;
+  maxAgeDays?: number;
+  label: ProviderDischargeTemplateAgeRangeLabel;
+};
+
 export type ProviderDischargeTemplate = {
   id: string;
   version: string;
@@ -73,6 +82,8 @@ export type ProviderDischargeTemplate = {
   /** Governance metadata — not shown in patient UI; not used for billing. */
   specialtyCategory?: string;
   riskCategory?: string;
+  /** Phase 19Y.6A — optional age governance; required for pediatric templates. */
+  ageRange?: ProviderDischargeTemplateAgeRange;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -1388,7 +1399,8 @@ export function applyProviderDischargeTemplateToCard(
   const next: ProviderDischargeDiagnosisCard = { ...card };
 
   if (overwrite || !next.description.trim()) next.description = text.description;
-  if (overwrite || !next.diagnosisInstructions.trim()) next.diagnosisInstructions = text.diagnosisInstructions;
+  const appliedInstructions = buildAppliedDiagnosisInstructionsFromTemplateBody(text);
+  if (overwrite || !next.diagnosisInstructions.trim()) next.diagnosisInstructions = appliedInstructions;
   if (overwrite || !next.medicationTreatment.trim()) next.medicationTreatment = text.medicationTreatment;
   if (text.treatment && (overwrite || !(next.treatment ?? "").trim())) next.treatment = text.treatment;
 

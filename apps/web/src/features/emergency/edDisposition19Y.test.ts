@@ -20,6 +20,14 @@ import {
   type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
 import {
+  buildAppliedDiagnosisInstructionsFromTemplateBody,
+  scanProviderDischargePediatricForbiddenDosing,
+  scanProviderDischargePediatricCaregiverWording,
+  scanProviderDischargePediatricEscalationLanguage,
+  validateProviderDischargePediatricTemplateGovernance,
+  validateProviderDischargeTemplateAgeRange,
+} from "./providerDischargeTemplatePediatricGovernance";
+import {
   buildProviderDischargeRegistryGovernanceSnapshot,
   computeProviderDischargeRegistryGovernanceSnapshotHash,
   scanProviderDischargeTemplateUnsafePhrases,
@@ -167,6 +175,40 @@ function syntheticRegistryTemplate(
     },
     ...overrides,
   };
+}
+
+function syntheticPediatricTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    ageRange: { label: "pediatric", maxAgeDays: 17 * 365 },
+    suggestedText: {
+      en: {
+        description: "Your child was evaluated in the emergency department for this concern.",
+        diagnosisInstructions:
+          "Caregiver should follow clinician instructions. Return precautions were reviewed.",
+        medicationTreatment: "Give medications only as prescribed or directed.",
+        returnPrecautions:
+          "Return immediately if symptoms worsen. Caregiver should seek immediate care if concerned.",
+        caregiverInstructions:
+          "Caregiver: monitor the child closely and follow instructions provided by the clinician.",
+      },
+      fr: {
+        description: "Votre enfant a été évalué aux urgences pour ce motif.",
+        diagnosisInstructions:
+          "Le parent ou tuteur doit suivre les instructions du clinicien. Les consignes de retour ont été revues.",
+        medicationTreatment:
+          "Administrez les médicaments uniquement selon la prescription ou les indications reçues.",
+        returnPrecautions:
+          "Retournez immédiatement aux urgences si les signes s'aggravent. Consultez immédiatement en cas d'inquiétude.",
+        caregiverInstructions:
+          "Parent/tuteur : surveillez l'enfant de près et suivez les instructions du clinicien.",
+      },
+    },
+    ...rest,
+  });
 }
 
 describe("edDisposition19Y", () => {
@@ -1855,6 +1897,201 @@ describe("edDisposition19Y", () => {
       for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
         expect(uiSource).not.toContain(fragment);
       }
+    });
+  });
+
+  describe("19Y.6A pediatric discharge template governance hardening", () => {
+    it("ProviderDischargeTemplate supports ageRange metadata", () => {
+      const template = syntheticRegistryTemplate({
+        id: "adult_only_test_v1",
+        ageRange: { label: "adult" },
+      });
+      expect(template.ageRange?.label).toBe("adult");
+    });
+
+    it("existing non-pediatric registry templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("pediatric template without ageRange fails validation", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "pediatric_fever_v1" }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("must define ageRange"))).toBe(true);
+    });
+
+    it("invalid ageRange fails validation", () => {
+      expect(
+        validateProviderDischargeTemplateAgeRange({
+          id: "bad-range",
+          ageRange: { label: "pediatric", minAgeDays: 100, maxAgeDays: 10 },
+        }).length
+      ).toBeGreaterThan(0);
+      expect(
+        validateProviderDischargeTemplateAgeRange({
+          id: "negative-range",
+          ageRange: { label: "adult", minAgeDays: -1 },
+        }).length
+      ).toBeGreaterThan(0);
+      expect(
+        validateProviderDischargeTemplateAgeRange({
+          id: "adult-pediatric-label",
+          ageRange: { label: "pediatric", minAgeDays: 7000 },
+        }).some((e) => e.includes("adult-only"))
+      ).toBe(true);
+    });
+
+    it("pediatric template without caregiverInstructions fails validation", () => {
+      const base = syntheticPediatricTemplate({ id: "pediatric_no_caregiver_v1" });
+      const template = syntheticPediatricTemplate({
+        id: "pediatric_no_caregiver_v1",
+        suggestedText: {
+          en: { ...base.suggestedText.en, caregiverInstructions: "" },
+          fr: { ...base.suggestedText.fr, caregiverInstructions: "" },
+        },
+      });
+      const errors = validateProviderDischargePediatricTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("caregiverInstructions"))).toBe(true);
+    });
+
+    it("pediatric EN missing caregiver/parent/guardian wording fails", () => {
+      const body = syntheticPediatricTemplate({ id: "pediatric_en_bad_v1" }).suggestedText.en;
+      const bad = {
+        ...body,
+        diagnosisInstructions: "Follow instructions.",
+        returnPrecautions: "Return if worse.",
+        caregiverInstructions: "Monitor closely.",
+      };
+      expect(scanProviderDischargePediatricCaregiverWording("pediatric_en_bad_v1", "en", bad).length).toBeGreaterThan(
+        0
+      );
+    });
+
+    it("pediatric FR missing parent/tuteur/responsable/accompagnant wording fails", () => {
+      const body = syntheticPediatricTemplate({ id: "pediatric_fr_bad_v1" }).suggestedText.fr;
+      const bad = {
+        ...body,
+        diagnosisInstructions: "Suivez les consignes.",
+        returnPrecautions: "Reconsultez si aggravation.",
+        caregiverInstructions: "Surveillez de près.",
+      };
+      expect(scanProviderDischargePediatricCaregiverWording("pediatric_fr_bad_v1", "fr", bad).length).toBeGreaterThan(
+        0
+      );
+    });
+
+    it("pediatric template missing escalation language fails", () => {
+      const body = syntheticPediatricTemplate({ id: "pediatric_escalation_bad_v1" }).suggestedText.en;
+      const bad = {
+        ...body,
+        returnPrecautions: "Follow up with your clinician if concerned.",
+      };
+      expect(
+        scanProviderDischargePediatricEscalationLanguage("pediatric_escalation_bad_v1", "en", bad).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("pediatric template with mg/kg fails dosing guard", () => {
+      const body = {
+        ...syntheticPediatricTemplate({ id: "pediatric_dose_bad_v1" }).suggestedText.en,
+        medicationTreatment: "Give 10 mg/kg every dose.",
+      };
+      expect(scanProviderDischargePediatricForbiddenDosing("pediatric_dose_bad_v1", "en", body).length).toBeGreaterThan(
+        0
+      );
+    });
+
+    it("pediatric template with every 6 hours dosing fails", () => {
+      const body = {
+        ...syntheticPediatricTemplate({ id: "pediatric_interval_bad_v1" }).suggestedText.en,
+        medicationTreatment: "Give medicine every 6 hours.",
+      };
+      expect(
+        scanProviderDischargePediatricForbiddenDosing("pediatric_interval_bad_v1", "en", body).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("pediatric template with adult dose fails", () => {
+      const base = syntheticPediatricTemplate({ id: "pediatric_unsafe_phrase_v1" });
+      const template = syntheticPediatricTemplate({
+        id: "pediatric_unsafe_phrase_v1",
+        suggestedText: {
+          en: {
+            ...base.suggestedText.en,
+            medicationTreatment: "Use standard adult dose unless directed otherwise.",
+          },
+          fr: base.suggestedText.fr,
+        },
+      });
+      const errors = validateProviderDischargePediatricTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("adult-dose") || e.includes("unsafe phrase"))).toBe(true);
+    });
+
+    it("safe pediatric medication wording passes dosing guard", () => {
+      const template = syntheticPediatricTemplate({ id: "pediatric_safe_med_v1" });
+      expect(validateProviderDischargePediatricTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("caregiverInstructions are included in locale-specific hash payload", () => {
+      const template = syntheticPediatricTemplate({ id: "pediatric_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.caregiverInstructions).toContain("Caregiver:");
+    });
+
+    it("changing caregiverInstructions changes locale hash", () => {
+      const base = syntheticPediatricTemplate({ id: "pediatric_hash_drift_v1" });
+      const baseHash = computeProviderDischargeTemplateAppliedHash(base, "en");
+      const mutated = {
+        ...base,
+        suggestedText: {
+          ...base.suggestedText,
+          en: {
+            ...base.suggestedText.en,
+            caregiverInstructions: "Caregiver: updated instruction text for hash drift test.",
+          },
+        },
+      };
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "en")).not.toBe(baseHash);
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "fr")).toBe(
+        computeProviderDischargeTemplateAppliedHash(base, "fr")
+      );
+    });
+
+    it("caregiverInstructions do not affect adult templates unless present", () => {
+      const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
+      expect(chest.suggestedText.en.caregiverInstructions).toBeUndefined();
+      const applied = buildAppliedDiagnosisInstructionsFromTemplateBody(chest.suggestedText.en);
+      expect(applied).toBe(chest.suggestedText.en.diagnosisInstructions);
+      const payload = buildProviderDischargeTemplateHashPayload(chest, "en");
+      expect(payload.caregiverInstructions).toBeUndefined();
+    });
+
+    it("caregiverInstructions append to diagnosisInstructions on pediatric apply", () => {
+      const template = syntheticPediatricTemplate({ id: "pediatric_apply_v1" });
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-ped",
+        code: "R50.9",
+        displayName: "Fever",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = { template, matchLevel: "keyword" as const };
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
+      expect(next.diagnosisInstructions).toContain(template.suggestedText.en.diagnosisInstructions);
+      expect(next.diagnosisInstructions).toContain("Caregiver:");
+    });
+
+    it("no pediatric-specific provider disposition UI behavior was added", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toMatch(/\bageRange\b/);
+      expect(uiSource).not.toMatch(/caregiverInstructions/);
+      expect(uiSource).not.toMatch(/pediatric_/);
     });
   });
 
