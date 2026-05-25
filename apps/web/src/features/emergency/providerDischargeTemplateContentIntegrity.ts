@@ -246,6 +246,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["influenza", "child"], fr: ["grippal", "enfant"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  obgyn_vaginal_bleeding_v1: {
+    mustIncludeAny: { en: ["vaginal bleeding", "bleeding"], fr: ["saignements vaginaux", "saignements"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_pelvic_pain_v1: {
+    mustIncludeAny: { en: ["pelvic pain", "pelvic"], fr: ["douleur pelvienne", "pelvienne"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_dysmenorrhea_v1: {
+    mustIncludeAny: { en: ["menstrual", "cramps"], fr: ["menstruelles", "crampes"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_hyperemesis_v1: {
+    mustIncludeAny: { en: ["vomiting", "pregnancy"], fr: ["vomissements", "grossesse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_early_pregnancy_symptoms_v1: {
+    mustIncludeAny: { en: ["early pregnancy", "pregnancy"], fr: ["début de grossesse", "grossesse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_threatened_miscarriage_precautions_v1: {
+    mustIncludeAny: { en: ["early pregnancy", "precautionary"], fr: ["début de grossesse", "préventifs"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_vaginitis_v1: {
+    mustIncludeAny: { en: ["vaginal discharge", "private"], fr: ["pertes vaginales", "confidentielles"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_uti_pregnancy_precautions_v1: {
+    mustIncludeAny: { en: ["urinary", "pregnancy"], fr: ["urinaires", "grossesse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_round_ligament_pain_v1: {
+    mustIncludeAny: { en: ["round ligament", "pregnancy"], fr: ["ligaments ronds", "grossesse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  obgyn_postpartum_warning_v1: {
+    mustIncludeAny: { en: ["postpartum", "bleeding"], fr: ["post-partum", "saignements"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

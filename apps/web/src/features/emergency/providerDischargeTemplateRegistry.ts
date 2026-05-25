@@ -38,6 +38,16 @@ import {
   KIDNEY_STONE_SUGGESTED_TEXT,
   MINOR_HEAD_INJURY_SUGGESTED_TEXT,
   NAUSEA_VOMITING_SUGGESTED_TEXT,
+  OBGYN_DYSMENORRHEA_SUGGESTED_TEXT,
+  OBGYN_EARLY_PREGNANCY_SYMPTOMS_SUGGESTED_TEXT,
+  OBGYN_HYPEREMESIS_SUGGESTED_TEXT,
+  OBGYN_PELVIC_PAIN_SUGGESTED_TEXT,
+  OBGYN_POSTPARTUM_WARNING_SUGGESTED_TEXT,
+  OBGYN_ROUND_LIGAMENT_PAIN_SUGGESTED_TEXT,
+  OBGYN_THREATENED_MISCARRIAGE_PRECAUTIONS_SUGGESTED_TEXT,
+  OBGYN_UTI_PREGNANCY_PRECAUTIONS_SUGGESTED_TEXT,
+  OBGYN_VAGINAL_BLEEDING_SUGGESTED_TEXT,
+  OBGYN_VAGINITIS_SUGGESTED_TEXT,
   OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
   PALPITATIONS_SUGGESTED_TEXT,
   PEDIATRIC_ASTHMA_EXACERBATION_SUGGESTED_TEXT,
@@ -222,6 +232,20 @@ export const BATCH_6_PEDIATRIC_HIGHER_RISK_ED_DISCHARGE_TEMPLATE_IDS = [
   "pediatric_influenza_like_illness_v1",
 ] as const;
 
+/** Phase 19Y.10 — OB/GYN higher-risk ED discharge template batch 7. */
+export const BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS = [
+  "obgyn_vaginal_bleeding_v1",
+  "obgyn_pelvic_pain_v1",
+  "obgyn_dysmenorrhea_v1",
+  "obgyn_hyperemesis_v1",
+  "obgyn_early_pregnancy_symptoms_v1",
+  "obgyn_threatened_miscarriage_precautions_v1",
+  "obgyn_vaginitis_v1",
+  "obgyn_uti_pregnancy_precautions_v1",
+  "obgyn_round_ligament_pain_v1",
+  "obgyn_postpartum_warning_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -240,6 +264,12 @@ const PEDIATRIC_TEMPLATE_GOVERNANCE = {
 
 const PEDIATRIC_HIGHER_RISK_TEMPLATE_GOVERNANCE = {
   ...PEDIATRIC_TEMPLATE_GOVERNANCE,
+  riskCategory: "high",
+};
+
+const OBGYN_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "obgyn",
   riskCategory: "high",
 };
 
@@ -1868,6 +1898,266 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: PEDIATRIC_INFLUENZA_LIKE_ILLNESS_SUGGESTED_TEXT,
   },
   {
+    id: "obgyn_vaginal_bleeding_v1",
+    version: "1.0.0",
+    title: "OB/GYN vaginal bleeding discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresBleedingPrecautions: true,
+      requiresEctopicPrecautions: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["N93.9"],
+      icdFamily: ["N93"],
+      keyword: ["obgyn vaginal bleeding", "gynecologic bleeding", "saignements vaginaux obgyn"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Vaginal bleeding",
+        url: "https://medlineplus.gov/vaginalbleeding.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("ovb-ob", "OBGYN", "within 1–2 days or as directed")],
+    suggestedText: OBGYN_VAGINAL_BLEEDING_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_pelvic_pain_v1",
+    version: "1.0.0",
+    title: "OB/GYN pelvic pain discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresPelvicPainPrecautions: true,
+      requiresEctopicPrecautions: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["R10.2"],
+      keyword: ["obgyn pelvic pain", "gynecologic pelvic pain", "douleur pelvienne obgyn"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pelvic pain",
+        url: "https://medlineplus.gov/pelvicpain.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("opp-ob", "OBGYN", "within 1–2 days or as directed")],
+    suggestedText: OBGYN_PELVIC_PAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_dysmenorrhea_v1",
+    version: "1.0.0",
+    title: "OB/GYN dysmenorrhea discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["N94.6"],
+      keyword: ["obgyn dysmenorrhea", "painful periods obgyn", "dysménorrhée"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Painful menstrual periods",
+        url: "https://medlineplus.gov/ency/article/003150.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("odys-ob", "OBGYN", "if symptoms persist or worsen")],
+    suggestedText: OBGYN_DYSMENORRHEA_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_hyperemesis_v1",
+    version: "1.0.0",
+    title: "OB/GYN hyperemesis discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O21.9"],
+      keyword: ["obgyn hyperemesis", "pregnancy vomiting obgyn", "hyperémèse gravidique"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Morning sickness",
+        url: "https://medlineplus.gov/ency/article/001919.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("oh-ob", "OBGYN", "within 1–3 days or as directed")],
+    suggestedText: OBGYN_HYPEREMESIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_early_pregnancy_symptoms_v1",
+    version: "1.0.0",
+    title: "OB/GYN early pregnancy symptoms discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresBleedingPrecautions: true,
+      requiresEctopicPrecautions: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O20.9"],
+      keyword: ["obgyn early pregnancy", "early pregnancy symptoms obgyn", "début grossesse obgyn"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pregnancy",
+        url: "https://medlineplus.gov/pregnancy.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("oeps-ob", "OBGYN", "within 1–2 days or as directed")],
+    suggestedText: OBGYN_EARLY_PREGNANCY_SYMPTOMS_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_threatened_miscarriage_precautions_v1",
+    version: "1.0.0",
+    title: "OB/GYN early pregnancy bleeding precautions discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresBleedingPrecautions: true,
+      requiresEctopicPrecautions: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O20.0"],
+      keyword: [
+        "obgyn pregnancy bleeding precautions",
+        "early pregnancy bleeding precautions",
+        "précautions saignement grossesse",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Bleeding during pregnancy",
+        url: "https://medlineplus.gov/ency/article/003265.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("otmp-ob", "OBGYN", "within 1–2 days or as directed")],
+    suggestedText: OBGYN_THREATENED_MISCARRIAGE_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_vaginitis_v1",
+    version: "1.0.0",
+    title: "OB/GYN vaginitis discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      requiresSexualHealthPrivacyWarning: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["N76.0"],
+      keyword: ["obgyn vaginitis", "gynecologic discharge", "vaginite obgyn"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Vaginitis",
+        url: "https://medlineplus.gov/vaginitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("ovag-ob", "OBGYN", "if symptoms persist or worsen")],
+    suggestedText: OBGYN_VAGINITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_uti_pregnancy_precautions_v1",
+    version: "1.0.0",
+    title: "OB/GYN UTI in pregnancy precautions discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O23.41"],
+      keyword: ["obgyn uti pregnancy", "urinary symptoms pregnancy obgyn", "infection urinaire grossesse"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Urinary tract infections",
+        url: "https://medlineplus.gov/urinarytractinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("outi-ob", "OBGYN", "within 1–3 days or as directed")],
+    suggestedText: OBGYN_UTI_PREGNANCY_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_round_ligament_pain_v1",
+    version: "1.0.0",
+    title: "OB/GYN round ligament pain discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      pregnancySensitive: true,
+      requiresPregnancyStatusDocumentation: true,
+      requiresPelvicPainPrecautions: true,
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O26.89"],
+      keyword: ["obgyn round ligament pain", "round ligament pregnancy", "ligaments ronds"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pregnancy",
+        url: "https://medlineplus.gov/pregnancy.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("orl-ob", "OBGYN", "as clinically appropriate")],
+    suggestedText: OBGYN_ROUND_LIGAMENT_PAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "obgyn_postpartum_warning_v1",
+    version: "1.0.0",
+    title: "OB/GYN postpartum warning symptoms discharge documentation",
+    ...OBGYN_TEMPLATE_GOVERNANCE,
+    obGynSafety: {
+      requiresOBGynFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["O90.89"],
+      icdFamily: ["Z39"],
+      keyword: ["obgyn postpartum warning", "postpartum symptoms obgyn", "signes post-partum obgyn"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Postpartum care",
+        url: "https://medlineplus.gov/ency/article/007215.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("opw-ob", "OBGYN", "within 1–3 days or as directed")],
+    suggestedText: OBGYN_POSTPARTUM_WARNING_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -1998,6 +2288,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Votre enfant a été pris en charge aux urgences pour une commotion cérébrale",
   "Votre enfant a été pris en charge aux urgences pour une respiration sifflante ou bruyante",
   "Votre enfant a été pris en charge aux urgences pour un tableau grippal",
+  "You were evaluated in the emergency department for vaginal bleeding",
+  "You were evaluated in the emergency department for pelvic pain",
+  "You were evaluated in the emergency department for painful menstrual cramps",
+  "You were evaluated in the emergency department for nausea and vomiting during pregnancy",
+  "You were evaluated in the emergency department for early pregnancy symptoms",
+  "You were evaluated in the emergency department for bleeding or cramping during early pregnancy",
+  "You were evaluated in the emergency department for vaginal discharge or irritation",
+  "You were evaluated in the emergency department for urinary symptoms during pregnancy",
+  "You were evaluated in the emergency department for pregnancy-related abdominal or pelvic discomfort consistent with round ligament pain",
+  "You were evaluated in the emergency department for postpartum symptoms",
+  "Vous avez été pris en charge aux urgences pour des saignements vaginaux",
+  "Vous avez été pris en charge aux urgences pour une douleur pelvienne",
+  "Vous avez été pris en charge aux urgences pour des crampes menstruelles douloureuses",
+  "Vous avez été pris en charge aux urgences pour des nausées et vomissements pendant la grossesse",
+  "Vous avez été pris en charge aux urgences pour des signes du début de grossesse",
+  "Vous avez été pris en charge aux urgences pour des saignements ou crampes en début de grossesse",
+  "Vous avez été pris en charge aux urgences pour des pertes vaginales ou une irritation",
+  "Vous avez été pris en charge aux urgences pour des signes urinaires pendant la grossesse",
+  "Vous avez été pris en charge aux urgences pour une gêne abdominale ou pelvienne liée à la grossesse",
+  "Vous avez été pris en charge aux urgences pour des signes post-partum",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

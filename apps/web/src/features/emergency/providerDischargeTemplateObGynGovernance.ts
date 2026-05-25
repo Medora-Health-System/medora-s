@@ -1,6 +1,5 @@
 /**
- * Phase 19Y.9 — OB/GYN discharge template governance (metadata + validators).
- * Hooks only in this phase; no OB/GYN diagnosis templates yet.
+ * Phase 19Y.9 / 19Y.10 — OB/GYN discharge template governance (metadata + validators).
  */
 
 import type {
@@ -53,6 +52,11 @@ export const PROVIDER_DISCHARGE_OBGYN_PREGNANCY_FORBIDDEN_PHRASES: readonly {
   { id: "safe-for-discharge", pattern: /\bsafe for discharge\b/i },
   { id: "benign-bleeding", pattern: /\bbenign bleeding\b/i },
   { id: "nothing-serious", pattern: /\bnothing serious\b/i },
+  { id: "miscarriage-occurred", pattern: /\bmiscarriage occurred\b/i },
+  { id: "miscarriage-confirmed", pattern: /\bmiscarriage confirmed\b/i },
+  { id: "had-miscarriage", pattern: /\bhad a miscarriage\b/i },
+  { id: "ectopic-diagnosed", pattern: /\bectopic pregnancy was\b/i },
+  { id: "diagnosed-ectopic", pattern: /\bdiagnosed ectopic\b/i },
 ];
 
 export const PROVIDER_DISCHARGE_OBGYN_EN_ESCALATION_MARKERS = [
@@ -60,10 +64,15 @@ export const PROVIDER_DISCHARGE_OBGYN_EN_ESCALATION_MARKERS = [
   "seek emergency care",
   "heavy bleeding",
   "severe pelvic pain",
+  "severe pain",
+  "worsening pain",
+  "worsening symptoms",
   "fainting",
   "shoulder pain",
   "fever",
-  "worsening symptoms",
+  "dizziness",
+  "chest pain",
+  "shortness of breath",
 ] as const;
 
 export const PROVIDER_DISCHARGE_OBGYN_FR_ESCALATION_MARKERS = [
@@ -71,11 +80,15 @@ export const PROVIDER_DISCHARGE_OBGYN_FR_ESCALATION_MARKERS = [
   "consultez en urgence",
   "saignement abondant",
   "douleur pelvienne intense",
+  "douleur intense",
+  "aggravation",
   "évanouissement",
   "douleur à l'épaule",
   "douleur à l’épaule",
   "fièvre",
-  "aggravation",
+  "étourdissements",
+  "douleur thoracique",
+  "essoufflement",
 ] as const;
 
 /** Privacy hooks for future sexual-health / STI / assault-adjacent templates. */

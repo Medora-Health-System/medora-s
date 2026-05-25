@@ -1358,6 +1358,231 @@ export const PEDIATRIC_INFLUENZA_LIKE_ILLNESS_SUGGESTED_TEXT: ProviderDischargeT
     }
   );
 
+const OBGYN_MED_EN =
+  "Take medications only as prescribed or directed during this visit. Do not start, stop, or change medications without clinician guidance.";
+const OBGYN_MED_FR =
+  "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite. N'introduisez pas, n'arrêtez pas et ne modifiez pas un traitement sans l'avis du clinicien.";
+
+export const OBGYN_VAGINAL_BLEEDING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for vaginal bleeding. Bleeding may change after an emergency visit; close follow-up with OB/GYN is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Monitor bleeding, dizziness, and pain as directed during this visit. Pregnancy-related symptoms may require close follow-up. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for heavy bleeding, dizziness, severe pelvic pain, fainting, shoulder pain, or fever. Seek emergency care if symptoms worsen. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des saignements vaginaux. Les saignements peuvent évoluer après une visite aux urgences ; un suivi rapproché en OB/GYN est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Surveillez les saignements, les étourdissements et la douleur selon les indications reçues. Les signes liés à une grossesse peuvent nécessiter un suivi rapproché. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de saignement abondant, d'étourdissements, de douleur pelvienne intense, d'évanouissement, de douleur à l'épaule ou de fièvre. Consultez en urgence si les signes s'aggravent. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_PELVIC_PAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pelvic pain. Pelvic pain may evolve after an emergency visit; OB/GYN follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Symptoms may evolve after this visit. Monitor pain, fever, and bleeding as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, fever, fainting, vomiting, bleeding, shoulder pain, or dizziness. Seek emergency care when concerned. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur pelvienne. La douleur pelvienne peut évoluer après une visite aux urgences ; un suivi OB/GYN est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Les signes peuvent évoluer après cette visite. Surveillez la douleur, la fièvre et les saignements selon les indications reçues. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, de fièvre, d'évanouissement, de vomissements, de saignements, de douleur à l'épaule ou d'étourdissements. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_DYSMENORRHEA_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for painful menstrual cramps. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended if pain worsens.",
+      diagnosisInstructions:
+        "Use comfort measures only as directed during this visit. Monitor pain and bleeding. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, fever, heavy bleeding, dizziness, or fainting. Seek emergency care when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des crampes menstruelles douloureuses. Les signes peuvent persister brièvement après une visite aux urgences ; un suivi ambulatoire est recommandé si la douleur s'aggrave.",
+      diagnosisInstructions:
+        "Utilisez les mesures de confort uniquement selon les indications reçues. Surveillez la douleur et les saignements. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, de fièvre, de saignement abondant, d'étourdissements ou d'évanouissement. Consultez en urgence si inquiétude.",
+    }
+  );
+
+export const OBGYN_HYPEREMESIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for nausea and vomiting during pregnancy. Symptoms may persist after an emergency visit; hydration and close follow-up are important.",
+      diagnosisInstructions:
+        "Monitor hydration, intake, and dizziness as directed during this visit. Take medications only as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately if you cannot tolerate fluids, have worsening vomiting, dizziness, fainting, or worsening symptoms. Seek emergency care when concerned. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des nausées et vomissements pendant la grossesse. Les signes peuvent persister après une visite aux urgences ; l'hydratation et un suivi rapproché sont importants.",
+      diagnosisInstructions:
+        "Surveillez l'hydratation, les apports et les étourdissements selon les indications reçues. Prenez les médicaments uniquement selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement si vous ne pouvez pas boire, si les vomissements s'aggravent, en cas d'étourdissements, d'évanouissement ou d'aggravation des signes. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_EARLY_PREGNANCY_SYMPTOMS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for early pregnancy symptoms. Symptoms during early pregnancy may evolve; OB/GYN follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Symptoms may evolve after this visit. Monitor pain, bleeding, and overall symptoms as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for pain, bleeding, fainting, fever, shoulder pain, dizziness, or worsening symptoms. Seek emergency care when concerned. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes du début de grossesse. Les signes en début de grossesse peuvent évoluer ; un suivi OB/GYN est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Les signes peuvent évoluer après cette visite. Surveillez la douleur, les saignements et l'état général selon les indications reçues. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de douleur, de saignements, d'évanouissement, de fièvre, de douleur à l'épaule, d'étourdissements ou d'aggravation des signes. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_THREATENED_MISCARRIAGE_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for bleeding or cramping during early pregnancy. Symptoms during early pregnancy may require close follow-up. The guidance below is precautionary only.",
+      diagnosisInstructions:
+        "This information supports monitoring only and does not replace clinician judgment. Monitor bleeding and pain as directed. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for heavy bleeding, severe pain, dizziness, fainting, shoulder pain, or fever. Seek emergency care if symptoms worsen. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des saignements ou crampes en début de grossesse. Les signes en début de grossesse peuvent nécessiter un suivi rapproché. Les conseils ci-dessous sont uniquement préventifs.",
+      diagnosisInstructions:
+        "Ces informations servent à la surveillance et ne remplacent pas le jugement du clinicien. Surveillez les saignements et la douleur selon les indications reçues. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de saignement abondant, de douleur intense, d'étourdissements, d'évanouissement, de douleur à l'épaule ou de fièvre. Consultez en urgence si les signes s'aggravent. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_VAGINITIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for vaginal discharge or irritation. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended if symptoms worsen.",
+      diagnosisInstructions:
+        "Your health information is kept private and confidential. Follow comfort and hygiene instructions only as directed during this visit. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, severe pelvic pain, worsening symptoms, or fainting. Seek emergency care when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des pertes vaginales ou une irritation. Les signes peuvent persister brièvement après une visite aux urgences ; un suivi ambulatoire est recommandé s'ils s'aggravent.",
+      diagnosisInstructions:
+        "Vos informations de santé restent privées et confidentielles. Suivez les consignes de confort et d'hygiène uniquement selon les indications reçues. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de fièvre, de douleur pelvienne intense, d'aggravation des signes ou d'évanouissement. Consultez en urgence si inquiétude.",
+    }
+  );
+
+export const OBGYN_UTI_PREGNANCY_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for urinary symptoms during pregnancy. Urinary symptoms during pregnancy may require close follow-up with OB/GYN when clinically appropriate.",
+      diagnosisInstructions:
+        "Take medications only as directed during this visit. Monitor fever, pain, and hydration. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for fever, flank pain, vomiting, fainting, or worsening symptoms. Seek emergency care when concerned. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes urinaires pendant la grossesse. Des signes urinaires pendant la grossesse peuvent nécessiter un suivi rapproché en OB/GYN lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Prenez les médicaments uniquement selon les indications reçues. Surveillez la fièvre, la douleur et l'hydratation. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de fièvre, de douleur lombaire, de vomissements, d'évanouissement ou d'aggravation des signes. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_ROUND_LIGAMENT_PAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pregnancy-related abdominal or pelvic discomfort consistent with round ligament pain. Symptoms may recur during pregnancy; OB/GYN follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Use comfort measures only as directed during this visit. Monitor pain and overall pregnancy symptoms. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, bleeding, fever, regular contractions, or concerning changes in pregnancy symptoms. Seek emergency care when worried. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une gêne abdominale ou pelvienne liée à la grossesse, compatible avec une douleur des ligaments ronds. Les signes peuvent récidiver pendant la grossesse ; un suivi OB/GYN est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Utilisez les mesures de confort uniquement selon les indications reçues. Surveillez la douleur et les signes généraux de la grossesse. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, de saignements, de fièvre, de contractions régulières ou de signes inquiétants liés à la grossesse. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
+export const OBGYN_POSTPARTUM_WARNING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for postpartum symptoms. Postpartum symptoms can change quickly; close follow-up and emergency precautions are important.",
+      diagnosisInstructions:
+        "Monitor bleeding, breathing, blood pressure symptoms, and overall recovery as directed during this visit. Return precautions were reviewed.",
+      medicationTreatment: OBGYN_MED_EN,
+      returnPrecautions:
+        "Return immediately for heavy bleeding, chest pain, shortness of breath, fever, severe headache, leg swelling, fainting, or worsening symptoms. Seek emergency care when concerned. Follow up with OB/GYN as directed.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes post-partum. Les signes post-partum peuvent évoluer rapidement ; un suivi rapproché et des consignes d'urgence sont importants.",
+      diagnosisInstructions:
+        "Surveillez les saignements, la respiration, les signes liés à la tension artérielle et la récupération générale selon les indications reçues. Les consignes de retour ont été revues.",
+      medicationTreatment: OBGYN_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de saignement abondant, de douleur thoracique, d'essoufflement, de fièvre, de céphalée intense, de gonflement des jambes, d'évanouissement ou d'aggravation des signes. Consultez en urgence si inquiétude. Suivez le suivi OB/GYN selon les directives.",
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

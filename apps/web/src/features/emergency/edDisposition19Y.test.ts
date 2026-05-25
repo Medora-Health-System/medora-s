@@ -15,6 +15,7 @@ import {
   BATCH_4_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_6_PEDIATRIC_HIGHER_RISK_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -24,6 +25,7 @@ import {
 import {
   scanProviderDischargeObGynEscalationLanguage,
   scanProviderDischargeObGynPregnancyForbiddenPhrases,
+  scanProviderDischargeObGynPrivacyContent,
   validateProviderDischargeObGynTemplateGovernance,
 } from "./providerDischargeTemplateObGynGovernance";
 import {
@@ -2794,6 +2796,170 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.10 Batch 7 OB/GYN higher-risk ED discharge templates", () => {
+    const batchTemplates = () =>
+      BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 10 OB/GYN templates exist with EN/FR bodies and obGynSafety", () => {
+      expect(BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+        expect(template.obGynSafety).toBeTruthy();
+        expect(template.specialtyCategory).toBe("obgyn");
+      }
+    });
+
+    it("full registry validates with batch 7 included", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("each batch 7 template passes OB/GYN governance and has follow-up when required", () => {
+      for (const template of batchTemplates()) {
+        expect(validateProviderDischargeObGynTemplateGovernance(template), template.id).toEqual([]);
+        if (template.obGynSafety?.requiresOBGynFollowUp) {
+          expect(template.defaultFollowUps?.some((row) => row.specialty === "OBGYN")).toBe(true);
+        }
+      }
+    });
+
+    it("escalation wording passes EN and FR for all batch 7 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(scanProviderDischargeObGynEscalationLanguage(template.id, "en", template.suggestedText.en)).toEqual(
+          []
+        );
+        expect(scanProviderDischargeObGynEscalationLanguage(template.id, "fr", template.suggestedText.fr)).toEqual(
+          []
+        );
+      }
+    });
+
+    it("forbidden pregnancy and ectopic certainty phrases fail scanners", () => {
+      const body = batchTemplates()[0]!.suggestedText.en;
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_test", "en", {
+          ...body,
+          diagnosisInstructions: "Pregnancy ruled out today.",
+        }).length
+      ).toBeGreaterThan(0);
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_test", "en", {
+          ...body,
+          returnPrecautions: "Ectopic ruled out during evaluation.",
+        }).length
+      ).toBeGreaterThan(0);
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_test", "en", {
+          ...body,
+          description: "Miscarriage occurred during this visit.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden hCG and ultrasound result phrases fail", () => {
+      const body = batchTemplates()[0]!.suggestedText.en;
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_test", "en", {
+          ...body,
+          diagnosisInstructions: "hCG negative in the ED.",
+        }).some((e) => e.includes("hcg-negative"))
+      ).toBe(true);
+      expect(
+        scanProviderDischargeObGynPregnancyForbiddenPhrases("obgyn_test", "en", {
+          ...body,
+          description: "Ultrasound normal during evaluation.",
+        }).some((e) => e.includes("ultrasound-normal"))
+      ).toBe(true);
+    });
+
+    it("privacy validators pass for vaginitis template", () => {
+      const vaginitis = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "obgyn_vaginitis_v1")!;
+      expect(vaginitis.obGynSafety?.requiresSexualHealthPrivacyWarning).toBe(true);
+      for (const locale of ["en", "fr"] as const) {
+        expect(scanProviderDischargeObGynPrivacyContent(vaginitis.id, locale, vaginitis.suggestedText[locale])).toEqual(
+          []
+        );
+      }
+    });
+
+    it("batch 7 templates have no dosing language or fabricated results", () => {
+      const forbiddenResults = ["hcg negative", "ultrasound normal", "fetal heart tones", "ruled out", "mg/kg"];
+      for (const template of batchTemplates()) {
+        for (const locale of ["en", "fr"] as const) {
+          expect(scanProviderDischargePediatricForbiddenDosing(template.id, locale, template.suggestedText[locale])).toEqual(
+            []
+          );
+          const blob = JSON.stringify(template.suggestedText[locale]).toLowerCase();
+          for (const phrase of forbiddenResults) {
+            expect(blob, `${template.id} ${locale}`).not.toContain(phrase);
+          }
+        }
+      }
+    });
+
+    it("vaginal bleeding N93.9 resolves to OB/GYN vaginal bleeding template", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        code: "N93.9",
+        displayName: "Vaginal bleeding",
+      });
+      expect(resolved.template.id).toBe("obgyn_vaginal_bleeding_v1");
+      expect(resolved.matchLevel).toBe("icdExact");
+    });
+
+    it("OB/GYN pelvic pain keyword resolves without adult abdominal pain collision", () => {
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({
+        displayName: "obgyn pelvic pain",
+      });
+      expect(resolved.template.id).toBe("obgyn_pelvic_pain_v1");
+      expect(resolved.matchLevel).toBe("keyword");
+    });
+
+    it("apply uses active locale for batch 7 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-ovb",
+        code: "N93.9",
+        displayName: "Vaginal bleeding",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description).toContain("saignements vaginaux");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("intentional batch 7 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutObGyn = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("obgyn_")),
+        "en"
+      );
+      expect(base).not.toBe(withoutObGyn);
+    });
+
+    it("no React UI hardcoding for batch 7 OB/GYN templates", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toContain("You were evaluated in the emergency department for vaginal bleeding");
+      expect(uiSource).not.toContain("Vous avez été pris en charge aux urgences pour des saignements vaginaux");
+    });
+
+    it("existing adult and pediatric templates still validate", () => {
+      const nonObGyn = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("obgyn_"));
+      const result = validateProviderDischargeTemplateRegistry(nonObGyn);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -3173,7 +3339,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("50b774d247a3f25fbc94aae0d393a930d421bc5e0040b1830b70fe2f5f25eff5");
+      expect(hash).toBe("c155e56731310c9e1973d5390c2ab12102cd92ff4473e5c39e7e2cc5535c9acc");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -3183,7 +3349,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("647c2d61b54bb17d4bc54911ecb647af863f818ea78d8b7a90bf005863403f7f");
+      expect(hash).toBe("76c3c2100f11fab0ed48fb2dc30b380eaf00e5dd3e2a40e3b59777c40f477073");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
