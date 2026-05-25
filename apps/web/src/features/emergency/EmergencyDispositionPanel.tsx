@@ -41,10 +41,12 @@ import {
 import {
   buildProviderDischargeJsonForSave,
   ProviderDischargeDocumentationSection,
+  validateProviderDischargeDocumentation,
 } from "@/features/emergency/ProviderDischargeDocumentationSection";
 import {
   applyProviderDischargeDocumentationToDischargeForm,
   hydrateProviderDischargeDocumentationForm,
+  type ProviderDischargeValidationErrors,
 } from "@/features/emergency/providerDischargeDocumentationModel";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
@@ -183,6 +185,8 @@ export function EmergencyDispositionPanel({
   const [providerDischargeDoc, setProviderDischargeDoc] = useState(() =>
     hydrateProviderDischargeDocumentationForm(encounter.dischargeSummaryJson)
   );
+  const [providerDischargeValidationErrors, setProviderDischargeValidationErrors] =
+    useState<ProviderDischargeValidationErrors | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
 
@@ -294,22 +298,12 @@ export function EmergencyDispositionPanel({
   );
 
   const patchDischarge = useCallback((patch: Partial<DischargeFormState>) => {
-    setDischargeForm((f) => {
-      const next = { ...f, ...patch };
-      setProviderDischargeDoc((pd) => ({
-        ...pd,
-        description: next.dischargeDiagnosisSummary,
-        diagnosisInstructions: next.dischargeInstructions,
-        medicationTreatmentText: next.medicationInstructions,
-        returnPrecautions: next.returnPrecautions,
-        workSchoolNote: next.workSchoolNote,
-      }));
-      return next;
-    });
+    setDischargeForm((f) => ({ ...f, ...patch }));
   }, []);
 
   const onProviderDischargeDocChange = useCallback((next: typeof providerDischargeDoc) => {
     setProviderDischargeDoc(next);
+    setProviderDischargeValidationErrors(null);
     setDischargeForm((f) => applyProviderDischargeDocumentationToDischargeForm(f, next));
   }, []);
 
@@ -327,6 +321,35 @@ export function EmergencyDispositionPanel({
 
   const handleSave = async () => {
     if (formDisabled) return;
+
+    const showProviderDischargeOnSave =
+      outcomeUi !== "ADMISSION" &&
+      (outcomeUi === "HOME" ||
+        outcomeUi === "AMA" ||
+        outcomeUi === "LWBS" ||
+        outcomeUi === "OTHER" ||
+        outcomeUi === "TRANSFER");
+
+    if (
+      canEditMedicalDischarge &&
+      showProviderDischargeOnSave &&
+      providerDischargeDoc.diagnosisRefs.length > 0
+    ) {
+      const validationErrors = validateProviderDischargeDocumentation(providerDischargeDoc, {
+        requiredDescription: t("providerDischargeDocumentation19Y.validation.requiredDescription"),
+        requiredInstructions: t("providerDischargeDocumentation19Y.validation.requiredInstructions"),
+        requiredMedication: t("providerDischargeDocumentation19Y.validation.requiredMedication"),
+        requiredReturnPrecautions: t("providerDischargeDocumentation19Y.validation.requiredReturnPrecautions"),
+        requiredFollowUp: t("providerDischargeDocumentation19Y.validation.requiredFollowUp"),
+      });
+      if (validationErrors) {
+        setProviderDischargeValidationErrors(validationErrors);
+        setSaveInfo(t("providerDischargeDocumentation19Y.validation.saveBlocked"));
+        return;
+      }
+    }
+    setProviderDischargeValidationErrors(null);
+
     setSaving(true);
     setSaveInfo(null);
     try {
@@ -362,14 +385,7 @@ export function EmergencyDispositionPanel({
         if (canEditMedicalDischarge) {
           body.dischargeSummaryJson = buildProviderDischargeJsonForSave(
             encounter.dischargeSummaryJson,
-            {
-              ...providerDischargeDoc,
-              description: dischargeForm.dischargeDiagnosisSummary,
-              diagnosisInstructions: dischargeForm.dischargeInstructions,
-              medicationTreatmentText: dischargeForm.medicationInstructions,
-              returnPrecautions: dischargeForm.returnPrecautions,
-              workSchoolNote: dischargeForm.workSchoolNote,
-            },
+            providerDischargeDoc,
             { documentedAt: signature.savedAt, documentedByDisplayName: savedByDisplayName }
           );
         } else {
@@ -642,6 +658,7 @@ export function EmergencyDispositionPanel({
                 providerForm={providerDischargeDoc}
                 onProviderFormChange={onProviderDischargeDocChange}
                 disabled={medDisabled}
+                validationErrors={providerDischargeValidationErrors}
               />
             : null}
 

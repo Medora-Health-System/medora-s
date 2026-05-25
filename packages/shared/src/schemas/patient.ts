@@ -341,6 +341,8 @@ export const encounterDischargeFieldsSchema = z.object({
   /** Phase 19Y — provider discharge documentation (JSON only). */
   patientLeftEdAt: z.string().max(48).optional(),
   providerDischargeDiagnosisRefs: z.array(z.record(z.string(), z.unknown())).max(32).optional(),
+  /** Phase 19Y.1A — per-diagnosis provider discharge documentation cards. */
+  providerDischargeDiagnosisDocs: z.array(z.record(z.string(), z.unknown())).max(32).optional(),
   providerDischargeFollowUps: z.array(z.record(z.string(), z.unknown())).max(16).optional(),
   providerDischargeMedicationLines: z.array(z.record(z.string(), z.unknown())).max(32).optional(),
   providerDischargeDocumentedAt: z.string().max(48).optional(),

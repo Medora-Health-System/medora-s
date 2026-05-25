@@ -1,13 +1,15 @@
 /**
- * Phase 19Y — read-only builders for provider discharge documentation in Summary / ER packet / export.
+ * Phase 19Y / 19Y.1A — read-only builders for provider discharge documentation in Summary / ER packet / export.
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import type { VisitSummaryTextBlock } from "./emergencyVisitSummaryModel";
 import {
+  getSelectedDiagnosisDocs,
   hydrateProviderDischargeDocumentationForm,
   readProviderDischargeDocumentationMeta,
+  type ProviderDischargeDiagnosisDoc,
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
 import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
@@ -32,7 +34,11 @@ function pushLine(lines: string[], label: string, value: string | null | undefin
 
 function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedLanguage): string {
   const specialtyLabel = p(locale, `followUpSpecialty.${row.specialty}`);
-  const parts = [specialtyLabel !== `providerDischargeDocumentation19Y.followUpSpecialty.${row.specialty}` ? specialtyLabel : row.specialty];
+  const parts = [
+    specialtyLabel !== `providerDischargeDocumentation19Y.followUpSpecialty.${row.specialty}` ?
+      specialtyLabel
+    : row.specialty,
+  ];
   if (row.providerOrFacility.trim()) parts.push(row.providerOrFacility.trim());
   if (row.timing.trim()) parts.push(row.timing.trim());
   if (row.phone.trim()) parts.push(row.phone.trim());
@@ -41,23 +47,35 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
   return parts.join(" · ");
 }
 
+function appendDiagnosisDocLines(lines: string[], doc: ProviderDischargeDiagnosisDoc, locale: SupportedLanguage) {
+  const primarySuffix = "";
+  lines.push("");
+  lines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
+  pushLine(lines, p(locale, "description"), doc.description);
+  pushLine(lines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
+  pushLine(lines, p(locale, "medicationTreatment"), doc.medicationTreatment);
+  pushLine(lines, p(locale, "returnPrecautions"), doc.returnPrecautions);
+  pushLine(lines, p(locale, "workSchool"), doc.returnWorkSchool);
+  if (doc.followUps.length) {
+    lines.push(p(locale, "followUp"));
+    for (const row of doc.followUps) {
+      lines.push(`• ${formatFollowUpRow(row, locale)}`);
+    }
+  }
+}
+
 export function buildProviderDischargeDocumentationSummaryBlock(
   dischargeSummaryJson: unknown,
   locale: SupportedLanguage
 ): VisitSummaryTextBlock | null {
   const form = hydrateProviderDischargeDocumentationForm(dischargeSummaryJson);
   const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);
+  const selectedDocs = getSelectedDiagnosisDocs(form);
 
   const hasContent =
     Boolean(form.patientLeftEdAt.trim()) ||
-    form.diagnosisRefs.length > 0 ||
-    Boolean(form.description.trim()) ||
-    Boolean(form.diagnosisInstructions.trim()) ||
-    Boolean(form.medicationTreatmentText.trim()) ||
-    form.medicationLines.length > 0 ||
-    Boolean(form.returnPrecautions.trim()) ||
-    Boolean(form.workSchoolNote.trim()) ||
-    form.followUpRows.length > 0;
+    selectedDocs.length > 0 ||
+    form.diagnosisRefs.length > 0;
 
   if (!hasContent && !meta.documentedAt) return null;
 
@@ -71,27 +89,12 @@ export function buildProviderDischargeDocumentationSummaryBlock(
 
   pushLine(lines, p(locale, "patientLeftEd"), form.patientLeftEdAt ? formatIso(form.patientLeftEdAt, locale) : "");
 
-  if (form.diagnosisRefs.length) {
-    lines.push("");
-    lines.push(p(locale, "dischargeDiagnoses"));
-    for (const dx of form.diagnosisRefs) {
-      const primary = dx.isPrimary ? ` (${p(locale, "primary")})` : "";
-      lines.push(`• ${dx.code} — ${dx.label}${primary}`);
+  if (selectedDocs.length) {
+    for (const doc of selectedDocs) {
+      appendDiagnosisDocLines(lines, doc, locale);
     }
-  }
-
-  pushLine(lines, p(locale, "description"), form.description);
-  pushLine(lines, p(locale, "diagnosisInstructions"), form.diagnosisInstructions);
-  pushLine(lines, p(locale, "medicationTreatment"), form.medicationTreatmentText);
-  pushLine(lines, p(locale, "returnPrecautions"), form.returnPrecautions);
-  pushLine(lines, p(locale, "workSchool"), form.workSchoolNote);
-
-  if (form.followUpRows.length) {
-    lines.push("");
-    lines.push(p(locale, "followUp"));
-    for (const row of form.followUpRows) {
-      lines.push(`• ${formatFollowUpRow(row, locale)}`);
-    }
+  } else if (form.diagnosisDocs.length === 1) {
+    appendDiagnosisDocLines(lines, form.diagnosisDocs[0]!, locale);
   }
 
   if (lines.length === 0) return null;
@@ -114,7 +117,11 @@ export function buildNursingDischargeExecutionSummaryBlock19Y(
 
   if (exec.nursingDestination) {
     const label = p(locale, `nursingDestination.${exec.nursingDestination}`);
-    pushLine(lines, p(locale, "nursingDestinationLabel"), label.startsWith("providerDischargeDocumentation19Y.") ? exec.nursingDestination : label);
+    pushLine(
+      lines,
+      p(locale, "nursingDestinationLabel"),
+      label.startsWith("providerDischargeDocumentation19Y.") ? exec.nursingDestination : label
+    );
   }
 
   if (exec.nursingConditionAtDischarge) {

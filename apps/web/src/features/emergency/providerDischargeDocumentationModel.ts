@@ -1,5 +1,6 @@
 /**
- * Phase 19Y — provider discharge documentation stored in `dischargeSummaryJson` (no migration).
+ * Phase 19Y / 19Y.1A — provider discharge documentation stored in `dischargeSummaryJson` (no migration).
+ * Per-diagnosis documentation cards with backward-compatible hydration from legacy flat fields.
  */
 
 import { parseDischargeSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
@@ -16,6 +17,7 @@ export type ProviderDischargeDiagnosisRef = {
 export type ProviderDischargeFollowUpRow = {
   id: string;
   specialty: string;
+  /** Legacy key; `name` is accepted on read. */
   providerOrFacility: string;
   timing: string;
   phone: string;
@@ -23,25 +25,38 @@ export type ProviderDischargeFollowUpRow = {
   comments: string;
 };
 
-export type ProviderDischargeMedicationLine = {
+export type ProviderDischargeDiagnosisDoc = {
   id: string;
-  catalogMedicationId?: string;
+  encounterDiagnosisId?: string;
+  code: string;
   displayName: string;
-  dose: string;
-  frequency: string;
-  instructions: string;
+  description: string;
+  diagnosisInstructions: string;
+  medicationTreatment: string;
+  returnPrecautions: string;
+  returnWorkSchool?: string;
+  followUps: ProviderDischargeFollowUpRow[];
+  sourceTemplateId?: string;
+  sourceVersion?: string;
 };
 
 export type ProviderDischargeDocumentationForm = {
   patientLeftEdAt: string;
+  /** Selected discharge diagnoses (checkbox list). */
   diagnosisRefs: ProviderDischargeDiagnosisRef[];
-  description: string;
-  diagnosisInstructions: string;
-  medicationTreatmentText: string;
-  medicationLines: ProviderDischargeMedicationLine[];
-  returnPrecautions: string;
-  workSchoolNote: string;
-  followUpRows: ProviderDischargeFollowUpRow[];
+  /** All diagnosis documentation cards (includes deselected session cache). */
+  diagnosisDocs: ProviderDischargeDiagnosisDoc[];
+};
+
+export type ProviderDischargeDocFieldKey =
+  | "description"
+  | "diagnosisInstructions"
+  | "medicationTreatment"
+  | "returnPrecautions"
+  | "followUps";
+
+export type ProviderDischargeValidationErrors = {
+  byDocId: Record<string, Partial<Record<ProviderDischargeDocFieldKey, string>>>;
 };
 
 export const PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES = [
@@ -77,8 +92,7 @@ export const WORK_SCHOOL_QUICK_OPTIONS = [
 const JSON_KEYS = {
   patientLeftEdAt: "patientLeftEdAt",
   diagnosisRefs: "providerDischargeDiagnosisRefs",
-  followUpRows: "providerDischargeFollowUps",
-  medicationLines: "providerDischargeMedicationLines",
+  diagnosisDocs: "providerDischargeDiagnosisDocs",
   documentedAt: "providerDischargeDocumentedAt",
   documentedBy: "providerDischargeDocumentedByDisplayName",
   documentedByTitle: "providerDischargeDocumentedByTitle",
@@ -88,13 +102,7 @@ export function emptyProviderDischargeDocumentationForm(): ProviderDischargeDocu
   return {
     patientLeftEdAt: "",
     diagnosisRefs: [],
-    description: "",
-    diagnosisInstructions: "",
-    medicationTreatmentText: "",
-    medicationLines: [],
-    returnPrecautions: "",
-    workSchoolNote: "",
-    followUpRows: [],
+    diagnosisDocs: [],
   };
 }
 
@@ -123,11 +131,15 @@ function readFollowUpRow(raw: unknown, index: number): ProviderDischargeFollowUp
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
   const specialty = typeof o.specialty === "string" ? o.specialty.trim() : "";
-  if (!specialty) return null;
+  const name =
+    typeof o.name === "string" ? o.name.trim()
+    : typeof o.providerOrFacility === "string" ? o.providerOrFacility.trim()
+    : "";
+  if (!specialty && !name) return null;
   return {
     id: typeof o.id === "string" && o.id.trim() ? o.id.trim() : `fu-${index}`,
-    specialty,
-    providerOrFacility: typeof o.providerOrFacility === "string" ? o.providerOrFacility.trim() : "",
+    specialty: specialty || "PRIMARY_CARE",
+    providerOrFacility: name,
     timing: typeof o.timing === "string" ? o.timing.trim() : "",
     phone: typeof o.phone === "string" ? o.phone.trim() : "",
     address: typeof o.address === "string" ? o.address.trim() : "",
@@ -135,19 +147,92 @@ function readFollowUpRow(raw: unknown, index: number): ProviderDischargeFollowUp
   };
 }
 
-function readMedicationLine(raw: unknown, index: number): ProviderDischargeMedicationLine | null {
+function readDiagnosisDoc(raw: unknown, index: number): ProviderDischargeDiagnosisDoc | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const o = raw as Record<string, unknown>;
-  const displayName = typeof o.displayName === "string" ? o.displayName.trim() : "";
-  if (!displayName) return null;
+  const code = typeof o.code === "string" ? o.code.trim() : "";
+  const displayName =
+    typeof o.displayName === "string" ? o.displayName.trim()
+    : typeof o.label === "string" ? o.label.trim()
+    : code;
+  if (!code && !displayName) return null;
+
+  const followUps = readStringArray(o.followUps)
+    .map(readFollowUpRow)
+    .filter((x): x is ProviderDischargeFollowUpRow => x != null);
+
   return {
-    id: typeof o.id === "string" && o.id.trim() ? o.id.trim() : `med-${index}`,
-    catalogMedicationId:
-      typeof o.catalogMedicationId === "string" ? o.catalogMedicationId.trim() : undefined,
-    displayName,
-    dose: typeof o.dose === "string" ? o.dose.trim() : "",
-    frequency: typeof o.frequency === "string" ? o.frequency.trim() : "",
-    instructions: typeof o.instructions === "string" ? o.instructions.trim() : "",
+    id: typeof o.id === "string" && o.id.trim() ? o.id.trim() : `dxdoc-${index}`,
+    encounterDiagnosisId:
+      typeof o.encounterDiagnosisId === "string" ? o.encounterDiagnosisId.trim() : undefined,
+    code,
+    displayName: displayName || code,
+    description: typeof o.description === "string" ? o.description : "",
+    diagnosisInstructions:
+      typeof o.diagnosisInstructions === "string" ? o.diagnosisInstructions : "",
+    medicationTreatment:
+      typeof o.medicationTreatment === "string" ? o.medicationTreatment : "",
+    returnPrecautions: typeof o.returnPrecautions === "string" ? o.returnPrecautions : "",
+    returnWorkSchool:
+      typeof o.returnWorkSchool === "string" ? o.returnWorkSchool
+      : typeof o.workSchoolNote === "string" ? o.workSchoolNote
+      : undefined,
+    followUps,
+    sourceTemplateId:
+      typeof o.sourceTemplateId === "string" ? o.sourceTemplateId.trim() : undefined,
+    sourceVersion: typeof o.sourceVersion === "string" ? o.sourceVersion.trim() : undefined,
+  };
+}
+
+function readLegacyMedicationLines(raw: unknown): string {
+  const lines = readStringArray(raw)
+    .map((item, i) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      const o = item as Record<string, unknown>;
+      const displayName = typeof o.displayName === "string" ? o.displayName.trim() : "";
+      if (!displayName) return null;
+      const parts = [displayName];
+      if (typeof o.dose === "string" && o.dose.trim()) parts.push(o.dose.trim());
+      if (typeof o.frequency === "string" && o.frequency.trim()) parts.push(o.frequency.trim());
+      if (typeof o.instructions === "string" && o.instructions.trim()) parts.push(o.instructions.trim());
+      return parts.join(" — ");
+    })
+    .filter((x): x is string => Boolean(x));
+  return lines.join("\n");
+}
+
+function buildLegacyDocFromFlatFields(
+  parsed: ReturnType<typeof parseDischargeSummaryForChart>,
+  refs: ProviderDischargeDiagnosisRef[],
+  legacyMedicationText: string,
+  legacyFollowUps: ProviderDischargeFollowUpRow[]
+): ProviderDischargeDiagnosisDoc | null {
+  const hasFlat =
+    Boolean(parsed?.dischargeDiagnosisSummary?.trim()) ||
+    Boolean(parsed?.dischargeInstructions?.trim()) ||
+    Boolean(parsed?.medicationInstructions?.trim()) ||
+    Boolean(legacyMedicationText.trim()) ||
+    Boolean(parsed?.returnPrecautions?.trim()) ||
+    Boolean(parsed?.workSchoolNote?.trim()) ||
+    legacyFollowUps.length > 0;
+
+  if (!hasFlat && refs.length === 0) return null;
+
+  const primaryRef = refs.find((r) => r.isPrimary) ?? refs[0];
+  const medText = parsed?.medicationInstructions?.trim() || legacyMedicationText;
+
+  return {
+    id: primaryRef?.encounterDiagnosisId ? `legacy-${primaryRef.encounterDiagnosisId}` : "legacy-primary",
+    encounterDiagnosisId: primaryRef?.encounterDiagnosisId,
+    code: primaryRef?.code ?? "",
+    displayName: primaryRef?.label ?? primaryRef?.code ?? "Discharge diagnosis",
+    description: parsed?.dischargeDiagnosisSummary ?? "",
+    diagnosisInstructions: parsed?.dischargeInstructions ?? "",
+    medicationTreatment: medText,
+    returnPrecautions: parsed?.returnPrecautions ?? "",
+    returnWorkSchool: parsed?.workSchoolNote ?? "",
+    followUps: legacyFollowUps,
+    sourceTemplateId: primaryRef?.educationTemplateId,
   };
 }
 
@@ -158,12 +243,6 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
 
   const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
 
-  base.description = parsed?.dischargeDiagnosisSummary ?? "";
-  base.diagnosisInstructions = parsed?.dischargeInstructions ?? "";
-  base.medicationTreatmentText = parsed?.medicationInstructions ?? "";
-  base.returnPrecautions = parsed?.returnPrecautions ?? "";
-  base.workSchoolNote = parsed?.workSchoolNote ?? "";
-
   const leftAt = o[JSON_KEYS.patientLeftEdAt];
   if (typeof leftAt === "string") base.patientLeftEdAt = leftAt;
 
@@ -171,13 +250,25 @@ export function hydrateProviderDischargeDocumentationForm(raw: unknown): Provide
     .map(readDiagnosisRef)
     .filter((x): x is ProviderDischargeDiagnosisRef => x != null);
 
-  base.followUpRows = readStringArray(o[JSON_KEYS.followUpRows])
+  const structuredDocs = readStringArray(o[JSON_KEYS.diagnosisDocs])
+    .map(readDiagnosisDoc)
+    .filter((x): x is ProviderDischargeDiagnosisDoc => x != null);
+
+  if (structuredDocs.length > 0) {
+    base.diagnosisDocs = structuredDocs;
+    return base;
+  }
+
+  const legacyFollowUps = readStringArray(o.providerDischargeFollowUps)
     .map(readFollowUpRow)
     .filter((x): x is ProviderDischargeFollowUpRow => x != null);
 
-  base.medicationLines = readStringArray(o[JSON_KEYS.medicationLines])
-    .map(readMedicationLine)
-    .filter((x): x is ProviderDischargeMedicationLine => x != null);
+  const legacyMedText = readLegacyMedicationLines(o.providerDischargeMedicationLines);
+
+  const legacyDoc = buildLegacyDocFromFlatFields(parsed, base.diagnosisRefs, legacyMedText, legacyFollowUps);
+  if (legacyDoc) {
+    base.diagnosisDocs = [legacyDoc];
+  }
 
   return base;
 }
@@ -203,6 +294,114 @@ export function readProviderDischargeDocumentationMeta(raw: unknown): ProviderDi
   };
 }
 
+export function findDiagnosisDocForRef(
+  form: ProviderDischargeDocumentationForm,
+  ref: ProviderDischargeDiagnosisRef
+): ProviderDischargeDiagnosisDoc | undefined {
+  if (ref.encounterDiagnosisId) {
+    const byId = form.diagnosisDocs.find((d) => d.encounterDiagnosisId === ref.encounterDiagnosisId);
+    if (byId) return byId;
+  }
+  return form.diagnosisDocs.find((d) => d.code === ref.code && d.displayName === ref.label);
+}
+
+export function getSelectedDiagnosisDocs(form: ProviderDischargeDocumentationForm): ProviderDischargeDiagnosisDoc[] {
+  return form.diagnosisRefs
+    .map((ref) => findDiagnosisDocForRef(form, ref))
+    .filter((d): d is ProviderDischargeDiagnosisDoc => d != null);
+}
+
+export function getPrimaryRollupDoc(form: ProviderDischargeDocumentationForm): ProviderDischargeDiagnosisDoc | null {
+  const selected = getSelectedDiagnosisDocs(form);
+  if (selected.length === 0) return form.diagnosisDocs[0] ?? null;
+  const primaryRef = form.diagnosisRefs.find((r) => r.isPrimary);
+  if (primaryRef) {
+    const doc = findDiagnosisDocForRef(form, primaryRef);
+    if (doc) return doc;
+  }
+  return selected[0] ?? null;
+}
+
+function followUpRowIsComplete(row: ProviderDischargeFollowUpRow): boolean {
+  return Boolean(row.providerOrFacility.trim()) || Boolean(row.timing.trim());
+}
+
+export function validateProviderDischargeDocumentation(
+  form: ProviderDischargeDocumentationForm,
+  messages: {
+    requiredDescription: string;
+    requiredInstructions: string;
+    requiredMedication: string;
+    requiredReturnPrecautions: string;
+    requiredFollowUp: string;
+  }
+): ProviderDischargeValidationErrors | null {
+  if (form.diagnosisRefs.length === 0) return null;
+
+  const byDocId: ProviderDischargeValidationErrors["byDocId"] = {};
+  let hasError = false;
+
+  for (const ref of form.diagnosisRefs) {
+    const doc = findDiagnosisDocForRef(form, ref);
+    if (!doc) {
+      byDocId[ref.encounterDiagnosisId ?? ref.code] = {
+        description: messages.requiredDescription,
+        diagnosisInstructions: messages.requiredInstructions,
+        medicationTreatment: messages.requiredMedication,
+        returnPrecautions: messages.requiredReturnPrecautions,
+        followUps: messages.requiredFollowUp,
+      };
+      hasError = true;
+      continue;
+    }
+
+    const errors: Partial<Record<ProviderDischargeDocFieldKey, string>> = {};
+    if (!doc.description.trim()) errors.description = messages.requiredDescription;
+    if (!doc.diagnosisInstructions.trim()) errors.diagnosisInstructions = messages.requiredInstructions;
+    if (!doc.medicationTreatment.trim()) errors.medicationTreatment = messages.requiredMedication;
+    if (!doc.returnPrecautions.trim()) errors.returnPrecautions = messages.requiredReturnPrecautions;
+    if (!doc.followUps.some(followUpRowIsComplete)) errors.followUps = messages.requiredFollowUp;
+
+    if (Object.keys(errors).length > 0) {
+      byDocId[doc.id] = errors;
+      hasError = true;
+    }
+  }
+
+  return hasError ? { byDocId } : null;
+}
+
+function serializeFollowUpRow(row: ProviderDischargeFollowUpRow): Record<string, unknown> {
+  return {
+    id: row.id,
+    specialty: row.specialty,
+    name: row.providerOrFacility,
+    providerOrFacility: row.providerOrFacility,
+    timing: row.timing,
+    phone: row.phone,
+    address: row.address,
+    comments: row.comments,
+  };
+}
+
+function serializeDiagnosisDoc(doc: ProviderDischargeDiagnosisDoc): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    id: doc.id,
+    code: doc.code,
+    displayName: doc.displayName,
+    description: doc.description,
+    diagnosisInstructions: doc.diagnosisInstructions,
+    medicationTreatment: doc.medicationTreatment,
+    returnPrecautions: doc.returnPrecautions,
+    followUps: doc.followUps.map(serializeFollowUpRow),
+  };
+  if (doc.encounterDiagnosisId) out.encounterDiagnosisId = doc.encounterDiagnosisId;
+  if (doc.returnWorkSchool?.trim()) out.returnWorkSchool = doc.returnWorkSchool.trim();
+  if (doc.sourceTemplateId) out.sourceTemplateId = doc.sourceTemplateId;
+  if (doc.sourceVersion) out.sourceVersion = doc.sourceVersion;
+  return out;
+}
+
 /** Merge provider discharge documentation into discharge JSON for PATCH. */
 export function mergeProviderDischargeDocumentationIntoDischargeJson(
   encounterJson: unknown,
@@ -212,17 +411,28 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
   const parsed = parseDischargeSummaryForChart(encounterJson);
   const out: Record<string, unknown> = parsed ? { ...(parsed as Record<string, unknown>) } : {};
 
+  const selectedDocs = getSelectedDiagnosisDocs(form);
+  const rollup = getPrimaryRollupDoc({ ...form, diagnosisRefs: form.diagnosisRefs });
+
   const setOrDelete = (key: string, value: string) => {
     const v = value.trim();
     if (v) out[key] = v;
     else delete out[key];
   };
 
-  setOrDelete("dischargeDiagnosisSummary", form.description);
-  setOrDelete("dischargeInstructions", form.diagnosisInstructions);
-  setOrDelete("medicationInstructions", form.medicationTreatmentText);
-  setOrDelete("returnPrecautions", form.returnPrecautions);
-  setOrDelete("workSchoolNote", form.workSchoolNote);
+  if (rollup) {
+    setOrDelete("dischargeDiagnosisSummary", rollup.description);
+    setOrDelete("dischargeInstructions", rollup.diagnosisInstructions);
+    setOrDelete("medicationInstructions", rollup.medicationTreatment);
+    setOrDelete("returnPrecautions", rollup.returnPrecautions);
+    setOrDelete("workSchoolNote", rollup.returnWorkSchool ?? "");
+  } else {
+    setOrDelete("dischargeDiagnosisSummary", "");
+    setOrDelete("dischargeInstructions", "");
+    setOrDelete("medicationInstructions", "");
+    setOrDelete("returnPrecautions", "");
+    setOrDelete("workSchoolNote", "");
+  }
 
   const leftAt = form.patientLeftEdAt.trim();
   if (leftAt) out[JSON_KEYS.patientLeftEdAt] = leftAt;
@@ -231,11 +441,14 @@ export function mergeProviderDischargeDocumentationIntoDischargeJson(
   if (form.diagnosisRefs.length) out[JSON_KEYS.diagnosisRefs] = form.diagnosisRefs;
   else delete out[JSON_KEYS.diagnosisRefs];
 
-  if (form.followUpRows.length) out[JSON_KEYS.followUpRows] = form.followUpRows;
-  else delete out[JSON_KEYS.followUpRows];
+  if (selectedDocs.length) {
+    out[JSON_KEYS.diagnosisDocs] = selectedDocs.map(serializeDiagnosisDoc);
+  } else {
+    delete out[JSON_KEYS.diagnosisDocs];
+  }
 
-  if (form.medicationLines.length) out[JSON_KEYS.medicationLines] = form.medicationLines;
-  else delete out[JSON_KEYS.medicationLines];
+  delete out.providerDischargeFollowUps;
+  delete out.providerDischargeMedicationLines;
 
   if (meta) {
     out[JSON_KEYS.documentedAt] = meta.documentedAt;
@@ -252,33 +465,50 @@ export function applyProviderDischargeDocumentationToDischargeForm(
   dischargeForm: DischargeFormState,
   providerForm: ProviderDischargeDocumentationForm
 ): DischargeFormState {
+  const rollup = getPrimaryRollupDoc(providerForm);
+  if (!rollup) return dischargeForm;
   return {
     ...dischargeForm,
-    dischargeDiagnosisSummary: providerForm.description,
-    dischargeInstructions: providerForm.diagnosisInstructions,
-    medicationInstructions: providerForm.medicationTreatmentText,
-    returnPrecautions: providerForm.returnPrecautions,
-    workSchoolNote: providerForm.workSchoolNote,
+    dischargeDiagnosisSummary: rollup.description,
+    dischargeInstructions: rollup.diagnosisInstructions,
+    medicationInstructions: rollup.medicationTreatment,
+    returnPrecautions: rollup.returnPrecautions,
+    workSchoolNote: rollup.returnWorkSchool ?? "",
   };
 }
 
-export function formatMedicationLinesAsText(lines: ProviderDischargeMedicationLine[]): string {
-  return lines
-    .map((line) => {
-      const parts = [line.displayName];
-      if (line.dose.trim()) parts.push(line.dose.trim());
-      if (line.frequency.trim()) parts.push(line.frequency.trim());
-      if (line.instructions.trim()) parts.push(line.instructions.trim());
-      return parts.join(" — ");
-    })
-    .filter(Boolean)
-    .join("\n");
+export function newDiagnosisDocId(): string {
+  return `dxdoc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 export function newFollowUpRowId(): string {
   return `fu-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function newMedicationLineId(): string {
-  return `med-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+export function newDefaultFollowUpRow(): ProviderDischargeFollowUpRow {
+  return {
+    id: newFollowUpRowId(),
+    specialty: "PRIMARY_CARE",
+    providerOrFacility: "",
+    timing: "",
+    phone: "",
+    address: "",
+    comments: "",
+  };
+}
+
+export function createDiagnosisDocFromRef(ref: ProviderDischargeDiagnosisRef): ProviderDischargeDiagnosisDoc {
+  return {
+    id: newDiagnosisDocId(),
+    encounterDiagnosisId: ref.encounterDiagnosisId,
+    code: ref.code,
+    displayName: ref.label,
+    description: "",
+    diagnosisInstructions: "",
+    medicationTreatment: "",
+    returnPrecautions: "",
+    returnWorkSchool: "",
+    followUps: [newDefaultFollowUpRow()],
+    sourceTemplateId: ref.educationTemplateId,
+  };
 }

@@ -11,15 +11,18 @@ import {
   matchProviderDischargeEducationTemplate,
 } from "./providerDischargeEducationTemplates";
 import {
-  formatMedicationLinesAsText,
+  createDiagnosisDocFromRef,
+  findDiagnosisDocForRef,
   mergeProviderDischargeDocumentationIntoDischargeJson,
+  newDefaultFollowUpRow,
   newFollowUpRowId,
-  newMedicationLineId,
   PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES,
   WORK_SCHOOL_QUICK_OPTIONS,
+  type ProviderDischargeDiagnosisDoc,
   type ProviderDischargeDiagnosisRef,
   type ProviderDischargeDocumentationForm,
   type ProviderDischargeFollowUpRow,
+  type ProviderDischargeValidationErrors,
 } from "./providerDischargeDocumentationModel";
 
 const labelStyle: React.CSSProperties = {
@@ -28,6 +31,13 @@ const labelStyle: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 12,
   color: "#475569",
+};
+
+const errorStyle: React.CSSProperties = {
+  marginTop: 4,
+  fontSize: 11,
+  color: "#b91c1c",
+  fontWeight: 600,
 };
 
 const inputBase: React.CSSProperties = {
@@ -71,6 +81,285 @@ function datetimeLocalToIso(local: string): string {
   }
 }
 
+function appendMedicationLine(current: string, line: string): string {
+  const c = current.trim();
+  const l = line.trim();
+  if (!l) return c;
+  return c ? `${c}\n${l}` : l;
+}
+
+function DiagnosisDocumentationCard({
+  doc,
+  disabled,
+  validationErrors,
+  facilityId,
+  onPatchDoc,
+}: {
+  doc: ProviderDischargeDiagnosisDoc;
+  disabled: boolean;
+  validationErrors?: Partial<Record<string, string>>;
+  facilityId: string;
+  onPatchDoc: (docId: string, patch: Partial<ProviderDischargeDiagnosisDoc>) => void;
+}) {
+  const { t, language } = useI18n();
+  const cardTitle = `${doc.code} — ${doc.displayName}`;
+
+  const patchFollowUpRow = (rowId: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
+    onPatchDoc(doc.id, {
+      followUps: doc.followUps.map((r) => (r.id === rowId ? { ...r, ...patch } : r)),
+    });
+  };
+
+  const addFollowUpRow = () => {
+    onPatchDoc(doc.id, { followUps: [...doc.followUps, newDefaultFollowUpRow()] });
+  };
+
+  const removeFollowUpRow = (rowId: string) => {
+    onPatchDoc(doc.id, { followUps: doc.followUps.filter((r) => r.id !== rowId) });
+  };
+
+  const onMedicationPick = (med: MedicationSearchItem) => {
+    const displayName = medicationSearchLabel(med, language, t);
+    const dose = med.metadata?.strength?.trim() ?? "";
+    const line = dose ? `${displayName} ${dose}` : displayName;
+    onPatchDoc(doc.id, { medicationTreatment: appendMedicationLine(doc.medicationTreatment, line) });
+  };
+
+  const appendWorkSchoolQuick = (option: (typeof WORK_SCHOOL_QUICK_OPTIONS)[number]) => {
+    const text = t(`providerDischargeDocumentation19Y.workSchoolQuick.${option}`);
+    const current = (doc.returnWorkSchool ?? "").trim();
+    onPatchDoc(doc.id, { returnWorkSchool: current ? `${current}\n${text}` : text });
+  };
+
+  const fieldError = (key: string) => validationErrors?.[key];
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "12px 14px",
+        borderRadius: 10,
+        border: "1px solid #cbd5e1",
+        backgroundColor: "#f8fafc",
+      }}
+    >
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{cardTitle}</p>
+
+      <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div>
+          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.descriptionRequired")}</label>
+          <textarea
+            value={doc.description}
+            disabled={disabled}
+            rows={3}
+            style={{
+              ...taStyle,
+              backgroundColor: disabled ? "#f1f5f9" : "#fff",
+              borderColor: fieldError("description") ? "#b91c1c" : "#e2e8f0",
+            }}
+            onChange={(e) => onPatchDoc(doc.id, { description: e.target.value })}
+          />
+          {fieldError("description") ?
+            <p style={errorStyle}>{fieldError("description")}</p>
+          : null}
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.diagnosisInstructionsRequired")}</label>
+          <textarea
+            value={doc.diagnosisInstructions}
+            disabled={disabled}
+            rows={3}
+            style={{
+              ...taStyle,
+              backgroundColor: disabled ? "#f1f5f9" : "#fff",
+              borderColor: fieldError("diagnosisInstructions") ? "#b91c1c" : "#e2e8f0",
+            }}
+            onChange={(e) => onPatchDoc(doc.id, { diagnosisInstructions: e.target.value })}
+          />
+          {fieldError("diagnosisInstructions") ?
+            <p style={errorStyle}>{fieldError("diagnosisInstructions")}</p>
+          : null}
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.medicationTreatmentRequired")}</label>
+          {!disabled ?
+            <div style={{ marginBottom: 8 }}>
+              <MedicationAutocomplete
+                facilityId={facilityId}
+                onSelect={onMedicationPick}
+                placeholder={t("providerDischargeDocumentation19Y.medicationSearchPlaceholder")}
+              />
+            </div>
+          : null}
+          <textarea
+            value={doc.medicationTreatment}
+            disabled={disabled}
+            rows={3}
+            style={{
+              ...taStyle,
+              backgroundColor: disabled ? "#f1f5f9" : "#fff",
+              borderColor: fieldError("medicationTreatment") ? "#b91c1c" : "#e2e8f0",
+            }}
+            onChange={(e) => onPatchDoc(doc.id, { medicationTreatment: e.target.value })}
+          />
+          {fieldError("medicationTreatment") ?
+            <p style={errorStyle}>{fieldError("medicationTreatment")}</p>
+          : null}
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.returnPrecautionsRequired")}</label>
+          <textarea
+            value={doc.returnPrecautions}
+            disabled={disabled}
+            rows={3}
+            style={{
+              ...taStyle,
+              backgroundColor: disabled ? "#f1f5f9" : "#fff",
+              borderColor: fieldError("returnPrecautions") ? "#b91c1c" : "#e2e8f0",
+            }}
+            onChange={(e) => onPatchDoc(doc.id, { returnPrecautions: e.target.value })}
+          />
+          {fieldError("returnPrecautions") ?
+            <p style={errorStyle}>{fieldError("returnPrecautions")}</p>
+          : null}
+        </div>
+
+        <div>
+          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.workSchool")}</label>
+          {!disabled ?
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
+              {WORK_SCHOOL_QUICK_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => appendWorkSchoolQuick(opt)}
+                  style={{
+                    padding: "4px 8px",
+                    borderRadius: 9999,
+                    border: "1px solid #e2e8f0",
+                    background: "#fff",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t(`providerDischargeDocumentation19Y.workSchoolQuick.${opt}`)}
+                </button>
+              ))}
+            </div>
+          : null}
+          <textarea
+            value={doc.returnWorkSchool ?? ""}
+            disabled={disabled}
+            rows={2}
+            style={{ ...taStyle, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
+            onChange={(e) => onPatchDoc(doc.id, { returnWorkSchool: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>
+              {t("providerDischargeDocumentation19Y.followUpRequired")}
+            </label>
+            {!disabled ?
+              <button
+                type="button"
+                onClick={addFollowUpRow}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
+                  background: "#fff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("providerDischargeDocumentation19Y.addFollowUp")}
+              </button>
+            : null}
+          </div>
+          {fieldError("followUps") ?
+            <p style={{ ...errorStyle, marginTop: 6 }}>{fieldError("followUps")}</p>
+          : null}
+          {doc.followUps.map((row) => (
+            <div
+              key={row.id}
+              style={{
+                marginTop: 8,
+                padding: 8,
+                borderRadius: 8,
+                border: "1px solid #e2e8f0",
+                display: "grid",
+                gap: 6,
+                backgroundColor: "#fff",
+              }}
+            >
+              <select
+                value={row.specialty}
+                disabled={disabled}
+                onChange={(e) => patchFollowUpRow(row.id, { specialty: e.target.value })}
+                style={{ ...inputBase, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
+              >
+                {PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES.map((s) => (
+                  <option key={s} value={s}>
+                    {t(`providerDischargeDocumentation19Y.followUpSpecialty.${s}`)}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder={t("providerDischargeDocumentation19Y.followUpProviderPlaceholder")}
+                value={row.providerOrFacility}
+                disabled={disabled}
+                onChange={(e) => patchFollowUpRow(row.id, { providerOrFacility: e.target.value })}
+                style={{ ...inputBase, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
+              />
+              <input
+                type="text"
+                placeholder={t("providerDischargeDocumentation19Y.followUpTimingPlaceholder")}
+                value={row.timing}
+                disabled={disabled}
+                onChange={(e) => patchFollowUpRow(row.id, { timing: e.target.value })}
+                style={{ ...inputBase, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
+              />
+              <input
+                type="text"
+                placeholder={t("providerDischargeDocumentation19Y.followUpPhonePlaceholder")}
+                value={row.phone}
+                disabled={disabled}
+                onChange={(e) => patchFollowUpRow(row.id, { phone: e.target.value })}
+                style={{ ...inputBase, backgroundColor: disabled ? "#f1f5f9" : "#fff" }}
+              />
+              {!disabled ?
+                <button
+                  type="button"
+                  onClick={() => removeFollowUpRow(row.id)}
+                  style={{
+                    justifySelf: "start",
+                    padding: "2px 8px",
+                    border: "none",
+                    background: "transparent",
+                    color: "#b91c1c",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("common.delete")}
+                </button>
+              : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ProviderDischargeDocumentationSection({
   facilityId,
   patientId,
@@ -79,6 +368,7 @@ export function ProviderDischargeDocumentationSection({
   onProviderFormChange,
   disabled,
   diagnosticsTabHref,
+  validationErrors,
 }: {
   facilityId: string;
   patientId: string | null | undefined;
@@ -86,10 +376,10 @@ export function ProviderDischargeDocumentationSection({
   providerForm: ProviderDischargeDocumentationForm;
   onProviderFormChange: (next: ProviderDischargeDocumentationForm) => void;
   disabled: boolean;
-  /** Link to existing diagnosis flow when provider adds a diagnosis. */
   diagnosticsTabHref?: string;
+  validationErrors?: ProviderDischargeValidationErrors | null;
 }) {
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const [encounterDiagnoses, setEncounterDiagnoses] = useState<DxRow[]>([]);
   const patientLeftEdLocal = isoToDatetimeLocal(providerForm.patientLeftEdAt);
 
@@ -128,6 +418,54 @@ export function ProviderDischargeDocumentationSection({
     [onProviderFormChange, providerForm]
   );
 
+  const patchDiagnosisDoc = useCallback(
+    (docId: string, patch: Partial<ProviderDischargeDiagnosisDoc>) => {
+      patchProvider({
+        diagnosisDocs: providerForm.diagnosisDocs.map((d) => (d.id === docId ? { ...d, ...patch } : d)),
+      });
+    },
+    [patchProvider, providerForm.diagnosisDocs]
+  );
+
+  const applyTemplateToDoc = useCallback(
+    (docId: string, ref: ProviderDischargeDiagnosisRef) => {
+      const doc = providerForm.diagnosisDocs.find((d) => d.id === docId);
+      if (!doc) return;
+      const template = matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label });
+      if (!template) return;
+      const suggestion = buildEducationSuggestionFromTemplate(template);
+      const patch: Partial<ProviderDischargeDiagnosisDoc> = { sourceTemplateId: template.id };
+      if (!doc.description.trim()) patch.description = suggestion.description;
+      if (!doc.diagnosisInstructions.trim()) patch.diagnosisInstructions = suggestion.instructions;
+      if (!doc.returnPrecautions.trim()) patch.returnPrecautions = suggestion.returnPrecautions;
+      patchDiagnosisDoc(docId, patch);
+    },
+    [patchDiagnosisDoc, providerForm.diagnosisDocs]
+  );
+
+  const ensureDocForRef = useCallback(
+    (ref: ProviderDischargeDiagnosisRef, applyTemplate: boolean): ProviderDischargeDiagnosisDoc => {
+      const existing = findDiagnosisDocForRef(providerForm, ref);
+      if (existing) {
+        if (applyTemplate) applyTemplateToDoc(existing.id, ref);
+        return existing;
+      }
+      const created = createDiagnosisDocFromRef(ref);
+      const template = applyTemplate ?
+        matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label })
+      : null;
+      if (template) {
+        created.sourceTemplateId = template.id;
+        const suggestion = buildEducationSuggestionFromTemplate(template);
+        created.description = suggestion.description;
+        created.diagnosisInstructions = suggestion.instructions;
+        created.returnPrecautions = suggestion.returnPrecautions;
+      }
+      return created;
+    },
+    [applyTemplateToDoc, providerForm]
+  );
+
   const autoPopulatePrimary = useCallback(() => {
     if (providerForm.diagnosisRefs.length > 0 || encounterDiagnoses.length === 0) return;
     const primary = encounterDiagnoses[0];
@@ -138,20 +476,12 @@ export function ProviderDischargeDocumentationSection({
       label: primary.description?.trim() || primary.code,
       isPrimary: true,
     };
-    const template = matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label });
-    if (template) {
-      ref.educationTemplateId = template.id;
-      const suggestion = buildEducationSuggestionFromTemplate(template);
-      patchProvider({
-        diagnosisRefs: [ref],
-        description: suggestion.description,
-        diagnosisInstructions: suggestion.instructions,
-        returnPrecautions: suggestion.returnPrecautions,
-      });
-    } else {
-      patchProvider({ diagnosisRefs: [ref] });
-    }
-  }, [encounterDiagnoses, patchProvider, providerForm.diagnosisRefs.length]);
+    const doc = ensureDocForRef(ref, true);
+    patchProvider({
+      diagnosisRefs: [ref],
+      diagnosisDocs: [...providerForm.diagnosisDocs.filter((d) => d.id !== doc.id), doc],
+    });
+  }, [encounterDiagnoses, ensureDocForRef, patchProvider, providerForm.diagnosisDocs, providerForm.diagnosisRefs.length]);
 
   useEffect(() => {
     autoPopulatePrimary();
@@ -160,6 +490,14 @@ export function ProviderDischargeDocumentationSection({
   const selectedDxIds = useMemo(
     () => new Set(providerForm.diagnosisRefs.map((d) => d.encounterDiagnosisId).filter(Boolean)),
     [providerForm.diagnosisRefs]
+  );
+
+  const selectedCards = useMemo(
+    () =>
+      providerForm.diagnosisRefs
+        .map((ref) => findDiagnosisDocForRef(providerForm, ref))
+        .filter((d): d is ProviderDischargeDiagnosisDoc => d != null),
+    [providerForm]
   );
 
   const toggleDiagnosis = (row: DxRow) => {
@@ -176,64 +514,14 @@ export function ProviderDischargeDocumentationSection({
       label: row.description?.trim() || row.code,
       isPrimary: providerForm.diagnosisRefs.length === 0,
     };
-    const template = matchProviderDischargeEducationTemplate({ code: ref.code, label: ref.label });
-    const patch: Partial<ProviderDischargeDocumentationForm> = {
+    const doc = ensureDocForRef(ref, true);
+    const nextDocs = providerForm.diagnosisDocs.some((d) => d.id === doc.id) ?
+      providerForm.diagnosisDocs.map((d) => (d.id === doc.id ? doc : d))
+    : [...providerForm.diagnosisDocs, doc];
+    patchProvider({
       diagnosisRefs: [...providerForm.diagnosisRefs, ref],
-    };
-    if (template && !providerForm.description.trim() && !providerForm.diagnosisInstructions.trim()) {
-      ref.educationTemplateId = template.id;
-      const suggestion = buildEducationSuggestionFromTemplate(template);
-      patch.description = suggestion.description;
-      patch.diagnosisInstructions = suggestion.instructions;
-      patch.returnPrecautions = suggestion.returnPrecautions;
-    }
-    patchProvider(patch);
-  };
-
-  const addFollowUpRow = () => {
-    const row: ProviderDischargeFollowUpRow = {
-      id: newFollowUpRowId(),
-      specialty: "PRIMARY_CARE",
-      providerOrFacility: "",
-      timing: "",
-      phone: "",
-      address: "",
-      comments: "",
-    };
-    patchProvider({ followUpRows: [...providerForm.followUpRows, row] });
-  };
-
-  const patchFollowUpRow = (id: string, patch: Partial<ProviderDischargeFollowUpRow>) => {
-    patchProvider({
-      followUpRows: providerForm.followUpRows.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      diagnosisDocs: nextDocs,
     });
-  };
-
-  const removeFollowUpRow = (id: string) => {
-    patchProvider({ followUpRows: providerForm.followUpRows.filter((r) => r.id !== id) });
-  };
-
-  const onMedicationPick = (med: MedicationSearchItem) => {
-    const displayName = medicationSearchLabel(med, language, t);
-    const line = {
-      id: newMedicationLineId(),
-      catalogMedicationId: med.id,
-      displayName,
-      dose: med.metadata?.strength?.trim() ?? "",
-      frequency: "",
-      instructions: "",
-    };
-    const nextLines = [...providerForm.medicationLines, line];
-    patchProvider({
-      medicationLines: nextLines,
-      medicationTreatmentText: formatMedicationLinesAsText(nextLines),
-    });
-  };
-
-  const appendWorkSchoolQuick = (option: (typeof WORK_SCHOOL_QUICK_OPTIONS)[number]) => {
-    const text = t(`providerDischargeDocumentation19Y.workSchoolQuick.${option}`);
-    const current = providerForm.workSchoolNote.trim();
-    patchProvider({ workSchoolNote: current ? `${current}\n${text}` : text });
   };
 
   return (
@@ -302,177 +590,16 @@ export function ProviderDischargeDocumentationSection({
           : null}
         </div>
 
-        <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.description")}</label>
-          <textarea
-            value={providerForm.description}
+        {selectedCards.map((doc) => (
+          <DiagnosisDocumentationCard
+            key={doc.id}
+            doc={doc}
             disabled={disabled}
-            rows={3}
-            style={{ ...taStyle, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-            onChange={(e) => patchProvider({ description: e.target.value })}
+            facilityId={facilityId}
+            validationErrors={validationErrors?.byDocId[doc.id]}
+            onPatchDoc={patchDiagnosisDoc}
           />
-        </div>
-
-        <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.diagnosisInstructions")}</label>
-          <textarea
-            value={providerForm.diagnosisInstructions}
-            disabled={disabled}
-            rows={3}
-            style={{ ...taStyle, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-            onChange={(e) => patchProvider({ diagnosisInstructions: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.medicationTreatment")}</label>
-          {!disabled ?
-            <div style={{ marginBottom: 8 }}>
-              <MedicationAutocomplete facilityId={facilityId} onSelect={onMedicationPick} placeholder={t("providerDischargeDocumentation19Y.medicationSearchPlaceholder")} />
-            </div>
-          : null}
-          <textarea
-            value={providerForm.medicationTreatmentText}
-            disabled={disabled}
-            rows={3}
-            style={{ ...taStyle, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-            onChange={(e) => patchProvider({ medicationTreatmentText: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.returnPrecautions")}</label>
-          <textarea
-            value={providerForm.returnPrecautions}
-            disabled={disabled}
-            rows={3}
-            style={{ ...taStyle, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-            onChange={(e) => patchProvider({ returnPrecautions: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label style={labelStyle}>{t("providerDischargeDocumentation19Y.workSchool")}</label>
-          {!disabled ?
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
-              {WORK_SCHOOL_QUICK_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => appendWorkSchoolQuick(opt)}
-                  style={{
-                    padding: "4px 8px",
-                    borderRadius: 9999,
-                    border: "1px solid #e2e8f0",
-                    background: "#f8fafc",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  {t(`providerDischargeDocumentation19Y.workSchoolQuick.${opt}`)}
-                </button>
-              ))}
-            </div>
-          : null}
-          <textarea
-            value={providerForm.workSchoolNote}
-            disabled={disabled}
-            rows={2}
-            style={{ ...taStyle, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-            onChange={(e) => patchProvider({ workSchoolNote: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-            <label style={{ ...labelStyle, marginBottom: 0 }}>{t("providerDischargeDocumentation19Y.followUp")}</label>
-            {!disabled ?
-              <button
-                type="button"
-                onClick={addFollowUpRow}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #e2e8f0",
-                  background: "#fff",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {t("providerDischargeDocumentation19Y.addFollowUp")}
-              </button>
-            : null}
-          </div>
-          {providerForm.followUpRows.map((row) => (
-            <div
-              key={row.id}
-              style={{
-                marginTop: 8,
-                padding: 8,
-                borderRadius: 8,
-                border: "1px solid #f1f5f9",
-                display: "grid",
-                gap: 6,
-              }}
-            >
-              <select
-                value={row.specialty}
-                disabled={disabled}
-                onChange={(e) => patchFollowUpRow(row.id, { specialty: e.target.value })}
-                style={{ ...inputBase, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-              >
-                {PROVIDER_DISCHARGE_FOLLOW_UP_SPECIALTIES.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`providerDischargeDocumentation19Y.followUpSpecialty.${s}`)}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder={t("providerDischargeDocumentation19Y.followUpProviderPlaceholder")}
-                value={row.providerOrFacility}
-                disabled={disabled}
-                onChange={(e) => patchFollowUpRow(row.id, { providerOrFacility: e.target.value })}
-                style={{ ...inputBase, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-              />
-              <input
-                type="text"
-                placeholder={t("providerDischargeDocumentation19Y.followUpTimingPlaceholder")}
-                value={row.timing}
-                disabled={disabled}
-                onChange={(e) => patchFollowUpRow(row.id, { timing: e.target.value })}
-                style={{ ...inputBase, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-              />
-              <input
-                type="text"
-                placeholder={t("providerDischargeDocumentation19Y.followUpPhonePlaceholder")}
-                value={row.phone}
-                disabled={disabled}
-                onChange={(e) => patchFollowUpRow(row.id, { phone: e.target.value })}
-                style={{ ...inputBase, backgroundColor: disabled ? "#f8fafc" : "#fff" }}
-              />
-              {!disabled ?
-                <button
-                  type="button"
-                  onClick={() => removeFollowUpRow(row.id)}
-                  style={{
-                    justifySelf: "start",
-                    padding: "2px 8px",
-                    border: "none",
-                    background: "transparent",
-                    color: "#b91c1c",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  {t("common.delete")}
-                </button>
-              : null}
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
@@ -486,3 +613,5 @@ export function buildProviderDischargeJsonForSave(
 ): Record<string, unknown> {
   return mergeProviderDischargeDocumentationIntoDischargeJson(dischargeSummaryJson, providerForm, meta);
 }
+
+export { validateProviderDischargeDocumentation } from "./providerDischargeDocumentationModel";
