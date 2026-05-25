@@ -2325,9 +2325,6 @@ export function EmergencyNursingReassessmentPanel({
 
               <div style={resumeColumnStyle}>
                 <p style={sectionHeading}>{t("emergencyNursingReassessment.resumeTitle")}</p>
-                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {t("emergencyNursingReassessment.resumeHint")}
-                </p>
                 <div
                   style={{
                     marginTop: 12,

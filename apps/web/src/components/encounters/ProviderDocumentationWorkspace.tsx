@@ -1203,9 +1203,6 @@ export function ProviderDocumentationWorkspace({
     if (!groups.length) return null;
     return (
       <div style={{ marginBottom: 10 }}>
-        <p style={{ margin: "0 0 6px", fontSize: 11, color: "#475569", lineHeight: 1.4 }}>
-          {t("providerDocumentationWorkspace.activeTemplateStickerHelp")}
-        </p>
         {groups.map((group) => (
           <ChipGroupView key={group.sectionId} title={t(examTitleKeyBySection[group.sectionId])}>
             {chipRow(group.chips, (chip) => toggleExam(group.sectionId, chip.fragmentKey), {
@@ -1231,21 +1228,7 @@ export function ProviderDocumentationWorkspace({
       </ChipGroupView>
     );
   };
-  const templatePromptReminders = (template: ProviderDocumentationTemplateDefinition | null) => {
-    if (!template?.promptReminderKeys?.length) return null;
-    return (
-      <div style={{ marginBottom: 10, padding: "8px 10px", borderRadius: 10, background: "#fffbeb", border: "1px solid #fcd34d" }}>
-        <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
-          {t("providerDocumentationWorkspace.activeTemplatePromptReminders")}
-        </p>
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 11, color: "#78350f", lineHeight: 1.45 }}>
-          {template.promptReminderKeys.map((key) => (
-            <li key={key}>{t(key)}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  };
+  const templatePromptReminders = (_template: ProviderDocumentationTemplateDefinition | null) => null;
   const templateReassessmentGuidanceChips = (template: ProviderDocumentationTemplateDefinition | null) => {
     if (!template?.guidance?.reassessment?.length) return null;
     const chips = template.guidance.reassessment.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
@@ -1553,9 +1536,6 @@ export function ProviderDocumentationWorkspace({
                 );
               })}
             </div>
-            <p style={{ margin: "10px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.templateSafetyComment")}
-            </p>
           </div>
         ) : null}
       </div>
@@ -1656,9 +1636,6 @@ export function ProviderDocumentationWorkspace({
               >
                 {t("providerDocumentationWorkspace.insertCompleteNormalRos")}
               </button>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#92400e", lineHeight: 1.45, fontWeight: 600 }}>
-                {t("providerDocumentationWorkspace.completeNormalRosHelp")}
-              </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
@@ -1712,9 +1689,6 @@ export function ProviderDocumentationWorkspace({
               >
                 {t("providerDocumentationWorkspace.insertCompleteNormalExam")}
               </button>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#166534", lineHeight: 1.45, fontWeight: 600 }}>
-                {t("providerDocumentationWorkspace.completeNormalExamHelp")}
-              </p>
             </div>
             {templateExamChips(activeTemplate)}
             {EXAM_CHIPS.map((group) => (
@@ -1858,16 +1832,8 @@ export function ProviderDocumentationWorkspace({
                             : t("providerDocumentationWorkspace.dynamicClustersCollapse")}
                         </button>
                       </div>
-                      {!collapsed ? (
+                          {!collapsed ? (
                         <>
-                          <div style={{ fontSize: 10, color: "#64748b", marginTop: 6, marginBottom: 2 }}>
-                            {t("providerDocumentationWorkspace.dynamicClustersMatchedBecause")}
-                          </div>
-                          <ul style={{ margin: "0 0 8px", paddingLeft: 16, fontSize: 11, color: "#475569" }}>
-                            {cluster.matchedTriggerReasonKeys.map((reasonKey) => (
-                              <li key={reasonKey}>{t(reasonKey)}</li>
-                            ))}
-                          </ul>
                           {DYNAMIC_SUGGESTION_CATEGORY_ORDER.map((category) => {
                             const items = cluster.suggestions.filter((suggestion) => suggestion.category === category);
                             if (items.length === 0) return null;
@@ -1955,10 +1921,6 @@ export function ProviderDocumentationWorkspace({
                                 {selected ? "✓ " : ""}
                                 {t(suggestion.labelKey)}
                               </button>
-                              <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, marginLeft: 2 }}>
-                                {t("providerDocumentationWorkspace.dynamicSuggestionReasonPrefix")}{" "}
-                                {t(suggestion.reasonKey)}
-                              </div>
                             </div>
                           );
                         })}
@@ -1968,9 +1930,6 @@ export function ProviderDocumentationWorkspace({
                 })}
               </ProviderDocumentationChipPanel>
             ) : null}
-            <p style={{ margin: "8px 0", fontSize: 11, color: "#64748b" }}>
-              {t("providerDocumentationWorkspace.chipsSafetyComment")}
-            </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
               <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
               <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field>
@@ -2042,31 +2001,8 @@ export function ProviderDocumentationWorkspace({
             onToggle={() => toggleAccordionSection("actions")}
             t={t}
           >
-            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.signSafetyHelp")}
-            </p>
             {renderDocumentationReadinessPanel()}
             {renderQualityGuardrailsPanel()}
-            {qualityGuardrails.length > 0 && !signedOrFinalized ? (
-              <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-                {t("providerDocumentationQualityGuardrails.signReviewHint")}
-              </p>
-            ) : null}
-            {onSign && !signReadiness.readyToSign && !signedOrFinalized ? (
-              <p style={{ margin: "0 0 8px", fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
-                {t("providerDocumentationWorkspace.signWarningsAdvisory")}
-              </p>
-            ) : null}
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e" }}>
-              {t("providerDocumentationWorkspace.signReadiness")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e", lineHeight: 1.45, fontWeight: 700 }}>
-              {signedOrFinalized
-                ? t("providerDocumentationWorkspace.signedStatus")
-                : signReadiness.readyToSign
-                  ? t("providerDocumentationWorkspace.readyToSign")
-                  : t("providerDocumentationWorkspace.notReadyToSign")}
-            </p>
             <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
               {t("providerDocumentationWorkspace.missingBeforeSign")}
             </p>
@@ -2099,87 +2035,7 @@ export function ProviderDocumentationWorkspace({
         </div>
 
         <aside style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={sectionShell} data-testid="provider-documentation-overview">
-            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>
-              {t("providerDocumentationWorkspace.documentationOverview")}
-            </h3>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              <strong>{t("providerDocumentationWorkspace.activeTemplateLabel")}</strong>{" "}
-              {activeTemplate ? t(activeTemplate.labelKey) : t("providerDocumentationWorkspace.noActiveTemplate")}
-            </p>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
-              {t("providerDocumentationWorkspace.completedSections")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {completeness.completedSections.length ? completeness.completedSections.map(completenessSectionLabel).join(", ") : t("common.dash")}
-            </p>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
-              {t("providerDocumentationWorkspace.missingKeySections")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {completeness.missingSections.length ? completeness.missingSections.map(completenessSectionLabel).join(", ") : t("providerDocumentationWorkspace.noMissingKeySections")}
-            </p>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: readinessColor(completeness.readinessState) }}>
-              {t("providerDocumentationWorkspace.readyToSaveIndicator")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: readinessColor(completeness.readinessState), lineHeight: 1.45, fontWeight: 700 }}>
-              {t(readinessLabelKey(completeness.readinessState))}
-            </p>
-            {completeness.warnings.length ? (
-              <ul style={{ margin: "0 0 8px", paddingLeft: 18, fontSize: 11, color: "#92400e", lineHeight: 1.45 }}>
-                {completeness.warnings.slice(0, 5).map((warning) => (
-                  <li key={warning.id}>{t(warning.messageKey)}</li>
-                ))}
-              </ul>
-            ) : null}
-            <p style={{ margin: "8px 0 4px", fontSize: 11, fontWeight: 700, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e" }}>
-              {t("providerDocumentationWorkspace.signReadiness")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: signReadiness.readyToSign || signedOrFinalized ? "#166534" : "#92400e", lineHeight: 1.45, fontWeight: 700 }}>
-              {signedOrFinalized
-                ? t("providerDocumentationWorkspace.signedStatus")
-                : signReadiness.readyToSign
-                  ? t("providerDocumentationWorkspace.readyToSign")
-                  : t("providerDocumentationWorkspace.notReadyToSign")}
-            </p>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#92400e" }}>
-              {t("providerDocumentationWorkspace.missingBeforeSign")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {signReadiness.missingSections.length
-                ? signReadiness.missingSections.map(completenessSectionLabel).join(", ")
-                : t("providerDocumentationWorkspace.noMissingKeySections")}
-              {!signReadiness.savedBeforeSign && !signedOrFinalized
-                ? ` · ${t("providerDocumentationWorkspace.saveRequiredBeforeSign")}`
-                : ""}
-            </p>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
-              {t("providerDocumentationWorkspace.saveStatus")}
-            </p>
-            <p style={{ margin: "0 0 8px", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-              {lastSaved ? `${lastSaved.savedBy} · ${lastSaved.savedAt}` : t("providerDocumentationWorkspace.notSavedYet")}
-            </p>
-            {signedMetadata ? (
-              <>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#166534" }}>
-                  {t("providerDocumentationWorkspace.signedBy")}
-                </p>
-                <p style={{ margin: "0 0 8px", fontSize: 12, color: "#166534", lineHeight: 1.45 }}>
-                  {signedMetadata.signedBy} · {signedMetadata.signedAt}
-                </p>
-              </>
-            ) : null}
-            <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.chipsSafetyComment")}
-            </p>
-          </div>
           <div style={sectionShell} data-testid="provider-documentation-live-preview">
-            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>
-              {t("providerDocumentationWorkspace.liveDocumentationPreview")}
-            </h3>
-            <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-              {t("providerDocumentationWorkspace.previewOnlyNotLegal")}
-            </p>
             {previewSections.length === 0 ? (
               <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
                 {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
@@ -2198,43 +2054,26 @@ export function ProviderDocumentationWorkspace({
             )}
           </div>
           <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
-          <ContextCard title={t("providerDocumentationWorkspace.keyInformation")} lines={keyInformation} empty={t("common.dash")} />
-          <ContextCard title={t("providerDocumentationWorkspace.encounterSummary")} lines={encounterSummary} empty={t("common.dash")} />
-          <div style={sectionShell}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>{t("providerDocumentationWorkspace.quickActions")}</h3>
-            {quickActions ?? <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("common.dash")}</p>}
-          </div>
-          <div style={sectionShell}>
-            <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>{t("providerDocumentationWorkspace.lastSaved")}</h3>
-            <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
-              {lastSaved ? `${lastSaved.savedBy} · ${lastSaved.savedAt}` : t("common.dash")}
-            </p>
-            <p style={{ margin: "6px 0 0", fontSize: 11, color: autosaveStatus === "failed" ? "#b91c1c" : "#64748b", lineHeight: 1.45 }}>
-              {t(autosaveStatusLabelKey(autosaveStatus))}
-            </p>
-          </div>
+          {signedMetadata ? (
+            <div style={sectionShell}>
+              <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
+                {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
+              </p>
+            </div>
+          ) : null}
           {showPreview ? (
             <div style={sectionShell}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 13, color: "#0f172a" }}>{t("providerDocumentationWorkspace.previewTitle")}</h3>
               {previewSections.length === 0 ? (
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("providerDocumentationWorkspace.previewEmpty")}</p>
               ) : (
-                <>
-                  <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
-                    {t("providerDocumentationWorkspace.previewDraftReadiness")}: {t(readinessLabelKey(completeness.readinessState))}
-                    {completeness.missingSections.length
-                      ? ` · ${t("providerDocumentationWorkspace.missingKeySections")}: ${completeness.missingSections.map(completenessSectionLabel).join(", ")}`
-                      : ""}
-                  </p>
-                  {previewSections.map((section) => (
-                    <div key={section.id} style={{ marginBottom: 10 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
-                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-                        {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
-                      </ul>
-                    </div>
-                  ))}
-                </>
+                previewSections.map((section) => (
+                  <div key={section.id} style={{ marginBottom: 10 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                      {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
+                    </ul>
+                  </div>
+                ))
               )}
             </div>
           ) : null}

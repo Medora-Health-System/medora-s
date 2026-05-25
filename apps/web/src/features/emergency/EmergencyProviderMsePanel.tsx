@@ -1110,13 +1110,9 @@ export function EmergencyProviderMsePanel({
         }
         savedMetadata={readProviderDocumentationWorkspaceMetadata(encounter.nursingAssessment)}
         signedOrFinalized={isLocked}
-        keyInformation={[t("erMseProviderPanel.previewSubline")]}
-        encounterSummary={[t("erMseProviderPanel.sectionPresentation"), t("erMseProviderPanel.sectionMdm")]}
-        quickActions={
-          <Link href={erChartHref} style={{ color: "#1d4ed8", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
-            {t("erMseProviderPanel.linkFullEncounter")}
-          </Link>
-        }
+        keyInformation={[]}
+        encounterSummary={[]}
+        quickActions={null}
         t={t}
       />
       {providerHandoffSection}
@@ -1746,9 +1742,6 @@ export function EmergencyProviderMsePanel({
 
           <div style={resumeColumnStyle}>
             <p style={sectionHeading}>{t("erMseProviderPanel.previewHeading")}</p>
-            <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {t("erMseProviderPanel.previewSubline")}
-            </p>
             <div
               style={{
                 marginTop: 10,

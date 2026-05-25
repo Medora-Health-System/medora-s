@@ -808,9 +808,6 @@ export function EmergencyDispositionPanel({
               }}
             >
               <p style={sectionHeading}>{t("emergencyDisposition.emtalaBlock")}</p>
-              <p style={{ margin: "4px 0 10px 0", fontSize: 12, color: "#0c4a6e", lineHeight: 1.45 }}>
-                {t("emergencyDisposition.emtalaBlockSubline")}
-              </p>
               {showTransferExtra ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
                   <div>
@@ -988,9 +985,6 @@ export function EmergencyDispositionPanel({
 
           <div style={resumeColumnStyle}>
             <p style={sectionHeading}>{t("emergencyDisposition.previewColumnTitle")}</p>
-            <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {t("emergencyDisposition.previewColumnHint")}
-            </p>
             <div
               style={{
                 marginTop: 10,
