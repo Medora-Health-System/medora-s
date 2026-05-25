@@ -1,20 +1,21 @@
 /**
- * Phase 19Y.2A — deterministic SHA-256 for provider discharge template governance hashes.
+ * Phase 19Y.2A / 19Y.4A — deterministic SHA-256 for provider discharge template governance hashes.
  * Pure-JS implementation (browser + Node/vitest identical output).
  */
 
 import type { ProviderDischargeFollowUpRow } from "./providerDischargeDocumentationModel";
+import type {
+  ProviderDischargeTemplateLocale,
+  ProviderDischargeTemplateSuggestedTextBody,
+} from "./providerDischargeTemplateLocale";
+import { getProviderDischargeSuggestedTextBody } from "./providerDischargeTemplateLocale";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
   version: string;
   suggestedText: {
-    description: string;
-    diagnosisInstructions: string;
-    medicationTreatment: string;
-    returnPrecautions: string;
-    returnWorkSchool?: string;
-    treatment?: string;
+    en: ProviderDischargeTemplateSuggestedTextBody;
+    fr: ProviderDischargeTemplateSuggestedTextBody;
   };
   sourceReferences: Array<{
     label: string;
@@ -33,6 +34,7 @@ export type ProviderDischargeTemplateHashSource = {
 export type ProviderDischargeTemplateHashPayload = {
   templateId: string;
   templateVersion: string;
+  appliedLocale: ProviderDischargeTemplateLocale;
   description: string;
   diagnosisInstructions: string;
   medicationTreatment: string;
@@ -84,14 +86,16 @@ function normalizeFollowUpForHash(row: ProviderDischargeFollowUpRow) {
   };
 }
 
-/** Build canonical hash input from a registry template (original suggestion bundle only). */
+/** Build canonical hash input from a registry template for one locale (no cross-locale fallback). */
 export function buildProviderDischargeTemplateHashPayload(
-  template: ProviderDischargeTemplateHashSource
+  template: ProviderDischargeTemplateHashSource,
+  locale: ProviderDischargeTemplateLocale
 ): ProviderDischargeTemplateHashPayload {
-  const text = template.suggestedText;
+  const text = getProviderDischargeSuggestedTextBody(template, locale);
   const payload: ProviderDischargeTemplateHashPayload = {
     templateId: template.id,
     templateVersion: template.version,
+    appliedLocale: locale,
     description: text.description,
     diagnosisInstructions: text.diagnosisInstructions,
     medicationTreatment: text.medicationTreatment,
@@ -118,18 +122,20 @@ export function buildProviderDischargeTemplateHashPayload(
   return payload;
 }
 
-/** SHA-256 hex digest of the original applied template suggestion bundle. */
+/** SHA-256 hex digest of the locale-specific applied template suggestion bundle. */
 export function computeProviderDischargeTemplateAppliedHash(
-  template: ProviderDischargeTemplateHashSource
+  template: ProviderDischargeTemplateHashSource,
+  locale: ProviderDischargeTemplateLocale
 ): string {
-  return sha256HexUtf8(providerDischargeTemplateHashCanonicalString(template));
+  return sha256HexUtf8(providerDischargeTemplateHashCanonicalString(template, locale));
 }
 
 /** Canonical stable string used as SHA-256 input (for tests and audit tooling). */
 export function providerDischargeTemplateHashCanonicalString(
-  template: ProviderDischargeTemplateHashSource
+  template: ProviderDischargeTemplateHashSource,
+  locale: ProviderDischargeTemplateLocale
 ): string {
-  return stableStringify(buildProviderDischargeTemplateHashPayload(template));
+  return stableStringify(buildProviderDischargeTemplateHashPayload(template, locale));
 }
 
 function sha256HexUtf8(message: string): string {

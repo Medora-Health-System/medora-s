@@ -9,6 +9,10 @@ import {
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
 import type { ProviderDischargeTemplate } from "./providerDischargeTemplateRegistry";
+import {
+  getProviderDischargeSuggestedTextBody,
+  type ProviderDischargeTemplateLocale,
+} from "./providerDischargeTemplateLocale";
 
 export type TemplateSharedFields = {
   returnPrecautions: string;
@@ -68,10 +72,14 @@ export function mergeSharedReturnWorkSchool(existing: string, additions: string[
   return mergeUniquePrecautionText(existing, additions);
 }
 
-export function extractSharedFieldsFromTemplate(template: ProviderDischargeTemplate): TemplateSharedFields {
+export function extractSharedFieldsFromTemplate(
+  template: ProviderDischargeTemplate,
+  locale: ProviderDischargeTemplateLocale
+): TemplateSharedFields {
+  const text = getProviderDischargeSuggestedTextBody(template, locale);
   return {
-    returnPrecautions: template.suggestedText.returnPrecautions,
-    returnWorkSchool: template.suggestedText.returnWorkSchool,
+    returnPrecautions: text.returnPrecautions,
+    returnWorkSchool: text.returnWorkSchool,
     defaultFollowUps: template.defaultFollowUps,
   };
 }

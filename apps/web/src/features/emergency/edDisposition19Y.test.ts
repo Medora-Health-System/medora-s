@@ -29,6 +29,13 @@ import {
   providerDischargeTemplateHashCanonicalString,
 } from "./providerDischargeTemplateAppliedHash";
 import {
+  getProviderDischargeSuggestedTextBody,
+  PROVIDER_DISCHARGE_TEMPLATE_LOCALES,
+  ProviderDischargeTemplateLocaleError,
+  scanProviderDischargeSuggestedTextEnglishContaminationInFr,
+  scanProviderDischargeSuggestedTextFrenchContaminationInEn,
+} from "./providerDischargeTemplateLocale";
+import {
   extractSharedFieldsFromTemplate,
   mergeDedupedFollowUpRows,
   mergeSharedFieldsFromSelectedTemplates,
@@ -130,10 +137,18 @@ function syntheticRegistryTemplate(
     diagnosisMappings: { icdExact: [`Z-${overrides.id}`] },
     sourceReferences: [{ label: "Synthetic source" }],
     suggestedText: {
-      description: "ED evaluation was performed for this concern.",
-      diagnosisInstructions: "Return precautions were reviewed. Follow-up is recommended.",
-      medicationTreatment: "Take medications only as prescribed or directed.",
-      returnPrecautions: "Seek care if symptoms worsen.",
+      en: {
+        description: "ED evaluation was performed for this concern.",
+        diagnosisInstructions: "Return precautions were reviewed. Follow-up is recommended.",
+        medicationTreatment: "Take medications only as prescribed or directed.",
+        returnPrecautions: "Seek care if symptoms worsen.",
+      },
+      fr: {
+        description: "Une évaluation aux urgences a été réalisée pour ce motif.",
+        diagnosisInstructions: "Les consignes de retour ont été revues. Un suivi ambulatoire est recommandé.",
+        medicationTreatment: "Prenez les médicaments uniquement selon la prescription ou les indications reçues.",
+        returnPrecautions: "Reconsultez en cas d'aggravation des signes.",
+      },
     },
     ...overrides,
   };
@@ -319,6 +334,7 @@ describe("edDisposition19Y", () => {
       });
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
       const next = applyProviderDischargeTemplateToCard(card, resolved, {
+        locale: "en",
         providerConfirmed: true,
         actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
         overwriteExisting: true,
@@ -343,7 +359,7 @@ describe("edDisposition19Y", () => {
       });
       card.description = "Provider-authored description";
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
       expect(next.description).toBe("Provider-authored description");
       expect(next.diagnosisInstructions.length).toBeGreaterThan(0);
     });
@@ -375,71 +391,74 @@ describe("edDisposition19Y", () => {
         isPrimaryDiagnosis: true,
       });
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: true });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
       expect(next.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
     });
 
     it("templateAppliedHash is deterministic for same template version/content", () => {
-      const a = computeProviderDischargeTemplateAppliedHash(chestTemplate);
-      const b = computeProviderDischargeTemplateAppliedHash(chestTemplate);
+      const a = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
+      const b = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
       expect(a).toBe(b);
     });
 
     it("changing template content changes templateAppliedHash", () => {
-      const base = computeProviderDischargeTemplateAppliedHash(chestTemplate);
+      const base = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
       const mutated = computeProviderDischargeTemplateAppliedHash({
         ...chestTemplate,
-        suggestedText: { ...chestTemplate.suggestedText, description: "Different description text." },
-      });
+        suggestedText: {
+          ...chestTemplate.suggestedText,
+          en: { ...chestTemplate.suggestedText.en, description: "Different description text." },
+        },
+      }, "en");
       expect(mutated).not.toBe(base);
     });
 
     it("hash input includes sourceReferences", () => {
-      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate);
+      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate, "en");
       expect(payload.sourceReferences[0]?.url).toContain("medlineplus.gov");
       const withoutUrl = computeProviderDischargeTemplateAppliedHash({
         ...chestTemplate,
         sourceReferences: [{ label: chestTemplate.sourceReferences[0]!.label }],
-      });
-      expect(withoutUrl).not.toBe(computeProviderDischargeTemplateAppliedHash(chestTemplate));
+      }, "en");
+      expect(withoutUrl).not.toBe(computeProviderDischargeTemplateAppliedHash(chestTemplate, "en"));
     });
 
     it("hash input includes specialtyCategory and riskCategory", () => {
-      const withCategories = computeProviderDischargeTemplateAppliedHash(chestTemplate);
+      const withCategories = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
       const withoutCategories = computeProviderDischargeTemplateAppliedHash({
         ...chestTemplate,
         specialtyCategory: undefined,
         riskCategory: undefined,
         clinicalReviewStatus: undefined,
         effectiveFrom: undefined,
-      });
+      }, "en");
       expect(withCategories).not.toBe(withoutCategories);
     });
 
     it("changing clinicalReviewStatus or effectiveFrom changes templateAppliedHash", () => {
-      const base = computeProviderDischargeTemplateAppliedHash(chestTemplate);
+      const base = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
       const reviewChanged = computeProviderDischargeTemplateAppliedHash({
         ...chestTemplate,
         clinicalReviewStatus: "reviewed",
-      });
+      }, "en");
       const dateChanged = computeProviderDischargeTemplateAppliedHash({
         ...chestTemplate,
         effectiveFrom: "2026-06-01",
-      });
+      }, "en");
       expect(reviewChanged).not.toBe(base);
       expect(dateChanged).not.toBe(base);
     });
 
     it("hash payload includes governance review and effective dates", () => {
-      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate);
+      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate, "en");
       expect(payload.clinicalReviewStatus).toBe("draft");
       expect(payload.effectiveFrom).toBe("2026-05-18");
     });
 
     it("pure JS SHA-256 matches Node crypto for canonical template payload", () => {
-      const canonical = providerDischargeTemplateHashCanonicalString(chestTemplate);
+      const canonical = providerDischargeTemplateHashCanonicalString(chestTemplate, "en");
       const nodeHash = createHash("sha256").update(canonical, "utf8").digest("hex");
-      expect(computeProviderDischargeTemplateAppliedHash(chestTemplate)).toBe(nodeHash);
+      expect(computeProviderDischargeTemplateAppliedHash(chestTemplate, "en")).toBe(nodeHash);
     });
 
     it("existing cards without templateAppliedHash hydrate safely", () => {
@@ -477,7 +496,7 @@ describe("edDisposition19Y", () => {
         templateVersion: "1.0.0",
         matchLevel: "icdExact",
         sourceReferences: ["MedlinePlus — Angina"],
-        templateAppliedHash: computeProviderDischargeTemplateAppliedHash(chestTemplate),
+        templateAppliedHash: computeProviderDischargeTemplateAppliedHash(chestTemplate, "en"),
         specialtyCategory: "cardiology",
         riskCategory: "moderate",
       };
@@ -500,7 +519,7 @@ describe("edDisposition19Y", () => {
         templateVersion: "1.0.0",
         matchLevel: "icdExact",
         sourceReferences: ["MedlinePlus — Angina"],
-        templateAppliedHash: computeProviderDischargeTemplateAppliedHash(chestTemplate),
+        templateAppliedHash: computeProviderDischargeTemplateAppliedHash(chestTemplate, "en"),
         specialtyCategory: "cardiology",
         riskCategory: "moderate",
       };
@@ -648,8 +667,8 @@ describe("edDisposition19Y", () => {
 
     it("each Batch 1 template produces deterministic templateAppliedHash", () => {
       for (const template of batchTemplates()) {
-        const a = computeProviderDischargeTemplateAppliedHash(template);
-        const b = computeProviderDischargeTemplateAppliedHash(template);
+        const a = computeProviderDischargeTemplateAppliedHash(template, "en");
+        const b = computeProviderDischargeTemplateAppliedHash(template, "en");
         expect(a).toBe(b);
         expect(a).toMatch(/^[a-f0-9]{64}$/);
       }
@@ -731,13 +750,13 @@ describe("edDisposition19Y", () => {
     it("generic fallback remains safe/empty", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "Unspecified" });
       expect(resolved.matchLevel).toBe("generic");
-      expect(resolved.template.suggestedText.description).toBe("");
-      expect(resolved.template.suggestedText.returnPrecautions).toBe("");
+      expect(resolved.template.suggestedText.en.description).toBe("");
+      expect(resolved.template.suggestedText.en.returnPrecautions).toBe("");
     });
 
     it("template text does not contain fabricated test/result language", () => {
       for (const template of batchTemplates()) {
-        const blob = JSON.stringify(template.suggestedText);
+        const blob = JSON.stringify(template.suggestedText.en);
         for (const pattern of FORBIDDEN_FABRICATED_PATTERNS) {
           expect(blob).not.toMatch(pattern);
         }
@@ -772,7 +791,7 @@ describe("edDisposition19Y", () => {
         isPrimaryDiagnosis: true,
       });
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: true });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
       expect(next.description.trim()).not.toBe("");
       expect(next.diagnosisInstructions.trim()).not.toBe("");
       expect(next.medicationTreatment.trim()).not.toBe("");
@@ -783,7 +802,7 @@ describe("edDisposition19Y", () => {
     it("return precautions/follow-up merge into shared bottom planning only", () => {
       const form = emptyProviderDischargeDocumentationForm();
       const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
-      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chest));
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chest, "en"));
       expect(merged.returnPrecautions).toContain("Return immediately");
       expect(merged.followUps.length).toBeGreaterThan(0);
     });
@@ -798,7 +817,7 @@ describe("edDisposition19Y", () => {
       });
       card.description = "Clinician note retained";
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "Headache" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
       expect(next.description).toBe("Clinician note retained");
     });
   });
@@ -919,7 +938,7 @@ describe("edDisposition19Y", () => {
         isPrimaryDiagnosis: true,
       });
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R11.2", displayName: "Nausea and vomiting" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: true });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
       expect(next.description.trim()).not.toBe("");
       expect(next.returnPrecautions).toBe("");
       expect(next.followUps).toEqual([]);
@@ -928,7 +947,7 @@ describe("edDisposition19Y", () => {
     it("Batch 2 shared return precautions merge at bottom only", () => {
       const form = emptyProviderDischargeDocumentationForm();
       const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "dehydration_v1")!;
-      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template));
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template, "en"));
       expect(merged.returnPrecautions).toContain("cannot keep fluids down");
       expect(merged.followUps.length).toBeGreaterThan(0);
     });
@@ -943,7 +962,7 @@ describe("edDisposition19Y", () => {
       });
       card.description = "Clinician-authored back pain note";
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "M54.5", displayName: "Back pain" });
-      const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
       expect(next.description).toBe("Clinician-authored back pain note");
     });
 
@@ -955,6 +974,160 @@ describe("edDisposition19Y", () => {
       for (const fragment of PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS) {
         expect(uiSource).not.toContain(fragment);
       }
+    });
+  });
+
+  describe("19Y.4A template localization separation hardening", () => {
+    const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
+
+    it("every template has EN suggestedText body", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(template.suggestedText.en).toBeTruthy();
+        expect(typeof template.suggestedText.en.description).toBe("string");
+      }
+    });
+
+    it("every template has FR suggestedText body", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(template.suggestedText.fr).toBeTruthy();
+        expect(typeof template.suggestedText.fr.description).toBe("string");
+      }
+    });
+
+    it("EN template text has no French contamination", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(scanProviderDischargeSuggestedTextFrenchContaminationInEn(template.id, template.suggestedText.en)).toEqual([]);
+      }
+    });
+
+    it("FR template text has no English contamination", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(scanProviderDischargeSuggestedTextEnglishContaminationInFr(template.id, template.suggestedText.fr)).toEqual([]);
+      }
+    });
+
+    it("missing EN body fails validator", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        {
+          ...chestTemplate,
+          suggestedText: { fr: chestTemplate.suggestedText.fr } as typeof chestTemplate.suggestedText,
+        },
+      ]);
+      expect(result.ok).toBe(false);
+    });
+
+    it("missing FR body fails validator", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        {
+          ...chestTemplate,
+          suggestedText: { en: chestTemplate.suggestedText.en } as typeof chestTemplate.suggestedText,
+        },
+      ]);
+      expect(result.ok).toBe(false);
+    });
+
+    it("EN apply uses EN text only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: true });
+      expect(next.description).toBe(chestTemplate.suggestedText.en.description);
+    });
+
+    it("FR apply uses FR text only", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "fr", overwriteExisting: true });
+      expect(next.description).toBe(chestTemplate.suggestedText.fr.description);
+    });
+
+    it("no fallback from FR to EN when FR body missing", () => {
+      const broken = {
+        ...chestTemplate,
+        suggestedText: { en: chestTemplate.suggestedText.en } as typeof chestTemplate.suggestedText,
+      };
+      expect(() => getProviderDischargeSuggestedTextBody(broken, "fr")).toThrow(ProviderDischargeTemplateLocaleError);
+    });
+
+    it("no fallback from EN to FR when EN body missing", () => {
+      const broken = {
+        ...chestTemplate,
+        suggestedText: { fr: chestTemplate.suggestedText.fr } as typeof chestTemplate.suggestedText,
+      };
+      expect(() => getProviderDischargeSuggestedTextBody(broken, "en")).toThrow(ProviderDischargeTemplateLocaleError);
+    });
+
+    it("templateMeta.appliedLocale is stored on apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-1",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+      });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "fr", overwriteExisting: true });
+      expect(next.templateMeta?.appliedLocale).toBe("fr");
+    });
+
+    it("EN and FR templateAppliedHash differ when localized text differs", () => {
+      const enHash = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
+      const frHash = computeProviderDischargeTemplateAppliedHash(chestTemplate, "fr");
+      expect(enHash).not.toBe(frHash);
+    });
+
+    it("changing EN text changes EN hash only", () => {
+      const enBase = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
+      const frBase = computeProviderDischargeTemplateAppliedHash(chestTemplate, "fr");
+      const mutated = {
+        ...chestTemplate,
+        suggestedText: {
+          ...chestTemplate.suggestedText,
+          en: { ...chestTemplate.suggestedText.en, description: "EN-only drift for hash isolation test." },
+        },
+      };
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "en")).not.toBe(enBase);
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "fr")).toBe(frBase);
+    });
+
+    it("changing sourceReferences changes both locale hashes", () => {
+      const enBase = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
+      const frBase = computeProviderDischargeTemplateAppliedHash(chestTemplate, "fr");
+      const mutated = {
+        ...chestTemplate,
+        sourceReferences: [{ label: "Mutated source label for hash test" }],
+      };
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "en")).not.toBe(enBase);
+      expect(computeProviderDischargeTemplateAppliedHash(mutated, "fr")).not.toBe(frBase);
+    });
+
+    it("hash payload includes appliedLocale", () => {
+      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate, "fr");
+      expect(payload.appliedLocale).toBe("fr");
+    });
+
+    it("unsafe phrase scanner passes for both locales on reviewed registry", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        for (const locale of PROVIDER_DISCHARGE_TEMPLATE_LOCALES) {
+          expect(scanProviderDischargeTemplateUnsafePhrases(template, locale)).toEqual([]);
+        }
+      }
+    });
+
+    it("registry supports exactly en and fr locales without fallback helper", () => {
+      expect(PROVIDER_DISCHARGE_TEMPLATE_LOCALES).toEqual(["en", "fr"]);
+      expect(typeof getProviderDischargeSuggestedTextBody).toBe("function");
     });
   });
 
@@ -1082,10 +1255,18 @@ describe("edDisposition19Y", () => {
         syntheticRegistryTemplate({
           id: "unsafe-troponin",
           suggestedText: {
-            description: "Troponins negative today.",
-            diagnosisInstructions: "Rest.",
-            medicationTreatment: "None.",
-            returnPrecautions: "Return if worse.",
+            en: {
+              description: "Troponins negative today.",
+              diagnosisInstructions: "Rest.",
+              medicationTreatment: "None.",
+              returnPrecautions: "Return if worse.",
+            },
+            fr: {
+              description: "Texte de test.",
+              diagnosisInstructions: "Repos.",
+              medicationTreatment: "Aucun.",
+              returnPrecautions: "Reconsultez si aggravation.",
+            },
           },
         })
       );
@@ -1097,10 +1278,18 @@ describe("edDisposition19Y", () => {
         syntheticRegistryTemplate({
           id: "unsafe-ct",
           suggestedText: {
-            description: "CT normal.",
-            diagnosisInstructions: "Rest.",
-            medicationTreatment: "None.",
-            returnPrecautions: "Return if worse.",
+            en: {
+              description: "CT normal.",
+              diagnosisInstructions: "Rest.",
+              medicationTreatment: "None.",
+              returnPrecautions: "Return if worse.",
+            },
+            fr: {
+              description: "Texte de test.",
+              diagnosisInstructions: "Repos.",
+              medicationTreatment: "Aucun.",
+              returnPrecautions: "Reconsultez si aggravation.",
+            },
           },
         })
       );
@@ -1112,10 +1301,18 @@ describe("edDisposition19Y", () => {
         syntheticRegistryTemplate({
           id: "unsafe-acs",
           suggestedText: {
-            description: "ACS ruled out.",
-            diagnosisInstructions: "Rest.",
-            medicationTreatment: "None.",
-            returnPrecautions: "Return if worse.",
+            en: {
+              description: "ACS ruled out.",
+              diagnosisInstructions: "Rest.",
+              medicationTreatment: "None.",
+              returnPrecautions: "Return if worse.",
+            },
+            fr: {
+              description: "Texte de test.",
+              diagnosisInstructions: "Repos.",
+              medicationTreatment: "Aucun.",
+              returnPrecautions: "Reconsultez si aggravation.",
+            },
           },
         })
       );
@@ -1129,34 +1326,47 @@ describe("edDisposition19Y", () => {
     });
 
     it("registry governance snapshot is deterministic", () => {
-      const a = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
-      const b = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      const a = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const b = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
       expect(a).toBe(b);
     });
 
     it("intentional template text change changes registry governance snapshot hash", () => {
-      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
       const mutated = computeProviderDischargeRegistryGovernanceSnapshotHash(
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.map((t) =>
           t.id === "chest_pain_v1" ?
             {
               ...t,
-              suggestedText: { ...t.suggestedText, description: "Intentional drift for snapshot test." },
+              suggestedText: {
+                ...t.suggestedText,
+                en: { ...t.suggestedText.en, description: "Intentional drift for snapshot test." },
+              },
             }
           : t
         )
-      );
+      , "en");
       expect(mutated).not.toBe(base);
     });
 
-    it("registry governance snapshot hash remains stable for reviewed registry", () => {
-      const hash = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+    it("registry governance snapshot hash remains stable for reviewed registry (EN)", () => {
+      const hash = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
       expect(hash).toMatch(/^[a-f0-9]{64}$/);
-      expect(buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY)).toHaveLength(
+      expect(buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en")).toHaveLength(
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("1831abb32f20be28e5b4074e74eb8d70b7af469e781827aba9c7099bb4cc60dc");
+      expect(hash).toBe("2113992c6e80836b5e550c8101ec086ef8649d5d6c70c032ca7eb2ec40cc595a");
+    });
+
+    it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
+      const hash = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "fr");
+      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      expect(buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "fr")).toHaveLength(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
+      );
+      // Update this constant intentionally when registry governance content changes.
+      expect(hash).toBe("63d5a40811c2ae7338b2925d6fdb76363ddd4e562fb57fd7fdcb2e76f0578250");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
@@ -1250,11 +1460,11 @@ describe("edDisposition19Y", () => {
     it("return precautions merge from multiple selected diagnosis templates", () => {
       const form = emptyProviderDischargeDocumentationForm();
       const merged = mergeSharedFieldsFromSelectedTemplates(form, [
-        extractSharedFieldsFromTemplate(chestTemplate),
-        extractSharedFieldsFromTemplate(abdominalTemplate),
+        extractSharedFieldsFromTemplate(chestTemplate, "en"),
+        extractSharedFieldsFromTemplate(abdominalTemplate, "en"),
       ]);
-      expect(merged.returnPrecautions).toContain(chestTemplate.suggestedText.returnPrecautions.slice(0, 24));
-      expect(merged.returnPrecautions).toContain(abdominalTemplate.suggestedText.returnPrecautions.slice(0, 24));
+      expect(merged.returnPrecautions).toContain(chestTemplate.suggestedText.en.returnPrecautions.slice(0, 24));
+      expect(merged.returnPrecautions).toContain(abdominalTemplate.suggestedText.en.returnPrecautions.slice(0, 24));
     });
 
     it("return precautions dedupe duplicate sentences", () => {
@@ -1271,7 +1481,7 @@ describe("edDisposition19Y", () => {
 
     it("provider-entered shared return precautions are not overwritten", () => {
       const form = { ...formWithThreeSelected(), returnPrecautions: "Provider custom precautions" };
-      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chestTemplate));
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(chestTemplate, "en"));
       expect(merged.returnPrecautions).toBe("Provider custom precautions");
     });
 

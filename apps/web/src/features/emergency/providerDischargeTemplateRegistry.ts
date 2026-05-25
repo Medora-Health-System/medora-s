@@ -7,6 +7,28 @@ import {
   computeProviderDischargeTemplateAppliedHash,
 } from "./providerDischargeTemplateAppliedHash";
 import {
+  getProviderDischargeSuggestedTextBody,
+  type ProviderDischargeTemplateLocale,
+  type ProviderDischargeTemplateSuggestedText,
+} from "./providerDischargeTemplateLocale";
+import {
+  ABDOMINAL_PAIN_SUGGESTED_TEXT,
+  BACK_PAIN_SUGGESTED_TEXT,
+  CELLULITIS_SUGGESTED_TEXT,
+  CHEST_PAIN_SUGGESTED_TEXT,
+  DEHYDRATION_SUGGESTED_TEXT,
+  DENTAL_PAIN_SUGGESTED_TEXT,
+  GASTROENTERITIS_SUGGESTED_TEXT,
+  GENERIC_ED_DISCHARGE_SUGGESTED_TEXT,
+  HEADACHE_SUGGESTED_TEXT,
+  HYPERTENSION_SUGGESTED_TEXT,
+  NAUSEA_VOMITING_SUGGESTED_TEXT,
+  OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
+  URI_COUGH_SUGGESTED_TEXT,
+  UTI_SUGGESTED_TEXT,
+  WOUND_LACERATION_SUGGESTED_TEXT,
+} from "./providerDischargeTemplateSuggestedTextCatalog";
+import {
   newDefaultFollowUpRow,
   newDiagnosisDocId,
   type ProviderDischargeDiagnosisCard,
@@ -43,15 +65,10 @@ export type ProviderDischargeTemplate = {
   };
   sourceReferences: ProviderDischargeTemplateSourceReference[];
   defaultFollowUps?: ProviderDischargeFollowUpRow[];
-  suggestedText: {
-    description: string;
-    diagnosisInstructions: string;
-    medicationTreatment: string;
-    returnPrecautions: string;
-    returnWorkSchool?: string;
-    treatment?: string;
-  };
+  suggestedText: ProviderDischargeTemplateSuggestedText;
 };
+
+export type { ProviderDischargeTemplateLocale, ProviderDischargeTemplateSuggestedText };
 
 export type ProviderDischargeTemplateResolveResult = {
   template: ProviderDischargeTemplate;
@@ -139,18 +156,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("chest-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
       registryFollowUp("chest-cardiology", "CARDIOLOGY", "as clinically appropriate"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for chest pain. Symptoms may evolve after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Rest as needed. Take medications only as prescribed or directed during this visit. Avoid driving or operating machinery if you take sedating medicine. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take medications only as prescribed or directed during this visit. Do not start, stop, or change medications without clinician guidance.",
-      returnPrecautions:
-        "Return immediately or call emergency services for returning or worsening chest pain, shortness of breath, fainting, heavy sweating, new weakness, new neurologic symptoms, or any other concerning symptoms.",
-      returnWorkSchool:
-        "Return to work or school when you feel able and as directed by your clinician.",
-    },
+    suggestedText: CHEST_PAIN_SUGGESTED_TEXT,
   },
   {
     id: "abdominal_pain_v1",
@@ -189,16 +195,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("abd-gi", "GASTROENTEROLOGY", "as clinically appropriate"),
       registryFollowUp("abd-surgery", "GENERAL_SURGERY", "as clinically appropriate"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for abdominal pain. Some causes may evolve after you leave; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Stay hydrated. Eat a light diet as tolerated unless your clinician advised otherwise. Rest as needed. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take pain or anti-nausea medicines only as prescribed or directed during this visit. Do not start new medications without clinician guidance.",
-      returnPrecautions:
-        "Return for care if pain worsens, fever develops, vomiting persists, you see blood in stool or vomit, faint, develop new abdominal swelling, cannot keep fluids down, or have other concerning symptoms.",
-    },
+    suggestedText: ABDOMINAL_PAIN_SUGGESTED_TEXT,
   },
   {
     id: "headache_v1",
@@ -229,16 +226,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("headache-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
       registryFollowUp("headache-neuro", "NEUROLOGY", "for recurrent or severe symptoms"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for headache. Symptoms may change after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Rest in a quiet, dark room as needed. Stay hydrated. Take medications only as prescribed or directed during this visit. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take headache or pain medicines only as prescribed or directed during this visit. Avoid medication overuse unless your clinician advised otherwise.",
-      returnPrecautions:
-        "Return immediately for sudden worst headache of life, weakness, numbness, confusion, trouble speaking, vision changes, fever with neck stiffness, persistent vomiting, or worsening symptoms.",
-    },
+    suggestedText: HEADACHE_SUGGESTED_TEXT,
   },
   {
     id: "uri_cough_v1",
@@ -273,16 +261,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [registryFollowUp("uri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for cough or upper respiratory symptoms. Many of these illnesses improve with supportive care; outpatient follow-up is recommended if symptoms persist or worsen.",
-      diagnosisInstructions:
-        "Rest and stay hydrated. Use over-the-counter medicines only as directed on the label or by your clinician. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take cough, fever, or pain medicines only as prescribed or directed during this visit. Finish antibiotics only if they were prescribed for you.",
-      returnPrecautions:
-        "Return for care if you develop shortness of breath, chest pain, persistent high fever, signs of dehydration, blue lips or confusion, inability to tolerate fluids, or worsening symptoms.",
-    },
+    suggestedText: URI_COUGH_SUGGESTED_TEXT,
   },
   {
     id: "uti_v1",
@@ -314,16 +293,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("uti-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed"),
       registryFollowUp("uti-urology", "UROLOGY", "for recurrent or complicated symptoms"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for urinary symptoms. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Drink fluids as tolerated unless your clinician restricted fluids. Take antibiotics or other medicines exactly as prescribed. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take antibiotics and urinary symptom medicines only as prescribed or directed during this visit. Do not share antibiotics or stop early unless your clinician advised you to do so.",
-      returnPrecautions:
-        "Return for care if you develop fever, flank or back pain, vomiting, worsening urinary symptoms, weakness or confusion, inability to tolerate antibiotics or fluids, or other concerning symptoms.",
-    },
+    suggestedText: UTI_SUGGESTED_TEXT,
   },
   {
     id: "wound_laceration_v1",
@@ -356,18 +326,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("wound-care", "WOUND_CARE", "3–5 days if advised"),
       registryFollowUp("wound-ed-recheck", "ED_RECHECK", "for wound check or suture removal if advised"),
     ],
-    suggestedText: {
-      description:
-        "Your laceration or wound was evaluated in the emergency department. Healing requires keeping the area clean and monitoring for infection; outpatient follow-up may be needed for wound checks.",
-      diagnosisInstructions:
-        "Keep the wound clean and dry. Change dressings as instructed. Avoid soaking the wound unless your clinician cleared you to do so. Return precautions for infection or bleeding were reviewed.",
-      medicationTreatment:
-        "Take wound-related antibiotics or pain medicine only as prescribed or directed during this visit. Keep dressing supplies as instructed.",
-      returnPrecautions:
-        "Return for care if you develop increasing pain, spreading redness, warmth, swelling, pus or drainage, fever, bleeding that does not stop, numbness, red streaking, wound reopening, or other concerning changes.",
-      returnWorkSchool:
-        "Protect the wound from strain or contamination; return to activity as directed by your clinician.",
-    },
+    suggestedText: WOUND_LACERATION_SUGGESTED_TEXT,
   },
   {
     id: "nausea_vomiting_v1",
@@ -389,16 +348,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [registryFollowUp("nausea-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for nausea or vomiting. Symptoms may evolve after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Start with small sips of clear fluids as tolerated. Advance diet slowly as directed. Rest as needed. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take anti-nausea or other medicines only as prescribed or directed during this visit. Do not start new medications without clinician guidance.",
-      returnPrecautions:
-        "Return for care if vomiting persists, you cannot keep fluids down, you see blood in vomit, develop severe or worsening abdominal pain, fever, signs of dehydration, weakness, fainting, or other concerning symptoms.",
-    },
+    suggestedText: NAUSEA_VOMITING_SUGGESTED_TEXT,
   },
   {
     id: "gastroenteritis_v1",
@@ -433,16 +383,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [registryFollowUp("gastro-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for diarrhea or gastroenteritis. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Stay hydrated with oral rehydration fluids or clear liquids as tolerated. Wash hands frequently to reduce spread. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take anti-diarrheal, anti-nausea, or antibiotic medicines only as prescribed or directed during this visit.",
-      returnPrecautions:
-        "Return for care if you develop bloody stool, severe abdominal pain, persistent fever, dehydration, inability to keep fluids down, worsening weakness, or other concerning symptoms.",
-    },
+    suggestedText: GASTROENTERITIS_SUGGESTED_TEXT,
   },
   {
     id: "back_pain_v1",
@@ -473,16 +414,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("back-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
       registryFollowUp("back-ortho", "ORTHOPEDICS", "for persistent or recurrent symptoms"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for back pain. Symptoms may evolve after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Avoid heavy lifting or twisting unless your clinician advised otherwise. Use heat or ice as directed. Return to activity gradually. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take pain or muscle-relaxant medicines only as prescribed or directed during this visit. Avoid sedating medicines before driving unless cleared by your clinician.",
-      returnPrecautions:
-        "Return immediately for new leg weakness, numbness in the groin or saddle area, bowel or bladder dysfunction, fever, rapidly worsening pain, inability to walk, or other concerning neurologic symptoms.",
-    },
+    suggestedText: BACK_PAIN_SUGGESTED_TEXT,
   },
   {
     id: "dental_pain_v1",
@@ -506,16 +438,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     defaultFollowUps: [
       registryFollowUp("dental-fu", "PRIMARY_CARE", "within several days", "Dentist or oral surgery as directed"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for dental or tooth pain. Definitive dental care is usually needed on an outpatient basis; follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Maintain oral hygiene as tolerated. Avoid chewing on the affected side if advised. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take pain or antibiotic medicines only as prescribed or directed during this visit. Do not share antibiotics or stop early unless your clinician advised you to do so.",
-      returnPrecautions:
-        "Return for care if you develop facial swelling, trouble swallowing, trouble breathing, fever, worsening pain, or spreading redness or swelling.",
-    },
+    suggestedText: DENTAL_PAIN_SUGGESTED_TEXT,
   },
   {
     id: "otitis_pharyngitis_v1",
@@ -546,16 +469,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("otitis-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
       registryFollowUp("otitis-ent", "ENT", "for recurrent or worsening symptoms"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for ear pain or sore throat. Symptoms may persist briefly after an emergency visit; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Rest and stay hydrated. Use comfort measures as directed. Finish antibiotics only if they were prescribed for you. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take pain, fever, or antibiotic medicines only as prescribed or directed during this visit.",
-      returnPrecautions:
-        "Return for care if you develop trouble breathing or swallowing, neck swelling, drooling, persistent fever, worsening pain, dehydration, or other concerning symptoms.",
-    },
+    suggestedText: OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
   },
   {
     id: "hypertension_v1",
@@ -581,16 +495,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("htn-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
       registryFollowUp("htn-cardiology", "CARDIOLOGY", "as clinically appropriate"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for elevated blood pressure or hypertension. Blood pressure can vary; ongoing outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Take blood pressure medicines only as prescribed or directed. Limit salt if your clinician advised you to do so. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take blood pressure or related medicines only as prescribed or directed during this visit. Do not stop or change blood pressure medicines without clinician guidance.",
-      returnPrecautions:
-        "Return immediately for chest pain, shortness of breath, severe headache, neurologic symptoms, vision changes, confusion, weakness, or other concerning symptoms.",
-    },
+    suggestedText: HYPERTENSION_SUGGESTED_TEXT,
   },
   {
     id: "cellulitis_v1",
@@ -615,16 +520,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("cellulitis-pcp", "PRIMARY_CARE", "within several days or as directed"),
       registryFollowUp("cellulitis-wound", "WOUND_CARE", "if worsening or recurrent"),
     ],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for a skin infection or cellulitis. Outpatient follow-up is recommended to monitor response to treatment when clinically appropriate.",
-      diagnosisInstructions:
-        "Keep the affected area clean and elevated as directed. Mark the edge of redness if your clinician advised you to do so. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take antibiotics and pain medicines only as prescribed or directed during this visit. Finish antibiotics unless your clinician told you otherwise.",
-      returnPrecautions:
-        "Return for care if redness spreads, fever develops, pain or swelling increases, pus or drainage appears, red streaking occurs, you cannot tolerate medications, or symptoms worsen.",
-    },
+    suggestedText: CELLULITIS_SUGGESTED_TEXT,
   },
   {
     id: "dehydration_v1",
@@ -646,16 +542,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [registryFollowUp("dehydration-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
-    suggestedText: {
-      description:
-        "You were evaluated in the emergency department for dehydration. Fluid balance may take time to restore; outpatient follow-up is recommended when clinically appropriate.",
-      diagnosisInstructions:
-        "Drink fluids as tolerated unless your clinician restricted fluids. Use oral rehydration solutions if directed. Rest as needed. Return precautions for worsening or concerning symptoms were reviewed.",
-      medicationTreatment:
-        "Take medicines only as prescribed or directed during this visit. Continue fluids as instructed.",
-      returnPrecautions:
-        "Return for care if you cannot keep fluids down, faint, become confused, have decreased urination, develop worsening weakness, persistent fever, worsening vomiting or diarrhea, or other concerning symptoms.",
-    },
+    suggestedText: DEHYDRATION_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
@@ -673,16 +560,11 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    suggestedText: {
-      description: "",
-      diagnosisInstructions: "",
-      medicationTreatment: "",
-      returnPrecautions: "",
-    },
+    suggestedText: GENERIC_ED_DISCHARGE_SUGGESTED_TEXT,
   },
 ] as const;
 
-/** Known clinical paragraph fragments — must exist only in this registry (regression gate). */
+/** Known clinical paragraph fragments — must exist only in registry/catalog (regression gate). */
 export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "You were evaluated in the emergency department for chest pain",
   "You were evaluated in the emergency department for abdominal pain",
@@ -699,7 +581,23 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "You were evaluated in the emergency department for a skin infection or cellulitis",
   "You were evaluated in the emergency department for dehydration",
   "Return immediately or call emergency services for returning or worsening chest pain",
+  "Vous avez été pris en charge aux urgences pour une douleur thoracique",
+  "Vous avez été pris en charge aux urgences pour une douleur abdominale",
+  "Vous avez été pris en charge aux urgences pour des céphalées",
+  "Vous avez été pris en charge aux urgences pour une toux ou des signes d'infection des voies respiratoires supérieures",
+  "Vous avez été pris en charge aux urgences pour des troubles liés aux voies urinaires",
+  "Votre lacération ou plaie a été évaluée aux urgences",
+  "Vous avez été pris en charge aux urgences pour des nausées ou des vomissements",
+  "Vous avez été pris en charge aux urgences pour une diarrhée ou une gastro-entérite",
+  "Vous avez été pris en charge aux urgences pour une douleur du dos",
+  "Vous avez été pris en charge aux urgences pour une douleur dentaire",
+  "Vous avez été pris en charge aux urgences pour une otalgie ou un mal de gorge",
+  "Vous avez été pris en charge aux urgences pour une pression artérielle élevée ou une hypertension",
+  "Vous avez été pris en charge aux urgences pour une infection cutanée ou une cellulite",
+  "Vous avez été pris en charge aux urgences pour une déshydratation",
 ] as const;
+
+export { getProviderDischargeSuggestedTextBody };
 
 function normalizeIcdCode(code: string): string {
   return code.trim().toUpperCase().replace(/\s/g, "");
@@ -773,6 +671,7 @@ export type BuildProviderDischargeCardInput = {
   displayOrder: number;
   isPrimaryDiagnosis: boolean;
   applyTemplateSuggestion?: boolean;
+  locale?: ProviderDischargeTemplateLocale;
   actor?: { displayName?: string; appliedAt?: string };
 };
 
@@ -807,6 +706,7 @@ export function buildProviderDischargeCardFromDiagnosis(
   if (resolved.matchLevel === "generic") return card;
 
   return applyProviderDischargeTemplateToCard(card, resolved, {
+    locale: input.locale ?? "fr",
     actor: input.actor,
     providerConfirmed: false,
     overwriteExisting: false,
@@ -816,15 +716,17 @@ export function buildProviderDischargeCardFromDiagnosis(
 export function applyProviderDischargeTemplateToCard(
   card: ProviderDischargeDiagnosisCard,
   resolved: ProviderDischargeTemplateResolveResult,
-  options?: {
+  options: {
+    locale: ProviderDischargeTemplateLocale;
     actor?: { displayName?: string; appliedAt?: string };
     overwriteExisting?: boolean;
     providerConfirmed?: boolean;
   }
 ): ProviderDischargeDiagnosisCard {
   const { template, matchLevel } = resolved;
-  const overwrite = options?.overwriteExisting === true;
-  const text = template.suggestedText;
+  const overwrite = options.overwriteExisting === true;
+  const locale = options.locale;
+  const text = getProviderDischargeSuggestedTextBody(template, locale);
   const sourceReferences = template.sourceReferences.map((r) => r.label);
 
   const next: ProviderDischargeDiagnosisCard = { ...card };
@@ -839,12 +741,13 @@ export function applyProviderDischargeTemplateToCard(
     templateVersion: template.version,
     matchLevel,
     sourceReferences,
-    templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template),
+    appliedLocale: locale,
+    templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     ...(template.specialtyCategory?.trim() ? { specialtyCategory: template.specialtyCategory.trim() } : {}),
     ...(template.riskCategory?.trim() ? { riskCategory: template.riskCategory.trim() } : {}),
-    appliedAt: options?.actor?.appliedAt,
-    appliedByDisplayName: options?.actor?.displayName,
-    providerConfirmed: options?.providerConfirmed ?? false,
+    appliedAt: options.actor?.appliedAt,
+    appliedByDisplayName: options.actor?.displayName,
+    providerConfirmed: options.providerConfirmed ?? false,
   };
   next.sourceTemplateId = template.id;
   next.sourceVersion = template.version;

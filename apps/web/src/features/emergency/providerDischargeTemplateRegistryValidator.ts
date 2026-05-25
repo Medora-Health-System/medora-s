@@ -1,9 +1,22 @@
 /**
- * Phase 19Y.3A — registry governance validator, collision detection, unsafe phrase scanner.
+ * Phase 19Y.3A / 19Y.4A — registry governance validator, collision detection, unsafe phrase scanner.
  * Pure helpers for tests and CI; not shown in patient/provider UI.
  */
 
-import { computeProviderDischargeTemplateAppliedHash } from "./providerDischargeTemplateAppliedHash";
+import {
+  buildProviderDischargeTemplateHashPayload,
+  computeProviderDischargeTemplateAppliedHash,
+} from "./providerDischargeTemplateAppliedHash";
+import {
+  getProviderDischargeSuggestedTextBody,
+  isNonEmptySuggestedTextBody,
+  PROVIDER_DISCHARGE_TEMPLATE_LOCALES,
+  scanProviderDischargeSuggestedTextEnglishContaminationInFr,
+  scanProviderDischargeSuggestedTextFrenchContaminationInEn,
+  suggestedTextBodyBlob,
+  type ProviderDischargeTemplateLocale,
+  type ProviderDischargeTemplateSuggestedText,
+} from "./providerDischargeTemplateLocale";
 import {
   GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
   type ProviderDischargeTemplate,
@@ -103,31 +116,44 @@ function isValidSourceUrl(url: string): boolean {
   }
 }
 
-function suggestedTextBlob(template: ProviderDischargeTemplate): string {
-  return Object.values(template.suggestedText).filter(Boolean).join("\n");
+function isLocalizedSuggestedText(value: unknown): value is ProviderDischargeTemplateSuggestedText {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const o = value as Record<string, unknown>;
+  return o.en != null && typeof o.en === "object" && o.fr != null && typeof o.fr === "object";
 }
 
 export function scanProviderDischargeTemplateUnsafePhrases(
-  template: ProviderDischargeTemplate
+  template: ProviderDischargeTemplate,
+  locale?: ProviderDischargeTemplateLocale
 ): string[] {
-  const blob = suggestedTextBlob(template);
+  const locales = locale ? [locale] : [...PROVIDER_DISCHARGE_TEMPLATE_LOCALES];
   const hits: string[] = [];
-  for (const rule of PROVIDER_DISCHARGE_UNSAFE_TEMPLATE_PHRASES) {
-    if (rule.pattern.test(blob)) {
-      hits.push(`${template.id}: unsafe phrase (${rule.id})`);
+  for (const loc of locales) {
+    try {
+      const body = getProviderDischargeSuggestedTextBody(template, loc);
+      const blob = suggestedTextBodyBlob(body);
+      for (const rule of PROVIDER_DISCHARGE_UNSAFE_TEMPLATE_PHRASES) {
+        if (rule.pattern.test(blob)) {
+          hits.push(`${template.id}: unsafe phrase (${rule.id}) in ${loc}`);
+        }
+      }
+    } catch (err) {
+      hits.push(`${template.id}: cannot scan unsafe phrases for ${loc}: ${String(err)}`);
     }
   }
   return hits;
 }
 
 export function buildProviderDischargeRegistryGovernanceSnapshot(
-  registry: readonly ProviderDischargeTemplate[]
+  registry: readonly ProviderDischargeTemplate[],
+  locale: ProviderDischargeTemplateLocale
 ): Record<string, unknown>[] {
   return [...registry]
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((template) => ({
       id: template.id,
       version: template.version,
+      locale,
       clinicalReviewStatus: template.clinicalReviewStatus,
       effectiveFrom: template.effectiveFrom,
       effectiveTo: template.effectiveTo ?? null,
@@ -139,27 +165,39 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
         keyword: [...(template.diagnosisMappings.keyword ?? [])].map(normalizeKeyword).sort(),
       },
       sourceReferenceLabels: template.sourceReferences.map((ref) => ref.label.trim()).sort(),
-      suggestedTextKeys: Object.keys(template.suggestedText).sort(),
-      templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template),
+      suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
+      templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
 }
 
 export function computeProviderDischargeRegistryGovernanceSnapshotHash(
-  registry: readonly ProviderDischargeTemplate[]
+  registry: readonly ProviderDischargeTemplate[],
+  locale: ProviderDischargeTemplateLocale
 ): string {
-  return computeProviderDischargeTemplateAppliedHash({
-    id: "__registry_governance_snapshot__",
-    version: "1.0.0",
-    suggestedText: {
-      description: stableStringify(buildProviderDischargeRegistryGovernanceSnapshot(registry)),
-      diagnosisInstructions: "",
-      medicationTreatment: "",
-      returnPrecautions: "",
+  return computeProviderDischargeTemplateAppliedHash(
+    {
+      id: `__registry_governance_snapshot__${locale}__`,
+      version: "1.0.0",
+      suggestedText: {
+        en: {
+          description: stableStringify(buildProviderDischargeRegistryGovernanceSnapshot(registry, locale)),
+          diagnosisInstructions: "",
+          medicationTreatment: "",
+          returnPrecautions: "",
+        },
+        fr: {
+          description: "",
+          diagnosisInstructions: "",
+          medicationTreatment: "",
+          returnPrecautions: "",
+        },
+      },
+      sourceReferences: [{ label: `registry-governance-snapshot-${locale}` }],
+      clinicalReviewStatus: "approved",
+      effectiveFrom: "1970-01-01",
     },
-    sourceReferences: [{ label: "registry-governance-snapshot" }],
-    clinicalReviewStatus: "approved",
-    effectiveFrom: "1970-01-01",
-  });
+    "en"
+  );
 }
 
 export function validateProviderDischargeTemplateRegistry(
@@ -249,6 +287,14 @@ export function validateProviderDischargeTemplateRegistry(
 
     if (!template.suggestedText || typeof template.suggestedText !== "object") {
       errors.push(`${prefix} missing suggestedText object`);
+    } else if (!isLocalizedSuggestedText(template.suggestedText)) {
+      errors.push(`${prefix} suggestedText must be locale-separated (en/fr)`);
+    } else {
+      for (const locale of PROVIDER_DISCHARGE_TEMPLATE_LOCALES) {
+        if (!template.suggestedText[locale]) {
+          errors.push(`${prefix} missing suggestedText.${locale}`);
+        }
+      }
     }
 
     const isGeneric = template.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID;
@@ -262,16 +308,22 @@ export function validateProviderDischargeTemplateRegistry(
       errors.push(`${prefix} missing diagnosis mappings`);
     }
 
-    if (!isGeneric && template.suggestedText) {
-      const allEmpty =
-        !template.suggestedText.description.trim() &&
-        !template.suggestedText.diagnosisInstructions.trim() &&
-        !template.suggestedText.medicationTreatment.trim() &&
-        !template.suggestedText.returnPrecautions.trim() &&
-        !(template.suggestedText.returnWorkSchool ?? "").trim() &&
-        !(template.suggestedText.treatment ?? "").trim();
-      if (allEmpty) {
-        errors.push(`${prefix} non-generic template has all empty suggested fields`);
+    if (isLocalizedSuggestedText(template.suggestedText)) {
+      for (const locale of PROVIDER_DISCHARGE_TEMPLATE_LOCALES) {
+        const body = template.suggestedText[locale];
+        if (!body) {
+          errors.push(`${prefix} missing suggestedText.${locale} body`);
+          continue;
+        }
+        if (!isGeneric && !isNonEmptySuggestedTextBody(body)) {
+          errors.push(`${prefix} non-generic template has empty suggestedText.${locale}`);
+        }
+        if (locale === "en") {
+          errors.push(...scanProviderDischargeSuggestedTextFrenchContaminationInEn(template.id, body));
+        }
+        if (locale === "fr") {
+          errors.push(...scanProviderDischargeSuggestedTextEnglishContaminationInFr(template.id, body));
+        }
       }
     }
 

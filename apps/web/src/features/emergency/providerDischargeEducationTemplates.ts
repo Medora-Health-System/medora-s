@@ -6,6 +6,7 @@
 import {
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
   resolveProviderDischargeTemplateForDiagnosis,
+  getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
 
@@ -28,22 +29,25 @@ export type ProviderDischargeEducationTemplate = {
 
 /** @deprecated Use PROVIDER_DISCHARGE_TEMPLATE_REGISTRY */
 export const PROVIDER_DISCHARGE_EDUCATION_TEMPLATES: readonly ProviderDischargeEducationTemplate[] =
-  PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => t.id !== "generic_ed_discharge_v1").map((t) => ({
-    id: t.id,
-    match: {
-      icdPrefixes: t.diagnosisMappings.icdFamily,
-      keywords: t.diagnosisMappings.keyword,
-    },
-    description: t.suggestedText.description,
-    instructions: t.suggestedText.diagnosisInstructions,
-    returnPrecautions: t.suggestedText.returnPrecautions,
-    sources: t.sourceReferences.map((s, i) => ({
-      id: `${t.id}-source-${i}`,
-      title: s.label,
-      url: s.url ?? "",
-      publisher: s.publisher ?? "",
-    })),
-  }));
+  PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => t.id !== "generic_ed_discharge_v1").map((t) => {
+    const text = getProviderDischargeSuggestedTextBody(t, "en");
+    return {
+      id: t.id,
+      match: {
+        icdPrefixes: t.diagnosisMappings.icdFamily,
+        keywords: t.diagnosisMappings.keyword,
+      },
+      description: text.description,
+      instructions: text.diagnosisInstructions,
+      returnPrecautions: text.returnPrecautions,
+      sources: t.sourceReferences.map((s, i) => ({
+        id: `${t.id}-source-${i}`,
+        title: s.label,
+        url: s.url ?? "",
+        publisher: s.publisher ?? "",
+      })),
+    };
+  });
 
 export function normalizeEducationMatchToken(value: string): string {
   return value.trim().toLowerCase();

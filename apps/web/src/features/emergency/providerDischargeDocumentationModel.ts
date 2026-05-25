@@ -41,6 +41,7 @@ export type ProviderDischargeTemplateMeta = {
   matchLevel: "icdExact" | "icdFamily" | "keyword" | "generic";
   sourceReferences: string[];
   templateAppliedHash?: string;
+  appliedLocale?: "en" | "fr";
   specialtyCategory?: string;
   riskCategory?: string;
   appliedAt?: string;
@@ -235,6 +236,8 @@ function readTemplateMeta(raw: unknown): ProviderDischargeTemplateMeta | undefin
       typeof o.templateAppliedHash === "string" && o.templateAppliedHash.trim() ?
         o.templateAppliedHash.trim()
       : undefined,
+    appliedLocale:
+      o.appliedLocale === "en" || o.appliedLocale === "fr" ? o.appliedLocale : undefined,
     specialtyCategory:
       typeof o.specialtyCategory === "string" && o.specialtyCategory.trim() ?
         o.specialtyCategory.trim()

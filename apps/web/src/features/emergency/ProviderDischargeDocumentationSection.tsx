@@ -441,7 +441,7 @@ export function ProviderDischargeDocumentationSection({
   diagnosticsTabHref?: string;
   validationErrors?: ProviderDischargeValidationErrors | null;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [encounterDiagnoses, setEncounterDiagnoses] = useState<DxRow[]>([]);
   const patientLeftEdLocal = isoToDatetimeLocal(providerForm.patientLeftEdAt);
 
@@ -506,19 +506,24 @@ export function ProviderDischargeDocumentationSection({
       });
       if (resolved.matchLevel === "generic" && !overwriteExisting) return;
       const cardPatch = applyProviderDischargeTemplateToCard(doc, resolved, {
+        locale: language,
         overwriteExisting,
         providerConfirmed,
         actor: { appliedAt: new Date().toISOString() },
       });
-      const sharedPatch = mergeTemplateSharedFieldsIntoForm(providerForm, extractSharedFieldsFromTemplate(resolved.template), {
-        overwriteExisting,
-      });
+      const sharedPatch = mergeTemplateSharedFieldsIntoForm(
+        providerForm,
+        extractSharedFieldsFromTemplate(resolved.template, language),
+        {
+          overwriteExisting,
+        }
+      );
       patchProvider({
         diagnosisDocs: providerForm.diagnosisDocs.map((d) => (d.id === docId ? cardPatch : d)),
         ...sharedPatch,
       });
     },
-    [patchProvider, providerForm]
+    [language, patchProvider, providerForm]
   );
 
   const ensureDocForRow = useCallback(
@@ -541,17 +546,18 @@ export function ProviderDischargeDocumentationSection({
         displayOrder: row.sortOrder,
         isPrimaryDiagnosis: isPrimary,
         applyTemplateSuggestion: applyTemplate,
+        locale: language,
       });
     },
-    [applyTemplateToDoc, providerForm]
+    [applyTemplateToDoc, language, providerForm]
   );
 
   const mergeSharedFromSelectedDiagnoses = useCallback(
-    (form: ProviderDischargeDocumentationForm) => {
+    (form: ProviderDischargeDocumentationForm, locale: "en" | "fr") => {
       const templates = getSelectedDiagnosisDocs(form)
         .map((doc) => resolveProviderDischargeTemplateForDiagnosis({ code: doc.code, displayName: doc.displayName }))
         .filter((r) => r.matchLevel !== "generic")
-        .map((r) => extractSharedFieldsFromTemplate(r.template));
+        .map((r) => extractSharedFieldsFromTemplate(r.template, locale));
       if (!templates.length) return form;
       return { ...form, ...mergeSharedFieldsFromSelectedTemplates(form, templates) };
     },
@@ -574,9 +580,9 @@ export function ProviderDischargeDocumentationSection({
       diagnosisRefs: [ref],
       diagnosisDocs: [...providerForm.diagnosisDocs.filter((d) => d.id !== doc.id), doc],
     };
-    nextForm = mergeSharedFromSelectedDiagnoses(nextForm);
+    nextForm = mergeSharedFromSelectedDiagnoses(nextForm, language);
     patchProvider(nextForm);
-  }, [encounterDiagnoses, ensureDocForRow, mergeSharedFromSelectedDiagnoses, patchProvider, providerForm]);
+  }, [encounterDiagnoses, ensureDocForRow, language, mergeSharedFromSelectedDiagnoses, patchProvider, providerForm]);
 
   useEffect(() => {
     autoPopulatePrimary();
@@ -618,7 +624,7 @@ export function ProviderDischargeDocumentationSection({
       diagnosisRefs: [...providerForm.diagnosisRefs, ref],
       diagnosisDocs: nextDocs,
     };
-    nextForm = mergeSharedFromSelectedDiagnoses(nextForm);
+    nextForm = mergeSharedFromSelectedDiagnoses(nextForm, language);
     patchProvider(nextForm);
   };
 
