@@ -6328,6 +6328,15 @@ export default {
     templateMedicationRefillHelp: "Chronic disease stability, medications reviewed, no acute complaint documented.",
     activeTemplateGuidance: "Active template MDM / documentation helpers",
     activeTemplateMdmGuidance: "Suggested MDM fragments (editable)",
+    activeTemplateMdmUnified: "Active Template MDM",
+    selectMdmTemplate: "Select a template…",
+    mdmHighValueTemplatesGroup: "High value templates",
+    mdmExistingTemplatesGroup: "Existing templates",
+    mdmTemplateStandardMdm: "Standard MDM",
+    mdmTemplatePatientConcern: "Patient concern",
+    mdmTemplateEkgNormal: "EKG normal",
+    mdmTemplateSmokingCessation: "Smoking Cessation",
+    mdmTemplatePmpReviewed: "PMP Reviewed",
     activeTemplateSmartSentences: "Editable sentence suggestions",
     activeTemplatePromptReminders: "Documentation reminders (advisory — not auto-inserted)",
     stickerExamBurnWoundPresent: "burn wound present",
@@ -6799,6 +6808,17 @@ export default {
     behavioralRiskAddressed: "behavioral risk addressed",
     medicalClearanceConsidered: "medical clearance considered if applicable",
     medicationContinuationDiscussed: "medication continuation discussed per assessment",
+  },
+  providerDocumentationMdmHighValue: {
+    standardMdm:
+      "The patient lives at home with family and has good family/social support.\n\nI have considered the above differential diagnoses as the potential cause of the patient's condition. I have based my consideration on a limited patient encounter, and my considerations may not be all-inclusive. History, physical examination, and/or diagnostic studies, in combination with medical judgment, have been used in determining the final diagnosis.\n\nDiagnostic tests were ordered, analyzed and reviewed by me and used in my medical decision making for this patient.\n\nI explained at length the nature of the workup, presumed diagnosis, treatment plan and the patient verbalized understanding. They have been given instructions to follow with a primary care provider within 48 hours and or a specialist if needed. They are invited to return to the ED at any time if there is any change in status concerning acute deterioration. All questions were answered and they are safe to be discharged at this time.",
+    patientConcern:
+      "The patient was substantially concerned that their symptoms were potentially risking their life and that emergency care was immediately required.",
+    ekgNormal:
+      "The EKG showed normal sinus rhythm, normal QT, normal QRS morphology, and no ischemic changes of the ST/T segment — interpretation by me: Normal EKG.",
+    smokingCessation:
+      "The patient was counseled on smoking cessation, including e-cigarettes and vaping; less than or equal to 10 minutes spent on discussion.",
+    pmpReviewed: "State prescription monitoring program reviewed.",
   },
   providerDocumentationSmartSentences: {
     reassessedAfterAnalgesia: "Patient reassessed after analgesia with interval improvement on exam",

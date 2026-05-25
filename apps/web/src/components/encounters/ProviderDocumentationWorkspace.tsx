@@ -49,6 +49,8 @@ import {
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import { ProviderDocumentationAccordionSection } from "@/components/encounters/ProviderDocumentationAccordionSection";
 import { ProviderDocumentationChipPanel } from "@/components/encounters/ProviderDocumentationChipPanel";
+import { ProviderDocumentationMdmTemplateDropdown } from "@/components/encounters/ProviderDocumentationTemplateDropdown";
+import { buildMdmTemplateDropdownOptions } from "@/lib/providerDocumentationMdmTemplateCatalog";
 import {
   accordionSectionsToExpandForDictation,
   defaultExpandedAccordionSections,
@@ -359,12 +361,6 @@ const previewTitleKeyBySection: Record<PreviewSectionId, string> = {
   plan: "providerDocumentationWorkspace.previewPlan",
 };
 
-const MDM_CHIPS: ChipGroup[] = [
-  { titleKey: "erMseMdmChips.catWorkingAssessment", field: "mdmWorkingAssessment", chips: ["waUndifferentiated", "waInfectious", "waCardiopulmonary", "waNeurologic", "waAbdominal", "waTrauma", "waMedIntox"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
-  { titleKey: "erMseMdmChips.catPlanSummary", field: "mdmPlanSummary", chips: ["planLabs", "planImaging", "planEcg", "planMeds", "planReassess", "planSdM"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
-  { titleKey: "erMseMdmChips.catDisposition", field: "mdmAdmitObserveDischarge", chips: ["dispDcCriteria", "dispObs", "dispAdmit", "dispTransfer", "dispReturnPrecautions"].map((key) => ({ labelKey: `erMseMdmChips.${key}`, fragmentKey: `erMseMdmChips.${key}` })) },
-];
-
 const TEMPLATE_PICKER_COLUMN_ACCENT: Record<
   ProviderDocumentationMajorGroup,
   { headingBg: string; headingBorder: string; headingColor: string; activeBg: string; activeBorder: string; activeColor: string }
@@ -468,6 +464,10 @@ export function ProviderDocumentationWorkspace({
   const hpiChipGroups = useMemo(
     () => resolveHpiChipGroupsForTemplate(value.activeTemplateId, HPI_CHIPS),
     [value.activeTemplateId]
+  );
+  const mdmTemplateOptions = useMemo(
+    () => buildMdmTemplateDropdownOptions(activeTemplate),
+    [activeTemplate]
   );
   const dynamicClusters = useMemo(
     () =>
@@ -1783,44 +1783,20 @@ export function ProviderDocumentationWorkspace({
             t={t}
           >
             {templatePromptReminders(activeTemplate)}
-            {templateGuidanceChips(
-              activeTemplate,
-              "mdmClinicalRationale",
-              "mdmClinicalRationale",
-              "providerDocumentationWorkspace.activeTemplateMdmGuidance"
-            )}
-            {templateGuidanceChips(
-              activeTemplate,
-              "mdmDifferentialSynthesis",
-              "mdmDifferentialSynthesis",
-              "providerDocumentationWorkspace.activeTemplateGuidance"
-            )}
-            {templateTextChips(
-              activeTemplate,
-              [
-                "mdmWorkingAssessment",
-                "mdmDataReviewed",
-                "mdmPlanSummary",
-                "mdmImmediateActionsRationale",
-                "mdmConsultsDiscussed",
-                "mdmAdmitObserveDischarge",
-              ],
-              "providerDocumentationWorkspace.activeTemplateMdm"
-            )}
-            {MDM_CHIPS.map((group) => (
-              <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
-                {chipRow(group.chips, (chip) => toggleField(group.field, chip.fragmentKey), {
-                  fieldText: String(value[group.field] ?? ""),
-                })}
-              </ChipGroupView>
-            ))}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmWorkingAssessment", "providerDocumentationWorkspace.complaintIntelSectionMdmAssessment")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmDifferentialSynthesis", "providerDocumentationWorkspace.complaintIntelSectionDifferential")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmDataReviewed", "providerDocumentationWorkspace.complaintIntelSectionMdmData")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmClinicalRationale", "providerDocumentationWorkspace.complaintIntelSectionMdmRationale")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmPlanSummary", "providerDocumentationWorkspace.complaintIntelSectionMdmPlan")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmImmediateActionsRationale", "providerDocumentationWorkspace.complaintIntelSectionMdmActions")}
-            {complaintIntelligenceFieldChips(activeTemplate, "mdmAdmitObserveDischarge", "providerDocumentationWorkspace.complaintIntelSectionMdmDisposition")}
+            <ProviderDocumentationMdmTemplateDropdown
+              title={t("providerDocumentationWorkspace.activeTemplateMdmUnified")}
+              placeholder={t("providerDocumentationWorkspace.selectMdmTemplate")}
+              highValueGroupLabel={t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup")}
+              existingGroupLabel={t("providerDocumentationWorkspace.mdmExistingTemplatesGroup")}
+              options={mdmTemplateOptions}
+              value={value}
+              readOnly={readOnly}
+              resolveFragment={(fragmentKey) => t(fragmentKey)}
+              resolveLabel={(option) =>
+                option.highValue ? t(option.labelKey) : t(option.fragmentKey)
+              }
+              onToggleField={toggleField}
+            />
             {dynamicClusters.length > 0 ? (
               <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicClustersTitle")}>
                 {dynamicClusters.map((cluster) => {

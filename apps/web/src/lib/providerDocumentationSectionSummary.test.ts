@@ -119,7 +119,7 @@ describe("ProviderDocumentationWorkspace accordion UI (19N.2)", () => {
     expect(workspaceSource).toContain('sectionId="hpi"');
     expect(workspaceSource).toContain("hpiChipGroups.map");
     expect(workspaceSource).toContain("ROS_CHIPS.map");
-    expect(workspaceSource).toContain("MDM_CHIPS.map");
+    expect(workspaceSource).toContain("ProviderDocumentationMdmTemplateDropdown");
     expect(workspaceSource).toContain("templateGuidanceChips");
     expect(workspaceSource).toContain('sectionId="actions"');
     expect(workspaceSource).toContain("signAttestation");
@@ -142,7 +142,8 @@ describe("ProviderDocumentationWorkspace accordion UI (19N.2)", () => {
     );
     expect(source).toContain('data-testid="provider-documentation-template-picker"');
     expect(source).toContain("PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map");
-    expect(source).toContain("activeTemplateMdmGuidance");
+    expect(source).toContain("activeTemplateMdmUnified");
+    expect(source).toContain("ProviderDocumentationMdmTemplateDropdown");
     expect(source).toContain("activeTemplateSmartSentences");
     expect(source).toContain("shouldAutosaveProviderDocumentation");
     expect(source).toContain("runManualSave");
