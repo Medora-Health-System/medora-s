@@ -25,6 +25,41 @@ function esc(s: string | null | undefined): string {
 
 const NO_DATA = "No data documented";
 
+const PROCEDURE_EXPORT_LABELS = {
+  en: {
+    section: "Section",
+    procedure: "Procedure",
+    canonicalId: "Canonical identity",
+    linkedEvent: "Linked event",
+    performedAt: "Performed at",
+    performedBy: "Performed by",
+    documentedAt: "Documented at",
+    documentedBy: "Documented by",
+    status: "Status",
+    completed: "Completed",
+    summary: "Summary",
+    roleNursing: "Nursing documentation",
+    roleProvider: "Provider documentation",
+  },
+  fr: {
+    section: "Volet",
+    procedure: "Procédure",
+    canonicalId: "Identité canonique",
+    linkedEvent: "Liée à l'événement",
+    performedAt: "Réalisée le",
+    performedBy: "Réalisée par",
+    documentedAt: "Documentée le",
+    documentedBy: "Documentée par",
+    status: "Statut",
+    completed: "Terminée",
+    summary: "Résumé",
+    roleNursing: "Documentation infirmière",
+    roleProvider: "Documentation médicale",
+  },
+} as const;
+
+export type ChartExportHtmlLocale = keyof typeof PROCEDURE_EXPORT_LABELS;
+
 function safeJsonStringify(value: unknown): string {
   try {
     return JSON.stringify(value, null, 2);
@@ -38,22 +73,36 @@ function jsonPreBlock(value: unknown): string {
 }
 
 function renderProcedureExportEntry(
-  entry: ChartExportManifest["procedures"]["entries"][number]
+  entry: ChartExportManifest["procedures"]["entries"][number],
+  locale: ChartExportHtmlLocale = "en"
 ): string {
-  if (entry.eventType === "PROCEDURE_DOCUMENTED" && entry.procedureNameFr) {
+  const labels = PROCEDURE_EXPORT_LABELS[locale];
+  if (entry.eventType === "PROCEDURE_DOCUMENTED" && (entry.procedureNameFr || entry.procedureNameEn)) {
     const performedWhen = entry.performedAtIso ?? entry.documentedAtIso ?? entry.createdAt;
-    const statusLabel = entry.status === "COMPLETED" ? "Terminée" : entry.status ?? "—";
+    const procedureName =
+      locale === "en"
+        ? entry.procedureNameEn ?? entry.procedureNameFr ?? "—"
+        : entry.procedureNameFr ?? entry.procedureNameEn ?? "—";
+    const clinicalSummary =
+      locale === "en"
+        ? entry.clinicalSummaryEn ?? entry.clinicalSummaryFr
+        : entry.clinicalSummaryFr ?? entry.clinicalSummaryEn;
+    const statusLabel = entry.status === "COMPLETED" ? labels.completed : entry.status ?? "—";
+    const roleLabel =
+      entry.documentationRole === "NURSING"
+        ? labels.roleNursing
+        : labels.roleProvider;
     return `<li class="procedure-doc">
-      ${pAlways("Volet", entry.documentationRoleFr ?? (entry.documentationRole === "NURSING" ? "Documentation infirmière" : "Documentation médicale"))}
-      ${pAlways("Procédure", entry.procedureNameFr)}
-      ${pLine("Identité canonique", entry.canonicalProcedureType ?? undefined)}
-      ${pLine("Liée à l'événement", entry.linkedProcedureEventId ?? undefined)}
-      ${pAlways("Réalisée le", performedWhen)}
-      ${pLine("Réalisée par", entry.performedByDisplayFr)}
-      ${pAlways("Documentée le", entry.documentedAtIso ?? entry.createdAt)}
-      ${pAlways("Documentée par", entry.documentedByDisplayFr ?? entry.createdByDisplayFr)}
-      ${pAlways("Statut", statusLabel)}
-      ${pLine("Résumé", entry.clinicalSummaryFr)}
+      ${pAlways(labels.section, roleLabel)}
+      ${pAlways(labels.procedure, procedureName)}
+      ${pLine(labels.canonicalId, entry.canonicalProcedureType ?? undefined)}
+      ${pLine(labels.linkedEvent, entry.linkedProcedureEventId ?? undefined)}
+      ${pAlways(labels.performedAt, performedWhen)}
+      ${pLine(labels.performedBy, entry.performedByDisplayFr)}
+      ${pAlways(labels.documentedAt, entry.documentedAtIso ?? entry.createdAt)}
+      ${pAlways(labels.documentedBy, entry.documentedByDisplayFr ?? entry.createdByDisplayFr)}
+      ${pAlways(labels.status, statusLabel)}
+      ${pLine(labels.summary, clinicalSummary ?? undefined)}
       ${jsonPreBlock(entry.payloadJson)}
     </li>`;
   }
@@ -80,6 +129,44 @@ function workspaceProviderNoteHtml(
   </div>`;
 }
 
+function nursingDocumentationHtml(
+  nursingDocumentation: ChartExportManifest["encounter"]["nursingDocumentation"]
+): string {
+  if (!nursingDocumentation) return `<p class="muted">${esc(NO_DATA)}</p>`;
+  const parts: string[] = [];
+  const initial = nursingDocumentation.initialAssessment;
+  if (initial && initial.sections.length > 0) {
+    const meta = [initial.documentedBy, initial.documentedAt].filter(Boolean).join(" — ");
+    parts.push(`<div class="note-block">
+      <h3>${esc(initial.title)}</h3>
+      ${meta ? `<p class="muted">${esc(meta)}</p>` : ""}
+      ${initial.sections
+        .map(
+          (section) => `<div class="note-section"><strong>${esc(section.label)}</strong><div class="pre-text">${esc(
+            section.text
+          )}</div></div>`
+        )
+        .join("")}
+    </div>`);
+  }
+  const discharge = nursingDocumentation.dischargeExecution;
+  if (discharge) {
+    const meta = [discharge.documentedBy, discharge.documentedAt].filter(Boolean).join(" — ");
+    parts.push(`<div class="note-block">
+      <h3>Nursing discharge documentation</h3>
+      ${meta ? `<p class="muted">${esc(meta)}</p>` : ""}
+      ${
+        discharge.executionNote
+          ? `<div class="note-section"><strong>Execution note</strong><div class="pre-text">${esc(
+              discharge.executionNote
+            )}</div></div>`
+          : ""
+      }
+    </div>`);
+  }
+  return parts.length > 0 ? parts.join("") : `<p class="muted">${esc(NO_DATA)}</p>`;
+}
+
 function h2(title: string): string {
   return `<h2>${esc(title)}</h2>`;
 }
@@ -101,7 +188,11 @@ function pAlways(label: string, value: string | null | undefined): string {
 /**
  * Renders the manifest as a complete HTML document (print-friendly, inline CSS only).
  */
-export function renderEncounterChartExportHtml(manifest: ChartExportManifest): string {
+export function renderEncounterChartExportHtml(
+  manifest: ChartExportManifest,
+  options?: { locale?: ChartExportHtmlLocale }
+): string {
+  const locale = options?.locale ?? "en";
   const title = manifest.livePreview
     ? "Encounter chart export (live preview)"
     : "Encounter chart export (generated)";
@@ -189,6 +280,8 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
     ${pLine("Clinician impression", enc.clinicianImpression)}
     ${pLine("Provider note", enc.providerNote)}
     ${observationStayHtml}
+    <h3>Initial nursing documentation</h3>
+    ${nursingDocumentationHtml(enc.nursingDocumentation)}
     <h3>Nursing assessment / structured JSON</h3>
     ${enc.nursingAssessment != null ? jsonPreBlock(enc.nursingAssessment) : `<p class="muted">${esc(NO_DATA)}</p>`}
     <h3>Discharge summary JSON</h3>
@@ -343,7 +436,7 @@ export function renderEncounterChartExportHtml(manifest: ChartExportManifest): s
   const procInner =
     manifest.procedures.entries.length === 0
       ? `<p class="muted">${esc(NO_DATA)}</p>`
-      : `<ol>${manifest.procedures.entries.map(renderProcedureExportEntry).join("")}</ol>`;
+      : `<ol>${manifest.procedures.entries.map((entry) => renderProcedureExportEntry(entry, locale)).join("")}</ol>`;
 
   const ivInner =
     manifest.ivAccess.entries.length === 0

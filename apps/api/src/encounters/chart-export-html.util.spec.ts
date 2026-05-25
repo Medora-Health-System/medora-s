@@ -43,6 +43,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
         signedByDisplayFr: null,
         workspaceNote: null,
       },
+      nursingDocumentation: null,
       providerAddenda: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",
@@ -193,7 +194,41 @@ describe("chart-export-html.util", () => {
     expect(html).toContain("&lt;/pre&gt;");
   });
 
-  it("renders documented procedures with French summary fields and full payload", () => {
+  it("renders initial nursing documentation from structured manifest field", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          nursingDocumentation: {
+            initialAssessment: {
+              title: "Initial nursing assessment",
+              documentedBy: "Marie Infirmière",
+              documentedAt: "2026-05-18T09:30:00.000Z",
+              sections: [
+                {
+                  id: "etatGeneral",
+                  label: "General appearance",
+                  text: "Patient calme, peau chaude et sèche.",
+                },
+              ],
+            },
+            dischargeExecution: {
+              documentedBy: "Marie Infirmière",
+              documentedAt: "2026-05-18T14:00:00.000Z",
+              executionNote: "Consignes de sortie revues avec le patient.",
+            },
+          },
+        },
+      })
+    );
+    expect(html).toContain("Initial nursing documentation");
+    expect(html).toContain("Initial nursing assessment");
+    expect(html).toContain("Patient calme, peau chaude et sèche.");
+    expect(html).toContain("Nursing discharge documentation");
+    expect(html).toContain("Consignes de sortie revues avec le patient.");
+  });
+
+  it("renders documented procedures with locale-aware summary fields and full payload", () => {
     const html = renderEncounterChartExportHtml(
       baseManifest({
         procedures: {
@@ -209,12 +244,14 @@ describe("chart-export-html.util", () => {
               },
               createdByDisplayFr: "Dr Alice Test",
               procedureNameFr: "Suture de lacération (documentée)",
+              procedureNameEn: "Laceration repair (documented)",
               performedAtIso: "2026-05-18T10:00:00.000Z",
               documentedAtIso: "2026-05-18T10:05:00.000Z",
               performedByDisplayFr: "Dr Alice Test",
               documentedByDisplayFr: "Dr Alice Test",
               status: "COMPLETED",
               clinicalSummaryFr: "Suture de lacération (documentée) — Site : Main gauche",
+              clinicalSummaryEn: "Laceration repair (documented) — Site : Main gauche",
               documentationRole: "PROVIDER",
               documentationRoleFr: "Documentation médicale",
             },
@@ -222,16 +259,50 @@ describe("chart-export-html.util", () => {
         },
       })
     );
-    expect(html).toContain("Volet");
-    expect(html).toContain("Documentation médicale");
-    expect(html).toContain("Procédure");
-    expect(html).toContain("Suture de lacération (documentée)");
-    expect(html).toContain("Réalisée le");
+    expect(html).toContain("Section");
+    expect(html).toContain("Provider documentation");
+    expect(html).toContain("Procedure");
+    expect(html).toContain("Laceration repair (documented)");
+    expect(html).toContain("Performed at");
     expect(html).toContain("2026-05-18T10:00:00.000Z");
-    expect(html).toContain("Documentée par");
+    expect(html).toContain("Documented by");
     expect(html).toContain("Dr Alice Test");
-    expect(html).toContain("Statut");
-    expect(html).toContain("Terminée");
+    expect(html).toContain("Status");
+    expect(html).toContain("Completed");
+    expect(html).not.toContain("Volet");
+    expect(html).not.toContain("Réalisée le");
     expect(html).toContain("LACERATION_REPAIR");
+  });
+
+  it("renders French procedure labels when locale is fr", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        procedures: {
+          entries: [
+            {
+              id: "proc-fr",
+              createdAt: "2026-05-18T10:05:00.000Z",
+              eventType: "PROCEDURE_DOCUMENTED",
+              payloadJson: { procedureType: "REDUCTION" },
+              createdByDisplayFr: "Dr Alice Test",
+              procedureNameFr: "Réduction (documentée)",
+              procedureNameEn: "Reduction (documented)",
+              performedAtIso: "2026-05-18T10:00:00.000Z",
+              documentedAtIso: "2026-05-18T10:05:00.000Z",
+              performedByDisplayFr: "Dr Alice Test",
+              documentedByDisplayFr: "Dr Alice Test",
+              status: "COMPLETED",
+              clinicalSummaryFr: "Réduction (documentée) — Statut : terminée",
+              clinicalSummaryEn: "Reduction (documented) — Status: completed",
+              documentationRole: "PROVIDER",
+              documentationRoleFr: "Documentation médicale",
+            },
+          ],
+        },
+      }),
+      { locale: "fr" }
+    );
+    expect(html).toContain("Volet");
+    expect(html).toContain("Réalisée le");
   });
 });

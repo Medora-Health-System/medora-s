@@ -6,6 +6,7 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { buildAdvancedProcedureSummaryRows } from "@/lib/advancedProcedureSummary";
+import { formatDocumentedProcedureClinicalSummary } from "@medora/shared";
 import {
   formatProcedureEnumField,
   lacerationAnesthesiaDisplayText,
@@ -248,8 +249,14 @@ function buildProcedureDetailRows(
       v: row.status === "COMPLETED" ? t("erProcedureLauncher.summaryStatusCompleted") : row.status ?? "—",
     },
   ];
-  if (row.clinicalSummaryFr) {
-    rows.push({ k: "summaryDetailClinicalSummary", v: row.clinicalSummaryFr });
+  const localeSummary = formatDocumentedProcedureClinicalSummary({
+    payloadJson: row.payload,
+    documentedAtIso: row.documentedAt ?? row.createdAt,
+    documentedByDisplayName: row.documentedByDisplayName,
+    locale: language === "en" ? "en" : "fr",
+  });
+  if (localeSummary) {
+    rows.push({ k: "summaryDetailClinicalSummary", v: localeSummary });
   }
   const fe = (field: string, other: string, group: string) => formatProcedureEnumField(p, field, other, group, t);
 

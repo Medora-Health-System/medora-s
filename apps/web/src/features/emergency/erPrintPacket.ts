@@ -16,6 +16,10 @@ import {
   type DischargeSummaryFieldsFr,
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
+import type {
+  ErEdSummaryMarEventRow,
+  ErEdSummaryMedicationOrderRow,
+} from "@/features/emergency/erEdSummaryMedicationMar";
 import type { DischargePrintEncounter, DischargePrintPatient } from "@/components/encounters/DischargePrintLayout";
 import { hydrateDischargeFormFromEncounterJson } from "@/lib/encounterDischarge";
 import {
@@ -23,10 +27,15 @@ import {
   inferOutcomeUiFromForms,
   localizedErDischargeModeLabel,
   readDispositionSignatureFromEncounter,
-  readDischargeSortieExecutionFromEncounter,
   type ErDispositionOutcomeUi,
 } from "@/features/emergency/emergencyDispositionV1";
 import { deriveEmtalaStateFromEncounter, type ErEmtalaV1Stored } from "@/features/emergency/erEmtalaV1";
+import {
+  buildInitialNursingAssessmentPrintSection,
+  buildNursingDischargePrintSection,
+  type ErPrintInitialNursingSection,
+  type ErPrintNursingDischargeSection,
+} from "@/features/emergency/erInitialNursingAssessmentSummary";
 import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 
 export type ErPrintTriageSnapshot = {
@@ -194,12 +203,17 @@ export function getErPrintPacketHtml(params: {
    * pre-existing print output is byte-identical to before this feature.
    */
   nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
+  initialNursingAssessment?: ErPrintInitialNursingSection | null;
+  nursingDischargeDocumentation?: ErPrintNursingDischargeSection | null;
   providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
   handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
   dischargeSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
   admissionSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
   dispositionSupplementEntries?: ErPrintDocumentationHistoryEntry[] | null;
   triageAssessmentEntries?: ErPrintDocumentationHistoryEntry[] | null;
+  medicationOrderRows?: ErEdSummaryMedicationOrderRow[] | null;
+  marEventRows?: ErEdSummaryMarEventRow[] | null;
+  procedureSummaries?: string[] | null;
 }): string {
   const {
     patient,
@@ -209,12 +223,17 @@ export function getErPrintPacketHtml(params: {
     triageSnapshot,
     language,
     nursingReassessmentEntries,
+    initialNursingAssessment: initialNursingAssessmentParam,
+    nursingDischargeDocumentation: nursingDischargeDocumentationParam,
     providerMseEntries,
     handoffEntries,
     dischargeSummaryEntries,
     admissionSummaryEntries,
     dispositionSupplementEntries,
     triageAssessmentEntries,
+    medicationOrderRows,
+    marEventRows,
+    procedureSummaries,
   } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -264,7 +283,12 @@ export function getErPrintPacketHtml(params: {
 
   const handoff = readErHandoffV1FromNursingAssessment(encounter.nursingAssessment);
   const disSig = readDispositionSignatureFromEncounter(encounter.nursingAssessment);
-  const sortieExec = readDischargeSortieExecutionFromEncounter(encounter.nursingAssessment);
+  const initialNursingAssessment =
+    initialNursingAssessmentParam ??
+    buildInitialNursingAssessmentPrintSection(encounter.nursingAssessment, language);
+  const nursingDischargeDocumentation =
+    nursingDischargeDocumentationParam ??
+    buildNursingDischargePrintSection(encounter.nursingAssessment, language);
 
   const body: string[] = [];
 
@@ -410,6 +434,14 @@ export function getErPrintPacketHtml(params: {
   }
 
   /**
+   * Initial nursing assessment (`nursingEvalV1`) — shown once, before reassessment history.
+   */
+  if (initialNursingAssessment && initialNursingAssessment.sections.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionInitialNursingAssessment"));
+    appendInitialNursingAssessmentBlock(body, language, initialNursingAssessment);
+  }
+
+  /**
    * Reassessment history — only when caller pre-fetched and passed entries. Compact one block
    * per persisted column with time, author, structured one-liners, and a narrative excerpt.
    */
@@ -418,8 +450,62 @@ export function getErPrintPacketHtml(params: {
     appendNursingReassessmentHistoryBlock(body, language, loc, nursingReassessmentEntries);
   }
 
+  if (nursingDischargeDocumentation) {
+    body.push(h2(language, "printOutput.erPacket.sectionNursingDischargeDocumentation"));
+    appendNursingDischargeDocumentationBlock(body, language, nursingDischargeDocumentation);
+  }
+
+  if (Array.isArray(medicationOrderRows) && medicationOrderRows.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionMedicationOrders"));
+    medicationOrderRows.forEach((row) => {
+      body.push(
+        `<p style="margin: 8px 0; font-size: 13px; line-height: 1.45;"><strong>${esc(row.medicationName)}</strong><br/>${esc(
+          printT(language, "printOutput.erPacket.medOrderLine")
+            .replace("{dose}", row.dose)
+            .replace("{route}", row.route)
+            .replace("{instructions}", row.instructions)
+            .replace("{orderedBy}", row.orderedBy)
+            .replace("{orderedAt}", row.orderedAt)
+            .replace("{status}", row.status)
+        )}</p>`
+      );
+    });
+  }
+
+  if (Array.isArray(marEventRows) && marEventRows.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionMarEvents"));
+    marEventRows.forEach((row) => {
+      const baseLine = printT(language, "printOutput.erPacket.marEventLine")
+        .replace("{action}", row.action)
+        .replace("{dose}", row.dose)
+        .replace("{route}", row.route)
+        .replace("{administeredBy}", row.administeredBy)
+        .replace("{administeredAt}", row.administeredAt);
+      const injection =
+        row.injectionSite !== "—"
+          ? ` · ${printT(language, "printOutput.erPacket.marInjectionSite")}: ${row.injectionSite}`
+          : "";
+      const notes =
+        row.notes !== "—"
+          ? `<br/>${esc(printT(language, "printOutput.erPacket.marNotes"))}: ${esc(row.notes)}`
+          : "";
+      body.push(
+        `<p style="margin: 8px 0; font-size: 13px; line-height: 1.45;"><strong>${esc(row.medicationName)}</strong><br/>${esc(
+          baseLine
+        )}${esc(injection)}${notes}</p>`
+      );
+    });
+  }
+
+  if (Array.isArray(procedureSummaries) && procedureSummaries.length > 0) {
+    body.push(h2(language, "printOutput.erPacket.sectionProcedures"));
+    procedureSummaries.forEach((summary) => {
+      body.push(`<p style="margin: 8px 0; font-size: 13px; line-height: 1.45;">${esc(summary)}</p>`);
+    });
+  }
+
   body.push(h2(language, "printOutput.erPacket.sectionSignatures"));
-  appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig, sortieExec);
+  appendSignatureBlock(body, language, loc, encounter, emtalaDerived, disSig);
 
   const footer = esc(printT(language, "printOutput.common.documentFooter").replace("{date}", printDate));
   body.push(`<p style="margin-top: 20px; font-size: 11px;">${footer}</p>`);
@@ -643,14 +729,51 @@ function appendDocumentationHistoryBlock(
   });
 }
 
+function appendInitialNursingAssessmentBlock(
+  body: string[],
+  language: SupportedLanguage,
+  section: ErPrintInitialNursingSection
+): void {
+  const author = section.roleTitle
+    ? `${section.documentedBy} (${section.roleTitle})`
+    : section.documentedBy;
+  body.push(
+    line(
+      printT(language, "printOutput.erPacket.initialNursingDocumentedBy"),
+      `${author} — ${section.documentedAt}`
+    )
+  );
+  section.sections.forEach((sec) => {
+    body.push(`<p style="margin: 10px 0 4px 0; font-size: 13px; font-weight: 700;">${esc(sec.label)}</p>`);
+    body.push(`<p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.45; white-space: pre-wrap;">${esc(sec.text)}</p>`);
+  });
+}
+
+function appendNursingDischargeDocumentationBlock(
+  body: string[],
+  language: SupportedLanguage,
+  section: ErPrintNursingDischargeSection
+): void {
+  body.push(
+    line(
+      printT(language, "printOutput.erPacket.nursingDischargeDocumentedBy"),
+      `${section.documentedBy} — ${section.documentedAt}`
+    )
+  );
+  if (section.executionNote) {
+    body.push(
+      line(printT(language, "printOutput.erPacket.executionNote"), section.executionNote)
+    );
+  }
+}
+
 function appendSignatureBlock(
   body: string[],
   language: SupportedLanguage,
   loc: string,
   encounter: ErPrintEncounter,
   emtala: ErEmtalaV1Stored | null,
-  disSig: ReturnType<typeof readDispositionSignatureFromEncounter>,
-  sortieExec: ReturnType<typeof readDischargeSortieExecutionFromEncounter>
+  disSig: ReturnType<typeof readDispositionSignatureFromEncounter>
 ): void {
   if (encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedAt) {
     const who = encounter.providerDocumentationSignedByDisplayFr?.trim() || "—";
@@ -690,17 +813,6 @@ function appendSignatureBlock(
       )
     );
   }
-  if (sortieExec) {
-    body.push(
-      line(
-        printT(language, "printOutput.erPacket.nursingDischargeExecution"),
-        `${sortieExec.dischargeSortieCompletedByDisplayName.trim()} — ${fmtIso(sortieExec.dischargeSortieCompletedAt, loc)}`
-      )
-    );
-    if (sortieExec.dischargeSortieExecutionNote?.trim()) {
-      body.push(line(printT(language, "printOutput.erPacket.executionNote"), sortieExec.dischargeSortieExecutionNote.trim()));
-    }
-  }
   if (emtala?.signature?.savedAt && emtala.signature.savedByDisplayName) {
     body.push(
       line(
@@ -716,22 +828,7 @@ export function buildErPrintPacketModel(input: Parameters<typeof getErPrintPacke
   return getErPrintPacketHtml(input);
 }
 
-export function printErPacket(params: {
-  patient: DischargePrintPatient;
-  encounter: ErPrintEncounter;
-  facilityName?: string | null;
-  primaryDiagnosis?: string | null;
-  triageSnapshot: ErPrintTriageSnapshot;
-  language: SupportedLanguage;
-  /** Optional pre-fetched append-only reassessment history (see `getErPrintPacketHtml`). */
-  nursingReassessmentEntries?: ErPrintReassessmentEntry[] | null;
-  providerMseEntries?: ErPrintDocumentationHistoryEntry[] | null;
-  handoffEntries?: ErPrintDocumentationHistoryEntry[] | null;
-  dischargeSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
-  admissionSummaryEntries?: ErPrintDocumentationHistoryEntry[] | null;
-  dispositionSupplementEntries?: ErPrintDocumentationHistoryEntry[] | null;
-  triageAssessmentEntries?: ErPrintDocumentationHistoryEntry[] | null;
-}): void {
+export function printErPacket(params: Parameters<typeof getErPrintPacketHtml>[0]): void {
   const win = window.open("", "_blank");
   if (!win) {
     alert(printT(params.language, "printOutput.common.popupBlocked"));

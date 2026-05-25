@@ -23,6 +23,7 @@ import {
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
+import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMarSummaryCard";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -485,9 +486,11 @@ export function EmergencyVisitSummaryPanel({
     return Boolean(
       model.motifPresentation ||
         model.triageResume ||
+        model.initialNursingAssessment ||
         model.resumeInfirmier ||
         model.evaluationMedicale ||
         model.disposition ||
+        model.nursingDischargeDocumentation ||
         model.handoff ||
         model.emtala ||
         model.timeline.length > 0 ||
@@ -556,6 +559,13 @@ export function EmergencyVisitSummaryPanel({
         enabled={proceduresFetchEnabled}
       />
 
+      <ErMedicationMarSummaryCard
+        encounterId={encounterId}
+        facilityId={facilityId}
+        refreshToken={resultsRefresh}
+        enabled={proceduresFetchEnabled}
+      />
+
       <EnterpriseEncounterCommandTimeline
         encounterId={encounterId}
         facilityId={facilityId}
@@ -578,6 +588,9 @@ export function EmergencyVisitSummaryPanel({
             subline={t("emergencyVisitSummaryPanel.triageAssessmentHistorySubline")}
             t={t}
           />
+        ) : null}
+        {model.initialNursingAssessment ? (
+          <SummaryBlockCard accent="#0284c7" block={model.initialNursingAssessment} />
         ) : null}
         {model.resumeInfirmier ? <SummaryBlockCard accent="#0ea5e9" block={model.resumeInfirmier} /> : null}
         {/**
@@ -663,6 +676,9 @@ export function EmergencyVisitSummaryPanel({
         ) : null}
 
         {model.disposition ? <SummaryBlockCard accent="#64748b" block={model.disposition} /> : null}
+        {model.nursingDischargeDocumentation ? (
+          <SummaryBlockCard accent="#0891b2" block={model.nursingDischargeDocumentation} />
+        ) : null}
         {model.dischargeSummaryHistory.length > 0 ? (
           <DocumentationHistoryCard
             accent="#64748b"

@@ -49,6 +49,27 @@ export const DOCUMENTED_PROCEDURE_DISPLAY_NAME_FR: Record<DocumentedProcedureTyp
   LUMBAR_PUNCTURE: "Ponction lombaire (documentée)",
 };
 
+/** English display labels for locale-aware summary surfaces (Phase 19W). */
+export const DOCUMENTED_PROCEDURE_DISPLAY_NAME_EN: Record<DocumentedProcedureType, string> = {
+  LACERATION_REPAIR: "Laceration repair (documented)",
+  WOUND_CARE: "Wound care (documented)",
+  INCISION_AND_DRAINAGE: "Incision and drainage (documented)",
+  SPLINT_APPLICATION: "Splint application (documented)",
+  FOLEY_CATHETER: "Foley catheter (documented)",
+  EKG: "EKG (documented)",
+  GLUCOSE_CHECK: "Capillary glucose check (documented)",
+  URINE_COLLECTION: "Urine collection (documented)",
+  PREGNANCY_TEST: "Pregnancy test (documented)",
+  CHEST_TUBE: "Chest tube (documented)",
+  INTUBATION: "Intubation (documented)",
+  CENTRAL_LINE: "Central line (documented)",
+  PROCEDURAL_SEDATION: "Procedural sedation (documented)",
+  REDUCTION: "Reduction (documented)",
+  THORACENTESIS_PARACENTESIS: "Thoracentesis / paracentesis (documented)",
+  PELVIC_EXAM: "Pelvic exam (documented)",
+  LUMBAR_PUNCTURE: "Lumbar puncture (documented)",
+};
+
 export function medoraCodeForDocumentedProcedureType(procedureType: string | null | undefined): string | null {
   const k = procedureType?.trim();
   if (!k || !(k in DOCUMENTED_PROCEDURE_BILLING_MEDORA_CODE)) return null;
@@ -59,4 +80,10 @@ export function displayNameFrForDocumentedProcedureType(procedureType: string | 
   const k = procedureType?.trim();
   if (!k || !(k in DOCUMENTED_PROCEDURE_DISPLAY_NAME_FR)) return "Procédure documentée";
   return DOCUMENTED_PROCEDURE_DISPLAY_NAME_FR[k as DocumentedProcedureType];
+}
+
+export function displayNameEnForDocumentedProcedureType(procedureType: string | null | undefined): string {
+  const k = procedureType?.trim();
+  if (!k || !(k in DOCUMENTED_PROCEDURE_DISPLAY_NAME_EN)) return "Documented procedure";
+  return DOCUMENTED_PROCEDURE_DISPLAY_NAME_EN[k as DocumentedProcedureType];
 }

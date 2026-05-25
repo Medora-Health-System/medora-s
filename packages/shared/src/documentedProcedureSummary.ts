@@ -1,4 +1,7 @@
-import { displayNameFrForDocumentedProcedureType } from "./documentedProcedureBillingBridge.js";
+import {
+  displayNameEnForDocumentedProcedureType,
+  displayNameFrForDocumentedProcedureType,
+} from "./documentedProcedureBillingBridge.js";
 import {
   readCanonicalProcedureTypeFromPayload,
   readDocumentationRoleFromPayload,
@@ -8,6 +11,8 @@ import {
 export const DOCUMENTED_PROCEDURE_STATUS_COMPLETED = "COMPLETED" as const;
 
 export type DocumentedProcedureStatus = typeof DOCUMENTED_PROCEDURE_STATUS_COMPLETED;
+
+export type DocumentedProcedureSummaryLocale = "en" | "fr";
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -30,6 +35,15 @@ export function displayNameFrForDocumentedProcedurePayload(payloadJson: unknown)
   return displayNameFrForDocumentedProcedureType(procedureType);
 }
 
+export function displayNameEnForDocumentedProcedurePayload(payloadJson: unknown): string {
+  const procedureType = readCanonicalProcedureTypeFromPayload(payloadJson);
+  const documentationRole = readDocumentationRoleFromPayload(payloadJson);
+  if (documentationRole === "NURSING" && procedureType) {
+    return `${displayNameEnForDocumentedProcedureType(procedureType)} (nursing care)`;
+  }
+  return displayNameEnForDocumentedProcedureType(procedureType);
+}
+
 export function readProcedureTypeFromPayload(payloadJson: unknown): string | null {
   return readCanonicalProcedureTypeFromPayload(payloadJson);
 }
@@ -47,9 +61,51 @@ export function readPerformerTitleFromPayload(payloadJson: unknown): string | nu
   return readStr(asRecord(payloadJson), "performerTitle");
 }
 
+const PROCEDURE_SUMMARY_LABELS: Record<
+  DocumentedProcedureSummaryLocale,
+  {
+    site: string;
+    performedAt: string;
+    performedBy: string;
+    documentedBy: string;
+    roleNursing: string;
+    roleProvider: string;
+    statusCompleted: string;
+    assistedProvider: string;
+    notes: string;
+    complications: string;
+  }
+> = {
+  en: {
+    site: "Site",
+    performedAt: "Performed at",
+    performedBy: "Performed by",
+    documentedBy: "Documented by",
+    roleNursing: "Section: nursing",
+    roleProvider: "Section: provider",
+    statusCompleted: "Status: completed",
+    assistedProvider: "Assisting provider",
+    notes: "Notes",
+    complications: "Complications",
+  },
+  fr: {
+    site: "Site",
+    performedAt: "Réalisée le",
+    performedBy: "Réalisée par",
+    documentedBy: "Documentée par",
+    roleNursing: "Volet : soins infirmiers",
+    roleProvider: "Volet : médecin",
+    statusCompleted: "Statut : terminée",
+    assistedProvider: "Médecin assisté",
+    notes: "Notes",
+    complications: "Complications",
+  },
+};
+
 export type DocumentedProcedureSummaryMeta = {
   procedureType: string;
   procedureNameFr: string;
+  procedureNameEn: string;
   performedAtIso: string | null;
   documentedAtIso: string;
   performedByDisplayName: string | null;
@@ -57,8 +113,57 @@ export type DocumentedProcedureSummaryMeta = {
   performerTitle: string | null;
   status: DocumentedProcedureStatus;
   clinicalSummaryFr: string;
+  clinicalSummaryEn: string;
   documentationRole: ProcedureDocumentationRole;
 };
+
+export function formatDocumentedProcedureClinicalSummary(input: {
+  payloadJson: unknown;
+  documentedAtIso: string;
+  documentedByDisplayName: string | null;
+  locale: DocumentedProcedureSummaryLocale;
+}): string | null {
+  const procedureType = readCanonicalProcedureTypeFromPayload(input.payloadJson);
+  if (!procedureType) return null;
+
+  const record = asRecord(input.payloadJson);
+  const documentationRole = readDocumentationRoleFromPayload(input.payloadJson);
+  const labels = PROCEDURE_SUMMARY_LABELS[input.locale];
+  const procedureName =
+    input.locale === "en"
+      ? displayNameEnForDocumentedProcedurePayload(input.payloadJson)
+      : displayNameFrForDocumentedProcedurePayload(input.payloadJson);
+  const performedAtIso = readPerformedAtFromPayload(input.payloadJson);
+  const performedByDisplayName = readPerformedByDisplayNameFromPayload(input.payloadJson);
+  const performerTitle = readPerformerTitleFromPayload(input.payloadJson);
+  const documentedByDisplayName = input.documentedByDisplayName?.trim() || null;
+
+  const parts: string[] = [procedureName];
+  const site = readStr(record, "site");
+  if (site) parts.push(`${labels.site} : ${site}`);
+  if (performedAtIso) parts.push(`${labels.performedAt} ${performedAtIso}`);
+  if (performedByDisplayName) {
+    parts.push(
+      performerTitle
+        ? `${labels.performedBy} ${performerTitle} ${performedByDisplayName}`
+        : `${labels.performedBy} ${performedByDisplayName}`
+    );
+  }
+  if (documentedByDisplayName) parts.push(`${labels.documentedBy} ${documentedByDisplayName}`);
+  if (documentationRole === "NURSING") parts.push(labels.roleNursing);
+  else parts.push(labels.roleProvider);
+  parts.push(labels.statusCompleted);
+
+  const assistedProvider = readStr(record, "assistedProviderName");
+  if (assistedProvider) parts.push(`${labels.assistedProvider} : ${assistedProvider}`);
+
+  const notes = readStr(record, "notes");
+  if (notes) parts.push(`${labels.notes} : ${notes.slice(0, 160)}`);
+  const complications = readStr(record, "complications");
+  if (complications) parts.push(`${labels.complications} : ${complications.slice(0, 120)}`);
+
+  return parts.join(" — ");
+}
 
 export function buildDocumentedProcedureSummaryMeta(input: {
   payloadJson: unknown;
@@ -68,48 +173,41 @@ export function buildDocumentedProcedureSummaryMeta(input: {
   const procedureType = readCanonicalProcedureTypeFromPayload(input.payloadJson);
   if (!procedureType) return null;
 
-  const record = asRecord(input.payloadJson);
   const procedureNameFr = displayNameFrForDocumentedProcedurePayload(input.payloadJson);
+  const procedureNameEn = displayNameEnForDocumentedProcedurePayload(input.payloadJson);
   const documentationRole = readDocumentationRoleFromPayload(input.payloadJson);
   const performedAtIso = readPerformedAtFromPayload(input.payloadJson);
   const performedByDisplayName = readPerformedByDisplayNameFromPayload(input.payloadJson);
   const performerTitle = readPerformerTitleFromPayload(input.payloadJson);
   const documentedByDisplayName = input.documentedByDisplayName?.trim() || null;
 
-  const parts: string[] = [procedureNameFr];
-  const site = readStr(record, "site");
-  if (site) parts.push(`Site : ${site}`);
-  if (performedAtIso) parts.push(`Réalisée le ${performedAtIso}`);
-  if (performedByDisplayName) {
-    parts.push(
-      performerTitle
-        ? `Réalisée par ${performerTitle} ${performedByDisplayName}`
-        : `Réalisée par ${performedByDisplayName}`
-    );
-  }
-  if (documentedByDisplayName) parts.push(`Documentée par ${documentedByDisplayName}`);
-  if (documentationRole === "NURSING") parts.push("Volet : soins infirmiers");
-  else parts.push("Volet : médecin");
-  parts.push("Statut : terminée");
-
-  const assistedProvider = readStr(record, "assistedProviderName");
-  if (assistedProvider) parts.push(`Médecin assisté : ${assistedProvider}`);
-
-  const notes = readStr(record, "notes");
-  if (notes) parts.push(`Notes : ${notes.slice(0, 160)}`);
-  const complications = readStr(record, "complications");
-  if (complications) parts.push(`Complications : ${complications.slice(0, 120)}`);
+  const clinicalSummaryFr =
+    formatDocumentedProcedureClinicalSummary({
+      payloadJson: input.payloadJson,
+      documentedAtIso: input.documentedAtIso,
+      documentedByDisplayName: input.documentedByDisplayName,
+      locale: "fr",
+    }) ?? procedureNameFr;
+  const clinicalSummaryEn =
+    formatDocumentedProcedureClinicalSummary({
+      payloadJson: input.payloadJson,
+      documentedAtIso: input.documentedAtIso,
+      documentedByDisplayName: input.documentedByDisplayName,
+      locale: "en",
+    }) ?? procedureNameEn;
 
   return {
     procedureType,
     procedureNameFr,
+    procedureNameEn,
     performedAtIso,
     documentedAtIso: input.documentedAtIso,
     performedByDisplayName,
     documentedByDisplayName,
     performerTitle,
     status: DOCUMENTED_PROCEDURE_STATUS_COMPLETED,
-    clinicalSummaryFr: parts.join(" — "),
+    clinicalSummaryFr,
+    clinicalSummaryEn,
     documentationRole,
   };
 }

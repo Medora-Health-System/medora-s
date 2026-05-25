@@ -21,6 +21,11 @@ import {
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
 import {
+  buildErEdSummaryMarEventRows,
+  buildErEdSummaryMedicationOrderRows,
+} from "@/features/emergency/erEdSummaryMedicationMar";
+import { formatDocumentedProcedureClinicalSummary } from "@medora/shared";
+import {
   buildEmergencyVisitSummaryModel,
   type ClinicalDocumentationEventApiEntry,
   type NursingReassessmentApiEntry,
@@ -249,6 +254,49 @@ export function EmergencyErSummaryClosureSurface({
     } catch {
       /* Non-fatal: print proceeds without documentation history sections. */
     }
+    let medicationOrderRows = null;
+    let marEventRows = null;
+    let procedureSummaries: string[] | null = null;
+    try {
+      const [ordersRaw, adminsRaw, proceduresRaw] = await Promise.all([
+        apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}/procedures`, { facilityId }),
+      ]);
+      const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+      const admins = Array.isArray(adminsRaw) ? adminsRaw : [];
+      medicationOrderRows = buildErEdSummaryMedicationOrderRows({ orders, language, t });
+      marEventRows = buildErEdSummaryMarEventRows({ admins, language, t });
+      const procedureEntries =
+        proceduresRaw && typeof proceduresRaw === "object" && !Array.isArray(proceduresRaw)
+          ? (proceduresRaw as { entries?: unknown }).entries
+          : null;
+      if (Array.isArray(procedureEntries)) {
+        procedureSummaries = procedureEntries
+          .map((entry) => {
+            if (!entry || typeof entry !== "object") return null;
+            const row = entry as Record<string, unknown>;
+            const payload = row.payload && typeof row.payload === "object" ? row.payload : row;
+            const documentedBy =
+              typeof row.documentedByDisplayName === "string" ? row.documentedByDisplayName : null;
+            const documentedAt =
+              typeof row.documentedAt === "string"
+                ? row.documentedAt
+                : typeof row.createdAt === "string"
+                  ? row.createdAt
+                  : "";
+            return formatDocumentedProcedureClinicalSummary({
+              payloadJson: payload,
+              documentedAtIso: documentedAt,
+              documentedByDisplayName: documentedBy,
+              locale: language === "en" ? "en" : "fr",
+            });
+          })
+          .filter((summary): summary is string => Boolean(summary?.trim()));
+      }
+    } catch {
+      /* Non-fatal: print proceeds without medication/procedure sections. */
+    }
     printErPacket({
       patient: p,
       encounter: {
@@ -273,8 +321,11 @@ export function EmergencyErSummaryClosureSurface({
       admissionSummaryEntries,
       dispositionSupplementEntries,
       triageAssessmentEntries,
+      medicationOrderRows,
+      marEventRows,
+      procedureSummaries,
     });
-  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot]);
+  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {

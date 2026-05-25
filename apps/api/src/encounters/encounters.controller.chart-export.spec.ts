@@ -71,6 +71,7 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
         signedByDisplayFr: null,
         workspaceNote: null,
       },
+      nursingDocumentation: null,
       providerAddenda: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",

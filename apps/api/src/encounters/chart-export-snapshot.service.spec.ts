@@ -135,6 +135,15 @@ function makeService(prisma: ReturnType<typeof makePrismaMock>) {
 const PHI_REGEX = /John|Doe|MRN-123|GMRN-XYZ|1980-05-04|Chest pain/;
 
 describe("EncounterChartExportService.createSnapshot", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-01-02T02:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("creates a snapshot for a CLOSED encounter with manifest + SHA-256 hash, no CHART_ACCESS audit", async () => {
     const prisma = makePrismaMock({});
     const { service, audit } = makeService(prisma);

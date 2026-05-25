@@ -31,6 +31,11 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
+import {
+  buildInitialNursingAssessmentSummaryBlock,
+  buildNursingDischargeDocumentationBlock,
+  readInitialNursingEvalSignature,
+} from "./erInitialNursingAssessmentSummary";
 import { deriveEmtalaStateFromEncounter } from "./erEmtalaV1";
 import {
   ER_HANDOFF_V1_KEY,
@@ -110,6 +115,8 @@ export type VisitSummaryDocumentationHistoryEntry = {
 export type EmergencyVisitSummaryModel = {
   motifPresentation: VisitSummaryTextBlock | null;
   triageResume: VisitSummaryTextBlock | null;
+  /** Initial nursing assessment (`nursingEvalV1`) — distinct from reassessment history. */
+  initialNursingAssessment: VisitSummaryTextBlock | null;
   resumeInfirmier: VisitSummaryTextBlock | null;
   evaluationMedicale: VisitSummaryTextBlock | null;
   resultats: VisitSummaryResultsBlock | null;
@@ -126,6 +133,8 @@ export type EmergencyVisitSummaryModel = {
   nursingReassessmentHistory: VisitSummaryReassessmentEntry[];
   /** Id of the entry to tag as "Actuel" in the UI; `null` when history is empty. */
   nursingReassessmentLatestId: string | null;
+  /** Nursing discharge execution (sortie) when documented. */
+  nursingDischargeDocumentation: VisitSummaryTextBlock | null;
   providerMseHistory: VisitSummaryDocumentationHistoryEntry[];
   providerMseLatestId: string | null;
   handoffHistory: VisitSummaryDocumentationHistoryEntry[];
@@ -265,6 +274,10 @@ type EncounterLike = {
   /** Used with discharge JSON for EMTALA disposition context (e.g. admission + supplement alignment). */
   admissionSummaryJson?: unknown;
   physicianAssigned?: { firstName?: string | null; lastName?: string | null } | null;
+  providerDocumentationStatus?: string | null;
+  providerDocumentationSignedAt?: string | null;
+  providerDocumentationSignedByDisplayFr?: string | null;
+  providerAddenda?: Array<{ text?: string; createdAt?: string; createdByDisplayFr?: string | null }> | null;
 };
 
 function formatIsoForLocale(iso: string | null | undefined, locale: SupportedLanguage): string {
@@ -946,6 +959,22 @@ export function buildEmergencyVisitSummaryModel(
   }
 
   const nav = encounter.nursingAssessment;
+  const initialNursingAssessment = buildInitialNursingAssessmentSummaryBlock(nav, locale);
+  const nursingDischargeDocumentation = buildNursingDischargeDocumentationBlock(nav, locale);
+  const sigInitialNursing = readInitialNursingEvalSignature(nav);
+  if (sigInitialNursing) {
+    const nameWithRole = sigInitialNursing.roleTitle
+      ? `${sigInitialNursing.documentedBy} (${sigInitialNursing.roleTitle})`
+      : sigInitialNursing.documentedBy;
+    timeline.push({
+      label: vs(locale, "timelineInitialNursingSaved"),
+      value: interpolate(vs(locale, "signatureTimeJoin"), {
+        name: nameWithRole,
+        time: formatIsoForLocale(sigInitialNursing.documentedAtIso, locale),
+      }),
+    });
+  }
+
   const nursingForm = erNursingReassessmentFormFromEncounter(nav);
   const nursingPreview = buildErNursingReassessmentPreviewModel(nursingForm, locale);
   const nursingSecs = nonEmptyPreviewSections(nursingPreview.sections.filter((s) => s.id !== "empty"));
@@ -989,6 +1018,45 @@ export function buildEmergencyVisitSummaryModel(
       title: vs(locale, "providerNarrativeOnlyTitle"),
       lines: [trunc(providerPreview.oneLineSummary)],
     };
+  }
+  if (evaluationMedicale) {
+    const providerMetaLines: string[] = [];
+    const docStatus = (encounter.providerDocumentationStatus ?? "").trim();
+    if (docStatus === "SIGNED" && encounter.providerDocumentationSignedAt) {
+      const signedAt = formatIsoForLocale(encounter.providerDocumentationSignedAt, locale);
+      const signedBy = (encounter.providerDocumentationSignedByDisplayFr ?? "").trim();
+      providerMetaLines.push(
+        signedBy
+          ? interpolate(vs(locale, "providerSignedLine"), { name: signedBy, time: signedAt })
+          : interpolate(vs(locale, "providerSignedAtLine"), { time: signedAt })
+      );
+    } else if (providerWorkspace?.savedAt) {
+      const savedAt = formatIsoForLocale(providerWorkspace.savedAt, locale);
+      const savedBy = (providerWorkspace.savedBy ?? "").trim();
+      providerMetaLines.push(
+        savedBy
+          ? interpolate(vs(locale, "providerSavedLine"), { name: savedBy, time: savedAt })
+          : interpolate(vs(locale, "providerSavedAtLine"), { time: savedAt })
+      );
+    }
+    const addenda = Array.isArray(encounter.providerAddenda) ? encounter.providerAddenda : [];
+    for (const addendum of addenda.slice(0, 5)) {
+      const text = typeof addendum.text === "string" ? addendum.text.trim() : "";
+      if (!text) continue;
+      const when = formatIsoForLocale(addendum.createdAt, locale);
+      const by = (addendum.createdByDisplayFr ?? "").trim();
+      providerMetaLines.push(
+        by
+          ? interpolate(vs(locale, "providerAddendumLine"), { name: by, time: when, text: trunc(text, 240) })
+          : interpolate(vs(locale, "providerAddendumAtLine"), { time: when, text: trunc(text, 240) })
+      );
+    }
+    if (providerMetaLines.length > 0) {
+      evaluationMedicale = {
+        ...evaluationMedicale,
+        lines: [...evaluationMedicale.lines, ...providerMetaLines],
+      };
+    }
   }
   const sigP = readSignatureFromNursingBlob("erProviderMseV1", nav, locale);
   if (sigP) {
@@ -1165,8 +1233,9 @@ export function buildEmergencyVisitSummaryModel(
   return {
     motifPresentation,
     triageResume,
+    initialNursingAssessment,
     resumeInfirmier,
-    evaluationMedicale: providerMseHistory.length > 0 ? null : evaluationMedicale,
+    evaluationMedicale,
     resultats,
     disposition,
     handoff: handoffHistory.length > 0 ? null : handoff,
@@ -1174,6 +1243,7 @@ export function buildEmergencyVisitSummaryModel(
     timeline,
     nursingReassessmentHistory,
     nursingReassessmentLatestId,
+    nursingDischargeDocumentation,
     providerMseHistory,
     providerMseLatestId,
     handoffHistory,

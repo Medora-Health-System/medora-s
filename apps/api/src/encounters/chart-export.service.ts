@@ -220,6 +220,20 @@ export type ChartExportManifest = {
         sections: Array<{ id: string; label: string; text: string }>;
       } | null;
     };
+    /** Structured initial nursing documentation derived read-only from nursingEvalV1. */
+    nursingDocumentation: {
+      initialAssessment: {
+        title: string;
+        documentedBy: string | null;
+        documentedAt: string | null;
+        sections: Array<{ id: string; label: string; text: string }>;
+      } | null;
+      dischargeExecution: {
+        documentedBy: string;
+        documentedAt: string;
+        executionNote: string | null;
+      } | null;
+    } | null;
     providerAddenda: Array<{
       id: string;
       text: string;
@@ -339,6 +353,7 @@ export type ChartExportManifest = {
       payloadJson: unknown;
       createdByDisplayFr: string | null;
       procedureNameFr?: string | null;
+      procedureNameEn?: string | null;
       performedAtIso?: string | null;
       documentedAtIso?: string | null;
       performedByDisplayFr?: string | null;
@@ -346,6 +361,7 @@ export type ChartExportManifest = {
       performerTitle?: string | null;
       status?: string | null;
       clinicalSummaryFr?: string | null;
+      clinicalSummaryEn?: string | null;
       documentationRole?: string | null;
       documentationRoleFr?: string | null;
       canonicalProcedureType?: string | null;
@@ -410,6 +426,90 @@ export type ChartExportManifest = {
 
 const PROVIDER_DOCUMENTATION_NAMESPACE_KEY = "erProviderMseV1";
 const PROVIDER_DOCUMENTATION_WORKSPACE_SOURCE = "PROVIDER_DOCUMENTATION_WORKSPACE";
+const NURSING_EVAL_V1_KEY = "nursingEvalV1";
+const ER_DISPOSITION_EXECUTION_V1_KEY = "erDispositionExecutionV1";
+
+const NURSING_SECTION_LABELS_EN: Record<string, string> = {
+  etatGeneral: "General appearance",
+  neurologique: "Neurological",
+  respiratoire: "Respiratory",
+  cardiaque: "Cardiac",
+  cardiovasculaire: "Cardiac",
+  digestif: "Gastrointestinal",
+  gastro: "Gastrointestinal",
+  genito: "Genitourinary",
+  musculo: "Musculoskeletal",
+  peau: "Skin / wounds",
+  douleur: "Pain",
+  securite: "Safety / risks",
+  observationsInfirmieres: "Nursing observations",
+  interventionsInfirmieres: "Nursing interventions",
+  notesInfirmieresLibres: "Other nursing notes",
+  notesInfirmieres: "Nursing observations",
+};
+
+function nursingSectionLabelEn(key: string): string {
+  return NURSING_SECTION_LABELS_EN[key] ?? key;
+}
+
+function initialNursingDocumentationFromAssessment(
+  raw: unknown
+): ChartExportManifest["encounter"]["nursingDocumentation"] {
+  const root = asObjectOrNull(raw);
+  const stored = asObjectOrNull(root?.[NURSING_EVAL_V1_KEY]);
+  const sectionsObj = asObjectOrNull(stored?.sections);
+  const sections: Array<{ id: string; label: string; text: string }> = [];
+  if (sectionsObj) {
+    for (const [id, value] of Object.entries(sectionsObj)) {
+      const section = asObjectOrNull(value);
+      const text = typeof section?.text === "string" ? section.text.trim() : "";
+      if (!text) continue;
+      sections.push({ id, label: nursingSectionLabelEn(id), text });
+    }
+  }
+  const sig = asObjectOrNull(stored?.signature);
+  const documentedBy =
+    typeof sig?.savedByDisplayName === "string" && sig.savedByDisplayName.trim()
+      ? sig.savedByDisplayName.trim()
+      : null;
+  const documentedAt = typeof sig?.savedAt === "string" ? sig.savedAt : null;
+  const initialAssessment =
+    sections.length > 0
+      ? {
+          title: "Initial nursing assessment",
+          documentedBy,
+          documentedAt,
+          sections,
+        }
+      : null;
+
+  const dischargeRoot = asObjectOrNull(root?.[ER_DISPOSITION_EXECUTION_V1_KEY]);
+  const dischargeAt =
+    typeof dischargeRoot?.dischargeSortieCompletedAt === "string"
+      ? dischargeRoot.dischargeSortieCompletedAt
+      : null;
+  const dischargeBy =
+    typeof dischargeRoot?.dischargeSortieCompletedByDisplayName === "string" &&
+    dischargeRoot.dischargeSortieCompletedByDisplayName.trim()
+      ? dischargeRoot.dischargeSortieCompletedByDisplayName.trim()
+      : null;
+  const executionNote =
+    typeof dischargeRoot?.dischargeSortieExecutionNote === "string" &&
+    dischargeRoot.dischargeSortieExecutionNote.trim()
+      ? dischargeRoot.dischargeSortieExecutionNote.trim()
+      : null;
+  const dischargeExecution =
+    dischargeAt && dischargeBy
+      ? {
+          documentedBy: dischargeBy,
+          documentedAt: dischargeAt,
+          executionNote,
+        }
+      : null;
+
+  if (!initialAssessment && !dischargeExecution) return null;
+  return { initialAssessment, dischargeExecution };
+}
 
 function providerDocumentationWorkspaceNote(raw: unknown): ChartExportManifest["encounter"]["providerDocumentation"]["workspaceNote"] {
   const root = asObjectOrNull(raw);
@@ -1012,6 +1112,7 @@ export class EncounterChartExportService {
           signedByDisplayFr: userDisplayFr(encounter.providerDocumentationSignedBy),
           workspaceNote: providerDocumentationWorkspaceNote(encounter.nursingAssessment),
         },
+        nursingDocumentation: initialNursingDocumentationFromAssessment(encounter.nursingAssessment),
         providerAddenda,
         observationStay,
       },
@@ -1124,6 +1225,7 @@ export class EncounterChartExportService {
           return {
             ...base,
             procedureNameFr: summaryMeta.procedureNameFr,
+            procedureNameEn: summaryMeta.procedureNameEn,
             performedAtIso: summaryMeta.performedAtIso,
             documentedAtIso: summaryMeta.documentedAtIso,
             performedByDisplayFr: summaryMeta.performedByDisplayName,
@@ -1131,6 +1233,7 @@ export class EncounterChartExportService {
             performerTitle: summaryMeta.performerTitle,
             status: summaryMeta.status,
             clinicalSummaryFr: summaryMeta.clinicalSummaryFr,
+            clinicalSummaryEn: summaryMeta.clinicalSummaryEn,
             documentationRole: summaryMeta.documentationRole,
             documentationRoleFr:
               summaryMeta.documentationRole === "NURSING"
