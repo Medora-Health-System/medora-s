@@ -14,7 +14,14 @@ import {
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
   resolveProviderDischargeTemplateForDiagnosis,
+  type ProviderDischargeTemplate,
 } from "./providerDischargeTemplateRegistry";
+import {
+  buildProviderDischargeRegistryGovernanceSnapshot,
+  computeProviderDischargeRegistryGovernanceSnapshotHash,
+  scanProviderDischargeTemplateUnsafePhrases,
+  validateProviderDischargeTemplateRegistry,
+} from "./providerDischargeTemplateRegistryValidator";
 import {
   buildProviderDischargeTemplateHashPayload,
   computeProviderDischargeTemplateAppliedHash,
@@ -107,6 +114,28 @@ function normalizeTestForm(
     ...emptyProviderDischargeDocumentationForm(),
     ...partial,
   });
+}
+
+function syntheticRegistryTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  return {
+    version: "1.0.0",
+    title: "Synthetic template",
+    specialtyCategory: "emergency_medicine",
+    riskCategory: "moderate",
+    clinicalReviewStatus: "draft",
+    effectiveFrom: "2026-05-18",
+    diagnosisMappings: { icdExact: [`Z-${overrides.id}`] },
+    sourceReferences: [{ label: "Synthetic source" }],
+    suggestedText: {
+      description: "ED evaluation was performed for this concern.",
+      diagnosisInstructions: "Return precautions were reviewed. Follow-up is recommended.",
+      medicationTreatment: "Take medications only as prescribed or directed.",
+      returnPrecautions: "Seek care if symptoms worsen.",
+    },
+    ...overrides,
+  };
 }
 
 describe("edDisposition19Y", () => {
@@ -380,8 +409,30 @@ describe("edDisposition19Y", () => {
         ...chestTemplate,
         specialtyCategory: undefined,
         riskCategory: undefined,
+        clinicalReviewStatus: undefined,
+        effectiveFrom: undefined,
       });
       expect(withCategories).not.toBe(withoutCategories);
+    });
+
+    it("changing clinicalReviewStatus or effectiveFrom changes templateAppliedHash", () => {
+      const base = computeProviderDischargeTemplateAppliedHash(chestTemplate);
+      const reviewChanged = computeProviderDischargeTemplateAppliedHash({
+        ...chestTemplate,
+        clinicalReviewStatus: "reviewed",
+      });
+      const dateChanged = computeProviderDischargeTemplateAppliedHash({
+        ...chestTemplate,
+        effectiveFrom: "2026-06-01",
+      });
+      expect(reviewChanged).not.toBe(base);
+      expect(dateChanged).not.toBe(base);
+    });
+
+    it("hash payload includes governance review and effective dates", () => {
+      const payload = buildProviderDischargeTemplateHashPayload(chestTemplate);
+      expect(payload.clinicalReviewStatus).toBe("draft");
+      expect(payload.effectiveFrom).toBe("2026-05-18");
     });
 
     it("pure JS SHA-256 matches Node crypto for canonical template payload", () => {
@@ -748,6 +799,241 @@ describe("edDisposition19Y", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "Headache" });
       const next = applyProviderDischargeTemplateToCard(card, resolved, { overwriteExisting: false });
       expect(next.description).toBe("Clinician note retained");
+    });
+  });
+
+  describe("19Y.3A template governance & clinical safety", () => {
+    const registryValidation = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+
+    it("every template has clinicalReviewStatus", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(template.clinicalReviewStatus).toBeTruthy();
+      }
+    });
+
+    it("every template has valid clinicalReviewStatus", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(["draft", "reviewed", "approved"]).toContain(template.clinicalReviewStatus);
+      }
+    });
+
+    it("every template has effectiveFrom", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(template.effectiveFrom.trim()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      }
+    });
+
+    it("effectiveTo validation works", () => {
+      const bad = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({
+          id: "bad-effective-to",
+          effectiveFrom: "2026-05-18",
+          effectiveTo: "2026-05-01",
+        }),
+      ]);
+      expect(bad.ok).toBe(false);
+      expect(bad.errors.some((e) => e.includes("effectiveTo is before effectiveFrom"))).toBe(true);
+    });
+
+    it("duplicate template ID fails", () => {
+      const t = syntheticRegistryTemplate({ id: "dup-id" });
+      const result = validateProviderDischargeTemplateRegistry([t, { ...t }]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("duplicate template id"))).toBe(true);
+    });
+
+    it("invalid semver fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "bad-semver", version: "v1" }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("invalid semver"))).toBe(true);
+    });
+
+    it("missing sourceReferences fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "no-sources", sourceReferences: [] }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("missing sourceReferences"))).toBe(true);
+    });
+
+    it("missing specialtyCategory fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "no-specialty", specialtyCategory: undefined }),
+      ]);
+      expect(result.ok).toBe(false);
+    });
+
+    it("missing riskCategory fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "no-risk", riskCategory: undefined }),
+      ]);
+      expect(result.ok).toBe(false);
+    });
+
+    it("missing effectiveFrom fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "no-effective-from", effectiveFrom: "" }),
+      ]);
+      expect(result.ok).toBe(false);
+    });
+
+    it("duplicate ICD exact mapping fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "dx-a", diagnosisMappings: { icdExact: ["R07.9"] } }),
+        syntheticRegistryTemplate({ id: "dx-b", diagnosisMappings: { icdExact: ["R07.9"] } }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("duplicate icdExact"))).toBe(true);
+    });
+
+    it("duplicate ICD family mapping fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "fam-a", diagnosisMappings: { icdFamily: ["R10"] } }),
+        syntheticRegistryTemplate({ id: "fam-b", diagnosisMappings: { icdFamily: ["R10"] } }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("duplicate icdFamily"))).toBe(true);
+    });
+
+    it("duplicate keyword mapping fails", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({ id: "kw-a", diagnosisMappings: { keyword: ["chest pain"] } }),
+        syntheticRegistryTemplate({ id: "kw-b", diagnosisMappings: { keyword: ["chest pain"] } }),
+      ]);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((e) => e.includes("duplicate keyword"))).toBe(true);
+    });
+
+    it("exact and family on same template does not fail collision validation", () => {
+      const result = validateProviderDischargeTemplateRegistry([
+        syntheticRegistryTemplate({
+          id: "same-template-exact-family",
+          diagnosisMappings: { icdExact: ["R07.9"], icdFamily: ["R07"] },
+        }),
+      ]);
+      expect(result.ok).toBe(true);
+    });
+
+    it("current registry has no mapping collisions", () => {
+      expect(registryValidation.ok).toBe(true);
+      expect(registryValidation.errors).toEqual([]);
+    });
+
+    it("unsafe phrase troponins negative fails", () => {
+      const hits = scanProviderDischargeTemplateUnsafePhrases(
+        syntheticRegistryTemplate({
+          id: "unsafe-troponin",
+          suggestedText: {
+            description: "Troponins negative today.",
+            diagnosisInstructions: "Rest.",
+            medicationTreatment: "None.",
+            returnPrecautions: "Return if worse.",
+          },
+        })
+      );
+      expect(hits.length).toBeGreaterThan(0);
+    });
+
+    it("unsafe phrase CT normal fails", () => {
+      const hits = scanProviderDischargeTemplateUnsafePhrases(
+        syntheticRegistryTemplate({
+          id: "unsafe-ct",
+          suggestedText: {
+            description: "CT normal.",
+            diagnosisInstructions: "Rest.",
+            medicationTreatment: "None.",
+            returnPrecautions: "Return if worse.",
+          },
+        })
+      );
+      expect(hits.length).toBeGreaterThan(0);
+    });
+
+    it("unsafe phrase ACS ruled out fails", () => {
+      const hits = scanProviderDischargeTemplateUnsafePhrases(
+        syntheticRegistryTemplate({
+          id: "unsafe-acs",
+          suggestedText: {
+            description: "ACS ruled out.",
+            diagnosisInstructions: "Rest.",
+            medicationTreatment: "None.",
+            returnPrecautions: "Return if worse.",
+          },
+        })
+      );
+      expect(hits.length).toBeGreaterThan(0);
+    });
+
+    it("current registry has no unsafe phrases", () => {
+      for (const template of PROVIDER_DISCHARGE_TEMPLATE_REGISTRY) {
+        expect(scanProviderDischargeTemplateUnsafePhrases(template)).toEqual([]);
+      }
+    });
+
+    it("registry governance snapshot is deterministic", () => {
+      const a = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      const b = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(a).toBe(b);
+    });
+
+    it("intentional template text change changes registry governance snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      const mutated = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.map((t) =>
+          t.id === "chest_pain_v1" ?
+            {
+              ...t,
+              suggestedText: { ...t.suggestedText, description: "Intentional drift for snapshot test." },
+            }
+          : t
+        )
+      );
+      expect(mutated).not.toBe(base);
+    });
+
+    it("registry governance snapshot hash remains stable for reviewed registry", () => {
+      const hash = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(hash).toMatch(/^[a-f0-9]{64}$/);
+      expect(buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY)).toHaveLength(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
+      );
+      // Update this constant intentionally when registry governance content changes.
+      expect(hash).toBe("de5cecf77a8009cd79a9366a2c23452d10ed5301d362df20990558f9da488ba5");
+    });
+
+    it("timesApplied exists in type but is not incremented anywhere", () => {
+      const registrySource = readFileSync(
+        join(webRoot, "src/features/emergency/providerDischargeTemplateRegistry.ts"),
+        "utf8"
+      );
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(registrySource).toContain("timesApplied?:");
+      expect(registrySource).not.toMatch(/timesApplied\s*\+\+|timesApplied\s*=\s*\(.*\+\s*1\)/);
+      expect(uiSource).not.toContain("timesApplied");
+    });
+
+    it("no governance metadata appears in provider/patient UI", () => {
+      const uiFiles = [
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        join(webRoot, "src/features/emergency/EmergencyDispositionPanel.tsx"),
+      ];
+      for (const file of uiFiles) {
+        const source = readFileSync(file, "utf8");
+        expect(source).not.toContain("clinicalReviewStatus");
+        expect(source).not.toContain("effectiveFrom");
+        expect(source).not.toContain("timesApplied");
+      }
+    });
+
+    it("no billing/eRx/MAR/order logic changed by governance validator", () => {
+      const billing = readFileSync(join(webRoot, "../../packages/shared/src/billingCaptureV1.ts"), "utf8");
+      expect(billing).not.toContain("clinicalReviewStatus");
+      expect(billing).not.toContain("validateProviderDischargeTemplateRegistry");
     });
   });
 

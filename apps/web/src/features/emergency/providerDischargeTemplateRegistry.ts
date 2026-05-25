@@ -15,6 +15,8 @@ import {
 
 export type ProviderDischargeTemplateMatchLevel = "icdExact" | "icdFamily" | "keyword" | "generic";
 
+export type ProviderDischargeClinicalReviewStatus = "draft" | "reviewed" | "approved";
+
 export type ProviderDischargeTemplateSourceReference = {
   label: string;
   url?: string;
@@ -29,6 +31,11 @@ export type ProviderDischargeTemplate = {
   /** Governance metadata — not shown in patient UI; not used for billing. */
   specialtyCategory?: string;
   riskCategory?: string;
+  clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  /** Metadata-only counter; not incremented at runtime in this phase. */
+  timesApplied?: number;
   diagnosisMappings: {
     icdExact?: string[];
     icdFamily?: string[];
@@ -64,6 +71,12 @@ export const BATCH_1_ED_DISCHARGE_TEMPLATE_IDS = [
 ] as const;
 
 const ACCESSED_AT = "2026-05-18";
+const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
+
+const BATCH_1_GOVERNANCE = {
+  clinicalReviewStatus: "draft" as const,
+  effectiveFrom: GOVERNANCE_EFFECTIVE_FROM,
+};
 
 function registryFollowUp(
   id: string,
@@ -87,6 +100,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Chest pain discharge documentation",
     specialtyCategory: "cardiology",
     riskCategory: "moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdExact: ["R07.9"],
       icdFamily: ["R07"],
@@ -129,6 +143,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Abdominal pain discharge documentation",
     specialtyCategory: "emergency_medicine",
     riskCategory: "moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdFamily: ["R10"],
       keyword: [
@@ -176,6 +191,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Headache discharge documentation",
     specialtyCategory: "neurology",
     riskCategory: "moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdFamily: ["R51"],
       keyword: ["headache", "migraine", "head pain", "cephalalgia", "céphalée"],
@@ -215,6 +231,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "URI / cough discharge documentation",
     specialtyCategory: "primary_care",
     riskCategory: "low_to_moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdFamily: ["J06", "R05"],
       keyword: [
@@ -258,6 +275,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "UTI / urinary symptoms discharge documentation",
     specialtyCategory: "primary_care",
     riskCategory: "low_to_moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdExact: ["N39.0"],
       icdFamily: ["R30", "N39"],
@@ -298,6 +316,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Laceration / wound discharge documentation",
     specialtyCategory: "wound_care",
     riskCategory: "low_to_moderate",
+    ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdExact: ["S01.01", "T14.1"],
       icdFamily: ["S01", "S41", "S51", "S61", "S71", "S81", "S91", "T14"],
@@ -341,6 +360,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Generic ED discharge documentation",
     specialtyCategory: "emergency_medicine",
     riskCategory: "unspecified",
+    clinicalReviewStatus: "draft",
+    effectiveFrom: GOVERNANCE_EFFECTIVE_FROM,
     diagnosisMappings: {},
     sourceReferences: [
       {

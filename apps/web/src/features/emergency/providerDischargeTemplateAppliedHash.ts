@@ -25,6 +25,9 @@ export type ProviderDischargeTemplateHashSource = {
   defaultFollowUps?: ProviderDischargeFollowUpRow[];
   specialtyCategory?: string;
   riskCategory?: string;
+  clinicalReviewStatus?: "draft" | "reviewed" | "approved";
+  effectiveFrom?: string;
+  effectiveTo?: string;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -52,6 +55,9 @@ export type ProviderDischargeTemplateHashPayload = {
   }>;
   specialtyCategory?: string;
   riskCategory?: string;
+  clinicalReviewStatus?: "draft" | "reviewed" | "approved";
+  effectiveFrom?: string;
+  effectiveTo?: string;
 };
 
 function stableStringify(value: unknown): string {
@@ -105,6 +111,9 @@ export function buildProviderDischargeTemplateHashPayload(
   }
   if (template.specialtyCategory?.trim()) payload.specialtyCategory = template.specialtyCategory.trim();
   if (template.riskCategory?.trim()) payload.riskCategory = template.riskCategory.trim();
+  if (template.clinicalReviewStatus) payload.clinicalReviewStatus = template.clinicalReviewStatus;
+  if (template.effectiveFrom?.trim()) payload.effectiveFrom = template.effectiveFrom.trim();
+  if (template.effectiveTo?.trim()) payload.effectiveTo = template.effectiveTo.trim();
 
   return payload;
 }
