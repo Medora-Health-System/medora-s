@@ -16,6 +16,7 @@ import {
   BATCH_5_PEDIATRIC_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_6_PEDIATRIC_HIGHER_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -31,6 +32,7 @@ import {
 import {
   scanProviderDischargeBehavioralHealthEscalationLanguage,
   scanProviderDischargeBehavioralHealthForbiddenPhrases,
+  scanProviderDischargeBehavioralHealthPrivacyContent,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
 } from "./providerDischargeTemplateBehavioralHealthGovernance";
 import {
@@ -3222,6 +3224,241 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.12 Batch 8 behavioral health & substance-use ED discharge templates", () => {
+    const batchTemplates = () =>
+      BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    const forbiddenBhPhrases = [
+      "psychiatrically cleared",
+      "denies si",
+      "clinically sober",
+      "safe for discharge",
+      "has capacity",
+      "intoxication resolved",
+      "low risk for suicide",
+      "no suicidal ideation",
+      "medically cleared",
+    ];
+
+    const forbiddenFabricated = [
+      "psychiatric consult completed",
+      "safety plan completed",
+      "ruled out",
+      "denies hi",
+    ];
+
+    it("all 10 behavioral health templates exist", () => {
+      expect(BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies exist for batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("behavioralHealthSafety metadata exists on all batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.behavioralHealthSafety).toBeTruthy();
+        expect(validateProviderDischargeBehavioralHealthTemplateGovernance(template)).toEqual([]);
+      }
+    });
+
+    it("crisis-resource requirements enforced on crisis templates", () => {
+      const suicidal = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "behavioral_health_suicidal_ideation_precautions_v1"
+      )!;
+      expect(suicidal.behavioralHealthSafety?.requiresCrisisResources).toBe(true);
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeBehavioralHealthForbiddenPhrases(suicidal.id, locale, suicidal.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("BH follow-up rows enforced when requiresBehavioralHealthFollowUp", () => {
+      for (const template of batchTemplates()) {
+        if (template.behavioralHealthSafety?.requiresBehavioralHealthFollowUp) {
+          const specialties = (template.defaultFollowUps ?? []).map((row) => row.specialty.toUpperCase());
+          expect(
+            specialties.some((s) =>
+              ["BEHAVIORAL_HEALTH", "PSYCHIATRY", "CRISIS_CLINIC", "SUBSTANCE_USE", "SUBSTANCE_USE_TREATMENT"].includes(s)
+            )
+          ).toBe(true);
+        }
+      }
+    });
+
+    it("substance-use resource requirements enforced", () => {
+      const substance = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "behavioral_health_substance_use_resources_v1"
+      )!;
+      expect(substance.behavioralHealthSafety?.requiresSubstanceUseResources).toBe(true);
+      expect(validateProviderDischargeBehavioralHealthTemplateGovernance(substance)).toEqual([]);
+    });
+
+    it("withdrawal precaution requirements enforced", () => {
+      const withdrawal = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "behavioral_health_alcohol_withdrawal_precautions_v1"
+      )!;
+      expect(withdrawal.behavioralHealthSafety?.requiresWithdrawalPrecautions).toBe(true);
+      expect(validateProviderDischargeBehavioralHealthTemplateGovernance(withdrawal)).toEqual([]);
+    });
+
+    it("forbidden phrase psychiatrically cleared fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeBehavioralHealthForbiddenPhrases("bh_bad", "en", {
+          ...body,
+          description: "Patient is psychiatrically cleared.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase denies SI fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeBehavioralHealthForbiddenPhrases("bh_bad", "en", {
+          ...body,
+          diagnosisInstructions: "Patient denies SI.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase clinically sober fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeBehavioralHealthForbiddenPhrases("bh_bad", "en", {
+          ...body,
+          description: "Patient is clinically sober.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase safe for discharge fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeBehavioralHealthForbiddenPhrases("bh_bad", "en", {
+          ...body,
+          returnPrecautions: "Patient is safe for discharge.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase has capacity fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeBehavioralHealthForbiddenPhrases("bh_bad", "en", {
+          ...body,
+          diagnosisInstructions: "Patient has capacity.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("escalation wording passes EN for batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(
+          scanProviderDischargeBehavioralHealthEscalationLanguage(
+            template.id,
+            "en",
+            template.suggestedText.en
+          )
+        ).toEqual([]);
+      }
+    });
+
+    it("escalation wording passes FR for batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(
+          scanProviderDischargeBehavioralHealthEscalationLanguage(
+            template.id,
+            "fr",
+            template.suggestedText.fr
+          )
+        ).toEqual([]);
+      }
+    });
+
+    it("privacy validators pass for privacy-sensitive batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        if (!template.behavioralHealthSafety?.requiresPrivacySensitiveWording) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeBehavioralHealthPrivacyContent(template.id, locale, template.suggestedText[locale])
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("no fabricated findings or forbidden certainty language in batch 8 templates", () => {
+      for (const template of batchTemplates()) {
+        for (const locale of ["en", "fr"] as const) {
+          const blob = JSON.stringify(template.suggestedText[locale]).toLowerCase();
+          for (const phrase of [...forbiddenBhPhrases, ...forbiddenFabricated]) {
+            expect(blob, `${template.id} ${locale}`).not.toContain(phrase);
+          }
+        }
+      }
+    });
+
+    it("no mapping collisions with adult anxiety or alcohol intoxication templates", () => {
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "F41.9", displayName: "Anxiety disorder, unspecified" })
+          .template.id
+      ).toBe("anxiety_panic_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "F41.0", displayName: "Panic disorder" }).template.id
+      ).toBe("behavioral_health_anxiety_panic_symptoms_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "F10.129", displayName: "Alcohol intoxication" })
+          .template.id
+      ).toBe("alcohol_intoxication_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({
+          displayName: "bh alcohol intoxication follow-up",
+        }).template.id
+      ).toBe("behavioral_health_alcohol_intoxication_follow_up_v1");
+    });
+
+    it("apply uses active locale for batch 8 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-bh-dep",
+        code: "F32.9",
+        displayName: "Depressive episode",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description).toContain("aggravation de la dépression");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("intentional batch 8 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutBh = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("behavioral_health_")),
+        "en"
+      );
+      expect(base).not.toBe(withoutBh);
+    });
+
+    it("existing adult/pediatric/OB templates still validate", () => {
+      const nonBh = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("behavioral_health_"));
+      const result = validateProviderDischargeTemplateRegistry(nonBh);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -3601,7 +3838,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("55621edf33e0dcb4de7755754773cd37148271b0aa8366445ffd9365cfcc07ee");
+      expect(hash).toBe("778331f0256373819463b5e04d55b4575b8d7fd48e8cfe36485a1d86215fb5de");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -3611,7 +3848,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("9b7d688d8437af0930f60156880c615387714f99fbd46c94d5fa78ab67f2ca57");
+      expect(hash).toBe("4fe5f5aec02d2e904b3054eecf38639da0bb72e880c957d40cb51e407dbbca33");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

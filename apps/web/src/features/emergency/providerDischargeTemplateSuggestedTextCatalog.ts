@@ -1583,6 +1583,228 @@ export const OBGYN_POSTPARTUM_WARNING_SUGGESTED_TEXT: ProviderDischargeTemplateS
     }
   );
 
+const BH_MED_EN = "Take medicines only as prescribed or directed during this visit.";
+const BH_MED_FR =
+  "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";
+
+const BH_RETURN_PRECAUTIONS_EN =
+  "Return immediately for thoughts of self-harm, thoughts of harming others, worsening anxiety, worsening depression, hallucinations, confusion, severe agitation, or withdrawal symptoms. Call 911 or use the crisis line when concerned. Use crisis resources as directed.";
+
+const BH_RETURN_PRECAUTIONS_FR =
+  "Retournez immédiatement pour des idées de se faire du mal, des idées de faire du mal à autrui, une aggravation de l'anxiété, une aggravation de la dépression, des hallucinations, de la confusion, de l'agitation sévère ou des symptômes de sevrage. Appelez le 911 ou utilisez la ligne de crise si inquiétude. Utilisez les ressources de crise selon les directives.";
+
+const BH_SUBSTANCE_RESOURCES_EN =
+  " Follow up with behavioral health and substance use treatment or recovery resources as directed. Avoid alcohol or substances as directed.";
+
+const BH_SUBSTANCE_RESOURCES_FR =
+  " Suivez le suivi en santé comportementale et les ressources de traitement des troubles liés aux substances ou de rétablissement selon les directives. Évitez l'alcool ou les substances selon les indications reçues.";
+
+export const BEHAVIORAL_HEALTH_ANXIETY_PANIC_SYMPTOMS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for anxiety or panic symptoms. Symptoms may recur or worsen after an emergency visit; behavioral health follow-up is recommended when clinically appropriate.",
+      diagnosisInstructions:
+        "Use calming strategies and medicines only as directed during this visit. Return for chest pain, shortness of breath, or symptoms that feel different from prior panic episodes. Follow up with behavioral health as directed.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_EN} Follow up with behavioral health as directed.`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour de l'anxiété ou des signes de crise d'angoisse. Les symptômes peuvent récidiver ou s'aggraver après une visite aux urgences ; un suivi en santé comportementale est recommandé lorsque c'est cliniquement pertinent.",
+      diagnosisInstructions:
+        "Utilisez des stratégies apaisantes et les médicaments uniquement selon les indications reçues pendant cette visite. Reconsultez en cas de douleur thoracique, d'essoufflement ou de signes différents de vos épisodes d'angoisse habituels. Suivez le suivi en santé comportementale selon les directives.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_FR} Suivez le suivi en santé comportementale selon les directives.`,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_DEPRESSION_CRISIS_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department during a period of worsening depression or emotional distress. Symptoms may change after an emergency visit; precautionary follow-up is recommended.",
+      diagnosisInstructions:
+        "Take medicines only as directed. Use crisis resources as directed. Follow up with behavioral health when recommended. This note does not document a formal suicide risk assessment.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pendant une période d'aggravation de la dépression ou de détresse émotionnelle. Les symptômes peuvent évoluer après une visite aux urgences ; un suivi préventif est recommandé.",
+      diagnosisInstructions:
+        "Prenez les médicaments uniquement selon les indications reçues. Utilisez les ressources de crise selon les directives. Suivez le suivi en santé comportementale lorsque recommandé. Cette note ne documente pas une évaluation formelle du risque suicidaire.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_FR,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_SUICIDAL_IDEATION_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for concerns related to thoughts of self-harm. Your emergency care information is private and confidential. Symptoms and safety concerns may change after an emergency visit.",
+      diagnosisInstructions:
+        "Use crisis resources as directed. Follow clinician instructions for follow-up and support. This note provides precautionary guidance only and does not document suicide risk assessment findings or a safety plan.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_EN} Return immediately for thoughts of self-harm or harm to others.`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des préoccupations liées à des idées de se faire du mal. Vos informations de soins aux urgences sont privées et confidentielles. Les symptômes et les préoccupations de sécurité peuvent évoluer après une visite aux urgences.",
+      diagnosisInstructions:
+        "Utilisez les ressources de crise selon les directives. Suivez les instructions du clinicien pour le suivi et le soutien. Cette note fournit uniquement des consignes préventives et ne documente pas les résultats d'une évaluation du risque suicidaire ni un plan de sécurité.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_FR} Retournez immédiatement pour des idées de se faire du mal ou de faire du mal à autrui.`,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department related to alcohol use. Symptoms may continue to change after an emergency visit; this note does not confirm sobriety or resolution of intoxication.",
+      diagnosisInstructions:
+        `Avoid driving or operating machinery. Do not mix alcohol with sedating medicines. Rest and hydrate as tolerated.${BH_SUBSTANCE_RESOURCES_EN} Return precautions were reviewed.`,
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions:
+        "Return for confusion, falls, repeated vomiting, trouble breathing, injury, worsening symptoms, or withdrawal symptoms. Call 911 or use the crisis line when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un motif lié à l'usage d'alcool. Les signes peuvent continuer à évoluer après une visite aux urgences ; cette note ne confirme ni sobriété ni résolution d'une intoxication.",
+      diagnosisInstructions:
+        `Évitez de conduire ou d'utiliser des machines. Ne mélangez pas l'alcool avec des médicaments sédatifs. Reposez-vous et hydratez-vous selon vos tolérances.${BH_SUBSTANCE_RESOURCES_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions:
+        "Reconsultez en cas de confusion, de chutes, de vomissements répétés, de difficulté respiratoire, de blessure, d'aggravation des signes ou de symptômes de sevrage. Appelez le 911 ou utilisez la ligne de crise si inquiétude.",
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_ALCOHOL_WITHDRAWAL_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for symptoms that may be related to alcohol withdrawal. Withdrawal symptoms can worsen; close monitoring and follow-up are important.",
+      diagnosisInstructions:
+        `Take medicines only as directed during this visit.${BH_SUBSTANCE_RESOURCES_EN} Return precautions for withdrawal symptoms were reviewed.`,
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions:
+        "Return immediately for tremors, confusion, hallucinations, seizures, severe agitation, chest pain, trouble breathing, or worsening withdrawal symptoms. Call 911 or use the crisis line when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes pouvant être liés à un sevrage alcoolique. Les symptômes de sevrage peuvent s'aggraver ; une surveillance rapprochée et un suivi sont importants.",
+      diagnosisInstructions:
+        `Prenez les médicaments uniquement selon les indications reçues pendant cette visite.${BH_SUBSTANCE_RESOURCES_FR} Les consignes de retour pour les symptômes de sevrage ont été revues.`,
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de tremblements, de confusion, d'hallucinations, de convulsions, d'agitation sévère, de douleur thoracique, de difficulté respiratoire ou d'aggravation des symptômes de sevrage. Appelez le 911 ou utilisez la ligne de crise si inquiétude.",
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_SUBSTANCE_USE_RESOURCES_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for concerns related to substance use. Your care information is private and confidential. Outpatient support and follow-up resources may be appropriate when clinically indicated.",
+      diagnosisInstructions:
+        `Follow clinician instructions during this visit.${BH_SUBSTANCE_RESOURCES_EN} This note does not document legal findings or involuntary treatment decisions.`,
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_EN}${BH_SUBSTANCE_RESOURCES_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des préoccupations liées à l'usage de substances. Vos informations de soins sont privées et confidentielles. Un soutien ambulatoire et des ressources de suivi peuvent être appropriés lorsque c'est cliniquement indiqué.",
+      diagnosisInstructions:
+        `Suivez les instructions du clinicien pendant cette visite.${BH_SUBSTANCE_RESOURCES_FR} Cette note ne documente pas de conclusions juridiques ni de décisions de traitement involontaire.`,
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_FR}${BH_SUBSTANCE_RESOURCES_FR}`,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_OPIOID_OVERDOSE_AFTERCARE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department after a suspected opioid overdose or related emergency. Symptoms may recur; emergency precautions and substance-use follow-up are important.",
+      diagnosisInstructions:
+        `Take medicines only as directed. Do not use opioids or sedating substances unless prescribed and supervised.${BH_SUBSTANCE_RESOURCES_EN} Return precautions were reviewed.`,
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions:
+        "Return immediately for trouble breathing, decreased responsiveness, confusion, severe sleepiness, blue lips or skin, chest pain, or recurrent overdose symptoms. Call 911 or use the crisis line when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences après une suspicion de surdose d'opioïdes ou une urgence connexe. Les symptômes peuvent récidiver ; des consignes d'urgence et un suivi en usage de substances sont importants.",
+      diagnosisInstructions:
+        `Prenez les médicaments uniquement selon les indications reçues. N'utilisez pas d'opioïdes ou de substances sédatives sauf prescription et supervision.${BH_SUBSTANCE_RESOURCES_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de difficulté respiratoire, de baisse de vigilance, de confusion, de somnolence importante, de lèvres ou peau bleutées, de douleur thoracique ou de signes récurrents de surdose. Appelez le 911 ou utilisez la ligne de crise si inquiétude.",
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_CRISIS_FOLLOW_UP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department during a behavioral health crisis or severe emotional distress. Symptoms may change after an emergency visit; follow-up is recommended.",
+      diagnosisInstructions:
+        "Use crisis resources as directed. Follow clinician instructions. Follow up with behavioral health as directed. This note provides neutral precautionary guidance only.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences lors d'une crise de santé comportementale ou d'une détresse émotionnelle importante. Les symptômes peuvent évoluer après une visite aux urgences ; un suivi est recommandé.",
+      diagnosisInstructions:
+        "Utilisez les ressources de crise selon les directives. Suivez les instructions du clinicien. Suivez le suivi en santé comportementale selon les directives. Cette note fournit uniquement des consignes préventives neutres.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_FR,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_INSOMNIA_STRESS_REACTION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for insomnia, acute stress, or related symptoms. Symptoms may recur or worsen; conservative monitoring and follow-up are recommended.",
+      diagnosisInstructions:
+        "Use sleep hygiene and stress-reduction strategies as directed. Take medicines only as prescribed. Follow up with behavioral health when recommended.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_EN} Return for severe anxiety, panic symptoms, or symptoms that interfere with daily function.`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour de l'insomnie, un stress aigu ou des signes connexes. Les symptômes peuvent récidiver ou s'aggraver ; une surveillance prudente et un suivi sont recommandés.",
+      diagnosisInstructions:
+        "Appliquez les mesures d'hygiène du sommeil et de réduction du stress selon les indications reçues. Prenez les médicaments uniquement selon la prescription. Suivez le suivi en santé comportementale lorsque recommandé.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: `${BH_RETURN_PRECAUTIONS_FR} Reconsultez en cas d'anxiété sévère, de crise d'angoisse ou de signes gênant les activités quotidiennes.`,
+    }
+  );
+
+export const BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for grief, adjustment, or emotional distress symptoms. Your care information is private and confidential. Supportive follow-up may be appropriate when clinically indicated.",
+      diagnosisInstructions:
+        "Use supportive coping strategies as directed. Follow up with behavioral health when recommended. This note does not document psychiatric diagnoses beyond clinician-selected documentation.",
+      medicationTreatment: BH_MED_EN,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes de deuil, d'adaptation ou de détresse émotionnelle. Vos informations de soins sont privées et confidentielles. Un suivi de soutien peut être approprié lorsque c'est cliniquement indiqué.",
+      diagnosisInstructions:
+        "Utilisez des stratégies d'adaptation de soutien selon les indications reçues. Suivez le suivi en santé comportementale lorsque recommandé. Cette note ne documente pas de diagnostics psychiatriques au-delà de la documentation choisie par le clinicien.",
+      medicationTreatment: BH_MED_FR,
+      returnPrecautions: BH_RETURN_PRECAUTIONS_FR,
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

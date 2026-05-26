@@ -286,6 +286,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["postpartum", "bleeding"], fr: ["post-partum", "saignements"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  behavioral_health_anxiety_panic_symptoms_v1: {
+    mustIncludeAny: { en: ["anxiety", "panic"], fr: ["anxiété", "angoisse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_depression_crisis_precautions_v1: {
+    mustIncludeAny: { en: ["depression", "crisis"], fr: ["dépression", "crise"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_suicidal_ideation_precautions_v1: {
+    mustIncludeAny: { en: ["self-harm", "crisis"], fr: ["se faire du mal", "crise"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_alcohol_intoxication_follow_up_v1: {
+    mustIncludeAny: { en: ["alcohol", "substance"], fr: ["alcool", "substances"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_alcohol_withdrawal_precautions_v1: {
+    mustIncludeAny: { en: ["withdrawal", "alcohol"], fr: ["sevrage", "alcool"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_substance_use_resources_v1: {
+    mustIncludeAny: { en: ["substance use", "recovery"], fr: ["substances", "rétablissement"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_opioid_overdose_aftercare_v1: {
+    mustIncludeAny: { en: ["opioid", "overdose"], fr: ["opioïdes", "surdose"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_crisis_follow_up_v1: {
+    mustIncludeAny: { en: ["behavioral health crisis", "crisis"], fr: ["crise", "comportementale"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_insomnia_stress_reaction_v1: {
+    mustIncludeAny: { en: ["insomnia", "stress"], fr: ["insomnie", "stress"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  behavioral_health_grief_adjustment_v1: {
+    mustIncludeAny: { en: ["grief", "adjustment"], fr: ["deuil", "adaptation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

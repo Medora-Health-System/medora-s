@@ -15,6 +15,16 @@ import {
   type ProviderDischargeTemplateSuggestedText,
 } from "./providerDischargeTemplateLocale";
 import {
+  BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_ALCOHOL_WITHDRAWAL_PRECAUTIONS_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_ANXIETY_PANIC_SYMPTOMS_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_CRISIS_FOLLOW_UP_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_DEPRESSION_CRISIS_PRECAUTIONS_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_INSOMNIA_STRESS_REACTION_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_OPIOID_OVERDOSE_AFTERCARE_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_SUBSTANCE_USE_RESOURCES_SUGGESTED_TEXT,
+  BEHAVIORAL_HEALTH_SUICIDAL_IDEATION_PRECAUTIONS_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -250,6 +260,20 @@ export const BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS = [
   "obgyn_postpartum_warning_v1",
 ] as const;
 
+/** Phase 19Y.12 — behavioral health & substance-use ED discharge template batch 8. */
+export const BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS = [
+  "behavioral_health_anxiety_panic_symptoms_v1",
+  "behavioral_health_depression_crisis_precautions_v1",
+  "behavioral_health_suicidal_ideation_precautions_v1",
+  "behavioral_health_alcohol_intoxication_follow_up_v1",
+  "behavioral_health_alcohol_withdrawal_precautions_v1",
+  "behavioral_health_substance_use_resources_v1",
+  "behavioral_health_opioid_overdose_aftercare_v1",
+  "behavioral_health_crisis_follow_up_v1",
+  "behavioral_health_insomnia_stress_reaction_v1",
+  "behavioral_health_grief_adjustment_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -274,6 +298,12 @@ const PEDIATRIC_HIGHER_RISK_TEMPLATE_GOVERNANCE = {
 const OBGYN_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "obgyn",
+  riskCategory: "high",
+};
+
+const BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "behavioral_health",
   riskCategory: "high",
 };
 
@@ -2162,6 +2192,284 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: OBGYN_POSTPARTUM_WARNING_SUGGESTED_TEXT,
   },
   {
+    id: "behavioral_health_anxiety_panic_symptoms_v1",
+    version: "1.0.0",
+    title: "Behavioral health anxiety / panic symptoms discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["F41.0"],
+      keyword: ["bh anxiety panic", "behavioral health panic symptoms", "anxiété panique bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Anxiety",
+        url: "https://medlineplus.gov/anxiety.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bha-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_ANXIETY_PANIC_SYMPTOMS_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_depression_crisis_precautions_v1",
+    version: "1.0.0",
+    title: "Behavioral health depression crisis precautions discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["F32.9"],
+      icdFamily: ["F32"],
+      keyword: ["bh depression crisis", "depression crisis precautions", "dépression crise bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Depression",
+        url: "https://medlineplus.gov/depression.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhd-bh", "BEHAVIORAL_HEALTH", "within several days or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_DEPRESSION_CRISIS_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_suicidal_ideation_precautions_v1",
+    version: "1.0.0",
+    title: "Behavioral health suicidal ideation precautions discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresSafetyPlan: true,
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresBehavioralHealthFollowUp: true,
+      requiresPrivacySensitiveWording: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["R45.851"],
+      keyword: ["bh suicidal ideation", "suicidal ideation precautions", "idées suicidaires bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Suicide",
+        url: "https://medlineplus.gov/suicide.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhs-crisis", "CRISIS_CLINIC", "within 24–72 hours or as directed"),
+      registryFollowUp("bhs-bh", "BEHAVIORAL_HEALTH", "as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_SUICIDAL_IDEATION_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_alcohol_intoxication_follow_up_v1",
+    version: "1.0.0",
+    title: "Behavioral health alcohol intoxication follow-up discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresSubstanceUseResources: true,
+      requiresBehavioralHealthFollowUp: true,
+      requiresCapacityCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "bh alcohol intoxication follow-up",
+        "behavioral health alcohol intoxication",
+        "intoxication alcool bh suivi",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Alcohol use disorder",
+        url: "https://medlineplus.gov/alcoholusedisorderaud.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhai-sub", "SUBSTANCE_USE_TREATMENT", "within several days or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_alcohol_withdrawal_precautions_v1",
+    version: "1.0.0",
+    title: "Behavioral health alcohol withdrawal precautions discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresSubstanceUseResources: true,
+      requiresWithdrawalPrecautions: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["F10.239"],
+      keyword: ["bh alcohol withdrawal", "alcohol withdrawal precautions", "sevrage alcool bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Alcohol withdrawal",
+        url: "https://medlineplus.gov/ency/article/000764.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhaw-sub", "SUBSTANCE_USE_TREATMENT", "within 1–3 days or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_ALCOHOL_WITHDRAWAL_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_substance_use_resources_v1",
+    version: "1.0.0",
+    title: "Behavioral health substance-use resource discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresSubstanceUseResources: true,
+      requiresBehavioralHealthFollowUp: true,
+      requiresPrivacySensitiveWording: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["F19.90"],
+      keyword: ["bh substance use resources", "substance use resource discharge", "ressources usage substances bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Substance use disorder",
+        url: "https://medlineplus.gov/substanceusedisorder.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhsu-sub", "SUBSTANCE_USE_TREATMENT", "within several days or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_SUBSTANCE_USE_RESOURCES_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_opioid_overdose_aftercare_v1",
+    version: "1.0.0",
+    title: "Behavioral health opioid overdose aftercare discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSubstanceUseResources: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["T40.2X5A"],
+      keyword: ["bh opioid overdose", "opioid overdose aftercare", "surdose opioïdes bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Opioid overdose",
+        url: "https://medlineplus.gov/opioidoverdose.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bho-sub", "SUBSTANCE_USE_TREATMENT", "within 1–3 days or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_OPIOID_OVERDOSE_AFTERCARE_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_crisis_follow_up_v1",
+    version: "1.0.0",
+    title: "Behavioral health crisis follow-up discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresHomicideRiskEscalation: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["R45.89"],
+      keyword: ["bh behavioral crisis", "behavioral crisis follow-up", "crise comportementale bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Mental health",
+        url: "https://medlineplus.gov/mentalhealth.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhc-crisis", "CRISIS_CLINIC", "within 24–72 hours or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_CRISIS_FOLLOW_UP_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_insomnia_stress_reaction_v1",
+    version: "1.0.0",
+    title: "Behavioral health insomnia / acute stress reaction discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresBehavioralHealthFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["G47.00", "F43.0"],
+      keyword: ["bh insomnia stress", "acute stress reaction bh", "insomnie stress aigu bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Sleep disorders",
+        url: "https://medlineplus.gov/sleepdisorders.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhi-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_INSOMNIA_STRESS_REACTION_SUGGESTED_TEXT,
+  },
+  {
+    id: "behavioral_health_grief_adjustment_v1",
+    version: "1.0.0",
+    title: "Behavioral health grief / adjustment symptoms discharge documentation",
+    ...BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE,
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresBehavioralHealthFollowUp: true,
+      requiresPrivacySensitiveWording: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["F43.20", "F43.21"],
+      keyword: ["bh grief adjustment", "grief reaction adjustment", "deuil adaptation bh"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Bereavement",
+        url: "https://medlineplus.gov/bereavement.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("bhg-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+    ],
+    suggestedText: BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -2312,6 +2620,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour des signes urinaires pendant la grossesse",
   "Vous avez été pris en charge aux urgences pour une gêne abdominale ou pelvienne liée à la grossesse",
   "Vous avez été pris en charge aux urgences pour des signes post-partum",
+  "You were evaluated in the emergency department for anxiety or panic symptoms. Symptoms may recur or worsen after an emergency visit",
+  "You were evaluated in the emergency department during a period of worsening depression or emotional distress",
+  "You were evaluated in the emergency department for concerns related to thoughts of self-harm",
+  "You were evaluated in the emergency department related to alcohol use. Symptoms may continue to change after an emergency visit",
+  "You were evaluated in the emergency department for symptoms that may be related to alcohol withdrawal",
+  "You were evaluated in the emergency department for concerns related to substance use",
+  "You were evaluated in the emergency department after a suspected opioid overdose or related emergency",
+  "You were evaluated in the emergency department during a behavioral health crisis or severe emotional distress",
+  "You were evaluated in the emergency department for insomnia, acute stress, or related symptoms",
+  "You were evaluated in the emergency department for grief, adjustment, or emotional distress symptoms",
+  "Vous avez été pris en charge aux urgences pour de l'anxiété ou des signes de crise d'angoisse. Les symptômes peuvent récidiver",
+  "Vous avez été pris en charge aux urgences pendant une période d'aggravation de la dépression ou de détresse émotionnelle",
+  "Vous avez été pris en charge aux urgences pour des préoccupations liées à des idées de se faire du mal",
+  "Vous avez été pris en charge aux urgences pour un motif lié à l'usage d'alcool",
+  "Vous avez été pris en charge aux urgences pour des signes pouvant être liés à un sevrage alcoolique",
+  "Vous avez été pris en charge aux urgences pour des préoccupations liées à l'usage de substances",
+  "Vous avez été pris en charge aux urgences après une suspicion de surdose d'opioïdes ou une urgence connexe",
+  "Vous avez été pris en charge aux urgences lors d'une crise de santé comportementale ou d'une détresse émotionnelle importante",
+  "Vous avez été pris en charge aux urgences pour de l'insomnie, un stress aigu ou des signes connexes",
+  "Vous avez été pris en charge aux urgences pour des signes de deuil, d'adaptation ou de détresse émotionnelle",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

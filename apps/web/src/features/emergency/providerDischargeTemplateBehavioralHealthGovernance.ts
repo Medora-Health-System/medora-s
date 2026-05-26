@@ -66,7 +66,10 @@ export const PROVIDER_DISCHARGE_BH_FORBIDDEN_PHRASES: readonly { id: string; pat
 export const PROVIDER_DISCHARGE_BH_EN_ESCALATION_MARKERS = [
   "thoughts of self-harm",
   "thoughts of harming others",
+  "worsening anxiety",
+  "worsening depression",
   "worsening hallucinations",
+  "hallucinations",
   "confusion",
   "severe agitation",
   "withdrawal symptoms",
@@ -78,7 +81,10 @@ export const PROVIDER_DISCHARGE_BH_EN_ESCALATION_MARKERS = [
 export const PROVIDER_DISCHARGE_BH_FR_ESCALATION_MARKERS = [
   "idées de se faire du mal",
   "idées de faire du mal à autrui",
+  "aggravation de l'anxiété",
+  "aggravation de la dépression",
   "hallucinations qui s'aggravent",
+  "hallucinations",
   "confusion",
   "agitation sévère",
   "symptômes de sevrage",
@@ -165,14 +171,18 @@ function validateBehavioralHealthSafetyMetadata(template: ProviderDischargeTempl
   }
 
   if (
-    (template.id.includes("self_harm") || template.id.includes("suicide")) &&
+    (template.id.includes("self_harm") ||
+      template.id.includes("suicide") ||
+      template.id.includes("suicidal")) &&
     safety.requiresCrisisResources !== true
   ) {
     errors.push(`${prefix} self-harm/suicide template must set requiresCrisisResources: true`);
   }
 
   if (
-    (template.id.includes("self_harm") || template.id.includes("suicide")) &&
+    (template.id.includes("self_harm") ||
+      template.id.includes("suicide") ||
+      template.id.includes("suicidal")) &&
     safety.requiresSelfHarmEscalation !== true
   ) {
     errors.push(`${prefix} self-harm/suicide template must set requiresSelfHarmEscalation: true`);
