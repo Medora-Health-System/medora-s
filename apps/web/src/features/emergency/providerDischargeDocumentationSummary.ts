@@ -2,6 +2,7 @@
  * Phase 19Y / 19Y.1A — read-only builders for provider discharge documentation in Summary / ER packet / export.
  */
 
+import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import type { ErDispositionPreviewSection } from "./emergencyDispositionV1";
@@ -49,10 +50,19 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
   return parts.join(" · ");
 }
 
+function localizedDiagnosisLine(
+  code: string,
+  englishLabel: string,
+  locale: SupportedLanguage,
+  primarySuffix: string
+): string {
+  return `${code} — ${getLocalizedDiagnosisDisplayLabel({ code, description: englishLabel }, locale)}${primarySuffix}`;
+}
+
 function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
   const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
-  lines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
+  lines.push(localizedDiagnosisLine(doc.code, doc.displayName, locale, primarySuffix));
   pushLine(lines, p(locale, "description"), doc.description);
   pushLine(lines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
   pushLine(lines, p(locale, "medicationTreatment"), doc.medicationTreatment);
@@ -206,7 +216,7 @@ export function buildProviderDischargeDocumentationPreviewSections(
     const docLines: string[] = [];
     for (const doc of selectedDocs) {
       const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
-      docLines.push(`${doc.code} — ${doc.displayName}${primarySuffix}`);
+      docLines.push(localizedDiagnosisLine(doc.code, doc.displayName, locale, primarySuffix));
       previewPushLine(docLines, p(locale, "description"), doc.description);
       previewPushLine(docLines, p(locale, "diagnosisInstructions"), doc.diagnosisInstructions);
       previewPushLine(docLines, p(locale, "medicationTreatment"), doc.medicationTreatment);

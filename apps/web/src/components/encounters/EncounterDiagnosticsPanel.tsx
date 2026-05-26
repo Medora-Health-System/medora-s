@@ -7,6 +7,7 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
+import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
 
 type DxRow = {
   id: string;
@@ -339,7 +340,9 @@ export function EncounterDiagnosticsPanel({
                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{codeSourceLabel(r.codeSource)}</div>
                     ) : null}
                   </td>
-                  <td style={{ padding: "12px 14px", color: "#334155" }}>{r.description || "—"}</td>
+                  <td style={{ padding: "12px 14px", color: "#334155" }}>
+                    {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
+                  </td>
                   <td style={{ padding: "12px 14px", color: "#334155" }}>
                     {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
                   </td>

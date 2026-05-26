@@ -6639,7 +6639,26 @@ describe("edDisposition19Y", () => {
       );
       expect(source).toContain("resolveLocalizedDiagnosisSearchQueries");
       expect(source).toContain("diagnosisMatchesLocalizedSearch");
+      expect(source).toContain("getLocalizedDiagnosisDisplayLabel");
       expect(source).not.toContain("console.log(\"[DxSearch]");
+    });
+
+    it("French diagnosis display labels render at UI surfaces only", () => {
+      const panel = readFileSync(join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"), "utf8");
+      const dxPanel = readFileSync(join(webRoot, "src/components/encounters/EncounterDiagnosticsPanel.tsx"), "utf8");
+      const discharge = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      const summary = readFileSync(
+        join(webRoot, "src/features/emergency/providerDischargeDocumentationSummary.ts"),
+        "utf8"
+      );
+      expect(panel).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(dxPanel).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(discharge).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(summary).toContain("getLocalizedDiagnosisDisplayLabel");
+      expect(discharge).toContain("label: row.description?.trim() || row.code");
     });
   });
 });

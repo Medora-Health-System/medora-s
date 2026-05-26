@@ -5,6 +5,7 @@ import { isIcd10CmLikeCodeFormat } from "@medora/shared";
 import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
 import type { SupportedLanguage } from "@/i18n/config";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
 import {
   diagnosisMatchesLocalizedSearch,
   resolveLocalizedDiagnosisSearchQueries,
@@ -260,7 +261,9 @@ export function Icd10DiagnosisEntryPanel({
                   fontSize: 13,
                 }}
               >
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>{h.shortDescription}</div>
+                <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                  {getLocalizedDiagnosisDisplayLabel(h, language)}
+                </div>
                 <div style={{ color: "#475569", marginTop: 2, fontSize: 12 }}>{h.code}</div>
                 {!h.isBillable ? (
                   <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>{t("diagnosisEntry.nonBillableCode")}</div>
