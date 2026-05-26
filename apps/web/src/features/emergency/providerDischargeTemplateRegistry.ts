@@ -10,6 +10,7 @@ import type { ProviderDischargePediatricDangerSignCategory } from "./providerDis
 import type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
 import type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
 import type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
+import type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
 import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
@@ -36,6 +37,16 @@ import {
   TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
   TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT,
   TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT,
+  CARDIO_HYPERTENSION_ELEVATED_BP_SUGGESTED_TEXT,
+  HIGH_RISK_MEDICAL_FATIGUE_SUGGESTED_TEXT,
+  HIGH_RISK_MEDICAL_GENERAL_WEAKNESS_SUGGESTED_TEXT,
+  HIGH_RISK_MEDICAL_DIZZINESS_SUGGESTED_TEXT,
+  HIGH_RISK_MEDICAL_HEADACHE_SUGGESTED_TEXT,
+  HIGH_RISK_MEDICAL_LEG_SWELLING_SUGGESTED_TEXT,
+  CARDIO_CHEST_PAIN_FOLLOW_UP_SUGGESTED_TEXT,
+  CARDIO_SYNCOPE_FOLLOW_UP_SUGGESTED_TEXT,
+  CARDIO_AFIB_RATE_CONTROLLED_SUGGESTED_TEXT,
+  CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -155,6 +166,8 @@ export type ProviderDischargeTemplate = {
   behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
   /** Phase 19Y.13 — trauma / MSK safety governance metadata (not shown in UI). */
   traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
+  /** Phase 19Y.15 — cardiology / high-risk medical safety governance metadata (not shown in UI). */
+  cardioHighRiskSafety?: ProviderDischargeTemplateCardioHighRiskSafety;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -174,6 +187,7 @@ export type { ProviderDischargeTemplateLocale, ProviderDischargeTemplateSuggeste
 export type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
 export type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
 export type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
+export type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
 
 export type ProviderDischargeTemplateResolveResult = {
   template: ProviderDischargeTemplate;
@@ -302,6 +316,20 @@ export const BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS = [
   "trauma_msk_mvc_soreness_v1",
 ] as const;
 
+/** Phase 19Y.16 — cardiology & high-risk medical ED discharge template batch 10. */
+export const BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS = [
+  "cardio_hypertension_elevated_bp_v1",
+  "high_risk_medical_fatigue_v1",
+  "high_risk_medical_general_weakness_v1",
+  "high_risk_medical_dizziness_v1",
+  "high_risk_medical_headache_v1",
+  "high_risk_medical_leg_swelling_v1",
+  "cardio_chest_pain_low_risk_v1",
+  "cardio_syncope_v1",
+  "cardio_afib_rate_controlled_v1",
+  "cardio_heart_failure_symptoms_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -339,6 +367,18 @@ const TRAUMA_MSK_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "orthopedics",
   riskCategory: "moderate",
+};
+
+const CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "cardiology",
+  riskCategory: "high",
+};
+
+const HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "emergency_medicine",
+  riskCategory: "high",
 };
 
 /** @deprecated Use BATCH_GOVERNANCE_DRAFT */
@@ -2808,6 +2848,273 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
   },
   {
+    id: "cardio_hypertension_elevated_bp_v1",
+    version: "1.0.0",
+    title: "Cardiology elevated blood pressure discharge documentation",
+    ...CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      requiresEmergencyEscalation: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "cardio elevated blood pressure",
+        "cardio hypertension elevated bp",
+        "cardio elevated bp",
+        "hypertension cardio elevated",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — High blood pressure",
+        url: "https://medlineplus.gov/highbloodpressure.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("cardiohtn-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    suggestedText: CARDIO_HYPERTENSION_ELEVATED_BP_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_risk_medical_fatigue_v1",
+    version: "1.0.0",
+    title: "High-risk medical fatigue discharge documentation",
+    ...HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      requiresEmergencyEscalation: true,
+    },
+    diagnosisMappings: {
+      keyword: ["high risk medical fatigue", "hrm fatigue", "fatigue high risk medical"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fatigue",
+        url: "https://medlineplus.gov/fatigue.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("hrmf-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: HIGH_RISK_MEDICAL_FATIGUE_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_risk_medical_general_weakness_v1",
+    version: "1.0.0",
+    title: "High-risk medical generalized weakness discharge documentation",
+    ...HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      requiresEmergencyEscalation: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "high risk medical weakness",
+        "hrm general weakness",
+        "generalized weakness high risk medical",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Muscle weakness",
+        url: "https://medlineplus.gov/ency/article/003174.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("hrmw-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: HIGH_RISK_MEDICAL_GENERAL_WEAKNESS_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_risk_medical_dizziness_v1",
+    version: "1.0.0",
+    title: "High-risk medical dizziness discharge documentation",
+    ...HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      requiresDrivingRestrictionCaution: true,
+      requiresEmergencyEscalation: true,
+      requiresNeurologicEscalation: true,
+    },
+    diagnosisMappings: {
+      keyword: ["high risk medical dizziness", "hrm dizziness", "dizziness high risk medical"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dizziness and vertigo",
+        url: "https://medlineplus.gov/dizzinessandvertigo.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("hrmd-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: HIGH_RISK_MEDICAL_DIZZINESS_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_risk_medical_headache_v1",
+    version: "1.0.0",
+    title: "High-risk medical headache discharge documentation",
+    ...HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      requiresNeurologicEscalation: true,
+      requiresEmergencyEscalation: true,
+    },
+    diagnosisMappings: {
+      keyword: ["high risk medical headache", "hrm headache", "headache high risk medical"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Headache",
+        url: "https://medlineplus.gov/headache.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("hrmh-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("hrmh-neuro", "NEUROLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: HIGH_RISK_MEDICAL_HEADACHE_SUGGESTED_TEXT,
+  },
+  {
+    id: "high_risk_medical_leg_swelling_v1",
+    version: "1.0.0",
+    title: "High-risk medical leg swelling discharge documentation",
+    ...HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      peSensitive: true,
+      requiresEmergencyEscalation: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "high risk medical leg swelling",
+        "hrm leg swelling",
+        "leg swelling high risk medical",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Leg swelling",
+        url: "https://medlineplus.gov/ency/article/003104.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("hrmls-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: HIGH_RISK_MEDICAL_LEG_SWELLING_SUGGESTED_TEXT,
+  },
+  {
+    id: "cardio_chest_pain_low_risk_v1",
+    version: "1.0.0",
+    title: "Cardiology chest pain follow-up discharge documentation",
+    ...CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      acsSensitive: true,
+      ekgSensitive: true,
+      troponinLabSensitive: true,
+      requiresChestPainEscalation: true,
+      requiresEmergencyEscalation: true,
+      requiresResultInterpretationCaution: true,
+      requiresCardiologyFollowUp: true,
+    },
+    diagnosisMappings: {
+      keyword: ["chest pain follow-up", "nonspecific chest pain", "atypical chest pain"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Chest pain",
+        url: "https://medlineplus.gov/chestpain.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("cardiocp-cardiology", "CARDIOLOGY", "within several days or as directed"),
+      registryFollowUp("cardiocp-ed", "EMERGENCY_MEDICINE", "if symptoms recur before cardiology follow-up"),
+    ],
+    suggestedText: CARDIO_CHEST_PAIN_FOLLOW_UP_SUGGESTED_TEXT,
+  },
+  {
+    id: "cardio_syncope_v1",
+    version: "1.0.0",
+    title: "Cardiology syncope discharge documentation",
+    ...CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      syncopeSensitive: true,
+      requiresDrivingRestrictionCaution: true,
+      requiresEmergencyEscalation: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["cardio syncope", "cardio syncope follow-up", "cardio fainting follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fainting",
+        url: "https://medlineplus.gov/fainting.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("cardiosync-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed"),
+      registryFollowUp("cardiosync-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: CARDIO_SYNCOPE_FOLLOW_UP_SUGGESTED_TEXT,
+  },
+  {
+    id: "cardio_afib_rate_controlled_v1",
+    version: "1.0.0",
+    title: "Cardiology atrial fibrillation discharge documentation",
+    ...CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      anticoagulationSensitive: true,
+      requiresAnticoagulationPrecautions: true,
+      requiresCardiologyFollowUp: true,
+      requiresEmergencyEscalation: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["I48"],
+      keyword: ["atrial fibrillation cardio", "afib cardio", "cardio afib"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Atrial fibrillation",
+        url: "https://medlineplus.gov/atrialfibrillation.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("cardioafib-cardiology", "CARDIOLOGY", "within several days or as directed")],
+    suggestedText: CARDIO_AFIB_RATE_CONTROLLED_SUGGESTED_TEXT,
+  },
+  {
+    id: "cardio_heart_failure_symptoms_v1",
+    version: "1.0.0",
+    title: "Cardiology heart failure symptoms discharge documentation",
+    ...CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE,
+    cardioHighRiskSafety: {
+      dyspneaSensitive: true,
+      requiresFluidStatusPrecautions: true,
+      requiresEmergencyEscalation: true,
+      requiresCardiologyFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["I50"],
+      keyword: ["heart failure symptoms cardio", "cardio heart failure symptoms", "chf symptoms cardio"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Heart failure",
+        url: "https://medlineplus.gov/heartfailure.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("cardiohf-cardiology", "CARDIOLOGY", "within several days or as directed"),
+      registryFollowUp("cardiohf-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -2998,6 +3305,20 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour une blessure des côtes ou de la paroi thoracique après un traumatisme",
   "Vous avez été pris en charge aux urgences pour une possible lésion osseuse",
   "Vous avez été pris en charge aux urgences pour des courbatures ou symptômes après une collision de véhicule",
+  "You were evaluated in the emergency department for elevated blood pressure or hypertension concerns",
+  "You were evaluated in the emergency department for fatigue or decreased energy",
+  "You were evaluated in the emergency department for generalized weakness",
+  "You were evaluated in the emergency department for dizziness or lightheadedness",
+  "You were evaluated in the emergency department for leg swelling",
+  "You were evaluated in the emergency department for atrial fibrillation or related heart rhythm concerns",
+  "You were evaluated in the emergency department for heart failure symptoms such as shortness of breath or swelling",
+  "Vous avez été pris en charge aux urgences pour une pression artérielle élevée ou des signes d'hypertension",
+  "Vous avez été pris en charge aux urgences pour une fatigue ou une baisse d'énergie",
+  "Vous avez été pris en charge aux urgences pour une faiblesse généralisée",
+  "Vous avez été pris en charge aux urgences pour des étourdissements ou des vertiges",
+  "Vous avez été pris en charge aux urgences pour une enflure d'une jambe",
+  "Vous avez été pris en charge aux urgences pour une fibrillation auriculaire ou un trouble du rythme cardiaque connexe",
+  "Vous avez été pris en charge aux urgences pour des signes d'insuffisance cardiaque tels que l'essoufflement ou l'enflure",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

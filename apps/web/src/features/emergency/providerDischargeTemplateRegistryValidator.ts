@@ -32,6 +32,10 @@ import {
   validateProviderDischargeTraumaMskTemplateGovernance,
 } from "./providerDischargeTemplateTraumaMskGovernance";
 import {
+  normalizeCardioHighRiskSafetyForHash,
+  validateProviderDischargeCardioHighRiskTemplateGovernance,
+} from "./providerDischargeTemplateCardioHighRiskGovernance";
+import {
   normalizeBehavioralHealthSafetyForHash,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
   scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
@@ -194,6 +198,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       obGynSafety: normalizeObGynSafetyForHash(template.obGynSafety),
       behavioralHealthSafety: normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety),
       traumaMskSafety: normalizeTraumaMskSafetyForHash(template.traumaMskSafety),
+      cardioHighRiskSafety: normalizeCardioHighRiskSafetyForHash(template.cardioHighRiskSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -368,6 +373,7 @@ export function validateProviderDischargeTemplateRegistry(
     errors.push(...validateProviderDischargeBehavioralHealthTemplateGovernance(template));
     warnings.push(...scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings(template));
     errors.push(...validateProviderDischargeTraumaMskTemplateGovernance(template));
+    errors.push(...validateProviderDischargeCardioHighRiskTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

@@ -19,6 +19,10 @@ import {
   normalizeTraumaMskSafetyForHash,
   type ProviderDischargeTemplateTraumaMskSafety,
 } from "./providerDischargeTemplateTraumaMskGovernance";
+import {
+  normalizeCardioHighRiskSafetyForHash,
+  type ProviderDischargeTemplateCardioHighRiskSafety,
+} from "./providerDischargeTemplateCardioHighRiskGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -49,6 +53,7 @@ export type ProviderDischargeTemplateHashSource = {
   obGynSafety?: ProviderDischargeTemplateObGynSafety;
   behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
   traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
+  cardioHighRiskSafety?: ProviderDischargeTemplateCardioHighRiskSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -90,6 +95,7 @@ export type ProviderDischargeTemplateHashPayload = {
   obGynSafety?: Record<string, boolean>;
   behavioralHealthSafety?: Record<string, boolean>;
   traumaMskSafety?: Record<string, boolean>;
+  cardioHighRiskSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -171,6 +177,8 @@ export function buildProviderDischargeTemplateHashPayload(
   if (behavioralHealthSafety) payload.behavioralHealthSafety = behavioralHealthSafety;
   const traumaMskSafety = normalizeTraumaMskSafetyForHash(template.traumaMskSafety);
   if (traumaMskSafety) payload.traumaMskSafety = traumaMskSafety;
+  const cardioHighRiskSafety = normalizeCardioHighRiskSafetyForHash(template.cardioHighRiskSafety);
+  if (cardioHighRiskSafety) payload.cardioHighRiskSafety = cardioHighRiskSafety;
 
   return payload;
 }

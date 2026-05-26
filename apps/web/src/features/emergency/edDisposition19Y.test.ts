@@ -18,6 +18,7 @@ import {
   BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -44,6 +45,21 @@ import {
   scanProviderDischargeTraumaMskSplintCastPrecautions,
   validateProviderDischargeTraumaMskTemplateGovernance,
 } from "./providerDischargeTemplateTraumaMskGovernance";
+import {
+  scanProviderDischargeCardioHighRiskEscalationLanguage,
+  scanProviderDischargeCardioHighRiskForbiddenPhrases,
+  scanProviderDischargeCardioAnticoagForbiddenPhrases,
+  scanProviderDischargeCardioChestPainEscalationLanguage,
+  scanProviderDischargeCardioDrivingRestrictionCaution,
+  scanProviderDischargeCardioFluidStatusPrecautions,
+  scanProviderDischargeCardioNeurologicEscalationLanguage,
+  scanProviderDischargeCardioPeForbiddenPhrases,
+  scanProviderDischargeCardioPeEscalationLanguage,
+  scanProviderDischargeCardioAnticoagPrecautions,
+  scanProviderDischargeCardioResultInterpretationForbiddenPhrases,
+  scanProviderDischargeCardioSyncopePrecautions,
+  validateProviderDischargeCardioHighRiskTemplateGovernance,
+} from "./providerDischargeTemplateCardioHighRiskGovernance";
 import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
@@ -395,6 +411,125 @@ function syntheticTraumaMskTemplate(
       requiresSplintCastPrecautions: true,
       requiresHeadNeckSpineEscalation: true,
       requiresOrthopedicFollowUp: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_CARDIO_HIGH_RISK_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a cardiology or high-risk medical concern. Symptoms may evolve after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations. Follow up with cardiology as directed. Take medications only as directed.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for chest pain, shortness of breath, fainting, recurrent fainting, fainting again, severe weakness, new neurologic symptoms, one-sided weakness, trouble speaking, severe headache, palpitations with dizziness, coughing blood, or leg swelling. Seek care for fall risk or injury from a fall. Call 911 for worsening symptoms.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un motif cardiovasculaire ou médical à risque élevé. Les symptômes peuvent évoluer après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien. Suivez le suivi en cardiologie selon les directives. Prenez les médicaments uniquement selon les directives.",
+    medicationTreatment:
+      "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.",
+    returnPrecautions:
+      "Retournez immédiatement en cas de douleur thoracique, d'essoufflement, d'évanouissement, d'évanouissement récurrent, de faiblesse importante, de nouveaux symptômes neurologiques, de faiblesse d'un côté, de difficulté à parler, de mal de tête sévère, de palpitations avec étourdissements, de cracher du sang ou d'enflure d'une jambe. Consultez en cas de risque de chute ou de blessure après une chute. Appelez le 911 en cas d'aggravation.",
+  },
+} as const;
+
+function syntheticCardioHighRiskTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "cardiology",
+    riskCategory: "high",
+    suggestedText: {
+      en: { ...SYNTHETIC_CARDIO_HIGH_RISK_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_CARDIO_HIGH_RISK_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "cardio-cardiology",
+        specialty: "CARDIOLOGY",
+        timing: "within several days or as directed",
+      },
+      {
+        ...newDefaultFollowUpRow(),
+        id: "cardio-pcp",
+        specialty: "PRIMARY_CARE",
+        timing: "as clinically appropriate",
+      },
+    ],
+    cardioHighRiskSafety: {
+      acsSensitive: true,
+      peSensitive: true,
+      strokeTiaSensitive: true,
+      ekgSensitive: true,
+      troponinLabSensitive: true,
+      anticoagulationSensitive: true,
+      syncopeSensitive: true,
+      dyspneaSensitive: true,
+      requiresCardiologyFollowUp: true,
+      requiresEmergencyEscalation: true,
+      requiresResultInterpretationCaution: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a cardiology or high-risk medical concern. Symptoms may evolve after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations. Follow up with cardiology as directed. Take medications only as directed. Avoid driving or operating machinery as directed.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for chest pain, shortness of breath, worsening shortness of breath, swelling, weight gain, fainting, recurrent fainting, fainting again, severe weakness, numbness, confusion, new neurologic symptoms, one-sided weakness, one-sided symptoms, trouble speaking, severe headache, palpitations with dizziness, coughing blood, or one-sided leg swelling. Seek care for fall risk or injury from a fall. Call 911 for worsening symptoms.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un motif cardiovasculaire ou médical à risque élevé. Les symptômes peuvent évoluer après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien. Suivez le suivi en cardiologie selon les directives. Prenez les médicaments uniquement selon les directives. Évitez de conduire ou d'utiliser des machines selon les directives.",
+    medicationTreatment:
+      "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.",
+    returnPrecautions:
+      "Retournez immédiatement en cas de douleur thoracique, d'essoufflement, d'enflure, de prise de poids, d'évanouissement, d'évanouissement récurrent, de faiblesse, d'engourdissement, de confusion, de nouveaux symptômes neurologiques, de faiblesse d'un côté, de difficulté à parler, de mal de tête sévère, de palpitations avec étourdissements, de cracher du sang ou d'enflure d'une jambe. Consultez en cas de risque de chute ou de blessure après une chute. Appelez le 911 en cas d'aggravation.",
+  },
+} as const;
+
+function syntheticCardioExtendedTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticCardioHighRiskTemplate({
+    id,
+    suggestedText: {
+      en: { ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr },
+    },
+    cardioHighRiskSafety: {
+      acsSensitive: true,
+      peSensitive: true,
+      strokeTiaSensitive: true,
+      ekgSensitive: true,
+      troponinLabSensitive: true,
+      anticoagulationSensitive: true,
+      syncopeSensitive: true,
+      dyspneaSensitive: true,
+      requiresCardiologyFollowUp: true,
+      requiresEmergencyEscalation: true,
+      requiresResultInterpretationCaution: true,
+      requiresDrivingRestrictionCaution: true,
+      requiresAnticoagulationPrecautions: true,
+      requiresFluidStatusPrecautions: true,
+      requiresNeurologicEscalation: true,
+      requiresChestPainEscalation: true,
     },
     ...rest,
   });
@@ -3778,6 +3913,928 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.15 cardiology & high-risk medical discharge template governance hardening", () => {
+    it("ProviderDischargeTemplate supports cardioHighRiskSafety metadata", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_metadata_v1" });
+      expect(template.cardioHighRiskSafety?.acsSensitive).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresCardiologyFollowUp).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresResultInterpretationCaution).toBe(true);
+    });
+
+    it("cardio/high-risk synthetic template missing cardioHighRiskSafety fails", () => {
+      const template = syntheticRegistryTemplate({
+        id: "cardio_missing_governance_v1",
+        specialtyCategory: "cardiology",
+        riskCategory: "high",
+      });
+      const errors = validateProviderDischargeCardioHighRiskTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define cardioHighRiskSafety"))).toBe(true);
+    });
+
+    it("ACS-sensitive template missing ACS flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_acs_watch_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("acsSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("PE-sensitive template missing PE flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_pe_watch_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("peSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("stroke/TIA-sensitive template missing stroke flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_stroke_tia_watch_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("strokeTiaSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("EKG-sensitive template missing EKG flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_ekg_result_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("ekgSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("troponin/lab-sensitive template missing lab flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_troponin_result_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("troponinLabSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("anticoagulation-sensitive template missing anticoagulation flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_anticoagulation_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("anticoagulationSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("syncope-sensitive template missing syncope flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_syncope_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("syncopeSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("dyspnea-sensitive template missing dyspnea flag fails", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_dyspnea_v1",
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("dyspneaSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("cardiology follow-up requirement fails without cardiology/appropriate follow-up", () => {
+      const template = syntheticCardioHighRiskTemplate({
+        id: "cardio_followup_missing_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "cardio-neuro-only",
+            specialty: "NEUROLOGY",
+            timing: "within several days",
+          },
+        ],
+        cardioHighRiskSafety: {
+          requiresCardiologyFollowUp: true,
+          requiresEmergencyEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresCardiologyFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("cardiology follow-up passes with cardiology row", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_followup_ok_v1" });
+      expect(validateProviderDischargeCardioHighRiskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it('forbidden phrase "ACS ruled out" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_acs_v1" }).suggestedText.en;
+      const bad = { ...body, description: `${body.description} ACS ruled out.` };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_acs_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it('forbidden phrase "troponins negative" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_trop_v1" }).suggestedText.en;
+      const bad = { ...body, diagnosisInstructions: "Troponins negative today." };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_trop_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it('forbidden phrase "EKG normal" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_ekg_v1" }).suggestedText.en;
+      const bad = { ...body, diagnosisInstructions: "EKG normal during visit." };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_ekg_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it('forbidden phrase "PE ruled out" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_pe_v1" }).suggestedText.en;
+      const bad = { ...body, description: `${body.description} PE ruled out.` };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_pe_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it('forbidden phrase "low cardiac risk" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_risk_v1" }).suggestedText.en;
+      const bad = { ...body, description: `${body.description} Low cardiac risk.` };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_risk_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it('forbidden phrase "safe for discharge" fails', () => {
+      const body = syntheticCardioHighRiskTemplate({ id: "cardio_bad_safe_v1" }).suggestedText.en;
+      const bad = { ...body, returnPrecautions: `${body.returnPrecautions} Safe for discharge.` };
+      expect(scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad_safe_v1", "en", bad)).not.toEqual([]);
+    });
+
+    it("safe escalation wording passes EN", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_escalation_en_v1" });
+      expect(
+        scanProviderDischargeCardioHighRiskEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("safe escalation wording passes FR", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_escalation_fr_v1" });
+      expect(
+        scanProviderDischargeCardioHighRiskEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("cardioHighRiskSafety metadata included in registry snapshot/hash", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.cardioHighRiskSafety).toEqual({
+        acsSensitive: true,
+        anticoagulationSensitive: true,
+        dyspneaSensitive: true,
+        ekgSensitive: true,
+        peSensitive: true,
+        requiresCardiologyFollowUp: true,
+        requiresEmergencyEscalation: true,
+        requiresResultInterpretationCaution: true,
+        strokeTiaSensitive: true,
+        syncopeSensitive: true,
+        troponinLabSensitive: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "cardio_hash_v1") as Record<string, unknown>;
+      expect(row.cardioHighRiskSafety).toEqual(payload.cardioHighRiskSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withCardio = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withCardio).not.toBe(base);
+    });
+
+    it("result interpretation caution blocks normal/negative result language", () => {
+      const template = syntheticCardioHighRiskTemplate({ id: "cardio_result_interp_v1" });
+      const bad = {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "Normal EKG and negative troponin during this visit.",
+      };
+      expect(
+        scanProviderDischargeCardioResultInterpretationForbiddenPhrases(
+          template.id,
+          "en",
+          bad
+        )
+      ).not.toEqual([]);
+    });
+
+    it("existing adult/pediatric/OB/BH/trauma templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("legacy high-risk neurology/pulmonology templates validate without cardioHighRiskSafety", () => {
+      const tia = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "tia_stroke_like_v1")!;
+      const seizure = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "seizure_v1")!;
+      const sob = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "shortness_of_breath_v1")!;
+      expect(validateProviderDischargeCardioHighRiskTemplateGovernance(tia)).toEqual([]);
+      expect(validateProviderDischargeCardioHighRiskTemplateGovernance(seizure)).toEqual([]);
+      expect(validateProviderDischargeCardioHighRiskTemplateGovernance(sob)).toEqual([]);
+    });
+  });
+
+  describe("19Y.15A cardiology high-risk template governance extension", () => {
+    it("cardioHighRiskSafety metadata supports the 5 new extension fields", () => {
+      const template = syntheticCardioExtendedTemplate({ id: "cardio_extension_metadata_v1" });
+      expect(template.cardioHighRiskSafety?.requiresDrivingRestrictionCaution).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresAnticoagulationPrecautions).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresFluidStatusPrecautions).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresNeurologicEscalation).toBe(true);
+      expect(template.cardioHighRiskSafety?.requiresChestPainEscalation).toBe(true);
+    });
+
+    it("hash includes true values only in stable sorted key order", () => {
+      const template = syntheticCardioExtendedTemplate({ id: "cardio_extension_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      const safety = payload.cardioHighRiskSafety ?? {};
+      expect(safety).toEqual({
+        acsSensitive: true,
+        anticoagulationSensitive: true,
+        dyspneaSensitive: true,
+        ekgSensitive: true,
+        peSensitive: true,
+        requiresAnticoagulationPrecautions: true,
+        requiresCardiologyFollowUp: true,
+        requiresChestPainEscalation: true,
+        requiresDrivingRestrictionCaution: true,
+        requiresEmergencyEscalation: true,
+        requiresFluidStatusPrecautions: true,
+        requiresNeurologicEscalation: true,
+        requiresResultInterpretationCaution: true,
+        strokeTiaSensitive: true,
+        syncopeSensitive: true,
+        troponinLabSensitive: true,
+      });
+      expect(Object.keys(safety)).toEqual([
+        "acsSensitive",
+        "anticoagulationSensitive",
+        "dyspneaSensitive",
+        "ekgSensitive",
+        "peSensitive",
+        "requiresAnticoagulationPrecautions",
+        "requiresCardiologyFollowUp",
+        "requiresChestPainEscalation",
+        "requiresDrivingRestrictionCaution",
+        "requiresEmergencyEscalation",
+        "requiresFluidStatusPrecautions",
+        "requiresNeurologicEscalation",
+        "requiresResultInterpretationCaution",
+        "strokeTiaSensitive",
+        "syncopeSensitive",
+        "troponinLabSensitive",
+      ]);
+    });
+
+    it("chest pain escalation missing fails", () => {
+      const template = syntheticCardioExtendedTemplate({
+        id: "cardio_extension_chest_pain_missing_v1",
+        suggestedText: {
+          en: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en,
+            returnPrecautions: "Return for shortness of breath only.",
+          },
+          fr: { ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr },
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("chest pain")
+        )
+      ).toBe(true);
+    });
+
+    it("chest pain escalation present passes", () => {
+      const template = syntheticCardioExtendedTemplate({ id: "cardio_extension_chest_pain_ok_v1" });
+      expect(
+        scanProviderDischargeCardioChestPainEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeCardioChestPainEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("syncope recurrence/fall-risk missing fails", () => {
+      const template = syntheticCardioExtendedTemplate({
+        id: "cardio_extension_syncope_missing_v1",
+        cardioHighRiskSafety: {
+          syncopeSensitive: true,
+        },
+        suggestedText: {
+          en: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en,
+            returnPrecautions: "Return immediately for chest pain. Call 911.",
+          },
+          fr: { ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr },
+        },
+      });
+      expect(
+        validateProviderDischargeCardioHighRiskTemplateGovernance(template).some((e) =>
+          e.includes("syncope")
+        )
+      ).toBe(true);
+    });
+
+    it("CHF/fluid warning missing fails", () => {
+      const template = syntheticCardioExtendedTemplate({
+        id: "cardio_extension_fluid_missing_v1",
+        cardioHighRiskSafety: {
+          requiresFluidStatusPrecautions: true,
+        },
+        suggestedText: {
+          en: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en,
+            returnPrecautions: "Return immediately for chest pain. Call 911.",
+          },
+          fr: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr,
+            returnPrecautions: "Retournez immédiatement. Appelez le 911.",
+          },
+        },
+      });
+      expect(
+        scanProviderDischargeCardioFluidStatusPrecautions(template.id, "en", template.suggestedText.en)
+      ).not.toEqual([]);
+      expect(
+        scanProviderDischargeCardioFluidStatusPrecautions(template.id, "fr", template.suggestedText.fr)
+      ).not.toEqual([]);
+    });
+
+    it("PE/DVT unsafe phrase fails", () => {
+      const body = syntheticCardioExtendedTemplate({ id: "cardio_extension_pe_bad_v1" }).suggestedText.en;
+      const bad = { ...body, description: `${body.description} DVT ruled out.` };
+      expect(scanProviderDischargeCardioPeForbiddenPhrases("cardio_extension_pe_bad_v1", "en", bad)).not.toEqual(
+        []
+      );
+    });
+
+    it("neuro escalation missing fails", () => {
+      const template = syntheticCardioExtendedTemplate({
+        id: "cardio_extension_neuro_missing_v1",
+        cardioHighRiskSafety: {
+          requiresNeurologicEscalation: true,
+        },
+        suggestedText: {
+          en: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en,
+            returnPrecautions: "Return immediately for chest pain. Call 911.",
+          },
+          fr: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr,
+            returnPrecautions: "Retournez immédiatement. Appelez le 911.",
+          },
+        },
+      });
+      expect(
+        scanProviderDischargeCardioNeurologicEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).not.toEqual([]);
+    });
+
+    it("anticoag unsafe phrase fails", () => {
+      const body = syntheticCardioExtendedTemplate({ id: "cardio_extension_anticoag_bad_v1" }).suggestedText.en;
+      const bad = { ...body, medicationTreatment: "Anticoagulation not needed." };
+      expect(
+        scanProviderDischargeCardioAnticoagForbiddenPhrases("cardio_extension_anticoag_bad_v1", "en", bad)
+      ).not.toEqual([]);
+    });
+
+    it("driving caution missing fails", () => {
+      const template = syntheticCardioExtendedTemplate({
+        id: "cardio_extension_driving_missing_v1",
+        cardioHighRiskSafety: {
+          requiresDrivingRestrictionCaution: true,
+        },
+        suggestedText: {
+          en: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.en,
+            diagnosisInstructions: "Follow provider recommendations.",
+          },
+          fr: {
+            ...SYNTHETIC_CARDIO_EXTENDED_SAFE_TEXT.fr,
+            diagnosisInstructions: "Suivez les recommandations du clinicien.",
+          },
+        },
+      });
+      expect(
+        scanProviderDischargeCardioDrivingRestrictionCaution(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).not.toEqual([]);
+    });
+
+    it("FR equivalents pass for extension validators", () => {
+      const template = syntheticCardioExtendedTemplate({ id: "cardio_extension_fr_ok_v1" });
+      expect(
+        scanProviderDischargeCardioChestPainEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeCardioSyncopePrecautions(template.id, "fr", template.suggestedText.fr)
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeCardioFluidStatusPrecautions(template.id, "fr", template.suggestedText.fr)
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeCardioNeurologicEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeCardioDrivingRestrictionCaution(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("extended synthetic template passes full governance validation", () => {
+      const template = syntheticCardioExtendedTemplate({ id: "cardio_extension_full_ok_v1" });
+      expect(validateProviderDischargeCardioHighRiskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("existing templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe("19Y.16 Batch 10 cardiology & high-risk medical ED discharge templates", () => {
+    const batchTemplates = () =>
+      BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    const forbiddenCardioPhrases = [
+      "acs ruled out",
+      "mi ruled out",
+      "heart attack ruled out",
+      "pe ruled out",
+      "pulmonary embolism ruled out",
+      "stroke ruled out",
+      "tia ruled out",
+      "ekg normal",
+      "ecg normal",
+      "troponin negative",
+      "troponins negative",
+      "cardiac enzymes negative",
+      "labs normal",
+      "ct normal",
+      "d-dimer negative",
+      "low cardiac risk",
+      "low risk chest pain",
+      "medically cleared",
+      "cleared by cardiology",
+      "no blood clot",
+      "no heart problem",
+      "no neurologic event",
+      "safe for discharge",
+      "vasovagal confirmed",
+      "benign fainting",
+      "safe to drive",
+      "fluid overload resolved",
+      "heart failure compensated",
+      "lungs clear",
+      "ultrasound negative",
+      "no clot",
+      "no aneurysm",
+      "vertigo confirmed",
+      "rhythm controlled permanently",
+      "stroke risk low",
+      "anticoagulation not needed",
+      "safe to stop blood thinner",
+    ];
+
+    it("all 10 cardiology/high-risk templates exist", () => {
+      expect(BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies exist for batch 10 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("cardioHighRiskSafety metadata exists on all batch 10 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.cardioHighRiskSafety).toBeTruthy();
+        expect(validateProviderDischargeCardioHighRiskTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("required cardioHighRiskSafety flags are present per template", () => {
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_hypertension_elevated_bp_v1")!
+          .cardioHighRiskSafety
+      ).toEqual({
+        requiresEmergencyEscalation: true,
+        requiresResultInterpretationCaution: true,
+      });
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_chest_pain_low_risk_v1")!
+          .cardioHighRiskSafety?.requiresChestPainEscalation
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_syncope_v1")!.cardioHighRiskSafety
+          ?.syncopeSensitive
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_heart_failure_symptoms_v1")!
+          .cardioHighRiskSafety?.requiresFluidStatusPrecautions
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "high_risk_medical_leg_swelling_v1")!
+          .cardioHighRiskSafety?.peSensitive
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_afib_rate_controlled_v1")!
+          .cardioHighRiskSafety?.requiresAnticoagulationPrecautions
+      ).toBe(true);
+    });
+
+    it("no unsafe/certainty phrases in batch 10 templates", () => {
+      for (const template of batchTemplates()) {
+        for (const locale of ["en", "fr"] as const) {
+          const blob = JSON.stringify(template.suggestedText[locale]).toLowerCase();
+          for (const phrase of forbiddenCardioPhrases) {
+            expect(blob, `${template.id} ${locale}`).not.toContain(phrase);
+          }
+        }
+      }
+    });
+
+    it("forbidden phrase ACS ruled out fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad", "en", {
+          ...body,
+          description: "ACS ruled out in the ED.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase troponins negative fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad", "en", {
+          ...body,
+          diagnosisInstructions: "Troponins negative today.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase EKG normal fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeCardioHighRiskForbiddenPhrases("cardio_bad", "en", {
+          ...body,
+          diagnosisInstructions: "EKG normal during visit.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase PE ruled out fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeCardioPeForbiddenPhrases("cardio_bad", "en", {
+          ...body,
+          description: "PE ruled out.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase DVT ruled out fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeCardioPeForbiddenPhrases("cardio_bad", "en", {
+          ...body,
+          description: "DVT ruled out.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("result interpretation wording blocked when caution flag set", () => {
+      const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_chest_pain_low_risk_v1")!;
+      expect(
+        scanProviderDischargeCardioResultInterpretationForbiddenPhrases(chest.id, "en", {
+          ...chest.suggestedText.en,
+          diagnosisInstructions: "Normal EKG and negative troponin.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("chest pain escalation enforcement passes", () => {
+      const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_chest_pain_low_risk_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeCardioChestPainEscalationLanguage(chest.id, locale, chest.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("syncope recurrence/fall-risk/driving caution passes", () => {
+      const syncope = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_syncope_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeCardioSyncopePrecautions(syncope.id, locale, syncope.suggestedText[locale])
+        ).toEqual([]);
+        expect(
+          scanProviderDischargeCardioDrivingRestrictionCaution(syncope.id, locale, syncope.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("CHF fluid-status warnings pass", () => {
+      const chf = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_heart_failure_symptoms_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeCardioFluidStatusPrecautions(chf.id, locale, chf.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("leg swelling PE/DVT-sensitive warnings pass", () => {
+      const leg = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "high_risk_medical_leg_swelling_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeCardioPeForbiddenPhrases(leg.id, locale, leg.suggestedText[locale])
+        ).toEqual([]);
+        expect(
+          scanProviderDischargeCardioPeEscalationLanguage(leg.id, locale, leg.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("headache/dizziness neurologic escalation passes", () => {
+      const headache = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "high_risk_medical_headache_v1")!;
+      const dizziness = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "high_risk_medical_dizziness_v1")!;
+      for (const template of [headache, dizziness]) {
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeCardioNeurologicEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("AFib anticoagulation precautions pass", () => {
+      const afib = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_afib_rate_controlled_v1")!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeCardioAnticoagForbiddenPhrases(afib.id, locale, afib.suggestedText[locale])
+        ).toEqual([]);
+        expect(
+          scanProviderDischargeCardioAnticoagPrecautions(afib.id, locale, afib.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("required follow-up rows exist per template", () => {
+      const chest = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_chest_pain_low_risk_v1")!;
+      expect((chest.defaultFollowUps ?? []).map((r) => r.specialty)).toContain("CARDIOLOGY");
+      const afib = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_afib_rate_controlled_v1")!;
+      expect((afib.defaultFollowUps ?? []).map((r) => r.specialty)).toContain("CARDIOLOGY");
+      const chf = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_heart_failure_symptoms_v1")!;
+      expect((chf.defaultFollowUps ?? []).map((r) => r.specialty)).toEqual(
+        expect.arrayContaining(["CARDIOLOGY", "PRIMARY_CARE"])
+      );
+      const headache = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "high_risk_medical_headache_v1")!;
+      expect((headache.defaultFollowUps ?? []).map((r) => r.specialty)).toEqual(
+        expect.arrayContaining(["PRIMARY_CARE", "NEUROLOGY"])
+      );
+    });
+
+    it("mapping resolves batch 10 templates without adult template collisions", () => {
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "I10", displayName: "Hypertension" }).template.id
+      ).toBe("hypertension_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({
+          displayName: "cardio elevated blood pressure",
+        }).template.id
+      ).toBe("cardio_hypertension_elevated_bp_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "high risk medical fatigue" }).template.id
+      ).toBe("high_risk_medical_fatigue_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "hrm general weakness" }).template.id
+      ).toBe("high_risk_medical_general_weakness_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R42", displayName: "Dizziness" }).template.id
+      ).toBe("vertigo_dizziness_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "hrm dizziness" }).template.id
+      ).toBe("high_risk_medical_dizziness_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R51.9", displayName: "Headache" }).template.id
+      ).toBe("headache_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "hrm headache" }).template.id
+      ).toBe("high_risk_medical_headache_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "hrm leg swelling" }).template.id
+      ).toBe("high_risk_medical_leg_swelling_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" }).template.id
+      ).toBe("chest_pain_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "chest pain follow-up" }).template.id
+      ).toBe("cardio_chest_pain_low_risk_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R55", displayName: "Syncope" }).template.id
+      ).toBe("syncope_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "cardio syncope follow-up" }).template.id
+      ).toBe("cardio_syncope_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "I48.91", displayName: "Atrial fibrillation" }).template.id
+      ).toBe("cardio_afib_rate_controlled_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "I50.9", displayName: "Heart failure" }).template.id
+      ).toBe("cardio_heart_failure_symptoms_v1");
+    });
+
+    it("apply uses active locale for batch 10 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-cardio-chf",
+        code: "I50.9",
+        displayName: "Heart failure",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description).toContain("insuffisance cardiaque");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("shared planning merge remains bottom-only for batch 10 template", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "cardio_afib_rate_controlled_v1")!;
+      const merged = mergeTemplateSharedFieldsIntoForm(form, extractSharedFieldsFromTemplate(template, "en"));
+      expect(merged.returnPrecautions.trim()).not.toBe("");
+      expect(form.diagnosisDocs).toEqual([]);
+    });
+
+    it("provider-entered text is not overwritten on batch 10 apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-cardio-afib",
+        code: "I48.91",
+        displayName: "Atrial fibrillation",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: false,
+        locale: "en",
+      });
+      card.description = "Clinician note retained";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "I48.91", displayName: "Atrial fibrillation" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "en", overwriteExisting: false });
+      expect(next.description).toBe("Clinician note retained");
+    });
+
+    it("no React UI paragraph hardcoding for batch 10 templates", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toContain("You were evaluated in the emergency department for atrial fibrillation");
+      expect(uiSource).not.toContain("Vous avez été pris en charge aux urgences pour une fibrillation auriculaire");
+    });
+
+    it("escalation wording passes EN/FR for batch 10 templates", () => {
+      for (const template of batchTemplates()) {
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeCardioHighRiskEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("content integrity passes for batch 10 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(validateProviderDischargeTemplateContentIntegrity(template)).toEqual([]);
+      }
+    });
+
+    it("intentional batch 10 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutCardio = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter(
+          (t) => !BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS.includes(t.id as (typeof BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS)[number])
+        ),
+        "en"
+      );
+      expect(base).not.toBe(withoutCardio);
+    });
+
+    it("existing adult/pediatric/OB/BH/trauma templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.14 Batch 9 trauma & MSK ED discharge templates", () => {
     const batchTemplates = () =>
       BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS.map(
@@ -4369,7 +5426,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("b92ac0f7484dacbe153ba3a7cf938a1b079fa5150f45b2293d8ca4a5d43f42c3");
+      expect(hash).toBe("36bed4b261f78f87e2b05667f798cda97136f01d5aea833d10fbdcede3bf77bd");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -4379,7 +5436,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("c484dff31ad810b41293e3e55efda27924f2775b04f8c120e4ddccee667ac855");
+      expect(hash).toBe("7d5a160b6575b13e8b5dfc139310f45628a5eac94c1dbfeca419415c53b8d571");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
