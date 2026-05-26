@@ -6326,12 +6326,15 @@ export default {
     activeTemplateGuidance: "Active template MDM / documentation helpers",
     activeTemplateMdmGuidance: "Suggested MDM fragments (editable)",
     activeTemplateMdmUnified: "Active Template MDM",
-    selectMdmTemplate: "Select a template…",
+    selectMdmTemplate: "Select one or more templates, then apply.",
+    mdmApplySelected: "Apply selected",
+    mdmCancelSelection: "Cancel",
     mdmHighValueTemplatesGroup: "High value templates",
     mdmExistingTemplatesGroup: "Existing templates",
     mdmTemplateStandardMdm: "Standard MDM",
     mdmTemplatePatientConcern: "Patient concern",
     mdmTemplateEkgNormal: "EKG normal",
+    mdmTemplateDiagnosticStudiesReview: "Diagnostic studies & MDM review",
     mdmTemplateSmokingCessation: "Smoking Cessation",
     mdmTemplatePmpReviewed: "PMP Reviewed",
     activeTemplateSmartSentences: "Editable sentence suggestions",
@@ -6810,6 +6813,8 @@ export default {
       "The patient was substantially concerned that their symptoms were potentially risking their life and that emergency care was immediately required.",
     ekgNormal:
       "The EKG showed normal sinus rhythm, normal QT, normal QRS morphology, and no ischemic changes of the ST/T segment — interpretation by me: Normal EKG.",
+    diagnosticStudiesReview:
+      "Diagnostic studies, laboratory testing, imaging, and other clinically indicated evaluations were ordered, reviewed, and incorporated into the medical decision-making process for this patient.\n\nThe evaluation, differential considerations, treatment plan, disposition, and follow-up recommendations were discussed extensively with the patient and/or caregiver, who verbalized understanding and agreement with the plan of care. The patient was advised to follow up with a primary care provider and/or specialist as appropriate. Strict return precautions were discussed in detail, including instructions to return to the emergency department immediately for any worsening symptoms, change in condition, or other concerns. All questions were addressed prior to disposition.",
     smokingCessation:
       "The patient was counseled on smoking cessation, including e-cigarettes and vaping; less than or equal to 10 minutes spent on discussion.",
     pmpReviewed: "State prescription monitoring program reviewed.",

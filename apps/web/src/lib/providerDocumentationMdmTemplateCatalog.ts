@@ -1,7 +1,10 @@
 import type {
   ProviderDocumentationTemplateDefinition,
   ProviderDocumentationTemplateStringField,
+  ProviderDocumentationWorkspaceState,
 } from "./providerDocumentationModel";
+import { toggleDocumentationFragment } from "./providerDocumentationModel";
+import { isDocumentationChipSelected } from "./providerDocumentationChipSelection";
 
 export type MdmTemplateOptionGroup = "highValue" | "existing";
 
@@ -85,6 +88,12 @@ export const HIGH_VALUE_MDM_TEMPLATES: Array<{
     field: "mdmDataReviewed",
   },
   {
+    id: "hv-diagnostic-studies-review",
+    labelKey: "providerDocumentationWorkspace.mdmTemplateDiagnosticStudiesReview",
+    fragmentKey: "providerDocumentationMdmHighValue.diagnosticStudiesReview",
+    field: "mdmClinicalRationale",
+  },
+  {
     id: "hv-smoking-cessation",
     labelKey: "providerDocumentationWorkspace.mdmTemplateSmokingCessation",
     fragmentKey: "providerDocumentationMdmHighValue.smokingCessation",
@@ -156,4 +165,59 @@ export function buildMdmTemplateDropdownOptions(
   }
 
   return [...highValue, ...existing];
+}
+
+export function applyMdmTemplatePendingSelections({
+  value,
+  options,
+  pendingIds,
+  resolveFragment,
+}: {
+  value: ProviderDocumentationWorkspaceState;
+  options: MdmTemplateOption[];
+  pendingIds: ReadonlySet<string>;
+  resolveFragment: (fragmentKey: string) => string;
+}): Partial<ProviderDocumentationWorkspaceState> {
+  let workingValue = { ...value };
+  const patch: Partial<ProviderDocumentationWorkspaceState> = {};
+
+  for (const option of options) {
+    const field = option.field;
+    const fragment = resolveFragment(option.fragmentKey);
+    const current = String(workingValue[field] ?? "");
+    const isApplied = isDocumentationChipSelected(current, fragment);
+    const isPendingChecked = pendingIds.has(option.id);
+
+    if (isPendingChecked && !isApplied) {
+      const next = toggleDocumentationFragment(current, fragment);
+      workingValue = { ...workingValue, [field]: next };
+      patch[field] = next;
+    } else if (!isPendingChecked && isApplied) {
+      const next = toggleDocumentationFragment(current, fragment);
+      workingValue = { ...workingValue, [field]: next };
+      patch[field] = next;
+    }
+  }
+
+  return patch;
+}
+
+export function resolveAppliedMdmTemplateOptionIds({
+  options,
+  value,
+  resolveFragment,
+}: {
+  options: MdmTemplateOption[];
+  value: ProviderDocumentationWorkspaceState;
+  resolveFragment: (fragmentKey: string) => string;
+}): Set<string> {
+  const applied = new Set<string>();
+  for (const option of options) {
+    const fieldValue = value[option.field];
+    if (typeof fieldValue !== "string") continue;
+    if (isDocumentationChipSelected(fieldValue, resolveFragment(option.fragmentKey))) {
+      applied.add(option.id);
+    }
+  }
+  return applied;
 }

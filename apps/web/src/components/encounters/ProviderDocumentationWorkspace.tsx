@@ -1762,6 +1762,8 @@ export function ProviderDocumentationWorkspace({
               placeholder={t("providerDocumentationWorkspace.selectMdmTemplate")}
               highValueGroupLabel={t("providerDocumentationWorkspace.mdmHighValueTemplatesGroup")}
               existingGroupLabel={t("providerDocumentationWorkspace.mdmExistingTemplatesGroup")}
+              applySelectedLabel={t("providerDocumentationWorkspace.mdmApplySelected")}
+              cancelLabel={t("providerDocumentationWorkspace.mdmCancelSelection")}
               options={mdmTemplateOptions}
               value={value}
               readOnly={readOnly}
@@ -1770,6 +1772,7 @@ export function ProviderDocumentationWorkspace({
                 option.highValue ? t(option.labelKey) : t(option.fragmentKey)
               }
               onToggleField={toggleField}
+              onApplyFieldPatches={patch}
             />
             {dynamicClusters.length > 0 ? (
               <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicClustersTitle")}>
