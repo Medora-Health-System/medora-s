@@ -366,6 +366,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  cardio_hypertension_elevated_bp_v1: {
+    mustIncludeAny: { en: ["blood pressure", "hypertension"], fr: ["pression artérielle", "hypertension"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  high_risk_medical_fatigue_v1: {
+    mustIncludeAny: { en: ["fatigue"], fr: ["fatigue"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  high_risk_medical_general_weakness_v1: {
+    mustIncludeAny: { en: ["weakness"], fr: ["faiblesse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  high_risk_medical_dizziness_v1: {
+    mustIncludeAny: { en: ["dizziness", "lightheaded"], fr: ["étourdissements", "vertiges"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  high_risk_medical_headache_v1: {
+    mustIncludeAny: { en: ["headache"], fr: ["céphalées"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  high_risk_medical_leg_swelling_v1: {
+    mustIncludeAny: { en: ["leg swelling"], fr: ["enflure", "jambe"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  cardio_chest_pain_low_risk_v1: {
+    mustIncludeAny: { en: ["chest pain"], fr: ["douleur thoracique"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  cardio_syncope_v1: {
+    mustIncludeAny: { en: ["syncope", "fainting"], fr: ["syncope", "évanouissement"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  cardio_afib_rate_controlled_v1: {
+    mustIncludeAny: { en: ["atrial fibrillation", "afib"], fr: ["fibrillation auriculaire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  cardio_heart_failure_symptoms_v1: {
+    mustIncludeAny: { en: ["heart failure", "shortness of breath"], fr: ["insuffisance cardiaque", "essoufflement"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

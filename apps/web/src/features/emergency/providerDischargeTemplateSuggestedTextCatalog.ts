@@ -2014,6 +2014,234 @@ export const TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT: ProviderDischargeTemplateSu
     }
   );
 
+const CARDIO_MED_EN = "Take medications only as prescribed or directed during this visit.";
+const CARDIO_MED_FR =
+  "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.";
+
+const CARDIO_FOLLOW_UP_EN = "Follow provider recommendations and follow up as directed during this visit.";
+const CARDIO_FOLLOW_UP_FR =
+  "Suivez les recommandations du clinicien et le suivi selon les directives reçues pendant cette visite.";
+
+const CARDIO_GENERAL_RETURN_EN =
+  "Return immediately or call 911 for chest pain, shortness of breath, fainting, severe weakness, new neurologic symptoms, trouble speaking, severe headache, or worsening symptoms.";
+const CARDIO_GENERAL_RETURN_FR =
+  "Retournez immédiatement ou appelez le 911 en cas de douleur thoracique, d'essoufflement, d'évanouissement, de faiblesse importante, de nouveaux symptômes neurologiques, de difficulté à parler, de mal de tête sévère ou d'aggravation.";
+
+const CARDIO_NEURO_RETURN_EN =
+  "Return immediately for weakness, numbness, trouble speaking, severe headache, confusion, or one-sided symptoms.";
+const CARDIO_NEURO_RETURN_FR =
+  "Retournez immédiatement en cas de faiblesse, d'engourdissement, de difficulté à parler, de mal de tête sévère, de confusion ou de symptômes d'un côté.";
+
+const CARDIO_DRIVING_EN = "Avoid driving or operating machinery as directed during this visit.";
+const CARDIO_DRIVING_FR =
+  "Évitez de conduire ou d'utiliser des machines selon les directives reçues pendant cette visite.";
+
+const CARDIO_FLUID_RETURN_EN = "Return for worsening shortness of breath, swelling, or weight gain.";
+const CARDIO_FLUID_RETURN_FR =
+  "Consultez en cas d'aggravation de l'essoufflement, d'enflure ou de prise de poids.";
+
+const CARDIO_PE_RETURN_EN =
+  "Return immediately for chest pain, shortness of breath, coughing blood, or one-sided leg swelling.";
+const CARDIO_PE_RETURN_FR =
+  "Retournez immédiatement en cas de douleur thoracique, d'essoufflement, de cracher du sang ou d'enflure d'une jambe.";
+
+const CARDIO_SYNCOPE_RETURN_EN =
+  "Return for recurrent fainting or if you faint again. Seek care for fall risk or injury from a fall.";
+const CARDIO_SYNCOPE_RETURN_FR =
+  "Consultez en cas d'évanouissement récurrent ou de nouvel évanouissement. Consultez en cas de risque de chute ou de blessure après une chute.";
+
+const CARDIO_CHEST_PAIN_RETURN_EN =
+  "Return immediately for chest pain, shortness of breath, or fainting. Call 911 for worsening symptoms.";
+const CARDIO_CHEST_PAIN_RETURN_FR =
+  "Retournez immédiatement en cas de douleur thoracique, d'essoufflement ou d'évanouissement. Appelez le 911 en cas d'aggravation.";
+
+const CARDIO_ANTICOAG_RETURN_EN =
+  "Return for bleeding, fainting, chest pain, shortness of breath, weakness, or new neurologic symptoms. Follow up and take medications only as directed.";
+const CARDIO_ANTICOAG_RETURN_FR =
+  "Consultez en cas de saignement, d'évanouissement, de douleur thoracique, d'essoufflement, de faiblesse ou de nouveaux symptômes neurologiques. Suivez le suivi et prenez les médicaments uniquement selon les directives.";
+
+export const CARDIO_HYPERTENSION_ELEVATED_BP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for elevated blood pressure or hypertension concerns. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_GENERAL_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une pression artérielle élevée ou des signes d'hypertension. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_GENERAL_RETURN_FR,
+    }
+  );
+
+export const HIGH_RISK_MEDICAL_FATIGUE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for fatigue or decreased energy. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_GENERAL_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fatigue ou une baisse d'énergie. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_GENERAL_RETURN_FR,
+    }
+  );
+
+export const HIGH_RISK_MEDICAL_GENERAL_WEAKNESS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for generalized weakness. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_GENERAL_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une faiblesse généralisée. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_GENERAL_RETURN_FR,
+    }
+  );
+
+export const HIGH_RISK_MEDICAL_DIZZINESS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for dizziness or lightheadedness. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} ${CARDIO_DRIVING_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: `${CARDIO_NEURO_RETURN_EN} ${CARDIO_GENERAL_RETURN_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des étourdissements ou des vertiges. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} ${CARDIO_DRIVING_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: `${CARDIO_NEURO_RETURN_FR} ${CARDIO_GENERAL_RETURN_FR}`,
+    }
+  );
+
+export const HIGH_RISK_MEDICAL_HEADACHE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for headache. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: `${CARDIO_NEURO_RETURN_EN} ${CARDIO_GENERAL_RETURN_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des céphalées. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: `${CARDIO_NEURO_RETURN_FR} ${CARDIO_GENERAL_RETURN_FR}`,
+    }
+  );
+
+export const HIGH_RISK_MEDICAL_LEG_SWELLING_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for leg swelling. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_PE_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une enflure d'une jambe. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_PE_RETURN_FR,
+    }
+  );
+
+export const CARDIO_CHEST_PAIN_FOLLOW_UP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for chest pain. Symptoms may evolve after discharge.",
+      diagnosisInstructions:
+        "Follow provider recommendations. Follow up with cardiology as directed. Take medications only as directed. This note does not replace provider documentation of test results.",
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_CHEST_PAIN_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur thoracique. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions:
+        "Suivez les recommandations du clinicien. Suivez le suivi en cardiologie selon les directives. Prenez les médicaments uniquement selon les directives. Cette note ne remplace pas la documentation clinicien des résultats d'examens.",
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_CHEST_PAIN_RETURN_FR,
+    }
+  );
+
+export const CARDIO_SYNCOPE_FOLLOW_UP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department after fainting or syncope. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} ${CARDIO_DRIVING_EN} Return precautions were reviewed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: `${CARDIO_SYNCOPE_RETURN_EN} ${CARDIO_GENERAL_RETURN_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences après un évanouissement ou une syncope. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} ${CARDIO_DRIVING_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: `${CARDIO_SYNCOPE_RETURN_FR} ${CARDIO_GENERAL_RETURN_FR}`,
+    }
+  );
+
+export const CARDIO_AFIB_RATE_CONTROLLED_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for atrial fibrillation or related heart rhythm concerns. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Follow up with cardiology as directed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: CARDIO_ANTICOAG_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une fibrillation auriculaire ou un trouble du rythme cardiaque connexe. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Suivez le suivi en cardiologie selon les directives.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: CARDIO_ANTICOAG_RETURN_FR,
+    }
+  );
+
+export const CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for heart failure symptoms such as shortness of breath or swelling. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_EN} Follow up with cardiology as directed.`,
+      medicationTreatment: CARDIO_MED_EN,
+      returnPrecautions: `${CARDIO_FLUID_RETURN_EN} ${CARDIO_GENERAL_RETURN_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'insuffisance cardiaque tels que l'essoufflement ou l'enflure. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${CARDIO_FOLLOW_UP_FR} Suivez le suivi en cardiologie selon les directives.`,
+      medicationTreatment: CARDIO_MED_FR,
+      returnPrecautions: `${CARDIO_FLUID_RETURN_FR} ${CARDIO_GENERAL_RETURN_FR}`,
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {
