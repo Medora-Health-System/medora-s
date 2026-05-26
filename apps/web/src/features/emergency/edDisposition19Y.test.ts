@@ -118,6 +118,32 @@ import {
   PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_NEUROLOGIC_MARKERS,
 } from "./providerDischargeTemplateEndocrineMetabolicGovernance";
 import {
+  isNeurologyProviderDischargeTemplateCandidate,
+  normalizeNeurologySafetyForHash,
+  scanProviderDischargeNeurologyAnticoagulationPrecautionsLanguage,
+  scanProviderDischargeNeurologyDrivingForbiddenPhrases,
+  scanProviderDischargeNeurologyDrivingRestrictionPrecautionsLanguage,
+  scanProviderDischargeNeurologyForbiddenPhrases,
+  scanProviderDischargeNeurologyHeadInjuryEscalationLanguage,
+  scanProviderDischargeNeurologyNeurologicEscalationLanguage,
+  scanProviderDischargeNeurologyResultInterpretationForbiddenPhrases,
+  scanProviderDischargeNeurologySeizurePrecautionsLanguage,
+  scanProviderDischargeNeurologyStrokeEscalationLanguage,
+  validateProviderDischargeNeurologyTemplateGovernance,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_ANTICOAGULATION_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_DRIVING_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_HEAD_INJURY_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_NEUROLOGIC_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_SEIZURE_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_EN_STROKE_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_ANTICOAGULATION_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_DRIVING_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_HEAD_INJURY_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_NEUROLOGIC_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_SEIZURE_MARKERS,
+  PROVIDER_DISCHARGE_NEUROLOGY_FR_STROKE_MARKERS,
+} from "./providerDischargeTemplateNeurologyGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -762,6 +788,76 @@ const SYNTHETIC_ENDOCRINE_METABOLIC_SAFE_TEXT = {
       "Retournez immédiatement ou appelez le 911 en cas de faiblesse qui s'aggrave, confusion, vomissements, soif excessive, urination fréquente, évanouissement, convulsions, difficulté à réveiller, faiblesse, incapable de garder les liquides, déshydratation ou étourdissements. Consultez pour aggravation des symptômes.",
   },
 } as const;
+
+const SYNTHETIC_NEUROLOGY_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a neurologic concern. Symptoms may change after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations and follow up as directed. This note does not replace provider documentation of imaging or test results.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for worsening weakness, numbness, confusion, trouble speaking, or severe headache. Avoid driving and avoid operating machinery; follow local driving restrictions. If you take a blood thinner and have a head injury or bleeding, seek immediate care. Watch for worsening headache, vomiting, confusion, difficulty waking up, or seizures. Discuss seizure recurrence risks; avoid swimming alone and avoid heights; seek emergency care if concerned. For stroke symptoms including facial droop, weakness, numbness, or trouble speaking, call 911.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un problème neurologique. Les symptômes peuvent évoluer après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien et le suivi selon les directives. Cette note ne remplace pas la documentation clinicien des résultats d'imagerie ou d'examens.",
+    medicationTreatment: "Prenez les médicaments uniquement selon la prescription ou les indications reçues.",
+    returnPrecautions:
+      "Retournez immédiatement en cas de faiblesse qui s'aggrave, engourdissement, confusion, difficulté à parler ou mal de tête sévère. Évitez de conduire et évitez les machines; respectez les restrictions de conduite. Si vous prenez un anticoagulant et avez une blessure à la tête ou un saignement, consultez immédiatement. Surveillez l'aggravation du mal de tête, les vomissements, la confusion, la difficulté à réveiller ou les convulsions. Discutez la récidive de convulsions; évitez de nager seul et évitez les hauteurs; consultez en urgence si inquiétude. En cas de signes d'AVC incluant affaissement du visage, faiblesse, engourdissement ou difficulté à parler, appelez le 911.",
+  },
+} as const;
+
+function syntheticNeurologyTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "neurology",
+    riskCategory: "high",
+    suggestedText: {
+      en: { ...SYNTHETIC_NEUROLOGY_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_NEUROLOGY_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "neuro-pcp",
+        specialty: "PRIMARY_CARE",
+        timing: "within several days or as directed",
+      },
+      {
+        ...newDefaultFollowUpRow(),
+        id: "neuro-neuro",
+        specialty: "NEUROLOGY",
+        timing: "as clinically appropriate",
+      },
+    ],
+    neurologySafety: {
+      seizureSensitive: true,
+      strokeSensitive: true,
+      tiaSensitive: true,
+      headacheSensitive: true,
+      concussionSensitive: true,
+      syncopeSensitive: true,
+      alteredMentalStatusSensitive: true,
+      anticoagulationSensitive: true,
+      neurologicDeficitSensitive: true,
+      requiresNeurologicEscalation: true,
+      requiresDrivingRestrictionPrecautions: true,
+      requiresAnticoagulationPrecautions: true,
+      requiresHeadInjuryEscalation: true,
+      requiresSeizurePrecautions: true,
+      requiresStrokeEscalation: true,
+      requiresNeurologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    ...rest,
+  });
+}
 
 function syntheticEndocrineMetabolicTemplate(
   overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
@@ -5724,6 +5820,342 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.23 neurology governance", () => {
+    it("candidate detection applies only to neuro_, seizure_, stroke_, tia_ prefixes", () => {
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "neuro_headache_v1" })).toBe(true);
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "seizure_followup_v1" })).toBe(true);
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "stroke_tia_watch_v1" })).toBe(true);
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "tia_return_v1" })).toBe(true);
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "headache_v1" })).toBe(false);
+      expect(isNeurologyProviderDischargeTemplateCandidate({ id: "syncope_v1" })).toBe(false);
+    });
+
+    it("neurology candidate missing neurologySafety fails", () => {
+      const template = syntheticRegistryTemplate({ id: "neuro_missing_governance_v1" });
+      const errors = validateProviderDischargeNeurologyTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define neurologySafety"))).toBe(true);
+    });
+
+    it("stroke forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "stroke_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "Stroke ruled out, low stroke risk, no neurologic emergency, no brain bleed.",
+      });
+      expect(hits.some((h) => h.includes("stroke-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("low-stroke-risk"))).toBe(true);
+      expect(hits.some((h) => h.includes("no-neurologic-emergency"))).toBe(true);
+    });
+
+    it("TIA forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "tia_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        description: "TIA ruled out with bleeding ruled out and no intracranial abnormality.",
+      });
+      expect(hits.some((h) => h.includes("tia-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("bleeding-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("no-intracranial-abnormality"))).toBe(true);
+    });
+
+    it("seizure forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "seizure_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        returnPrecautions: "Seizure ruled out, no seizure activity, seizure unlikely to recur.",
+      });
+      expect(hits.some((h) => h.includes("seizure-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("no-seizure-activity"))).toBe(true);
+      expect(hits.some((h) => h.includes("seizure-unlikely-recur"))).toBe(true);
+    });
+
+    it("driving-clearance forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_driving_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "Safe to drive, cleared to drive, return to driving, safe to work, cleared for activity.",
+      });
+      expect(hits.some((h) => h.includes("safe-to-drive"))).toBe(true);
+      expect(hits.some((h) => h.includes("cleared-to-drive"))).toBe(true);
+      expect(hits.some((h) => h.includes("return-to-driving"))).toBe(true);
+      expect(hits.some((h) => h.includes("safe-to-work"))).toBe(true);
+      expect(hits.some((h) => h.includes("cleared-for-activity"))).toBe(true);
+    });
+
+    it("concussion and head CT forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_concussion_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        description: "Concussion resolved, no concussion, head CT normal, MRI normal, imaging normal, CT normal.",
+      });
+      expect(hits.some((h) => h.includes("concussion-resolved"))).toBe(true);
+      expect(hits.some((h) => h.includes("head-ct-normal"))).toBe(true);
+      expect(hits.some((h) => h.includes("mri-normal"))).toBe(true);
+    });
+
+    it("neurologic-stability forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_stability_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        returnPrecautions:
+          "Neurologically intact, symptoms fully resolved, stable neurologically, head bleed ruled out, no bleeding, return to sports.",
+      });
+      expect(hits.some((h) => h.includes("neurologically-intact"))).toBe(true);
+      expect(hits.some((h) => h.includes("symptoms-fully-resolved"))).toBe(true);
+      expect(hits.some((h) => h.includes("stable-neurologically"))).toBe(true);
+      expect(hits.some((h) => h.includes("head-bleed-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("return-to-sports"))).toBe(true);
+    });
+
+    it("result interpretation caution blocks reassuring imaging and exclusion language", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_result_interp_v1" });
+      expect(
+        scanProviderDischargeNeurologyResultInterpretationForbiddenPhrases(template.id, "en", {
+          ...template.suggestedText.en,
+          diagnosisInstructions: "CT reassuring, MRI reassuring, EEG normal, imaging negative, no acute findings.",
+        }).length
+      ).toBeGreaterThan(0);
+      expect(
+        scanProviderDischargeNeurologyResultInterpretationForbiddenPhrases(template.id, "en", {
+          ...template.suggestedText.en,
+          returnPrecautions:
+            "No acute intracranial process, neurologic workup negative, stroke excluded, seizure excluded.",
+        }).some((h) => h.includes("stroke-excluded"))
+      ).toBe(true);
+    });
+
+    it("requiresNeurologicEscalation enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_escalation_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyNeurologicEscalationLanguage(template.id, "en", template.suggestedText.en)
+      ).toEqual([]);
+    });
+
+    it("requiresDrivingRestrictionPrecautions enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_driving_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyDrivingRestrictionPrecautionsLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresDrivingRestrictionPrecautions blocks cleared-to-drive wording", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_driving_block_v1" });
+      const hits = scanProviderDischargeNeurologyDrivingForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "Cleared to drive today.",
+      });
+      expect(hits.some((h) => h.includes("cleared-to-drive"))).toBe(true);
+    });
+
+    it("requiresAnticoagulationPrecautions enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_anticoag_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyAnticoagulationPrecautionsLanguage(template.id, "en", template.suggestedText.en)
+      ).toEqual([]);
+    });
+
+    it("requiresHeadInjuryEscalation enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_head_injury_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyHeadInjuryEscalationLanguage(template.id, "en", template.suggestedText.en)
+      ).toEqual([]);
+    });
+
+    it("requiresSeizurePrecautions enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "seizure_precautions_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologySeizurePrecautionsLanguage(template.id, "en", template.suggestedText.en)
+      ).toEqual([]);
+    });
+
+    it("requiresStrokeEscalation enforcement passes with EN markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "stroke_escalation_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyStrokeEscalationLanguage(template.id, "en", template.suggestedText.en)
+      ).toEqual([]);
+    });
+
+    it("requiresNeurologyFollowUp enforcement passes", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_followup_ok_v1" });
+      expect(validateProviderDischargeNeurologyTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("requiresNeurologyFollowUp fails without neurology or primary care row", () => {
+      const template = syntheticNeurologyTemplate({
+        id: "neuro_followup_fail_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "neuro-cardio-only",
+            specialty: "CARDIOLOGY",
+            timing: "as directed",
+          },
+        ],
+      });
+      expect(
+        validateProviderDischargeNeurologyTemplateGovernance(template).some((e) =>
+          e.includes("requiresNeurologyFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("ID auto-flag detection requires seizureSensitive for seizure IDs", () => {
+      const template = syntheticNeurologyTemplate({
+        id: "seizure_watch_v1",
+        neurologySafety: {
+          requiresSeizurePrecautions: true,
+        },
+      });
+      expect(
+        validateProviderDischargeNeurologyTemplateGovernance(template).some((e) => e.includes("seizureSensitive"))
+      ).toBe(true);
+    });
+
+    it("ID auto-flag detection requires strokeSensitive and neurologicDeficitSensitive for stroke IDs", () => {
+      const template = syntheticNeurologyTemplate({
+        id: "stroke_weakness_v1",
+        neurologySafety: {
+          requiresStrokeEscalation: true,
+        },
+      });
+      const errors = validateProviderDischargeNeurologyTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("strokeSensitive"))).toBe(true);
+      expect(errors.some((e) => e.includes("neurologicDeficitSensitive"))).toBe(true);
+    });
+
+    it("normalized hash stability emits only true flags in sorted order", () => {
+      const normalized = normalizeNeurologySafetyForHash({
+        requiresStrokeEscalation: true,
+        strokeSensitive: true,
+        requiresSeizurePrecautions: false,
+      });
+      expect(normalized).toEqual({
+        requiresStrokeEscalation: true,
+        strokeSensitive: true,
+      });
+      expect(normalizeNeurologySafetyForHash(undefined)).toBeNull();
+      expect(normalizeNeurologySafetyForHash({})).toBeNull();
+    });
+
+    it("snapshot includes neurologySafety", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.neurologySafety).toEqual({
+        alteredMentalStatusSensitive: true,
+        anticoagulationSensitive: true,
+        concussionSensitive: true,
+        headacheSensitive: true,
+        neurologicDeficitSensitive: true,
+        requiresAnticoagulationPrecautions: true,
+        requiresDrivingRestrictionPrecautions: true,
+        requiresHeadInjuryEscalation: true,
+        requiresNeurologicEscalation: true,
+        requiresNeurologyFollowUp: true,
+        requiresResultInterpretationCaution: true,
+        requiresSeizurePrecautions: true,
+        requiresStrokeEscalation: true,
+        seizureSensitive: true,
+        strokeSensitive: true,
+        syncopeSensitive: true,
+        tiaSensitive: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "neuro_hash_v1") as Record<string, unknown>;
+      expect(row.neurologySafety).toEqual(payload.neurologySafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withNeurology = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withNeurology).not.toBe(base);
+    });
+
+    it("legacy templates are exempt from neurology governance", () => {
+      const headache = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "headache_v1")!;
+      const syncope = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "syncope_v1")!;
+      const seizure = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "seizure_v1")!;
+      const tia = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "tia_stroke_like_v1")!;
+      expect(validateProviderDischargeNeurologyTemplateGovernance(headache)).toEqual([]);
+      expect(validateProviderDischargeNeurologyTemplateGovernance(syncope)).toEqual([]);
+      expect(validateProviderDischargeNeurologyTemplateGovernance(seizure)).toEqual([]);
+      expect(validateProviderDischargeNeurologyTemplateGovernance(tia)).toEqual([]);
+    });
+
+    it("EN escalation marker constants match governance expectations", () => {
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_NEUROLOGIC_MARKERS).toContain("return immediately");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_DRIVING_MARKERS).toContain("avoid driving");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_ANTICOAGULATION_MARKERS).toContain("blood thinner");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_HEAD_INJURY_MARKERS).toContain("seizures");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_SEIZURE_MARKERS).toContain("avoid swimming alone");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_EN_STROKE_MARKERS).toContain("call 911");
+    });
+
+    it("FR escalation marker constants match governance expectations", () => {
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_NEUROLOGIC_MARKERS).toContain("retournez immédiatement");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_DRIVING_MARKERS).toContain("évitez de conduire");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_ANTICOAGULATION_MARKERS).toContain("anticoagulant");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_HEAD_INJURY_MARKERS).toContain("convulsions");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_SEIZURE_MARKERS).toContain("évitez de nager seul");
+      expect(PROVIDER_DISCHARGE_NEUROLOGY_FR_STROKE_MARKERS).toContain("appelez le 911");
+    });
+
+    it("requiresNeurologicEscalation enforcement passes with FR markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_escalation_fr_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyNeurologicEscalationLanguage(template.id, "fr", template.suggestedText.fr)
+      ).toEqual([]);
+    });
+
+    it("requiresDrivingRestrictionPrecautions enforcement passes with FR markers", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_driving_fr_ok_v1" });
+      expect(
+        scanProviderDischargeNeurologyDrivingRestrictionPrecautionsLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("global forbidden phrases include safe-for-discharge and medically cleared", () => {
+      const template = syntheticNeurologyTemplate({ id: "neuro_global_forbidden_v1" });
+      const hits = scanProviderDischargeNeurologyForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        description: "Medically cleared and safe for discharge.",
+      });
+      expect(hits.some((h) => h.includes("medically-cleared"))).toBe(true);
+      expect(hits.some((h) => h.includes("safe-for-discharge"))).toBe(true);
+    });
+
+    it("existing registry still validates with neurology governance wired", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("no localization regression in registry snapshot rows for neurologySafety field", () => {
+      const enRow = buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en")[0] as
+        | Record<string, unknown>
+        | undefined;
+      const frRow = buildProviderDischargeRegistryGovernanceSnapshot(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "fr")[0] as
+        | Record<string, unknown>
+        | undefined;
+      expect(enRow).toBeTruthy();
+      expect(frRow).toBeTruthy();
+      expect(enRow!.neurologySafety).toBeNull();
+      expect(frRow!.neurologySafety).toBeNull();
+    });
+  });
+
   describe("19Y.22 endocrine/diabetes/metabolic templates", () => {
     const batchTemplates = () =>
       BATCH_13_ENDOCRINE_METABOLIC_TEMPLATE_IDS.map(
@@ -7647,7 +8079,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("710832232e8688ddf6c078c9a7b99cff7b44710706a3cd78dcd245d9a2cbc13b");
+      expect(hash).toBe("50685f706e6331ad7149f1c6a9be208637acb1f1c8db6126d29c10c2e34eb10c");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -7657,7 +8089,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("6fcd45d2aa6dcc5d0c1b4726fa8a4a3822b363d93beea21db938ebb643c837ea");
+      expect(hash).toBe("12276261273a57c89926524a39801b87e16cba94d64b793fe138ebf4560331b3");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

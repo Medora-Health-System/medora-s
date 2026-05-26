@@ -48,6 +48,10 @@ import {
   validateProviderDischargeEndocrineMetabolicTemplateGovernance,
 } from "./providerDischargeTemplateEndocrineMetabolicGovernance";
 import {
+  normalizeNeurologySafetyForHash,
+  validateProviderDischargeNeurologyTemplateGovernance,
+} from "./providerDischargeTemplateNeurologyGovernance";
+import {
   normalizeBehavioralHealthSafetyForHash,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
   scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
@@ -214,6 +218,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       infectiousRiskSafety: normalizeInfectiousRiskSafetyForHash(template.infectiousRiskSafety),
       renalElectrolyteSafety: normalizeRenalElectrolyteSafetyForHash(template.renalElectrolyteSafety),
       endocrineMetabolicSafety: normalizeEndocrineMetabolicSafetyForHash(template.endocrineMetabolicSafety),
+      neurologySafety: normalizeNeurologySafetyForHash(template.neurologySafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -392,6 +397,7 @@ export function validateProviderDischargeTemplateRegistry(
     errors.push(...validateProviderDischargeInfectiousRiskTemplateGovernance(template));
     errors.push(...validateProviderDischargeRenalElectrolyteTemplateGovernance(template));
     errors.push(...validateProviderDischargeEndocrineMetabolicTemplateGovernance(template));
+    errors.push(...validateProviderDischargeNeurologyTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);
