@@ -9,6 +9,7 @@ import {
 import type { ProviderDischargePediatricDangerSignCategory } from "./providerDischargeTemplatePediatricGovernance";
 import type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
 import type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
+import type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
 import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
@@ -142,6 +143,8 @@ export type ProviderDischargeTemplate = {
   obGynSafety?: ProviderDischargeTemplateObGynSafety;
   /** Phase 19Y.11 — behavioral health / substance-use safety governance metadata (not shown in UI). */
   behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
+  /** Phase 19Y.13 — trauma / MSK safety governance metadata (not shown in UI). */
+  traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -160,6 +163,7 @@ export type ProviderDischargeTemplate = {
 export type { ProviderDischargeTemplateLocale, ProviderDischargeTemplateSuggestedText } from "./providerDischargeTemplateLocale";
 export type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
 export type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
+export type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
 
 export type ProviderDischargeTemplateResolveResult = {
   template: ProviderDischargeTemplate;

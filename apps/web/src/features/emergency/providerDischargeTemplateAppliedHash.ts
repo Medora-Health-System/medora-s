@@ -15,6 +15,10 @@ import {
   normalizeBehavioralHealthSafetyForHash,
   type ProviderDischargeTemplateBehavioralHealthSafety,
 } from "./providerDischargeTemplateBehavioralHealthGovernance";
+import {
+  normalizeTraumaMskSafetyForHash,
+  type ProviderDischargeTemplateTraumaMskSafety,
+} from "./providerDischargeTemplateTraumaMskGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -44,6 +48,7 @@ export type ProviderDischargeTemplateHashSource = {
   requiredDangerSignCategories?: readonly string[];
   obGynSafety?: ProviderDischargeTemplateObGynSafety;
   behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
+  traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -84,6 +89,7 @@ export type ProviderDischargeTemplateHashPayload = {
   requiredDangerSignCategories?: string[];
   obGynSafety?: Record<string, boolean>;
   behavioralHealthSafety?: Record<string, boolean>;
+  traumaMskSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -163,6 +169,8 @@ export function buildProviderDischargeTemplateHashPayload(
   if (obGynSafety) payload.obGynSafety = obGynSafety;
   const behavioralHealthSafety = normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety);
   if (behavioralHealthSafety) payload.behavioralHealthSafety = behavioralHealthSafety;
+  const traumaMskSafety = normalizeTraumaMskSafetyForHash(template.traumaMskSafety);
+  if (traumaMskSafety) payload.traumaMskSafety = traumaMskSafety;
 
   return payload;
 }

@@ -36,6 +36,11 @@ import {
   validateProviderDischargeBehavioralHealthTemplateGovernance,
 } from "./providerDischargeTemplateBehavioralHealthGovernance";
 import {
+  scanProviderDischargeTraumaMskEscalationLanguage,
+  scanProviderDischargeTraumaMskForbiddenPhrases,
+  validateProviderDischargeTraumaMskTemplateGovernance,
+} from "./providerDischargeTemplateTraumaMskGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -331,6 +336,61 @@ function syntheticBehavioralHealthTemplate(
       requiresSubstanceUseResources: true,
       requiresWithdrawalPrecautions: true,
       requiresBehavioralHealthFollowUp: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_TRAUMA_MSK_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a musculoskeletal or trauma-related concern. Symptoms may worsen after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations. Follow up with orthopedics as directed. Activity should follow provider guidance. Gradual return as directed.",
+    medicationTreatment: "Take pain medicines only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for worsening pain, numbness, weakness, swelling, discoloration, inability to move, severe headache, vomiting, confusion, or difficulty breathing. Seek emergency care for worsening symptoms.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un motif traumatique ou musculo-squelettique. Les symptômes peuvent s'aggraver après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien. Suivez le suivi en orthopédie selon les directives. L'activité doit suivre les indications du clinicien. Reprise progressive selon les directives.",
+    medicationTreatment:
+      "Prenez les antidouleurs uniquement selon la prescription ou les indications reçues pendant cette visite.",
+    returnPrecautions:
+      "Retournez immédiatement en cas d'aggravation de la douleur, d'engourdissement, de faiblesse, d'enflure, de changement de couleur, d'incapacité à bouger, de mal de tête sévère, de vomissements, de confusion ou de difficulté à respirer. Consultez en urgence en cas d'aggravation.",
+  },
+} as const;
+
+function syntheticTraumaMskTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "orthopedics",
+    suggestedText: {
+      en: { ...SYNTHETIC_TRAUMA_MSK_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_TRAUMA_MSK_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "msk-ortho",
+        specialty: "ORTHOPEDICS",
+        timing: "within 1–2 weeks",
+      },
+    ],
+    traumaMskSafety: {
+      imagingSensitive: true,
+      requiresFracturePrecautions: true,
+      requiresNeurovascularPrecautions: true,
+      requiresCompartmentSyndromePrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresSplintCastPrecautions: true,
+      requiresHeadNeckSpineEscalation: true,
+      requiresOrthopedicFollowUp: true,
     },
     ...rest,
   });
@@ -3459,6 +3519,261 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.13 trauma & MSK discharge template governance hardening", () => {
+    it("ProviderDischargeTemplate supports traumaMskSafety metadata", () => {
+      const template = syntheticTraumaMskTemplate({ id: "trauma_msk_metadata_v1" });
+      expect(template.traumaMskSafety?.requiresFracturePrecautions).toBe(true);
+      expect(template.traumaMskSafety?.requiresOrthopedicFollowUp).toBe(true);
+    });
+
+    it("trauma synthetic template missing traumaMskSafety fails", () => {
+      const template = syntheticRegistryTemplate({
+        id: "trauma_msk_missing_governance_v1",
+        specialtyCategory: "orthopedics",
+      });
+      const errors = validateProviderDischargeTraumaMskTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define traumaMskSafety"))).toBe(true);
+    });
+
+    it("imaging-sensitive template missing imagingSensitive flag fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_imaging_v1",
+        traumaMskSafety: {
+          requiresOrthopedicFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("imagingSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("fracture-sensitive template missing fracture precautions fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_fracture_v1",
+        traumaMskSafety: {
+          imagingSensitive: true,
+          requiresOrthopedicFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("requiresFracturePrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("neurovascular-sensitive template missing neurovascular precautions fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_neurovascular_v1",
+        traumaMskSafety: {
+          imagingSensitive: true,
+          requiresOrthopedicFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("requiresNeurovascularPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("compartment-sensitive template missing compartment precautions fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_compartment_v1",
+        traumaMskSafety: {
+          imagingSensitive: true,
+          requiresOrthopedicFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("requiresCompartmentSyndromePrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("splint/cast-sensitive template missing splint precautions fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_splint_v1",
+        traumaMskSafety: {
+          imagingSensitive: true,
+          requiresOrthopedicFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("requiresSplintCastPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("head/neck/spine-sensitive template missing escalation wording fails", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_head_neck_v1",
+        traumaMskSafety: {
+          imagingSensitive: true,
+          requiresHeadNeckSpineEscalation: true,
+          requiresOrthopedicFollowUp: true,
+        },
+        suggestedText: {
+          en: {
+            description: "Trauma evaluation.",
+            diagnosisInstructions: "Follow instructions.",
+            medicationTreatment: "As directed.",
+            returnPrecautions: "Return if worse.",
+          },
+          fr: {
+            description: "Évaluation traumatique.",
+            diagnosisInstructions: "Suivez les instructions.",
+            medicationTreatment: "Selon indications.",
+            returnPrecautions: "Reconsultez si aggravation.",
+          },
+        },
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("head/neck/spine escalation")
+        )
+      ).toBe(true);
+    });
+
+    it("orthopedic follow-up requirement fails without ortho follow-up", () => {
+      const template = syntheticTraumaMskTemplate({
+        id: "trauma_msk_followup_missing_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "pc-follow",
+            specialty: "CARDIOLOGY",
+            timing: "within 1 week",
+          },
+        ],
+      });
+      expect(
+        validateProviderDischargeTraumaMskTemplateGovernance(template).some((e) =>
+          e.includes("requiresOrthopedicFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("orthopedic follow-up passes with ortho row", () => {
+      const template = syntheticTraumaMskTemplate({ id: "trauma_msk_followup_ok_v1" });
+      expect(validateProviderDischargeTraumaMskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("forbidden phrase fracture ruled out fails", () => {
+      const body = syntheticTraumaMskTemplate({ id: "trauma_msk_bad_fracture_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeTraumaMskForbiddenPhrases("trauma_msk_bad_fracture_v1", "en", {
+        ...body,
+        description: "Fracture ruled out in the ED.",
+      });
+      expect(hits.some((h) => h.includes("fracture-ruled-out"))).toBe(true);
+    });
+
+    it("forbidden phrase x-ray normal fails", () => {
+      const body = syntheticTraumaMskTemplate({ id: "trauma_msk_bad_xray_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeTraumaMskForbiddenPhrases("trauma_msk_bad_xray_v1", "en", {
+        ...body,
+        diagnosisInstructions: "X-ray normal during evaluation.",
+      });
+      expect(hits.some((h) => h.includes("x-ray-normal"))).toBe(true);
+    });
+
+    it("forbidden phrase neurovascularly intact fails", () => {
+      const body = syntheticTraumaMskTemplate({ id: "trauma_msk_bad_neuro_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeTraumaMskForbiddenPhrases("trauma_msk_bad_neuro_v1", "en", {
+        ...body,
+        diagnosisInstructions: "Neurovascularly intact on exam.",
+      });
+      expect(hits.some((h) => h.includes("neurovascularly-intact"))).toBe(true);
+    });
+
+    it("forbidden phrase cleared for sports fails", () => {
+      const body = syntheticTraumaMskTemplate({ id: "trauma_msk_bad_sports_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeTraumaMskForbiddenPhrases("trauma_msk_bad_sports_v1", "en", {
+        ...body,
+        returnWorkSchool: "Cleared for sports.",
+      });
+      expect(hits.some((h) => h.includes("cleared-for-sports"))).toBe(true);
+    });
+
+    it("forbidden phrase cervical spine cleared fails", () => {
+      const body = syntheticTraumaMskTemplate({ id: "trauma_msk_bad_spine_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeTraumaMskForbiddenPhrases("trauma_msk_bad_spine_v1", "en", {
+        ...body,
+        description: "Cervical spine cleared.",
+      });
+      expect(hits.some((h) => h.includes("cervical-spine-cleared"))).toBe(true);
+    });
+
+    it("escalation wording passes EN", () => {
+      const template = syntheticTraumaMskTemplate({ id: "trauma_msk_escalation_en_v1" });
+      expect(
+        scanProviderDischargeTraumaMskEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(validateProviderDischargeTraumaMskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("escalation wording passes FR", () => {
+      const template = syntheticTraumaMskTemplate({ id: "trauma_msk_escalation_fr_v1" });
+      expect(
+        scanProviderDischargeTraumaMskEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("traumaMskSafety metadata included in registry snapshot/hash", () => {
+      const template = syntheticTraumaMskTemplate({ id: "trauma_msk_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.traumaMskSafety).toEqual({
+        imagingSensitive: true,
+        requiresCompartmentSyndromePrecautions: true,
+        requiresFracturePrecautions: true,
+        requiresHeadNeckSpineEscalation: true,
+        requiresNeurovascularPrecautions: true,
+        requiresOrthopedicFollowUp: true,
+        requiresReturnActivityRestrictions: true,
+        requiresSplintCastPrecautions: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "trauma_msk_hash_v1") as Record<string, unknown>;
+      expect(row.traumaMskSafety).toEqual(payload.traumaMskSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withMsk = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withMsk).not.toBe(base);
+    });
+
+    it("existing adult/pediatric/OB/BH templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("minor_head_injury_v1 and wound templates still validate without traumaMskSafety", () => {
+      const head = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "minor_head_injury_v1")!;
+      const wound = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "wound_laceration_v1")!;
+      expect(validateProviderDischargeTraumaMskTemplateGovernance(head)).toEqual([]);
+      expect(validateProviderDischargeTraumaMskTemplateGovernance(wound)).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -3838,7 +4153,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("778331f0256373819463b5e04d55b4575b8d7fd48e8cfe36485a1d86215fb5de");
+      expect(hash).toBe("fb6d3cce4b9ad8c917fefc6668f316641fe5589e67b8c2ada22fed670f11b96a");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -3848,7 +4163,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("4fe5f5aec02d2e904b3054eecf38639da0bb72e880c957d40cb51e407dbbca33");
+      expect(hash).toBe("7bf869aa7d429f9bba6d9d7c0609632570561de7742bcde96fffdabc46aadcbc");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

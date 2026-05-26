@@ -28,6 +28,10 @@ import {
   scanProviderDischargePediatricTemplateGovernanceWarnings,
 } from "./providerDischargeTemplatePediatricGovernance";
 import {
+  normalizeTraumaMskSafetyForHash,
+  validateProviderDischargeTraumaMskTemplateGovernance,
+} from "./providerDischargeTemplateTraumaMskGovernance";
+import {
   normalizeBehavioralHealthSafetyForHash,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
   scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
@@ -189,6 +193,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       requiredDangerSignCategories: [...(template.requiredDangerSignCategories ?? [])].sort(),
       obGynSafety: normalizeObGynSafetyForHash(template.obGynSafety),
       behavioralHealthSafety: normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety),
+      traumaMskSafety: normalizeTraumaMskSafetyForHash(template.traumaMskSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -362,6 +367,7 @@ export function validateProviderDischargeTemplateRegistry(
     warnings.push(...scanProviderDischargeObGynTemplateGovernanceWarnings(template));
     errors.push(...validateProviderDischargeBehavioralHealthTemplateGovernance(template));
     warnings.push(...scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings(template));
+    errors.push(...validateProviderDischargeTraumaMskTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);
