@@ -5,6 +5,10 @@ import { isIcd10CmLikeCodeFormat } from "@medora/shared";
 import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
 import type { SupportedLanguage } from "@/i18n/config";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import {
+  diagnosisMatchesLocalizedSearch,
+  resolveLocalizedDiagnosisSearchQueries,
+} from "@/features/emergency/diagnosisFrenchSearchAliases";
 
 export type Icd10DiagnosisEntryPanelProps = {
   facilityId: string;
@@ -66,11 +70,28 @@ export function Icd10DiagnosisEntryPanel({
     const tmr = window.setTimeout(() => {
       setSearching(true);
       setSearchFetchFailed(false);
-      console.log("[DxSearch] calling icd10", q);
-      void searchIcd10Catalog(q, 25)
-        .then((res) => {
+      const apiQueries = resolveLocalizedDiagnosisSearchQueries(q, language);
+      const runSearch = async (): Promise<Icd10SearchHit[]> => {
+        const merged: Icd10SearchHit[] = [];
+        const seen = new Set<string>();
+        for (const apiQ of apiQueries) {
+          const res = await searchIcd10Catalog(apiQ, 25);
+          for (const hit of Array.isArray(res.items) ? res.items : []) {
+            if (seen.has(hit.id)) continue;
+            seen.add(hit.id);
+            merged.push(hit);
+          }
+          if (merged.length >= 25) break;
+        }
+        if (language === "fr") {
+          return merged.filter((hit) => diagnosisMatchesLocalizedSearch(hit, q, language)).slice(0, 25);
+        }
+        return merged.slice(0, 25);
+      };
+      void runSearch()
+        .then((items) => {
           if (!cancelled) {
-            setSearchHits(Array.isArray(res.items) ? res.items : []);
+            setSearchHits(items);
             setSearchFetchFailed(false);
           }
         })
@@ -89,7 +110,7 @@ export function Icd10DiagnosisEntryPanel({
       cancelled = true;
       window.clearTimeout(tmr);
     };
-  }, [searchQ]);
+  }, [language, searchQ]);
 
   useEffect(() => {
     if (!manualPrefill?.code?.trim()) return;

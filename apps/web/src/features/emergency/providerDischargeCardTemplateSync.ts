@@ -3,9 +3,11 @@
  */
 
 import { cardTextViolatesExpectedTemplateIntegrity } from "./providerDischargeTemplateContentIntegrity";
+import { computeProviderDischargeTemplateAppliedHash } from "./providerDischargeTemplateAppliedHash";
 import {
   applyProviderDischargeTemplateToCard,
   buildProviderDischargeCardFromDiagnosis,
+  PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
   resolveProviderDischargeTemplateForDiagnosis,
   type ProviderDischargeTemplateLocale,
 } from "./providerDischargeTemplateRegistry";
@@ -68,12 +70,39 @@ function stampNewProviderDischargeCardCreationIdentity(
   });
 }
 
+export function providerDischargeCardNeedsLocaleReapply(
+  card: ProviderDischargeDiagnosisCard,
+  activeLocale: ProviderDischargeTemplateLocale
+): boolean {
+  if (card.templateMeta?.providerConfirmed === true) return false;
+
+  const appliedLocale = card.templateMeta?.appliedLocale;
+  if (appliedLocale && appliedLocale !== activeLocale) return true;
+
+  const templateId = card.templateMeta?.templateId ?? card.sourceTemplateId;
+  const appliedHash = card.templateMeta?.templateAppliedHash;
+  if (!templateId || !appliedHash) return false;
+
+  const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === templateId);
+  if (!template) return false;
+
+  const activeHash = computeProviderDischargeTemplateAppliedHash(template, activeLocale);
+  if (appliedHash === activeHash) return false;
+
+  const otherLocale: ProviderDischargeTemplateLocale = activeLocale === "fr" ? "en" : "fr";
+  const otherHash = computeProviderDischargeTemplateAppliedHash(template, otherLocale);
+  return appliedHash === otherHash;
+}
+
 export function isProviderDischargeCardTemplateStale(
-  card: ProviderDischargeDiagnosisCard
+  card: ProviderDischargeDiagnosisCard,
+  activeLocale?: ProviderDischargeTemplateLocale
 ): boolean {
   const expected = expectedProviderDischargeTemplateIdForDiagnosis(card.code, card.displayName);
   if (!expected) return false;
   if (card.templateMeta?.providerConfirmed === true) return false;
+
+  if (activeLocale && providerDischargeCardNeedsLocaleReapply(card, activeLocale)) return true;
 
   const applied = card.templateMeta?.templateId ?? card.sourceTemplateId;
   if (applied && applied !== expected) return true;
@@ -95,13 +124,14 @@ export function isProviderDischargeCardTemplateStale(
 
 export function shouldReapplyProviderDischargeTemplateToCard(
   card: ProviderDischargeDiagnosisCard,
-  ref: ProviderDischargeDiagnosisRef
+  ref: ProviderDischargeDiagnosisRef,
+  activeLocale?: ProviderDischargeTemplateLocale
 ): boolean {
   const identity = evaluateProviderDischargeCardIdentitySync(card, ref);
   if (identity.staleDiagnosisIdentityWarning) return false;
   if (identity.allowAutoSync) return true;
   if (card.templateMeta?.providerConfirmed === true) return false;
-  return isProviderDischargeCardTemplateStale(card);
+  return isProviderDischargeCardTemplateStale(card, activeLocale);
 }
 
 export type SyncProviderDischargeCardOptions = {
@@ -143,12 +173,15 @@ export function syncProviderDischargeCardWithRef(
   });
   if (resolved.matchLevel === "generic") return synced;
 
+  const activeLocale = options.locale ?? "fr";
+  const localeMismatch = providerDischargeCardNeedsLocaleReapply(withCreationIdentity, activeLocale);
   const overwrite =
     options.forceOverwrite === true ||
-    shouldReapplyProviderDischargeTemplateToCard(withCreationIdentity, ref);
+    localeMismatch ||
+    shouldReapplyProviderDischargeTemplateToCard(withCreationIdentity, ref, activeLocale);
 
   return applyProviderDischargeTemplateToCard(synced, resolved, {
-    locale: options.locale ?? "fr",
+    locale: activeLocale,
     overwriteExisting: overwrite,
     providerConfirmed: withCreationIdentity.templateMeta?.providerConfirmed ?? false,
     actor: options.actor,
@@ -221,12 +254,14 @@ export function applyProviderDischargeTemplateToCardByDiagnosis(
     return withIdentity;
   }
 
+  const localeMismatch = providerDischargeCardNeedsLocaleReapply(withIdentity, options.locale);
   const overwrite =
     options.forceOverwrite === true ||
     options.overwriteExisting === true ||
+    localeMismatch ||
     (options.ref ?
-      shouldReapplyProviderDischargeTemplateToCard(withIdentity, options.ref)
-    : isProviderDischargeCardTemplateStale(withIdentity));
+      shouldReapplyProviderDischargeTemplateToCard(withIdentity, options.ref, options.locale)
+    : isProviderDischargeCardTemplateStale(withIdentity, options.locale));
 
   const next = applyProviderDischargeTemplateToCard(withIdentity, resolved, {
     locale: options.locale,

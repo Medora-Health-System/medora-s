@@ -61,6 +61,17 @@ import {
   validateProviderDischargeCardioHighRiskTemplateGovernance,
 } from "./providerDischargeTemplateCardioHighRiskGovernance";
 import {
+  scanProviderDischargeInfectiousFeverEscalationLanguage,
+  scanProviderDischargeInfectiousHydrationEscalationLanguage,
+  scanProviderDischargeInfectiousNeurologicEscalationLanguage,
+  scanProviderDischargeInfectiousRashEscalationLanguage,
+  scanProviderDischargeInfectiousRespiratoryEscalationLanguage,
+  scanProviderDischargeInfectiousResultInterpretationForbiddenPhrases,
+  scanProviderDischargeInfectiousReturnIfWorseningLanguage,
+  scanProviderDischargeInfectiousRiskForbiddenPhrases,
+  validateProviderDischargeInfectiousRiskTemplateGovernance,
+} from "./providerDischargeTemplateInfectiousRiskGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -87,6 +98,8 @@ import {
   applyProviderDischargeTemplateToCardByDiagnosis,
   ensureProviderDischargeCardForRef,
   expectedProviderDischargeTemplateIdForDiagnosis,
+  providerDischargeCardNeedsLocaleReapply,
+  syncProviderDischargeCardWithRef,
 } from "./providerDischargeCardTemplateSync";
 import {
   buildProviderDischargeTemplateHashPayload,
@@ -530,6 +543,74 @@ function syntheticCardioExtendedTemplate(
       requiresFluidStatusPrecautions: true,
       requiresNeurologicEscalation: true,
       requiresChestPainEscalation: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_INFECTIOUS_RISK_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a possible infection. Symptoms may worsen after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations and follow up as directed. This note does not replace provider documentation of test results.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately or call 911 for fever, worsening fever, shaking chills, trouble breathing, worsening cough, chest pain, blue lips, confusion, severe headache, stiff neck, weakness, seizures, trouble waking up, spreading rash, skin peeling, swelling, breathing difficulty, facial swelling, unable to drink, worsening vomiting, worsening diarrhea, dehydration, decreased urination, dizziness, or weakness. Seek urgent care if symptoms worsen.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour une possible infection. Les symptômes peuvent s'aggraver après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien et le suivi selon les directives. Cette note ne remplace pas la documentation clinicien des résultats d'examens.",
+    medicationTreatment:
+      "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite.",
+    returnPrecautions:
+      "Retournez immédiatement ou appelez le 911 en cas de fièvre, d'aggravation de la fièvre, de frissons, de difficulté à respirer, d'aggravation de la toux, de douleur thoracique, de lèvres bleues, de confusion, de mal de tête sévère, de raideur du cou, de faiblesse, de convulsions, de difficulté à réveiller, d'éruption qui s'aggrave, de peau qui pèle, d'enflure, d'enflure du visage, d'incapable de boire, de vomissements, de diarrhée, de déshydratation, de diminution des urines, d'étourdissements ou de faiblesse. Consultez en urgence si les symptômes s'aggravent.",
+  },
+} as const;
+
+function syntheticInfectiousRiskTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "infectious_disease",
+    riskCategory: "high",
+    suggestedText: {
+      en: { ...SYNTHETIC_INFECTIOUS_RISK_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_INFECTIOUS_RISK_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "inf-pcp",
+        specialty: "PRIMARY_CARE",
+        timing: "within several days or as directed",
+      },
+      {
+        ...newDefaultFollowUpRow(),
+        id: "inf-id",
+        specialty: "INFECTIOUS_DISEASE",
+        timing: "as clinically appropriate",
+      },
+    ],
+    infectiousRiskSafety: {
+      sepsisSensitive: true,
+      meningitisSensitive: true,
+      pneumoniaSensitive: true,
+      dehydrationSensitive: true,
+      rashSensitive: true,
+      requiresFeverEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresRespiratoryEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresRashEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+      requiresInfectiousDiseaseFollowUp: true,
+      requiresResultInterpretationCaution: true,
     },
     ...rest,
   });
@@ -4445,6 +4526,334 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.17 infectious disease & sepsis-risk discharge template governance hardening", () => {
+    it("ProviderDischargeTemplate supports infectiousRiskSafety metadata", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_metadata_v1" });
+      expect(template.infectiousRiskSafety?.sepsisSensitive).toBe(true);
+      expect(template.infectiousRiskSafety?.requiresReturnIfWorsening).toBe(true);
+      expect(template.infectiousRiskSafety?.requiresResultInterpretationCaution).toBe(true);
+    });
+
+    it("infectious candidate missing infectiousRiskSafety fails", () => {
+      const template = syntheticRegistryTemplate({
+        id: "infectious_missing_governance_v1",
+        specialtyCategory: "infectious_disease",
+      });
+      const errors = validateProviderDischargeInfectiousRiskTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define infectiousRiskSafety"))).toBe(true);
+    });
+
+    it("sepsis-sensitive template missing sepsis flag fails", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "sepsis_watch_v1",
+        infectiousRiskSafety: {
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("sepsisSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("meningitis-sensitive template missing neuro escalation fails", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "infectious_meningitis_watch_v1",
+        infectiousRiskSafety: {
+          meningitisSensitive: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresNeurologicEscalation")
+        )
+      ).toBe(true);
+    });
+
+    it("pneumonia-sensitive template missing respiratory escalation fails", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "respiratory_infectious_pneumonia_v1",
+        infectiousRiskSafety: {
+          pneumoniaSensitive: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresRespiratoryEscalation")
+        )
+      ).toBe(true);
+    });
+
+    it("dehydration-sensitive template missing hydration escalation fails", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "gi_infectious_dehydration_v1",
+        infectiousRiskSafety: {
+          dehydrationSensitive: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresHydrationEscalation")
+        )
+      ).toBe(true);
+    });
+
+    it("rash-sensitive template missing rash escalation fails", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "infectious_rash_v1",
+        infectiousRiskSafety: {
+          rashSensitive: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresRashEscalation")
+        )
+      ).toBe(true);
+    });
+
+    it("requiresReturnIfWorsening enforcement passes", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_return_ok_v1" });
+      expect(
+        scanProviderDischargeInfectiousReturnIfWorseningLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeInfectiousReturnIfWorseningLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresPrimaryCareFollowUp enforcement passes", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "infectious_pcp_followup_ok_v1",
+        infectiousRiskSafety: {
+          requiresPrimaryCareFollowUp: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(validateProviderDischargeInfectiousRiskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("requiresPrimaryCareFollowUp fails without appropriate follow-up row", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "infectious_pcp_followup_missing_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "inf-id-only",
+            specialty: "INFECTIOUS_DISEASE",
+            timing: "within several days",
+          },
+        ],
+        infectiousRiskSafety: {
+          requiresPrimaryCareFollowUp: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(
+        validateProviderDischargeInfectiousRiskTemplateGovernance(template).some((e) =>
+          e.includes("requiresPrimaryCareFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("requiresInfectiousDiseaseFollowUp enforcement passes", () => {
+      const template = syntheticInfectiousRiskTemplate({
+        id: "infectious_id_followup_ok_v1",
+        infectiousRiskSafety: {
+          requiresInfectiousDiseaseFollowUp: true,
+          requiresReturnIfWorsening: true,
+        },
+      });
+      expect(validateProviderDischargeInfectiousRiskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it('forbidden phrase "sepsis ruled out" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_sepsis_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_sepsis_v1", "en", {
+          ...body,
+          description: "Sepsis ruled out in the ED.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it('forbidden phrase "cultures negative" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_culture_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_culture_v1", "en", {
+          ...body,
+          diagnosisInstructions: "Cultures negative today.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it('forbidden phrase "viral illness confirmed" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_viral_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_viral_v1", "en", {
+          ...body,
+          description: "Viral illness confirmed.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it('forbidden phrase "antibiotics not needed" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_abx_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_abx_v1", "en", {
+          ...body,
+          medicationTreatment: "Antibiotics not needed.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it('forbidden phrase "chest x-ray normal" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_xray_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_xray_v1", "en", {
+          ...body,
+          diagnosisInstructions: "Chest x-ray normal during visit.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it('forbidden phrase "infection resolved" fails', () => {
+      const body = syntheticInfectiousRiskTemplate({ id: "infectious_bad_resolved_v1" }).suggestedText.en;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases("infectious_bad_resolved_v1", "en", {
+          ...body,
+          description: "Infection resolved during visit.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("EN escalation wording passes", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_escalation_en_v1" });
+      expect(
+        scanProviderDischargeInfectiousFeverEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeInfectiousHydrationEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeInfectiousRespiratoryEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(validateProviderDischargeInfectiousRiskTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("FR escalation wording passes", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_escalation_fr_v1" });
+      expect(
+        scanProviderDischargeInfectiousFeverEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeInfectiousNeurologicEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+      expect(
+        scanProviderDischargeInfectiousRashEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("infectiousRiskSafety metadata included in registry snapshot/hash", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.infectiousRiskSafety).toEqual({
+        dehydrationSensitive: true,
+        meningitisSensitive: true,
+        pneumoniaSensitive: true,
+        rashSensitive: true,
+        requiresFeverEscalation: true,
+        requiresHydrationEscalation: true,
+        requiresInfectiousDiseaseFollowUp: true,
+        requiresNeurologicEscalation: true,
+        requiresPrimaryCareFollowUp: true,
+        requiresRashEscalation: true,
+        requiresRespiratoryEscalation: true,
+        requiresResultInterpretationCaution: true,
+        requiresReturnIfWorsening: true,
+        sepsisSensitive: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "infectious_hash_v1") as Record<string, unknown>;
+      expect(row.infectiousRiskSafety).toEqual(payload.infectiousRiskSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withInfectious = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withInfectious).not.toBe(base);
+    });
+
+    it("result interpretation caution blocks reassuring result language", () => {
+      const template = syntheticInfectiousRiskTemplate({ id: "infectious_result_interp_v1" });
+      expect(
+        scanProviderDischargeInfectiousResultInterpretationForbiddenPhrases(
+          template.id,
+          "en",
+          {
+            ...template.suggestedText.en,
+            diagnosisInstructions: "Reassuring labs and infection excluded.",
+          }
+        ).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("existing adult/pediatric/OB/BH/trauma/cardio templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("legacy pneumonia and gastroenteritis templates validate without infectiousRiskSafety", () => {
+      const pneumonia = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "pneumonia_v1")!;
+      const gastro = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "gastroenteritis_v1")!;
+      expect(validateProviderDischargeInfectiousRiskTemplateGovernance(pneumonia)).toEqual([]);
+      expect(validateProviderDischargeInfectiousRiskTemplateGovernance(gastro)).toEqual([]);
+    });
+  });
+
   describe("19Y.16 Batch 10 cardiology & high-risk medical ED discharge templates", () => {
     const batchTemplates = () =>
       BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS.map(
@@ -5426,7 +5835,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("36bed4b261f78f87e2b05667f798cda97136f01d5aea833d10fbdcede3bf77bd");
+      expect(hash).toBe("ad379641336d9251a9c8c11b40bbbae73ecf21125af3bf4dbdcfa13a6e80dbe5");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -5436,7 +5845,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("7d5a160b6575b13e8b5dfc139310f45628a5eac94c1dbfeca419415c53b8d571");
+      expect(hash).toBe("059ba0847173b4d3966ede01fed19a61d2621323226ff545374a200ca3c580c7");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
@@ -5736,6 +6145,161 @@ describe("edDisposition19Y", () => {
       const fr = readFileSync(join(webRoot, "src/i18n/messages/providerDischargeDocumentation19Y.fr.ts"), "utf8");
       expect(en).toContain("descriptionRequired");
       expect(fr).toContain("descriptionRequired");
+    });
+  });
+
+  describe("19Y.16A French diagnosis search + discharge autofill locale", () => {
+    const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
+    const chestRef = {
+      encounterDiagnosisId: "dx-chest",
+      code: "R07.9",
+      label: "Chest pain",
+      isPrimary: true,
+    };
+
+    it("active locale fr applies French description, instructions, and medication/treatment", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      const frBody = chestTemplate.suggestedText.fr;
+      expect(cardFr.description).toBe(frBody.description);
+      expect(cardFr.diagnosisInstructions).toContain("Reposez-vous");
+      expect(cardFr.medicationTreatment).toBe(frBody.medicationTreatment);
+      expect(cardFr.description).not.toContain("You were evaluated in the emergency department");
+    });
+
+    it("shared return precautions autofill in French when locale is fr", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const merged = mergeTemplateSharedFieldsIntoForm(
+        form,
+        extractSharedFieldsFromTemplate(chestTemplate, "fr")
+      );
+      expect(merged.returnPrecautions).toBe(chestTemplate.suggestedText.fr.returnPrecautions);
+      expect(merged.returnPrecautions).toContain("Retournez immédiatement");
+      expect(merged.returnPrecautions).not.toContain("Return immediately");
+    });
+
+    it("English body is not used when locale is fr", () => {
+      const frBody = getProviderDischargeSuggestedTextBody(chestTemplate, "fr");
+      const enBody = getProviderDischargeSuggestedTextBody(chestTemplate, "en");
+      expect(frBody.description).not.toBe(enBody.description);
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      expect(cardFr.description).toBe(frBody.description);
+      expect(cardFr.description).not.toBe(enBody.description);
+    });
+
+    it("active locale en still applies English", () => {
+      const cardEn = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      expect(cardEn.description).toBe(chestTemplate.suggestedText.en.description);
+      expect(cardEn.templateMeta?.appliedLocale).toBe("en");
+    });
+
+    it("provider-entered French text is not overwritten on non-forced apply", () => {
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: false,
+        locale: "fr",
+      });
+      card.description = "Note personnalisée du clinicien";
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "R07.9", displayName: "Chest pain" });
+      const next = applyProviderDischargeTemplateToCard(card, resolved, { locale: "fr", overwriteExisting: false });
+      expect(next.description).toBe("Note personnalisée du clinicien");
+    });
+
+    it("templateAppliedHash remains locale-specific", () => {
+      const enHash = computeProviderDischargeTemplateAppliedHash(chestTemplate, "en");
+      const frHash = computeProviderDischargeTemplateAppliedHash(chestTemplate, "fr");
+      expect(enHash).not.toBe(frHash);
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+      });
+      expect(cardFr.templateMeta?.templateAppliedHash).toBe(frHash);
+    });
+
+    it("locale mismatch reapply replaces English template text with French", () => {
+      const cardEn = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-chest",
+        code: "R07.9",
+        displayName: "Chest pain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      expect(providerDischargeCardNeedsLocaleReapply(cardEn, "fr")).toBe(true);
+      const synced = syncProviderDischargeCardWithRef(cardEn, chestRef, {
+        applyTemplate: true,
+        locale: "fr",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.description).toBe(chestTemplate.suggestedText.fr.description);
+      expect(synced.templateMeta?.appliedLocale).toBe("fr");
+      expect(synced.description).not.toContain("You were evaluated");
+    });
+
+    it("ensureProviderDischargeCardForRef passes active locale through autofill chain", () => {
+      const form = emptyProviderDischargeDocumentationForm();
+      const synced = ensureProviderDischargeCardForRef(form, chestRef, {
+        applyTemplate: true,
+        locale: "fr",
+        isPrimary: true,
+        displayOrder: 0,
+      });
+      expect(synced.templateMeta?.appliedLocale).toBe("fr");
+      expect(synced.description).toContain("douleur thoracique");
+    });
+
+    it("ProviderDischargeDocumentationSection passes language to locale autofill", () => {
+      const source = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(source).toContain("locale: language");
+      expect(source).toContain("extractSharedFieldsFromTemplate(resolved.template, language)");
+      expect(source).toContain("providerDischargeCardNeedsLocaleReapply");
+    });
+
+    it("Icd10DiagnosisEntryPanel uses French diagnosis search aliases", () => {
+      const source = readFileSync(
+        join(webRoot, "src/components/diagnosis/Icd10DiagnosisEntryPanel.tsx"),
+        "utf8"
+      );
+      expect(source).toContain("resolveLocalizedDiagnosisSearchQueries");
+      expect(source).toContain("diagnosisMatchesLocalizedSearch");
+      expect(source).not.toContain("console.log(\"[DxSearch]");
     });
   });
 });

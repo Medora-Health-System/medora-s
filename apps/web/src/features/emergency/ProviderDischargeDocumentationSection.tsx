@@ -10,6 +10,7 @@ import { medicationSearchLabel, type MedicationSearchItem } from "@/lib/pharmacy
 import {
   applyProviderDischargeTemplateToCardByDiagnosis,
   ensureProviderDischargeCardForRef,
+  providerDischargeCardNeedsLocaleReapply,
 } from "./providerDischargeCardTemplateSync";
 import { resolveProviderDischargeTemplateForDiagnosis } from "./providerDischargeTemplateRegistry";
 import {
@@ -598,7 +599,15 @@ export function ProviderDischargeDocumentationSection({
         .filter((r) => r.matchLevel !== "generic")
         .map((r) => extractSharedFieldsFromTemplate(r.template, locale));
       if (!templates.length) return form;
-      return { ...form, ...mergeSharedFieldsFromSelectedTemplates(form, templates) };
+      const overwriteSharedLocale = getSelectedDiagnosisDocs(form).some((doc) =>
+        providerDischargeCardNeedsLocaleReapply(doc, locale)
+      );
+      return {
+        ...form,
+        ...mergeSharedFieldsFromSelectedTemplates(form, templates, {
+          overwriteExisting: overwriteSharedLocale,
+        }),
+      };
     },
     []
   );
