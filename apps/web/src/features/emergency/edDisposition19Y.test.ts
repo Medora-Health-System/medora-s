@@ -98,6 +98,25 @@ import {
   PROVIDER_DISCHARGE_RENAL_ELECTROLYTE_FR_OBSTRUCTION_MARKERS,
 } from "./providerDischargeTemplateRenalElectrolyteGovernance";
 import {
+  isEndocrineMetabolicProviderDischargeTemplateCandidate,
+  normalizeEndocrineMetabolicSafetyForHash,
+  scanProviderDischargeEndocrineMetabolicForbiddenPhrases,
+  scanProviderDischargeEndocrineMetabolicGlucoseEscalationLanguage,
+  scanProviderDischargeEndocrineMetabolicHydrationEscalationLanguage,
+  scanProviderDischargeEndocrineMetabolicInsulinPrecautionsLanguage,
+  scanProviderDischargeEndocrineMetabolicNeurologicEscalationLanguage,
+  scanProviderDischargeEndocrineMetabolicResultInterpretationForbiddenPhrases,
+  validateProviderDischargeEndocrineMetabolicTemplateGovernance,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_GLUCOSE_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_HYDRATION_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_INSULIN_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_NEUROLOGIC_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_GLUCOSE_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_HYDRATION_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_INSULIN_MARKERS,
+  PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_NEUROLOGIC_MARKERS,
+} from "./providerDischargeTemplateEndocrineMetabolicGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -714,6 +733,77 @@ function syntheticRenalElectrolyteTemplate(
       requiresCatheterPrecautions: true,
       requiresNephrologyFollowUp: true,
       requiresUrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_ENDOCRINE_METABOLIC_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a diabetes or metabolic concern. Symptoms may worsen after discharge.",
+    diagnosisInstructions:
+      "Follow provider recommendations and follow up as directed. This note does not replace provider documentation of test results.",
+    medicationTreatment:
+      "Take insulin exactly as directed. Do not skip insulin. Continue medications as prescribed.",
+    returnPrecautions:
+      "Return immediately or call 911 for worsening weakness, confusion, vomiting, excessive thirst, excessive urination, fainting, seizures, trouble waking up, weakness, unable to keep fluids down, worsening vomiting, dehydration, or dizziness. Seek care for worsening symptoms.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un problème de diabète ou métabolique. Les symptômes peuvent s'aggraver après le congé.",
+    diagnosisInstructions:
+      "Suivez les recommandations du clinicien et le suivi selon les directives. Cette note ne remplace pas la documentation clinicien des résultats d'examens.",
+    medicationTreatment:
+      "Prenez l'insuline exactement comme prescrite. Ne sautez pas l'insuline. Continuez les médicaments selon la prescription.",
+    returnPrecautions:
+      "Retournez immédiatement ou appelez le 911 en cas de faiblesse qui s'aggrave, confusion, vomissements, soif excessive, urination fréquente, évanouissement, convulsions, difficulté à réveiller, faiblesse, incapable de garder les liquides, déshydratation ou étourdissements. Consultez pour aggravation des symptômes.",
+  },
+} as const;
+
+function syntheticEndocrineMetabolicTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "endocrinology",
+    riskCategory: "high",
+    suggestedText: {
+      en: { ...SYNTHETIC_ENDOCRINE_METABOLIC_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_ENDOCRINE_METABOLIC_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "endo-pcp",
+        specialty: "PRIMARY_CARE",
+        timing: "within several days or as directed",
+      },
+      {
+        ...newDefaultFollowUpRow(),
+        id: "endo-endo",
+        specialty: "ENDOCRINOLOGY",
+        timing: "as clinically appropriate",
+      },
+    ],
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      dkaSensitive: true,
+      hhsSensitive: true,
+      hypoglycemiaSensitive: true,
+      hyperglycemiaSensitive: true,
+      dehydrationSensitive: true,
+      insulinSensitive: true,
+      metabolicSensitive: true,
+      endocrineSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresInsulinPrecautions: true,
+      requiresNeurologicEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresEndocrinologyFollowUp: true,
       requiresResultInterpretationCaution: true,
     },
     ...rest,
@@ -5294,6 +5384,345 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.21 endocrine/diabetes/metabolic governance", () => {
+    it("candidate detection applies only to endocrine_, diabetes_, metabolic_ prefixes", () => {
+      expect(isEndocrineMetabolicProviderDischargeTemplateCandidate({ id: "diabetes_dka_v1" })).toBe(true);
+      expect(isEndocrineMetabolicProviderDischargeTemplateCandidate({ id: "endocrine_followup_v1" })).toBe(true);
+      expect(isEndocrineMetabolicProviderDischargeTemplateCandidate({ id: "metabolic_panel_v1" })).toBe(true);
+      expect(isEndocrineMetabolicProviderDischargeTemplateCandidate({ id: "hyperglycemia_v1" })).toBe(false);
+      expect(isEndocrineMetabolicProviderDischargeTemplateCandidate({ id: "hypoglycemia_v1" })).toBe(false);
+    });
+
+    it("endocrine candidate missing endocrineMetabolicSafety fails", () => {
+      const template = syntheticRegistryTemplate({ id: "diabetes_missing_governance_v1" });
+      const errors = validateProviderDischargeEndocrineMetabolicTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define endocrineMetabolicSafety"))).toBe(true);
+    });
+
+    it("DKA forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_dka_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "DKA ruled out and no diabetic emergency.",
+      });
+      expect(hits.some((h) => h.includes("dka-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("no-diabetic-emergency"))).toBe(true);
+    });
+
+    it("HHS forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_hhs_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        description: "HHS ruled out with diabetic crisis resolved.",
+      });
+      expect(hits.some((h) => h.includes("hhs-ruled-out"))).toBe(true);
+      expect(hits.some((h) => h.includes("diabetic-crisis-resolved"))).toBe(true);
+    });
+
+    it("glucose-control forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_glucose_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        returnPrecautions: "Blood sugar normal, glucose controlled, sugars stable, your sugars are controlled.",
+      });
+      expect(hits.some((h) => h.includes("blood-sugar-normal"))).toBe(true);
+      expect(hits.some((h) => h.includes("glucose-controlled"))).toBe(true);
+      expect(hits.some((h) => h.includes("sugars-are-controlled"))).toBe(true);
+    });
+
+    it("insulin forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_insulin_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        medicationTreatment: "Insulin not needed during this visit.",
+      });
+      expect(hits.some((h) => h.includes("insulin-not-needed"))).toBe(true);
+    });
+
+    it("metabolic forbidden phrases are blocked in suggested text", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "metabolic_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        diagnosisInstructions: "Labs normal, electrolytes normal, anion gap normal, bicarbonate normal, metabolic issue resolved.",
+      });
+      expect(hits.some((h) => h.includes("labs-normal"))).toBe(true);
+      expect(hits.some((h) => h.includes("metabolic-issue-resolved"))).toBe(true);
+    });
+
+    it("result interpretation caution blocks reassuring result language", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_result_interp_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicResultInterpretationForbiddenPhrases(
+          template.id,
+          "en",
+          {
+            ...template.suggestedText.en,
+            diagnosisInstructions: "Glucose reassuring, labs reassuring, ketones negative, metabolic panel normal.",
+          }
+        ).length
+      ).toBeGreaterThan(0);
+      expect(
+        scanProviderDischargeEndocrineMetabolicResultInterpretationForbiddenPhrases(
+          template.id,
+          "en",
+          {
+            ...template.suggestedText.en,
+            returnPrecautions: "DKA excluded, HHS excluded, diabetic emergency excluded, sugars controlled.",
+          }
+        ).some((h) => h.includes("dka-excluded"))
+      ).toBe(true);
+    });
+
+    it("requiresGlucoseEscalation enforcement passes with EN markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_glucose_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicGlucoseEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresHydrationEscalation enforcement passes with EN markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_hydration_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicHydrationEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresInsulinPrecautions enforcement passes with EN markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_insulin_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicInsulinPrecautionsLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresNeurologicEscalation enforcement passes with EN markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_neuro_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicNeurologicEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresDiabetesFollowUp enforcement passes", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_followup_ok_v1" });
+      expect(validateProviderDischargeEndocrineMetabolicTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("requiresDiabetesFollowUp fails without primary care or endocrinology row", () => {
+      const template = syntheticEndocrineMetabolicTemplate({
+        id: "diabetes_followup_fail_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "endo-cardio-only",
+            specialty: "CARDIOLOGY",
+            timing: "as directed",
+          },
+        ],
+      });
+      expect(
+        validateProviderDischargeEndocrineMetabolicTemplateGovernance(template).some((e) =>
+          e.includes("requiresDiabetesFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("requiresEndocrinologyFollowUp fails without endocrinology row", () => {
+      const template = syntheticEndocrineMetabolicTemplate({
+        id: "endocrine_followup_fail_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "endo-pcp-only",
+            specialty: "PRIMARY_CARE",
+            timing: "as directed",
+          },
+        ],
+      });
+      expect(
+        validateProviderDischargeEndocrineMetabolicTemplateGovernance(template).some((e) =>
+          e.includes("requiresEndocrinologyFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("ID auto-flag detection requires dkaSensitive for dka IDs", () => {
+      const template = syntheticEndocrineMetabolicTemplate({
+        id: "diabetes_dka_watch_v1",
+        endocrineMetabolicSafety: {
+          requiresGlucoseEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeEndocrineMetabolicTemplateGovernance(template).some((e) =>
+          e.includes("dkaSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("ID auto-flag detection requires metabolicSensitive for metabolic IDs", () => {
+      const template = syntheticEndocrineMetabolicTemplate({
+        id: "metabolic_abnormality_v1",
+        endocrineMetabolicSafety: {
+          requiresNeurologicEscalation: true,
+        },
+      });
+      expect(
+        validateProviderDischargeEndocrineMetabolicTemplateGovernance(template).some((e) =>
+          e.includes("metabolicSensitive")
+        )
+      ).toBe(true);
+    });
+
+    it("normalized hash stability emits only true flags in sorted order", () => {
+      const normalized = normalizeEndocrineMetabolicSafetyForHash({
+        requiresGlucoseEscalation: true,
+        dkaSensitive: true,
+        requiresInsulinPrecautions: false,
+      });
+      expect(normalized).toEqual({
+        dkaSensitive: true,
+        requiresGlucoseEscalation: true,
+      });
+      expect(normalizeEndocrineMetabolicSafetyForHash(undefined)).toBeNull();
+      expect(normalizeEndocrineMetabolicSafetyForHash({})).toBeNull();
+    });
+
+    it("snapshot includes endocrineMetabolicSafety", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.endocrineMetabolicSafety).toEqual({
+        dehydrationSensitive: true,
+        diabetesSensitive: true,
+        dkaSensitive: true,
+        endocrineSensitive: true,
+        hhsSensitive: true,
+        hyperglycemiaSensitive: true,
+        hypoglycemiaSensitive: true,
+        insulinSensitive: true,
+        metabolicSensitive: true,
+        requiresDiabetesFollowUp: true,
+        requiresEndocrinologyFollowUp: true,
+        requiresGlucoseEscalation: true,
+        requiresHydrationEscalation: true,
+        requiresInsulinPrecautions: true,
+        requiresNeurologicEscalation: true,
+        requiresResultInterpretationCaution: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "diabetes_hash_v1") as Record<string, unknown>;
+      expect(row.endocrineMetabolicSafety).toEqual(payload.endocrineMetabolicSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withEndocrine = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withEndocrine).not.toBe(base);
+    });
+
+    it("legacy templates are exempt from endocrine-metabolic governance", () => {
+      const hyper = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "hyperglycemia_v1")!;
+      const hypo = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "hypoglycemia_v1")!;
+      expect(validateProviderDischargeEndocrineMetabolicTemplateGovernance(hyper)).toEqual([]);
+      expect(validateProviderDischargeEndocrineMetabolicTemplateGovernance(hypo)).toEqual([]);
+    });
+
+    it("EN escalation marker constants match governance expectations", () => {
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_GLUCOSE_MARKERS).toContain("return immediately");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_HYDRATION_MARKERS).toContain("dehydration");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_INSULIN_MARKERS).toContain("do not skip insulin");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_EN_NEUROLOGIC_MARKERS).toContain("seizures");
+    });
+
+    it("FR escalation marker constants match governance expectations", () => {
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_GLUCOSE_MARKERS).toContain("retournez immédiatement");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_HYDRATION_MARKERS).toContain("déshydratation");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_INSULIN_MARKERS).toContain("ne sautez pas l'insuline");
+      expect(PROVIDER_DISCHARGE_ENDOCRINE_METABOLIC_FR_NEUROLOGIC_MARKERS).toContain("convulsions");
+    });
+
+    it("requiresGlucoseEscalation enforcement passes with FR markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_glucose_fr_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicGlucoseEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresHydrationEscalation enforcement passes with FR markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_hydration_fr_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicHydrationEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresInsulinPrecautions enforcement passes with FR markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_insulin_fr_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicInsulinPrecautionsLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("requiresNeurologicEscalation enforcement passes with FR markers", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_neuro_fr_ok_v1" });
+      expect(
+        scanProviderDischargeEndocrineMetabolicNeurologicEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("global forbidden phrases include safe-for-discharge and medically cleared", () => {
+      const template = syntheticEndocrineMetabolicTemplate({ id: "diabetes_global_forbidden_v1" });
+      const hits = scanProviderDischargeEndocrineMetabolicForbiddenPhrases(template.id, "en", {
+        ...template.suggestedText.en,
+        description: "Medically cleared, safe for discharge, low risk, you are stable, your diabetes is stable.",
+      });
+      expect(hits.some((h) => h.includes("medically-cleared"))).toBe(true);
+      expect(hits.some((h) => h.includes("safe-for-discharge"))).toBe(true);
+      expect(hits.some((h) => h.includes("you-are-stable"))).toBe(true);
+      expect(hits.some((h) => h.includes("diabetes-is-stable"))).toBe(true);
+    });
+
+    it("existing registry still validates with endocrine-metabolic governance wired", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.20 renal/urology/electrolyte templates", () => {
     const batchTemplates = () =>
       BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS.map(
@@ -6896,7 +7325,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("f3217bfc7133b5016c6411a14b252b3d8f9679d165a593ba7303595d5f4f34f5");
+      expect(hash).toBe("5b18713c329981ac56163e36df6ece11f98f941ae57d64723f84af58a6d9dac8");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -6906,7 +7335,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("b31c7860ddff1b5314c6846939e913a68df31f7ab40c2423eebea349c752d130");
+      expect(hash).toBe("c87a9d853d4b653b6bfdc721f72b4aef6faa96761bc117fae84582783fefe17d");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

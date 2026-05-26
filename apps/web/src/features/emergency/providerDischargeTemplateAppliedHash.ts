@@ -31,6 +31,10 @@ import {
   normalizeRenalElectrolyteSafetyForHash,
   type ProviderDischargeTemplateRenalElectrolyteSafety,
 } from "./providerDischargeTemplateRenalElectrolyteGovernance";
+import {
+  normalizeEndocrineMetabolicSafetyForHash,
+  type ProviderDischargeTemplateEndocrineMetabolicSafety,
+} from "./providerDischargeTemplateEndocrineMetabolicGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -64,6 +68,7 @@ export type ProviderDischargeTemplateHashSource = {
   cardioHighRiskSafety?: ProviderDischargeTemplateCardioHighRiskSafety;
   infectiousRiskSafety?: ProviderDischargeTemplateInfectiousRiskSafety;
   renalElectrolyteSafety?: ProviderDischargeTemplateRenalElectrolyteSafety;
+  endocrineMetabolicSafety?: ProviderDischargeTemplateEndocrineMetabolicSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -108,6 +113,7 @@ export type ProviderDischargeTemplateHashPayload = {
   cardioHighRiskSafety?: Record<string, boolean>;
   infectiousRiskSafety?: Record<string, boolean>;
   renalElectrolyteSafety?: Record<string, boolean>;
+  endocrineMetabolicSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -195,6 +201,8 @@ export function buildProviderDischargeTemplateHashPayload(
   if (infectiousRiskSafety) payload.infectiousRiskSafety = infectiousRiskSafety;
   const renalElectrolyteSafety = normalizeRenalElectrolyteSafetyForHash(template.renalElectrolyteSafety);
   if (renalElectrolyteSafety) payload.renalElectrolyteSafety = renalElectrolyteSafety;
+  const endocrineMetabolicSafety = normalizeEndocrineMetabolicSafetyForHash(template.endocrineMetabolicSafety);
+  if (endocrineMetabolicSafety) payload.endocrineMetabolicSafety = endocrineMetabolicSafety;
 
   return payload;
 }

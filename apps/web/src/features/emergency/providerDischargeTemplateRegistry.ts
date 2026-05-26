@@ -13,6 +13,7 @@ import type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischar
 import type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
 import type { ProviderDischargeTemplateInfectiousRiskSafety } from "./providerDischargeTemplateInfectiousRiskGovernance";
 import type { ProviderDischargeTemplateRenalElectrolyteSafety } from "./providerDischargeTemplateRenalElectrolyteGovernance";
+import type { ProviderDischargeTemplateEndocrineMetabolicSafety } from "./providerDischargeTemplateEndocrineMetabolicGovernance";
 import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
@@ -194,6 +195,8 @@ export type ProviderDischargeTemplate = {
   infectiousRiskSafety?: ProviderDischargeTemplateInfectiousRiskSafety;
   /** Phase 19Y.19 — renal/urology/electrolyte-risk safety governance metadata (not shown in UI). */
   renalElectrolyteSafety?: ProviderDischargeTemplateRenalElectrolyteSafety;
+  /** Phase 19Y.21 — endocrine/diabetes/metabolic-risk safety governance metadata (not shown in UI). */
+  endocrineMetabolicSafety?: ProviderDischargeTemplateEndocrineMetabolicSafety;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -216,6 +219,7 @@ export type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischar
 export type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
 export type { ProviderDischargeTemplateInfectiousRiskSafety } from "./providerDischargeTemplateInfectiousRiskGovernance";
 export type { ProviderDischargeTemplateRenalElectrolyteSafety } from "./providerDischargeTemplateRenalElectrolyteGovernance";
+export type { ProviderDischargeTemplateEndocrineMetabolicSafety } from "./providerDischargeTemplateEndocrineMetabolicGovernance";
 
 export type ProviderDischargeTemplateResolveResult = {
   template: ProviderDischargeTemplate;
