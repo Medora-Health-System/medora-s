@@ -40,6 +40,10 @@ import {
   validateProviderDischargeInfectiousRiskTemplateGovernance,
 } from "./providerDischargeTemplateInfectiousRiskGovernance";
 import {
+  normalizeRenalElectrolyteSafetyForHash,
+  validateProviderDischargeRenalElectrolyteTemplateGovernance,
+} from "./providerDischargeTemplateRenalElectrolyteGovernance";
+import {
   normalizeBehavioralHealthSafetyForHash,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
   scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
@@ -204,6 +208,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       traumaMskSafety: normalizeTraumaMskSafetyForHash(template.traumaMskSafety),
       cardioHighRiskSafety: normalizeCardioHighRiskSafetyForHash(template.cardioHighRiskSafety),
       infectiousRiskSafety: normalizeInfectiousRiskSafetyForHash(template.infectiousRiskSafety),
+      renalElectrolyteSafety: normalizeRenalElectrolyteSafetyForHash(template.renalElectrolyteSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -380,6 +385,7 @@ export function validateProviderDischargeTemplateRegistry(
     errors.push(...validateProviderDischargeTraumaMskTemplateGovernance(template));
     errors.push(...validateProviderDischargeCardioHighRiskTemplateGovernance(template));
     errors.push(...validateProviderDischargeInfectiousRiskTemplateGovernance(template));
+    errors.push(...validateProviderDischargeRenalElectrolyteTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);
