@@ -17,6 +17,7 @@ import {
   BATCH_6_PEDIATRIC_HIGHER_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_7_OBGYN_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -38,6 +39,9 @@ import {
 import {
   scanProviderDischargeTraumaMskEscalationLanguage,
   scanProviderDischargeTraumaMskForbiddenPhrases,
+  scanProviderDischargeTraumaMskHeadNeckSpineEscalation,
+  scanProviderDischargeTraumaMskReturnActivityForbiddenPhrases,
+  scanProviderDischargeTraumaMskSplintCastPrecautions,
   validateProviderDischargeTraumaMskTemplateGovernance,
 } from "./providerDischargeTemplateTraumaMskGovernance";
 import {
@@ -3774,6 +3778,218 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.14 Batch 9 trauma & MSK ED discharge templates", () => {
+    const batchTemplates = () =>
+      BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    it("all 10 trauma/MSK templates exist", () => {
+      expect(BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies exist for batch 9 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("traumaMskSafety metadata exists on all batch 9 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.traumaMskSafety).toBeTruthy();
+        expect(validateProviderDischargeTraumaMskTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("required trauma flags are present per template", () => {
+      const ankle = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "trauma_msk_ankle_sprain_v1")!;
+      expect(ankle.traumaMskSafety?.requiresNeurovascularPrecautions).toBe(true);
+      expect(ankle.traumaMskSafety?.requiresOrthopedicFollowUp).toBe(true);
+
+      const fracture = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "trauma_msk_minor_fracture_precautions_v1"
+      )!;
+      expect(fracture.traumaMskSafety?.imagingSensitive).toBe(true);
+      expect(fracture.traumaMskSafety?.requiresSplintCastPrecautions).toBe(true);
+      expect(fracture.traumaMskSafety?.requiresCompartmentSyndromePrecautions).toBe(true);
+
+      const mvc = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "trauma_msk_mvc_soreness_v1")!;
+      expect(mvc.traumaMskSafety?.requiresHeadNeckSpineEscalation).toBe(true);
+      expect(mvc.traumaMskSafety?.imagingSensitive).toBe(true);
+    });
+
+    it("escalation wording passes EN for batch 9 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(
+          scanProviderDischargeTraumaMskEscalationLanguage(template.id, "en", template.suggestedText.en)
+        ).toEqual([]);
+      }
+    });
+
+    it("escalation wording passes FR for batch 9 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(
+          scanProviderDischargeTraumaMskEscalationLanguage(template.id, "fr", template.suggestedText.fr)
+        ).toEqual([]);
+      }
+    });
+
+    it("forbidden phrase fracture ruled out fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeTraumaMskForbiddenPhrases("msk_bad", "en", {
+          ...body,
+          description: "Fracture ruled out on imaging.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("forbidden phrase x-ray normal fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeTraumaMskForbiddenPhrases("msk_bad", "en", {
+          ...body,
+          diagnosisInstructions: "X-ray normal during evaluation.",
+        }).some((h) => h.includes("x-ray-normal"))
+      ).toBe(true);
+    });
+
+    it("forbidden phrase neurovascularly intact fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeTraumaMskForbiddenPhrases("msk_bad", "en", {
+          ...body,
+          diagnosisInstructions: "Neurovascularly intact on exam.",
+        }).some((h) => h.includes("neurovascularly-intact"))
+      ).toBe(true);
+    });
+
+    it("forbidden phrase cleared for sports fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeTraumaMskForbiddenPhrases("msk_bad", "en", {
+          ...body,
+          returnWorkSchool: "Cleared for sports.",
+        }).some((h) => h.includes("cleared-for-sports"))
+      ).toBe(true);
+    });
+
+    it("forbidden phrase no spinal injury fails", () => {
+      const body = batchTemplates()[0].suggestedText.en;
+      expect(
+        scanProviderDischargeTraumaMskForbiddenPhrases("msk_bad", "en", {
+          ...body,
+          description: "No spinal injury identified.",
+        }).some((h) => h.includes("no-spinal-injury"))
+      ).toBe(true);
+    });
+
+    it("return-activity validator passes safe wording on batch 9 templates", () => {
+      for (const template of batchTemplates()) {
+        if (!template.traumaMskSafety?.requiresReturnActivityRestrictions) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeTraumaMskReturnActivityForbiddenPhrases(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("orthopedic follow-up exists where required", () => {
+      for (const template of batchTemplates()) {
+        if (!template.traumaMskSafety?.requiresOrthopedicFollowUp) continue;
+        const specialties = (template.defaultFollowUps ?? []).map((row) => row.specialty.toUpperCase());
+        expect(specialties).toContain("ORTHOPEDICS");
+      }
+    });
+
+    it("splint/cast precautions exist for minor fracture template", () => {
+      const fracture = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "trauma_msk_minor_fracture_precautions_v1"
+      )!;
+      for (const locale of ["en", "fr"] as const) {
+        expect(
+          scanProviderDischargeTraumaMskSplintCastPrecautions(fracture.id, locale, fracture.suggestedText[locale])
+        ).toEqual([]);
+      }
+    });
+
+    it("head/neck/spine escalation exists for back, neck, and MVC templates", () => {
+      for (const id of [
+        "trauma_msk_back_strain_v1",
+        "trauma_msk_neck_strain_v1",
+        "trauma_msk_mvc_soreness_v1",
+      ] as const) {
+        const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeTraumaMskHeadNeckSpineEscalation(template.id, locale, template.suggestedText[locale])
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("no mapping collisions with adult back pain or wound templates", () => {
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "M54.5", displayName: "Low back pain" }).template.id
+      ).toBe("back_pain_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "S39.012", displayName: "Back strain" }).template.id
+      ).toBe("trauma_msk_back_strain_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "S93.401A", displayName: "Ankle sprain" }).template.id
+      ).toBe("trauma_msk_ankle_sprain_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "T14.1", displayName: "Laceration" }).template.id
+      ).toBe("wound_laceration_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({
+          displayName: "msk motor vehicle collision soreness",
+        }).template.id
+      ).toBe("trauma_msk_mvc_soreness_v1");
+    });
+
+    it("apply uses active locale for batch 9 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-ankle",
+        code: "S93.401A",
+        displayName: "Ankle sprain",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description).toContain("cheville");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("intentional batch 9 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutMsk = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("trauma_msk_")),
+        "en"
+      );
+      expect(base).not.toBe(withoutMsk);
+    });
+
+    it("existing adult/pediatric/OB/BH templates still validate", () => {
+      const nonMsk = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter((t) => !t.id.startsWith("trauma_msk_"));
+      const result = validateProviderDischargeTemplateRegistry(nonMsk);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -4153,7 +4369,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("fb6d3cce4b9ad8c917fefc6668f316641fe5589e67b8c2ada22fed670f11b96a");
+      expect(hash).toBe("b92ac0f7484dacbe153ba3a7cf938a1b079fa5150f45b2293d8ca4a5d43f42c3");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -4163,7 +4379,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("7bf869aa7d429f9bba6d9d7c0609632570561de7742bcde96fffdabc46aadcbc");
+      expect(hash).toBe("c484dff31ad810b41293e3e55efda27924f2775b04f8c120e4ddccee667ac855");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

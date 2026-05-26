@@ -326,6 +326,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["grief", "adjustment"], fr: ["deuil", "adaptation"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  trauma_msk_ankle_sprain_v1: {
+    mustIncludeAny: { en: ["ankle", "sprain"], fr: ["cheville", "entorse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_wrist_sprain_v1: {
+    mustIncludeAny: { en: ["wrist", "sprain"], fr: ["poignet", "entorse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_knee_injury_v1: {
+    mustIncludeAny: { en: ["knee", "injury"], fr: ["genou", "blessure"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_shoulder_pain_v1: {
+    mustIncludeAny: { en: ["shoulder", "pain"], fr: ["épaule", "douleur"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_back_strain_v1: {
+    mustIncludeAny: { en: ["back", "strain"], fr: ["dos", "entorse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_neck_strain_v1: {
+    mustIncludeAny: { en: ["neck", "strain"], fr: ["cou", "entorse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_contusion_v1: {
+    mustIncludeAny: { en: ["contusion", "bruise"], fr: ["contusion", "ecchymose"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_rib_injury_v1: {
+    mustIncludeAny: { en: ["rib", "chest"], fr: ["côte", "thoracique"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_minor_fracture_precautions_v1: {
+    mustIncludeAny: { en: ["fracture", "splint"], fr: ["fracture", "attelle"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  trauma_msk_mvc_soreness_v1: {
+    mustIncludeAny: { en: ["motor vehicle", "collision"], fr: ["véhicule", "collision"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

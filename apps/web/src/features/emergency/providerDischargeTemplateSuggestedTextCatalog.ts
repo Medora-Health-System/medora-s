@@ -1805,6 +1805,215 @@ export const BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT: ProviderDischarg
     }
   );
 
+const MSK_MED_EN = "Take pain medicines only as prescribed or directed during this visit.";
+const MSK_MED_FR =
+  "Prenez les antidouleurs uniquement selon la prescription ou les indications reçues pendant cette visite.";
+
+const MSK_ACTIVITY_EN =
+  "Activity should follow provider guidance. Use activity limits and support devices only as directed. Gradual return as directed.";
+const MSK_ACTIVITY_FR =
+  "L'activité doit suivre les indications du clinicien. Respectez les limites d'activité et les aides de support uniquement selon les directives reçues. Reprise progressive selon les directives.";
+
+const MSK_LIMB_ESCALATION_EN =
+  "Return immediately for worsening pain, numbness, weakness, swelling, discoloration, or inability to move. Seek emergency care for worsening symptoms.";
+const MSK_LIMB_ESCALATION_FR =
+  "Retournez immédiatement en cas d'aggravation de la douleur, d'engourdissement, de faiblesse, d'enflure, de changement de couleur ou d'incapacité à bouger. Consultez en urgence en cas d'aggravation.";
+
+const MSK_SPINE_ESCALATION_EN =
+  "Return immediately for weakness, numbness, difficulty walking, loss of bladder or bowel control, severe headache, vomiting, confusion, or worsening pain. Seek emergency care for worsening symptoms.";
+const MSK_SPINE_ESCALATION_FR =
+  "Retournez immédiatement en cas de faiblesse, d'engourdissement, de difficulté à marcher, de perte de contrôle de la vessie ou de l'intestin, de mal de tête sévère, de vomissements, de confusion ou d'aggravation de la douleur. Consultez en urgence en cas d'aggravation.";
+
+export const TRAUMA_MSK_ANKLE_SPRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pain or injury involving the ankle. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur ou une blessure à la cheville. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_WRIST_SPRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pain or injury involving the wrist. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur ou une blessure au poignet. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_KNEE_INJURY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pain or injury involving the knee. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur ou une blessure au genou. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_SHOULDER_PAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pain or injury involving the shoulder. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_LIMB_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une douleur ou une blessure à l'épaule. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_LIMB_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for back strain or back pain after injury. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_SPINE_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une entorse ou une douleur dorsale après un traumatisme. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_SPINE_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for neck strain or neck pain after injury. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions: MSK_SPINE_ESCALATION_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une entorse ou une douleur cervicale après un traumatisme. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions: MSK_SPINE_ESCALATION_FR,
+    }
+  );
+
+export const TRAUMA_MSK_CONTUSION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a contusion (bruise) after injury. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening swelling, severe pain, numbness, weakness, skin color change, or inability to move the injured area. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un contusion (ecchymose) après un traumatisme. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'enflure qui s'aggrave, de douleur intense, d'engourdissement, de faiblesse, de changement de couleur de la peau ou d'incapacité à bouger la zone blessée. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for rib or chest wall injury after trauma. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for difficulty breathing, worsening chest pain, fever, coughing blood, fainting, or worsening pain. Seek emergency care when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une blessure des côtes ou de la paroi thoracique après un traumatisme. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de difficulté à respirer, d'aggravation de la douleur thoracique, de fièvre, de toux avec sang, d'évanouissement ou d'aggravation de la douleur. Consultez en urgence si inquiétude.",
+    }
+  );
+
+export const TRAUMA_MSK_MINOR_FRACTURE_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible bone injury. Symptoms may change after the visit; follow clinician instructions for splint, cast, or support devices.",
+      diagnosisInstructions:
+        "Use splint, cast, or support devices only as directed. Follow up with orthopedics as directed. Activity should follow provider guidance. This note does not state a specific fracture type unless documented separately by your clinician.",
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening pain, numbness, color change, severe swelling, severe pain, a tight splint or cast, or inability to move fingers or toes. Seek emergency care for worsening symptoms.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible lésion osseuse. Les symptômes peuvent évoluer après la visite ; suivez les instructions du clinicien pour attelle, plâtre ou aide de support.",
+      diagnosisInstructions:
+        "Utilisez attelle, plâtre ou aide de support uniquement selon les directives reçues. Suivez le suivi en orthopédie selon les directives. L'activité doit suivre les indications du clinicien. Cette note ne précise pas un type de fracture sauf documentation distincte par votre clinicien.",
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas d'aggravation de la douleur, d'engourdissement, de changement de couleur, d'enflure importante, de douleur intense, d'attelle ou plâtre trop serré, ou d'incapacité à bouger les doigts ou orteils. Consultez en urgence en cas d'aggravation.",
+    }
+  );
+
+export const TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for soreness or symptoms after a motor vehicle collision. Symptoms may change after the visit.",
+      diagnosisInstructions: `${MSK_ACTIVITY_EN} Return precautions were reviewed.`,
+      medicationTreatment: MSK_MED_EN,
+      returnPrecautions:
+        "Return immediately for worsening headache, vomiting, confusion, weakness, numbness, chest pain, shortness of breath, abdominal pain, or worsening symptoms. Seek emergency care when concerned.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des courbatures ou symptômes après une collision de véhicule. Les symptômes peuvent évoluer après la visite.",
+      diagnosisInstructions: `${MSK_ACTIVITY_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: MSK_MED_FR,
+      returnPrecautions:
+        "Retournez immédiatement en cas de mal de tête sévère, de vomissements, de confusion, de faiblesse, d'engourdissement, de douleur thoracique, de difficulté à respirer, de douleur abdominale ou d'aggravation des symptômes. Consultez en urgence si inquiétude.",
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

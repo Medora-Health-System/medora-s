@@ -26,6 +26,16 @@ import {
   BEHAVIORAL_HEALTH_OPIOID_OVERDOSE_AFTERCARE_SUGGESTED_TEXT,
   BEHAVIORAL_HEALTH_SUBSTANCE_USE_RESOURCES_SUGGESTED_TEXT,
   BEHAVIORAL_HEALTH_SUICIDAL_IDEATION_PRECAUTIONS_SUGGESTED_TEXT,
+  TRAUMA_MSK_SHOULDER_PAIN_SUGGESTED_TEXT,
+  TRAUMA_MSK_WRIST_SPRAIN_SUGGESTED_TEXT,
+  TRAUMA_MSK_ANKLE_SPRAIN_SUGGESTED_TEXT,
+  TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT,
+  TRAUMA_MSK_CONTUSION_SUGGESTED_TEXT,
+  TRAUMA_MSK_KNEE_INJURY_SUGGESTED_TEXT,
+  TRAUMA_MSK_MINOR_FRACTURE_PRECAUTIONS_SUGGESTED_TEXT,
+  TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
+  TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT,
+  TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -278,6 +288,20 @@ export const BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS = [
   "behavioral_health_grief_adjustment_v1",
 ] as const;
 
+/** Phase 19Y.14 — trauma & MSK ED discharge template batch 9. */
+export const BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS = [
+  "trauma_msk_ankle_sprain_v1",
+  "trauma_msk_wrist_sprain_v1",
+  "trauma_msk_knee_injury_v1",
+  "trauma_msk_shoulder_pain_v1",
+  "trauma_msk_back_strain_v1",
+  "trauma_msk_neck_strain_v1",
+  "trauma_msk_contusion_v1",
+  "trauma_msk_rib_injury_v1",
+  "trauma_msk_minor_fracture_precautions_v1",
+  "trauma_msk_mvc_soreness_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -309,6 +333,12 @@ const BEHAVIORAL_HEALTH_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "behavioral_health",
   riskCategory: "high",
+};
+
+const TRAUMA_MSK_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "orthopedics",
+  riskCategory: "moderate",
 };
 
 /** @deprecated Use BATCH_GOVERNANCE_DRAFT */
@@ -2474,6 +2504,310 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT,
   },
   {
+    id: "trauma_msk_ankle_sprain_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK ankle sprain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresOrthopedicFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S93.4"],
+      keyword: ["msk ankle sprain", "ankle sprain msk", "entorse cheville msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Ankle injuries and sprains",
+        url: "https://medlineplus.gov/ency/article/000041.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "OrthoInfo — Ankle sprain",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/ankle-sprain/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tma-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_ANKLE_SPRAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_wrist_sprain_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK wrist sprain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresOrthopedicFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S63.5"],
+      keyword: ["msk wrist sprain", "wrist sprain msk", "entorse poignet msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Wrist injuries",
+        url: "https://medlineplus.gov/ency/article/000042.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "OrthoInfo — Wrist sprains",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/wrist-sprains/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmw-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_WRIST_SPRAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_knee_injury_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK knee injury discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresOrthopedicFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S89"],
+      keyword: ["msk knee injury", "knee injury msk", "blessure genou msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Knee injuries",
+        url: "https://medlineplus.gov/kneeinjuriesanddisorders.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "OrthoInfo — Knee sprains",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/knee-sprains/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmk-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_KNEE_INJURY_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_shoulder_pain_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK shoulder pain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+      requiresOrthopedicFollowUp: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["M25.51"],
+      keyword: ["msk shoulder pain", "shoulder pain msk", "douleur épaule msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Shoulder injuries",
+        url: "https://medlineplus.gov/shoulderinjuriesanddisorders.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "OrthoInfo — Shoulder pain",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/shoulder-pain/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tms-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_SHOULDER_PAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_back_strain_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK back strain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresHeadNeckSpineEscalation: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["S39.012"],
+      keyword: ["msk back strain", "back strain msk", "entorse dos msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Back pain",
+        url: "https://medlineplus.gov/backpain.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Heads Up",
+        url: "https://www.cdc.gov/heads-up/",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmb-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_neck_strain_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK neck strain discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresHeadNeckSpineEscalation: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["S16.1"],
+      keyword: ["msk neck strain", "neck strain msk", "entorse cou msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Neck injuries",
+        url: "https://medlineplus.gov/ency/article/000029.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Heads Up",
+        url: "https://www.cdc.gov/heads-up/",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmn-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    suggestedText: TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_contusion_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK contusion discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      requiresNeurovascularPrecautions: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      keyword: ["msk contusion", "soft tissue contusion msk", "contusion msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Bruises",
+        url: "https://medlineplus.gov/bruises.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmc-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: TRAUMA_MSK_CONTUSION_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_rib_injury_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK rib injury discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      imagingSensitive: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdFamily: ["S22.3", "S20"],
+      keyword: ["msk rib injury", "rib injury msk", "blessure côte msk"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Rib injuries",
+        url: "https://medlineplus.gov/ency/article/003109.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmr-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_minor_fracture_precautions_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK minor fracture precautions discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      imagingSensitive: true,
+      requiresFracturePrecautions: true,
+      requiresNeurovascularPrecautions: true,
+      requiresCompartmentSyndromePrecautions: true,
+      requiresSplintCastPrecautions: true,
+      requiresOrthopedicFollowUp: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "msk minor fracture precautions",
+        "minor fracture precautions msk",
+        "précautions fracture mineure msk",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fractures",
+        url: "https://medlineplus.gov/fractures.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "OrthoInfo — Fractures",
+        url: "https://orthoinfo.aaos.org/en/diseases--conditions/fractures-broken-bones/",
+        publisher: "American Academy of Orthopaedic Surgeons (OrthoInfo)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmf-ortho", "ORTHOPEDICS", "within 3–7 days or as directed")],
+    suggestedText: TRAUMA_MSK_MINOR_FRACTURE_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "trauma_msk_mvc_soreness_v1",
+    version: "1.0.0",
+    title: "Trauma/MSK motor vehicle collision soreness discharge documentation",
+    ...TRAUMA_MSK_TEMPLATE_GOVERNANCE,
+    traumaMskSafety: {
+      imagingSensitive: true,
+      requiresHeadNeckSpineEscalation: true,
+      requiresReturnActivityRestrictions: true,
+    },
+    diagnosisMappings: {
+      icdExact: ["V89.2XXA"],
+      keyword: [
+        "msk motor vehicle collision soreness",
+        "mvc soreness msk",
+        "courbatures collision msk",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Motor vehicle safety",
+        url: "https://medlineplus.gov/motorvehiclesafety.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+      {
+        label: "CDC — Motor vehicle safety",
+        url: "https://www.cdc.gov/transportationsafety/",
+        publisher: "U.S. Centers for Disease Control and Prevention (CDC)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("tmm-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    suggestedText: TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -2644,6 +2978,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences lors d'une crise de santé comportementale ou d'une détresse émotionnelle importante",
   "Vous avez été pris en charge aux urgences pour de l'insomnie, un stress aigu ou des signes connexes",
   "Vous avez été pris en charge aux urgences pour des signes de deuil, d'adaptation ou de détresse émotionnelle",
+  "You were evaluated in the emergency department for pain or injury involving the ankle",
+  "You were evaluated in the emergency department for pain or injury involving the wrist",
+  "You were evaluated in the emergency department for pain or injury involving the knee",
+  "You were evaluated in the emergency department for pain or injury involving the shoulder",
+  "You were evaluated in the emergency department for back strain or back pain after injury",
+  "You were evaluated in the emergency department for neck strain or neck pain after injury",
+  "You were evaluated in the emergency department for a contusion (bruise) after injury",
+  "You were evaluated in the emergency department for rib or chest wall injury after trauma",
+  "You were evaluated in the emergency department for a possible bone injury",
+  "You were evaluated in the emergency department for soreness or symptoms after a motor vehicle collision",
+  "Vous avez été pris en charge aux urgences pour une douleur ou une blessure à la cheville",
+  "Vous avez été pris en charge aux urgences pour une douleur ou une blessure au poignet",
+  "Vous avez été pris en charge aux urgences pour une douleur ou une blessure au genou",
+  "Vous avez été pris en charge aux urgences pour une douleur ou une blessure à l'épaule",
+  "Vous avez été pris en charge aux urgences pour une entorse ou une douleur dorsale après un traumatisme",
+  "Vous avez été pris en charge aux urgences pour une entorse ou une douleur cervicale après un traumatisme",
+  "Vous avez été pris en charge aux urgences pour un contusion (ecchymose) après un traumatisme",
+  "Vous avez été pris en charge aux urgences pour une blessure des côtes ou de la paroi thoracique après un traumatisme",
+  "Vous avez été pris en charge aux urgences pour une possible lésion osseuse",
+  "Vous avez été pris en charge aux urgences pour des courbatures ou symptômes après une collision de véhicule",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };
