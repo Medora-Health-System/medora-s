@@ -23,6 +23,10 @@ import {
   normalizeCardioHighRiskSafetyForHash,
   type ProviderDischargeTemplateCardioHighRiskSafety,
 } from "./providerDischargeTemplateCardioHighRiskGovernance";
+import {
+  normalizeInfectiousRiskSafetyForHash,
+  type ProviderDischargeTemplateInfectiousRiskSafety,
+} from "./providerDischargeTemplateInfectiousRiskGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -54,6 +58,7 @@ export type ProviderDischargeTemplateHashSource = {
   behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
   traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
   cardioHighRiskSafety?: ProviderDischargeTemplateCardioHighRiskSafety;
+  infectiousRiskSafety?: ProviderDischargeTemplateInfectiousRiskSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -96,6 +101,7 @@ export type ProviderDischargeTemplateHashPayload = {
   behavioralHealthSafety?: Record<string, boolean>;
   traumaMskSafety?: Record<string, boolean>;
   cardioHighRiskSafety?: Record<string, boolean>;
+  infectiousRiskSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -179,6 +185,8 @@ export function buildProviderDischargeTemplateHashPayload(
   if (traumaMskSafety) payload.traumaMskSafety = traumaMskSafety;
   const cardioHighRiskSafety = normalizeCardioHighRiskSafetyForHash(template.cardioHighRiskSafety);
   if (cardioHighRiskSafety) payload.cardioHighRiskSafety = cardioHighRiskSafety;
+  const infectiousRiskSafety = normalizeInfectiousRiskSafetyForHash(template.infectiousRiskSafety);
+  if (infectiousRiskSafety) payload.infectiousRiskSafety = infectiousRiskSafety;
 
   return payload;
 }

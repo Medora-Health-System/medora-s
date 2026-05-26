@@ -36,6 +36,10 @@ import {
   validateProviderDischargeCardioHighRiskTemplateGovernance,
 } from "./providerDischargeTemplateCardioHighRiskGovernance";
 import {
+  normalizeInfectiousRiskSafetyForHash,
+  validateProviderDischargeInfectiousRiskTemplateGovernance,
+} from "./providerDischargeTemplateInfectiousRiskGovernance";
+import {
   normalizeBehavioralHealthSafetyForHash,
   validateProviderDischargeBehavioralHealthTemplateGovernance,
   scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
@@ -199,6 +203,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       behavioralHealthSafety: normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety),
       traumaMskSafety: normalizeTraumaMskSafetyForHash(template.traumaMskSafety),
       cardioHighRiskSafety: normalizeCardioHighRiskSafetyForHash(template.cardioHighRiskSafety),
+      infectiousRiskSafety: normalizeInfectiousRiskSafetyForHash(template.infectiousRiskSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -374,6 +379,7 @@ export function validateProviderDischargeTemplateRegistry(
     warnings.push(...scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings(template));
     errors.push(...validateProviderDischargeTraumaMskTemplateGovernance(template));
     errors.push(...validateProviderDischargeCardioHighRiskTemplateGovernance(template));
+    errors.push(...validateProviderDischargeInfectiousRiskTemplateGovernance(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

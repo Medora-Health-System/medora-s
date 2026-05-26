@@ -11,6 +11,7 @@ import type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTe
 import type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
 import type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
 import type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
+import type { ProviderDischargeTemplateInfectiousRiskSafety } from "./providerDischargeTemplateInfectiousRiskGovernance";
 import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
@@ -47,6 +48,16 @@ import {
   CARDIO_SYNCOPE_FOLLOW_UP_SUGGESTED_TEXT,
   CARDIO_AFIB_RATE_CONTROLLED_SUGGESTED_TEXT,
   CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT,
+  INFECTIOUS_FEVER_UNKNOWN_SOURCE_SUGGESTED_TEXT,
+  INFECTIOUS_UPPER_RESPIRATORY_INFECTION_SUGGESTED_TEXT,
+  INFECTIOUS_VIRAL_SYNDROME_SUGGESTED_TEXT,
+  INFECTIOUS_PHARYNGITIS_SUGGESTED_TEXT,
+  INFECTIOUS_SINUSITIS_SUGGESTED_TEXT,
+  INFECTIOUS_PNEUMONIA_FOLLOWUP_SUGGESTED_TEXT,
+  INFECTIOUS_COVID_LIKE_ILLNESS_SUGGESTED_TEXT,
+  GI_INFECTIOUS_GASTROENTERITIS_SUGGESTED_TEXT,
+  INFECTIOUS_CELLULITIS_FOLLOWUP_SUGGESTED_TEXT,
+  SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -168,6 +179,8 @@ export type ProviderDischargeTemplate = {
   traumaMskSafety?: ProviderDischargeTemplateTraumaMskSafety;
   /** Phase 19Y.15 — cardiology / high-risk medical safety governance metadata (not shown in UI). */
   cardioHighRiskSafety?: ProviderDischargeTemplateCardioHighRiskSafety;
+  /** Phase 19Y.17 — infectious disease / sepsis-risk safety governance metadata (not shown in UI). */
+  infectiousRiskSafety?: ProviderDischargeTemplateInfectiousRiskSafety;
   clinicalReviewStatus: ProviderDischargeClinicalReviewStatus;
   effectiveFrom: string;
   effectiveTo?: string;
@@ -188,6 +201,7 @@ export type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTe
 export type { ProviderDischargeTemplateBehavioralHealthSafety } from "./providerDischargeTemplateBehavioralHealthGovernance";
 export type { ProviderDischargeTemplateTraumaMskSafety } from "./providerDischargeTemplateTraumaMskGovernance";
 export type { ProviderDischargeTemplateCardioHighRiskSafety } from "./providerDischargeTemplateCardioHighRiskGovernance";
+export type { ProviderDischargeTemplateInfectiousRiskSafety } from "./providerDischargeTemplateInfectiousRiskGovernance";
 
 export type ProviderDischargeTemplateResolveResult = {
   template: ProviderDischargeTemplate;
@@ -330,6 +344,20 @@ export const BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS = [
   "cardio_heart_failure_symptoms_v1",
 ] as const;
 
+/** Phase 19Y.18 — infectious disease & sepsis-risk ED discharge template batch 11. */
+export const BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS = [
+  "infectious_fever_unknown_source_v1",
+  "infectious_upper_respiratory_infection_v1",
+  "infectious_viral_syndrome_v1",
+  "infectious_pharyngitis_v1",
+  "infectious_sinusitis_v1",
+  "infectious_pneumonia_followup_v1",
+  "infectious_covid_like_illness_v1",
+  "gi_infectious_gastroenteritis_v1",
+  "infectious_cellulitis_followup_v1",
+  "sepsis_risk_return_precautions_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -378,6 +406,12 @@ const CARDIO_HIGH_RISK_TEMPLATE_GOVERNANCE = {
 const HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "emergency_medicine",
+  riskCategory: "high",
+};
+
+const INFECTIOUS_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "infectious_disease",
   riskCategory: "high",
 };
 
@@ -3113,6 +3147,272 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("cardiohf-pcp", "PRIMARY_CARE", "as clinically appropriate"),
     ],
     suggestedText: CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_fever_unknown_source_v1",
+    version: "1.0.0",
+    title: "Infectious fever unknown source discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      sepsisSensitive: true,
+      requiresFeverEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["infectious fever follow-up", "fever unknown source", "fever return precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fever",
+        url: "https://medlineplus.gov/fever.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("inffever-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: INFECTIOUS_FEVER_UNKNOWN_SOURCE_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_upper_respiratory_infection_v1",
+    version: "1.0.0",
+    title: "Infectious upper respiratory infection discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      respiratoryInfectiousSensitive: true,
+      requiresRespiratoryEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+    },
+    diagnosisMappings: {
+      keyword: ["infectious URI follow-up", "upper respiratory infection follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Common cold",
+        url: "https://medlineplus.gov/commoncold.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("infuri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+    ],
+    suggestedText: INFECTIOUS_UPPER_RESPIRATORY_INFECTION_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_viral_syndrome_v1",
+    version: "1.0.0",
+    title: "Infectious viral syndrome discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      respiratoryInfectiousSensitive: true,
+      requiresFeverEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresReturnIfWorsening: true,
+    },
+    diagnosisMappings: {
+      keyword: ["viral syndrome follow-up", "flu-like infectious symptoms"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Viral infections",
+        url: "https://medlineplus.gov/viralinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("infviral-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: INFECTIOUS_VIRAL_SYNDROME_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_pharyngitis_v1",
+    version: "1.0.0",
+    title: "Infectious pharyngitis discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      requiresFeverEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresReturnIfWorsening: true,
+    },
+    diagnosisMappings: {
+      keyword: ["pharyngitis follow-up", "infectious pharyngitis follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pharyngitis",
+        url: "https://medlineplus.gov/pharyngitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("infphary-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: INFECTIOUS_PHARYNGITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_sinusitis_v1",
+    version: "1.0.0",
+    title: "Infectious sinusitis discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      requiresFeverEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresReturnIfWorsening: true,
+    },
+    diagnosisMappings: {
+      keyword: ["sinusitis follow-up", "infectious sinusitis follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Sinusitis",
+        url: "https://medlineplus.gov/sinusitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("infsinus-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: INFECTIOUS_SINUSITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_pneumonia_followup_v1",
+    version: "1.0.0",
+    title: "Infectious pneumonia follow-up discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      pneumoniaSensitive: true,
+      respiratoryInfectiousSensitive: true,
+      requiresRespiratoryEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["pneumonia follow-up", "infectious pneumonia follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Pneumonia",
+        url: "https://medlineplus.gov/pneumonia.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("infpneum-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("infpneum-pulm", "PULMONOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: INFECTIOUS_PNEUMONIA_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_covid_like_illness_v1",
+    version: "1.0.0",
+    title: "Infectious COVID-like illness discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      respiratoryInfectiousSensitive: true,
+      requiresRespiratoryEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresReturnIfWorsening: true,
+    },
+    diagnosisMappings: {
+      keyword: ["covid-like illness follow-up", "infectious covid-like illness"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — COVID-19",
+        url: "https://medlineplus.gov/covid19.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("infcovid-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: INFECTIOUS_COVID_LIKE_ILLNESS_SUGGESTED_TEXT,
+  },
+  {
+    id: "gi_infectious_gastroenteritis_v1",
+    version: "1.0.0",
+    title: "GI infectious gastroenteritis discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      giInfectiousSensitive: true,
+      dehydrationSensitive: true,
+      requiresHydrationEscalation: true,
+      requiresReturnIfWorsening: true,
+    },
+    diagnosisMappings: {
+      keyword: ["GI infectious gastroenteritis follow-up", "infectious gastroenteritis follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Gastroenteritis",
+        url: "https://medlineplus.gov/gastroenteritis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [registryFollowUp("infgi-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    suggestedText: GI_INFECTIOUS_GASTROENTERITIS_SUGGESTED_TEXT,
+  },
+  {
+    id: "infectious_cellulitis_followup_v1",
+    version: "1.0.0",
+    title: "Infectious cellulitis follow-up discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      requiresFeverEscalation: true,
+      requiresRashEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+    },
+    diagnosisMappings: {
+      keyword: ["cellulitis follow-up", "infectious cellulitis follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Cellulitis",
+        url: "https://medlineplus.gov/cellulitis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("infcell-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: INFECTIOUS_CELLULITIS_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "sepsis_risk_return_precautions_v1",
+    version: "1.0.0",
+    title: "Sepsis-risk return precautions discharge documentation",
+    ...INFECTIOUS_TEMPLATE_GOVERNANCE,
+    infectiousRiskSafety: {
+      sepsisSensitive: true,
+      requiresFeverEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresRespiratoryEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresReturnIfWorsening: true,
+      requiresPrimaryCareFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["sepsis-risk return precautions", "sepsis risk return precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Sepsis",
+        url: "https://medlineplus.gov/sepsis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("sepsis-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+    ],
+    suggestedText: SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
