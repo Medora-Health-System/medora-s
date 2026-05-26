@@ -29,6 +29,11 @@ import {
   validateProviderDischargeObGynTemplateGovernance,
 } from "./providerDischargeTemplateObGynGovernance";
 import {
+  scanProviderDischargeBehavioralHealthEscalationLanguage,
+  scanProviderDischargeBehavioralHealthForbiddenPhrases,
+  validateProviderDischargeBehavioralHealthTemplateGovernance,
+} from "./providerDischargeTemplateBehavioralHealthGovernance";
+import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
   scanProviderDischargePediatricDehydrationDangerSigns,
   scanProviderDischargePediatricForbiddenDosing,
@@ -272,6 +277,58 @@ function syntheticObGynTemplate(
       requiresBleedingPrecautions: true,
       requiresPelvicPainPrecautions: true,
       requiresOBGynFollowUp: true,
+    },
+    ...rest,
+  });
+}
+
+const SYNTHETIC_BH_SAFE_TEXT = {
+  en: {
+    description:
+      "You were evaluated in the emergency department for a behavioral health concern. Symptoms may recur or worsen after discharge.",
+    diagnosisInstructions:
+      "Follow clinician instructions. Return immediately for thoughts of self-harm or harm to others. Use crisis resources as directed. Follow up with behavioral health.",
+    medicationTreatment: "Take medications only as prescribed or directed during this visit.",
+    returnPrecautions:
+      "Return immediately for thoughts of self-harm, thoughts of harming others, worsening hallucinations, confusion, severe agitation, or withdrawal symptoms. Call 911 or use the crisis line. Use crisis resources as directed. Follow up with behavioral health and substance use treatment resources. Avoid alcohol or substances as directed.",
+  },
+  fr: {
+    description:
+      "Vous avez été pris en charge aux urgences pour un motif de santé comportementale. Les symptômes peuvent récidiver ou s'aggraver après le congé.",
+    diagnosisInstructions:
+      "Suivez les instructions du clinicien. Retournez immédiatement pour des idées de se faire du mal ou de faire du mal à autrui. Utilisez les ressources de crise selon les directives. Suivez le suivi en santé comportementale.",
+    medicationTreatment: "Prenez les médicaments uniquement selon la prescription ou les indications reçues.",
+    returnPrecautions:
+      "Retournez immédiatement pour des idées de se faire du mal, des idées de faire du mal à autrui, des hallucinations qui s'aggravent, de la confusion, de l'agitation sévère ou des symptômes de sevrage. Appelez le 911 ou utilisez la ligne de crise. Suivez les ressources de crise et le suivi en usage de substances. Évitez l'alcool ou les substances selon les directives.",
+  },
+} as const;
+
+function syntheticBehavioralHealthTemplate(
+  overrides: Partial<ProviderDischargeTemplate> & Pick<ProviderDischargeTemplate, "id">
+): ProviderDischargeTemplate {
+  const { id, ...rest } = overrides;
+  return syntheticRegistryTemplate({
+    id,
+    specialtyCategory: "behavioral_health",
+    suggestedText: {
+      en: { ...SYNTHETIC_BH_SAFE_TEXT.en },
+      fr: { ...SYNTHETIC_BH_SAFE_TEXT.fr },
+    },
+    defaultFollowUps: [
+      {
+        ...newDefaultFollowUpRow(),
+        id: "bh-follow",
+        specialty: "BEHAVIORAL_HEALTH",
+        timing: "within 1 week",
+      },
+    ],
+    behavioralHealthSafety: {
+      requiresCrisisResources: true,
+      requiresSelfHarmEscalation: true,
+      requiresHomicideRiskEscalation: true,
+      requiresSubstanceUseResources: true,
+      requiresWithdrawalPrecautions: true,
+      requiresBehavioralHealthFollowUp: true,
     },
     ...rest,
   });
@@ -2960,6 +3017,211 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.11 behavioral health & substance-use discharge governance hardening", () => {
+    it("ProviderDischargeTemplate supports behavioralHealthSafety metadata", () => {
+      const template = syntheticBehavioralHealthTemplate({ id: "behavioral_health_metadata_v1" });
+      expect(template.behavioralHealthSafety?.requiresCrisisResources).toBe(true);
+      expect(template.behavioralHealthSafety?.requiresBehavioralHealthFollowUp).toBe(true);
+    });
+
+    it("synthetic BH template without behavioralHealthSafety fails when specialty is behavioral_health", () => {
+      const template = syntheticRegistryTemplate({
+        id: "behavioral_health_missing_governance_v1",
+        specialtyCategory: "behavioral_health",
+      });
+      const errors = validateProviderDischargeBehavioralHealthTemplateGovernance(template);
+      expect(errors.some((e) => e.includes("must define behavioralHealthSafety"))).toBe(true);
+    });
+
+    it("suicide/self-harm template missing crisis resources fails", () => {
+      const template = syntheticBehavioralHealthTemplate({
+        id: "behavioral_health_self_harm_v1",
+        behavioralHealthSafety: {
+          requiresSelfHarmEscalation: true,
+          requiresBehavioralHealthFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeBehavioralHealthTemplateGovernance(template).some((e) =>
+          e.includes("requiresCrisisResources")
+        )
+      ).toBe(true);
+    });
+
+    it("substance-use template missing substance-use resources fails", () => {
+      const template = syntheticBehavioralHealthTemplate({
+        id: "behavioral_health_substance_use_v1",
+        behavioralHealthSafety: {
+          requiresCrisisResources: true,
+          requiresBehavioralHealthFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeBehavioralHealthTemplateGovernance(template).some((e) =>
+          e.includes("requiresSubstanceUseResources")
+        )
+      ).toBe(true);
+    });
+
+    it("withdrawal-sensitive template missing withdrawal precautions fails", () => {
+      const template = syntheticBehavioralHealthTemplate({
+        id: "behavioral_health_withdrawal_v1",
+        behavioralHealthSafety: {
+          requiresCrisisResources: true,
+          requiresBehavioralHealthFollowUp: true,
+        },
+      });
+      expect(
+        validateProviderDischargeBehavioralHealthTemplateGovernance(template).some((e) =>
+          e.includes("requiresWithdrawalPrecautions")
+        )
+      ).toBe(true);
+    });
+
+    it("behavioral-health follow-up requirement fails without BH follow-up", () => {
+      const template = syntheticBehavioralHealthTemplate({
+        id: "behavioral_health_followup_missing_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "pc-follow",
+            specialty: "PRIMARY_CARE",
+            timing: "within 1 week",
+          },
+        ],
+      });
+      expect(
+        validateProviderDischargeBehavioralHealthTemplateGovernance(template).some((e) =>
+          e.includes("requiresBehavioralHealthFollowUp")
+        )
+      ).toBe(true);
+    });
+
+    it("behavioral-health follow-up passes with BH follow-up", () => {
+      const template = syntheticBehavioralHealthTemplate({
+        id: "behavioral_health_followup_ok_v1",
+        defaultFollowUps: [
+          {
+            ...newDefaultFollowUpRow(),
+            id: "psych-follow",
+            specialty: "PSYCHIATRY",
+            timing: "within 1 week",
+          },
+        ],
+      });
+      expect(validateProviderDischargeBehavioralHealthTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("forbidden phrase psychiatrically cleared fails", () => {
+      const body = syntheticBehavioralHealthTemplate({ id: "behavioral_health_bad_cleared_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeBehavioralHealthForbiddenPhrases(
+        "behavioral_health_bad_cleared_v1",
+        "en",
+        { ...body, description: "Patient is psychiatrically cleared for discharge." }
+      );
+      expect(hits.some((h) => h.includes("psychiatrically-cleared"))).toBe(true);
+    });
+
+    it("forbidden phrase denies SI fails", () => {
+      const body = syntheticBehavioralHealthTemplate({ id: "behavioral_health_bad_si_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeBehavioralHealthForbiddenPhrases("behavioral_health_bad_si_v1", "en", {
+        ...body,
+        diagnosisInstructions: "Patient denies SI.",
+      });
+      expect(hits.some((h) => h.includes("denies-si"))).toBe(true);
+    });
+
+    it("forbidden phrase safe for discharge fails", () => {
+      const body = syntheticBehavioralHealthTemplate({ id: "behavioral_health_bad_safe_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeBehavioralHealthForbiddenPhrases("behavioral_health_bad_safe_v1", "en", {
+        ...body,
+        returnPrecautions: "Patient is safe for discharge.",
+      });
+      expect(hits.some((h) => h.includes("safe-for-discharge"))).toBe(true);
+    });
+
+    it("forbidden phrase clinically sober fails", () => {
+      const body = syntheticBehavioralHealthTemplate({ id: "behavioral_health_bad_sober_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeBehavioralHealthForbiddenPhrases("behavioral_health_bad_sober_v1", "en", {
+        ...body,
+        description: "Patient is clinically sober.",
+      });
+      expect(hits.some((h) => h.includes("clinically-sober"))).toBe(true);
+    });
+
+    it("forbidden phrase has capacity fails", () => {
+      const body = syntheticBehavioralHealthTemplate({ id: "behavioral_health_bad_capacity_v1" }).suggestedText.en;
+      const hits = scanProviderDischargeBehavioralHealthForbiddenPhrases("behavioral_health_bad_capacity_v1", "en", {
+        ...body,
+        diagnosisInstructions: "Patient has capacity for discharge decisions.",
+      });
+      expect(hits.some((h) => h.includes("has-capacity"))).toBe(true);
+    });
+
+    it("safe escalation wording passes", () => {
+      const template = syntheticBehavioralHealthTemplate({ id: "behavioral_health_escalation_en_v1" });
+      expect(
+        scanProviderDischargeBehavioralHealthEscalationLanguage(
+          template.id,
+          "en",
+          template.suggestedText.en
+        )
+      ).toEqual([]);
+      expect(validateProviderDischargeBehavioralHealthTemplateGovernance(template)).toEqual([]);
+    });
+
+    it("FR escalation wording passes", () => {
+      const template = syntheticBehavioralHealthTemplate({ id: "behavioral_health_escalation_fr_v1" });
+      expect(
+        scanProviderDischargeBehavioralHealthEscalationLanguage(
+          template.id,
+          "fr",
+          template.suggestedText.fr
+        )
+      ).toEqual([]);
+    });
+
+    it("behavioralHealthSafety metadata included in registry snapshot/hash", () => {
+      const template = syntheticBehavioralHealthTemplate({ id: "behavioral_health_hash_v1" });
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.behavioralHealthSafety).toEqual({
+        requiresBehavioralHealthFollowUp: true,
+        requiresCrisisResources: true,
+        requiresHomicideRiskEscalation: true,
+        requiresSelfHarmEscalation: true,
+        requiresSubstanceUseResources: true,
+        requiresWithdrawalPrecautions: true,
+      });
+
+      const snapshot = buildProviderDischargeRegistryGovernanceSnapshot(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      const row = snapshot.find((entry) => entry.id === "behavioral_health_hash_v1") as Record<string, unknown>;
+      expect(row.behavioralHealthSafety).toEqual(payload.behavioralHealthSafety);
+
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withBh = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        [...PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, template],
+        "en"
+      );
+      expect(withBh).not.toBe(base);
+    });
+
+    it("existing adult/pediatric/OB templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("anxiety_panic_v1 behavioral_health specialty still validates without behavioralHealthSafety", () => {
+      const anxiety = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "anxiety_panic_v1")!;
+      expect(anxiety.specialtyCategory).toBe("behavioral_health");
+      expect(anxiety.behavioralHealthSafety).toBeUndefined();
+      expect(validateProviderDischargeBehavioralHealthTemplateGovernance(anxiety)).toEqual([]);
+    });
+  });
+
   describe("19Y.4A template localization separation hardening", () => {
     const chestTemplate = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "chest_pain_v1")!;
 
@@ -3339,7 +3601,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("c155e56731310c9e1973d5390c2ab12102cd92ff4473e5c39e7e2cc5535c9acc");
+      expect(hash).toBe("55621edf33e0dcb4de7755754773cd37148271b0aa8366445ffd9365cfcc07ee");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -3349,7 +3611,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("76c3c2100f11fab0ed48fb2dc30b380eaf00e5dd3e2a40e3b59777c40f477073");
+      expect(hash).toBe("9b7d688d8437af0930f60156880c615387714f99fbd46c94d5fa78ab67f2ca57");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {

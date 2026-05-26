@@ -28,6 +28,11 @@ import {
   scanProviderDischargePediatricTemplateGovernanceWarnings,
 } from "./providerDischargeTemplatePediatricGovernance";
 import {
+  normalizeBehavioralHealthSafetyForHash,
+  validateProviderDischargeBehavioralHealthTemplateGovernance,
+  scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings,
+} from "./providerDischargeTemplateBehavioralHealthGovernance";
+import {
   normalizeObGynSafetyForHash,
   validateProviderDischargeObGynTemplateGovernance,
   scanProviderDischargeObGynTemplateGovernanceWarnings,
@@ -183,6 +188,7 @@ export function buildProviderDischargeRegistryGovernanceSnapshot(
       caregiverObservationWindowHours: template.caregiverObservationWindowHours ?? null,
       requiredDangerSignCategories: [...(template.requiredDangerSignCategories ?? [])].sort(),
       obGynSafety: normalizeObGynSafetyForHash(template.obGynSafety),
+      behavioralHealthSafety: normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety),
       suggestedTextContentHash: computeProviderDischargeTemplateAppliedHash(template, locale),
       templateAppliedHash: computeProviderDischargeTemplateAppliedHash(template, locale),
     }));
@@ -354,6 +360,8 @@ export function validateProviderDischargeTemplateRegistry(
     warnings.push(...scanProviderDischargePediatricTemplateGovernanceWarnings(template));
     errors.push(...validateProviderDischargeObGynTemplateGovernance(template));
     warnings.push(...scanProviderDischargeObGynTemplateGovernanceWarnings(template));
+    errors.push(...validateProviderDischargeBehavioralHealthTemplateGovernance(template));
+    warnings.push(...scanProviderDischargeBehavioralHealthTemplateGovernanceWarnings(template));
 
     for (const exact of mappings.icdExact ?? []) {
       const code = normalizeIcdCode(exact);

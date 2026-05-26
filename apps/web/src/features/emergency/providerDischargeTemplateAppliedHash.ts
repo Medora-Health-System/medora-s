@@ -11,6 +11,10 @@ import type {
 import { getProviderDischargeSuggestedTextBody } from "./providerDischargeTemplateLocale";
 import { normalizeObGynSafetyForHash } from "./providerDischargeTemplateObGynGovernance";
 import type { ProviderDischargeTemplateObGynSafety } from "./providerDischargeTemplateObGynGovernance";
+import {
+  normalizeBehavioralHealthSafetyForHash,
+  type ProviderDischargeTemplateBehavioralHealthSafety,
+} from "./providerDischargeTemplateBehavioralHealthGovernance";
 
 export type ProviderDischargeTemplateHashSource = {
   id: string;
@@ -39,6 +43,7 @@ export type ProviderDischargeTemplateHashSource = {
   caregiverObservationWindowHours?: number;
   requiredDangerSignCategories?: readonly string[];
   obGynSafety?: ProviderDischargeTemplateObGynSafety;
+  behavioralHealthSafety?: ProviderDischargeTemplateBehavioralHealthSafety;
 };
 
 export type ProviderDischargeTemplateHashPayload = {
@@ -78,6 +83,7 @@ export type ProviderDischargeTemplateHashPayload = {
   caregiverObservationWindowHours?: number;
   requiredDangerSignCategories?: string[];
   obGynSafety?: Record<string, boolean>;
+  behavioralHealthSafety?: Record<string, boolean>;
 };
 
 function stableStringify(value: unknown): string {
@@ -155,6 +161,8 @@ export function buildProviderDischargeTemplateHashPayload(
   }
   const obGynSafety = normalizeObGynSafetyForHash(template.obGynSafety);
   if (obGynSafety) payload.obGynSafety = obGynSafety;
+  const behavioralHealthSafety = normalizeBehavioralHealthSafetyForHash(template.behavioralHealthSafety);
+  if (behavioralHealthSafety) payload.behavioralHealthSafety = behavioralHealthSafety;
 
   return payload;
 }
