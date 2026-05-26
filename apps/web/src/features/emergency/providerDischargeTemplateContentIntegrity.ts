@@ -19,6 +19,36 @@ export type ProviderDischargeTemplateContentIntegrityRule = {
 const WOUND_FORBIDDEN_EN = ["wound", "laceration", "dressing"] as const;
 const WOUND_FORBIDDEN_FR = ["plaie", "lacération", "pansement"] as const;
 
+const RENAL_CERTAINTY_FORBIDDEN_EN = [
+  "aki resolved",
+  "labs normal",
+  "labs reassuring",
+  "imaging reassuring",
+  "safe for discharge",
+  "medically cleared",
+  "stone passed",
+  "dialysis not needed",
+  "uti ruled out",
+  "pyelonephritis ruled out",
+  "infection cleared",
+  "creatinine normal",
+  "creatinine improved",
+  "electrolytes normal",
+  "renal function normal",
+  "no obstruction",
+] as const;
+
+const RENAL_CERTAINTY_FORBIDDEN_FR = [
+  "fonction rénale normale",
+  "créatinine normale",
+  "électrolytes normaux",
+  "congé sécuritaire",
+  "autorisé médicalement",
+] as const;
+
+const RENAL_BATCH_FORBIDDEN_EN = [...WOUND_FORBIDDEN_EN, ...RENAL_CERTAINTY_FORBIDDEN_EN] as const;
+const RENAL_BATCH_FORBIDDEN_FR = [...WOUND_FORBIDDEN_FR, ...RENAL_CERTAINTY_FORBIDDEN_FR] as const;
+
 const RESPIRATORY_FORBIDDEN_ON_WOUND_EN = ["asthma", "wheezing", "bronchitis"] as const;
 const RESPIRATORY_FORBIDDEN_ON_WOUND_FR = ["asthme", "sifflement", "bronchite"] as const;
 
@@ -445,6 +475,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   sepsis_risk_return_precautions_v1: {
     mustIncludeAny: { en: ["sepsis", "infection"], fr: ["sepsis", "infection"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  renal_aki_followup_v1: {
+    mustIncludeAny: { en: ["acute kidney injury", "dehydration"], fr: ["insuffisance rénale aiguë", "déshydratation"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  renal_dehydration_followup_v1: {
+    mustIncludeAny: { en: ["dehydration", "unable to keep fluids"], fr: ["déshydratation", "liquides"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  renal_electrolyte_abnormality_followup_v1: {
+    mustIncludeAny: { en: ["electrolyte", "palpitations"], fr: ["électrolytique", "palpitations"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_renal_colic_followup_v1: {
+    mustIncludeAny: { en: ["renal colic", "kidney stone"], fr: ["colique néphrétique", "calcul rénal"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_uti_followup_v1: {
+    mustIncludeAny: { en: ["urinary tract infection", "symptoms may worsen"], fr: ["infection urinaire", "aggraver"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_pyelonephritis_followup_v1: {
+    mustIncludeAny: { en: ["pyelonephritis", "kidney infection"], fr: ["pyélonéphrite", "infection rénale"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_hematuria_followup_v1: {
+    mustIncludeAny: { en: ["hematuria", "blood in the urine"], fr: ["hématurie", "sang dans les urines"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_urinary_retention_followup_v1: {
+    mustIncludeAny: { en: ["urinary retention", "inability to urinate"], fr: ["rétention urinaire", "uriner"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  urology_foley_catheter_precautions_v1: {
+    mustIncludeAny: { en: ["catheter", "foley"], fr: ["cathéter", "foley"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  dialysis_return_precautions_v1: {
+    mustIncludeAny: { en: ["dialysis", "missed dialysis"], fr: ["dialyse", "dialyse manquée"] },
+    forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
   },
 };
 

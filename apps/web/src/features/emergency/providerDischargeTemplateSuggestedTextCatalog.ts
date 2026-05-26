@@ -2484,6 +2484,234 @@ export const SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTem
     }
   );
 
+const RENAL_FOLLOW_UP_PCP_EN = "Follow up with your primary care clinician as directed.";
+const RENAL_FOLLOW_UP_PCP_FR = "Suivez le suivi avec votre médecin de premier recours selon les directives.";
+
+const RENAL_FOLLOW_UP_NEPHROLOGY_EN = "Follow up with nephrology as directed.";
+const RENAL_FOLLOW_UP_NEPHROLOGY_FR = "Suivez le suivi en néphrologie selon les directives.";
+
+const RENAL_FOLLOW_UP_UROLOGY_EN = "Follow up with urology as directed.";
+const RENAL_FOLLOW_UP_UROLOGY_FR = "Suivez le suivi en urologie selon les directives.";
+
+const RENAL_MED_EN =
+  "Take medications exactly as directed during this visit. Continue medications as prescribed.";
+const RENAL_MED_FR =
+  "Prenez les médicaments exactement selon les directives reçues pendant cette visite. Continuez les médicaments selon la prescription.";
+
+const RENAL_RESULT_CAUTION_EN = "This note does not replace provider documentation of test results.";
+const RENAL_RESULT_CAUTION_FR =
+  "Cette note ne remplace pas la documentation clinicien des résultats d'examens.";
+
+const RENAL_HYDRATION_RETURN_EN =
+  "Return immediately if unable to keep fluids down, worsening vomiting, dizziness, weakness, or dehydration.";
+const RENAL_HYDRATION_RETURN_FR =
+  "Retournez immédiatement en cas d'incapable de garder les liquides, de vomissements, d'étourdissements, de faiblesse ou de déshydratation.";
+
+const RENAL_DIALYSIS_RETURN_EN =
+  "Return immediately for missed dialysis, shortness of breath, swelling, or chest pain.";
+const RENAL_DIALYSIS_RETURN_FR =
+  "Retournez immédiatement en cas de dialyse manquée, d'essoufflement, d'enflure ou de douleur thoracique.";
+
+const RENAL_OBSTRUCTION_RETURN_EN =
+  "Return immediately for inability to urinate, worsening flank pain, fever, or vomiting.";
+const RENAL_OBSTRUCTION_RETURN_FR =
+  "Retournez immédiatement en cas d'incapacité à uriner, de douleur au flanc, de fièvre ou de vomissements.";
+
+const RENAL_ELECTROLYTE_RETURN_EN =
+  "Return immediately for weakness, palpitations, fainting, or confusion.";
+const RENAL_ELECTROLYTE_RETURN_FR =
+  "Retournez immédiatement en cas de faiblesse, de palpitations, d'évanouissement ou de confusion.";
+
+const RENAL_CATHETER_RETURN_EN =
+  "Return immediately if catheter not draining, blood in urine, fever, or worsening pain.";
+const RENAL_CATHETER_RETURN_FR =
+  "Retournez immédiatement si le cathéter ne draine pas, en cas de sang dans les urines, de fièvre ou de douleur croissante.";
+
+const RENAL_RETURN_IF_WORSE_EN =
+  "Symptoms may worsen after discharge. Seek urgent medical care if symptoms worsen. Return immediately for concerning changes.";
+const RENAL_RETURN_IF_WORSE_FR =
+  "Les symptômes peuvent s'aggraver après le congé. Consultez en urgence si les symptômes s'aggravent. Retournez immédiatement en cas de changements préoccupants.";
+
+export const RENAL_AKI_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for acute kidney injury concerns requiring outpatient follow-up. Your condition may change after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_EN} ${RENAL_ELECTROLYTE_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'insuffisance rénale aiguë nécessitant un suivi ambulatoire. Votre état peut évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_FR} ${RENAL_ELECTROLYTE_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const RENAL_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for dehydration with kidney-related follow-up needs. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_EN} Hydrate with small sips as tolerated. Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une déshydratation avec besoins de suivi rénal. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_FR} Hydratez-vous par petites gorgées selon tolérance. Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const RENAL_ELECTROLYTE_ABNORMALITY_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for electrolyte abnormality concerns requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_ELECTROLYTE_RETURN_EN} ${RENAL_HYDRATION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une anomalie électrolytique nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_ELECTROLYTE_RETURN_FR} ${RENAL_HYDRATION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_RENAL_COLIC_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for renal colic or kidney stone symptoms requiring outpatient follow-up. Pain and symptoms may change after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_EN} ${RENAL_HYDRATION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une colique néphrétique ou des signes de calcul rénal nécessitant un suivi ambulatoire. La douleur et les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_FR} ${RENAL_HYDRATION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_UTI_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for urinary tract infection symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'infection urinaire nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_PYELONEPHRITIS_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pyelonephritis or kidney infection symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_EN} ${RENAL_OBSTRUCTION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une pyélonéphrite ou des signes d'infection rénale nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_HYDRATION_RETURN_FR} ${RENAL_OBSTRUCTION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_HEMATURIA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for blood in the urine (hematuria) requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_EN} ${RENAL_CATHETER_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour du sang dans les urines (hématurie) nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_FR} ${RENAL_CATHETER_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_URINARY_RETENTION_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for urinary retention or difficulty urinating requiring outpatient follow-up. Symptoms may change after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} Return precautions were reviewed.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une rétention urinaire ou une difficulté à uriner nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_OBSTRUCTION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const UROLOGY_FOLEY_CATHETER_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for Foley or urinary catheter care and precautions. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} Catheter care instructions were reviewed as directed during this visit.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_CATHETER_RETURN_EN} ${RENAL_OBSTRUCTION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour les soins et consignes d'un cathéter urinaire ou de Foley. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_UROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} Les consignes de soins du cathéter ont été revues selon les directives reçues pendant cette visite.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_CATHETER_RETURN_FR} ${RENAL_OBSTRUCTION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for dialysis-related concerns and return precautions. Your condition may change after discharge.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_EN} ${RENAL_FOLLOW_UP_PCP_EN} ${RENAL_RESULT_CAUTION_EN} Return precautions were reviewed in detail.`,
+      medicationTreatment: RENAL_MED_EN,
+      returnPrecautions: `${RENAL_DIALYSIS_RETURN_EN} ${RENAL_ELECTROLYTE_RETURN_EN} ${RENAL_HYDRATION_RETURN_EN} ${RENAL_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des préoccupations liées à la dialyse et les consignes de retour. Votre état peut évoluer après le congé.",
+      diagnosisInstructions: `${RENAL_FOLLOW_UP_NEPHROLOGY_FR} ${RENAL_FOLLOW_UP_PCP_FR} ${RENAL_RESULT_CAUTION_FR} Les consignes de retour ont été revues en détail.`,
+      medicationTreatment: RENAL_MED_FR,
+      returnPrecautions: `${RENAL_DIALYSIS_RETURN_FR} ${RENAL_ELECTROLYTE_RETURN_FR} ${RENAL_HYDRATION_RETURN_FR} ${RENAL_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

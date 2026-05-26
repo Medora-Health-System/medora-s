@@ -43,7 +43,8 @@ export function isRenalElectrolyteProviderDischargeTemplateCandidate(
   return (
     template.id.startsWith("renal_") ||
     template.id.startsWith("urology_") ||
-    template.id.startsWith("electrolyte_")
+    template.id.startsWith("electrolyte_") ||
+    template.id.startsWith("dialysis_")
   );
 }
 
@@ -197,6 +198,11 @@ function scanForbiddenPhrases(
   return hits;
 }
 
+function idRequiresUtiSensitiveFlag(templateId: string): boolean {
+  const id = templateId.toLowerCase();
+  return /(^|_)uti(_|$)/.test(id);
+}
+
 function idRequiresSensitiveFlag(templateId: string): Array<{
   needle: string;
   flag: keyof ProviderDischargeTemplateRenalElectrolyteSafety;
@@ -221,7 +227,7 @@ function idRequiresSensitiveFlag(templateId: string): Array<{
   if (id.includes("retention")) {
     rules.push({ needle: "retention", flag: "urinaryRetentionSensitive", label: "urinaryRetentionSensitive" });
   }
-  if (id.includes("uti")) {
+  if (idRequiresUtiSensitiveFlag(id)) {
     rules.push({ needle: "uti", flag: "utiSensitive", label: "utiSensitive" });
   }
   if (id.includes("pyelo")) {

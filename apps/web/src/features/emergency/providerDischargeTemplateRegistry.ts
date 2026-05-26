@@ -59,6 +59,16 @@ import {
   GI_INFECTIOUS_GASTROENTERITIS_SUGGESTED_TEXT,
   INFECTIOUS_CELLULITIS_FOLLOWUP_SUGGESTED_TEXT,
   SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
+  DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
+  RENAL_AKI_FOLLOWUP_SUGGESTED_TEXT,
+  RENAL_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
+  RENAL_ELECTROLYTE_ABNORMALITY_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_RENAL_COLIC_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_UTI_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_PYELONEPHRITIS_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_HEMATURIA_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_URINARY_RETENTION_FOLLOWUP_SUGGESTED_TEXT,
+  UROLOGY_FOLEY_CATHETER_PRECAUTIONS_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -362,6 +372,20 @@ export const BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS = [
   "sepsis_risk_return_precautions_v1",
 ] as const;
 
+/** Phase 19Y.20 — renal/urology/electrolyte-risk ED discharge template batch 12. */
+export const BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS = [
+  "renal_aki_followup_v1",
+  "renal_dehydration_followup_v1",
+  "renal_electrolyte_abnormality_followup_v1",
+  "urology_renal_colic_followup_v1",
+  "urology_uti_followup_v1",
+  "urology_pyelonephritis_followup_v1",
+  "urology_hematuria_followup_v1",
+  "urology_urinary_retention_followup_v1",
+  "urology_foley_catheter_precautions_v1",
+  "dialysis_return_precautions_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -416,6 +440,12 @@ const HIGH_RISK_MEDICAL_TEMPLATE_GOVERNANCE = {
 const INFECTIOUS_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "infectious_disease",
+  riskCategory: "high",
+};
+
+const RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "nephrology_urology",
   riskCategory: "high",
 };
 
@@ -3419,6 +3449,284 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   },
   {
+    id: "renal_aki_followup_v1",
+    version: "1.0.0",
+    title: "Renal AKI follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      akiSensitive: true,
+      requiresHydrationPrecautions: true,
+      requiresElectrolyteEscalation: true,
+      requiresNephrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["AKI follow-up", "acute kidney injury follow-up", "renal follow-up precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Kidney disease",
+        url: "https://medlineplus.gov/kidneydiseases.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("renalaki-neph", "NEPHROLOGY", "within several days or as directed"),
+      registryFollowUp("renalaki-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: RENAL_AKI_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "renal_dehydration_followup_v1",
+    version: "1.0.0",
+    title: "Renal dehydration follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      dehydrationSensitive: true,
+      requiresHydrationPrecautions: true,
+    },
+    diagnosisMappings: {
+      keyword: ["renal dehydration follow-up", "dehydration renal precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dehydration",
+        url: "https://medlineplus.gov/dehydration.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("renaldehyd-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: RENAL_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "renal_electrolyte_abnormality_followup_v1",
+    version: "1.0.0",
+    title: "Renal electrolyte abnormality follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      electrolyteSensitive: true,
+      requiresElectrolyteEscalation: true,
+      requiresNephrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: [
+        "electrolyte follow-up",
+        "potassium follow-up",
+        "sodium follow-up",
+        "magnesium follow-up",
+      ],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fluid and electrolyte balance",
+        url: "https://medlineplus.gov/fluidandelectrolytebalance.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("renalelect-neph", "NEPHROLOGY", "within several days or as directed"),
+      registryFollowUp("renalelect-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: RENAL_ELECTROLYTE_ABNORMALITY_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_renal_colic_followup_v1",
+    version: "1.0.0",
+    title: "Urology renal colic follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      renalColicSensitive: true,
+      requiresUrinaryObstructionEscalation: true,
+      requiresHydrationPrecautions: true,
+      requiresUrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["renal colic follow-up", "kidney stone follow-up", "flank pain follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Kidney stones",
+        url: "https://medlineplus.gov/kidneystones.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("urocolic-uro", "UROLOGY", "within several days or as directed"),
+      registryFollowUp("urocolic-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: UROLOGY_RENAL_COLIC_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_uti_followup_v1",
+    version: "1.0.0",
+    title: "Urology UTI follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      utiSensitive: true,
+      requiresHydrationPrecautions: true,
+    },
+    diagnosisMappings: {
+      keyword: ["UTI follow-up", "urinary tract infection follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Urinary tract infections",
+        url: "https://medlineplus.gov/urinarytractinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("urouti-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: UROLOGY_UTI_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_pyelonephritis_followup_v1",
+    version: "1.0.0",
+    title: "Urology pyelonephritis follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      pyelonephritisSensitive: true,
+      requiresHydrationPrecautions: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["pyelonephritis follow-up", "kidney infection follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Kidney infections",
+        url: "https://medlineplus.gov/urinarytractinfections.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("uropyelo-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: UROLOGY_PYELONEPHRITIS_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_hematuria_followup_v1",
+    version: "1.0.0",
+    title: "Urology hematuria follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      hematuriaSensitive: true,
+      requiresUrinaryObstructionEscalation: true,
+      requiresUrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["hematuria follow-up", "blood in urine follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Urine and urination",
+        url: "https://medlineplus.gov/urineandurination.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("urohem-uro", "UROLOGY", "within several days or as directed"),
+      registryFollowUp("urohem-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: UROLOGY_HEMATURIA_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_urinary_retention_followup_v1",
+    version: "1.0.0",
+    title: "Urology urinary retention follow-up discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      urinaryRetentionSensitive: true,
+      requiresUrinaryObstructionEscalation: true,
+      requiresUrologyFollowUp: true,
+    },
+    diagnosisMappings: {
+      keyword: ["urinary retention follow-up", "unable to urinate follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Urine and urination",
+        url: "https://medlineplus.gov/urineandurination.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("uroret-uro", "UROLOGY", "within several days or as directed"),
+      registryFollowUp("uroret-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: UROLOGY_URINARY_RETENTION_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "urology_foley_catheter_precautions_v1",
+    version: "1.0.0",
+    title: "Urology Foley catheter precautions discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      catheterSensitive: true,
+      requiresCatheterPrecautions: true,
+      requiresUrologyFollowUp: true,
+    },
+    diagnosisMappings: {
+      keyword: ["Foley catheter precautions", "urinary catheter precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Urinary catheters",
+        url: "https://medlineplus.gov/ency/patientinstructions/000141.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("urofoley-uro", "UROLOGY", "as directed"),
+      registryFollowUp("urofoley-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: UROLOGY_FOLEY_CATHETER_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "dialysis_return_precautions_v1",
+    version: "1.0.0",
+    title: "Dialysis return precautions discharge documentation",
+    ...RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE,
+    renalElectrolyteSafety: {
+      dialysisSensitive: true,
+      requiresDialysisEscalation: true,
+      requiresElectrolyteEscalation: true,
+      requiresNephrologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["dialysis return precautions", "dialysis follow-up precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dialysis",
+        url: "https://medlineplus.gov/dialysis.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("dialysis-neph", "NEPHROLOGY", "as directed by dialysis team"),
+      registryFollowUp("dialysis-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+    ],
+    suggestedText: DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -3643,6 +3951,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour des signes de gastro-entérite infectieuse",
   "Vous avez été pris en charge aux urgences pour une cellulite nécessitant un suivi ambulatoire",
   "Vous avez été pris en charge aux urgences pour des signes pouvant être associés à une infection grave ou un risque de sepsis",
+  "You were evaluated in the emergency department for acute kidney injury concerns requiring outpatient follow-up",
+  "You were evaluated in the emergency department for dehydration with kidney-related follow-up needs",
+  "You were evaluated in the emergency department for electrolyte abnormality concerns requiring outpatient follow-up",
+  "You were evaluated in the emergency department for renal colic or kidney stone symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for urinary tract infection symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for pyelonephritis or kidney infection symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for blood in the urine (hematuria) requiring outpatient follow-up",
+  "You were evaluated in the emergency department for urinary retention or difficulty urinating requiring outpatient follow-up",
+  "You were evaluated in the emergency department for Foley or urinary catheter care and precautions",
+  "You were evaluated in the emergency department for dialysis-related concerns and return precautions",
+  "Vous avez été pris en charge aux urgences pour des signes d'insuffisance rénale aiguë nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une déshydratation avec besoins de suivi rénal",
+  "Vous avez été pris en charge aux urgences pour une anomalie électrolytique nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une colique néphrétique ou des signes de calcul rénal nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour des signes d'infection urinaire nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une pyélonéphrite ou des signes d'infection rénale nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour du sang dans les urines (hématurie) nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une rétention urinaire ou une difficulté à uriner nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour les soins et consignes d'un cathéter urinaire ou de Foley",
+  "Vous avez été pris en charge aux urgences pour des préoccupations liées à la dialyse et les consignes de retour",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

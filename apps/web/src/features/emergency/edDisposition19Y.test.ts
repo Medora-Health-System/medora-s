@@ -20,6 +20,7 @@ import {
   BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -4962,6 +4963,7 @@ describe("edDisposition19Y", () => {
       expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "renal_aki_v1" })).toBe(true);
       expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "urology_stone_v1" })).toBe(true);
       expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "electrolyte_k_v1" })).toBe(true);
+      expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "dialysis_return_precautions_v1" })).toBe(true);
       expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "chest_pain_v1" })).toBe(false);
       expect(isRenalElectrolyteProviderDischargeTemplateCandidate({ id: "uti_v1" })).toBe(false);
     });
@@ -5289,6 +5291,290 @@ describe("edDisposition19Y", () => {
       const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
       expect(result.ok).toBe(true);
       expect(result.errors).toEqual([]);
+    });
+  });
+
+  describe("19Y.20 renal/urology/electrolyte templates", () => {
+    const batchTemplates = () =>
+      BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    const governanceCandidates = () =>
+      batchTemplates().filter((template) => isRenalElectrolyteProviderDischargeTemplateCandidate(template));
+
+    const forbiddenRenalPhrases = [
+      "AKI resolved",
+      "labs normal",
+      "stone passed",
+      "dialysis not needed",
+      "UTI ruled out",
+      "safe for discharge",
+      "medically cleared",
+      "creatinine normal",
+      "electrolytes normal",
+      "renal function normal",
+      "infection cleared",
+      "pyelonephritis ruled out",
+      "no obstruction",
+    ];
+
+    it("batch 12 IDs export exists with 10 templates", () => {
+      expect(BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies exist for all batch 12 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("renalElectrolyteSafety metadata exists on all batch 12 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.renalElectrolyteSafety).toBeTruthy();
+      }
+    });
+
+    it("governance validation passes for renal/urology prefixed batch 12 templates", () => {
+      for (const template of governanceCandidates()) {
+        expect(validateProviderDischargeRenalElectrolyteTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("required renalElectrolyteSafety flags are present per template", () => {
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "renal_aki_followup_v1")!.renalElectrolyteSafety
+      ).toEqual({
+        akiSensitive: true,
+        requiresHydrationPrecautions: true,
+        requiresElectrolyteEscalation: true,
+        requiresNephrologyFollowUp: true,
+        requiresResultInterpretationCaution: true,
+      });
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "dialysis_return_precautions_v1")!
+          .renalElectrolyteSafety
+      ).toEqual({
+        dialysisSensitive: true,
+        requiresDialysisEscalation: true,
+        requiresElectrolyteEscalation: true,
+        requiresNephrologyFollowUp: true,
+        requiresResultInterpretationCaution: true,
+      });
+    });
+
+    it("hydration escalation passes for batch 12 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresHydrationPrecautions !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeRenalElectrolyteHydrationPrecautionsLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("dialysis escalation passes for batch 12 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresDialysisEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeRenalElectrolyteDialysisEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("urinary obstruction escalation passes for batch 12 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresUrinaryObstructionEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeRenalElectrolyteUrinaryObstructionEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("electrolyte escalation passes for batch 12 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresElectrolyteEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeRenalElectrolyteElectrolyteEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("catheter precautions pass for batch 12 templates requiring them", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresCatheterPrecautions !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeRenalElectrolyteCatheterPrecautionsLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("follow-up governance passes for batch 12 templates requiring nephrology or urology follow-up", () => {
+      for (const template of governanceCandidates()) {
+        const safety = template.renalElectrolyteSafety;
+        if (safety?.requiresNephrologyFollowUp !== true && safety?.requiresUrologyFollowUp !== true) continue;
+        expect(validateProviderDischargeRenalElectrolyteTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("unsafe certainty phrases are blocked in batch 12 templates", () => {
+      for (const template of batchTemplates()) {
+        for (const phrase of forbiddenRenalPhrases) {
+          expect(
+            scanProviderDischargeRenalElectrolyteForbiddenPhrases(template.id, "en", {
+              ...template.suggestedText.en,
+              diagnosisInstructions: phrase,
+            }).length
+          ).toBeGreaterThan(0);
+        }
+      }
+    });
+
+    it("result interpretation caution is enforced on flagged batch 12 templates", () => {
+      for (const template of batchTemplates()) {
+        if (template.renalElectrolyteSafety?.requiresResultInterpretationCaution !== true) continue;
+        expect(
+          scanProviderDischargeRenalElectrolyteResultInterpretationForbiddenPhrases(
+            template.id,
+            "en",
+            {
+              ...template.suggestedText.en,
+              returnPrecautions: "Labs reassuring and creatinine stable with no acute findings.",
+            }
+          ).length
+        ).toBeGreaterThan(0);
+        expect(validateProviderDischargeRenalElectrolyteTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("mapping resolves batch 12 templates without legacy template collisions", () => {
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "Urinary tract infection" }).template.id
+      ).toBe("uti_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "UTI follow-up" }).template.id
+      ).toBe("urology_uti_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "kidney stone" }).template.id
+      ).toBe("kidney_stone_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "kidney stone follow-up" }).template.id
+      ).toBe("urology_renal_colic_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "Dehydration" }).template.id
+      ).toBe("dehydration_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "renal dehydration follow-up" }).template.id
+      ).toBe("renal_dehydration_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "AKI follow-up" }).template.id
+      ).toBe("renal_aki_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "dialysis return precautions" }).template.id
+      ).toBe("dialysis_return_precautions_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "Foley catheter precautions" }).template.id
+      ).toBe("urology_foley_catheter_precautions_v1");
+    });
+
+    it("apply uses active locale for batch 12 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-aki",
+        code: "N17.9",
+        displayName: "AKI follow-up",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description.toLowerCase()).toContain("insuffisance rénale");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("applied hash includes renalElectrolyteSafety for batch 12 template", () => {
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "renal_aki_followup_v1")!;
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.renalElectrolyteSafety).toEqual({
+        akiSensitive: true,
+        requiresElectrolyteEscalation: true,
+        requiresHydrationPrecautions: true,
+        requiresNephrologyFollowUp: true,
+        requiresResultInterpretationCaution: true,
+      });
+    });
+
+    it("content integrity passes for batch 12 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(validateProviderDischargeTemplateContentIntegrity(template)).toEqual([]);
+      }
+    });
+
+    it("existing registry still validates with batch 12 templates added", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("intentional batch 12 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutBatch12 = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter(
+          (t) =>
+            !BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS.includes(
+              t.id as (typeof BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS)[number]
+            )
+        ),
+        "en"
+      );
+      expect(withoutBatch12).not.toBe(base);
+    });
+
+    it("no React UI paragraph hardcoding for batch 12 templates", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toContain(
+        "You were evaluated in the emergency department for acute kidney injury concerns requiring outpatient follow-up"
+      );
+      expect(uiSource).not.toContain(
+        "Vous avez été pris en charge aux urgences pour des signes d'insuffisance rénale aiguë nécessitant un suivi ambulatoire"
+      );
     });
   });
 
@@ -6610,7 +6896,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("8a133692fe54cda25b9db68d116bbe2b8b3642e8683114a758bb1d5744a164f8");
+      expect(hash).toBe("f3217bfc7133b5016c6411a14b252b3d8f9679d165a593ba7303595d5f4f34f5");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -6620,7 +6906,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("884cbdce71b02c3564045be005def993f5d9e7e34bed4f319f00996a3ce0f5ea");
+      expect(hash).toBe("b31c7860ddff1b5314c6846939e913a68df31f7ab40c2423eebea349c752d130");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
