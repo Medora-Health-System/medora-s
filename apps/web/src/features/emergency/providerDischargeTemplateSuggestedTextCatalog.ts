@@ -2242,6 +2242,248 @@ export const CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT: ProviderDischargeTemp
     }
   );
 
+const INFECTIOUS_FOLLOW_UP_EN = "Follow up with your primary care clinician as directed.";
+const INFECTIOUS_FOLLOW_UP_FR = "Suivez le suivi avec votre médecin de premier recours selon les directives.";
+
+const INFECTIOUS_MED_EN =
+  "Take medications only as prescribed or directed during this visit. Do not start, stop, or change medications without clinician guidance.";
+const INFECTIOUS_MED_FR =
+  "Prenez les médicaments uniquement selon la prescription ou les indications reçues pendant cette visite. Ne commencez pas, n'arrêtez pas et ne modifiez pas un traitement sans l'avis d'un clinicien.";
+
+const INFECTIOUS_RESULT_CAUTION_EN = "This note does not replace provider documentation of test results.";
+const INFECTIOUS_RESULT_CAUTION_FR =
+  "Cette note ne remplace pas la documentation clinicien des résultats d'examens.";
+
+const INFECTIOUS_RETURN_IF_WORSE_EN = "Symptoms may worsen after discharge. Seek urgent care if symptoms worsen.";
+const INFECTIOUS_RETURN_IF_WORSE_FR =
+  "Les symptômes peuvent s'aggraver après le congé. Consultez en urgence si les symptômes s'aggravent.";
+
+const INFECTIOUS_FEVER_RETURN_EN =
+  "Return immediately or call 911 for fever, worsening fever, shaking chills, or confusion.";
+const INFECTIOUS_FEVER_RETURN_FR =
+  "Retournez immédiatement ou appelez le 911 en cas de fièvre, d'aggravation de la fièvre, de frissons ou de confusion.";
+
+const INFECTIOUS_RESPIRATORY_RETURN_EN =
+  "Return immediately for trouble breathing, worsening cough, chest pain, or blue lips.";
+const INFECTIOUS_RESPIRATORY_RETURN_FR =
+  "Retournez immédiatement en cas de difficulté à respirer, d'aggravation de la toux, de douleur thoracique ou de lèvres bleues.";
+
+const INFECTIOUS_HYDRATION_RETURN_EN =
+  "Return for care if unable to drink, worsening vomiting, worsening diarrhea, dehydration, decreased urination, dizziness, or weakness.";
+const INFECTIOUS_HYDRATION_RETURN_FR =
+  "Consultez en cas d'incapable de boire, de vomissements, de diarrhée, de déshydratation, de diminution des urines, d'étourdissements ou de faiblesse.";
+
+const INFECTIOUS_NEURO_RETURN_EN =
+  "Return immediately for confusion, severe headache, stiff neck, weakness, seizures, or trouble waking up.";
+const INFECTIOUS_NEURO_RETURN_FR =
+  "Retournez immédiatement en cas de confusion, de mal de tête sévère, de raideur du cou, de faiblesse, de convulsions ou de difficulté à réveiller.";
+
+const INFECTIOUS_RASH_RETURN_EN =
+  "Return immediately for spreading rash, skin peeling, swelling, breathing difficulty, or facial swelling.";
+const INFECTIOUS_RASH_RETURN_FR =
+  "Retournez immédiatement en cas d'éruption qui s'aggrave, de peau qui pèle, d'enflure, de difficulté à respirer ou d'enflure du visage.";
+
+const INFECTIOUS_FULL_RETURN_EN = [
+  INFECTIOUS_FEVER_RETURN_EN,
+  INFECTIOUS_RESPIRATORY_RETURN_EN,
+  INFECTIOUS_HYDRATION_RETURN_EN,
+  INFECTIOUS_NEURO_RETURN_EN,
+  INFECTIOUS_RASH_RETURN_EN,
+  INFECTIOUS_RETURN_IF_WORSE_EN,
+].join(" ");
+
+const INFECTIOUS_FULL_RETURN_FR = [
+  INFECTIOUS_FEVER_RETURN_FR,
+  INFECTIOUS_RESPIRATORY_RETURN_FR,
+  INFECTIOUS_HYDRATION_RETURN_FR,
+  INFECTIOUS_NEURO_RETURN_FR,
+  INFECTIOUS_RASH_RETURN_FR,
+  INFECTIOUS_RETURN_IF_WORSE_FR,
+].join(" ");
+
+export const INFECTIOUS_FEVER_UNKNOWN_SOURCE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for fever without a clear source identified during this visit. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_EN} ${INFECTIOUS_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour de la fièvre sans source claire identifiée pendant cette visite. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_FR} ${INFECTIOUS_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_UPPER_RESPIRATORY_INFECTION_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for upper respiratory infection symptoms. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_EN} Rest and hydration as tolerated. Return precautions were reviewed.`,
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'infection des voies respiratoires supérieures. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_FR} Reposez-vous et hydratez-vous selon tolérance. Les consignes de retour ont été revues.`,
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_VIRAL_SYNDROME_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a possible viral illness with flu-like symptoms. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Rest and stay hydrated as tolerated. Return precautions were reviewed.",
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_HYDRATION_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une possible maladie virale avec signes pseudo-grippaux. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: "Reposez-vous et hydratez-vous selon tolérance. Les consignes de retour ont été revues.",
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_HYDRATION_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_PHARYNGITIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for sore throat or pharyngitis symptoms. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Rest, fluids, and throat comfort measures as tolerated. Return precautions were reviewed.",
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_HYDRATION_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un mal de gorge ou des signes de pharyngite. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions:
+        "Reposez-vous, hydratez-vous et utilisez des mesures de confort pour la gorge selon tolérance. Les consignes de retour ont été revues.",
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_HYDRATION_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_SINUSITIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for sinusitis symptoms. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Rest and nasal comfort measures as tolerated. Return precautions were reviewed.",
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_NEURO_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes de sinusite. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions:
+        "Reposez-vous et utilisez des mesures de confort nasal selon tolérance. Les consignes de retour ont été revues.",
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_NEURO_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_PNEUMONIA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for pneumonia-related symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_EN} ${INFECTIOUS_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_EN} ${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes liés à une pneumonie nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_FR} ${INFECTIOUS_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_FR} ${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_COVID_LIKE_ILLNESS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a COVID-like respiratory illness. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Rest, hydration, and isolation precautions as directed. Return precautions were reviewed.",
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_EN} ${INFECTIOUS_HYDRATION_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une maladie respiratoire de type COVID. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions:
+        "Reposez-vous, hydratez-vous et suivez les consignes d'isolement selon les directives. Les consignes de retour ont été revues.",
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_RESPIRATORY_RETURN_FR} ${INFECTIOUS_HYDRATION_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const GI_INFECTIOUS_GASTROENTERITIS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for infectious gastroenteritis symptoms. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Stay hydrated with small sips as tolerated. Return precautions were reviewed.",
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_HYDRATION_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes de gastro-entérite infectieuse. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: "Hydratez-vous par petites gorgées selon tolérance. Les consignes de retour ont été revues.",
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_HYDRATION_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const INFECTIOUS_CELLULITIS_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for cellulitis requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_EN} Wound and skin care as directed. Return precautions were reviewed.`,
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_EN} ${INFECTIOUS_RASH_RETURN_EN} ${INFECTIOUS_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une cellulite nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_FR} Soins de la peau et de la plaie selon les directives. Les consignes de retour ont été revues.`,
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: `${INFECTIOUS_FEVER_RETURN_FR} ${INFECTIOUS_RASH_RETURN_FR} ${INFECTIOUS_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const SEPSIS_RISK_RETURN_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for symptoms that may be associated with serious infection or sepsis risk. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_EN} ${INFECTIOUS_RESULT_CAUTION_EN} Return precautions were reviewed in detail.`,
+      medicationTreatment: INFECTIOUS_MED_EN,
+      returnPrecautions: INFECTIOUS_FULL_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes pouvant être associés à une infection grave ou un risque de sepsis. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${INFECTIOUS_FOLLOW_UP_FR} ${INFECTIOUS_RESULT_CAUTION_FR} Les consignes de retour ont été revues en détail.`,
+      medicationTreatment: INFECTIOUS_MED_FR,
+      returnPrecautions: INFECTIOUS_FULL_RETURN_FR,
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {

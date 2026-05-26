@@ -406,6 +406,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["heart failure", "shortness of breath"], fr: ["insuffisance cardiaque", "essoufflement"] },
     forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
   },
+  infectious_fever_unknown_source_v1: {
+    mustIncludeAny: { en: ["fever", "unknown source"], fr: ["fièvre", "source claire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_upper_respiratory_infection_v1: {
+    mustIncludeAny: { en: ["upper respiratory", "respiratory infection"], fr: ["voies respiratoires supérieures"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_viral_syndrome_v1: {
+    mustIncludeAny: { en: ["viral", "flu-like"], fr: ["virale", "pseudo-grippaux"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_pharyngitis_v1: {
+    mustIncludeAny: { en: ["pharyngitis", "sore throat"], fr: ["pharyngite", "mal de gorge"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_sinusitis_v1: {
+    mustIncludeAny: { en: ["sinusitis"], fr: ["sinusite"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_pneumonia_followup_v1: {
+    mustIncludeAny: { en: ["pneumonia", "follow-up"], fr: ["pneumonie", "suivi"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_covid_like_illness_v1: {
+    mustIncludeAny: { en: ["covid-like", "respiratory"], fr: ["type covid", "respiratoire"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  gi_infectious_gastroenteritis_v1: {
+    mustIncludeAny: { en: ["gastroenteritis", "infectious"], fr: ["gastro-entérite", "infectieuse"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  infectious_cellulitis_followup_v1: {
+    mustIncludeAny: { en: ["cellulitis", "follow-up"], fr: ["cellulite", "suivi"] },
+    forbiddenCrossTemplateMarkers: { en: ["pneumonia"], fr: ["pneumonie"] },
+  },
+  sepsis_risk_return_precautions_v1: {
+    mustIncludeAny: { en: ["sepsis", "infection"], fr: ["sepsis", "infection"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

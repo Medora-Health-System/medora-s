@@ -19,6 +19,7 @@ import {
   BATCH_8_BEHAVIORAL_HEALTH_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS,
   BATCH_10_CARDIO_HIGH_RISK_ED_DISCHARGE_TEMPLATE_IDS,
+  BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
@@ -70,6 +71,8 @@ import {
   scanProviderDischargeInfectiousReturnIfWorseningLanguage,
   scanProviderDischargeInfectiousRiskForbiddenPhrases,
   validateProviderDischargeInfectiousRiskTemplateGovernance,
+  PROVIDER_DISCHARGE_INFECTIOUS_RISK_FORBIDDEN_PHRASES,
+  PROVIDER_DISCHARGE_INFECTIOUS_RESULT_INTERPRETATION_FORBIDDEN_PHRASES,
 } from "./providerDischargeTemplateInfectiousRiskGovernance";
 import {
   buildAppliedDiagnosisInstructionsFromTemplateBody,
@@ -5244,6 +5247,343 @@ describe("edDisposition19Y", () => {
     });
   });
 
+  describe("19Y.18 infectious disease & sepsis-risk templates", () => {
+    const batchTemplates = () =>
+      BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS.map(
+        (id) => PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === id)!
+      );
+
+    const forbiddenInfectiousPhrases = [
+      "sepsis ruled out",
+      "no sepsis",
+      "bacteremia ruled out",
+      "meningitis ruled out",
+      "pneumonia ruled out",
+      "cultures negative",
+      "blood cultures negative",
+      "viral illness confirmed",
+      "bacterial infection confirmed",
+      "antibiotics not needed",
+      "antibiotics sufficient",
+      "infection resolved",
+      "safe from infection",
+      "medically cleared",
+      "dehydration resolved",
+      "no serious infection",
+      "lungs clear",
+      "chest x-ray normal",
+      "urine culture negative",
+      "no meningitis",
+      "no bloodstream infection",
+      "you do not have",
+      "definitely viral",
+      "definitely bacterial",
+      "labs normal",
+      "imaging normal",
+      "reassuring labs",
+      "infection excluded",
+      "pneumonia excluded",
+      "safe for discharge",
+    ];
+
+    it("batch 11 IDs export exists with 10 templates", () => {
+      expect(BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS).toHaveLength(10);
+      for (const id of BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS) {
+        expect(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.some((t) => t.id === id)).toBe(true);
+      }
+    });
+
+    it("EN/FR bodies exist for all batch 11 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.suggestedText.en.description.trim()).not.toBe("");
+        expect(template.suggestedText.fr.description.trim()).not.toBe("");
+      }
+    });
+
+    it("infectiousRiskSafety metadata exists on all batch 11 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(template.infectiousRiskSafety).toBeTruthy();
+        expect(validateProviderDischargeInfectiousRiskTemplateGovernance(template), template.id).toEqual([]);
+      }
+    });
+
+    it("required infectiousRiskSafety flags are present per template", () => {
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "infectious_fever_unknown_source_v1")!
+          .infectiousRiskSafety
+      ).toEqual({
+        sepsisSensitive: true,
+        requiresFeverEscalation: true,
+        requiresReturnIfWorsening: true,
+        requiresPrimaryCareFollowUp: true,
+        requiresResultInterpretationCaution: true,
+      });
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "infectious_upper_respiratory_infection_v1")!
+          .infectiousRiskSafety
+      ).toEqual({
+        respiratoryInfectiousSensitive: true,
+        requiresRespiratoryEscalation: true,
+        requiresReturnIfWorsening: true,
+        requiresPrimaryCareFollowUp: true,
+      });
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "sepsis_risk_return_precautions_v1")!
+          .infectiousRiskSafety?.sepsisSensitive
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "gi_infectious_gastroenteritis_v1")!
+          .infectiousRiskSafety?.dehydrationSensitive
+      ).toBe(true);
+      expect(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === "infectious_pneumonia_followup_v1")!
+          .infectiousRiskSafety?.pneumoniaSensitive
+      ).toBe(true);
+    });
+
+    it("fever escalation passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresFeverEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousFeverEscalationLanguage(template.id, locale, template.suggestedText[locale])
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("respiratory escalation passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresRespiratoryEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousRespiratoryEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("hydration escalation passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresHydrationEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousHydrationEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("neurologic escalation passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresNeurologicEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousNeurologicEscalationLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("rash escalation passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresRashEscalation !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousRashEscalationLanguage(template.id, locale, template.suggestedText[locale])
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("return-if-worsening passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresReturnIfWorsening !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousReturnIfWorseningLanguage(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("primary care follow-up governance passes for batch 11 templates requiring it", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresPrimaryCareFollowUp !== true) continue;
+        expect((template.defaultFollowUps ?? []).some((r) => r.specialty === "PRIMARY_CARE")).toBe(true);
+      }
+    });
+
+    it("unsafe certainty phrases are blocked in batch 11 templates", () => {
+      for (const template of batchTemplates()) {
+        for (const locale of ["en", "fr"] as const) {
+          const blob = JSON.stringify(template.suggestedText[locale]).toLowerCase();
+          for (const phrase of forbiddenInfectiousPhrases) {
+            expect(blob, `${template.id} ${locale}`).not.toContain(phrase);
+          }
+        }
+      }
+    });
+
+    it("ruled-out wording is blocked by infectious forbidden phrase scanner", () => {
+      expect(PROVIDER_DISCHARGE_INFECTIOUS_RISK_FORBIDDEN_PHRASES.some((r) => r.pattern.test("sepsis ruled out"))).toBe(
+        true
+      );
+      const template = batchTemplates()[0]!;
+      expect(
+        scanProviderDischargeInfectiousRiskForbiddenPhrases(template.id, "en", {
+          ...template.suggestedText.en,
+          description: "Sepsis ruled out during this visit.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("normal labs/imaging wording is blocked by result interpretation scanner", () => {
+      for (const rule of PROVIDER_DISCHARGE_INFECTIOUS_RESULT_INTERPRETATION_FORBIDDEN_PHRASES) {
+        expect(rule.pattern.test("labs normal")).toBe(rule.id === "labs-normal");
+      }
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "infectious_fever_unknown_source_v1"
+      )!;
+      expect(
+        scanProviderDischargeInfectiousResultInterpretationForbiddenPhrases(template.id, "en", {
+          ...template.suggestedText.en,
+          diagnosisInstructions: "Labs normal and imaging normal.",
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
+    it("result interpretation caution is enforced on flagged batch 11 templates", () => {
+      for (const template of batchTemplates()) {
+        if (template.infectiousRiskSafety?.requiresResultInterpretationCaution !== true) continue;
+        for (const locale of ["en", "fr"] as const) {
+          expect(
+            scanProviderDischargeInfectiousResultInterpretationForbiddenPhrases(
+              template.id,
+              locale,
+              template.suggestedText[locale]
+            )
+          ).toEqual([]);
+        }
+      }
+    });
+
+    it("mapping resolves batch 11 templates without legacy template collisions", () => {
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "J18.9", displayName: "Pneumonia" }).template.id
+      ).toBe("pneumonia_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "pneumonia follow-up" }).template.id
+      ).toBe("infectious_pneumonia_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ code: "R19.7", displayName: "Diarrhea" }).template.id
+      ).toBe("gastroenteritis_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "GI infectious gastroenteritis follow-up" })
+          .template.id
+      ).toBe("gi_infectious_gastroenteritis_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "Cellulitis" }).template.id
+      ).toBe("cellulitis_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "cellulitis follow-up" }).template.id
+      ).toBe("infectious_cellulitis_followup_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "upper respiratory infection" }).template.id
+      ).toBe("uri_cough_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "infectious URI follow-up" }).template.id
+      ).toBe("infectious_upper_respiratory_infection_v1");
+      expect(
+        resolveProviderDischargeTemplateForDiagnosis({ displayName: "sepsis-risk return precautions" }).template.id
+      ).toBe("sepsis_risk_return_precautions_v1");
+    });
+
+    it("apply uses active locale for batch 11 template", () => {
+      const cardFr = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-sepsis",
+        code: "Z00.00",
+        displayName: "sepsis-risk return precautions",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "fr",
+        actor: { displayName: "Dr Test", appliedAt: "2026-05-18T18:00:00.000Z" },
+      });
+      expect(cardFr.description.toLowerCase()).toContain("sepsis");
+      expect(cardFr.templateMeta?.appliedLocale).toBe("fr");
+      expect(cardFr.templateMeta?.templateAppliedHash).toMatch(/^[a-f0-9]{64}$/);
+    });
+
+    it("applied hash includes infectiousRiskSafety for batch 11 template", () => {
+      const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find(
+        (t) => t.id === "sepsis_risk_return_precautions_v1"
+      )!;
+      const payload = buildProviderDischargeTemplateHashPayload(template, "en");
+      expect(payload.infectiousRiskSafety).toEqual({
+        requiresFeverEscalation: true,
+        requiresHydrationEscalation: true,
+        requiresNeurologicEscalation: true,
+        requiresPrimaryCareFollowUp: true,
+        requiresRespiratoryEscalation: true,
+        requiresResultInterpretationCaution: true,
+        requiresReturnIfWorsening: true,
+        sepsisSensitive: true,
+      });
+    });
+
+    it("content integrity passes for batch 11 templates", () => {
+      for (const template of batchTemplates()) {
+        expect(validateProviderDischargeTemplateContentIntegrity(template)).toEqual([]);
+      }
+    });
+
+    it("intentional batch 11 addition updates registry snapshot hash", () => {
+      const base = computeProviderDischargeRegistryGovernanceSnapshotHash(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY, "en");
+      const withoutInfectious = computeProviderDischargeRegistryGovernanceSnapshotHash(
+        PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.filter(
+          (t) =>
+            !BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS.includes(
+              t.id as (typeof BATCH_11_INFECTIOUS_SEPSIS_ED_DISCHARGE_TEMPLATE_IDS)[number]
+            )
+        ),
+        "en"
+      );
+      expect(base).not.toBe(withoutInfectious);
+    });
+
+    it("existing adult/pediatric/OB/BH/trauma/cardio templates still validate", () => {
+      const result = validateProviderDischargeTemplateRegistry(PROVIDER_DISCHARGE_TEMPLATE_REGISTRY);
+      expect(result.ok).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("no React UI paragraph hardcoding for batch 11 templates", () => {
+      const uiSource = readFileSync(
+        join(webRoot, "src/features/emergency/ProviderDischargeDocumentationSection.tsx"),
+        "utf8"
+      );
+      expect(uiSource).not.toContain("You were evaluated in the emergency department for fever without a clear source");
+      expect(uiSource).not.toContain("Vous avez été pris en charge aux urgences pour de la fièvre sans source claire");
+    });
+  });
+
   describe("19Y.14 Batch 9 trauma & MSK ED discharge templates", () => {
     const batchTemplates = () =>
       BATCH_9_TRAUMA_MSK_ED_DISCHARGE_TEMPLATE_IDS.map(
@@ -5835,7 +6175,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("ad379641336d9251a9c8c11b40bbbae73ecf21125af3bf4dbdcfa13a6e80dbe5");
+      expect(hash).toBe("20464b4f016f9f872cdfd041a255449a8538b04a7ac2e41be877601c1dcafc10");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -5845,7 +6185,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("059ba0847173b4d3966ede01fed19a61d2621323226ff545374a200ca3c580c7");
+      expect(hash).toBe("0d4d478bbb75d107c1338fbf1c72e5d216a94f5c66691b250d389b1638f5975a");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
