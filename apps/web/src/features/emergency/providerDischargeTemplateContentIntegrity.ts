@@ -49,6 +49,40 @@ const RENAL_CERTAINTY_FORBIDDEN_FR = [
 const RENAL_BATCH_FORBIDDEN_EN = [...WOUND_FORBIDDEN_EN, ...RENAL_CERTAINTY_FORBIDDEN_EN] as const;
 const RENAL_BATCH_FORBIDDEN_FR = [...WOUND_FORBIDDEN_FR, ...RENAL_CERTAINTY_FORBIDDEN_FR] as const;
 
+const ENDOCRINE_CERTAINTY_FORBIDDEN_EN = [
+  "dka ruled out",
+  "hhs ruled out",
+  "blood sugar normal",
+  "glucose controlled",
+  "a1c normal",
+  "labs normal",
+  "electrolytes normal",
+  "ketones negative",
+  "insulin not needed",
+  "dehydration resolved",
+  "no diabetic emergency",
+  "hypoglycemia resolved",
+  "hyperglycemia resolved",
+  "metabolic issue resolved",
+  "medically cleared",
+  "safe for discharge",
+  "glucose reassuring",
+  "metabolic panel normal",
+  "dka excluded",
+  "hhs excluded",
+  "sugars controlled",
+] as const;
+
+const ENDOCRINE_CERTAINTY_FORBIDDEN_FR = [
+  "glycémie normale",
+  "congé sécuritaire",
+  "autorisé médicalement",
+  "cétones négatives",
+] as const;
+
+const ENDOCRINE_BATCH_FORBIDDEN_EN = [...WOUND_FORBIDDEN_EN, ...ENDOCRINE_CERTAINTY_FORBIDDEN_EN] as const;
+const ENDOCRINE_BATCH_FORBIDDEN_FR = [...WOUND_FORBIDDEN_FR, ...ENDOCRINE_CERTAINTY_FORBIDDEN_FR] as const;
+
 const RESPIRATORY_FORBIDDEN_ON_WOUND_EN = ["asthma", "wheezing", "bronchitis"] as const;
 const RESPIRATORY_FORBIDDEN_ON_WOUND_FR = ["asthme", "sifflement", "bronchite"] as const;
 
@@ -515,6 +549,46 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
   dialysis_return_precautions_v1: {
     mustIncludeAny: { en: ["dialysis", "missed dialysis"], fr: ["dialyse", "dialyse manquée"] },
     forbiddenCrossTemplateMarkers: { en: RENAL_BATCH_FORBIDDEN_EN, fr: RENAL_BATCH_FORBIDDEN_FR },
+  },
+  diabetes_hyperglycemia_followup_v1: {
+    mustIncludeAny: { en: ["hyperglycemia", "excessive thirst"], fr: ["hyperglycémie", "soif excessive"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  diabetes_hypoglycemia_followup_v1: {
+    mustIncludeAny: { en: ["hypoglycemia", "fainting"], fr: ["hypoglycémie", "évanouissement"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  diabetes_dka_return_precautions_v1: {
+    mustIncludeAny: { en: ["ketoacidosis", "return immediately"], fr: ["acidocétose", "retournez immédiatement"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  diabetes_insulin_management_precautions_v1: {
+    mustIncludeAny: { en: ["insulin", "do not skip insulin"], fr: ["insuline", "ne sautez pas l'insuline"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  endocrine_thyroid_symptom_followup_v1: {
+    mustIncludeAny: { en: ["thyroid", "endocrinology"], fr: ["thyroïde", "endocrinologie"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  metabolic_dehydration_followup_v1: {
+    mustIncludeAny: { en: ["metabolic dehydration", "dehydration"], fr: ["déshydratation", "métabolique"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  metabolic_nausea_weakness_followup_v1: {
+    mustIncludeAny: { en: ["nausea", "weakness"], fr: ["nausées", "faiblesse"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  metabolic_electrolyte_followup_v1: {
+    mustIncludeAny: { en: ["metabolic electrolyte", "endocrinology"], fr: ["électrolytique", "endocrinologie"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  endocrine_polyuria_polydipsia_followup_v1: {
+    mustIncludeAny: { en: ["polyuria", "polydipsia"], fr: ["polyurie", "polydipsie"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  diabetes_sick_day_precautions_v1: {
+    mustIncludeAny: { en: ["sick day", "do not skip insulin"], fr: ["jour de maladie", "ne sautez pas l'insuline"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
   },
 };
 

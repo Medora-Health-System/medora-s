@@ -70,6 +70,16 @@ import {
   UROLOGY_HEMATURIA_FOLLOWUP_SUGGESTED_TEXT,
   UROLOGY_URINARY_RETENTION_FOLLOWUP_SUGGESTED_TEXT,
   UROLOGY_FOLEY_CATHETER_PRECAUTIONS_SUGGESTED_TEXT,
+  DIABETES_HYPERGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
+  DIABETES_HYPOGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
+  DIABETES_DKA_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
+  DIABETES_INSULIN_MANAGEMENT_PRECAUTIONS_SUGGESTED_TEXT,
+  ENDOCRINE_THYROID_SYMPTOM_FOLLOWUP_SUGGESTED_TEXT,
+  METABOLIC_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
+  METABOLIC_NAUSEA_WEAKNESS_FOLLOWUP_SUGGESTED_TEXT,
+  METABOLIC_ELECTROLYTE_FOLLOWUP_SUGGESTED_TEXT,
+  ENDOCRINE_POLYURIA_POLYDIPSIA_FOLLOWUP_SUGGESTED_TEXT,
+  DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT,
   ABDOMINAL_PAIN_SUGGESTED_TEXT,
   ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
   ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -390,6 +400,20 @@ export const BATCH_12_RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_IDS = [
   "dialysis_return_precautions_v1",
 ] as const;
 
+/** Phase 19Y.22 — endocrine/diabetes/metabolic-risk ED discharge template batch 13. */
+export const BATCH_13_ENDOCRINE_METABOLIC_TEMPLATE_IDS = [
+  "diabetes_hyperglycemia_followup_v1",
+  "diabetes_hypoglycemia_followup_v1",
+  "diabetes_dka_return_precautions_v1",
+  "diabetes_insulin_management_precautions_v1",
+  "endocrine_thyroid_symptom_followup_v1",
+  "metabolic_dehydration_followup_v1",
+  "metabolic_nausea_weakness_followup_v1",
+  "metabolic_electrolyte_followup_v1",
+  "endocrine_polyuria_polydipsia_followup_v1",
+  "diabetes_sick_day_precautions_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -450,6 +474,12 @@ const INFECTIOUS_TEMPLATE_GOVERNANCE = {
 const RENAL_UROLOGY_ELECTROLYTE_TEMPLATE_GOVERNANCE = {
   ...BATCH_GOVERNANCE_DRAFT,
   specialtyCategory: "nephrology_urology",
+  riskCategory: "high",
+};
+
+const ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE = {
+  ...BATCH_GOVERNANCE_DRAFT,
+  specialtyCategory: "endocrinology",
   riskCategory: "high",
 };
 
@@ -3731,6 +3761,292 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     suggestedText: DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   },
   {
+    id: "diabetes_hyperglycemia_followup_v1",
+    version: "1.0.0",
+    title: "Diabetes hyperglycemia follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      hyperglycemiaSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["diabetes hyperglycemia follow-up", "high blood sugar follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Hyperglycemia",
+        url: "https://medlineplus.gov/ency/article/003435.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("diabhyper-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: DIABETES_HYPERGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "diabetes_hypoglycemia_followup_v1",
+    version: "1.0.0",
+    title: "Diabetes hypoglycemia follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      hypoglycemiaSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["diabetes hypoglycemia follow-up", "low blood sugar follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Low blood sugar",
+        url: "https://medlineplus.gov/ency/article/000386.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("diabhypo-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: DIABETES_HYPOGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "diabetes_dka_return_precautions_v1",
+    version: "1.0.0",
+    title: "Diabetes DKA return precautions discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      dkaSensitive: true,
+      dehydrationSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["DKA return precautions", "diabetic ketoacidosis precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Diabetic ketoacidosis",
+        url: "https://medlineplus.gov/ency/article/000320.htm",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("diabdka-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+      registryFollowUp("diabdka-endo", "ENDOCRINOLOGY", "as clinically appropriate"),
+    ],
+    suggestedText: DIABETES_DKA_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "diabetes_insulin_management_precautions_v1",
+    version: "1.0.0",
+    title: "Diabetes insulin management precautions discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      insulinSensitive: true,
+      requiresInsulinPrecautions: true,
+      requiresGlucoseEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["insulin management precautions", "insulin follow-up precautions"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Diabetes",
+        url: "https://medlineplus.gov/diabetes.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("diabinsulin-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: DIABETES_INSULIN_MANAGEMENT_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "endocrine_thyroid_symptom_followup_v1",
+    version: "1.0.0",
+    title: "Endocrine thyroid symptom follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      endocrineSensitive: true,
+      requiresEndocrinologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["thyroid symptoms follow-up", "endocrine thyroid follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Thyroid diseases",
+        url: "https://medlineplus.gov/thyroiddiseases.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("thyroid-endo", "ENDOCRINOLOGY", "within several days or as directed"),
+    ],
+    suggestedText: ENDOCRINE_THYROID_SYMPTOM_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "metabolic_dehydration_followup_v1",
+    version: "1.0.0",
+    title: "Metabolic dehydration follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      metabolicSensitive: true,
+      dehydrationSensitive: true,
+      requiresHydrationEscalation: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["metabolic dehydration follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Dehydration",
+        url: "https://medlineplus.gov/dehydration.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("metdehyd-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+    ],
+    suggestedText: METABOLIC_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "metabolic_nausea_weakness_followup_v1",
+    version: "1.0.0",
+    title: "Metabolic nausea weakness follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      metabolicSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["metabolic nausea weakness follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Nausea and vomiting",
+        url: "https://medlineplus.gov/nauseaandvomiting.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("metnausea-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: METABOLIC_NAUSEA_WEAKNESS_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "metabolic_electrolyte_followup_v1",
+    version: "1.0.0",
+    title: "Metabolic electrolyte follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      metabolicSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresNeurologicEscalation: true,
+      requiresEndocrinologyFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["metabolic electrolyte follow-up", "electrolyte abnormality follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Fluid and electrolyte balance",
+        url: "https://medlineplus.gov/fluidandelectrolytebalance.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("metelect-endo", "ENDOCRINOLOGY", "within several days or as directed"),
+    ],
+    suggestedText: METABOLIC_ELECTROLYTE_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "endocrine_polyuria_polydipsia_followup_v1",
+    version: "1.0.0",
+    title: "Endocrine polyuria polydipsia follow-up discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      endocrineSensitive: true,
+      diabetesSensitive: true,
+      requiresGlucoseEscalation: true,
+      requiresHydrationEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["polyuria polydipsia follow-up", "excessive thirst urination follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Diabetes",
+        url: "https://medlineplus.gov/diabetes.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("polyuria-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: ENDOCRINE_POLYURIA_POLYDIPSIA_FOLLOWUP_SUGGESTED_TEXT,
+  },
+  {
+    id: "diabetes_sick_day_precautions_v1",
+    version: "1.0.0",
+    title: "Diabetes sick day precautions discharge documentation",
+    ...ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE,
+    endocrineMetabolicSafety: {
+      diabetesSensitive: true,
+      insulinSensitive: true,
+      dehydrationSensitive: true,
+      requiresInsulinPrecautions: true,
+      requiresHydrationEscalation: true,
+      requiresDiabetesFollowUp: true,
+      requiresResultInterpretationCaution: true,
+    },
+    diagnosisMappings: {
+      keyword: ["diabetes sick day precautions", "sick day diabetes follow-up"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Diabetes",
+        url: "https://medlineplus.gov/diabetes.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("sickday-pcp", "PRIMARY_CARE", "within several days or as directed"),
+    ],
+    suggestedText: DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
     version: "1.0.0",
     title: "Generic ED discharge documentation",
@@ -3975,6 +4291,26 @@ export const PROVIDER_DISCHARGE_REGISTRY_PARAGRAPH_FRAGMENTS = [
   "Vous avez été pris en charge aux urgences pour une rétention urinaire ou une difficulté à uriner nécessitant un suivi ambulatoire",
   "Vous avez été pris en charge aux urgences pour les soins et consignes d'un cathéter urinaire ou de Foley",
   "Vous avez été pris en charge aux urgences pour des préoccupations liées à la dialyse et les consignes de retour",
+  "You were evaluated in the emergency department for diabetes-related hyperglycemia symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for diabetes-related hypoglycemia symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for diabetic ketoacidosis-related concerns and return precautions",
+  "You were evaluated in the emergency department for diabetes insulin management and precautions",
+  "You were evaluated in the emergency department for thyroid-related symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for metabolic dehydration concerns requiring outpatient follow-up",
+  "You were evaluated in the emergency department for metabolic nausea and weakness requiring outpatient follow-up",
+  "You were evaluated in the emergency department for metabolic electrolyte concerns requiring outpatient follow-up",
+  "You were evaluated in the emergency department for polyuria and polydipsia symptoms requiring outpatient follow-up",
+  "You were evaluated in the emergency department for diabetes sick-day precautions and follow-up needs",
+  "Vous avez été pris en charge aux urgences pour des signes d'hyperglycémie liés au diabète nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour des signes d'hypoglycémie liés au diabète nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour des préoccupations liées à l'acidocétose diabétique et les consignes de retour",
+  "Vous avez été pris en charge aux urgences pour la gestion de l'insuline et les consignes liées au diabète",
+  "Vous avez été pris en charge aux urgences pour des signes liés à la thyroïde nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une déshydratation d'origine métabolique nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour des nausées et une faiblesse d'origine métabolique nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour des préoccupations électrolytiques d'origine métabolique nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour une polyurie et une polydipsie nécessitant un suivi ambulatoire",
+  "Vous avez été pris en charge aux urgences pour les consignes de jour de maladie liées au diabète",
 ] as const;
 
 export { getProviderDischargeSuggestedTextBody };

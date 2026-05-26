@@ -2712,6 +2712,236 @@ export const DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTempla
     }
   );
 
+const ENDO_FOLLOW_UP_PCP_EN = "Follow up with your primary care clinician as directed.";
+const ENDO_FOLLOW_UP_PCP_FR = "Suivez le suivi avec votre médecin de premier recours selon les directives.";
+
+const ENDO_FOLLOW_UP_ENDOCRINOLOGY_EN = "Follow up with endocrinology as directed.";
+const ENDO_FOLLOW_UP_ENDOCRINOLOGY_FR = "Suivez le suivi en endocrinologie selon les directives.";
+
+const ENDO_MED_EN = "Take medications exactly as directed during this visit. Continue medications as prescribed.";
+const ENDO_MED_FR =
+  "Prenez les médicaments exactement selon les directives reçues pendant cette visite. Continuez les médicaments selon la prescription.";
+
+const ENDO_INSULIN_MED_EN =
+  "Take insulin exactly as directed. Do not skip insulin. Continue other medications as prescribed.";
+const ENDO_INSULIN_MED_FR =
+  "Prenez l'insuline exactement comme prescrite. Ne sautez pas l'insuline. Continuez les autres médicaments selon la prescription.";
+
+const ENDO_RESULT_CAUTION_EN = "This note does not replace provider documentation of test results.";
+const ENDO_RESULT_CAUTION_FR =
+  "Cette note ne remplace pas la documentation clinicien des résultats d'examens.";
+
+const ENDO_GLUCOSE_RETURN_EN =
+  "Return immediately for worsening weakness, confusion, vomiting, excessive thirst, excessive urination, or fainting.";
+const ENDO_GLUCOSE_RETURN_FR =
+  "Retournez immédiatement en cas de faiblesse qui s'aggrave, de confusion, de vomissements, de soif excessive, d'urination fréquente ou d'évanouissement.";
+
+const ENDO_HYDRATION_RETURN_EN =
+  "Return immediately if unable to keep fluids down, worsening vomiting, dehydration, or dizziness.";
+const ENDO_HYDRATION_RETURN_FR =
+  "Retournez immédiatement en cas d'incapable de garder les liquides, de vomissements, de déshydratation ou d'étourdissements.";
+
+const ENDO_NEURO_RETURN_EN = "Return immediately for confusion, seizures, trouble waking up, or weakness.";
+const ENDO_NEURO_RETURN_FR =
+  "Retournez immédiatement en cas de confusion, de convulsions, de difficulté à réveiller ou de faiblesse.";
+
+const ENDO_INSULIN_RETURN_EN = "Seek care for worsening symptoms.";
+const ENDO_INSULIN_RETURN_FR = "Consultez pour aggravation des symptômes.";
+
+const ENDO_RETURN_IF_WORSE_EN =
+  "Symptoms may worsen after discharge. Return immediately for concerning changes.";
+const ENDO_RETURN_IF_WORSE_FR =
+  "Les symptômes peuvent s'aggraver après le congé. Retournez immédiatement en cas de changements préoccupants.";
+
+const ENDO_FULL_GLUCOSE_HYDRATION_RETURN_EN = `${ENDO_GLUCOSE_RETURN_EN} ${ENDO_HYDRATION_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`;
+const ENDO_FULL_GLUCOSE_HYDRATION_RETURN_FR = `${ENDO_GLUCOSE_RETURN_FR} ${ENDO_HYDRATION_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`;
+
+const ENDO_FULL_GLUCOSE_NEURO_RETURN_EN = `${ENDO_GLUCOSE_RETURN_EN} ${ENDO_NEURO_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`;
+const ENDO_FULL_GLUCOSE_NEURO_RETURN_FR = `${ENDO_GLUCOSE_RETURN_FR} ${ENDO_NEURO_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`;
+
+const ENDO_DKA_RETURN_EN = `${ENDO_GLUCOSE_RETURN_EN} ${ENDO_HYDRATION_RETURN_EN} ${ENDO_NEURO_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`;
+const ENDO_DKA_RETURN_FR = `${ENDO_GLUCOSE_RETURN_FR} ${ENDO_HYDRATION_RETURN_FR} ${ENDO_NEURO_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`;
+
+export const DIABETES_HYPERGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for diabetes-related hyperglycemia symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'hyperglycémie liés au diabète nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_FR,
+    }
+  );
+
+export const DIABETES_HYPOGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for diabetes-related hypoglycemia symptoms requiring outpatient follow-up. Symptoms may change after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_FULL_GLUCOSE_NEURO_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes d'hypoglycémie liés au diabète nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_FULL_GLUCOSE_NEURO_RETURN_FR,
+    }
+  );
+
+export const DIABETES_DKA_RETURN_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for diabetic ketoacidosis-related concerns and return precautions. Your condition may change after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed in detail.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_DKA_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des préoccupations liées à l'acidocétose diabétique et les consignes de retour. Votre état peut évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues en détail.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_DKA_RETURN_FR,
+    }
+  );
+
+export const DIABETES_INSULIN_MANAGEMENT_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for diabetes insulin management and precautions. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Insulin management instructions were reviewed as directed during this visit.`,
+      medicationTreatment: ENDO_INSULIN_MED_EN,
+      returnPrecautions: `${ENDO_GLUCOSE_RETURN_EN} ${ENDO_INSULIN_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour la gestion de l'insuline et les consignes liées au diabète. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de gestion de l'insuline ont été revues selon les directives reçues pendant cette visite.`,
+      medicationTreatment: ENDO_INSULIN_MED_FR,
+      returnPrecautions: `${ENDO_GLUCOSE_RETURN_FR} ${ENDO_INSULIN_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const ENDOCRINE_THYROID_SYMPTOM_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for thyroid-related symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_ENDOCRINOLOGY_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: `${ENDO_NEURO_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des signes liés à la thyroïde nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_ENDOCRINOLOGY_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: `${ENDO_NEURO_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const METABOLIC_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for metabolic dehydration concerns requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: "Hydrate with small sips as tolerated. Return precautions were reviewed.",
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: `${ENDO_HYDRATION_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une déshydratation d'origine métabolique nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: "Hydratez-vous par petites gorgées selon tolérance. Les consignes de retour ont été revues.",
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: `${ENDO_HYDRATION_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
+export const METABOLIC_NAUSEA_WEAKNESS_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for metabolic nausea and weakness requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des nausées et une faiblesse d'origine métabolique nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_FR,
+    }
+  );
+
+export const METABOLIC_ELECTROLYTE_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for metabolic electrolyte concerns requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_ENDOCRINOLOGY_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_FULL_GLUCOSE_NEURO_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour des préoccupations électrolytiques d'origine métabolique nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_ENDOCRINOLOGY_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_FULL_GLUCOSE_NEURO_RETURN_FR,
+    }
+  );
+
+export const ENDOCRINE_POLYURIA_POLYDIPSIA_FOLLOWUP_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for polyuria and polydipsia symptoms requiring outpatient follow-up. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Return precautions were reviewed.`,
+      medicationTreatment: ENDO_MED_EN,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_EN,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une polyurie et une polydipsie nécessitant un suivi ambulatoire. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de retour ont été revues.`,
+      medicationTreatment: ENDO_MED_FR,
+      returnPrecautions: ENDO_FULL_GLUCOSE_HYDRATION_RETURN_FR,
+    }
+  );
+
+export const DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for diabetes sick-day precautions and follow-up needs. Symptoms may evolve after discharge.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_EN} ${ENDO_RESULT_CAUTION_EN} Sick-day precautions were reviewed.`,
+      medicationTreatment: ENDO_INSULIN_MED_EN,
+      returnPrecautions: `${ENDO_HYDRATION_RETURN_EN} ${ENDO_INSULIN_RETURN_EN} ${ENDO_RETURN_IF_WORSE_EN}`,
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour les consignes de jour de maladie liées au diabète. Les symptômes peuvent évoluer après le congé.",
+      diagnosisInstructions: `${ENDO_FOLLOW_UP_PCP_FR} ${ENDO_RESULT_CAUTION_FR} Les consignes de jour de maladie ont été revues.`,
+      medicationTreatment: ENDO_INSULIN_MED_FR,
+      returnPrecautions: `${ENDO_HYDRATION_RETURN_FR} ${ENDO_INSULIN_RETURN_FR} ${ENDO_RETURN_IF_WORSE_FR}`,
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {
