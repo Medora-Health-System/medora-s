@@ -77,6 +77,14 @@ import {
   MedoraCardTitle,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
+import { EmergencyErWorkspaceSectionNav, type ErDashboardTile } from "@/features/emergency/EmergencyErWorkspaceSectionNav";
+import {
+  emergencyChartHeaderRailStyle,
+  emergencyChartPageShellStyle,
+  emergencyChartTouchLinkStyle,
+  resolveEmergencyChartLayoutMode,
+  type EmergencyChartLayoutMode,
+} from "@/features/emergency/emergencyChartResponsiveLayout";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -84,19 +92,6 @@ const STATUS_BADGE_SOFT: Record<string, PriorityBadgeSoft> = {
   OPEN: { bg: "#ecfdf5", text: "#065f46", border: "#a7f3d0" },
   CLOSED: { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" },
   CANCELLED: { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
-};
-
-const DASHBOARD_LABELS: Record<string, string> = {
-  T: "Triage",
-  ME: "Medical Exam",
-  O: "Orders",
-  M: "Medications",
-  R: "Results",
-  Dx: "Diagnostics",
-  NA: "Nurse Assessment",
-  N: "Notes",
-  D: "Disposition",
-  S: "Summary",
 };
 
 type PatientLite = {
@@ -189,15 +184,6 @@ export type ErWorkspaceSection =
   | "providerMse"
   | "disposition";
 
-type ErDashboardTile = {
-  kind: "section";
-  id: ErWorkspaceSection;
-  accent: string;
-  initials: string;
-  ariaLabel: string;
-  disabled: boolean;
-};
-
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const router = useRouter();
@@ -221,6 +207,7 @@ export function EmergencyActiveWorkspaceView() {
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
+  const [layoutMode, setLayoutMode] = useState<EmergencyChartLayoutMode>("desktopSplit");
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loading, setLoading] = useState(true);
@@ -275,6 +262,16 @@ export function EmergencyActiveWorkspaceView() {
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY") ||
     roles.includes("ADMIN");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEmergencyChartLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -698,7 +695,7 @@ export function EmergencyActiveWorkspaceView() {
     iso ? formatEncounterChromeDateTime(iso, language) : t("common.dash");
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
+    <div style={emergencyChartPageShellStyle(layoutMode)}>
       <div style={{ width: "100%", maxWidth: "none", minWidth: 0, boxSizing: "border-box" }}>
         <MedoraCardActionsMediaStyle />
 
@@ -984,17 +981,7 @@ export function EmergencyActiveWorkspaceView() {
               </div>
 
               {/* Droite : salle (haut) + statut + lien — style salle distinct d’ESI (bleu, pas rouge) */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  gap: 8,
-                  flex: "0 1 auto",
-                  marginLeft: "auto",
-                  minWidth: 140,
-                }}
-              >
+              <div style={emergencyChartHeaderRailStyle(layoutMode)}>
                 <div
                   role="button"
                   tabIndex={0}
@@ -1052,17 +1039,23 @@ export function EmergencyActiveWorkspaceView() {
                     {tEncounterType(t, typeKey)}
                   </MedoraCardBadge>
                 </MedoraCardBadgeRow>
-                <Link href={erChartHref} style={{ ...linkPill, alignSelf: "flex-end", fontSize: 13, padding: "7px 12px" }}>
+                <Link
+                  href={erChartHref}
+                  style={emergencyChartTouchLinkStyle({ ...linkPill, alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end", fontSize: 13, padding: "7px 12px" })}
+                >
                   {t("emergencyWorkspace.linkFullEncounter")}
                 </Link>
                 <Link
                   href={genericEncounterHref}
                   style={{
-                    alignSelf: "flex-end",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#64748b",
-                    textDecoration: "none",
+                    ...emergencyChartTouchLinkStyle({
+                      alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#64748b",
+                      textDecoration: "none",
+                      padding: "8px 12px",
+                    }),
                   }}
                 >
                   {t("emergencyWorkspace.linkMedoraChartRef")}
@@ -1096,76 +1089,20 @@ export function EmergencyActiveWorkspaceView() {
           />
         ) : null}
 
-        <section aria-label={t("emergencyWorkspace.dashboardHeading")} style={{ marginBottom: 20 }}>
-          <h2
-            style={{
-              margin: "0 0 12px 0",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "#64748b",
-              letterSpacing: "0.02em",
-              textTransform: "uppercase",
-            }}
-          >
-            {t("emergencyWorkspace.dashboardHeading")}
-          </h2>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(10, minmax(0, 1fr))",
-              gap: 6,
-              width: "100%",
-            }}
-          >
-            {erDashboardTiles.map((q) => {
-              const selected = activeSection === q.id;
-              return (
-                <div
-                  key={q.id}
-                  style={{
-                    minWidth: 0,
-                    borderRadius: 16,
-                    outline: selected ? "2px solid #2563eb" : "1px solid transparent",
-                    outlineOffset: 0,
-                    transition: "outline-color 0.12s ease",
-                  }}
-                >
-                  <button
-                    type="button"
-                    disabled={q.disabled}
-                    aria-label={q.ariaLabel}
-                    aria-current={selected ? "true" : undefined}
-                    onClick={() => {
-                      if (!q.disabled) setActiveSection(q.id);
-                    }}
-                    style={{
-                      width: "100%",
-                      minWidth: 0,
-                      margin: 0,
-                      padding: 0,
-                      border: "none",
-                      background: "transparent",
-                      cursor: q.disabled ? "not-allowed" : "pointer",
-                      textAlign: "left",
-                      opacity: q.disabled ? 0.55 : 1,
-                    }}
-                  >
-                    <MedoraCard leftAccentColor={q.accent} variant="default">
-                      <MedoraCardInner>
-                        <MedoraCardIdentity initials={q.initials}>{null}</MedoraCardIdentity>
-                        <div className="mt-1 text-[10px] leading-none text-gray-500 text-center truncate">
-                          {DASHBOARD_LABELS[q.initials]}
-                        </div>
-                      </MedoraCardInner>
-                    </MedoraCard>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+        <EmergencyErWorkspaceSectionNav
+          tiles={erDashboardTiles}
+          activeSection={activeSection}
+          onSelect={setActiveSection}
+          layoutMode={layoutMode}
+          heading={t("emergencyWorkspace.dashboardHeading")}
+        />
 
-        <section aria-label={t("emergencyWorkspace.activeZoneAria")} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <section
+          aria-label={t("emergencyWorkspace.activeZoneAria")}
+          style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, width: "100%" }}
+          data-testid="emergency-active-workspace-content"
+          data-layout-mode={layoutMode}
+        >
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitle[activeSection]}</h2>
 
           {activeSection === "visitSummary" ? (

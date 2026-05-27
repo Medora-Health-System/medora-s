@@ -48,8 +48,9 @@ export function EmergencyWorkspaceVitalsCard({
           borderRadius: 10,
           border: "1px solid #e2e8f0",
           backgroundColor: "#fff",
-          minWidth: 200,
-          maxWidth: 280,
+          minWidth: 0,
+          flex: "1 1 160px",
+          maxWidth: "100%",
           boxSizing: "border-box",
         }}
       >
@@ -71,8 +72,9 @@ export function EmergencyWorkspaceVitalsCard({
     border: interactive ? "1px solid #bae6fd" : "1px solid #e2e8f0",
     backgroundColor: interactive ? "#f8fafc" : "#fff",
     boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-    minWidth: 200,
-    maxWidth: 280,
+    minWidth: 0,
+    flex: "1 1 160px",
+    maxWidth: "100%",
     boxSizing: "border-box",
     cursor: interactive ? "pointer" : "default",
   };
@@ -160,8 +162,9 @@ export function EmergencyWorkspaceAllergiesCard({
         borderRadius: 10,
         border: "1px solid #fecaca",
         backgroundColor: "#fef2f2",
-        minWidth: 140,
-        maxWidth: 220,
+        minWidth: 0,
+        flex: "1 1 140px",
+        maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "stretch",
       }}

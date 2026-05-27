@@ -63,8 +63,10 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(src).not.toContain("overflow-x-auto");
   });
 
-  it("documents active workspace gap: 10-column dashboard grid (update in 19M.4)", () => {
+  it("EmergencyActiveWorkspaceView implements responsive section nav (19M.4)", () => {
     const src = readWebSource("src/features/emergency/EmergencyActiveWorkspaceView.tsx");
-    expect(src).toContain('gridTemplateColumns: "repeat(10, minmax(0, 1fr))"');
+    expect(src).toContain("resolveEmergencyChartLayoutMode");
+    expect(src).toContain("EmergencyErWorkspaceSectionNav");
+    expect(src).not.toContain('gridTemplateColumns: "repeat(10, minmax(0, 1fr))"');
   });
 });

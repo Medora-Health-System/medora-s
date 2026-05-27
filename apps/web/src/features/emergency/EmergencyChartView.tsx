@@ -65,6 +65,14 @@ import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patien
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
+import { EmergencyChartSectionJumpNav, type EmergencyChartJumpSection } from "@/features/emergency/EmergencyChartSectionJumpNav";
+import {
+  emergencyChartContentStackStyle,
+  emergencyChartHeaderRailStyle,
+  emergencyChartPageShellStyle,
+  resolveEmergencyChartLayoutMode,
+  type EmergencyChartLayoutMode,
+} from "@/features/emergency/emergencyChartResponsiveLayout";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -190,6 +198,7 @@ export function EmergencyChartView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOperationalPanel, setShowOperationalPanel] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<EmergencyChartLayoutMode>("desktopSplit");
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
@@ -233,6 +242,16 @@ export function EmergencyChartView() {
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY") ||
     roles.includes("ADMIN");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEmergencyChartLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -396,6 +415,22 @@ export function EmergencyChartView() {
     [encounter, triageSnapshot, erCdsRecommendations]
   );
 
+  const chartJumpSections = useMemo(
+    (): EmergencyChartJumpSection[] => [
+      { targetId: "section-triage", label: t("emergencyWorkspace.triageCardTitle") },
+      { targetId: "section-synth", label: t("emergencyChartView.sectionSummary") },
+      { targetId: "section-results", label: t("emergencyWorkspace.sectionTitle.results") },
+      { targetId: "section-mar", label: t("emergencyChartView.sectionMarHeading") },
+      { targetId: "section-orders", label: t("emergencyChartView.sectionOrders") },
+      { targetId: "section-notes", label: t("emergencyWorkspace.sectionTitle.notes") },
+      { targetId: "section-nursing", label: t("emergencyChartView.sectionNursingCare") },
+      { targetId: "section-mse", label: t("emergencyChartView.sectionProviderEval") },
+      { targetId: "section-disp", label: t("emergencyWorkspace.sectionTitle.disposition") },
+      { targetId: "section-handoff", label: t("emergencyChartView.sectionTeamExecution") },
+    ],
+    [t]
+  );
+
   if (!rolesReady || !fid) {
     return (
       <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("common.loading")}</div>
@@ -451,7 +486,7 @@ export function EmergencyChartView() {
   const headerEsiLevel = esiLevelFromUnknown(clinicalStripModel.esi.trim());
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
+    <div style={emergencyChartPageShellStyle(layoutMode)}>
       <div style={{ width: "100%", maxWidth: "none", minWidth: 0, boxSizing: "border-box" }}>
         <header style={{ marginBottom: 20 }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
@@ -699,17 +734,7 @@ export function EmergencyChartView() {
                   ) : null}
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-end",
-                    gap: 8,
-                    flex: "0 1 auto",
-                    marginLeft: "auto",
-                    minWidth: 140,
-                  }}
-                >
+                <div style={emergencyChartHeaderRailStyle(layoutMode)}>
                   <div
                     role="button"
                     tabIndex={0}
@@ -789,7 +814,18 @@ export function EmergencyChartView() {
           />
         ) : null}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {layoutMode === "mobileStacked" ? (
+          <EmergencyChartSectionJumpNav
+            sections={chartJumpSections}
+            heading={t("emergencyWorkspace.dashboardHeading")}
+          />
+        ) : null}
+
+        <div
+          style={emergencyChartContentStackStyle()}
+          data-testid="emergency-chart-content-stack"
+          data-layout-mode={layoutMode}
+        >
           <section aria-labelledby="section-triage">
             <h2 id="section-triage" style={sectionTitle}>
               {t("emergencyWorkspace.triageCardTitle")}
