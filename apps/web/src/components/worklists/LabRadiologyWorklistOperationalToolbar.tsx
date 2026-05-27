@@ -3,26 +3,37 @@
 import React from "react";
 import type { LabRadWorklistSortMode } from "@medora/shared";
 import type { LabRadWorklistOperationalFilters } from "@/lib/worklistLabRadOperational";
+import {
+  ancillaryTouchControlStyle,
+  type AncillaryLayoutMode,
+} from "@/features/ancillary/ancillaryResponsiveLayout";
 
-const labelStyle: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  cursor: "pointer",
-  fontSize: 12,
-};
+const labelStyle = (mode: AncillaryLayoutMode): React.CSSProperties =>
+  ancillaryTouchControlStyle(
+    {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      cursor: "pointer",
+      fontSize: 12,
+      minHeight: mode === "desktopDense" ? undefined : 44,
+    },
+    mode
+  );
 
 export function LabRadiologyWorklistOperationalToolbar({
   filters,
   onFiltersChange,
   sortMode,
   onSortModeChange,
+  layoutMode = "desktopDense",
   t,
 }: {
   filters: LabRadWorklistOperationalFilters;
   onFiltersChange: (next: LabRadWorklistOperationalFilters) => void;
   sortMode: LabRadWorklistSortMode;
   onSortModeChange: (mode: LabRadWorklistSortMode) => void;
+  layoutMode?: AncillaryLayoutMode;
   t: (key: string) => string;
 }) {
   const set = (key: keyof LabRadWorklistOperationalFilters, value: boolean) => {
@@ -36,13 +47,18 @@ export function LabRadiologyWorklistOperationalToolbar({
         <select
           value={sortMode}
           onChange={(e) => onSortModeChange(e.target.value as LabRadWorklistSortMode)}
-          style={{
-            fontSize: 12,
-            padding: "6px 10px",
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-          }}
+          style={ancillaryTouchControlStyle(
+            {
+              fontSize: 12,
+              padding: "6px 10px",
+              borderRadius: 8,
+              border: "1px solid #cbd5e1",
+              background: "#fff",
+              width: layoutMode === "mobileCard" ? "100%" : undefined,
+              maxWidth: "100%",
+            },
+            layoutMode
+          )}
           aria-label={t("labRadEscalation.sortLabel")}
         >
           <option value="MOST_URGENT">{t("labRadEscalation.sortMostUrgent")}</option>
@@ -52,7 +68,7 @@ export function LabRadiologyWorklistOperationalToolbar({
         </select>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.needsEscalation}
@@ -60,7 +76,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterNeedsEscalation")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.criticalDelay}
@@ -68,7 +84,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterCriticalDelay")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.awaitingResultOrFinalization}
@@ -76,7 +92,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterAwaitingResult")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.awaitingAcknowledgement}
@@ -84,7 +100,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterAwaitingAck")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.shiftHandoffReview}
@@ -92,7 +108,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterShiftHandoff")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.adjustedReconciled}
@@ -100,7 +116,7 @@ export function LabRadiologyWorklistOperationalToolbar({
           />
           {t("labRadEscalation.filterAdjustedReconciled")}
         </label>
-        <label style={labelStyle}>
+        <label style={labelStyle(layoutMode)}>
           <input
             type="checkbox"
             checked={filters.needsReconciliation}

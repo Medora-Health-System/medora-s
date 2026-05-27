@@ -41,6 +41,16 @@ import {
   getPriorityBadgeSoft,
   getPriorityBorder,
 } from "@/components/medora-card";
+import {
+  ancillaryTouchControlStyle,
+  ancillaryWorklistFiltersRowStyle,
+  ancillaryWorklistPageInnerStyle,
+  ancillaryWorklistPageShellStyle,
+  ancillaryWorklistQueueListStyle,
+  ancillaryWorklistSearchInputStyle,
+  resolveAncillaryLayoutMode,
+  type AncillaryLayoutMode,
+} from "@/features/ancillary/ancillaryResponsiveLayout";
 
 function patientInitials(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
   const f = (p?.firstName ?? "").trim();
@@ -78,7 +88,7 @@ const searchInputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const btnGhost: React.CSSProperties = {
+const btnGhostBase: React.CSSProperties = {
   padding: "6px 12px",
   borderRadius: 8,
   border: "1px solid #cbd5e1",
@@ -87,9 +97,10 @@ const btnGhost: React.CSSProperties = {
   fontSize: 13,
   fontWeight: 500,
   color: "#334155",
+  textDecoration: "none",
 };
 
-const btnVoir: React.CSSProperties = {
+const btnVoirBase: React.CSSProperties = {
   display: "inline-flex",
   justifyContent: "center",
   padding: "8px 14px",
@@ -102,6 +113,14 @@ const btnVoir: React.CSSProperties = {
   textDecoration: "none",
   textAlign: "center",
 };
+
+function btnGhost(mode: AncillaryLayoutMode): React.CSSProperties {
+  return ancillaryTouchControlStyle(btnGhostBase, mode);
+}
+
+function btnVoir(mode: AncillaryLayoutMode): React.CSSProperties {
+  return ancillaryTouchControlStyle(btnVoirBase, mode);
+}
 
 const ACTIVE_WORKLIST_STATUSES = new Set(["PLACED", "ACKNOWLEDGED", "IN_PROGRESS", "PENDING"]);
 const COMPLETED_WORKLIST_STATUSES = new Set(["COMPLETED", "RESULTED", "VERIFIED"]);
@@ -192,6 +211,7 @@ export default function RadWorklistPage() {
   const [loading, setLoading] = useState(true);
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("MOST_URGENT");
   const [operationalFilters, setOperationalFilters] = useState<LabRadWorklistOperationalFilters>({
@@ -205,6 +225,16 @@ export default function RadWorklistPage() {
     shiftHandoffReview: false,
     adjustedReconciled: false,
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveAncillaryLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -390,11 +420,11 @@ export default function RadWorklistPage() {
     if (orderIsCancelled(order) || worklistItemIsTerminal(item.status)) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
-          <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
+          <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir(layoutMode)}>
             {t("common.view")}
           </Link>
           {encounterHref ? (
-            <Link href={encounterHref} style={btnGhost}>
+            <Link href={encounterHref} style={btnGhost(layoutMode)}>
               {t("worklistDepartments.shared.openEncounter")}
             </Link>
           ) : null}
@@ -405,26 +435,26 @@ export default function RadWorklistPage() {
       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
           {worklistItemNeedsAcknowledge(item.status) && (
-            <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost}>
+            <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost(layoutMode)}>
               {t("worklistDepartments.shared.acknowledge")}
             </button>
           )}
           {item.status === "ACKNOWLEDGED" && (
-            <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost}>
+            <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost(layoutMode)}>
               {t("worklistDepartments.shared.start")}
             </button>
           )}
           {item.status === "IN_PROGRESS" && (
-            <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost}>
+            <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost(layoutMode)}>
               {t("worklistDepartments.shared.complete")}
             </button>
           )}
         </div>
-        <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir}>
+        <Link href={`/app/rad-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir(layoutMode)}>
           {t("common.view")}
         </Link>
         {encounterHref ? (
-          <Link href={encounterHref} style={btnGhost}>
+          <Link href={encounterHref} style={btnGhost(layoutMode)}>
             {t("worklistDepartments.shared.openEncounter")}
           </Link>
         ) : null}
@@ -433,7 +463,7 @@ export default function RadWorklistPage() {
   };
 
   const renderQueueList = (pairs: { order: any; item: any }[]) => (
-    <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+    <ul style={ancillaryWorklistQueueListStyle(layoutMode)}>
       {pairs.map(({ order, item }) => {
         const patient = order.encounter?.patient;
         const pc = String(order.priority ?? "ROUTINE");
@@ -441,7 +471,7 @@ export default function RadWorklistPage() {
         const borderLeft = getPriorityBorder(pc);
         const operational = operationalByItemId.get(item.id);
         return (
-          <li key={item.id}>
+          <li key={item.id} style={{ minWidth: 0 }}>
             <MedoraCard
               className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
               leftAccentColor={borderLeft}
@@ -520,8 +550,12 @@ export default function RadWorklistPage() {
   );
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 24px 0" }}>
-      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+    <div
+      style={ancillaryWorklistPageShellStyle()}
+      data-testid="rad-worklist-layout"
+      data-layout-mode={layoutMode}
+    >
+      <div style={{ ...ancillaryWorklistPageInnerStyle(), padding: "0 16px" }}>
         <header style={{ marginBottom: 20 }}>
           <h1
             style={{
@@ -541,21 +575,22 @@ export default function RadWorklistPage() {
         {!loading && (queue.length > 0 || pendingLocal.length > 0) ? (
           <>
             <LabRadiologyWorklistSummaryStrip summary={operationalSummary} t={t} />
-            <div style={{ marginBottom: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("worklistDepartments.shared.searchPlaceholderRad")}
-                autoComplete="off"
-                aria-label={t("worklistDepartments.shared.searchAria")}
-                style={searchInputStyle}
-              />
+            <div style={ancillaryWorklistFiltersRowStyle(layoutMode)}>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("worklistDepartments.shared.searchPlaceholderRad")}
+              autoComplete="off"
+              aria-label={t("worklistDepartments.shared.searchAria")}
+              style={ancillaryWorklistSearchInputStyle()}
+            />
               <LabRadiologyWorklistOperationalToolbar
                 filters={operationalFilters}
                 onFiltersChange={setOperationalFilters}
                 sortMode={sortMode}
                 onSortModeChange={setSortMode}
+                layoutMode={layoutMode}
                 t={t}
               />
             </div>
@@ -672,13 +707,13 @@ export default function RadWorklistPage() {
                   {t("worklistDepartments.shared.syncPendingDescription")}
                 </p>
                 {filteredPendingLocal.length > 0 ? (
-                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                <ul style={ancillaryWorklistQueueListStyle(layoutMode)}>
                   {filteredPendingLocal.map((row) => {
                     const pc = String(row.priority ?? "ROUTINE");
                     const pSoft = getPriorityBadgeSoft(pc);
                     const borderLeft = getPriorityBorder(pc);
                     return (
-                      <li key={row.queueItemId}>
+                      <li key={row.queueItemId} style={{ minWidth: 0 }}>
                         <MedoraCard
                           className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
                           leftAccentColor={borderLeft}
@@ -699,7 +734,7 @@ export default function RadWorklistPage() {
                             </div>
                             <MedoraCardActions railBorderTopColor="#fde68a">
                               <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
-                              <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={btnVoir}>
+                              <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={btnVoir(layoutMode)}>
                                 {t("worklistDepartments.shared.visitLink")}
                               </Link>
                             </MedoraCardActions>

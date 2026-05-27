@@ -59,11 +59,12 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     );
   });
 
-  it("documents pharmacy worklist gap: wide table without overflow wrapper (update in 19M.7)", () => {
+  it("pharmacy worklist implements responsive MedoraCard layout (19M.7)", () => {
     const src = readWebSource("app/app/pharmacy-worklist/page.tsx");
-    expect(src).toContain("<table");
-    expect(src).not.toContain("overflowX");
-    expect(src).not.toContain("overflow-x-auto");
+    expect(src).toContain("resolveAncillaryLayoutMode");
+    expect(src).toContain('data-testid="pharmacy-worklist-layout"');
+    expect(src).toContain("MedoraCard");
+    expect(src).not.toContain("<table");
   });
 
   it("EmergencyTrackboardView implements responsive patient cards (19M.3)", () => {
@@ -71,6 +72,11 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(src).toContain("resolveErTrackboardLayoutMode");
     expect(src).toContain("stackedLayout={stackedCardLayout}");
     expect(src).toContain('data-testid="emergency-trackboard-layout"');
+  });
+
+  it("lab and radiology worklists use responsive layout hooks (19M.7)", () => {
+    expect(readWebSource("app/app/lab-worklist/page.tsx")).toContain('data-testid="lab-worklist-layout"');
+    expect(readWebSource("app/app/rad-worklist/page.tsx")).toContain('data-testid="rad-worklist-layout"');
   });
 
   it("EmergencyActiveWorkspaceView implements responsive section nav (19M.4)", () => {

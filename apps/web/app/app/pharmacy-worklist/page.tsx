@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -22,18 +22,57 @@ import { useI18n } from "@/lib/i18n";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
+import { DISPLAY_DASH } from "@/lib/patientDisplay";
+import {
+  ancillaryTouchControlStyle,
+  ancillaryWorklistActionRowStyle,
+  ancillaryWorklistActionStackStyle,
+  ancillaryWorklistPageInnerStyle,
+  ancillaryWorklistPageShellStyle,
+  ancillaryWorklistQueueListStyle,
+  resolveAncillaryLayoutMode,
+  type AncillaryLayoutMode,
+} from "@/features/ancillary/ancillaryResponsiveLayout";
+import {
+  MedoraCard,
+  MedoraCardActions,
+  MedoraCardActionsMediaStyle,
+  MedoraCardBadge,
+  MedoraCardBadgeRow,
+  MedoraCardIdentity,
+  MedoraCardInner,
+  MedoraCardMetaLines,
+  MedoraCardTitle,
+  getPriorityBadgeSoft,
+  getPriorityBorder,
+} from "@/components/medora-card";
 
 function isAlreadyDispensed(item: { pharmacyDispenseRecord?: unknown | null }) {
   return !!item.pharmacyDispenseRecord;
 }
 
-function PendingEncounterPatientCells({
+function patientInitials(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
+  const f = (p?.firstName ?? "").trim();
+  const l = (p?.lastName ?? "").trim();
+  const a = f.charAt(0) || "";
+  const b = l.charAt(0) || f.charAt(1) || "";
+  return (a + b).toUpperCase() || "?";
+}
+
+function fullPatientName(p: { firstName?: string | null; lastName?: string | null } | null | undefined): string {
+  return `${(p?.firstName ?? "").trim()} ${(p?.lastName ?? "").trim()}`.trim() || DISPLAY_DASH;
+}
+
+function PendingEncounterPatientBlock({
   facilityId,
   encounterId,
+  children,
 }: {
   facilityId: string;
   encounterId: string;
+  children?: React.ReactNode;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState("…");
   const [mrn, setMrn] = useState("—");
   useEffect(() => {
@@ -42,13 +81,82 @@ function PendingEncounterPatientCells({
       setMrn(p.mrn);
     });
   }, [facilityId, encounterId]);
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
   return (
-    <>
-      <td style={{ padding: 12 }}>{name}</td>
-      <td style={{ padding: 12 }}>{mrn}</td>
-    </>
+    <div style={{ display: "flex", gap: 16, minWidth: 0, flex: 1 }}>
+      <div
+        aria-hidden
+        style={{
+          flexShrink: 0,
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          backgroundColor: "#f1f5f9",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#334155",
+          border: "1px solid #e2e8f0",
+        }}
+      >
+        {initials}
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a", lineHeight: 1.25, wordBreak: "break-word" }}>
+          {name}
+        </h2>
+        <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>
+          <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span> {mrn}
+        </p>
+        {children}
+      </div>
+    </div>
   );
 }
+
+const btnGhost = (mode: AncillaryLayoutMode): React.CSSProperties =>
+  ancillaryTouchControlStyle(
+    {
+      padding: "6px 12px",
+      borderRadius: 8,
+      border: "1px solid #cbd5e1",
+      backgroundColor: "#fff",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 500,
+      color: "#334155",
+      textDecoration: "none",
+    },
+    mode
+  );
+
+const btnPrimary = (mode: AncillaryLayoutMode): React.CSSProperties =>
+  ancillaryTouchControlStyle(
+    {
+      display: "inline-flex",
+      justifyContent: "center",
+      padding: "8px 14px",
+      borderRadius: 10,
+      border: "1px solid #0f172a",
+      backgroundColor: "#0f172a",
+      color: "#fff",
+      fontSize: 13,
+      fontWeight: 600,
+      textDecoration: "none",
+      textAlign: "center",
+      cursor: "pointer",
+    },
+    mode
+  );
 
 export default function PharmacyWorklistPage() {
   const { language, t } = useI18n();
@@ -57,6 +165,7 @@ export default function PharmacyWorklistPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
   const [recordModal, setRecordModal] = useState<{
     orderItemId: string;
     medicationLine: string;
@@ -69,8 +178,17 @@ export default function PharmacyWorklistPage() {
   const [recordInstr, setRecordInstr] = useState("");
   const [recordNotes, setRecordNotes] = useState("");
   const [recordSubmitting, setRecordSubmitting] = useState(false);
-  /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveAncillaryLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -102,6 +220,14 @@ export default function PharmacyWorklistPage() {
     setPendingLocal(pendingRows);
     setLoading(false);
   };
+
+  const queuePairs = useMemo(
+    () =>
+      (Array.isArray(queue) ? queue : []).flatMap((order) =>
+        (Array.isArray(order.items) ? order.items : []).map((item: any) => ({ order, item }))
+      ),
+    [queue]
+  );
 
   const handleAcknowledge = async (itemId: string) => {
     if (!facilityId) return;
@@ -231,243 +357,298 @@ export default function PharmacyWorklistPage() {
     }
   };
 
-  return (
-    <div>
-      <h1>{t("pharmacyWorklistPage.title")}</h1>
-      <p>{t("pharmacyWorklistPage.subtitle")}</p>
-      {queuedActionNotice ? (
-        <div
-          role="alert"
-          style={{
-            marginTop: 12,
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #ef9a9a",
-            backgroundColor: "#ffebee",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#b71c1c",
-            lineHeight: 1.45,
-            maxWidth: 720,
-          }}
+  const renderActions = (order: any, item: any) => {
+    const detailTitle = `${medicationLabel(item)} · ${order.prescriberName || ""}`;
+    if (orderIsCancelled(order)) {
+      return (
+        <div style={ancillaryWorklistActionStackStyle()}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#b71c1c", lineHeight: 1.45 }}>
+            {t("pharmacyWorklistPage.orderCancelledNoAction")}
+          </p>
+          <Link
+            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+            style={btnPrimary(layoutMode)}
+            title={detailTitle}
+          >
+            {t("pharmacyWorklistPage.viewDetail")}
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div style={ancillaryWorklistActionStackStyle()}>
+        <div style={ancillaryWorklistActionRowStyle()}>
+          {(item.status === "PLACED" || item.status === "SIGNED") && (
+            <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost(layoutMode)}>
+              {t("pharmacyWorklistPage.acknowledge")}
+            </button>
+          )}
+          {item.status === "ACKNOWLEDGED" && (
+            <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost(layoutMode)}>
+              {t("pharmacyWorklistPage.start")}
+            </button>
+          )}
+          {item.status === "IN_PROGRESS" && (
+            <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost(layoutMode)}>
+              {t("pharmacyWorklistPage.complete")}
+            </button>
+          )}
+        </div>
+        <Link
+          href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
+          style={btnPrimary(layoutMode)}
+          title={detailTitle}
         >
-          {queuedActionNotice}
-        </div>
-      ) : null}
-      {loading && queue.length === 0 && pendingLocal.length === 0 ? (
-        <p>{t("pharmacyWorklistPage.loading")}</p>
-      ) : queue.length === 0 && pendingLocal.length === 0 ? (
-        <div style={{ marginTop: 24, padding: 16, backgroundColor: "white", borderRadius: 4 }}>
-          <p>{t("pharmacyWorklistPage.loadEmpty")}</p>
-        </div>
-      ) : (
-        <div style={{ marginTop: 24 }}>
-          {queue.length > 0 ? (
-          <table style={{ width: "100%", borderCollapse: "collapse", backgroundColor: "white" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #ddd" }}>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPatient")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colId")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colMedication")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStrength")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colQuantity")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colRefills")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDirections")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPrescriber")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colContact")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDate")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPriority")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStatus")}</th>
-                <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colActions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(Array.isArray(queue) ? queue : []).map((order) =>
-                (Array.isArray(order.items) ? order.items : []).map((item: any) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: 12 }}>
-                      {order.encounter?.patient?.firstName} {order.encounter?.patient?.lastName}
-                    </td>
-                    <td style={{ padding: 12 }}>{order.encounter?.patient?.mrn ?? "—"}</td>
-                    <td style={{ padding: 12 }}>
-                      <div>{medicationLabel(item)}</div>
-                      {medicationRoute(item) ? (
-                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
-                          {t("pharmacyWorklistPage.recordLineRoute")}: {medicationRoute(item)}
-                        </div>
-                      ) : null}
-                      {highRiskMedicationWarning(item, t) ? (
-                        <div style={{ fontSize: 12, color: "#b45309", marginTop: 4 }}>
-                          {highRiskMedicationWarning(item, t)}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={{ padding: 12 }}>{item.strength ?? item.catalogMedication?.strength ?? "—"}</td>
-                    <td style={{ padding: 12 }}>{item.quantity ?? "—"}</td>
-                    <td style={{ padding: 12 }}>{item.refillCount ?? 0}</td>
-                    <td style={{ padding: 12 }}>{(item.notes as string) || "—"}</td>
-                    <td style={{ padding: 12 }}>
-                      <div>{(order.prescriberName as string) || "—"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
-                        {formatOrderAuthority(order, t)}
-                      </div>
-                      {formatOrderAttributionLines(order, t, language).map((line) => (
-                        <div key={line} style={{ fontSize: 12, color: "#64748b", marginTop: 4, overflowWrap: "anywhere" }}>
-                          {line}
-                        </div>
-                      ))}
-                    </td>
-                    <td style={{ padding: 12 }}>{(order.prescriberContact as string) || "—"}</td>
-                    <td style={{ padding: 12 }}>
-                      {order.createdAt ? formatEncounterChromeDateTime(order.createdAt, language) : t("common.dash")}
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      {tOrderPriority(t, order.priority)}
-                      {order.pathwaySession && (
-                        <span
-                          style={{
-                            marginLeft: 8,
-                            padding: "2px 6px",
-                            backgroundColor: "#e3f2fd",
-                            color: "#1976d2",
-                            borderRadius: 3,
-                            fontSize: 11,
-                          }}
-                        >
-                          {tPathwayType(t, order.pathwaySession.type)}
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      {orderIsCancelled(order) ? (
-                        <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>{t("pharmacyWorklistPage.orderCancelled")}</span>
-                      ) : (
-                        tOrderItemStatusForWorklist(t, item.status)
-                      )}
-                    </td>
-                    <td style={{ padding: 12 }}>
-                      {orderIsCancelled(order) ? (
-                        <div>
-                          <p style={{ margin: "0 0 8px 0", fontSize: 13, fontWeight: 600, color: "#b71c1c", lineHeight: 1.45 }}>
-                            {t("pharmacyWorklistPage.orderCancelledNoAction")}
-                          </p>
-                          <Link
-                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
-                            style={{ fontSize: 13 }}
-                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
-                          >
-                            {t("pharmacyWorklistPage.viewDetail")}
-                          </Link>
-                        </div>
-                      ) : (
-                        <>
-                          <Link
-                            href={`/app/pharmacy-worklist/commande/${order.id}?ligne=${item.id}`}
-                            style={{ marginRight: 8, fontSize: 13 }}
-                            title={`${medicationLabel(item)} · ${order.prescriberName || ""}`}
-                          >
-                            {t("pharmacyWorklistPage.viewDetail")}
-                          </Link>
-                          {!isAlreadyDispensed(item) ? (
-                            <button
-                              type="button"
-                              onClick={() => openRecordModal(order, item)}
-                              style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                            >
-                              {t("pharmacyWorklistPage.recordDispense")}
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => handlePrintRx(order)}
-                            style={{ marginRight: 8, padding: "4px 8px", fontSize: 13, cursor: "pointer" }}
-                          >
-                            {t("pharmacyWorklistPage.print")}
-                          </button>
-                          {(item.status === "PLACED" || item.status === "SIGNED") && (
-                            <button
-                              onClick={() => handleAcknowledge(item.id)}
-                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                            >
-                              {t("pharmacyWorklistPage.acknowledge")}
-                            </button>
-                          )}
-                          {item.status === "ACKNOWLEDGED" && (
-                            <button
-                              onClick={() => handleStart(item.id)}
-                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                            >
-                              {t("pharmacyWorklistPage.start")}
-                            </button>
-                          )}
-                          {item.status === "IN_PROGRESS" && (
-                            <button
-                              onClick={() => handleComplete(item.id)}
-                              style={{ marginRight: 8, padding: "4px 8px", cursor: "pointer" }}
-                            >
-                              {t("pharmacyWorklistPage.complete")}
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          ) : null}
-          {pendingLocal.length > 0 ? (
-            <div style={{ marginTop: queue.length > 0 ? 28 : 0 }}>
-              <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("pharmacyWorklistPage.pendingSyncTitle")}</h2>
-              <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>{t("pharmacyWorklistPage.pendingSyncBody")}</p>
-              <table
+          {t("pharmacyWorklistPage.viewDetail")}
+        </Link>
+        {!isAlreadyDispensed(item) ? (
+          <button type="button" onClick={() => openRecordModal(order, item)} style={btnGhost(layoutMode)}>
+            {t("pharmacyWorklistPage.recordDispense")}
+          </button>
+        ) : null}
+        <button type="button" onClick={() => handlePrintRx(order)} style={btnGhost(layoutMode)}>
+          {t("pharmacyWorklistPage.print")}
+        </button>
+      </div>
+    );
+  };
+
+  const renderQueueList = (pairs: { order: any; item: any }[]) => (
+    <ul style={ancillaryWorklistQueueListStyle(layoutMode)}>
+      {pairs.map(({ order, item }) => {
+        const patient = order.encounter?.patient;
+        const pc = String(order.priority ?? "ROUTINE");
+        const pSoft = getPriorityBadgeSoft(pc);
+        const borderLeft = getPriorityBorder(pc);
+        const hrWarning = highRiskMedicationWarning(item, t);
+        const strength = item.strength ?? item.catalogMedication?.strength ?? t("common.dash");
+        const qty = item.quantity ?? t("common.dash");
+        const refills = item.refillCount ?? 0;
+        const directions = (item.notes as string) || t("common.dash");
+        const prescriber = (order.prescriberName as string) || t("common.dash");
+        const contact = (order.prescriberContact as string) || t("common.dash");
+        const orderedAt = order.createdAt ? formatEncounterChromeDateTime(order.createdAt, language) : t("common.dash");
+
+        return (
+          <li key={item.id} style={{ minWidth: 0 }}>
+            <MedoraCard
+              className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
+              leftAccentColor={borderLeft}
+              variant="default"
+            >
+              <MedoraCardInner>
+                <MedoraCardIdentity initials={patientInitials(patient)}>
+                  <MedoraCardTitle
+                    title={fullPatientName(patient)}
+                    subline={
+                      <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("common.nir")}</span>{" "}
+                        {(patient?.mrn ?? "").trim() || t("common.dash")}
+                      </p>
+                    }
+                  />
+                  <MedoraCardBadgeRow>
+                    <MedoraCardBadge preset="neutral">
+                      {t("pharmacyWorklistPage.colMedication")} · {medicationLabel(item)}
+                    </MedoraCardBadge>
+                    {orderIsCancelled(order) ? (
+                      <span style={WORKLIST_ORDER_CANCELLED_BADGE_STYLE}>{t("pharmacyWorklistPage.orderCancelled")}</span>
+                    ) : (
+                      <MedoraCardBadge preset="neutral">{tOrderItemStatusForWorklist(t, item.status)}</MedoraCardBadge>
+                    )}
+                    {order.pathwaySession ? (
+                      <MedoraCardBadge preset="pathway">{tPathwayType(t, order.pathwaySession.type)}</MedoraCardBadge>
+                    ) : null}
+                  </MedoraCardBadgeRow>
+                  <MedoraCardMetaLines>
+                    {medicationRoute(item) ? (
+                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                        <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.recordLineRoute")}</span>{" "}
+                        {medicationRoute(item)}
+                      </p>
+                    ) : null}
+                    {hrWarning ? (
+                      <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#b45309", fontWeight: 600, overflowWrap: "anywhere" }}>
+                        {hrWarning}
+                      </p>
+                    ) : null}
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colStrength")}</span> {strength}
+                      {" · "}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colQuantity")}</span> {qty}
+                      {" · "}
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colRefills")}</span> {refills}
+                    </p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colDirections")}</span> {directions}
+                    </p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colPrescriber")}</span> {prescriber}
+                    </p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      {formatOrderAuthority(order, t)}
+                    </p>
+                    {formatOrderAttributionLines(order, t, language).map((line) => (
+                      <p key={line} style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                        {line}
+                      </p>
+                    ))}
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b", overflowWrap: "anywhere" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colContact")}</span> {contact}
+                    </p>
+                    <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                      <span style={{ fontWeight: 600, color: "#475569" }}>{t("pharmacyWorklistPage.colDate")}</span> {orderedAt}
+                    </p>
+                  </MedoraCardMetaLines>
+                </MedoraCardIdentity>
+
+                <MedoraCardActions railBorderTopColor="#f1f5f9">
+                  <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
+                  {renderActions(order, item)}
+                </MedoraCardActions>
+              </MedoraCardInner>
+            </MedoraCard>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  return (
+    <div style={ancillaryWorklistPageShellStyle()} data-testid="pharmacy-worklist-layout" data-layout-mode={layoutMode}>
+      <div style={ancillaryWorklistPageInnerStyle()}>
+        <header style={{ marginBottom: 20, paddingTop: 12 }}>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
+              fontWeight: 600,
+              color: "#0f172a",
+            }}
+          >
+            {t("pharmacyWorklistPage.title")}
+          </h1>
+          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", maxWidth: 720, lineHeight: 1.55 }}>
+            {t("pharmacyWorklistPage.subtitle")}
+          </p>
+        </header>
+
+        {queuedActionNotice ? (
+          <div
+            role="alert"
+            style={{
+              marginTop: 12,
+              padding: "10px 14px",
+              borderRadius: 12,
+              border: "1px solid #ef9a9a",
+              backgroundColor: "#ffebee",
+              fontSize: 13,
+              fontWeight: 600,
+              color: "#b71c1c",
+              lineHeight: 1.45,
+              maxWidth: 720,
+            }}
+          >
+            {queuedActionNotice}
+          </div>
+        ) : null}
+
+        {loading && queue.length === 0 && pendingLocal.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
                 style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  backgroundColor: "#fff8e1",
-                  border: "1px solid #ffe082",
-                  borderRadius: 8,
+                  borderRadius: 16,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  padding: 16,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
                 }}
               >
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #ddd" }}>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPatient")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colId")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colMedication")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colDate")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colPriority")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colStatus")}</th>
-                    <th style={{ padding: 12, textAlign: "left" }}>{t("pharmacyWorklistPage.colActions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendingLocal.map((row) => (
-                    <tr key={row.queueItemId} style={{ borderBottom: "1px solid #eee" }}>
-                      <PendingEncounterPatientCells facilityId={row.facilityId} encounterId={row.encounterId} />
-                      <td style={{ padding: 12 }}>
-                        {row.itemLabels.filter(Boolean).join(", ") || "—"}
-                      </td>
-                      <td style={{ padding: 12 }}>
-                        {formatEncounterChromeDateTime(row.createdAt, language)}
-                      </td>
-                      <td style={{ padding: 12 }}>{tOrderPriority(t, row.priority)}</td>
-                      <td style={{ padding: 12 }}>{t("pharmacyWorklistPage.pendingSyncStatus")}</td>
-                      <td style={{ padding: 12 }}>
-                        <Link href={`/app/encounters/${row.encounterId}?tab=orders`} style={{ fontSize: 13 }}>
-                          {t("pharmacyWorklistPage.linkEncounter")}
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </div>
-      )}
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundColor: "#f1f5f9" }} />
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ height: 16, width: "45%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                    <div style={{ height: 12, width: "30%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                    <div style={{ height: 12, width: "75%", borderRadius: 4, backgroundColor: "#f1f5f9" }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : queue.length === 0 && pendingLocal.length === 0 ? (
+          <div
+            style={{
+              marginTop: 24,
+              borderRadius: 16,
+              border: "1px dashed #cbd5e1",
+              backgroundColor: "rgba(255,255,255,0.9)",
+              padding: "48px 24px",
+              textAlign: "center",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+            }}
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>{t("pharmacyWorklistPage.loadEmpty")}</p>
+          </div>
+        ) : (
+          <div style={{ marginTop: 24 }}>
+            {queuePairs.length > 0 ? renderQueueList(queuePairs) : null}
 
-      {recordModal && (
+            {pendingLocal.length > 0 ? (
+              <div style={{ marginTop: queuePairs.length > 0 ? 32 : 0 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: "#0f172a" }}>
+                  {t("pharmacyWorklistPage.pendingSyncTitle")}
+                </h2>
+                <p style={{ fontSize: 13, color: "#856404", marginBottom: 12 }}>{t("pharmacyWorklistPage.pendingSyncBody")}</p>
+                <ul style={ancillaryWorklistQueueListStyle(layoutMode)}>
+                  {pendingLocal.map((row) => {
+                    const pc = String(row.priority ?? "ROUTINE");
+                    const pSoft = getPriorityBadgeSoft(pc);
+                    const borderLeft = getPriorityBorder(pc);
+                    return (
+                      <li key={row.queueItemId} style={{ minWidth: 0 }}>
+                        <MedoraCard
+                          className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
+                          leftAccentColor={borderLeft}
+                          variant="pendingSync"
+                        >
+                          <MedoraCardInner>
+                            <PendingEncounterPatientBlock facilityId={row.facilityId} encounterId={row.encounterId}>
+                              <MedoraCardBadgeRow>
+                                <MedoraCardBadge preset="neutral">
+                                  {row.itemLabels.filter(Boolean).join(", ") || t("common.dash")}
+                                </MedoraCardBadge>
+                                <MedoraCardBadge preset="neutral">{t("pharmacyWorklistPage.pendingSyncStatus")}</MedoraCardBadge>
+                              </MedoraCardBadgeRow>
+                              <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                                {formatEncounterChromeDateTime(row.createdAt, language)}
+                              </p>
+                            </PendingEncounterPatientBlock>
+                            <MedoraCardActions railBorderTopColor="#fde68a">
+                              <MedoraCardBadge soft={pSoft}>{tOrderPriority(t, pc)}</MedoraCardBadge>
+                              <Link
+                                href={`/app/encounters/${row.encounterId}?tab=orders`}
+                                style={btnPrimary(layoutMode)}
+                              >
+                                {t("pharmacyWorklistPage.linkEncounter")}
+                              </Link>
+                            </MedoraCardActions>
+                          </MedoraCardInner>
+                        </MedoraCard>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        <MedoraCardActionsMediaStyle />
+      </div>
+
+      {recordModal ? (
         <div
           style={{
             position: "fixed",
@@ -486,6 +667,7 @@ export default function PharmacyWorklistPage() {
             style={{ background: "#fff", borderRadius: 8, padding: 24, maxWidth: 480, width: "100%" }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
+            aria-modal="true"
           >
             <h2 style={{ marginTop: 0, fontSize: 18 }}>{t("pharmacyWorklistPage.modalTitle")}</h2>
             <p style={{ fontSize: 14, color: "#333" }}>{recordModal.medicationLine}</p>
@@ -498,9 +680,7 @@ export default function PharmacyWorklistPage() {
               </p>
             ) : null}
             {recordModal.authorityLine ? (
-              <p style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>
-                {recordModal.authorityLine}
-              </p>
+              <p style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere" }}>{recordModal.authorityLine}</p>
             ) : null}
             {recordModal.attributionLines?.map((line) => (
               <p key={line} style={{ fontSize: 13, color: "#64748b", overflowWrap: "anywhere", margin: "4px 0" }}>
@@ -535,23 +715,27 @@ export default function PharmacyWorklistPage() {
                 style={{ display: "block", marginTop: 4, padding: 8, width: "100%", boxSizing: "border-box" }}
               />
             </label>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
-              <button type="button" disabled={recordSubmitting} onClick={() => setRecordModal(null)}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                disabled={recordSubmitting}
+                onClick={() => setRecordModal(null)}
+                style={btnGhost(layoutMode)}
+              >
                 {t("pharmacyWorklistPage.modalCancel")}
               </button>
               <button
                 type="button"
                 disabled={recordSubmitting}
                 onClick={() => void submitRecordDispense()}
-                style={{ fontWeight: 600 }}
+                style={ancillaryTouchControlStyle({ ...btnPrimary(layoutMode), fontWeight: 600 }, layoutMode)}
               >
                 {recordSubmitting ? t("pharmacyWorklistPage.modalSubmitting") : t("pharmacyWorklistPage.modalSubmit")}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
-
