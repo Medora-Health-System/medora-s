@@ -36,7 +36,14 @@ describe("triageCarryForward UI wiring (19T.1)", () => {
     expect(readWebSource("src/features/emergency/emergencyTriageVitalsMerge.ts")).toContain(
       "attachTriageCarryForwardMetaToVitalsJson"
     );
-    expect(panel).toContain("mergeVitalsJsonForSave(triage?.vitalsJson, formData, carryForwardMeta)");
+    expect(panel).toContain("normalizeCarryForwardMetaFromForm(carryForwardMeta, formData)");
+  });
+
+  it("supports per-section confirm and clear actions (19T.2)", () => {
+    expect(panel).toContain("handleConfirmCarryForwardSection");
+    expect(panel).toContain("handleClearCarryForwardSection");
+    expect(sections).toContain("TriageCarryForwardSectionToolbar");
+    expect(readWebSource("src/features/emergency/TriageCarryForwardBanner.tsx")).toContain("confirmAll");
   });
 
   it("includes carry-forward summary in visit summary model", () => {
@@ -50,12 +57,15 @@ describe("triageCarryForward UI wiring (19T.1)", () => {
   });
 });
 
-describe("triageCarryForward French i18n (19T.1)", () => {
+describe("triageCarryForward French i18n (19T.1 / 19T.2)", () => {
   const fr = readWebSource("src/i18n/messages/erTriage.fr.ts");
 
   it("uses French carry-forward copy", () => {
     expect(fr).toContain("Antécédents repris de la visite UE antérieure");
-    expect(fr).toContain("Marquer comme revu / confirmé");
+    expect(fr).toContain("Confirmer tout l'historique repris");
     expect(fr).toContain("En attente de revue");
+    expect(fr).toContain("Antécédent source datant de plus de 6 mois");
+    expect(fr).toContain("Antécédent source datant de plus de 12 mois");
+    expect(fr).toContain("Reprise — en attente de revue");
   });
 });

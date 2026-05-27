@@ -5,6 +5,7 @@ import {
   emptyTriageCarryForwardDraft,
   extractCarryForwardTriageHistory,
   mergeCarryForwardIntoNewTriage,
+  normalizeTriageCarryForwardMeta,
   TRIAGE_CARRY_FORWARD_VERSION,
   type TriageCarryForwardHistoryFields,
   type TriageCarryForwardMeta,
@@ -95,6 +96,8 @@ export class TriageCarryForwardService {
       return { available: false };
     }
 
+    const normalizedMeta = normalizeTriageCarryForwardMeta(meta, draft);
+
     await this.audit.log(AuditAction.ENCOUNTER_VIEW, "TriageCarryForward", {
       facilityId,
       userId,
@@ -104,7 +107,7 @@ export class TriageCarryForwardService {
       metadata: buildTriageCarryForwardAuditMetadata({
         patientId: encounter.patientId,
         encounterId,
-        meta,
+        meta: normalizedMeta,
         actorId: userId,
         timestamp: carriedForwardAt,
       }),
@@ -112,7 +115,7 @@ export class TriageCarryForwardService {
 
     return {
       available: true,
-      meta,
+      meta: normalizedMeta,
       allergyNote: draft.allergyNote || extraction.allergyNote,
       fields: draft.erV1,
       mergedFieldKeys,

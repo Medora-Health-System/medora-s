@@ -35,10 +35,14 @@ import {
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
 import { TriageCarryForwardBanner } from "./TriageCarryForwardBanner";
 import {
+  clearCarryForwardSectionFromForm,
+  confirmCarryForwardSectionFromForm,
   mergeCarryForwardApiPayloadIntoTriageForm,
+  normalizeCarryForwardMetaFromForm,
   refreshCarryForwardReviewStatusFromForm,
   triageCarryForwardMetaFromVitalsJson,
   type TriageCarryForwardMeta,
+  type TriageCarryForwardSectionKey,
 } from "./triageCarryForward";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { isTriageStaleConflictError } from "./triageConcurrency";
@@ -402,7 +406,9 @@ export function EmergencyTriagePanel({
         };
         serverFormSignatureRef.current = triageFormSignature(nextForm);
         setFormData(nextForm);
-        setCarryForwardMeta(triageCarryForwardMetaFromVitalsJson(d.vitalsJson));
+        setCarryForwardMeta(
+          normalizeCarryForwardMetaFromForm(triageCarryForwardMetaFromVitalsJson(d.vitalsJson), nextForm)
+        );
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
         if (typeof window !== "undefined" && restoredDraftKeyRef.current !== draftKey) {
@@ -479,16 +485,38 @@ export function EmergencyTriagePanel({
   useEffect(() => {
     if (!carryForwardMeta) return;
     const next = refreshCarryForwardReviewStatusFromForm(carryForwardMeta, formData);
-    if (next && next.reviewStatus !== carryForwardMeta.reviewStatus) {
-      setCarryForwardMeta(next);
-    }
+    if (!next) return;
+    const prevSig = JSON.stringify({
+      rs: carryForwardMeta.reviewStatus,
+      ss: carryForwardMeta.sectionStatus,
+    });
+    const nextSig = JSON.stringify({ rs: next.reviewStatus, ss: next.sectionStatus });
+    if (prevSig !== nextSig) setCarryForwardMeta(next);
   }, [formData, carryForwardMeta]);
 
-  const handleMarkCarryForwardReviewed = useCallback(() => {
+  const handleConfirmAllCarryForward = useCallback(() => {
     setCarryForwardMeta((meta) =>
       meta ? refreshCarryForwardReviewStatusFromForm(meta, formData, { markReviewed: true }) : meta
     );
   }, [formData]);
+
+  const handleConfirmCarryForwardSection = useCallback(
+    (section: TriageCarryForwardSectionKey) => {
+      if (!carryForwardMeta) return;
+      setCarryForwardMeta(confirmCarryForwardSectionFromForm(carryForwardMeta, formData, section));
+    },
+    [carryForwardMeta, formData]
+  );
+
+  const handleClearCarryForwardSection = useCallback(
+    (section: TriageCarryForwardSectionKey) => {
+      if (!carryForwardMeta) return;
+      const { form, meta } = clearCarryForwardSectionFromForm(carryForwardMeta, formData, section);
+      setFormData((f) => ({ ...f, ...form }));
+      setCarryForwardMeta(meta);
+    },
+    [carryForwardMeta, formData]
+  );
 
   useEffect(() => {
     void loadTriage();
@@ -506,7 +534,11 @@ export function EmergencyTriagePanel({
     const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
 
     try {
-      const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, formData, carryForwardMeta);
+      const vitalsMerged = mergeVitalsJsonForSave(
+        triage?.vitalsJson,
+        formData,
+        normalizeCarryForwardMetaFromForm(carryForwardMeta, formData)
+      );
 
       const lastKnownTriageUpdatedAt =
         triage?.updatedAt && typeof triage.updatedAt === "string"
@@ -799,7 +831,7 @@ export function EmergencyTriagePanel({
             <TriageCarryForwardBanner
               meta={carryForwardMeta}
               formDisabled={formDisabled}
-              onMarkReviewed={handleMarkCarryForwardReviewed}
+              onConfirmAll={handleConfirmAllCarryForward}
             />
 
             {showSafetyPrompts ? (
@@ -1260,6 +1292,8 @@ export function EmergencyTriagePanel({
                     patientChartHref={patientChartHref}
                     facilityId={facilityId}
                     carryForwardMeta={carryForwardMeta}
+                    onConfirmCarryForwardSection={handleConfirmCarryForwardSection}
+                    onClearCarryForwardSection={handleClearCarryForwardSection}
                   />
                 </div>
               </div>

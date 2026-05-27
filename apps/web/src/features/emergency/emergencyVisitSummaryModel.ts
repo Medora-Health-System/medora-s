@@ -231,6 +231,32 @@ const CARRY_FORWARD_STATUS_I18N: Record<
   removed: "carryForward.carryForwardStatusRemoved",
 };
 
+const CARRY_FORWARD_SECTION_I18N: Record<
+  "allergies" | "homeMedications" | "history" | "socialHistory",
+  string
+> = {
+  allergies: "carryForward.sectionLabelAllergies",
+  homeMedications: "carryForward.sectionLabelHomeMedications",
+  history: "carryForward.sectionLabelHistory",
+  socialHistory: "carryForward.sectionLabelSocialHistory",
+};
+
+const CARRY_FORWARD_SECTION_STATUS_I18N: Record<
+  "pending_review" | "reviewed" | "modified" | "removed",
+  string
+> = {
+  pending_review: "carryForward.sectionStatusPending",
+  reviewed: "carryForward.sectionStatusReviewed",
+  modified: "carryForward.sectionStatusModified",
+  removed: "carryForward.sectionStatusRemoved",
+};
+
+const CARRY_FORWARD_STALENESS_I18N: Record<"fresh" | "stale" | "very_stale", string> = {
+  fresh: "triageCarryForwardStalenessFresh",
+  stale: "triageCarryForwardStalenessStale",
+  very_stale: "triageCarryForwardStalenessVeryStale",
+};
+
 function buildTriageCarryForwardSummaryBlock(
   triage: Record<string, unknown> | null,
   locale: SupportedLanguage
@@ -238,7 +264,7 @@ function buildTriageCarryForwardSummaryBlock(
   if (!triage) return null;
   const meta = triageCarryForwardMetaFromVitalsJson(triage.vitalsJson);
   const summary = buildTriageCarryForwardSummary(meta);
-  if (!summary.fields.length || !summary.reviewStatus) return null;
+  if (!summary.sections.length || !summary.reviewStatus) return null;
 
   const fieldLabels = summary.fields
     .map((f) => erTriageT(locale, `erTriage.${CARRY_FORWARD_FIELD_I18N[f.fieldKey]}`))
@@ -247,6 +273,9 @@ function buildTriageCarryForwardSummaryBlock(
   const sourceDate = summary.sourceEncounterDate
     ? formatIsoForLocale(summary.sourceEncounterDate, locale)
     : "—";
+  const stalenessLabel = summary.staleness
+    ? erTriageT(locale, `erTriage.${CARRY_FORWARD_STALENESS_I18N[summary.staleness.level]}`)
+    : null;
 
   const lines = [
     interpolate(vs(locale, "triageCarryForwardLine"), {
@@ -255,6 +284,17 @@ function buildTriageCarryForwardSummaryBlock(
       date: sourceDate,
     }),
   ];
+  if (stalenessLabel) {
+    lines.push(interpolate(vs(locale, "triageCarryForwardStaleness"), { level: stalenessLabel }));
+  }
+  for (const section of summary.sections) {
+    lines.push(
+      interpolate(vs(locale, "triageCarryForwardSectionLine"), {
+        section: erTriageT(locale, `erTriage.${CARRY_FORWARD_SECTION_I18N[section.sectionKey]}`),
+        status: erTriageT(locale, `erTriage.${CARRY_FORWARD_SECTION_STATUS_I18N[section.reviewStatus]}`),
+      })
+    );
+  }
   if (summary.reviewedBy && summary.reviewedAt) {
     lines.push(
       interpolate(vs(locale, "triageCarryForwardReviewedBy"), {

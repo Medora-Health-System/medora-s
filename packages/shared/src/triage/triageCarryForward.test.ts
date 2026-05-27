@@ -313,7 +313,10 @@ describe("triageCarryForward (19T.1)", () => {
       encounterId: "enc-new-001",
       sourceEncounterId: SOURCE_ENCOUNTER_ID,
       fieldKeys: ["allergies"],
+      sectionKeys: ["allergies"],
       reviewStatus: "pending_review",
+      sectionStatuses: { allergies: "pending_review" },
+      stalenessLevel: expect.any(String),
       actorId: "user-rn-1",
       timestamp: "2026-05-18T10:00:00.000Z",
     });

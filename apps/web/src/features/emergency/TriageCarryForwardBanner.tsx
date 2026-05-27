@@ -1,13 +1,26 @@
 "use client";
 
 import React from "react";
-import type { TriageCarryForwardFieldKey, TriageCarryForwardMeta } from "@/features/emergency/triageCarryForward";
-import { buildTriageCarryForwardSummary } from "@/features/emergency/triageCarryForward";
+import type {
+  TriageCarryForwardMeta,
+  TriageCarryForwardReviewStatus,
+  TriageCarryForwardSectionKey,
+  TriageCarryForwardStalenessLevel,
+} from "@/features/emergency/triageCarryForward";
+import {
+  buildTriageCarryForwardSummary,
+  getCarriedForwardSections,
+  isCarryForwardSectionStale,
+  sectionHasCarriedForwardFields,
+} from "@/features/emergency/triageCarryForward";
 import { useI18n } from "@/lib/i18n";
 
 const STATUS_LABEL_KEY: Record<
-  NonNullable<TriageCarryForwardMeta["reviewStatus"]>,
-  "erTriage.carryForward.carryForwardStatusPending" | "erTriage.carryForward.carryForwardStatusReviewed" | "erTriage.carryForward.carryForwardStatusModified" | "erTriage.carryForward.carryForwardStatusRemoved"
+  TriageCarryForwardReviewStatus,
+  | "erTriage.carryForward.carryForwardStatusPending"
+  | "erTriage.carryForward.carryForwardStatusReviewed"
+  | "erTriage.carryForward.carryForwardStatusModified"
+  | "erTriage.carryForward.carryForwardStatusRemoved"
 > = {
   pending_review: "erTriage.carryForward.carryForwardStatusPending",
   reviewed: "erTriage.carryForward.carryForwardStatusReviewed",
@@ -15,24 +28,64 @@ const STATUS_LABEL_KEY: Record<
   removed: "erTriage.carryForward.carryForwardStatusRemoved",
 };
 
-const FIELD_LABEL_KEY: Record<TriageCarryForwardFieldKey, `erTriage.carryForward.${string}`> = {
-  allergies: "erTriage.carryForward.carryForwardFieldAllergies",
-  homeMedications: "erTriage.carryForward.carryForwardFieldHomeMedications",
-  medicalHistory: "erTriage.carryForward.carryForwardFieldMedicalHistory",
-  surgicalHistory: "erTriage.carryForward.carryForwardFieldSurgicalHistory",
-  smokingHistory: "erTriage.carryForward.carryForwardFieldSmoking",
-  alcoholUse: "erTriage.carryForward.carryForwardFieldAlcohol",
-  substanceUse: "erTriage.carryForward.carryForwardFieldSubstance",
+const SECTION_STATUS_LABEL_KEY: Record<
+  TriageCarryForwardReviewStatus,
+  | "erTriage.carryForward.sectionStatusPending"
+  | "erTriage.carryForward.sectionStatusReviewed"
+  | "erTriage.carryForward.sectionStatusModified"
+  | "erTriage.carryForward.sectionStatusRemoved"
+> = {
+  pending_review: "erTriage.carryForward.sectionStatusPending",
+  reviewed: "erTriage.carryForward.sectionStatusReviewed",
+  modified: "erTriage.carryForward.sectionStatusModified",
+  removed: "erTriage.carryForward.sectionStatusRemoved",
 };
+
+const SECTION_LABEL_KEY: Record<TriageCarryForwardSectionKey, `erTriage.carryForward.${string}`> = {
+  allergies: "erTriage.carryForward.sectionLabelAllergies",
+  homeMedications: "erTriage.carryForward.sectionLabelHomeMedications",
+  history: "erTriage.carryForward.sectionLabelHistory",
+  socialHistory: "erTriage.carryForward.sectionLabelSocialHistory",
+};
+
+const STALE_BADGE_STYLE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "2px 8px",
+  borderRadius: 9999,
+  fontSize: 11,
+  fontWeight: 700,
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+  color: "#991b1b",
+};
+
+const actionBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  padding: "6px 10px",
+  borderRadius: 10,
+  border: "1px solid #d97706",
+  background: "#fff",
+  color: "#92400e",
+  fontWeight: 600,
+  fontSize: 11,
+  cursor: disabled ? "not-allowed" : "pointer",
+  minHeight: 36,
+});
+
+function stalenessWarningKey(level: TriageCarryForwardStalenessLevel | undefined) {
+  if (level === "very_stale") return "erTriage.carryForward.veryStaleWarning";
+  if (level === "stale") return "erTriage.carryForward.staleWarning";
+  return null;
+}
 
 export function TriageCarryForwardBanner({
   meta,
   formDisabled,
-  onMarkReviewed,
+  onConfirmAll,
 }: {
   meta: TriageCarryForwardMeta | null;
   formDisabled: boolean;
-  onMarkReviewed: () => void;
+  onConfirmAll: () => void;
 }) {
   const { t, language } = useI18n();
   if (!meta || !Object.keys(meta.fields).length) return null;
@@ -45,6 +98,7 @@ export function TriageCarryForwardBanner({
           timeStyle: "short",
         })
       : "—";
+  const staleKey = stalenessWarningKey(summary.staleness?.level);
 
   return (
     <div
@@ -62,13 +116,16 @@ export function TriageCarryForwardBanner({
       }}
     >
       <div style={{ fontWeight: 700, marginBottom: 4 }}>{t("erTriage.carryForward.bannerTitle")}</div>
-      <div style={{ marginBottom: 6 }}>
-        {t("erTriage.carryForward.bannerSource").replace("{date}", sourceDate)}
-      </div>
+      <div style={{ marginBottom: 6 }}>{t("erTriage.carryForward.bannerSource").replace("{date}", sourceDate)}</div>
+      {staleKey ? (
+        <div style={{ marginBottom: 8 }}>
+          <span style={STALE_BADGE_STYLE}>{t(staleKey)}</span>
+        </div>
+      ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-        {(Object.keys(meta.fields) as TriageCarryForwardFieldKey[]).map((fieldKey) => (
+        {summary.sections.map(({ sectionKey, reviewStatus }) => (
           <span
-            key={fieldKey}
+            key={sectionKey}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -81,7 +138,7 @@ export function TriageCarryForwardBanner({
               color: "#92400e",
             }}
           >
-            {t(FIELD_LABEL_KEY[fieldKey])}
+            {t(SECTION_LABEL_KEY[sectionKey])} — {t(SECTION_STATUS_LABEL_KEY[reviewStatus])}
           </span>
         ))}
         <span
@@ -104,7 +161,7 @@ export function TriageCarryForwardBanner({
         <button
           type="button"
           disabled={formDisabled}
-          onClick={onMarkReviewed}
+          onClick={onConfirmAll}
           style={{
             padding: "8px 12px",
             borderRadius: 10,
@@ -117,7 +174,57 @@ export function TriageCarryForwardBanner({
             minHeight: 44,
           }}
         >
-          {t("erTriage.carryForward.markReviewed")}
+          {t("erTriage.carryForward.confirmAll")}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function TriageCarryForwardSectionToolbar({
+  section,
+  meta,
+  formDisabled,
+  onConfirmSection,
+  onClearSection,
+}: {
+  section: TriageCarryForwardSectionKey;
+  meta: TriageCarryForwardMeta | null;
+  formDisabled: boolean;
+  onConfirmSection: (section: TriageCarryForwardSectionKey) => void;
+  onClearSection: (section: TriageCarryForwardSectionKey) => void;
+}) {
+  const { t } = useI18n();
+  if (!meta || !sectionHasCarriedForwardFields(meta, section)) return null;
+
+  const status: TriageCarryForwardReviewStatus = meta.sectionStatus?.[section] ?? "pending_review";
+  const stale = isCarryForwardSectionStale(meta);
+
+  return (
+    <div
+      data-testid={`triage-carry-forward-toolbar-${section}`}
+      style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}
+    >
+      <TriageCarryForwardSectionBadge section={section} meta={meta} />
+      {stale ? <span style={STALE_BADGE_STYLE}>{t("erTriage.carryForward.staleWarning")}</span> : null}
+      {status !== "reviewed" && status !== "removed" ? (
+        <button
+          type="button"
+          disabled={formDisabled}
+          onClick={() => onConfirmSection(section)}
+          style={actionBtnStyle(formDisabled)}
+        >
+          {t("erTriage.carryForward.confirmSection")}
+        </button>
+      ) : null}
+      {status !== "removed" ? (
+        <button
+          type="button"
+          disabled={formDisabled}
+          onClick={() => onClearSection(section)}
+          style={{ ...actionBtnStyle(formDisabled), borderColor: "#cbd5e1", color: "#475569" }}
+        >
+          {t("erTriage.carryForward.clearSection")}
         </button>
       ) : null}
     </div>
@@ -125,17 +232,18 @@ export function TriageCarryForwardBanner({
 }
 
 export function TriageCarryForwardSectionBadge({
-  fieldKey,
+  section,
   meta,
 }: {
-  fieldKey: TriageCarryForwardFieldKey;
+  section: TriageCarryForwardSectionKey;
   meta: TriageCarryForwardMeta | null;
 }) {
   const { t } = useI18n();
-  if (!meta?.fields[fieldKey]) return null;
+  if (!meta || !sectionHasCarriedForwardFields(meta, section)) return null;
+  const status: TriageCarryForwardReviewStatus = meta.sectionStatus?.[section] ?? "pending_review";
   return (
     <span
-      data-testid={`triage-carry-forward-badge-${fieldKey}`}
+      data-testid={`triage-carry-forward-badge-${section}`}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -150,7 +258,12 @@ export function TriageCarryForwardSectionBadge({
         color: "#92400e",
       }}
     >
-      {t("erTriage.carryForward.sectionBadge")}
+      {t(SECTION_STATUS_LABEL_KEY[status])}
     </span>
   );
+}
+
+export function triageCarryForwardSectionsForUi(meta: TriageCarryForwardMeta | null | undefined) {
+  if (!meta) return [];
+  return getCarriedForwardSections(meta);
 }

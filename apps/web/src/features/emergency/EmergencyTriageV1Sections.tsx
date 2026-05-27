@@ -32,8 +32,8 @@ import {
   nextGcsStateAfterComponentChange,
 } from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
-import { TriageCarryForwardSectionBadge } from "./TriageCarryForwardBanner";
-import type { TriageCarryForwardMeta } from "./triageCarryForward";
+import { TriageCarryForwardSectionBadge, TriageCarryForwardSectionToolbar } from "./TriageCarryForwardBanner";
+import type { TriageCarryForwardMeta, TriageCarryForwardSectionKey } from "./triageCarryForward";
 
 const TRAUMA_CRITERION_I18N_KEY: Record<ErTraumaActivationCriterionId, string> = {
   hypotension: "erTriage.v1.traumaCriteriaHypotension",
@@ -276,6 +276,8 @@ export type EmergencyTriageV1SectionsProps = {
   /** Required for home-medication catalog search (display names appended to summary only). */
   facilityId?: string;
   carryForwardMeta?: TriageCarryForwardMeta | null;
+  onConfirmCarryForwardSection?: (section: TriageCarryForwardSectionKey) => void;
+  onClearCarryForwardSection?: (section: TriageCarryForwardSectionKey) => void;
 };
 
 export function EmergencyTriageV1Sections({
@@ -289,6 +291,8 @@ export function EmergencyTriageV1Sections({
   sectionHeading,
   facilityId,
   carryForwardMeta,
+  onConfirmCarryForwardSection,
+  onClearCarryForwardSection,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
   const v1Any = erTriageV1FormHasAnyContent(er);
@@ -801,13 +805,31 @@ export function EmergencyTriageV1Sections({
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s3Title")}</span>
           {carryForwardMeta?.fields.homeMedications ? (
-            <TriageCarryForwardSectionBadge fieldKey="homeMedications" meta={carryForwardMeta} />
+            <TriageCarryForwardSectionBadge section="homeMedications" meta={carryForwardMeta} />
           ) : null}
           {carryForwardMeta?.fields.allergies ? (
-            <TriageCarryForwardSectionBadge fieldKey="allergies" meta={carryForwardMeta} />
+            <TriageCarryForwardSectionBadge section="allergies" meta={carryForwardMeta} />
           ) : null}
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+          {onConfirmCarryForwardSection && onClearCarryForwardSection ? (
+            <>
+              <TriageCarryForwardSectionToolbar
+                section="homeMedications"
+                meta={carryForwardMeta ?? null}
+                formDisabled={formDisabled}
+                onConfirmSection={onConfirmCarryForwardSection}
+                onClearSection={onClearCarryForwardSection}
+              />
+              <TriageCarryForwardSectionToolbar
+                section="allergies"
+                meta={carryForwardMeta ?? null}
+                formDisabled={formDisabled}
+                onConfirmSection={onConfirmCarryForwardSection}
+                onClearSection={onClearCarryForwardSection}
+              />
+            </>
+          ) : null}
           <div>
             <label style={labelStyle}>{t("erTriage.v1.medsSummary")}</label>
             <textarea
@@ -1014,23 +1036,34 @@ export function EmergencyTriageV1Sections({
       <details style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s4Title")}</span>
-          {carryForwardMeta?.fields.medicalHistory ? (
-            <TriageCarryForwardSectionBadge fieldKey="medicalHistory" meta={carryForwardMeta} />
+          {carryForwardMeta?.fields.medicalHistory || carryForwardMeta?.fields.surgicalHistory ? (
+            <TriageCarryForwardSectionBadge section="history" meta={carryForwardMeta} />
           ) : null}
-          {carryForwardMeta?.fields.surgicalHistory ? (
-            <TriageCarryForwardSectionBadge fieldKey="surgicalHistory" meta={carryForwardMeta} />
-          ) : null}
-          {carryForwardMeta?.fields.smokingHistory ? (
-            <TriageCarryForwardSectionBadge fieldKey="smokingHistory" meta={carryForwardMeta} />
-          ) : null}
-          {carryForwardMeta?.fields.alcoholUse ? (
-            <TriageCarryForwardSectionBadge fieldKey="alcoholUse" meta={carryForwardMeta} />
-          ) : null}
-          {carryForwardMeta?.fields.substanceUse ? (
-            <TriageCarryForwardSectionBadge fieldKey="substanceUse" meta={carryForwardMeta} />
+          {carryForwardMeta?.fields.smokingHistory ||
+          carryForwardMeta?.fields.alcoholUse ||
+          carryForwardMeta?.fields.substanceUse ? (
+            <TriageCarryForwardSectionBadge section="socialHistory" meta={carryForwardMeta} />
           ) : null}
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
+          {onConfirmCarryForwardSection && onClearCarryForwardSection ? (
+            <>
+              <TriageCarryForwardSectionToolbar
+                section="history"
+                meta={carryForwardMeta ?? null}
+                formDisabled={formDisabled}
+                onConfirmSection={onConfirmCarryForwardSection}
+                onClearSection={onClearCarryForwardSection}
+              />
+              <TriageCarryForwardSectionToolbar
+                section="socialHistory"
+                meta={carryForwardMeta ?? null}
+                formDisabled={formDisabled}
+                onConfirmSection={onConfirmCarryForwardSection}
+                onClearSection={onClearCarryForwardSection}
+              />
+            </>
+          ) : null}
           <div style={grid2}>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.pmh")}</label>
