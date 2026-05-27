@@ -19,10 +19,13 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(doc).toContain("19M.2");
   });
 
-  it("disposition panel implements wideLayout breakpoint (good pattern)", () => {
+  it("disposition panel implements responsive layout (19M.6)", () => {
     const src = readWebSource("src/features/emergency/EmergencyDispositionPanel.tsx");
-    expect(src).toContain('matchMedia("(min-width: 960px)")');
-    expect(src).toContain("wideLayout");
+    expect(src).toContain("resolveEdDispositionLayoutMode");
+    expect(src).toContain('data-testid="ed-disposition-workspace-layout"');
+    expect(src).toContain("EdDispositionPreviewPanel");
+    expect(src).not.toContain("wideLayout");
+    expect(src).not.toContain('matchMedia("(min-width: 960px)")');
   });
 
   it("triage and nursing reassessment panels implement wideLayout breakpoint", () => {

@@ -11,6 +11,12 @@ import {
   type PatientDischargeInstructionsSlice,
 } from "@/lib/encounterDischarge";
 import { MedoraCard, MedoraCardInner, MedoraCardTitle } from "@/components/medora-card";
+import {
+  edDispositionFieldGridStyle,
+  edDispositionTouchButtonStyle,
+  resolveEdDispositionLayoutMode,
+  type EdDispositionLayoutMode,
+} from "@/features/emergency/edDispositionResponsiveLayout";
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -35,11 +41,8 @@ const taStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const fieldGrid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-  gap: 8,
-};
+const fieldGrid = (layoutMode: EdDispositionLayoutMode): React.CSSProperties =>
+  edDispositionFieldGridStyle(layoutMode);
 
 type FieldRowProps = {
   labelKey: string;
@@ -93,6 +96,17 @@ export function PatientDischargeInstructionsClosureCard({
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
   const [saveInfoIsError, setSaveInfoIsError] = useState(false);
   const [signerDisplay, setSignerDisplay] = useState("");
+  const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEdDispositionLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   const canEdit =
     !formDisabled &&
@@ -195,7 +209,7 @@ export function PatientDischargeInstructionsClosureCard({
         <p style={{ margin: "6px 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
           {t("patientDischargeInstructions.cardHint")}
         </p>
-        <div style={fieldGrid}>
+        <div style={fieldGrid(layoutMode)}>
           <FieldRow
             labelKey="patientDischargeInstructions.dischargeDiagnosisSummary"
             value={slice.dischargeDiagnosisSummary}
@@ -290,16 +304,19 @@ export function PatientDischargeInstructionsClosureCard({
             type="button"
             onClick={() => void handleSave()}
             disabled={!canEdit || saving}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 8,
-              border: "1px solid #0369a1",
-              backgroundColor: canEdit && !saving ? "#0369a1" : "#e2e8f0",
-              color: canEdit && !saving ? "#fff" : "#94a3b8",
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: canEdit && !saving ? "pointer" : "not-allowed",
-            }}
+            style={edDispositionTouchButtonStyle(
+              {
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #0369a1",
+                backgroundColor: canEdit && !saving ? "#0369a1" : "#e2e8f0",
+                color: canEdit && !saving ? "#fff" : "#94a3b8",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: canEdit && !saving ? "pointer" : "not-allowed",
+              },
+              layoutMode
+            )}
           >
             {saving ? t("common.loading") : t("patientDischargeInstructions.save")}
           </button>

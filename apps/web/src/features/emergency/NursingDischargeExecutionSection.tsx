@@ -6,6 +6,11 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 import { MedoraCard, MedoraCardInner, MedoraCardTitle, MedoraCardIdentity } from "@/components/medora-card";
 import {
+  edDispositionTouchButtonStyle,
+  resolveEdDispositionLayoutMode,
+  type EdDispositionLayoutMode,
+} from "@/features/emergency/edDispositionResponsiveLayout";
+import {
   emptyNursingDischargeExecutionForm,
   hydrateNursingDischargeExecutionForm,
   mergeNursingDischargeExecutionIntoNursingAssessment,
@@ -56,6 +61,17 @@ export function NursingDischargeExecutionSection({
   const [form, setForm] = useState(() => hydrateNursingDischargeExecutionForm(nursingAssessment));
   const [saving, setSaving] = useState(false);
   const [saveInfo, setSaveInfo] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEdDispositionLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     setForm(hydrateNursingDischargeExecutionForm(nursingAssessment));
@@ -141,7 +157,7 @@ export function NursingDischargeExecutionSection({
               <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{stored.dischargeSortieExecutionNote}</p>
             : null}
           </div>
-        : <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+        : <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10, width: "100%", minWidth: 0 }}>
             <div>
               <label style={labelStyle}>{t("providerDischargeDocumentation19Y.nursingDestinationLabel")}</label>
               <select
@@ -222,17 +238,21 @@ export function NursingDischargeExecutionSection({
                 type="button"
                 disabled={saving}
                 onClick={() => void handleSave()}
-                style={{
-                  alignSelf: "flex-start",
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#0ea5e9",
-                  color: "#fff",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  cursor: saving ? "wait" : "pointer",
-                }}
+                style={edDispositionTouchButtonStyle(
+                  {
+                    alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-start",
+                    width: layoutMode === "mobileStacked" ? "100%" : undefined,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#0ea5e9",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: saving ? "wait" : "pointer",
+                  },
+                  layoutMode
+                )}
               >
                 {saving ? t("common.saving") : t("providerDischargeDocumentation19Y.nursingSaveButton")}
               </button>

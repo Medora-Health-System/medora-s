@@ -49,6 +49,13 @@ import {
   type ProviderDischargeValidationErrors,
 } from "@/features/emergency/providerDischargeDocumentationModel";
 import { buildProviderDischargeDocumentationPreviewSections } from "@/features/emergency/providerDischargeDocumentationSummary";
+import { EdDispositionPreviewPanel } from "@/features/emergency/EdDispositionPreviewPanel";
+import {
+  edDispositionTouchButtonStyle,
+  edDispositionWorkspaceStyle,
+  resolveEdDispositionLayoutMode,
+  type EdDispositionLayoutMode,
+} from "@/features/emergency/edDispositionResponsiveLayout";
 import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
 
 type PhysicianLite = { id?: string; firstName?: string | null; lastName?: string | null } | null;
@@ -240,36 +247,16 @@ export function EmergencyDispositionPanel({
     setDischargeForm((prev) => ({ ...prev, dischargeMode: outcomeUiToDischargeMode(o) }));
   };
 
-  const [wideLayout, setWideLayout] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(min-width: 960px)");
-    const apply = () => setWideLayout(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEdDispositionLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
   }, []);
-
-  const workspaceStyle: React.CSSProperties = wideLayout
-    ? {
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 380px)",
-        gap: 16,
-        alignItems: "start",
-        width: "100%",
-      }
-    : { display: "flex", flexDirection: "column", gap: 16, width: "100%" };
-
-  const resumeColumnStyle: React.CSSProperties = wideLayout
-    ? {
-        position: "sticky",
-        top: 12,
-        alignSelf: "start",
-        maxHeight: "calc(100vh - 100px)",
-        overflowY: "auto",
-        minWidth: 0,
-      }
-    : { minWidth: 0 };
 
   const dischargeModeDisplayLabel = useMemo(() => {
     const opt = OUTCOME_OPTIONS.find((o) => o.id === outcomeUi);
@@ -592,7 +579,11 @@ export function EmergencyDispositionPanel({
           </p>
         ) : null}
 
-        <div style={{ ...workspaceStyle, marginTop: 12 }}>
+        <div
+          style={{ ...edDispositionWorkspaceStyle(layoutMode), marginTop: 12 }}
+          data-testid="ed-disposition-workspace-layout"
+          data-layout-mode={layoutMode}
+        >
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
             <div>
               <p style={sectionHeading}>{t("emergencyDisposition.sectionPrimaryDecision")}</p>
@@ -673,6 +664,7 @@ export function EmergencyDispositionPanel({
                 onProviderFormChange={onProviderDischargeDocChange}
                 disabled={medDisabled}
                 validationErrors={providerDischargeValidationErrors}
+                layoutMode={layoutMode}
               />
             : null}
 
@@ -985,21 +977,24 @@ export function EmergencyDispositionPanel({
               </div>
             </div>
 
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", width: "100%", minWidth: 0 }}>
               <button
                 type="button"
                 onClick={() => void handleSave()}
                 disabled={formDisabled || saving}
-                style={{
-                  padding: "9px 16px",
-                  borderRadius: 10,
-                  border: "1px solid #64748b",
-                  backgroundColor: formDisabled ? "#f1f5f9" : "#475569",
-                  color: formDisabled ? "#94a3b8" : "#fff",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  cursor: formDisabled || saving ? "not-allowed" : "pointer",
-                }}
+                style={edDispositionTouchButtonStyle(
+                  {
+                    padding: "9px 16px",
+                    borderRadius: 10,
+                    border: "1px solid #64748b",
+                    backgroundColor: formDisabled ? "#f1f5f9" : "#475569",
+                    color: formDisabled ? "#94a3b8" : "#fff",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: formDisabled || saving ? "not-allowed" : "pointer",
+                  },
+                  layoutMode
+                )}
               >
                 {saving ? t("emergencyDisposition.saveButtonSaving") : t("emergencyDisposition.saveButton")}
               </button>
@@ -1012,11 +1007,10 @@ export function EmergencyDispositionPanel({
             </div>
           </div>
 
-          <div style={resumeColumnStyle}>
-            <p style={sectionHeading}>{t("emergencyDisposition.previewColumnTitle")}</p>
+          <EdDispositionPreviewPanel title={t("emergencyDisposition.previewColumnTitle")} layoutMode={layoutMode}>
             <div
               style={{
-                marginTop: 10,
+                marginTop: layoutMode === "desktopSplit" ? 10 : 0,
                 padding: "10px 12px",
                 borderRadius: 10,
                 border: "1px solid #e2e8f0",
@@ -1075,7 +1069,7 @@ export function EmergencyDispositionPanel({
                 <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b" }}>{t("common.dash")}</p>
               )}
             </div>
-          </div>
+          </EdDispositionPreviewPanel>
         </div>
       </MedoraCardInner>
     </MedoraCard>

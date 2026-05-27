@@ -5,7 +5,7 @@
  * Reuses EmergencyVisitSummaryPanel and the same close-check/close API path as the generic encounter page.
  */
 
-import React, { useCallback, useState, type ComponentProps } from "react";
+import React, { useCallback, useEffect, useState, type ComponentProps } from "react";
 import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -21,6 +21,11 @@ import {
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
 import { buildErClinicalTimeline } from "@/features/emergency/erClinicalTimeline";
+import {
+  edDispositionTouchButtonStyle,
+  resolveEdDispositionLayoutMode,
+  type EdDispositionLayoutMode,
+} from "@/features/emergency/edDispositionResponsiveLayout";
 import {
   buildProviderDocumentationPrintSection,
   buildVisitSummaryProviderDocumentationBlock,
@@ -131,6 +136,17 @@ export function EmergencyErSummaryClosureSurface({
     null
   );
   const [ackDispositionSafety, setAckDispositionSafety] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<EdDispositionLayoutMode>("desktopSplit");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveEdDispositionLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   const handleDispositionReadiness = useCallback((r: DispositionSafetyReadinessResponse | null) => {
     setDispositionReadiness(r);
@@ -574,16 +590,20 @@ export function EmergencyErSummaryClosureSurface({
                 void handlePrint();
               }}
               disabled={!patient || !encounter.createdAt}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "1px solid #cbd5e1",
-                backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
-                color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
-              }}
+              style={edDispositionTouchButtonStyle(
+                {
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: patient && encounter.createdAt ? "#fff" : "#f1f5f9",
+                  color: patient && encounter.createdAt ? "#334155" : "#94a3b8",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: patient && encounter.createdAt ? "pointer" : "not-allowed",
+                  flex: layoutMode === "mobileStacked" ? "1 1 100%" : undefined,
+                },
+                layoutMode
+              )}
             >
               {t("emergencyDisposition.printChart")}
             </button>
@@ -594,16 +614,20 @@ export function EmergencyErSummaryClosureSurface({
                 setShowCloseModal(true);
               }}
               disabled={closing}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 10,
-                border: "1px solid #fecaca",
-                backgroundColor: "#fef2f2",
-                color: "#991b1b",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: closing ? "wait" : "pointer",
-              }}
+              style={edDispositionTouchButtonStyle(
+                {
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                  color: "#991b1b",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: closing ? "wait" : "pointer",
+                  flex: layoutMode === "mobileStacked" ? "1 1 100%" : undefined,
+                },
+                layoutMode
+              )}
             >
               {t("emergencyErClosure.endEncounter")}
             </button>
@@ -683,15 +707,18 @@ export function EmergencyErSummaryClosureSurface({
                   setAckDispositionSafety(false);
                   setShowCloseModal(false);
                 }}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 10,
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#fff",
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: closing ? "wait" : "pointer",
-                }}
+                style={edDispositionTouchButtonStyle(
+                  {
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#fff",
+                    fontSize: 14,
+                    fontWeight: 500,
+                    cursor: closing ? "wait" : "pointer",
+                  },
+                  layoutMode
+                )}
               >
                 {t("common.cancel")}
               </button>
@@ -702,16 +729,19 @@ export function EmergencyErSummaryClosureSurface({
                   Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
                 }
                 onClick={() => void runCloseCheck()}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 10,
-                  border: "none",
-                  backgroundColor: "#b91c1c",
-                  color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: closing ? "wait" : "pointer",
-                }}
+                style={edDispositionTouchButtonStyle(
+                  {
+                    padding: "8px 14px",
+                    borderRadius: 10,
+                    border: "none",
+                    backgroundColor: "#b91c1c",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: closing ? "wait" : "pointer",
+                  },
+                  layoutMode
+                )}
               >
                 {closing ? t("common.loading") : t("emergencyErClosure.modalConfirm")}
               </button>
