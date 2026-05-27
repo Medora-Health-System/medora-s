@@ -33,6 +33,20 @@ import { isMedicationInfusionCandidate } from "@medora/shared";
 import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "@/lib/orderAttribution";
+import {
+  diagnosisOrdersListStyle,
+  diagnosisOrdersTableScrollWrapStyle,
+  diagnosisOrdersTableStyle,
+  diagnosisOrdersUsesCardLayout,
+  resolveDiagnosisOrdersLayoutMode,
+  type DiagnosisOrdersLayoutMode,
+} from "@/features/emergency/diagnosisOrdersResponsiveLayout";
+import {
+  ErOrderEventCard,
+  ErOrderGroupHeaderCard,
+  ErOrderLineCard,
+  erOrdersTouchButtonStyle,
+} from "@/features/emergency/ErOrdersPanelCards";
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -49,15 +63,6 @@ const btn: React.CSSProperties = {
   fontFamily: "inherit",
   boxSizing: "border-box",
   minHeight: 40,
-};
-
-/** Horizontal + bounded vertical scroll for dense order tables (mobile-friendly). */
-const ordersTableScrollWrap: React.CSSProperties = {
-  overflowX: "auto",
-  overflowY: "auto",
-  maxHeight: "min(65vh, 560px)",
-  WebkitOverflowScrolling: "touch",
-  width: "100%",
 };
 
 const SCHEDULED_LINE_CANCEL_MS = 30_000;
@@ -397,6 +402,7 @@ export function EmergencyErOrdersPanel({
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
+  const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
   const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
@@ -416,6 +422,16 @@ export function EmergencyErOrdersPanel({
   const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushInProgressRef = useRef(false);
   const flushPendingCancelRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveDiagnosisOrdersLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     pendingCancelRef.current = pendingCancel;
@@ -749,12 +765,22 @@ export function EmergencyErOrdersPanel({
 
   const nowMs = Date.now();
 
+  const touchBtn = (base: React.CSSProperties = btn) => erOrdersTouchButtonStyle(base, layoutMode);
+  const usesOrderCards = diagnosisOrdersUsesCardLayout(layoutMode);
+  const orderCardFieldLabels = {
+    status: t("erEmergencyOrders.tableLastAction"),
+    time: t("erEmergencyOrders.tableTime"),
+    issued: t("erEmergencyOrders.tableIssued"),
+    attribution: t("erEmergencyOrders.tableTitle"),
+  };
+
   /** Quels rôles peuvent ouvrir une commande depuis ce panneau : prescripteurs (PROVIDER/ADMIN) + RN (ordres infirmiers / verbaux). LAB/RADIOLOGY/PHARMACY/FRONT_DESK/BILLING : non. */
   const canOpenOrderQuickActions = canPrescribe || hasAnyRole(roles, "RN");
 
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
+        <div data-testid="er-orders-panel-layout" data-layout-mode={layoutMode}>
         {roles !== undefined && canOpenOrderQuickActions ? (
           <TraumaProtocolAssistPanel
             encounterId={encounterId}
@@ -799,16 +825,16 @@ export function EmergencyErOrdersPanel({
                   alignContent: "start",
                 }}
               >
-                <button type="button" onClick={() => openModal("LAB")} style={btn}>
+                <button type="button" onClick={() => openModal("LAB")} style={touchBtn()}>
                   {t("erEmergencyOrders.quickLab")}
                 </button>
-                <button type="button" onClick={() => openModal("IMAGING")} style={btn}>
+                <button type="button" onClick={() => openModal("IMAGING")} style={touchBtn()}>
                   {t("erEmergencyOrders.quickImaging")}
                 </button>
-                <button type="button" onClick={() => openModal("MEDICATION")} style={btn}>
+                <button type="button" onClick={() => openModal("MEDICATION")} style={touchBtn()}>
                   {t("erEmergencyOrders.quickMedication")}
                 </button>
-                <button type="button" onClick={() => openModal("CARE")} style={btn}>
+                <button type="button" onClick={() => openModal("CARE")} style={touchBtn()}>
                   {t("erEmergencyOrders.quickCare")}
                 </button>
               </div>
@@ -889,7 +915,7 @@ export function EmergencyErOrdersPanel({
                   }}
                 >
                   <span style={{ flex: "1 1 220px" }}>{t("erEmergencyOrders.pendingCancel")}</span>
-                  <button type="button" style={btn} onClick={undoCancel}>
+                  <button type="button" style={touchBtn()} onClick={undoCancel}>
                     {t("erEmergencyOrders.undoCancel")}
                   </button>
                   <button
@@ -941,19 +967,325 @@ export function EmergencyErOrdersPanel({
               ) : null}
               {activeOrderGroups.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.openOrdersEmpty")}</div>
+              ) : usesOrderCards ? (
+                <ul style={diagnosisOrdersListStyle(layoutMode)}>
+                  {activeOrderGroups.map(({ order: o, lines }, groupIdx) => {
+                    const authorityLine = formatOrderAuthority(o, t);
+                    const attributionLines = formatOrderAttributionLines(o, t, language);
+                    const issuedPrimary = attributionLines[0] ?? authorityLine;
+                    const timeStr =
+                      o.createdAt != null && String(o.createdAt).trim()
+                        ? new Date(String(o.createdAt)).toLocaleString(language === "fr" ? "fr-FR" : "en-US")
+                        : "—";
+                    const categoryLabel = t(domainHeadingKey(o.type as ErOrderDomain));
+                    return (
+                      <React.Fragment key={o.id}>
+                        <li
+                          style={{
+                            listStyle: "none",
+                            minWidth: 0,
+                            ...(layoutMode === "tabletCard" ? { gridColumn: "1 / -1" } : {}),
+                          }}
+                        >
+                          <ErOrderGroupHeaderCard>
+                            {categoryLabel} · {o.type}
+                          </ErOrderGroupHeaderCard>
+                        </li>
+                        {lines.map((raw) => {
+                              const item = raw as Record<string, unknown>;
+                              const itemId = String(item.id ?? "");
+                              const st = String(item.status ?? "");
+                              const cat = String(item.catalogItemType ?? "");
+                              const label = getOrderItemDisplayLabelForLanguage(
+                                item as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+                                language,
+                                t
+                              );
+                              const directionsLine =
+                                o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
+                              const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
+                              const busy = lineActionBusy;
+                              const canAttemptLineCancel = hasAnyRole(
+                                roles,
+                                "RN",
+                                "PROVIDER",
+                                "LAB",
+                                "RADIOLOGY",
+                                "PHARMACY",
+                                "ADMIN"
+                              );
+                              const linePendingCancel = pendingCancel?.orderItemId === itemId;
+                              const showLineCancel =
+                                canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
+                              const lineCancelDisabled =
+                                cancelBusyItemId === itemId || pendingCancel !== null;
+                              const routeSnapshot = medicationRouteSnapshotForInfusionCheck(item);
+                              const catRow =
+                                item.catalogMedication && typeof item.catalogMedication === "object"
+                                  ? (item.catalogMedication as Record<string, unknown>)
+                                  : null;
+                              const isInfusionLifecycleMed =
+                                isBedsideAdministerMedicationRow(item) &&
+                                isMedicationInfusionCandidate({
+                                  route: routeSnapshot.trim() || null,
+                                  medicationLabel: medicationInfusionClassificationText(item) || null,
+                                  code: typeof catRow?.code === "string" ? catRow.code : null,
+                                  genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
+                                  metadata: null,
+                                  catalogAdministrationType:
+                                    typeof catRow?.administrationType === "string"
+                                      ? catRow.administrationType
+                                      : null,
+                                });
+                              const infusionTl = isInfusionLifecycleMed
+                                ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, o.id, itemId)
+                                : { active: null, lastCompleted: null };
+                              const activeInfusion = infusionTl.active;
+
+                              const lineBtns: React.ReactNode[] = [];
+                              if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
+                                if (!activeInfusion) {
+                                  lineBtns.push(
+                                    <button
+                                      key="infusion-start"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:infusion-start`}
+                                      onClick={() => void runInfusionAction(itemId, "start")}
+                                    >
+                                      {busy === `${itemId}:infusion-start`
+                                        ? t("erEmergencyOrders.infusionStarting")
+                                        : t("erEmergencyOrders.startInfusion")}
+                                    </button>
+                                  );
+                                } else {
+                                  lineBtns.push(
+                                    <button
+                                      key="infusion-stop"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:infusion-stop`}
+                                      onClick={() => void runInfusionAction(itemId, "stop")}
+                                    >
+                                      {busy === `${itemId}:infusion-stop`
+                                        ? t("erEmergencyOrders.infusionStopping")
+                                        : t("erEmergencyOrders.stopInfusion")}
+                                    </button>
+                                  );
+                                }
+                              } else if (isBedsideAdministerMedicationRow(item) && hasAnyRole(roles, "RN", "ADMIN")) {
+                                lineBtns.push(
+                                  <button
+                                    key="nurse"
+                                    type="button"
+                                    style={touchBtn()}
+                                    disabled={busy === `${itemId}:nurse`}
+                                    onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
+                                  >
+                                    {busy === `${itemId}:nurse`
+                                      ? t("erEmergencyOrders.lineActionBusy")
+                                      : t("erEmergencyOrders.nurseMarkBedsideComplete")}
+                                  </button>
+                                );
+                              } else {
+                                const deptOk =
+                                  (o.type === "LAB" && hasAnyRole(roles, "LAB", "ADMIN")) ||
+                                  (o.type === "IMAGING" && hasAnyRole(roles, "RADIOLOGY", "ADMIN")) ||
+                                  (o.type === "MEDICATION" && hasAnyRole(roles, "PHARMACY", "ADMIN")) ||
+                                  ((o.type === "CARE" || cat === "SUPPLY") && hasAnyRole(roles, "RN", "ADMIN"));
+                                if (deptOk && itemStatusAllowsAcknowledge(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="ack"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:acknowledge`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
+                                    >
+                                      {busy === `${itemId}:acknowledge`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                    </button>
+                                  );
+                                }
+                                if (deptOk && itemStatusAllowsStart(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="start"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:start`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
+                                    >
+                                      {busy === `${itemId}:start`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.startOrder")}
+                                    </button>
+                                  );
+                                }
+                                if (deptOk && itemStatusAllowsComplete(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="complete"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:complete`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
+                                    >
+                                      {busy === `${itemId}:complete`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.completeOrder")}
+                                    </button>
+                                  );
+                                }
+                              }
+                              const activeStatusSection =
+                                isInfusionLifecycleMed && activeInfusion ? (
+                                  <div
+                                    style={{
+                                      fontSize: 12,
+                                      color: "#0369a1",
+                                      lineHeight: 1.45,
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      gap: 4,
+                                    }}
+                                  >
+                                    <div style={{ fontWeight: 700 }}>
+                                      {t("infusionTimeline.infusionStatusInfusing")}
+                                    </div>
+                                    {activeInfusion.infusionStartedAtIso ? (
+                                      <div style={{ color: "#0c4a6e" }}>
+                                        {t("infusionTimeline.infusionStartedAt").replace(
+                                          "{at}",
+                                          new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
+                                            language === "fr" ? "fr-FR" : "en-US",
+                                            { dateStyle: "short", timeStyle: "short" }
+                                          )
+                                        )}
+                                      </div>
+                                    ) : null}
+                                    {(() => {
+                                      const startedMs = activeInfusion.infusionStartedAtIso
+                                        ? new Date(activeInfusion.infusionStartedAtIso).getTime()
+                                        : NaN;
+                                      if (Number.isNaN(startedMs)) return null;
+                                      return (
+                                        <div style={{ color: "#0c4a6e" }}>
+                                          {formatInfusionElapsedForI18n(nowMs - startedMs, t)}
+                                        </div>
+                                      );
+                                    })()}
+                                    {(() => {
+                                      const byParts = [
+                                        activeInfusion.startedByDisplayName,
+                                        activeInfusion.startedByTitle,
+                                      ].filter((x): x is string => typeof x === "string" && Boolean(x.trim()));
+                                      if (!byParts.length) return null;
+                                      return (
+                                        <div style={{ color: "#0c4a6e" }}>
+                                          {t("infusionTimeline.infusionStartedBy").replace(
+                                            "{by}",
+                                            byParts.join(t("infusionTimeline.infusionTimelineDivider"))
+                                          )}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : (
+                                  orderLineItemStatusLabel(st, t)
+                                );
+                              const activePendingCancelSection = linePendingCancel ? (
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    alignItems: "center",
+                                    gap: 8,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      display: "inline-block",
+                                      padding: "2px 8px",
+                                      borderRadius: 9999,
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      color: "#92400e",
+                                      background: "#fef3c7",
+                                      border: "1px solid #fcd34d",
+                                    }}
+                                  >
+                                    {t("erEmergencyOrders.pendingCancelLine")}
+                                  </span>
+                                  <button type="button" style={touchBtn()} onClick={undoCancel}>
+                                    {t("erEmergencyOrders.undoCancel")}
+                                  </button>
+                                </div>
+                              ) : null;
+                              const activeCancelControl = showLineCancel ? (
+                                <button
+                                  type="button"
+                                  style={erOrdersTouchButtonStyle(
+                                    {
+                                      ...cancelOrderCompactX,
+                                      ...(lineCancelDisabled ? { opacity: 0.45, cursor: "not-allowed" } : {}),
+                                    },
+                                    layoutMode
+                                  )}
+                                  disabled={lineCancelDisabled}
+                                  title={t("cancelOrderModal.cancelOrderLineAria")}
+                                  aria-label={t("cancelOrderModal.cancelOrderLineAria")}
+                                  aria-busy={cancelBusyItemId === itemId}
+                                  onClick={() => {
+                                    if (lineCancelDisabled) return;
+                                    setCancelLineModalItemId(itemId);
+                                  }}
+                                >
+                                  <span aria-hidden>{cancelBusyItemId === itemId ? "…" : "×"}</span>
+                                </button>
+                              ) : null;
+                              return (
+                                <li key={itemId} style={{ minWidth: 0, listStyle: "none" }}>
+                                  <ErOrderLineCard
+                                    layoutMode={layoutMode}
+                                    categoryLabel={categoryLabel}
+                                    issuedPrimary={issuedPrimary}
+                                    timeStr={timeStr}
+                                    orderTitle={label}
+                                    orderSubLines={
+                                      <>
+                                        {routeLine ? (
+                                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{routeLine}</div>
+                                        ) : null}
+                                        {directionsLine ? (
+                                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                                        ) : null}
+                                      </>
+                                    }
+                                    statusSection={activeStatusSection}
+                                    titleSection={authorityLine}
+                                    actions={
+                                      lineBtns.length > 0 ? (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
+                                      ) : null
+                                    }
+                                    cancelControl={activeCancelControl}
+                                    pendingCancelSection={activePendingCancelSection}
+                                    highlightPending={linePendingCancel}
+                                    fieldLabels={orderCardFieldLabels}
+                                  />
+                                </li>
+                              );
+                            })}
+                          </React.Fragment>
+                        );
+                      })}
+                </ul>
               ) : (
-                <div style={ordersTableScrollWrap}>
-                  <table
-                    style={{
-                      width: "100%",
-                      minWidth: 720,
-                      borderCollapse: "collapse",
-                      fontSize: 12,
-                      background: "#fff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 10,
-                    }}
-                  >
+                <div style={diagnosisOrdersTableScrollWrapStyle(layoutMode)}>
+                  <table style={diagnosisOrdersTableStyle(layoutMode, 720)}>
                     <thead>
                       <tr>
                         <th scope="col" style={ordersTableTh}>
@@ -997,8 +1329,7 @@ export function EmergencyErOrdersPanel({
                             <tr
                               style={{
                                 background: "#f1f5f9",
-                                borderTop:
-                                  groupIdx > 0 ? "3px solid #475569" : "2px solid #cbd5e1",
+                                borderTop: groupIdx > 0 ? "3px solid #475569" : "2px solid #cbd5e1",
                               }}
                             >
                               <td
@@ -1075,7 +1406,7 @@ export function EmergencyErOrdersPanel({
                                     <button
                                       key="infusion-start"
                                       type="button"
-                                      style={btn}
+                                      style={touchBtn()}
                                       disabled={busy === `${itemId}:infusion-start`}
                                       onClick={() => void runInfusionAction(itemId, "start")}
                                     >
@@ -1089,7 +1420,7 @@ export function EmergencyErOrdersPanel({
                                     <button
                                       key="infusion-stop"
                                       type="button"
-                                      style={btn}
+                                      style={touchBtn()}
                                       disabled={busy === `${itemId}:infusion-stop`}
                                       onClick={() => void runInfusionAction(itemId, "stop")}
                                     >
@@ -1104,7 +1435,7 @@ export function EmergencyErOrdersPanel({
                                   <button
                                     key="nurse"
                                     type="button"
-                                    style={btn}
+                                    style={touchBtn()}
                                     disabled={busy === `${itemId}:nurse`}
                                     onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
                                   >
@@ -1124,7 +1455,7 @@ export function EmergencyErOrdersPanel({
                                     <button
                                       key="ack"
                                       type="button"
-                                      style={btn}
+                                      style={touchBtn()}
                                       disabled={busy === `${itemId}:acknowledge`}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
                                     >
@@ -1139,7 +1470,7 @@ export function EmergencyErOrdersPanel({
                                     <button
                                       key="start"
                                       type="button"
-                                      style={btn}
+                                      style={touchBtn()}
                                       disabled={busy === `${itemId}:start`}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
                                     >
@@ -1154,7 +1485,7 @@ export function EmergencyErOrdersPanel({
                                     <button
                                       key="complete"
                                       type="button"
-                                      style={btn}
+                                      style={touchBtn()}
                                       disabled={busy === `${itemId}:complete`}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
                                     >
@@ -1170,54 +1501,19 @@ export function EmergencyErOrdersPanel({
                                   key={itemId}
                                   style={{
                                     verticalAlign: "top",
-                                    ...(linePendingCancel
-                                      ? { background: "rgba(254, 243, 199, 0.28)" }
-                                      : {}),
+                                    ...(linePendingCancel ? { background: "rgba(254, 243, 199, 0.28)" } : {}),
                                   }}
                                 >
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#334155",
-                                      overflowWrap: "anywhere",
-                                      wordBreak: "break-word",
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                                     {categoryLabel}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#64748b",
-                                      overflowWrap: "anywhere",
-                                      wordBreak: "break-word",
-                                      maxWidth: 200,
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#64748b", overflowWrap: "anywhere", wordBreak: "break-word", maxWidth: 200 }}>
                                     {issuedPrimary}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#64748b",
-                                      whiteSpace: "nowrap",
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#64748b", whiteSpace: "nowrap" }}>
                                     {timeStr}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#0f172a",
-                                      overflowWrap: "anywhere",
-                                      wordBreak: "break-word",
-                                      maxWidth: 280,
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#0f172a", overflowWrap: "anywhere", wordBreak: "break-word", maxWidth: 280 }}>
                                     <div style={{ fontWeight: 600 }}>{label}</div>
                                     {routeLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{routeLine}</div>
@@ -1226,30 +1522,11 @@ export function EmergencyErOrdersPanel({
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#334155",
-                                      overflowWrap: "anywhere",
-                                      wordBreak: "break-word",
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                                     <div style={{ marginBottom: lineBtns.length > 0 || isInfusionLifecycleMed ? 6 : 0 }}>
                                       {isInfusionLifecycleMed && activeInfusion ? (
-                                        <div
-                                          style={{
-                                            fontSize: 12,
-                                            color: "#0369a1",
-                                            lineHeight: 1.45,
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: 4,
-                                          }}
-                                        >
-                                          <div style={{ fontWeight: 700 }}>
-                                            {t("infusionTimeline.infusionStatusInfusing")}
-                                          </div>
+                                        <div style={{ fontSize: 12, color: "#0369a1", lineHeight: 1.45, display: "flex", flexDirection: "column", gap: 4 }}>
+                                          <div style={{ fontWeight: 700 }}>{t("infusionTimeline.infusionStatusInfusing")}</div>
                                           {activeInfusion.infusionStartedAtIso ? (
                                             <div style={{ color: "#0c4a6e" }}>
                                               {t("infusionTimeline.infusionStartedAt").replace(
@@ -1261,32 +1538,6 @@ export function EmergencyErOrdersPanel({
                                               )}
                                             </div>
                                           ) : null}
-                                          {(() => {
-                                            const startedMs = activeInfusion.infusionStartedAtIso
-                                              ? new Date(activeInfusion.infusionStartedAtIso).getTime()
-                                              : NaN;
-                                            if (Number.isNaN(startedMs)) return null;
-                                            return (
-                                              <div style={{ color: "#0c4a6e" }}>
-                                                {formatInfusionElapsedForI18n(nowMs - startedMs, t)}
-                                              </div>
-                                            );
-                                          })()}
-                                          {(() => {
-                                            const byParts = [
-                                              activeInfusion.startedByDisplayName,
-                                              activeInfusion.startedByTitle,
-                                            ].filter((x): x is string => typeof x === "string" && Boolean(x.trim()));
-                                            if (!byParts.length) return null;
-                                            return (
-                                              <div style={{ color: "#0c4a6e" }}>
-                                                {t("infusionTimeline.infusionStartedBy").replace(
-                                                  "{by}",
-                                                  byParts.join(t("infusionTimeline.infusionTimelineDivider"))
-                                                )}
-                                              </div>
-                                            );
-                                          })()}
                                         </div>
                                       ) : (
                                         orderLineItemStatusLabel(st, t)
@@ -1296,64 +1547,26 @@ export function EmergencyErOrdersPanel({
                                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
                                     ) : null}
                                     {linePendingCancel ? (
-                                      <div
-                                        style={{
-                                          marginTop: 8,
-                                          display: "flex",
-                                          flexWrap: "wrap",
-                                          alignItems: "center",
-                                          gap: 8,
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            display: "inline-block",
-                                            padding: "2px 8px",
-                                            borderRadius: 9999,
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            color: "#92400e",
-                                            background: "#fef3c7",
-                                            border: "1px solid #fcd34d",
-                                          }}
-                                        >
+                                      <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                                        <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 600, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d" }}>
                                           {t("erEmergencyOrders.pendingCancelLine")}
                                         </span>
-                                        <button type="button" style={btn} onClick={undoCancel}>
+                                        <button type="button" style={touchBtn()} onClick={undoCancel}>
                                           {t("erEmergencyOrders.undoCancel")}
                                         </button>
                                       </div>
                                     ) : null}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "8px 8px",
-                                      color: "#64748b",
-                                      overflowWrap: "anywhere",
-                                      wordBreak: "break-word",
-                                      maxWidth: 220,
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#64748b", overflowWrap: "anywhere", wordBreak: "break-word", maxWidth: 220 }}>
                                     {authorityLine}
                                   </td>
-                                  <td
-                                    style={{
-                                      ...ordersTableTdBorder,
-                                      padding: "6px 8px",
-                                      textAlign: "center",
-                                      verticalAlign: "middle",
-                                      borderRight: "none",
-                                    }}
-                                  >
+                                  <td style={{ ...ordersTableTdBorder, padding: "6px 8px", textAlign: "center", verticalAlign: "middle", borderRight: "none" }}>
                                     {showLineCancel ? (
                                       <button
                                         type="button"
                                         style={{
                                           ...cancelOrderCompactX,
-                                          ...(lineCancelDisabled
-                                            ? { opacity: 0.45, cursor: "not-allowed" }
-                                            : {}),
+                                          ...(lineCancelDisabled ? { opacity: 0.45, cursor: "not-allowed" } : {}),
                                         }}
                                         disabled={lineCancelDisabled}
                                         title={t("cancelOrderModal.cancelOrderLineAria")}
@@ -1388,19 +1601,120 @@ export function EmergencyErOrdersPanel({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("common.loading")}</div>
               ) : completedRows.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.completedOrdersEmpty")}</div>
+              ) : usesOrderCards ? (
+                <ul style={diagnosisOrdersListStyle(layoutMode)}>
+                  {completedRows.map((e) => {
+                    const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
+                    const marLine = marActionOutcomeSubLabel(e.metadata, t);
+                    const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
+                    const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
+                    const itemIdEv = orderItemIdFromEventMetadata(e.metadata);
+                    const metaRec =
+                      e.metadata && typeof e.metadata === "object" && !Array.isArray(e.metadata)
+                        ? (e.metadata as Record<string, unknown>)
+                        : null;
+                    const stopSk =
+                      metaRec && typeof metaRec.infusionSessionKey === "string" ? metaRec.infusionSessionKey : null;
+                    let infusionStopTimeline: ReturnType<
+                      typeof findMedicationInfusionTimelineFromOrderEvents
+                    >["lastCompleted"] = null;
+                    if (isMedicationInfusionStopOrderEvent(e) && itemIdEv && e.orderId && stopSk) {
+                      const tl = findMedicationInfusionTimelineFromOrderEvents(parsedEvents, e.orderId, itemIdEv);
+                      if (tl.lastCompleted?.infusionSessionKey === stopSk) {
+                        infusionStopTimeline = tl.lastCompleted;
+                      }
+                    }
+                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
+                    const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
+                    const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
+                    const attributionLines = completedOrder
+                      ? formatOrderAttributionLines(completedOrder, t, language)
+                      : [];
+                    const issuedPrimary = attributionLines[0] ?? authorityLine ?? "—";
+                    const typeKey = (completedOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
+                    const categoryLabel = t(domainHeadingKey(typeKey));
+                    const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
+                    const performedWhen = new Date(e.performedAt).toLocaleString(
+                      language === "fr" ? "fr-FR" : "en-US"
+                    );
+                    const titleCell = formatErOrderEventAttributionCell(completedOrder, e, t, language);
+                    const statusSection = infusionStopTimeline ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                          fontSize: 12,
+                          color: "#134e4a",
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: "#0f766e" }}>
+                          {t("infusionTimeline.infusionCompleted")}
+                        </span>
+                        <span>
+                          {t("infusionTimeline.infusionStartedAt").replace(
+                            "{at}",
+                            infusionStopTimeline.infusionStartedAtIso &&
+                              !Number.isNaN(new Date(infusionStopTimeline.infusionStartedAtIso).getTime())
+                              ? new Date(infusionStopTimeline.infusionStartedAtIso).toLocaleString(
+                                  language === "fr" ? "fr-FR" : "en-US",
+                                  { dateStyle: "short", timeStyle: "short" }
+                                )
+                              : t("common.dash")
+                          )}
+                        </span>
+                        <span>
+                          {t("infusionTimeline.infusionStoppedAt").replace(
+                            "{at}",
+                            infusionStopTimeline.infusionStoppedAtIso &&
+                              !Number.isNaN(new Date(infusionStopTimeline.infusionStoppedAtIso).getTime())
+                              ? new Date(infusionStopTimeline.infusionStoppedAtIso).toLocaleString(
+                                  language === "fr" ? "fr-FR" : "en-US",
+                                  { dateStyle: "short", timeStyle: "short" }
+                                )
+                              : t("common.dash")
+                          )}
+                        </span>
+                        <span>{formatInfusionDurationForI18n(infusionStopTimeline.durationMinutes, t)}</span>
+                      </div>
+                    ) : (
+                      secondaryLine ?? t("orderEvent.completed")
+                    );
+                    const titleSection = (
+                      <>
+                        <div>{titleCell}</div>
+                        {authorityLine ? <div style={{ fontSize: 11, marginTop: 4 }}>{authorityLine}</div> : null}
+                        {attributionLines.slice(1).map((line) => (
+                          <div key={line} style={{ fontSize: 11, marginTop: 4 }}>
+                            {line}
+                          </div>
+                        ))}
+                      </>
+                    );
+                    return (
+                      <li key={e.id} style={{ minWidth: 0, listStyle: "none" }}>
+                        <ErOrderEventCard
+                          layoutMode={layoutMode}
+                          categoryLabel={categoryLabel}
+                          issuedPrimary={issuedPrimary}
+                          timeStr={performedWhen}
+                          orderTitle={primaryTitle}
+                          orderSubLines={
+                            directionsLine ? (
+                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                            ) : null
+                          }
+                          statusSection={statusSection}
+                          titleSection={titleSection}
+                          fieldLabels={orderCardFieldLabels}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
-                <div style={ordersTableScrollWrap}>
-                  <table
-                    style={{
-                      width: "100%",
-                      minWidth: 640,
-                      borderCollapse: "collapse",
-                      fontSize: 12,
-                      background: "#fff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 10,
-                    }}
-                  >
+                <div style={diagnosisOrdersTableScrollWrapStyle(layoutMode)}>
+                  <table style={diagnosisOrdersTableStyle(layoutMode, 640)}>
                     <thead>
                       <tr>
                         <th scope="col" style={ordersTableTh}>
@@ -1629,19 +1943,71 @@ export function EmergencyErOrdersPanel({
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("common.loading")}</div>
               ) : cancelledEvents.length === 0 ? (
                 <div style={{ fontSize: 12, color: "#64748b" }}>{t("erEmergencyOrders.cancelledOrdersEmpty")}</div>
+              ) : usesOrderCards ? (
+                <ul style={diagnosisOrdersListStyle(layoutMode)}>
+                  {cancelledEvents.map((e) => {
+                    const medCancelLine = medicationCancellationSubLabel(e, t);
+                    const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
+                    const cancelledOrder = parsedOrders.find((order) => order.id === e.orderId);
+                    const authorityLine = cancelledOrder ? formatOrderAuthority(cancelledOrder, t) : null;
+                    const attributionLines = cancelledOrder
+                      ? formatOrderAttributionLines(cancelledOrder, t, language)
+                      : [];
+                    const issuedPrimary = attributionLines[0] ?? authorityLine ?? "—";
+                    const typeKey = (cancelledOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
+                    const categoryLabel = t(domainHeadingKey(typeKey));
+                    const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
+                    const performedWhen = new Date(e.performedAt).toLocaleString(
+                      language === "fr" ? "fr-FR" : "en-US"
+                    );
+                    const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
+                    const titleCell = formatErOrderEventAttributionCell(cancelledOrder, e, t, language);
+                    const statusSection = (
+                      <>
+                        <div>{t("orderEvent.cancelled")}</div>
+                        {medCancelLine ? (
+                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{medCancelLine}</div>
+                        ) : null}
+                        <div style={{ fontSize: 11, marginTop: 4 }}>
+                          {t("orderEvent.cancelReason")}: {cancelReason}
+                        </div>
+                      </>
+                    );
+                    const titleSection = (
+                      <>
+                        <div>{titleCell}</div>
+                        {authorityLine ? <div style={{ fontSize: 11, marginTop: 4 }}>{authorityLine}</div> : null}
+                        {attributionLines.slice(1).map((line) => (
+                          <div key={line} style={{ fontSize: 11, marginTop: 4 }}>
+                            {line}
+                          </div>
+                        ))}
+                      </>
+                    );
+                    return (
+                      <li key={e.id} style={{ minWidth: 0, listStyle: "none" }}>
+                        <ErOrderEventCard
+                          layoutMode={layoutMode}
+                          categoryLabel={categoryLabel}
+                          issuedPrimary={issuedPrimary}
+                          timeStr={performedWhen}
+                          orderTitle={primaryTitle}
+                          orderSubLines={
+                            directionsLine ? (
+                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                            ) : null
+                          }
+                          statusSection={statusSection}
+                          titleSection={titleSection}
+                          fieldLabels={orderCardFieldLabels}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
               ) : (
-                <div style={ordersTableScrollWrap}>
-                  <table
-                    style={{
-                      width: "100%",
-                      minWidth: 640,
-                      borderCollapse: "collapse",
-                      fontSize: 12,
-                      background: "#fff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 10,
-                    }}
-                  >
+                <div style={diagnosisOrdersTableScrollWrapStyle(layoutMode)}>
+                  <table style={diagnosisOrdersTableStyle(layoutMode, 640)}>
                     <thead>
                       <tr>
                         <th scope="col" style={ordersTableTh}>
@@ -1776,6 +2142,7 @@ export function EmergencyErOrdersPanel({
             </div>
           </div>
         )}
+        </div>
       </MedoraCardInner>
 
       <CancelOrderModal

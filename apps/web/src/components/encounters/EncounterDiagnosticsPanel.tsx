@@ -8,6 +8,13 @@ import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
 import { getLocalizedDiagnosisDisplayLabel } from "@/features/emergency/diagnosisFrenchDisplayLabels";
+import {
+  diagnosisOrdersDiagnosisCardShellStyle,
+  diagnosisOrdersListStyle,
+  diagnosisOrdersTouchButtonStyle,
+  resolveDiagnosisOrdersLayoutMode,
+  type DiagnosisOrdersLayoutMode,
+} from "@/features/emergency/diagnosisOrdersResponsiveLayout";
 
 type DxRow = {
   id: string;
@@ -42,6 +49,17 @@ export function EncounterDiagnosticsPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reorderBusy, setReorderBusy] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveDiagnosisOrdersLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   const tEntry = useCallback((key: string) => t(key), [t]);
 
@@ -181,7 +199,11 @@ export function EncounterDiagnosticsPanel({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", gap: 14 }}
+      data-testid="encounter-diagnostics-panel-layout"
+      data-layout-mode={layoutMode}
+    >
       <div
         style={{
           ...dxShell,
@@ -202,17 +224,20 @@ export function EncounterDiagnosticsPanel({
               type="button"
               onClick={onGoPatientChart}
               disabled={isLocked}
-              style={{
-                padding: "8px 14px",
-                border: "1px solid #e2e8f0",
-                borderRadius: 10,
-                background: "#f8fafc",
-                color: "#0f172a",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: isLocked ? "not-allowed" : "pointer",
-                opacity: isLocked ? 0.65 : 1,
-              }}
+              style={diagnosisOrdersTouchButtonStyle(
+                {
+                  padding: "8px 14px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  background: "#f8fafc",
+                  color: "#0f172a",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: isLocked ? "not-allowed" : "pointer",
+                  opacity: isLocked ? 0.65 : 1,
+                },
+                layoutMode
+              )}
             >
               {t("encounterConsultDiagnostics.addButton")}
             </button>
@@ -257,9 +282,9 @@ export function EncounterDiagnosticsPanel({
         <div style={{ ...dxShell, padding: "18px 20px", color: "#64748b", fontSize: 14, lineHeight: 1.5 }}>
           {t("encounterConsultDiagnostics.empty")}
         </div>
-      ) : (
-        <div style={{ ...dxShell, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+      ) : layoutMode === "desktopDense" ? (
+        <div style={{ ...dxShell, overflowX: "auto", minWidth: 0 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 480 }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
                 <th style={{ padding: "12px 14px", textAlign: "left", fontWeight: 600, color: "#334155", borderBottom: "1px solid #e2e8f0" }}>
@@ -340,7 +365,7 @@ export function EncounterDiagnosticsPanel({
                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{codeSourceLabel(r.codeSource)}</div>
                     ) : null}
                   </td>
-                  <td style={{ padding: "12px 14px", color: "#334155" }}>
+                  <td style={{ padding: "12px 14px", color: "#334155", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                     {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
                   </td>
                   <td style={{ padding: "12px 14px", color: "#334155" }}>
@@ -351,6 +376,96 @@ export function EncounterDiagnosticsPanel({
             </tbody>
           </table>
         </div>
+      ) : (
+        <ul style={diagnosisOrdersListStyle(layoutMode)}>
+          {rows.map((r, idx) => (
+            <li key={r.id} style={{ minWidth: 0 }}>
+              <div style={diagnosisOrdersDiagnosisCardShellStyle()}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div style={{ minWidth: 0, flex: "1 1 160px" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{r.code}</div>
+                    {r.codeSource ? (
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>{codeSourceLabel(r.codeSource)}</div>
+                    ) : null}
+                    {idx === 0 ? (
+                      <span
+                        style={{
+                          display: "inline-block",
+                          marginTop: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#1d4ed8",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.04em",
+                        }}
+                      >
+                        {t("diagnosisEntry.primaryBadge")}
+                      </span>
+                    ) : null}
+                  </div>
+                  {canDocumentDiagnoses && !isLocked ? (
+                    <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        disabled={reorderBusy || idx === 0}
+                        onClick={() => void moveRow(idx, -1)}
+                        aria-label={t("encounterConsultDiagnostics.moveUp")}
+                        style={diagnosisOrdersTouchButtonStyle(
+                          {
+                            padding: "6px 10px",
+                            fontSize: 12,
+                            borderRadius: 8,
+                            border: "1px solid #e2e8f0",
+                            background: "#fff",
+                            cursor: idx === 0 || reorderBusy ? "not-allowed" : "pointer",
+                          },
+                          layoutMode
+                        )}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        disabled={reorderBusy || idx === rows.length - 1}
+                        onClick={() => void moveRow(idx, 1)}
+                        aria-label={t("encounterConsultDiagnostics.moveDown")}
+                        style={diagnosisOrdersTouchButtonStyle(
+                          {
+                            padding: "6px 10px",
+                            fontSize: 12,
+                            borderRadius: 8,
+                            border: "1px solid #e2e8f0",
+                            background: "#fff",
+                            cursor: idx === rows.length - 1 || reorderBusy ? "not-allowed" : "pointer",
+                          },
+                          layoutMode
+                        )}
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+                <p
+                  style={{
+                    margin: "8px 0 0 0",
+                    fontSize: 14,
+                    color: "#334155",
+                    lineHeight: 1.45,
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {getLocalizedDiagnosisDisplayLabel({ code: r.code, description: r.description }, language) || "—"}
+                </p>
+                <p style={{ margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                  <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterConsultDiagnostics.colOnset")}</span>{" "}
+                  {r.onsetDate ? new Date(r.onsetDate).toLocaleDateString(dateLocale) : "—"}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
