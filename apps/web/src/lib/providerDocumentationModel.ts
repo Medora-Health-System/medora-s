@@ -80,7 +80,18 @@ export type ProviderDocumentationTemplateId =
   | "allergic_reaction_rash"
   | "observation_reassessment"
   | "male_genital_complaint"
-  | "female_pelvic_gyn_complaint";
+  | "female_pelvic_gyn_complaint"
+  | "abdominal_pain_complaint_v1"
+  | "nausea_vomiting_complaint_v1"
+  | "diarrhea_complaint_v1"
+  | "constipation_complaint_v1"
+  | "gi_bleed_complaint_v1"
+  | "flank_pain_complaint_v1"
+  | "hernia_complaint_v1"
+  | "rectal_pain_complaint_v1"
+  | "dysphagia_complaint_v1";
+
+export type ProviderDocumentationTemplatePickerSubgroupKey = "gi_abdominal";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
@@ -151,6 +162,8 @@ export type ProviderDocumentationTemplateDefinition = {
   promptReminderKeys?: string[];
   /** Click-only complaint-specific helpers — never auto-inserted on template apply (19N.3). */
   complaintIntelligence?: import("./providerDocumentationComplaintIntelligence").ProviderDocumentationComplaintIntelligence;
+  /** Optional subgroup label within the major-group template picker (19MDM.2). */
+  pickerSubgroupKey?: ProviderDocumentationTemplatePickerSubgroupKey;
 };
 
 export type ProviderDocumentationSignReadiness = {

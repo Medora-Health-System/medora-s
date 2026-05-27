@@ -39,6 +39,15 @@ import {
   PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
   MALE_GENITAL_COMPLAINT_INTEL,
   FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
+  ABDOMINAL_PAIN_COMPLAINT_V1_INTEL,
+  NAUSEA_VOMITING_COMPLAINT_V1_INTEL,
+  DIARRHEA_COMPLAINT_V1_INTEL,
+  CONSTIPATION_COMPLAINT_V1_INTEL,
+  GI_BLEED_COMPLAINT_V1_INTEL,
+  FLANK_PAIN_COMPLAINT_V1_INTEL,
+  HERNIA_COMPLAINT_V1_INTEL,
+  RECTAL_PAIN_COMPLAINT_V1_INTEL,
+  DYSPHAGIA_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -46,6 +55,7 @@ import {
   WEAKNESS_COMPLAINT_INTEL,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
+import type { ProviderDocumentationTemplatePickerSubgroupKey } from "./providerDocumentationModel";
 import {
   ADULT_GUIDANCE_ACS,
   ADULT_GUIDANCE_NEURO,
@@ -158,12 +168,14 @@ function adultTemplate(
   physicalExam: ReturnType<typeof mergeExam>,
   guidance?: ProviderDocumentationTemplateGuidance,
   promptReminderKeys?: string[],
-  complaintIntelligence?: ProviderDocumentationComplaintIntelligence
+  complaintIntelligence?: ProviderDocumentationComplaintIntelligence,
+  pickerSubgroupKey?: ProviderDocumentationTemplatePickerSubgroupKey
 ): TemplateSpec {
   return {
     id,
     majorGroup: "ADULT",
     categoryKey: "providerDocumentationWorkspace.templateMajorGroupAdult",
+    pickerSubgroupKey,
     labelKey,
     helperKey,
     fields: mergeFields({
@@ -195,6 +207,52 @@ export const PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS: Record<ProviderDocum
   PEDIATRIC: "providerDocumentationWorkspace.templateMajorGroupPediatric",
   ADULT: "providerDocumentationWorkspace.templateMajorGroupAdult",
 };
+
+export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
+  ProviderDocumentationTemplatePickerSubgroupKey,
+  string
+> = {
+  gi_abdominal: "providerDocumentationWorkspace.templateSubgroupGiAbdominal",
+};
+
+function giComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.locAbdominalPain", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posAbdominalPain", "erMseRosChips.posVomiting"],
+    ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+    ["erMseRosChips.rfSeverePain", "erMseRosChips.rfHypotensionConcern"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.abdominalDifferentialReviewed"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultAbdominalRedFlags",
+      "providerDocumentationPromptReminders.adultAbdominalSerialExam",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "gi_abdominal"
+  );
+}
 
 /** @deprecated Use PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS — kept for legacy tests. */
 export const PROVIDER_DOCUMENTATION_TEMPLATE_CATEGORY_KEYS = Object.values(
@@ -1125,6 +1183,60 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
       "providerDocumentationPromptReminders.emtalaReassessment",
     ],
     ALLERGIC_REACTION_RASH_COMPLAINT_INTEL
+  ),
+  giComplaintV1Template(
+    "abdominal_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateAbdominalPainComplaintV1",
+    "providerDocumentationWorkspace.templateAbdominalPainComplaintV1Help",
+    ABDOMINAL_PAIN_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "nausea_vomiting_complaint_v1",
+    "providerDocumentationWorkspace.templateNauseaVomitingComplaintV1",
+    "providerDocumentationWorkspace.templateNauseaVomitingComplaintV1Help",
+    NAUSEA_VOMITING_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "diarrhea_complaint_v1",
+    "providerDocumentationWorkspace.templateDiarrheaComplaintV1",
+    "providerDocumentationWorkspace.templateDiarrheaComplaintV1Help",
+    DIARRHEA_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "constipation_complaint_v1",
+    "providerDocumentationWorkspace.templateConstipationComplaintV1",
+    "providerDocumentationWorkspace.templateConstipationComplaintV1Help",
+    CONSTIPATION_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "gi_bleed_complaint_v1",
+    "providerDocumentationWorkspace.templateGiBleedComplaintV1",
+    "providerDocumentationWorkspace.templateGiBleedComplaintV1Help",
+    GI_BLEED_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "flank_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateFlankPainComplaintV1",
+    "providerDocumentationWorkspace.templateFlankPainComplaintV1Help",
+    FLANK_PAIN_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "hernia_complaint_v1",
+    "providerDocumentationWorkspace.templateHerniaComplaintV1",
+    "providerDocumentationWorkspace.templateHerniaComplaintV1Help",
+    HERNIA_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "rectal_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateRectalPainComplaintV1",
+    "providerDocumentationWorkspace.templateRectalPainComplaintV1Help",
+    RECTAL_PAIN_COMPLAINT_V1_INTEL
+  ),
+  giComplaintV1Template(
+    "dysphagia_complaint_v1",
+    "providerDocumentationWorkspace.templateDysphagiaComplaintV1",
+    "providerDocumentationWorkspace.templateDysphagiaComplaintV1Help",
+    DYSPHAGIA_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

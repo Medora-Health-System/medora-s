@@ -1,5 +1,6 @@
 import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
+import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
 
 export default {
   common: {
@@ -6261,6 +6262,25 @@ export default {
     templateUrinarySymptomsHelp: "GU/flank symptom review, fever/pregnancy red flags, urine/lab review prompts.",
     templatePsychBehavioral: "Psychiatric / behavioral complaint",
     templatePsychBehavioralHelp: "Behavioral safety review, mental status exam, collateral/specialist discussion prompts.",
+    templateSubgroupGiAbdominal: "GI / Abdominal",
+    templateAbdominalPainComplaintV1: "Abdominal pain (GI intelligence)",
+    templateAbdominalPainComplaintV1Help: "Click-to-insert HPI, ROS, exam, MDM, reassessment, and disposition prompts for abdominal pain.",
+    templateNauseaVomitingComplaintV1: "Nausea / vomiting (GI intelligence)",
+    templateNauseaVomitingComplaintV1Help: "Click-to-insert prompts for nausea and vomiting evaluation and disposition.",
+    templateDiarrheaComplaintV1: "Diarrhea (GI intelligence)",
+    templateDiarrheaComplaintV1Help: "Click-to-insert prompts for acute diarrhea, hydration, and follow-up.",
+    templateConstipationComplaintV1: "Constipation (GI intelligence)",
+    templateConstipationComplaintV1Help: "Click-to-insert prompts for constipation and obstruction concerns.",
+    templateGiBleedComplaintV1: "GI bleeding (GI intelligence)",
+    templateGiBleedComplaintV1Help: "Click-to-insert prompts for upper/lower GI bleeding documentation.",
+    templateFlankPainComplaintV1: "Flank pain (GI intelligence)",
+    templateFlankPainComplaintV1Help: "Click-to-insert prompts for flank pain and urologic differential.",
+    templateHerniaComplaintV1: "Hernia (GI intelligence)",
+    templateHerniaComplaintV1Help: "Click-to-insert prompts for hernia and incarceration concerns.",
+    templateRectalPainComplaintV1: "Rectal pain (GI intelligence)",
+    templateRectalPainComplaintV1Help: "Click-to-insert prompts for rectal pain and anorectal differential.",
+    templateDysphagiaComplaintV1: "Dysphagia (GI intelligence)",
+    templateDysphagiaComplaintV1Help: "Click-to-insert prompts for dysphagia, airway, and swallowing risk.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10444,6 +10464,7 @@ export default {
       rosVaginalBleeding: "vaginal bleeding",
       rosVaginalDischarge: "vaginal discharge",
     },
+    ...providerDocumentationGiComplaintIntel19Mdm2En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

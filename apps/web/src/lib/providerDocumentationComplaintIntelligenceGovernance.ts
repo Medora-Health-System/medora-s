@@ -1,0 +1,62 @@
+/**
+ * Phase 19MDM.2 — Complaint-intelligence unsafe phrase governance (advisory / test gate).
+ * Blocks certainty language, false-negative imaging/labs claims, and mandatory disposition directives.
+ */
+import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { flattenComplaintIntelligenceKeys } from "./providerDocumentationComplaintIntelligence";
+
+export type ComplaintIntelligenceUnsafePhraseRule = {
+  id: string;
+  pattern: RegExp;
+};
+
+export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntelligenceUnsafePhraseRule[] =
+  [
+    { id: "appendicitis_ruled_out", pattern: /\bappendicitis\s+ruled\s+out\b/i },
+    { id: "obstruction_ruled_out", pattern: /\bobstruction\s+ruled\s+out\b/i },
+    { id: "gi_bleed_ruled_out", pattern: /\b(gi\s*bleed|gastrointestinal\s+bleed)\s+ruled\s+out\b/i },
+    { id: "perforation_ruled_out", pattern: /\bperforation\s+ruled\s+out\b/i },
+    { id: "surgical_abdomen_ruled_out", pattern: /\bsurgical\s+abdomen\s+ruled\s+out\b/i },
+    { id: "ct_normal", pattern: /\bct\s+normal\b/i },
+    { id: "labs_normal", pattern: /\blabs\s+normal\b/i },
+    { id: "imaging_negative", pattern: /\bimaging\s+negative\b/i },
+    { id: "no_acute_process", pattern: /\bno\s+acute\s+process\b/i },
+    { id: "benign_abdomen", pattern: /\bbenign\s+abdomen\b/i },
+    { id: "safe_for_discharge", pattern: /\bsafe\s+for\s+discharge\b/i },
+    { id: "medically_cleared", pattern: /\bmedically\s+cleared\b/i },
+    { id: "stable_for_discharge", pattern: /\bstable\s+for\s+discharge\b/i },
+    { id: "tolerating_po_without_issue", pattern: /\btolerating\s+po\s+without\s+issue\b/i },
+    { id: "pain_resolved", pattern: /\bpain\s+resolved\b/i },
+    { id: "no_serious_pathology", pattern: /\bno\s+serious\s+pathology\b/i },
+    { id: "must_discharge", pattern: /\bmust\s+discharge\b/i },
+    { id: "must_admit", pattern: /\bmust\s+admit\b/i },
+    { id: "definitive_diagnosis", pattern: /\bdefinitive\s+diagnosis\b/i },
+    { id: "ruled_out_generic", pattern: /\bruled\s+out\b/i },
+    { id: "workup_negative", pattern: /\bworkup\s+negative\b/i },
+    { id: "patient_stable", pattern: /\bpatient\s+stable\b/i },
+  ];
+
+export function complaintIntelligenceTextViolations(text: string): string[] {
+  const violations: string[] = [];
+  for (const rule of COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES) {
+    if (rule.pattern.test(text)) violations.push(rule.id);
+  }
+  return violations;
+}
+
+export function collectComplaintIntelResolvedText(
+  bundle: ProviderDocumentationComplaintIntelligence,
+  resolveFragment: (key: string) => string
+): string {
+  return flattenComplaintIntelligenceKeys(bundle)
+    .map((key) => resolveFragment(key))
+    .join("\n");
+}
+
+export function scanComplaintIntelligenceBundleForUnsafePhrases(
+  bundle: ProviderDocumentationComplaintIntelligence,
+  resolveFragment: (key: string) => string
+): string[] {
+  const text = collectComplaintIntelResolvedText(bundle, resolveFragment);
+  return complaintIntelligenceTextViolations(text);
+}

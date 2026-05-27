@@ -1,6 +1,7 @@
 import { labels } from "@/lib/uiLabels";
 import { erTriageMessagesFr } from "./erTriage.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
+import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumentationGiComplaintIntel19Mdm2.fr";
 
 export default {
   ...labels.fr,
@@ -6235,6 +6236,25 @@ export default {
     templateUrinarySymptomsHelp: "Revue GU / flanc, signaux fièvre / grossesse, aides urine / labo.",
     templatePsychBehavioral: "Plainte psychiatrique / comportementale",
     templatePsychBehavioralHelp: "Sécurité comportementale, examen mental, aides collateral / avis spécialisé.",
+    templateSubgroupGiAbdominal: "Gastro-intestinal / abdominal",
+    templateAbdominalPainComplaintV1: "Douleur abdominale (intelligence plainte)",
+    templateAbdominalPainComplaintV1Help: "Inserts cliquables — HPI, REV, examen, MDM, réévaluation et sortie pour douleur abdominale.",
+    templateNauseaVomitingComplaintV1: "Nausées / vomissements (intelligence plainte)",
+    templateNauseaVomitingComplaintV1Help: "Inserts cliquables pour nausées, vomissements et disposition.",
+    templateDiarrheaComplaintV1: "Diarrhée (intelligence plainte)",
+    templateDiarrheaComplaintV1Help: "Inserts cliquables pour diarrhée aiguë, hydratation et suivi.",
+    templateConstipationComplaintV1: "Constipation (intelligence plainte)",
+    templateConstipationComplaintV1Help: "Inserts cliquables pour constipation et risque d'occlusion.",
+    templateGiBleedComplaintV1: "Hémorragie digestive (intelligence plainte)",
+    templateGiBleedComplaintV1Help: "Inserts cliquables pour saignement digestif haut/bas.",
+    templateFlankPainComplaintV1: "Douleur de flanc (intelligence plainte)",
+    templateFlankPainComplaintV1Help: "Inserts cliquables pour douleur de flanc et différentiel urologique.",
+    templateHerniaComplaintV1: "Hernie (intelligence plainte)",
+    templateHerniaComplaintV1Help: "Inserts cliquables pour hernie et signes d'incarcération.",
+    templateRectalPainComplaintV1: "Douleur rectale (intelligence plainte)",
+    templateRectalPainComplaintV1Help: "Inserts cliquables pour douleur rectale et différentiel anorectal.",
+    templateDysphagiaComplaintV1: "Dysphagie (intelligence plainte)",
+    templateDysphagiaComplaintV1Help: "Inserts cliquables pour dysphagie, voies aériennes et déglutition.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10427,6 +10447,7 @@ export default {
       rosVaginalBleeding: "vaginal saignement",
       rosVaginalDischarge: "vaginal discharge",
     },
+    ...providerDocumentationGiComplaintIntel19Mdm2Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

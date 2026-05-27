@@ -31,9 +31,11 @@ import {
   type ProviderDocumentationTemplateDefinition,
   type ProviderDocumentationTemplateGuidance,
   type ProviderDocumentationTemplateId,
+  type ProviderDocumentationTemplatePickerSubgroupKey,
   type ProviderDocumentationTemplateStringField,
   type ProviderDocumentationWorkspaceState,
 } from "@/lib/providerDocumentationModel";
+import { PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS } from "@/lib/providerDocumentationTemplateCatalog";
 import {
   type ProviderDocumentationAutosaveStatus,
   shouldAutosaveProviderDocumentation,
@@ -1566,44 +1568,89 @@ export function ProviderDocumentationWorkspace({
                       {t(PROVIDER_DOCUMENTATION_MAJOR_GROUP_LABEL_KEYS[majorGroup])}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {templates.map((template) => {
-                        const isActive = value.activeTemplateId === template.id;
+                      {(() => {
+                        const ungrouped = templates.filter((template) => !template.pickerSubgroupKey);
+                        const subgroupKeys = [
+                          ...new Set(
+                            templates
+                              .map((template) => template.pickerSubgroupKey)
+                              .filter((key): key is ProviderDocumentationTemplatePickerSubgroupKey => key != null)
+                          ),
+                        ];
+                        const renderTemplateButton = (template: ProviderDocumentationTemplateDefinition) => {
+                          const isActive = value.activeTemplateId === template.id;
+                          return (
+                            <button
+                              key={template.id}
+                              type="button"
+                              disabled={readOnly}
+                              onClick={() => applyTemplate(template.id)}
+                              title={t(template.helperKey)}
+                              aria-label={t(template.labelKey)}
+                              aria-pressed={isActive}
+                              data-testid={`provider-template-picker-item-${template.id}`}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                width: "100%",
+                                padding: "8px 10px",
+                                border: isActive ? `1px solid ${accent.activeBorder}` : "1px solid #e2e8f0",
+                                borderRadius: 10,
+                                background: isActive ? accent.activeBg : "#fff",
+                                color: isActive ? accent.activeColor : "#0f172a",
+                                textAlign: "left",
+                                fontSize: 12,
+                                fontWeight: isActive ? 700 : 600,
+                                cursor: readOnly ? "not-allowed" : "pointer",
+                                fontFamily: "inherit",
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              <span style={{ minWidth: 0 }}>{t(template.labelKey)}</span>
+                              <span
+                                aria-hidden
+                                style={{ color: isActive ? accent.activeColor : "#94a3b8", fontSize: 14, flexShrink: 0 }}
+                              >
+                                ›
+                              </span>
+                            </button>
+                          );
+                        };
                         return (
-                          <button
-                            key={template.id}
-                            type="button"
-                            disabled={readOnly}
-                            onClick={() => applyTemplate(template.id)}
-                            title={t(template.helperKey)}
-                            aria-label={t(template.labelKey)}
-                            aria-pressed={isActive}
-                            data-testid={`provider-template-picker-item-${template.id}`}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "space-between",
-                              gap: 8,
-                              width: "100%",
-                              padding: "8px 10px",
-                              border: isActive ? `1px solid ${accent.activeBorder}` : "1px solid #e2e8f0",
-                              borderRadius: 10,
-                              background: isActive ? accent.activeBg : "#fff",
-                              color: isActive ? accent.activeColor : "#0f172a",
-                              textAlign: "left",
-                              fontSize: 12,
-                              fontWeight: isActive ? 700 : 600,
-                              cursor: readOnly ? "not-allowed" : "pointer",
-                              fontFamily: "inherit",
-                              lineHeight: 1.35,
-                            }}
-                          >
-                            <span style={{ minWidth: 0 }}>{t(template.labelKey)}</span>
-                            <span aria-hidden style={{ color: isActive ? accent.activeColor : "#94a3b8", fontSize: 14, flexShrink: 0 }}>
-                              ›
-                            </span>
-                          </button>
+                          <>
+                            {ungrouped.map(renderTemplateButton)}
+                            {subgroupKeys.map((subgroupKey) => {
+                              const subgroupTemplates = templates.filter(
+                                (template) => template.pickerSubgroupKey === subgroupKey
+                              );
+                              if (!subgroupTemplates.length) return null;
+                              return (
+                                <div
+                                  key={subgroupKey}
+                                  data-testid={`provider-template-picker-subgroup-${subgroupKey}`}
+                                  style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: ungrouped.length ? 4 : 0 }}
+                                >
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 800,
+                                      letterSpacing: "0.05em",
+                                      textTransform: "uppercase",
+                                      color: accent.headingColor,
+                                      padding: "2px 2px 0",
+                                    }}
+                                  >
+                                    {t(PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS[subgroupKey])}
+                                  </div>
+                                  {subgroupTemplates.map(renderTemplateButton)}
+                                </div>
+                              );
+                            })}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   </div>
                 );

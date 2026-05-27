@@ -30,6 +30,10 @@ import type {
   ProviderDocumentationExamSectionId,
   ProviderDocumentationTemplateStringField,
 } from "./providerDocumentationModel";
+import {
+  GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+  GI_COMPLAINT_V1_TEMPLATE_IDS,
+} from "./providerDocumentationGiComplaintIntelligence19Mdm2";
 
 export type ProviderDocumentationComplaintIntelligence = {
   hpi?: string[];
@@ -3923,6 +3927,7 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   pediatric_trauma: PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
   male_genital_complaint: MALE_GENITAL_COMPLAINT_INTEL,
   female_pelvic_gyn_complaint: FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
+  ...GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -3974,6 +3979,7 @@ export const BATCH10_COMPLAINT_TEMPLATE_IDS = [
   "male_genital_complaint",
   "female_pelvic_gyn_complaint",
 ] as const;
+export const BATCH11_GI_COMPLAINT_TEMPLATE_IDS = GI_COMPLAINT_V1_TEMPLATE_IDS;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -3985,6 +3991,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH8_COMPLAINT_TEMPLATE_IDS,
   ...BATCH9_COMPLAINT_TEMPLATE_IDS,
   ...BATCH10_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH11_GI_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;
@@ -4012,6 +4019,20 @@ export function complaintIntelligenceHasDuplicateKeys(bundle: ProviderDocumentat
   const keys = flattenComplaintIntelligenceKeys(bundle);
   return new Set(keys).size !== keys.length;
 }
+
+export {
+  ABDOMINAL_PAIN_COMPLAINT_V1_INTEL,
+  NAUSEA_VOMITING_COMPLAINT_V1_INTEL,
+  DIARRHEA_COMPLAINT_V1_INTEL,
+  CONSTIPATION_COMPLAINT_V1_INTEL,
+  GI_BLEED_COMPLAINT_V1_INTEL,
+  FLANK_PAIN_COMPLAINT_V1_INTEL,
+  HERNIA_COMPLAINT_V1_INTEL,
+  RECTAL_PAIN_COMPLAINT_V1_INTEL,
+  DYSPHAGIA_COMPLAINT_V1_INTEL,
+  GI_COMPLAINT_V1_TEMPLATE_IDS,
+  GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+} from "./providerDocumentationGiComplaintIntelligence19Mdm2";
 
 export function complaintIntelligenceFieldKeys(): ProviderDocumentationTemplateStringField[] {
   return [
