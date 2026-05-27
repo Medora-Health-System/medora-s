@@ -32,6 +32,8 @@ import {
   nextGcsStateAfterComponentChange,
 } from "./medoraErTriageV1";
 import { MedoraCardBadge } from "@/components/medora-card";
+import { TriageCarryForwardSectionBadge } from "./TriageCarryForwardBanner";
+import type { TriageCarryForwardMeta } from "./triageCarryForward";
 
 const TRAUMA_CRITERION_I18N_KEY: Record<ErTraumaActivationCriterionId, string> = {
   hypotension: "erTriage.v1.traumaCriteriaHypotension",
@@ -273,6 +275,7 @@ export type EmergencyTriageV1SectionsProps = {
   patientChartHref?: string;
   /** Required for home-medication catalog search (display names appended to summary only). */
   facilityId?: string;
+  carryForwardMeta?: TriageCarryForwardMeta | null;
 };
 
 export function EmergencyTriageV1Sections({
@@ -285,6 +288,7 @@ export function EmergencyTriageV1Sections({
   grid3,
   sectionHeading,
   facilityId,
+  carryForwardMeta,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
   const v1Any = erTriageV1FormHasAnyContent(er);
@@ -796,6 +800,12 @@ export function EmergencyTriageV1Sections({
       <details style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s3Title")}</span>
+          {carryForwardMeta?.fields.homeMedications ? (
+            <TriageCarryForwardSectionBadge fieldKey="homeMedications" meta={carryForwardMeta} />
+          ) : null}
+          {carryForwardMeta?.fields.allergies ? (
+            <TriageCarryForwardSectionBadge fieldKey="allergies" meta={carryForwardMeta} />
+          ) : null}
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div>
@@ -1004,6 +1014,21 @@ export function EmergencyTriageV1Sections({
       <details style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s4Title")}</span>
+          {carryForwardMeta?.fields.medicalHistory ? (
+            <TriageCarryForwardSectionBadge fieldKey="medicalHistory" meta={carryForwardMeta} />
+          ) : null}
+          {carryForwardMeta?.fields.surgicalHistory ? (
+            <TriageCarryForwardSectionBadge fieldKey="surgicalHistory" meta={carryForwardMeta} />
+          ) : null}
+          {carryForwardMeta?.fields.smokingHistory ? (
+            <TriageCarryForwardSectionBadge fieldKey="smokingHistory" meta={carryForwardMeta} />
+          ) : null}
+          {carryForwardMeta?.fields.alcoholUse ? (
+            <TriageCarryForwardSectionBadge fieldKey="alcoholUse" meta={carryForwardMeta} />
+          ) : null}
+          {carryForwardMeta?.fields.substanceUse ? (
+            <TriageCarryForwardSectionBadge fieldKey="substanceUse" meta={carryForwardMeta} />
+          ) : null}
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10 }}>
           <div style={grid2}>

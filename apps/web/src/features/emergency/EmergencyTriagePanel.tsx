@@ -33,6 +33,13 @@ import {
   triagePreviewSliceFromTriageGet,
 } from "./emergencyTriageDocPreview";
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
+import { TriageCarryForwardBanner } from "./TriageCarryForwardBanner";
+import {
+  mergeCarryForwardApiPayloadIntoTriageForm,
+  refreshCarryForwardReviewStatusFromForm,
+  triageCarryForwardMetaFromVitalsJson,
+  type TriageCarryForwardMeta,
+} from "./triageCarryForward";
 import { mergeVitalsJsonForSave } from "./emergencyTriageVitalsMerge";
 import { isTriageStaleConflictError } from "./triageConcurrency";
 import { flipHeightInputMode } from "@/lib/vitalsEntryFlip";
@@ -238,6 +245,7 @@ export function EmergencyTriagePanel({
   const [docPreviewOpen, setDocPreviewOpen] = useState(false);
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
+  const [carryForwardMeta, setCarryForwardMeta] = useState<TriageCarryForwardMeta | null>(null);
   const serverFormSignatureRef = useRef(triageFormSignature(emptyForm()));
   const restoredDraftKeyRef = useRef<string | null>(null);
 
@@ -324,6 +332,37 @@ export function EmergencyTriagePanel({
     setFormData((f) => ({ ...f, erV1: { ...f.erV1, ...patch } }));
   }, []);
 
+  const hydrateCarryForwardIfNeeded = useCallback(
+    async (baseForm: TriageFormState): Promise<TriageFormState> => {
+      if (encounter.type !== "EMERGENCY") return baseForm;
+      if (triageFormHasContent(baseForm)) return baseForm;
+      try {
+        const cf = (await apiFetch(`/encounters/${encounter.id}/triage/carry-forward`, {
+          facilityId,
+        })) as {
+          available?: boolean;
+          meta?: TriageCarryForwardMeta;
+          allergyNote?: string;
+          fields?: Record<string, unknown>;
+        };
+        if (cf?.available && cf.meta) {
+          const merged = mergeCarryForwardApiPayloadIntoTriageForm(baseForm, {
+            allergyNote: cf.allergyNote,
+            fields: cf.fields as Parameters<typeof mergeCarryForwardApiPayloadIntoTriageForm>[1]["fields"],
+            meta: cf.meta,
+          });
+          setCarryForwardMeta(merged.meta);
+          return { ...baseForm, ...merged.form };
+        }
+      } catch {
+        /* non-blocking — triage remains empty */
+      }
+      setCarryForwardMeta(null);
+      return baseForm;
+    },
+    [encounter.id, encounter.type, facilityId]
+  );
+
   const loadTriage = useCallback(async () => {
     setLoading(true);
     setSaveInfo(null);
@@ -363,6 +402,7 @@ export function EmergencyTriagePanel({
         };
         serverFormSignatureRef.current = triageFormSignature(nextForm);
         setFormData(nextForm);
+        setCarryForwardMeta(triageCarryForwardMetaFromVitalsJson(d.vitalsJson));
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
         if (typeof window !== "undefined" && restoredDraftKeyRef.current !== draftKey) {
@@ -396,9 +436,8 @@ export function EmergencyTriagePanel({
           }
         }
       } else {
-        const nextForm = emptyForm();
+        let nextForm = emptyForm();
         serverFormSignatureRef.current = triageFormSignature(nextForm);
-        setFormData(nextForm);
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
         if (typeof window !== "undefined" && restoredDraftKeyRef.current !== draftKey) {
@@ -414,13 +453,16 @@ export function EmergencyTriagePanel({
           });
           restoredDraftKeyRef.current = draftKey;
           if (canRestore && draft?.payload.formData) {
-            setFormData({ ...draft.payload.formData, triageCompleteAt: "" });
+            nextForm = { ...draft.payload.formData, triageCompleteAt: "" };
             setDraftRestoredAt(draft.metadata.savedLocallyAt);
             setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
           } else if (draft && !canRestore) {
             removeClinicalDraft(window.localStorage, draftKey);
           }
         }
+        nextForm = await hydrateCarryForwardIfNeeded(nextForm);
+        serverFormSignatureRef.current = triageFormSignature(nextForm);
+        setFormData(nextForm);
       }
     } catch (e) {
       console.error(e);
@@ -432,7 +474,21 @@ export function EmergencyTriagePanel({
     } finally {
       setLoading(false);
     }
-  }, [draftKey, draftScope, encounter.id, encounter.status, facilityId, formDisabled, language, t]);
+  }, [draftKey, draftScope, encounter.id, encounter.status, facilityId, formDisabled, hydrateCarryForwardIfNeeded, language, t]);
+
+  useEffect(() => {
+    if (!carryForwardMeta) return;
+    const next = refreshCarryForwardReviewStatusFromForm(carryForwardMeta, formData);
+    if (next && next.reviewStatus !== carryForwardMeta.reviewStatus) {
+      setCarryForwardMeta(next);
+    }
+  }, [formData, carryForwardMeta]);
+
+  const handleMarkCarryForwardReviewed = useCallback(() => {
+    setCarryForwardMeta((meta) =>
+      meta ? refreshCarryForwardReviewStatusFromForm(meta, formData, { markReviewed: true }) : meta
+    );
+  }, [formData]);
 
   useEffect(() => {
     void loadTriage();
@@ -450,7 +506,7 @@ export function EmergencyTriagePanel({
     const sepsisScreenParsed = Object.keys(sepsisJson).length > 0 ? sepsisJson : null;
 
     try {
-      const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, formData);
+      const vitalsMerged = mergeVitalsJsonForSave(triage?.vitalsJson, formData, carryForwardMeta);
 
       const lastKnownTriageUpdatedAt =
         triage?.updatedAt && typeof triage.updatedAt === "string"
@@ -739,6 +795,12 @@ export function EmergencyTriagePanel({
                 {t("erTriage.panel.localDraftSaved")}
               </p>
             ) : null}
+
+            <TriageCarryForwardBanner
+              meta={carryForwardMeta}
+              formDisabled={formDisabled}
+              onMarkReviewed={handleMarkCarryForwardReviewed}
+            />
 
             {showSafetyPrompts ? (
               <aside
@@ -1197,6 +1259,7 @@ export function EmergencyTriagePanel({
                     sectionHeading={sectionHeading}
                     patientChartHref={patientChartHref}
                     facilityId={facilityId}
+                    carryForwardMeta={carryForwardMeta}
                   />
                 </div>
               </div>

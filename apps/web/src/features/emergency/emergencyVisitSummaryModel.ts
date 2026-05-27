@@ -33,6 +33,11 @@ import {
   type VisitSummaryProviderDocumentationBlock,
 } from "./erProviderDocumentationSummary";
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  buildTriageCarryForwardSummary,
+  triageCarryForwardMetaFromVitalsJson,
+  type TriageCarryForwardFieldKey,
+} from "@medora/shared";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
@@ -125,6 +130,8 @@ export type VisitSummaryDocumentationHistoryEntry = {
 export type EmergencyVisitSummaryModel = {
   motifPresentation: VisitSummaryTextBlock | null;
   triageResume: VisitSummaryTextBlock | null;
+  /** Carry-forward triage history metadata (19T.1) — no clinical text in lines. */
+  triageCarryForward: VisitSummaryTextBlock | null;
   /** Initial nursing assessment (`nursingEvalV1`) — distinct from reassessment history. */
   initialNursingAssessment: VisitSummaryTextBlock | null;
   resumeInfirmier: VisitSummaryTextBlock | null;
@@ -202,6 +209,61 @@ function flattenSectionsToBlock(
   }
   if (lines.length === 0) return null;
   return { title, lines };
+}
+
+const CARRY_FORWARD_FIELD_I18N: Record<TriageCarryForwardFieldKey, string> = {
+  allergies: "carryForward.carryForwardFieldAllergies",
+  homeMedications: "carryForward.carryForwardFieldHomeMedications",
+  medicalHistory: "carryForward.carryForwardFieldMedicalHistory",
+  surgicalHistory: "carryForward.carryForwardFieldSurgicalHistory",
+  smokingHistory: "carryForward.carryForwardFieldSmoking",
+  alcoholUse: "carryForward.carryForwardFieldAlcohol",
+  substanceUse: "carryForward.carryForwardFieldSubstance",
+};
+
+const CARRY_FORWARD_STATUS_I18N: Record<
+  "pending_review" | "reviewed" | "modified" | "removed",
+  string
+> = {
+  pending_review: "carryForward.carryForwardStatusPending",
+  reviewed: "carryForward.carryForwardStatusReviewed",
+  modified: "carryForward.carryForwardStatusModified",
+  removed: "carryForward.carryForwardStatusRemoved",
+};
+
+function buildTriageCarryForwardSummaryBlock(
+  triage: Record<string, unknown> | null,
+  locale: SupportedLanguage
+): VisitSummaryTextBlock | null {
+  if (!triage) return null;
+  const meta = triageCarryForwardMetaFromVitalsJson(triage.vitalsJson);
+  const summary = buildTriageCarryForwardSummary(meta);
+  if (!summary.fields.length || !summary.reviewStatus) return null;
+
+  const fieldLabels = summary.fields
+    .map((f) => erTriageT(locale, `erTriage.${CARRY_FORWARD_FIELD_I18N[f.fieldKey]}`))
+    .join(", ");
+  const statusLabel = erTriageT(locale, `erTriage.${CARRY_FORWARD_STATUS_I18N[summary.reviewStatus]}`);
+  const sourceDate = summary.sourceEncounterDate
+    ? formatIsoForLocale(summary.sourceEncounterDate, locale)
+    : "—";
+
+  const lines = [
+    interpolate(vs(locale, "triageCarryForwardLine"), {
+      fields: fieldLabels,
+      status: statusLabel,
+      date: sourceDate,
+    }),
+  ];
+  if (summary.reviewedBy && summary.reviewedAt) {
+    lines.push(
+      interpolate(vs(locale, "triageCarryForwardReviewedBy"), {
+        name: summary.reviewedBy,
+        date: formatIsoForLocale(summary.reviewedAt, locale),
+      })
+    );
+  }
+  return { title: vs(locale, "triageCarryForwardTitle"), lines };
 }
 
 function nonEmptyPreviewSections(sections: { id: string; title: string; lines: string[] }[]): typeof sections {
@@ -1257,10 +1319,12 @@ export function buildEmergencyVisitSummaryModel(
     dispositionSupplementHistory.length > 0 ? dispositionSupplementHistory[0].id : null;
   const triageAssessmentHistory = buildTriageAssessmentHistoryEntries(documentationEvents, locale);
   const triageAssessmentLatestId = triageAssessmentHistory.length > 0 ? triageAssessmentHistory[0].id : null;
+  const triageCarryForward = buildTriageCarryForwardSummaryBlock(triage, locale);
 
   return {
     motifPresentation,
     triageResume,
+    triageCarryForward,
     initialNursingAssessment,
     resumeInfirmier,
     providerDocumentation,

@@ -5,9 +5,11 @@
  */
 
 import {
+  attachTriageCarryForwardMetaToVitalsJson,
   canonicalHeightCm,
   canonicalTemperatureCelsius,
   canonicalWeightKg,
+  type TriageCarryForwardMeta,
 } from "@medora/shared";
 import {
   MEDORA_ER_TRIAGE_V1_KEY,
@@ -38,7 +40,8 @@ export type VitalsJsonMergeFormInput = {
 /** Merge GET vitalsJson with form fields so unknown keys are kept on PUT. */
 export function mergeVitalsJsonForSave(
   previous: unknown,
-  form: VitalsJsonMergeFormInput
+  form: VitalsJsonMergeFormInput,
+  carryForwardMeta?: TriageCarryForwardMeta | null
 ): Record<string, unknown> | null {
   const base =
     previous && typeof previous === "object" && !Array.isArray(previous)
@@ -79,5 +82,8 @@ export function mergeVitalsJsonForSave(
   if (erBlob) base[MEDORA_ER_TRIAGE_V1_KEY] = erBlob;
   else delete base[MEDORA_ER_TRIAGE_V1_KEY];
 
-  return Object.keys(base).length === 0 ? null : base;
+  return attachTriageCarryForwardMetaToVitalsJson(
+    Object.keys(base).length ? base : null,
+    carryForwardMeta ?? null
+  );
 }

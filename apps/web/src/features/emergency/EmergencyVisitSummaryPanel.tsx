@@ -764,6 +764,9 @@ export function EmergencyVisitSummaryPanel({
           <SummaryBlockCard accent="#2563eb" block={model.motifPresentation} />
         ) : null}
         {model.triageResume ? <SummaryBlockCard accent="#b91c1c" block={model.triageResume} /> : null}
+        {model.triageCarryForward ? (
+          <SummaryBlockCard accent="#d97706" block={model.triageCarryForward} />
+        ) : null}
         {model.triageAssessmentHistory.length > 0 ? (
           <DocumentationHistoryCard
             accent="#b91c1c"
