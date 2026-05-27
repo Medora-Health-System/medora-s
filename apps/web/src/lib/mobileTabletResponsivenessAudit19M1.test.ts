@@ -1,6 +1,6 @@
 /**
  * Phase 19M.1 — lightweight responsive audit anchors (source-level, no DOM/Playwright).
- * Documents established patterns and known gaps until 19M.2–19M.8 fix phases land.
+ * Supplemented by cross-device QA checklist and 19M.8 rollup tests.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -84,5 +84,11 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(src).toContain("resolveEmergencyChartLayoutMode");
     expect(src).toContain("EmergencyErWorkspaceSectionNav");
     expect(src).not.toContain('gridTemplateColumns: "repeat(10, minmax(0, 1fr))"');
+  });
+
+  it("cross-device QA checklist document exists (19M.8)", () => {
+    const doc = readFileSync(join(webRoot, "../../docs/ui/cross-device-qa-checklist-19M8.md"), "utf8");
+    expect(doc).toContain("Phase 19M.8");
+    expect(doc).toContain("Core Clinical Workflow QA Matrix");
   });
 });
