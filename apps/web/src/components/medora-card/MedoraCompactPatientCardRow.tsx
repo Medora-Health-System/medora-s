@@ -50,6 +50,11 @@ export type MedoraCompactPatientCardRowProps = {
   /** Wider right column when many actions (e.g. nursing). */
   rightMaxWidth?: number;
   /**
+   * When true, stacks identity / tiles / actions vertically for narrow viewports
+   * (ED trackboard mobile/tablet). Default false preserves desktop-dense worklist rows.
+   */
+  stackedLayout?: boolean;
+  /**
    * Optional content rendered immediately *before* the room tile, in the same
    * horizontal "tile group" position. Used by the Emergency trackboard to
    * display a LOS tile next to the Room tile. Kept optional so existing
@@ -73,10 +78,140 @@ export function MedoraCompactPatientCardRow({
   roomValue,
   right,
   rightMaxWidth = 240,
+  stackedLayout = false,
   centerLeading,
   centerTrailing,
   centerTrailingMaxWidth = 200,
 }: MedoraCompactPatientCardRowProps) {
+  if (stackedLayout) {
+    return (
+      <div style={INNER_OFFSET} data-testid="medora-compact-patient-card-stacked">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "flex-start",
+              gap: 8,
+              minWidth: 0,
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 0,
+                flexShrink: 0,
+                width: 44,
+              }}
+            >
+              <div style={MEDORA_COMPACT_AVATAR_CIRCLE_STYLE} aria-hidden>
+                {avatarInitials}
+              </div>
+              {avatarFooter}
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>{identity}</div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              alignItems: "stretch",
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {centerLeading ? (
+              <div style={{ flex: "1 1 100px", minWidth: 0, display: "flex", alignItems: "center" }}>
+                {centerLeading}
+              </div>
+            ) : null}
+            <div
+              style={{
+                flex: "1 1 100px",
+                minWidth: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  border: "1px solid #bae6fd",
+                  backgroundColor: "#f0f9ff",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
+                  textAlign: "center",
+                  minWidth: 0,
+                  width: "100%",
+                  maxWidth: "100%",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "#0369a1",
+                    marginBottom: 1,
+                    lineHeight: 1,
+                  }}
+                >
+                  {roomLabel}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    lineHeight: 1.15,
+                    color: "#0c4a6e",
+                    fontVariantNumeric: "tabular-nums",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {roomValue}
+                </div>
+              </div>
+            </div>
+            {centerTrailing ? (
+              <div
+                style={{
+                  flex: "1 1 160px",
+                  minWidth: 0,
+                  maxWidth: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {centerTrailing}
+              </div>
+            ) : null}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "stretch",
+              justifyContent: "flex-start",
+              gap: 6,
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            {right}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={INNER_OFFSET}>
       <div style={MAIN_ROW}>

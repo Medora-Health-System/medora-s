@@ -63,6 +63,13 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(src).not.toContain("overflow-x-auto");
   });
 
+  it("EmergencyTrackboardView implements responsive patient cards (19M.3)", () => {
+    const src = readWebSource("src/features/emergency/EmergencyTrackboardView.tsx");
+    expect(src).toContain("resolveErTrackboardLayoutMode");
+    expect(src).toContain("stackedLayout={stackedCardLayout}");
+    expect(src).toContain('data-testid="emergency-trackboard-layout"');
+  });
+
   it("EmergencyActiveWorkspaceView implements responsive section nav (19M.4)", () => {
     const src = readWebSource("src/features/emergency/EmergencyActiveWorkspaceView.tsx");
     expect(src).toContain("resolveEmergencyChartLayoutMode");

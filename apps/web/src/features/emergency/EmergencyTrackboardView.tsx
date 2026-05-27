@@ -44,6 +44,21 @@ import {
   reassessmentDue,
   type TrackboardOpsPayload,
 } from "@/features/emergency/erTrackboardOperationalBadges";
+import {
+  erTrackboardChipRowStyle,
+  erTrackboardFilterActionsStyle,
+  erTrackboardFiltersRowStyle,
+  erTrackboardOpsRegionStyle,
+  erTrackboardPageInnerStyle,
+  erTrackboardPageShellStyle,
+  erTrackboardPatientListStyle,
+  erTrackboardSearchFieldStyle,
+  erTrackboardTouchControlStyle,
+  erTrackboardUsesStackedCardLayout,
+  ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+  resolveErTrackboardLayoutMode,
+  type ErTrackboardLayoutMode,
+} from "@/features/emergency/erTrackboardResponsiveLayout";
 
 const EMERGENCY_TYPE = "EMERGENCY" as const;
 
@@ -186,6 +201,7 @@ export function EmergencyTrackboardView() {
   /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
+  const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
    * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
    * the LOS column once per minute; this avoids any extra network traffic.
@@ -199,6 +215,17 @@ export function EmergencyTrackboardView() {
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
+  const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveErTrackboardLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -317,8 +344,12 @@ export function EmergencyTrackboardView() {
     STATUS_BADGE_SOFT[status] ?? { bg: "#f4f4f5", text: "#52525b", border: "#e4e4e7" };
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
-      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+    <div style={erTrackboardPageShellStyle(layoutMode)} data-layout-mode={layoutMode}>
+      <div
+        style={erTrackboardPageInnerStyle()}
+        data-testid="emergency-trackboard-layout"
+        data-layout-mode={layoutMode}
+      >
         {/*
          * Phase 10A patch — compact operational header.
          * The page name is preserved as a screen-reader-only h1 (page identity is
@@ -374,29 +405,24 @@ export function EmergencyTrackboardView() {
           </span>
           <Link
             href="/app/emergency/triage"
-            style={{
-              marginLeft: "auto",
-              color: "#2563eb",
-              fontWeight: 600,
-              fontSize: 13,
-              textDecoration: "none",
-            }}
+            style={erTrackboardTouchControlStyle(
+              {
+                marginLeft: layoutMode === "mobileCard" ? 0 : "auto",
+                color: "#2563eb",
+                fontWeight: 600,
+                fontSize: 13,
+                textDecoration: "none",
+                padding: layoutMode === "mobileCard" ? "10px 12px" : undefined,
+              },
+              layoutMode
+            )}
           >
             {t("emergencyTrackboard.triageLink")}
           </Link>
         </header>
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            gap: 10,
-            marginBottom: 28,
-          }}
-        >
-          <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+        <div style={erTrackboardFiltersRowStyle(layoutMode)} data-testid="emergency-trackboard-filters">
+          <div style={erTrackboardSearchFieldStyle()}>
             <span style={{ ...filterLabel, marginBottom: 3 }}>{t("emergencyTrackboard.searchLabel")}</span>
             <input
               type="search"
@@ -404,27 +430,35 @@ export function EmergencyTrackboardView() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("emergencyTrackboard.searchPlaceholder")}
-              style={{ ...inputBase, height: 40, fontSize: 14 }}
+              style={{
+                ...inputBase,
+                height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                fontSize: 14,
+              }}
             />
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginLeft: "auto" }}>
+          <div style={erTrackboardFilterActionsStyle(layoutMode)}>
             <button
               type="button"
               onClick={() => void loadEncounters()}
               disabled={loading}
-              style={{
-                height: 40,
-                padding: "0 14px",
-                backgroundColor: "#fff",
-                color: "#334155",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-                cursor: loading ? "not-allowed" : "pointer",
-                fontSize: 13,
-                fontWeight: 500,
-                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
-                whiteSpace: "nowrap",
-              }}
+              style={erTrackboardTouchControlStyle(
+                {
+                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                  width: layoutMode === "mobileCard" ? "100%" : undefined,
+                  padding: "0 14px",
+                  backgroundColor: "#fff",
+                  color: "#334155",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                  whiteSpace: "nowrap",
+                },
+                layoutMode
+              )}
             >
               {loading ? t("common.loading") : t("common.refresh")}
             </button>
@@ -509,7 +543,7 @@ export function EmergencyTrackboardView() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <ul style={erTrackboardPatientListStyle(layoutMode)}>
             {filtered.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
@@ -667,6 +701,7 @@ export function EmergencyTrackboardView() {
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
                       <MedoraCompactPatientCardRow
+                        stackedLayout={stackedCardLayout}
                         avatarInitials={patientInitials(patient)}
                         avatarFooter={
                           <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
@@ -684,8 +719,9 @@ export function EmergencyTrackboardView() {
                                 backgroundColor: losTileSoft.bg,
                                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
                                 textAlign: "center",
-                                minWidth: 80,
-                                maxWidth: 120,
+                                minWidth: stackedCardLayout ? 0 : 80,
+                                maxWidth: stackedCardLayout ? "100%" : 120,
+                                width: stackedCardLayout ? "100%" : undefined,
                               }}
                             >
                               <div
@@ -739,9 +775,10 @@ export function EmergencyTrackboardView() {
                                 fontWeight: 500,
                                 color: "#475569",
                                 lineHeight: 1.25,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
+                                overflow: stackedCardLayout ? "visible" : "hidden",
+                                textOverflow: stackedCardLayout ? "clip" : "ellipsis",
+                                whiteSpace: stackedCardLayout ? "normal" : "nowrap",
+                                wordBreak: "break-word",
                               }}
                               title={phys || undefined}
                             >
@@ -759,9 +796,10 @@ export function EmergencyTrackboardView() {
                                 fontWeight: 500,
                                 color: "#475569",
                                 lineHeight: 1.25,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
+                                overflow: stackedCardLayout ? "visible" : "hidden",
+                                textOverflow: stackedCardLayout ? "clip" : "ellipsis",
+                                whiteSpace: stackedCardLayout ? "normal" : "nowrap",
+                                wordBreak: "break-word",
                               }}
                               title={nurse || undefined}
                             >
@@ -821,15 +859,7 @@ export function EmergencyTrackboardView() {
                              * here as well: LOS now lives in its own tile next to
                              * Room (centerLeading).
                              */}
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 4,
-                                justifyContent: "flex-end",
-                              }}
-                            >
+                            <div style={erTrackboardChipRowStyle(layoutMode)}>
                               <span
                                 title={dispositionBadge ? t("emergencyTrackboard.dispositionTooltip") : undefined}
                               >
@@ -853,47 +883,49 @@ export function EmergencyTrackboardView() {
                             </div>
                             <div
                               style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 4,
+                                ...erTrackboardChipRowStyle(layoutMode),
                                 alignItems: "center",
-                                justifyContent: "flex-end",
                               }}
                             >
                               <Link
                                 href={emergencyChartPath(encounter.id)}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: "4px 10px",
-                                  borderRadius: 8,
-                                  border: "1px solid #93c5fd",
-                                  backgroundColor: "#dbeafe",
-                                  color: "#1e40af",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  textDecoration: "none",
-                                }}
+                                style={erTrackboardTouchControlStyle(
+                                  {
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid #93c5fd",
+                                    backgroundColor: "#dbeafe",
+                                    color: "#1e40af",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                  },
+                                  layoutMode
+                                )}
                               >
                                 {t("emergencyTrackboard.chartLink")}
                               </Link>
                               <Link
                                 href={emergencyActiveWorkspacePath(encounter.id)}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: "4px 10px",
-                                  borderRadius: 8,
-                                  border: "1px solid #bfdbfe",
-                                  backgroundColor: "#eff6ff",
-                                  color: "#1d4ed8",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  textDecoration: "none",
-                                }}
+                                style={erTrackboardTouchControlStyle(
+                                  {
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid #bfdbfe",
+                                    backgroundColor: "#eff6ff",
+                                    color: "#1d4ed8",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                  },
+                                  layoutMode
+                                )}
                               >
                                 {t("common.view")}
                               </Link>
@@ -907,19 +939,22 @@ export function EmergencyTrackboardView() {
                                       ? t("emergencyTrackboard.assignProviderMine")
                                       : t("emergencyTrackboard.assignProviderMe")
                                   }
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                    backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
-                                    color: isPhysMine ? "#065f46" : "#0f172a",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: assigningId === encounter.id || isPhysMine ? "default" : "pointer",
-                                  }}
+                                  style={erTrackboardTouchControlStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                      backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
+                                      color: isPhysMine ? "#065f46" : "#0f172a",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: assigningId === encounter.id || isPhysMine ? "default" : "pointer",
+                                    },
+                                    layoutMode
+                                  )}
                                 >
                                   {isPhysMine
                                     ? t("emergencyTrackboard.assignProviderMine")
@@ -938,19 +973,22 @@ export function EmergencyTrackboardView() {
                                       ? t("emergencyTrackboard.assignNurseMine")
                                       : t("emergencyTrackboard.assignNurseMe")
                                   }
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                    backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
-                                    color: isNurseMine ? "#065f46" : "#0f172a",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: assigningId === encounter.id || isNurseMine ? "default" : "pointer",
-                                  }}
+                                  style={erTrackboardTouchControlStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                      backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
+                                      color: isNurseMine ? "#065f46" : "#0f172a",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: assigningId === encounter.id || isNurseMine ? "default" : "pointer",
+                                    },
+                                    layoutMode
+                                  )}
                                 >
                                   {isNurseMine
                                     ? t("emergencyTrackboard.assignNurseMine")
@@ -979,15 +1017,7 @@ export function EmergencyTrackboardView() {
                       <div
                         role="region"
                         aria-label={t("emergencyTrackboard.ops.regionAria")}
-                        style={{
-                          marginTop: 6,
-                          paddingTop: 6,
-                          borderTop: "1px solid #f1f5f9",
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: 4,
-                          alignItems: "center",
-                        }}
+                        style={erTrackboardOpsRegionStyle()}
                       >
                         {opsChips.map((c) => (
                           <MedoraCardBadge key={c.key} soft={c.soft}>
