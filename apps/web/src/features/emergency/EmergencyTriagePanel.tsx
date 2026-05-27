@@ -34,13 +34,22 @@ import {
 } from "./emergencyTriageDocPreview";
 import { EmergencyTriageV1Sections } from "./EmergencyTriageV1Sections";
 import { TriageCarryForwardBanner } from "./TriageCarryForwardBanner";
+import { PatientHistoryReconciliationBanner } from "./PatientHistoryReconciliationBanner";
+import {
+  compareEncounterDraftWithProfile,
+  patientClinicalHistoryProfileFromJson,
+  type PatientHistoryProfileDiff,
+  type PatientHistoryReconciliationResult,
+} from "./patientClinicalHistoryProfile";
 import {
   clearCarryForwardSectionFromForm,
   confirmCarryForwardSectionFromForm,
   mergeCarryForwardApiPayloadIntoTriageForm,
   normalizeCarryForwardMetaFromForm,
   refreshCarryForwardReviewStatusFromForm,
+  triagePanelFormToCarryForwardDraft,
   triageCarryForwardMetaFromVitalsJson,
+  type TriageCarryForwardApiPayload,
   type TriageCarryForwardMeta,
   type TriageCarryForwardSectionKey,
 } from "./triageCarryForward";
@@ -250,6 +259,11 @@ export function EmergencyTriagePanel({
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const [carryForwardMeta, setCarryForwardMeta] = useState<TriageCarryForwardMeta | null>(null);
+  const [profileDiffs, setProfileDiffs] = useState<PatientHistoryProfileDiff[] | null>(null);
+  const [historyReconciliation, setHistoryReconciliation] = useState<PatientHistoryReconciliationResult | null>(
+    null
+  );
+  const [profileHydrationHint, setProfileHydrationHint] = useState(false);
   const serverFormSignatureRef = useRef(triageFormSignature(emptyForm()));
   const restoredDraftKeyRef = useRef<string | null>(null);
 
@@ -343,16 +357,12 @@ export function EmergencyTriagePanel({
       try {
         const cf = (await apiFetch(`/encounters/${encounter.id}/triage/carry-forward`, {
           facilityId,
-        })) as {
-          available?: boolean;
-          meta?: TriageCarryForwardMeta;
-          allergyNote?: string;
-          fields?: Record<string, unknown>;
-        };
+        })) as TriageCarryForwardApiPayload;
         if (cf?.available && cf.meta) {
+          setProfileHydrationHint(cf.hydrationSource === "patient_profile");
           const merged = mergeCarryForwardApiPayloadIntoTriageForm(baseForm, {
             allergyNote: cf.allergyNote,
-            fields: cf.fields as Parameters<typeof mergeCarryForwardApiPayloadIntoTriageForm>[1]["fields"],
+            fields: cf.fields,
             meta: cf.meta,
           });
           setCarryForwardMeta(merged.meta);
@@ -483,6 +493,29 @@ export function EmergencyTriagePanel({
   }, [draftKey, draftScope, encounter.id, encounter.status, facilityId, formDisabled, hydrateCarryForwardIfNeeded, language, t]);
 
   useEffect(() => {
+    const patientId = encounter.patient?.id as string | undefined;
+    if (!patientId || encounter.type !== "EMERGENCY") {
+      setProfileDiffs(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const profileRaw = await apiFetch(`/patients/${patientId}/clinical-history-profile`, { facilityId });
+        const profile = patientClinicalHistoryProfileFromJson(profileRaw);
+        if (!profile) {
+          setProfileDiffs(null);
+          return;
+        }
+        setProfileDiffs(
+          compareEncounterDraftWithProfile(profile, triagePanelFormToCarryForwardDraft(formData))
+        );
+      } catch {
+        setProfileDiffs(null);
+      }
+    })();
+  }, [encounter.patient?.id, encounter.type, facilityId, formData]);
+
+  useEffect(() => {
     if (!carryForwardMeta) return;
     const next = refreshCarryForwardReviewStatusFromForm(carryForwardMeta, formData);
     if (!next) return;
@@ -595,6 +628,10 @@ export function EmergencyTriagePanel({
 
       await loadTriage();
       await onSaved();
+      const reconciliation = (
+        res as { clinicalHistoryReconciliation?: PatientHistoryReconciliationResult }
+      )?.clinicalHistoryReconciliation;
+      if (reconciliation) setHistoryReconciliation(reconciliation);
       if (typeof window !== "undefined") {
         removeClinicalDraft(window.localStorage, draftKey);
       }
@@ -828,6 +865,22 @@ export function EmergencyTriagePanel({
               </p>
             ) : null}
 
+            <PatientHistoryReconciliationBanner diffs={profileDiffs ?? undefined} saveResult={historyReconciliation} />
+            {profileHydrationHint ? (
+              <div
+                style={{
+                  marginBottom: 12,
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #bfdbfe",
+                  background: "#eff6ff",
+                  color: "#1e3a8a",
+                  fontSize: 12,
+                }}
+              >
+                {t("erTriage.longitudinalHistory.hydratedFromProfile")}
+              </div>
+            ) : null}
             <TriageCarryForwardBanner
               meta={carryForwardMeta}
               formDisabled={formDisabled}

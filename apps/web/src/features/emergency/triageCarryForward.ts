@@ -43,6 +43,14 @@ export {
   type TriageCarryForwardStalenessLevel,
 } from "@medora/shared";
 
+export type TriageCarryForwardApiPayload = {
+  available?: boolean;
+  hydrationSource?: "patient_profile" | "prior_encounter";
+  meta?: TriageCarryForwardMeta;
+  allergyNote?: string;
+  fields?: Partial<ReturnType<typeof emptyTriageCarryForwardDraft>["erV1"]>;
+};
+
 export type TriagePanelCarryForwardFormSlice = {
   allergyNote: string;
   erV1: ErTriageV1Form;
