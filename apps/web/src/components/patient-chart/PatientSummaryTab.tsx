@@ -12,6 +12,8 @@ import {
 } from "@/lib/followUpsApi";
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { PatientVitalsHistory } from "./PatientVitalsHistory";
+import { PatientClinicalHistoryProfileBlock } from "./PatientClinicalHistoryProfileBlock";
+import type { PatientClinicalHistoryProfile } from "@/features/emergency/patientClinicalHistoryProfile";
 import { diagnosisDisplayFr } from "./patientChartHelpers";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { EncounterClinicalTimeline } from "./EncounterClinicalTimeline";
@@ -259,6 +261,17 @@ export function PatientSummaryTab({
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>{t("patientChartUi.summaryTimelineIntro")}</p>
         <EncounterClinicalTimeline encounters={recentEncounters} followUps={followUps} />
       </ChartSection>
+
+      {chartSummary?.clinicalHistoryProfile ? (
+        <ChartSection title={t("patientChartUi.clinicalHistoryTitle")}>
+          <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>
+            {t("patientChartUi.clinicalHistoryIntro")}
+          </p>
+          <PatientClinicalHistoryProfileBlock
+            profile={chartSummary.clinicalHistoryProfile as PatientClinicalHistoryProfile}
+          />
+        </ChartSection>
+      ) : null}
 
       <ChartSection title={t("patientChartUi.summaryVitalsTitle")}>
         <p style={{ fontSize: 13, color: "#666", margin: "0 0 12px 0" }}>{t("patientChartUi.summaryVitalsIntro")}</p>

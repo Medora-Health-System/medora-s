@@ -6,6 +6,7 @@ import { PatientInsuranceService } from "./patient-insurance.service";
 import { BreakGlassService } from "./break-glass.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
+import { PatientClinicalHistoryService } from "./patient-clinical-history.service";
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { FacilityMembershipGuard } from "../common/guards/facility-membership.guard";
@@ -24,10 +25,11 @@ import { TrackboardModule } from "../trackboard/trackboard.module";
     BreakGlassService,
     ChartSummaryService,
     PatientVitalsService,
+    PatientClinicalHistoryService,
     AuditService,
     FacilityMembershipGuard,
   ],
-  exports: [PatientsService],
+  exports: [PatientsService, PatientClinicalHistoryService],
 })
 export class PatientsModule {}
 

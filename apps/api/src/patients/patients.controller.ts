@@ -20,6 +20,7 @@ import {
 } from "../common/guards/roles.guard";
 import { PatientsService } from "./patients.service";
 import { PatientInsuranceService } from "./patient-insurance.service";
+import { PatientClinicalHistoryService } from "./patient-clinical-history.service";
 import { ChartSummaryService } from "./chart-summary.service";
 import { PatientVitalsService } from "./patient-vitals.service";
 import { EncountersService } from "../encounters/encounters.service";
@@ -43,6 +44,7 @@ export class PatientsController {
     private readonly patientsService: PatientsService,
     private readonly patientInsuranceService: PatientInsuranceService,
     private readonly chartSummaryService: ChartSummaryService,
+    private readonly patientClinicalHistoryService: PatientClinicalHistoryService,
     private readonly patientVitalsService: PatientVitalsService,
     private readonly encountersService: EncountersService,
     private readonly publicHealthService: PublicHealthService,
@@ -149,6 +151,17 @@ export class PatientsController {
       req.headers["user-agent"],
       req.breakGlassSessionId
     );
+  }
+
+  @Get(":id/clinical-history-profile")
+  @AllowBreakGlassForPatientParam("id")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async getClinicalHistoryProfile(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.patientClinicalHistoryService.getProfile(id, facilityId);
   }
 
   @Get(":id/chart-summary")

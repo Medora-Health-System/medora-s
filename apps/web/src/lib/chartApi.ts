@@ -165,6 +165,18 @@ export type ChartSummary = {
     language: string | null;
     createdAt: string;
   };
+  clinicalHistoryProfile?: unknown;
+  clinicalHistorySummary?: {
+    hasProfile: boolean;
+    updatedAt: string | null;
+    updatedBy: string | null;
+    sections: Array<{
+      section: string;
+      lastReviewedAt: string | null;
+      sourceEncounterDate: string | null;
+      sourceType: string | null;
+    }>;
+  };
   recentEncounters: ChartSummaryEncounter[];
   activeDiagnoses: Array<{
     id: string;

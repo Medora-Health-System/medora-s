@@ -53,4 +53,5 @@ export * from "./medication/infusionRoute.util.js";
 export * from "./medication/medicationCatalogClassification.js";
 export * from "./medication/catalogClassificationAuditFlags.js";
 export * from "./triage/triageCarryForward.js";
+export * from "./patient/patientClinicalHistoryProfile.js";
 

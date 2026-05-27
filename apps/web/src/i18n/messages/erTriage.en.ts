@@ -618,4 +618,12 @@ export const erTriageMessagesEn = {
     summaryTitle: "Triage history carry-forward",
     summaryLine: "Carried fields: {fields} — {status} (source {date})",
   },
+  longitudinalHistory: {
+    profileUpdated: "Patient history profile updated",
+    encounterDiffersFromProfile: "Encounter history differs from longitudinal profile",
+    newAllergyOrHistory: "New history entered — review and save recommended",
+    sectionPromoted: "Section {section} added to patient profile",
+    sectionRemovedFromProfile: "Section {section} removed from patient profile",
+    hydratedFromProfile: "History prefilled from patient profile",
+  },
 } as const;

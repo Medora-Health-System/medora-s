@@ -745,6 +745,8 @@ model Patient {
   /// Denormalized latest vitals JSON for chart header / offline read models; updated when triage or encounter vitals are saved.
   latestVitalsJson             Json?
   latestVitalsAt               DateTime?
+  /// Phase 19T.3 — canonical longitudinal clinical history (allergies, home meds, PMH/PSH, social).
+  clinicalHistoryProfileJson   Json?
   createdAt                    DateTime    @default(now())
   updatedAt                    DateTime    @updatedAt
 

@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
-import { AuditAction, EncounterClinicalEventType, RoleCode, type Triage } from "@prisma/client";
+import { AuditAction, EncounterClinicalEventType, EncounterType, RoleCode, type Triage } from "@prisma/client";
+import { PatientClinicalHistoryService } from "../patients/patient-clinical-history.service";
 import { buildVitalsRecordedPayloadJson } from "../utils/clinical-event-vitals.util";
 import { computeDisplayNameInitials } from "../utils/clinical-event-nursing-assessment-json.util";
 import {
@@ -19,7 +20,8 @@ import { throwTriageConcurrentModification } from "./triage-concurrency.util";
 export class TriageService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly audit: AuditService
+    private readonly audit: AuditService,
+    private readonly patientClinicalHistory: PatientClinicalHistoryService
   ) {}
 
   async getTriage(encounterId: string, facilityId: string) {
@@ -336,7 +338,24 @@ export class TriageService {
       metadata: { esi: data.esi, complete: !!data.triageCompleteAt },
     });
 
-    return this.enrichTriageWithDisplay(triage);
+    let clinicalHistoryReconciliation = null;
+    if (encounter.type === EncounterType.EMERGENCY && data.vitalsJson !== undefined) {
+      clinicalHistoryReconciliation = await this.patientClinicalHistory.reconcileFromEncounterTriage({
+        patientId: encounter.patientId,
+        facilityId,
+        encounterId,
+        encounterDate: triage.updatedAt.toISOString(),
+        vitalsJson: data.vitalsJson,
+        reviewerId: userId,
+        ip,
+        userAgent,
+      });
+    }
+
+    const enriched = await this.enrichTriageWithDisplay(triage);
+    return clinicalHistoryReconciliation
+      ? { ...enriched, clinicalHistoryReconciliation }
+      : enriched;
   }
 }
 

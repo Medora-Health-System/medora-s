@@ -625,4 +625,12 @@ export const erTriageMessagesFr = {
     summaryTitle: "Reprise d'antécédents (triage)",
     summaryLine: "Champs repris : {fields} — {status} (source {date})",
   },
+  longitudinalHistory: {
+    profileUpdated: "Profil d'antécédents patient mis à jour",
+    encounterDiffersFromProfile: "Les antécédents de cette visite diffèrent du profil longitudinal",
+    newAllergyOrHistory: "Nouvel antécédent saisi — revue et enregistrement recommandés",
+    sectionPromoted: "Section {section} ajoutée au profil patient",
+    sectionRemovedFromProfile: "Section {section} retirée du profil patient",
+    hydratedFromProfile: "Antécédents préremplis depuis le profil patient",
+  },
 } as const;

@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  buildPatientClinicalHistorySummary,
+  patientClinicalHistoryProfileFromJson,
+} from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
 import { AuditAction } from "@prisma/client";
 import { OrdersService } from "../orders/orders.service";
@@ -276,6 +280,7 @@ export class ChartSummaryService {
         sex: true,
         latestVitalsJson: true,
         latestVitalsAt: true,
+        clinicalHistoryProfileJson: true,
         address: true,
         city: true,
         country: true,
@@ -660,9 +665,13 @@ export class ChartSummaryService {
     });
 
     const auditTimeline = auditTimelineRows.map((row) => mapAuditLogRowToTimelineItem(row));
+    const clinicalHistoryProfile = patientClinicalHistoryProfileFromJson(patient.clinicalHistoryProfileJson);
+    const clinicalHistorySummary = buildPatientClinicalHistorySummary(clinicalHistoryProfile);
 
     return {
       patient,
+      clinicalHistoryProfile,
+      clinicalHistorySummary,
       recentEncounters,
       activeDiagnoses,
       recentMedicationDispenses: recentDispenses,

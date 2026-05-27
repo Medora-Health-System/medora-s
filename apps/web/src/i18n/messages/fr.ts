@@ -4908,6 +4908,16 @@ export default {
       "Cet aperçu en direct résume les données disponibles du dossier. Ce n’est pas une exportation légale finalisée.",
     summaryTimelineIntro:
       "Synthèse par visite : signes vitaux d'accueil, évaluation infirmière, ordres, résultats, dispensation et résumé de sortie lorsque disponibles. Du plus récent au plus ancien.",
+    clinicalHistoryTitle: "Antécédents longitudinal (profil patient)",
+    clinicalHistoryIntro:
+      "Profil d'antécédents revus et confirmés lors des visites antérieures. Les données de chaque consultation restent figées dans le dossier de visite.",
+    clinicalHistoryUpdatedAt: "Dernière mise à jour du profil : {date}",
+    clinicalHistoryLastReviewed: "Dernière revue : {date}",
+    clinicalHistorySectionAllergies: "Allergies",
+    clinicalHistorySectionHomeMeds: "Médicaments domicile",
+    clinicalHistorySectionPmh: "Antécédents médicaux",
+    clinicalHistorySectionPsh: "Antécédents chirurgicaux",
+    clinicalHistorySectionSocial: "Antécédents sociaux",
     summaryVitalsTitle: "Signes vitaux récents",
     summaryVitalsIntro:
       "Historique complet du patient (toutes consultations), du plus récent au plus ancien. Le dernier relevé correspond aussi à l'en-tête du dossier.",

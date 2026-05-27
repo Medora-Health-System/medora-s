@@ -18,6 +18,9 @@ describe("TriageCarryForwardService", () => {
         findFirst: jest.fn().mockResolvedValue(overrides?.encounter ?? null),
         findMany: jest.fn().mockResolvedValue(overrides?.priorCandidates ?? []),
       },
+      patient: {
+        findFirst: jest.fn().mockResolvedValue({ clinicalHistoryProfileJson: null }),
+      },
     };
     const service = new TriageCarryForwardService(prisma as never, audit as never);
     return { service, prisma, audit };
@@ -62,6 +65,7 @@ describe("TriageCarryForwardService", () => {
     expect(result.fields?.pastMedicalHistory).toBe("HTN");
     expect(result.fields).not.toHaveProperty("painScale0to10");
     expect(result.meta?.reviewStatus).toBe("pending_review");
+    expect(result.hydrationSource).toBe("prior_encounter");
   });
 
   it("does not carry forward when current encounter already has triage", async () => {

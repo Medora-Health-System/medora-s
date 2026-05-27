@@ -4940,6 +4940,16 @@ export default {
       "This live preview summarizes available chart data. It is not a finalized legal record export.",
     summaryTimelineIntro:
       "Per-visit snapshot: intake vitals, nursing assessment, orders, results, dispensing, and discharge summary when available. Newest first.",
+    clinicalHistoryTitle: "Longitudinal history (patient profile)",
+    clinicalHistoryIntro:
+      "Reviewed and confirmed history from prior visits. Each encounter record remains an immutable visit snapshot.",
+    clinicalHistoryUpdatedAt: "Profile last updated: {date}",
+    clinicalHistoryLastReviewed: "Last reviewed: {date}",
+    clinicalHistorySectionAllergies: "Allergies",
+    clinicalHistorySectionHomeMeds: "Home medications",
+    clinicalHistorySectionPmh: "Medical history",
+    clinicalHistorySectionPsh: "Surgical history",
+    clinicalHistorySectionSocial: "Social history",
     summaryVitalsTitle: "Recent vital signs",
     summaryVitalsIntro:
       "Full patient history (all encounters), newest first. The latest reading also appears in the chart header.",

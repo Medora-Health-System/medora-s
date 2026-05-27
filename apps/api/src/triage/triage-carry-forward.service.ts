@@ -6,6 +6,10 @@ import {
   extractCarryForwardTriageHistory,
   mergeCarryForwardIntoNewTriage,
   normalizeTriageCarryForwardMeta,
+  patientClinicalHistoryProfileFromJson,
+  profileHasClinicalContent,
+  profilePrimaryProvenance,
+  profileToCarryForwardExtraction,
   TRIAGE_CARRY_FORWARD_VERSION,
   type TriageCarryForwardHistoryFields,
   type TriageCarryForwardMeta,
@@ -15,6 +19,7 @@ import { AuditService } from "../common/services/audit.service";
 
 export type TriageCarryForwardResponse = {
   available: boolean;
+  hydrationSource?: "patient_profile" | "prior_encounter";
   meta?: TriageCarryForwardMeta;
   allergyNote?: string;
   fields?: Partial<TriageCarryForwardHistoryFields>;
@@ -61,6 +66,24 @@ export class TriageCarryForwardService {
 
     if (encounter.triage) {
       return { available: false };
+    }
+
+    const patientProfileRow = await this.prisma.patient.findFirst({
+      where: { id: encounter.patientId, facilityId },
+      select: { clinicalHistoryProfileJson: true },
+    });
+    const patientProfile = patientClinicalHistoryProfileFromJson(
+      patientProfileRow?.clinicalHistoryProfileJson
+    );
+    if (profileHasClinicalContent(patientProfile)) {
+      const profileResponse = await this.buildCarryForwardFromProfile(
+        patientProfile!,
+        encounter,
+        userId,
+        ip,
+        userAgent
+      );
+      if (profileResponse.available) return profileResponse;
     }
 
     const prior = await this.findPriorEdTriageSource(
@@ -115,6 +138,65 @@ export class TriageCarryForwardService {
 
     return {
       available: true,
+      hydrationSource: "prior_encounter",
+      meta: normalizedMeta,
+      allergyNote: draft.allergyNote || extraction.allergyNote,
+      fields: draft.erV1,
+      mergedFieldKeys,
+    };
+  }
+
+  private async buildCarryForwardFromProfile(
+    profile: NonNullable<ReturnType<typeof patientClinicalHistoryProfileFromJson>>,
+    encounter: { id: string; patientId: string; facilityId: string },
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ): Promise<TriageCarryForwardResponse> {
+    const extraction = profileToCarryForwardExtraction(profile);
+    if (!extraction) return { available: false };
+
+    const provenance = profilePrimaryProvenance(profile);
+    const carriedForwardAt = new Date().toISOString();
+    const { meta, draft, mergedFieldKeys } = mergeCarryForwardIntoNewTriage(
+      emptyTriageCarryForwardDraft(),
+      extraction,
+      {
+        version: TRIAGE_CARRY_FORWARD_VERSION,
+        sourceEncounterId: provenance?.sourceEncounterId ?? "patient-profile",
+        sourceEncounterDate:
+          provenance?.lastReviewedAt ?? provenance?.sourceEncounterDate ?? profile.updatedAt,
+        sourceFacilityId: provenance?.sourceFacilityId ?? encounter.facilityId,
+        carriedForwardAt,
+        carriedForwardBy: userId,
+      }
+    );
+
+    if (!mergedFieldKeys.length) return { available: false };
+
+    const normalizedMeta = normalizeTriageCarryForwardMeta(meta, draft);
+
+    await this.audit.log(AuditAction.ENCOUNTER_VIEW, "TriageCarryForward", {
+      facilityId: encounter.facilityId,
+      userId,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      metadata: {
+        ...buildTriageCarryForwardAuditMetadata({
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          meta: normalizedMeta,
+          actorId: userId,
+          timestamp: carriedForwardAt,
+        }),
+        hydrationSource: "patient_profile",
+      },
+    });
+
+    return {
+      available: true,
+      hydrationSource: "patient_profile",
       meta: normalizedMeta,
       allergyNote: draft.allergyNote || extraction.allergyNote,
       fields: draft.erV1,
