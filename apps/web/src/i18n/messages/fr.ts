@@ -925,6 +925,11 @@ export default {
       "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
     sidebarCollapse: "Réduire le menu",
     sidebarExpand: "Afficher le menu",
+    mobileMenuOpen: "Ouvrir le menu de navigation",
+    mobileMenuClose: "Fermer le menu de navigation",
+    mobileMenuBackdrop: "Fermer le menu de navigation",
+    mobileNavDrawerLabel: "Navigation",
+    primaryNavigation: "Navigation principale",
   },
   navGroups: {
     accueil: "Accueil",

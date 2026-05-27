@@ -40,10 +40,10 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(readWebSource("app/app/rad-worklist/page.tsx")).toContain("MedoraCardActionsMediaStyle");
   });
 
-  it("documents AppShell gap: no mobile drawer yet (update in 19M.2)", () => {
+  it("AppShell mobile drawer resolves C1 shell blocker (19M.2)", () => {
     const src = readWebSource("src/components/app-shell/AppShell.tsx");
-    expect(src).toContain("SIDEBAR_WIDTH_EXPANDED");
-    expect(src).not.toMatch(/mobileMenu|hamburger|offCanvas|drawerOpen/i);
+    expect(src).toContain('data-testid="app-shell-mobile-menu-button"');
+    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
   });
 
   it("documents ProviderDocumentationWorkspace gap: no wideLayout yet (update in 19M.5)", () => {

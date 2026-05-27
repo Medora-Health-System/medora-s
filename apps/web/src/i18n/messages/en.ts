@@ -68,6 +68,11 @@ export default {
       "MINISTÈRE DE LA SANTÉ PUBLIQUE ET DE LA POPULATION",
     sidebarCollapse: "Collapse menu",
     sidebarExpand: "Expand menu",
+    mobileMenuOpen: "Open navigation menu",
+    mobileMenuClose: "Close navigation menu",
+    mobileMenuBackdrop: "Close navigation menu",
+    mobileNavDrawerLabel: "Navigation",
+    primaryNavigation: "Primary navigation",
   },
   nav: {
     trackboard: "Clinical trackboard",

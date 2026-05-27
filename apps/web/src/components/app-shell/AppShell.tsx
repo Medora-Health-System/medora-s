@@ -5,15 +5,20 @@
  * Ne pas dupliquer ce marquage ailleurs : monté une seule fois depuis `app/app/layout.tsx`.
  * L’auth / garde de route reste dans ce layout.
  */
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
-import { NAV_ACCENT, type GroupedSidebarSection } from "./sidebarNavConfig";
-import { SidebarNavIcon } from "./SidebarNavIcons";
+import { type GroupedSidebarSection } from "./sidebarNavConfig";
+import { AppShellSidebarNav } from "./AppShellSidebarNav";
+import {
+  APP_SHELL_DESKTOP_NAV_MEDIA,
+  resolveActiveNavLabel,
+} from "./appShellNavHelpers";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "medora_sidebar_collapsed";
 const SIDEBAR_WIDTH_EXPANDED = 244;
 const SIDEBAR_WIDTH_COLLAPSED = 72;
+const MOBILE_DRAWER_ID = "medora-app-mobile-nav-drawer";
 
 /** Établissements issus de `/api/auth/me` (`facilityRoles`) — `value` du `<select>` = id réel. */
 export type AppShellFacilityOption = { id: string; name: string };
@@ -35,6 +40,36 @@ export type AppShellProps = {
   onLogout: () => void;
   groupedNavSections: GroupedSidebarSection[];
 };
+
+function FacilitySelect({
+  facilities,
+  activeFacility,
+  onFacilityChange,
+  className,
+}: {
+  facilities: AppShellFacilityOption[];
+  activeFacility: string;
+  onFacilityChange: (facilityId: string) => void;
+  className?: string;
+}) {
+  if (facilities.length === 0) return null;
+  return (
+    <select
+      value={activeFacility}
+      onChange={(e) => onFacilityChange(e.target.value)}
+      className={
+        className ??
+        "min-h-[38px] max-w-[min(100vw-12rem,28rem)] cursor-pointer truncate rounded-lg border border-slate-600/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20"
+      }
+    >
+      {facilities.map((f) => (
+        <option key={f.id} value={f.id}>
+          {f.name}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function AppShell({
   children,
@@ -67,6 +102,44 @@ export function AppShell({
     }
   }, []);
 
+  const [desktopNavLayout, setDesktopNavLayout] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(APP_SHELL_DESKTOP_NAV_MEDIA);
+    const sync = () => setDesktopNavLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (desktopNavLayout) setMobileNavOpen(false);
+  }, [desktopNavLayout]);
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (!mobileNavOpen || typeof document === "undefined") return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [mobileNavOpen]);
+
   const toggleSidebar = () => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
@@ -81,11 +154,17 @@ export function AppShell({
 
   const { t } = useI18n();
   const isMsppArea = pathname.startsWith("/app/mspp");
+  const activeSectionTitle = useMemo(
+    () => resolveActiveNavLabel(pathname, groupedNavSections, t, mounted),
+    [groupedNavSections, mounted, pathname, t]
+  );
+
+  const closeMobileNav = () => setMobileNavOpen(false);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
       <header
-        className="relative flex h-14 shrink-0 items-center justify-between border-b border-slate-700/60 bg-slate-950 px-6 text-slate-100"
+        className="relative flex h-14 shrink-0 items-center justify-between border-b border-slate-700/60 bg-slate-950 px-3 text-slate-100 md:px-5 lg:px-6"
         style={{ boxShadow: "inset 0 -1px 0 rgba(148,163,184,0.06)" }}
       >
         {isMsppArea ? (
@@ -102,31 +181,58 @@ export function AppShell({
           </div>
         ) : null}
 
-        <div className="relative z-10 flex min-w-0 flex-1 items-center gap-6">
-          <h1 className="m-0 shrink-0 select-none text-lg font-bold leading-none tracking-tight">
+        <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 md:gap-4 lg:gap-6">
+          {!desktopNavLayout ? (
+            <button
+              type="button"
+              data-testid="app-shell-mobile-menu-button"
+              aria-label={t("appShell.mobileMenuOpen")}
+              aria-expanded={mobileNavOpen}
+              aria-controls={MOBILE_DRAWER_ID}
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="inline-flex h-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-600/70 bg-slate-900/80 text-slate-100 outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30 lg:hidden"
+            >
+              <span className="sr-only">{t("appShell.mobileMenuOpen")}</span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path
+                  d="M4 7h16M4 12h16M4 17h16"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
+          ) : null}
+
+          <h1 className="m-0 shrink-0 select-none text-base font-bold leading-none tracking-tight md:text-lg">
             <span className="text-blue-400">Medora</span>
             <span className="text-teal-400">-S</span>
           </h1>
-          {facilities.length > 0 && (
-            <select
-              value={activeFacility}
-              onChange={(e) => onFacilityChange(e.target.value)}
-              className="min-h-[38px] max-w-[min(100vw-12rem,28rem)] cursor-pointer truncate rounded-lg border border-slate-600/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20"
+
+          {!desktopNavLayout && activeSectionTitle ? (
+            <p
+              className="min-w-0 truncate text-sm font-medium text-slate-200 lg:hidden"
+              title={activeSectionTitle}
+              data-testid="app-shell-mobile-section-title"
             >
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          )}
+              {activeSectionTitle}
+            </p>
+          ) : null}
+
+          {desktopNavLayout ? (
+            <FacilitySelect
+              facilities={facilities}
+              activeFacility={activeFacility}
+              onFacilityChange={onFacilityChange}
+            />
+          ) : null}
         </div>
 
         <div className="relative z-10 flex shrink-0 items-center">
           <button
             type="button"
             onClick={onToggleUserMenu}
-            className="flex max-w-[min(100vw-8rem,18rem)] items-center gap-2 rounded-full border border-slate-600/70 bg-slate-900/80 px-4 py-2 text-left text-sm font-medium text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30"
+            className="flex max-w-[min(100vw-8rem,18rem)] min-h-[44px] items-center gap-2 rounded-full border border-slate-600/70 bg-slate-900/80 px-3 py-2 text-left text-sm font-medium text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30 md:px-4"
           >
             <span className="min-w-0 truncate">{userFullName || t("common.userFallback")}</span>
             <span className="shrink-0 text-[10px] leading-none text-slate-400" aria-hidden>
@@ -161,164 +267,137 @@ export function AppShell({
         </div>
       </header>
 
-      <div style={{ display: "flex", flex: 1, minWidth: 0, minHeight: 0 }}>
-        <aside
-          style={{
-            width: sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
-            flexShrink: 0,
-            transition: "width 0.2s ease",
-            background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
-            color: "#f8fafc",
-            padding: sidebarCollapsed ? "12px 6px 20px" : "18px 12px 24px",
-            display: "flex",
-            flexDirection: "column",
-            borderRight: "1px solid rgba(148,163,184,0.12)",
-            boxShadow: "4px 0 20px rgba(15,23,42,0.35)",
-            overflowX: "hidden",
-            boxSizing: "border-box",
-          }}
-        >
-          <div style={{ marginBottom: sidebarCollapsed ? 8 : 10, flexShrink: 0 }}>
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              aria-expanded={!sidebarCollapsed}
-              aria-controls="medora-app-sidebar-nav"
-              aria-label={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
-              title={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                gap: 8,
-                padding: sidebarCollapsed ? "8px 4px" : "8px 10px",
-                borderRadius: 8,
-                border: "1px solid rgba(148,163,184,0.2)",
-                background: "rgba(15,23,42,0.5)",
-                color: "#f8fafc",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              <span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden>
-                {sidebarCollapsed ? "»" : "«"}
-              </span>
-              {!sidebarCollapsed ? (
-                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {t("appShell.sidebarCollapse")}
-                </span>
-              ) : null}
-            </button>
-          </div>
-          <nav
-            id="medora-app-sidebar-nav"
-            style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0, overflowY: "auto" }}
+      {!desktopNavLayout && mobileNavOpen ? (
+        <>
+          <button
+            type="button"
+            data-testid="app-shell-mobile-nav-backdrop"
+            aria-label={t("appShell.mobileMenuBackdrop")}
+            className="fixed inset-0 z-40 bg-slate-950/60 lg:hidden"
+            onClick={closeMobileNav}
+          />
+          <aside
+            id={MOBILE_DRAWER_ID}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("appShell.mobileNavDrawerLabel")}
+            data-testid="app-shell-mobile-nav-drawer"
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(100vw-2rem,280px)] flex-col border-r border-slate-700/40 bg-gradient-to-b from-slate-800 to-slate-950 text-slate-50 shadow-2xl lg:hidden"
+            style={{ padding: "16px 12px 24px", boxSizing: "border-box" }}
           >
-            {bootstrapping ? (
-              <p
+            <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
+              <p className="m-0 text-sm font-semibold text-slate-100">{t("appShell.mobileNavDrawerLabel")}</p>
+              <button
+                type="button"
+                data-testid="app-shell-mobile-nav-close"
+                aria-label={t("appShell.mobileMenuClose")}
+                onClick={closeMobileNav}
+                className="inline-flex h-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-slate-600/70 bg-slate-900/80 text-slate-100 outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30"
+              >
+                <span aria-hidden>×</span>
+              </button>
+            </div>
+            {facilities.length > 0 ? (
+              <div className="mb-4 shrink-0">
+                <FacilitySelect
+                  facilities={facilities}
+                  activeFacility={activeFacility}
+                  onFacilityChange={onFacilityChange}
+                  className="min-h-[44px] w-full max-w-none cursor-pointer truncate rounded-lg border border-slate-600/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-sm outline-none transition-colors hover:border-slate-500 focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20"
+                />
+              </div>
+            ) : null}
+            <AppShellSidebarNav
+              groupedNavSections={groupedNavSections}
+              pathname={pathname}
+              mounted={mounted}
+              bootstrapping={bootstrapping}
+              sidebarCollapsed={false}
+              showLabels
+              navId="medora-app-mobile-nav"
+              t={t}
+              onNavLinkClick={closeMobileNav}
+            />
+          </aside>
+        </>
+      ) : null}
+
+      <div style={{ display: "flex", flex: 1, minWidth: 0, minHeight: 0 }}>
+        {desktopNavLayout ? (
+          <aside
+            data-testid="app-shell-desktop-sidebar"
+            style={{
+              width: sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+              flexShrink: 0,
+              transition: "width 0.2s ease",
+              background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
+              color: "#f8fafc",
+              padding: sidebarCollapsed ? "12px 6px 20px" : "18px 12px 24px",
+              display: "flex",
+              flexDirection: "column",
+              borderRight: "1px solid rgba(148,163,184,0.12)",
+              boxShadow: "4px 0 20px rgba(15,23,42,0.35)",
+              overflowX: "hidden",
+              boxSizing: "border-box",
+            }}
+          >
+            <div style={{ marginBottom: sidebarCollapsed ? 8 : 10, flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-expanded={!sidebarCollapsed}
+                aria-controls="medora-app-sidebar-nav"
+                aria-label={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
+                title={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
                 style={{
-                  margin: sidebarCollapsed ? "8px 4px 0" : "8px 10px 0",
-                  fontSize: 13,
-                  color: "rgba(248,250,252,0.75)",
-                  lineHeight: 1.45,
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
+                  gap: 8,
+                  padding: sidebarCollapsed ? "8px 4px" : "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(148,163,184,0.2)",
+                  background: "rgba(15,23,42,0.5)",
+                  color: "#f8fafc",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 600,
                 }}
               >
-                {t("common.loading")}
-              </p>
-            ) : (
-              groupedNavSections.map((section, si) => (
-              <div
-                key={section.groupId}
-                className={si > 0 ? "border-t border-white/10" : undefined}
-                style={sidebarCollapsed && si > 0 ? { marginTop: 8, paddingTop: 8 } : undefined}
-              >
+                <span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden>
+                  {sidebarCollapsed ? "»" : "«"}
+                </span>
                 {!sidebarCollapsed ? (
-                  <div
-                    className={`px-2.5 text-xs font-bold uppercase tracking-wider text-white/70 mb-2 ${si > 0 ? "mt-6" : ""}`}
-                  >
-                    {t(section.title)}
-                  </div>
-                ) : si > 0 ? (
-                  <div style={{ height: 1, margin: "6px 4px", background: "rgba(255,255,255,0.08)" }} aria-hidden />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t("appShell.sidebarCollapse")}
+                  </span>
                 ) : null}
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {section.items.map((item) => {
-                    const accent = NAV_ACCENT[item.accent];
-                    const active =
-                      mounted &&
-                      (pathname === item.href ||
-                        (item.href !== "/app" && pathname.startsWith(item.href + "/")));
-                    const label = t(item.label);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        title={label}
-                        aria-label={label}
-                        className={`group relative isolate origin-left overflow-hidden rounded-lg transition-all duration-150 ease-out hover:scale-[1.01] hover:shadow-sm ${
-                          active
-                            ? "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:rounded-lg before:bg-transparent before:transition-colors hover:before:bg-white/10"
-                            : "bg-[rgba(15,23,42,0.38)] hover:bg-white/10"
-                        }`}
-                        style={{
-                          color: active ? "#fff" : "rgba(248,250,252,0.9)",
-                          textDecoration: "none",
-                          padding: sidebarCollapsed ? "8px 6px" : "9px 10px",
-                          borderRadius: 8,
-                          fontSize: 13,
-                          fontWeight: active ? 600 : 500,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: sidebarCollapsed ? "center" : undefined,
-                          gap: sidebarCollapsed ? 0 : 10,
-                          ...(active
-                            ? {
-                                backgroundColor: accent.activeBg,
-                                backgroundImage:
-                                  "linear-gradient(rgba(255,255,255,0.1), rgba(255,255,255,0.1))",
-                                boxShadow: `inset 3px 0 0 ${accent.border}, 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)`,
-                              }
-                            : {
-                                boxShadow: "inset 3px 0 0 transparent",
-                              }),
-                          border: "1px solid rgba(148,163,184,0.1)",
-                        }}
-                      >
-                        <span className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 shadow-sm transition-all duration-200 group-hover:bg-white/20">
-                          <SidebarNavIcon href={item.href} />
-                        </span>
-                        {!sidebarCollapsed ? (
-                          <span className="relative z-10 min-w-0" style={{ lineHeight: 1.3 }}>
-                            {label}
-                          </span>
-                        ) : null}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))
-            )}
-          </nav>
-        </aside>
+              </button>
+            </div>
+            <AppShellSidebarNav
+              groupedNavSections={groupedNavSections}
+              pathname={pathname}
+              mounted={mounted}
+              bootstrapping={bootstrapping}
+              sidebarCollapsed={sidebarCollapsed}
+              showLabels={!sidebarCollapsed}
+              navId="medora-app-sidebar-nav"
+              t={t}
+            />
+          </aside>
+        ) : null}
 
         <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            padding: 24,
-            background: "linear-gradient(180deg, #f0f4f8 0%, #e8eef3 100%)",
-            boxSizing: "border-box",
-          }}
+          data-testid="app-shell-main-content"
+          className="box-border flex-1 min-w-0 bg-gradient-to-b from-[#f0f4f8] to-[#e8eef3] px-3 py-3 md:px-5 md:py-5 lg:p-6"
         >
           {bootstrapping ? (
-            <div style={{ padding: 24 }}>
+            <div className="p-3 md:p-4 lg:p-6">
               <p style={{ margin: 0 }}>{t("common.loading")}</p>
             </div>
           ) : routeRedirecting ? (
-            <div style={{ padding: 24 }}>
+            <div className="p-3 md:p-4 lg:p-6">
               <p style={{ margin: 0 }}>{t("common.redirecting")}</p>
               {pathname !== "/app" && (
                 <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>{t("common.unauthorizedRedirect")}</p>
