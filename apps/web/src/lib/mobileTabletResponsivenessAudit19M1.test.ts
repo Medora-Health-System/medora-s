@@ -46,10 +46,14 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
     expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
   });
 
-  it("documents ProviderDocumentationWorkspace gap: no wideLayout yet (update in 19M.5)", () => {
+  it("ProviderDocumentationWorkspace implements responsive layout (19M.5)", () => {
     const src = readWebSource("src/components/encounters/ProviderDocumentationWorkspace.tsx");
-    expect(src).toContain('gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)"');
-    expect(src).not.toContain("wideLayout");
+    expect(src).toContain("resolveProviderDocumentationLayoutMode");
+    expect(src).toContain('data-testid="provider-documentation-workspace-layout"');
+    expect(src).toContain('data-testid="provider-documentation-summary-stacked"');
+    expect(src).not.toMatch(
+      /display: "grid", gridTemplateColumns: "minmax\(0, 1fr\) minmax\(260px, 320px\)"/
+    );
   });
 
   it("documents pharmacy worklist gap: wide table without overflow wrapper (update in 19M.7)", () => {

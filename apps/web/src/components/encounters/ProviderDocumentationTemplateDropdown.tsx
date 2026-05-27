@@ -12,6 +12,7 @@ import {
   type MdmTemplateOption,
 } from "@/lib/providerDocumentationMdmTemplateCatalog";
 import type { ProviderDocumentationWorkspaceState } from "@/lib/providerDocumentationModel";
+import { PROVIDER_DOCUMENTATION_TOUCH_TARGET_MIN_PX } from "@/lib/providerDocumentationWorkspaceLayout";
 
 const chipStyle: React.CSSProperties = {
   fontSize: 11,
@@ -28,7 +29,8 @@ const optionRowStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "flex-start",
   gap: 8,
-  padding: "6px 0",
+  padding: "8px 0",
+  minHeight: PROVIDER_DOCUMENTATION_TOUCH_TARGET_MIN_PX,
   fontSize: 12,
   lineHeight: 1.4,
   color: "#0f172a",
@@ -37,7 +39,8 @@ const optionRowStyle: React.CSSProperties = {
 
 const actionButtonStyle: React.CSSProperties = {
   fontSize: 12,
-  padding: "8px 12px",
+  padding: "10px 12px",
+  minHeight: PROVIDER_DOCUMENTATION_TOUCH_TARGET_MIN_PX,
   borderRadius: 10,
   border: "1px solid",
   fontFamily: "inherit",
@@ -219,7 +222,7 @@ export function ProviderDocumentationMdmTemplateDropdown({
         aria-describedby={`${panelId}-hint`}
         data-testid="provider-documentation-mdm-template-options"
         style={{
-          maxHeight: 280,
+          maxHeight: "min(280px, 50vh)",
           overflowY: "auto",
           padding: "4px 0",
           marginBottom: 10,

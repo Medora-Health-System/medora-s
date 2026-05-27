@@ -6436,6 +6436,7 @@ export default {
     stickerObsPendingImagingReviewed: "résultats d'imagerie en attente revus",
     clear: "Effacer",
     preview: "Aperçu",
+    mobileSummaryPanel: "Résumé et aperçu",
     liveDocumentationPreview: "Aperçu en direct de la documentation",
     previewOnlyNotLegal: "Aperçu seulement. N'entre dans le dossier légal qu'après enregistrement.",
     previewNoDocumentationEnteredYet: "Aucune documentation saisie pour l'instant.",

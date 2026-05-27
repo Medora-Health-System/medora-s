@@ -82,7 +82,7 @@ describe("providerDocumentationMdmTemplateDropdown — section structure", () =>
     expect(dropdownSource).toContain("aria-multiselectable");
     expect(dropdownSource).toContain("htmlFor={inputId}");
     expect(dropdownSource).toContain("flexWrap: \"wrap\"");
-    expect(dropdownSource).toContain("maxHeight: 280");
+    expect(dropdownSource).toContain("maxHeight: \"min(280px, 50vh)\"");
     expect(dropdownSource).toContain("overflowY: \"auto\"");
   });
 });

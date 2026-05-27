@@ -88,6 +88,14 @@ import {
   readEncounterUiState,
   writeEncounterUiState,
 } from "@/lib/encounterUiState";
+import {
+  providerDocumentationStickyHeaderStyle,
+  providerDocumentationSummaryAsideStyle,
+  providerDocumentationTouchFriendlyButtonStyle,
+  providerDocumentationWorkspaceLayoutStyle,
+  resolveProviderDocumentationLayoutMode,
+  type ProviderDocumentationLayoutMode,
+} from "@/lib/providerDocumentationWorkspaceLayout";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -153,17 +161,6 @@ const inputBase: React.CSSProperties = {
   color: "#0f172a",
   background: "#fff",
   lineHeight: 1.45,
-};
-
-const stickyActionHeaderStyle: React.CSSProperties = {
-  position: "sticky",
-  top: 8,
-  zIndex: 40,
-  background: "#fff",
-  border: "1px solid #e2e8f0",
-  borderRadius: 12,
-  boxShadow: "0 1px 3px rgba(15, 23, 42, 0.08)",
-  padding: "8px 12px",
 };
 
 const compactSecondaryButton = (disabled: boolean): React.CSSProperties => ({
@@ -438,6 +435,7 @@ export function ProviderDocumentationWorkspace({
   quickActions = null,
   t,
 }: ProviderDocumentationWorkspaceProps) {
+  const [layoutMode, setLayoutMode] = useState<ProviderDocumentationLayoutMode>("desktopSplit");
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [attestationAccepted, setAttestationAccepted] = useState(false);
@@ -548,6 +546,19 @@ export function ProviderDocumentationWorkspace({
   const hasDraftableContent = useMemo(() => providerDocumentationStateHasContent(value), [value]);
   const accordionSummaries = useMemo(() => providerDocumentationAccordionSummaries(value), [value]);
   const accordionSelectedCounts = useMemo(() => providerDocumentationAccordionSelectedCounts(value), [value]);
+  const isStackedLayout = layoutMode === "stacked";
+  const touchHeaderButton = (style: React.CSSProperties) =>
+    isStackedLayout ? providerDocumentationTouchFriendlyButtonStyle(style) : style;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyLayoutMode = () => {
+      setLayoutMode(resolveProviderDocumentationLayoutMode(window.innerWidth));
+    };
+    applyLayoutMode();
+    window.addEventListener("resize", applyLayoutMode);
+    return () => window.removeEventListener("resize", applyLayoutMode);
+  }, []);
 
   useEffect(() => {
     if (initializedDefaultExpandRef.current) return;
@@ -1322,12 +1333,62 @@ export function ProviderDocumentationWorkspace({
     return t(labelKey);
   };
 
+  const renderSummaryColumnContent = () => (
+    <>
+      <div style={sectionShell} data-testid="provider-documentation-live-preview">
+        {previewSections.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+            {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
+          </p>
+        ) : (
+          previewSections.map((section) => (
+            <div key={section.id} style={{ marginBottom: 10 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
+                {t(section.titleKey)}
+              </p>
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                {section.lines.join("\n")}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
+      {signedMetadata ? (
+        <div style={sectionShell}>
+          <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
+            {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
+          </p>
+        </div>
+      ) : null}
+      {showPreview ? (
+        <div style={sectionShell}>
+          {previewSections.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("providerDocumentationWorkspace.previewEmpty")}</p>
+          ) : (
+            previewSections.map((section) => (
+              <div key={section.id} style={{ marginBottom: 10 }}>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
+                  {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
+                </ul>
+              </div>
+            ))
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
         {t(providerDocumentationTitleKey(encounterMode))}
       </h2>
-      <div style={stickyActionHeaderStyle} data-testid="provider-documentation-sticky-header">
+      <div
+        style={providerDocumentationStickyHeaderStyle(layoutMode)}
+        data-testid="provider-documentation-sticky-header"
+      >
         <div
           style={{
             display: "flex",
@@ -1342,12 +1403,12 @@ export function ProviderDocumentationWorkspace({
               ? t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))
               : t("providerDocumentationWorkspace.noActiveTemplate")}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: isStackedLayout ? 8 : 6, alignItems: "center", justifyContent: "flex-end" }}>
             <button
               type="button"
               disabled={readOnly}
               onClick={() => setShowTemplates((visible) => !visible)}
-              style={compactSecondaryButton(readOnly)}
+              style={touchHeaderButton(compactSecondaryButton(readOnly))}
             >
               {t("providerDocumentationWorkspace.templates")}
             </button>
@@ -1355,18 +1416,22 @@ export function ProviderDocumentationWorkspace({
               type="button"
               disabled={readOnly || !onClear}
               onClick={onClear}
-              style={compactSecondaryButton(readOnly || !onClear)}
+              style={touchHeaderButton(compactSecondaryButton(readOnly || !onClear))}
             >
               {t("providerDocumentationWorkspace.clear")}
             </button>
-            <button type="button" onClick={() => setShowPreview((v) => !v)} style={compactSecondaryButton(false)}>
+            <button
+              type="button"
+              onClick={() => setShowPreview((v) => !v)}
+              style={touchHeaderButton(compactSecondaryButton(false))}
+            >
               {t("providerDocumentationWorkspace.preview")}
             </button>
             <button
               type="button"
               disabled={readOnly || saving}
               onClick={() => void runManualSave()}
-              style={compactPrimaryButton(readOnly || saving)}
+              style={touchHeaderButton(compactPrimaryButton(readOnly || saving))}
               data-testid="provider-documentation-save-button"
             >
               {saving ? t("providerDocumentationWorkspace.saving") : t("providerDocumentationWorkspace.save")}
@@ -1376,7 +1441,7 @@ export function ProviderDocumentationWorkspace({
                 type="button"
                 disabled={readOnly || signing || !canSubmitSignature}
                 onClick={handleSignClick}
-                style={compactPrimaryButton(readOnly || signing || !canSubmitSignature)}
+                style={touchHeaderButton(compactPrimaryButton(readOnly || signing || !canSubmitSignature))}
                 data-testid="provider-documentation-sign-button"
               >
                 {signing ? t("providerDocumentationWorkspace.signing") : t("providerDocumentationWorkspace.signFinalize")}
@@ -1400,12 +1465,12 @@ export function ProviderDocumentationWorkspace({
                     });
                   }
                 }}
-                style={{
+                style={touchHeaderButton({
                   ...compactSecondaryButton(false),
                   borderColor: "#fdba74",
                   color: "#c2410c",
                   background: "#fff7ed",
-                }}
+                })}
               >
                 {t("providerDocumentationQualityGuardrails.panelTitle")} ({qualityGuardrails.length})
               </button>
@@ -1414,12 +1479,20 @@ export function ProviderDocumentationWorkspace({
         </div>
         <div
           data-testid="provider-documentation-header-nav"
-          style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4, alignItems: "center" }}
+          style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: isStackedLayout ? 8 : 4, alignItems: "center" }}
         >
-          <button type="button" onClick={() => focusRelativeDictationTarget(-1)} style={compactNavButton}>
+          <button
+            type="button"
+            onClick={() => focusRelativeDictationTarget(-1)}
+            style={touchHeaderButton(compactNavButton)}
+          >
             {t("providerDocumentationWorkspace.dictationPreviousSection")}
           </button>
-          <button type="button" onClick={() => focusRelativeDictationTarget(1)} style={compactNavButton}>
+          <button
+            type="button"
+            onClick={() => focusRelativeDictationTarget(1)}
+            style={touchHeaderButton(compactNavButton)}
+          >
             {t("providerDocumentationWorkspace.dictationNextSection")}
           </button>
           {DICTATION_NAV_TARGETS.map((target) => (
@@ -1427,7 +1500,7 @@ export function ProviderDocumentationWorkspace({
               key={target.id}
               type="button"
               onClick={() => focusDictationSection(target.sectionId)}
-              style={compactNavButton}
+              style={touchHeaderButton(compactNavButton)}
             >
               {t(target.labelKey)}
             </button>
@@ -1468,7 +1541,7 @@ export function ProviderDocumentationWorkspace({
                     key={majorGroup}
                     data-testid={`provider-template-picker-column-${majorGroup.toLowerCase()}`}
                     style={{
-                      flex: "1 1 280px",
+                      flex: isStackedLayout ? "1 1 100%" : "1 1 280px",
                       minWidth: 0,
                       maxWidth: "100%",
                     }}
@@ -1540,7 +1613,11 @@ export function ProviderDocumentationWorkspace({
         ) : null}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)", gap: 14, alignItems: "start" }}>
+      <div
+        style={providerDocumentationWorkspaceLayoutStyle(layoutMode)}
+        data-testid="provider-documentation-workspace-layout"
+        data-layout-mode={layoutMode}
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0 }}>
           <ProviderDocumentationAccordionSection
             sectionId="presentation"
@@ -1637,7 +1714,13 @@ export function ProviderDocumentationWorkspace({
                 {t("providerDocumentationWorkspace.insertCompleteNormalRos")}
               </button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isStackedLayout ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 10,
+              }}
+            >
               <Field label={t("providerDocumentationWorkspace.focusedImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosFocusedImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosFocusedImpression)}</Field>
               <Field label={t("providerDocumentationWorkspace.importantPositives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantPositives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantPositives)}</Field>
               <Field label={t("providerDocumentationWorkspace.importantNegatives")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("rosImportantNegatives", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.rosImportantNegatives)}</Field>
@@ -1933,7 +2016,13 @@ export function ProviderDocumentationWorkspace({
                 })}
               </ProviderDocumentationChipPanel>
             ) : null}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isStackedLayout ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 10,
+              }}
+            >
               <Field label={t("providerDocumentationWorkspace.workingAssessment")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmWorkingAssessment", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmWorkingAssessment)}</Field>
               <Field label={t("providerDocumentationWorkspace.differential")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDifferentialSynthesis", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDifferentialSynthesis)}</Field>
               <Field label={t("providerDocumentationWorkspace.dataReviewed")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("mdmDataReviewed", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.mdmDataReviewed)}</Field>
@@ -1981,7 +2070,13 @@ export function ProviderDocumentationWorkspace({
               "providerDocumentationWorkspace.activeTemplateSmartSentences"
             )}
             {complaintIntelligenceDispositionChips(activeTemplate)}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isStackedLayout ? "1fr" : "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 10,
+              }}
+            >
               <Field label={t("providerDocumentationWorkspace.clinicalImpression")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("clinicalImpression", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.clinicalImpression)}</Field>
               <Field label={t("providerDocumentationWorkspace.treatmentPlan")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("treatmentPlan", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.treatmentPlan)}</Field>
               <Field label={t("providerDocumentationWorkspace.followUpDisposition")} voiceReadyLabel={t("providerDocumentationWorkspace.voiceReadyField")} dictationTargetId={PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition} dictationLabel={t("providerDocumentationWorkspace.dictationFocusField")} readOnly={readOnly} readOnlyLabel={t("providerDocumentationWorkspace.dictationReadOnlyField")}>{ta("followUpDisposition", 2, PROVIDER_DOCUMENTATION_DICTATION_TEXTAREA_IDS.followUpDisposition)}</Field>
@@ -2037,50 +2132,23 @@ export function ProviderDocumentationWorkspace({
           </ProviderDocumentationAccordionSection>
         </div>
 
-        <aside style={{ position: "sticky", top: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={sectionShell} data-testid="provider-documentation-live-preview">
-            {previewSections.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                {t("providerDocumentationWorkspace.previewNoDocumentationEnteredYet")}
-              </p>
-            ) : (
-              previewSections.map((section) => (
-                <div key={section.id} style={{ marginBottom: 10 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>
-                    {t(section.titleKey)}
-                  </p>
-                  <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-                    {section.lines.join("\n")}
-                  </div>
-                </div>
-              ))
-            )}
+        {isStackedLayout ? (
+          <div data-testid="provider-documentation-summary-stacked">
+            <ProviderDocumentationChipPanel
+              title={t("providerDocumentationWorkspace.mobileSummaryPanel")}
+              defaultExpanded={false}
+            >
+              {renderSummaryColumnContent()}
+            </ProviderDocumentationChipPanel>
           </div>
-          <ContextCard title={t("providerDocumentationWorkspace.latestVitals")} lines={latestVitalSigns} empty={t("common.dash")} />
-          {signedMetadata ? (
-            <div style={sectionShell}>
-              <p style={{ margin: 0, fontSize: 12, color: "#166534", lineHeight: 1.45, fontWeight: 700 }}>
-                {t("providerDocumentationWorkspace.signedBy")} {signedMetadata.signedBy} · {signedMetadata.signedAt}
-              </p>
-            </div>
-          ) : null}
-          {showPreview ? (
-            <div style={sectionShell}>
-              {previewSections.length === 0 ? (
-                <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("providerDocumentationWorkspace.previewEmpty")}</p>
-              ) : (
-                previewSections.map((section) => (
-                  <div key={section.id} style={{ marginBottom: 10 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#475569" }}>{t(section.titleKey)}</p>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.45 }}>
-                      {section.lines.map((line, idx) => <li key={idx}>{line}</li>)}
-                    </ul>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : null}
-        </aside>
+        ) : (
+          <aside
+            style={providerDocumentationSummaryAsideStyle(layoutMode)}
+            data-testid="provider-documentation-summary-aside"
+          >
+            {renderSummaryColumnContent()}
+          </aside>
+        )}
       </div>
     </div>
   );
@@ -2131,8 +2199,8 @@ function Field({
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 24,
-              height: 24,
+              width: 44,
+              height: 44,
               borderRadius: 9999,
               border: "1px solid #cbd5e1",
               background: readOnly ? "#f1f5f9" : "#fff",

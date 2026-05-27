@@ -544,7 +544,7 @@ describe("providerDocumentationModel", () => {
       "utf8"
     );
     const stickyHeaderStart = source.indexOf('data-testid="provider-documentation-sticky-header"');
-    const stickyHeaderEnd = source.indexOf('display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)"');
+    const stickyHeaderEnd = source.indexOf('data-testid="provider-documentation-workspace-layout"');
     const stickyHeader = source.slice(stickyHeaderStart, stickyHeaderEnd);
     expect(stickyHeader).not.toContain("dictationReady");
     expect(stickyHeader).not.toContain("autosaveStatusLabelKey");

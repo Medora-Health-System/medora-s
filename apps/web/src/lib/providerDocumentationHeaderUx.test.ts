@@ -15,7 +15,7 @@ const EN_MESSAGES = readFileSync(new URL("../i18n/messages/en.ts", import.meta.u
 
 function stickyHeaderSource(): string {
   const start = WORKSPACE_SOURCE.indexOf('data-testid="provider-documentation-sticky-header"');
-  const end = WORKSPACE_SOURCE.indexOf('display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 320px)"');
+  const end = WORKSPACE_SOURCE.indexOf('data-testid="provider-documentation-workspace-layout"');
   expect(start).toBeGreaterThan(-1);
   expect(end).toBeGreaterThan(start);
   return WORKSPACE_SOURCE.slice(start, end);

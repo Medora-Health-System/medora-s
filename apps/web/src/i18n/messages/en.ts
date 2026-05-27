@@ -6460,6 +6460,7 @@ export default {
     stickerObsPendingImagingReviewed: "pending imaging results reviewed",
     clear: "Clear",
     preview: "Preview",
+    mobileSummaryPanel: "Summary and preview",
     liveDocumentationPreview: "",
     previewOnlyNotLegal: "",
     previewNoDocumentationEnteredYet: "No documentation entered yet.",
