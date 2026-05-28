@@ -143,6 +143,21 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "diabetes_controlled", pattern: /\bdiabetes\s+controlled\b/i },
     { id: "diabetic_emergency_ruled_out", pattern: /\bdiabetic\s+emergency\s+ruled\s+out\b/i },
     { id: "no_diabetic_emergency", pattern: /\bno\s+diabetic\s+emergency\b/i },
+    // Phase 19MDM.9 — neurology expansion
+    { id: "seizure_ruled_out", pattern: /\bseizure\s+ruled\s+out\b/i },
+    { id: "intracranial_hemorrhage_ruled_out", pattern: /\bintracranial\s+hemorrhage\s+ruled\s+out\b/i },
+    { id: "brain_bleed_ruled_out", pattern: /\bbrain\s+bleed\s+ruled\s+out\b/i },
+    { id: "meningitis_ruled_out", pattern: /\bmeningitis\s+ruled\s+out\b/i },
+    { id: "spinal_cord_compression_ruled_out", pattern: /\bspinal\s+cord\s+compression\s+ruled\s+out\b/i },
+    { id: "cauda_equina_ruled_out", pattern: /\bcauda\s+equina\s+ruled\s+out\b/i },
+    { id: "cta_negative", pattern: /\bcta\s+negative\b/i },
+    { id: "eeg_normal", pattern: /\beeg\s+normal\b/i },
+    { id: "neuro_exam_normal", pattern: /\bneuro\s+exam\s+normal\b/i },
+    { id: "no_neurologic_emergency", pattern: /\bno\s+neurologic\s+emergency\b/i },
+    { id: "no_focal_deficit", pattern: /\bno\s+focal\s+deficit\b/i },
+    { id: "safe_to_drive", pattern: /\bsafe\s+to\s+drive\b/i },
+    { id: "cleared_to_drive", pattern: /\bcleared\s+to\s+drive\b/i },
+    { id: "concussion_resolved", pattern: /\bconcussion\s+resolved\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

@@ -8,6 +8,7 @@ import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDo
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6Fr } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.fr";
+import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.fr";
 
 export default {
   ...labels.fr,
@@ -6381,6 +6382,27 @@ export default {
     templateGeneralizedWeaknessMetabolicComplaintV1Help: "Inserts cliquables — faiblesse métabolique, statut fonctionnel et sortie.",
     templateNauseaVomitingMetabolicComplaintV1: "Nausées / vomissements — métabolique (intelligence endocrinienne)",
     templateNauseaVomitingMetabolicComplaintV1Help: "Inserts cliquables — nausées/vomissements, suspicion métabolique/CAD et réévaluation.",
+    templateSubgroupNeurologyExpansion: "Neurologie avancée",
+    templateSeizureComplaintV1: "Crise convulsive (intelligence neurologique avancée)",
+    templateSeizureComplaintV1Help: "Inserts cliquables — crise convulsive, période postictale et suivi.",
+    templateAlteredMentalStatusComplaintV1: "Altération de l'état mental (intelligence neurologique avancée)",
+    templateAlteredMentalStatusComplaintV1Help: "Inserts cliquables — altération de l'état mental, causes métaboliques/toxiques et sortie.",
+    templateFocalWeaknessComplaintV1: "Faiblesse focale (intelligence neurologique avancée)",
+    templateFocalWeaknessComplaintV1Help: "Inserts cliquables — faiblesse focale, dernier moment connu et réévaluation neurologique.",
+    templateNumbnessTinglingComplaintV1: "Engourdissement / picotements (intelligence neurologique avancée)",
+    templateNumbnessTinglingComplaintV1Help: "Inserts cliquables — symptômes sensoriels, distribution et évolution.",
+    templateTremorMovementComplaintV1: "Tremblement / trouble du mouvement (intelligence neurologique avancée)",
+    templateTremorMovementComplaintV1Help: "Inserts cliquables — caractérisation du tremblement, médicaments déclenchants et suivi.",
+    templateVertigoComplaintV1: "Vertige (intelligence neurologique avancée)",
+    templateVertigoComplaintV1Help: "Inserts cliquables — vertige, suspicion périphérique vs centrale et sécurité de la marche.",
+    templateMigraineHeadacheComplaintV1: "Migraine / céphalée (intelligence neurologique avancée)",
+    templateMigraineHeadacheComplaintV1Help: "Inserts cliquables — profil migraineux, signes d'alerte et réévaluation après traitement.",
+    templateConcussionFollowupComplaintV1: "Suivi commotion cérébrale (intelligence neurologique avancée)",
+    templateConcussionFollowupComplaintV1Help: "Inserts cliquables — suivi commotion, restrictions d'activité et consignes de retour.",
+    templateGaitInstabilityFallsNeuroComplaintV1: "Instabilité de la marche / chutes — neuro (intelligence neurologique avancée)",
+    templateGaitInstabilityFallsNeuroComplaintV1Help: "Inserts cliquables — instabilité de la marche, risque de chute et sécurité mobilité.",
+    templateBackPainNeuroRedFlagsComplaintV1: "Douleur dorsale — signes neuro d'alerte (intelligence neurologique avancée)",
+    templateBackPainNeuroRedFlagsComplaintV1Help: "Inserts cliquables — douleur dorsale avec signes neurologiques d'alerte, suspicion cauda equina et sortie.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10580,6 +10602,7 @@ export default {
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6Fr,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr,
     ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr,
+    ...providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

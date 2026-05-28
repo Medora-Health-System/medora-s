@@ -105,6 +105,16 @@ import {
   THYROID_SYMPTOMS_COMPLAINT_V1_INTEL,
   GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL,
   NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL,
+  SEIZURE_COMPLAINT_V1_INTEL,
+  ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL,
+  FOCAL_WEAKNESS_COMPLAINT_V1_INTEL,
+  NUMBNESS_TINGLING_COMPLAINT_V1_INTEL,
+  TREMOR_MOVEMENT_COMPLAINT_V1_INTEL,
+  VERTIGO_COMPLAINT_V1_INTEL,
+  MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL,
+  CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL,
+  GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL,
+  BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -276,6 +286,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   msk_trauma: "providerDocumentationWorkspace.templateSubgroupMskTrauma",
   infectious_ent: "providerDocumentationWorkspace.templateSubgroupInfectiousEnt",
   endocrine_metabolic: "providerDocumentationWorkspace.templateSubgroupEndocrineMetabolic",
+  neurology_expansion: "providerDocumentationWorkspace.templateSubgroupNeurologyExpansion",
 };
 
 function respiratoryComplaintV1Template(
@@ -516,6 +527,46 @@ function endocrineMetabolicComplaintV1Template(
     ],
     complaintIntelligence,
     "endocrine_metabolic"
+  );
+}
+
+function neuroExpansionComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.timSuddenOnset", "erMseHpiChips.timStartedToday", "erMseHpiChipsPediatric.seizureDescription"],
+    ["erMseRosChips.posWeakness", "erMseRosChips.posHeadache", "erMseRosChips.posDizziness"],
+    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesWeakness"],
+    ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSyncope"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waNeurologic"],
+      mdmDataReviewed: ["erMseMdmChips.planImaging", "erMseMdmChips.planLabs"],
+      mdmPlanSummary: ["erMseMdmChips.planReassess", "erMseMdmGuidance.transferConsidered"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispObs", "erMseMdmChips.dispAdmit", "erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert"],
+      neuroPsych: [
+        "erMseExamChips.neuroAlertOriented",
+        "erMseExamChips.neuroSpeechClear",
+        "erMseExamChips.neuroFollowsCommands",
+        "erMseExamChips.neuroFocalDeficitNoted",
+      ],
+    },
+    ADULT_GUIDANCE_NEURO,
+    [
+      "providerDocumentationPromptReminders.adultNeuroRepeatExam",
+      "providerDocumentationPromptReminders.adultStrokeTimeSensitive",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "neurology_expansion"
   );
 }
 
@@ -1883,6 +1934,66 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1",
     "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1Help",
     NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "seizure_complaint_v1",
+    "providerDocumentationWorkspace.templateSeizureComplaintV1",
+    "providerDocumentationWorkspace.templateSeizureComplaintV1Help",
+    SEIZURE_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "altered_mental_status_complaint_v1",
+    "providerDocumentationWorkspace.templateAlteredMentalStatusComplaintV1",
+    "providerDocumentationWorkspace.templateAlteredMentalStatusComplaintV1Help",
+    ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "focal_weakness_complaint_v1",
+    "providerDocumentationWorkspace.templateFocalWeaknessComplaintV1",
+    "providerDocumentationWorkspace.templateFocalWeaknessComplaintV1Help",
+    FOCAL_WEAKNESS_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "numbness_tingling_complaint_v1",
+    "providerDocumentationWorkspace.templateNumbnessTinglingComplaintV1",
+    "providerDocumentationWorkspace.templateNumbnessTinglingComplaintV1Help",
+    NUMBNESS_TINGLING_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "tremor_movement_complaint_v1",
+    "providerDocumentationWorkspace.templateTremorMovementComplaintV1",
+    "providerDocumentationWorkspace.templateTremorMovementComplaintV1Help",
+    TREMOR_MOVEMENT_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "vertigo_complaint_v1",
+    "providerDocumentationWorkspace.templateVertigoComplaintV1",
+    "providerDocumentationWorkspace.templateVertigoComplaintV1Help",
+    VERTIGO_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "migraine_headache_complaint_v1",
+    "providerDocumentationWorkspace.templateMigraineHeadacheComplaintV1",
+    "providerDocumentationWorkspace.templateMigraineHeadacheComplaintV1Help",
+    MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "concussion_followup_complaint_v1",
+    "providerDocumentationWorkspace.templateConcussionFollowupComplaintV1",
+    "providerDocumentationWorkspace.templateConcussionFollowupComplaintV1Help",
+    CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "gait_instability_falls_neuro_complaint_v1",
+    "providerDocumentationWorkspace.templateGaitInstabilityFallsNeuroComplaintV1",
+    "providerDocumentationWorkspace.templateGaitInstabilityFallsNeuroComplaintV1Help",
+    GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL
+  ),
+  neuroExpansionComplaintV1Template(
+    "back_pain_neuro_red_flags_complaint_v1",
+    "providerDocumentationWorkspace.templateBackPainNeuroRedFlagsComplaintV1",
+    "providerDocumentationWorkspace.templateBackPainNeuroRedFlagsComplaintV1Help",
+    BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

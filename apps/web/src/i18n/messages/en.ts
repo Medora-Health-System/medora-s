@@ -7,6 +7,7 @@ import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDo
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6En } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.en";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
 import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.en";
+import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9En } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.en";
 
 export default {
   common: {
@@ -6407,6 +6408,27 @@ export default {
     templateGeneralizedWeaknessMetabolicComplaintV1Help: "Click-to-insert prompts for metabolic weakness, functional status, and disposition.",
     templateNauseaVomitingMetabolicComplaintV1: "Nausea / vomiting — metabolic (endocrine intelligence)",
     templateNauseaVomitingMetabolicComplaintV1Help: "Click-to-insert prompts for nausea/vomiting with metabolic/DKA concern and reassessment.",
+    templateSubgroupNeurologyExpansion: "Neurology Expansion",
+    templateSeizureComplaintV1: "Seizure (neurology expansion intelligence)",
+    templateSeizureComplaintV1Help: "Click-to-insert prompts for seizure presentation, postictal state, and follow-up.",
+    templateAlteredMentalStatusComplaintV1: "Altered mental status (neurology expansion intelligence)",
+    templateAlteredMentalStatusComplaintV1Help: "Click-to-insert prompts for altered mental status, metabolic/toxic causes, and disposition.",
+    templateFocalWeaknessComplaintV1: "Focal weakness (neurology expansion intelligence)",
+    templateFocalWeaknessComplaintV1Help: "Click-to-insert prompts for focal weakness, time last known well, and neuro reassessment.",
+    templateNumbnessTinglingComplaintV1: "Numbness / tingling (neurology expansion intelligence)",
+    templateNumbnessTinglingComplaintV1Help: "Click-to-insert prompts for sensory symptoms, distribution, and progression.",
+    templateTremorMovementComplaintV1: "Tremor / movement concern (neurology expansion intelligence)",
+    templateTremorMovementComplaintV1Help: "Click-to-insert prompts for tremor characterization, medication triggers, and follow-up.",
+    templateVertigoComplaintV1: "Vertigo (neurology expansion intelligence)",
+    templateVertigoComplaintV1Help: "Click-to-insert prompts for vertigo, peripheral vs central concern, and ambulation safety.",
+    templateMigraineHeadacheComplaintV1: "Migraine / headache subtype (neurology expansion intelligence)",
+    templateMigraineHeadacheComplaintV1Help: "Click-to-insert prompts for migraine pattern, red flags, and reassessment after treatment.",
+    templateConcussionFollowupComplaintV1: "Concussion follow-up (neurology expansion intelligence)",
+    templateConcussionFollowupComplaintV1Help: "Click-to-insert prompts for concussion follow-up, activity restrictions, and return precautions.",
+    templateGaitInstabilityFallsNeuroComplaintV1: "Gait instability / falls — neuro (neurology expansion intelligence)",
+    templateGaitInstabilityFallsNeuroComplaintV1Help: "Click-to-insert prompts for gait instability, fall risk, and mobility safety.",
+    templateBackPainNeuroRedFlagsComplaintV1: "Back pain — neuro red flags (neurology expansion intelligence)",
+    templateBackPainNeuroRedFlagsComplaintV1Help: "Click-to-insert prompts for back pain with neurologic red flags, cauda equina concern, and disposition.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10597,6 +10619,7 @@ export default {
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6En,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7En,
     ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En,
+    ...providerDocumentationNeuroExpansionComplaintIntel19Mdm9En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

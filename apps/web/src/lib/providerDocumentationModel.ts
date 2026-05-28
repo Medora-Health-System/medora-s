@@ -146,7 +146,17 @@ export type ProviderDocumentationTemplateId =
   | "electrolyte_abnormality_complaint_v1"
   | "thyroid_symptoms_complaint_v1"
   | "generalized_weakness_metabolic_complaint_v1"
-  | "nausea_vomiting_metabolic_complaint_v1";
+  | "nausea_vomiting_metabolic_complaint_v1"
+  | "seizure_complaint_v1"
+  | "altered_mental_status_complaint_v1"
+  | "focal_weakness_complaint_v1"
+  | "numbness_tingling_complaint_v1"
+  | "tremor_movement_complaint_v1"
+  | "vertigo_complaint_v1"
+  | "migraine_headache_complaint_v1"
+  | "concussion_followup_complaint_v1"
+  | "gait_instability_falls_neuro_complaint_v1"
+  | "back_pain_neuro_red_flags_complaint_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
@@ -155,7 +165,8 @@ export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gu_renal"
   | "msk_trauma"
   | "infectious_ent"
-  | "endocrine_metabolic";
+  | "endocrine_metabolic"
+  | "neurology_expansion";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
