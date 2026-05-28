@@ -1518,6 +1518,13 @@ Tableau des urgences + parcours ED complet
 - **Une consultation, un dossier, un flux clinique** : seuls les indicateurs de grand livre / export sont séparés pour la révision facturation.
 - La politique institutionnelle reste requise pour décider quels côtés s’appliquent (ex. observation, hospitalisation).
 
+### 4.6.3 Frais d'établissement et opérations observation (19UCED.5)
+
+- Medora ajoute un **aperçu opérationnel** des frais d'établissement et de l'observation : statut observation, révision boarding, séjour prolongé, révision hospitalisation.
+- **Aucune réclamation générée** — pas de codes revenus auto-sélectionnés, pas de montant de remboursement.
+- Les indicateurs sont **informatifs et non bloquants** pour le flux clinique.
+- **Une consultation, un dossier** — la gouvernance institutionnelle de facturation reste requise.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

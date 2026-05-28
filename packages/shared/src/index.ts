@@ -22,6 +22,7 @@ export * from "./encounters/billingClassification.js";
 export * from "./encounters/facilityBillingWorkflow.js";
 export * from "./encounters/billingExportReadiness.js";
 export * from "./encounters/billingLedgerReadiness.js";
+export * from "./encounters/facilityFeeOperationalReadiness.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";
 export * from "./billingCaptureV1.js";

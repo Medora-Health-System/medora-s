@@ -6,6 +6,7 @@ import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { dispositionReadinessIssueText } from "@/components/clinical/DispositionReadinessBanner";
 import { BLOCKER_LABEL_KEY, READINESS_LABEL_KEY } from "@/components/encounters/ObservationWorkflowEncounterChrome";
 import { ObservationMarEncounterSummaryBlock } from "@/components/encounters/ObservationMarEncounterSummaryBlock";
+import { FacilityFeeOperationalHint } from "@/components/billing/FacilityFeeOperationalHint";
 import type { ObservationMarEncounterSummary } from "@/lib/observationMarEncounterSummary";
 
 const sectionTitleStyle: React.CSSProperties = {
@@ -126,9 +127,14 @@ export function ObservationDocumentationSummaryPanel({
       <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>
         {t("encounterChrome.observationDocSummary.title")}
       </div>
-      <p style={{ margin: "0 0 12px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+      <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
         {t("encounterChrome.observationDocSummary.footnote")}
       </p>
+      {encounterId && facilityId ? (
+        <p style={{ margin: "0 0 12px 0" }}>
+          <FacilityFeeOperationalHint facilityId={facilityId} encounterId={encounterId} />
+        </p>
+      ) : null}
       <div
         style={{
           marginBottom: 14,

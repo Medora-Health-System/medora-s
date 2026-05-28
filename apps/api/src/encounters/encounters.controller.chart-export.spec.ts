@@ -131,6 +131,7 @@ function makeController(opts?: {
   const facilityBillingWorkflowService = {} as never;
   const billingExportReadinessService = {} as never;
   const billingLedgerReadinessService = {} as never;
+  const facilityFeeReadinessService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
@@ -141,6 +142,7 @@ function makeController(opts?: {
     facilityBillingWorkflowService,
     billingExportReadinessService,
     billingLedgerReadinessService,
+    facilityFeeReadinessService,
   );
   return { controller, chartExportService };
 }
