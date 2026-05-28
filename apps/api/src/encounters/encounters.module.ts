@@ -11,6 +11,7 @@ import { ObservationOrderTemplateService } from "./observation-order-template.se
 import { TrackboardModule } from "../trackboard/trackboard.module";
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
+import { BillingExportReadinessService } from "./billing-export-readiness.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -22,6 +23,7 @@ import { FacilityBillingWorkflowService } from "./facility-billing-workflow.serv
     ObservationOrderTemplateService,
     BillingClassificationService,
     FacilityBillingWorkflowService,
+    BillingExportReadinessService,
     AuditService,
   ],
   exports: [

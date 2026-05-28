@@ -51,6 +51,7 @@ import { assertZodBody } from "../common/http/zod-parse";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
+import { BillingExportReadinessService } from "./billing-export-readiness.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -65,6 +66,7 @@ export class EncountersController {
     private readonly observationOrderTemplateService: ObservationOrderTemplateService,
     private readonly billingClassificationService: BillingClassificationService,
     private readonly facilityBillingWorkflowService: FacilityBillingWorkflowService,
+    private readonly billingExportReadinessService: BillingExportReadinessService,
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -180,6 +182,17 @@ export class EncountersController {
       facilityId,
       userId: req.user?.userId,
     });
+  }
+
+  /** Phase 19UCED.3 — read-only billing/export route readiness preview (no claim submission). */
+  @Get("encounters/:encounterId/billing-readiness")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.FRONT_DESK)
+  async getEncounterBillingExportReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.billingExportReadinessService.getForEncounter({ encounterId, facilityId });
   }
 
   /** Phase 19UCED.2 — facility billing workflow config for active facility. */

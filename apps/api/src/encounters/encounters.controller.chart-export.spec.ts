@@ -129,6 +129,7 @@ function makeController(opts?: {
   const observationOrderTemplateService = {} as never;
   const billingClassificationService = {} as never;
   const facilityBillingWorkflowService = {} as never;
+  const billingExportReadinessService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
@@ -136,7 +137,8 @@ function makeController(opts?: {
     unifiedTimelineService,
     observationOrderTemplateService,
     billingClassificationService,
-    facilityBillingWorkflowService
+    facilityBillingWorkflowService,
+    billingExportReadinessService,
   );
   return { controller, chartExportService };
 }

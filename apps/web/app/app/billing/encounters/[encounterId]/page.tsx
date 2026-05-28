@@ -17,6 +17,11 @@ import {
   readBillingCaptureV1,
 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { EncounterBillingExportReadinessCard } from "@/components/billing/EncounterBillingExportReadinessCard";
+import {
+  fetchEncounterBillingExportReadiness,
+  type EncounterBillingExportReadinessPayload,
+} from "@/lib/billingExportReadinessApi";
 
 type LedgerEventRow = {
   id: string;
@@ -952,6 +957,11 @@ export default function BillingEncounterLedgerPage() {
   type InfusionFieldRow = { note: string; billing: string; init: string; add: string };
   const [infusionFields, setInfusionFields] = useState<Record<string, InfusionFieldRow>>({});
   const [infusionSavingId, setInfusionSavingId] = useState<string | null>(null);
+  const [exportRouteReadiness, setExportRouteReadiness] = useState<EncounterBillingExportReadinessPayload | null>(
+    null,
+  );
+  const [exportRouteReadinessError, setExportRouteReadinessError] = useState<string | null>(null);
+  const [exportRouteReadinessLoading, setExportRouteReadinessLoading] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -992,6 +1002,8 @@ export default function BillingEncounterLedgerPage() {
     if (!ready || !facilityId) return;
     setLoading(true);
     setError(null);
+    setExportRouteReadinessLoading(true);
+    setExportRouteReadinessError(null);
     try {
       const [
         summaryOutcome,
@@ -1005,6 +1017,7 @@ export default function BillingEncounterLedgerPage() {
         autoBillDecisionsOutcome,
         manualReviewGateOutcome,
         reviewDecisionsOutcome,
+        exportRouteReadinessOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -1017,6 +1030,7 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/encounters/${encounterId}/autobill-decisions`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/manual-review-gate`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/review-decisions`, { facilityId }),
+          fetchEncounterBillingExportReadiness(facilityId, encounterId),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -1033,6 +1047,8 @@ export default function BillingEncounterLedgerPage() {
         setAutoBillDecisionWarning(null);
         setManualReviewGate(null);
         setBillingReviewDecisions([]);
+        setExportRouteReadiness(null);
+        setExportRouteReadinessError(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -1100,6 +1116,17 @@ export default function BillingEncounterLedgerPage() {
         setSubmissionListErr(t("billingPage.submissionListLoadErr"));
         setSubmissionDebug(null);
       }
+      if (
+        exportRouteReadinessOutcome.status === "fulfilled" &&
+        exportRouteReadinessOutcome.value &&
+        typeof exportRouteReadinessOutcome.value === "object"
+      ) {
+        setExportRouteReadiness(exportRouteReadinessOutcome.value as EncounterBillingExportReadinessPayload);
+        setExportRouteReadinessError(null);
+      } else {
+        setExportRouteReadiness(null);
+        setExportRouteReadinessError(t("billingExportReadiness.loadError"));
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
@@ -1116,9 +1143,12 @@ export default function BillingEncounterLedgerPage() {
       setAutoBillDecisionWarning(null);
       setManualReviewGate(null);
       setBillingReviewDecisions([]);
+      setExportRouteReadiness(null);
+      setExportRouteReadinessError(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
+      setExportRouteReadinessLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
 
@@ -1753,6 +1783,13 @@ export default function BillingEncounterLedgerPage() {
             </button>
           </div>
         </div>
+      ) : null}
+      {!loading && !error && data ? (
+        <EncounterBillingExportReadinessCard
+          data={exportRouteReadiness}
+          loading={exportRouteReadinessLoading}
+          error={exportRouteReadinessError}
+        />
       ) : null}
       {manualReviewGate && manualReviewGate.unresolvedCount > 0 ? (
         <div

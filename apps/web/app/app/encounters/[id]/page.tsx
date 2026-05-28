@@ -56,6 +56,7 @@ import { EncounterOperationalPanel } from "@/components/encounters/EncounterOper
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { ObservationEncounterDisplayPill } from "@/components/encounters/ObservationEncounterDisplayPill";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { EncounterBillingExportReadinessHint } from "@/components/billing/EncounterBillingExportReadinessHint";
 import { BillingClassificationHistoryPanel } from "@/components/encounters/BillingClassificationHistoryPanel";
 import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
@@ -392,6 +393,12 @@ export default function EncounterDetailPage() {
     roles.includes("BILLING") ||
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY");
+
+  const canViewBillingExportReadiness =
+    roles.includes("BILLING") ||
+    roles.includes("ADMIN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("FRONT_DESK");
 
   /**
    * Lab/Radiology techniciens : accès dossier en lecture seule. Aucun écrit clinique
@@ -2009,6 +2016,11 @@ export default function EncounterDetailPage() {
                     ) : null}
                     <BillingClassificationBadgeReadOnly
                       classification={(encounter as { billingClassification?: string }).billingClassification}
+                    />
+                    <EncounterBillingExportReadinessHint
+                      facilityId={facilityId}
+                      encounterId={encounterId}
+                      enabled={canViewBillingExportReadiness}
                     />
                   </div>
                 </div>

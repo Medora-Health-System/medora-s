@@ -1504,6 +1504,13 @@ Tableau des urgences + parcours ED complet
 - Medora enregistre le **type de consultation** ; la caisse / facturation applique les règles locales.  
 - L’accusé de réception UC→ED doit être **archivé** selon politique (papier ou future capture Medora).
 
+### 4.6.1 Préparation export / voie de facturation (19UCED.3)
+
+- Medora affiche un **aperçu de préparation export** selon la **classification de facturation** de la consultation (UC, urgences, observation, etc.).
+- **Aucune réclamation n’est soumise** depuis cet aperçu — pas de clearinghouse, pas de montant de remboursement calculé.
+- La voie d’export (professionnel CMS-1500, établissement UB-04, ou les deux) et les éléments manquants (diagnostic, identité de facturation établissement, payeur) sont **indicateurs de révision** pour l’équipe facturation.
+- **La politique institutionnelle de facturation reste requise** ; Medora n’auto-convertit pas la classification selon le motif, l’ESI ou les ordres.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  
