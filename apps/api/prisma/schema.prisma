@@ -142,6 +142,10 @@ enum AuditAction {
   PLATFORM_ANNOUNCEMENT_ACKNOWLEDGED
   /// Phase 19UCED.1 — explicit encounter billing classification change (PHI-safe metadata only).
   ENCOUNTER_BILLING_CLASSIFICATION_CHANGED
+  /// Phase 19UCED.2 — UC→ED billing conversion completed (same encounter; PHI-safe metadata).
+  UC_TO_ED_CONVERSION_COMPLETED
+  /// Phase 19UCED.2 — patient acknowledgment captured for UC→ED conversion (PHI-safe metadata).
+  UC_TO_ED_PATIENT_ACKNOWLEDGED
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -436,6 +440,15 @@ enum FacilityBillingSiteType {
   HYBRID
 }
 
+/// Phase 19UCED.2 — facility-configurable billing workflow mode.
+enum FacilityBillingClassificationMode {
+  CLINIC_ONLY
+  URGENT_CARE_ONLY
+  EMERGENCY_ONLY
+  HYBRID_UC_ED
+  HOSPITAL_ENTERPRISE
+}
+
 /// Phase 19UCED.1 — billing/regulatory classification (distinct from clinical Encounter.type).
 enum BillingClassification {
   CLINIC_VISIT
@@ -488,6 +501,12 @@ model Facility {
   billingFacilityTypeLabel   String?
   /// Phase 19UCED.1 — structured billing site profile for default encounter classification.
   billingSiteType            FacilityBillingSiteType?
+  /// Phase 19UCED.2 — facility billing workflow mode (nullable = infer from billingSiteType / legacy).
+  billingClassificationMode            FacilityBillingClassificationMode?
+  allowedEncounterBillingClassifications BillingClassification[] @default([])
+  allowUrgentCareToEmergencyUpgrade      Boolean                 @default(false)
+  requireUcToEdPatientAcknowledgement    Boolean                 @default(true)
+  showEncounterBillingControls           Boolean                 @default(false)
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 

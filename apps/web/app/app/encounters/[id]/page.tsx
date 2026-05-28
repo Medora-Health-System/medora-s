@@ -55,6 +55,8 @@ import { EncounterProcedureCapturePanel } from "@/components/encounters/Encounte
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { ObservationEncounterDisplayPill } from "@/components/encounters/ObservationEncounterDisplayPill";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
+import { BillingClassificationHistoryPanel } from "@/components/encounters/BillingClassificationHistoryPanel";
 import { ObservationContinueObservationQuickModal } from "@/components/encounters/ObservationContinueObservationQuickModal";
 import { ObservationReassessmentModal } from "@/components/encounters/ObservationReassessmentModal";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
@@ -2005,6 +2007,9 @@ export default function EncounterDetailPage() {
                     {observationDisplayStatus.phase === "ACTIVE" && observationOpsClient ? (
                       <ObservationWorkflowHeaderStatusPill snapshot={observationOpsClient} t={t} />
                     ) : null}
+                    <BillingClassificationBadgeReadOnly
+                      classification={(encounter as { billingClassification?: string }).billingClassification}
+                    />
                   </div>
                 </div>
               </div>
@@ -2615,6 +2620,11 @@ export default function EncounterDetailPage() {
                   {t("encounterChrome.historyTabBlurb")}
                 </p>
               </div>
+              <BillingClassificationHistoryPanel
+                transitions={(encounter as { billingClassificationTransitionJson?: unknown }).billingClassificationTransitionJson}
+                currentClassification={(encounter as { billingClassification?: string }).billingClassification}
+                createdAt={encounter.createdAt ?? null}
+              />
               {auditTimelineLoading ? (
                 <div style={{ fontSize: 14, color: "#64748b", padding: "4px 2px" }}>
                   {t("encounterChrome.historyLoading")}

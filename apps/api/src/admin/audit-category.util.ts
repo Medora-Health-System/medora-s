@@ -52,6 +52,8 @@ export function classifyAuditUiCategory(action: AuditAction, entityType: string)
     action === AuditAction.ENCOUNTER_CREATE ||
     action === AuditAction.ENCOUNTER_UPDATE ||
     action === AuditAction.ENCOUNTER_BILLING_CLASSIFICATION_CHANGED ||
+    action === AuditAction.UC_TO_ED_CONVERSION_COMPLETED ||
+    action === AuditAction.UC_TO_ED_PATIENT_ACKNOWLEDGED ||
     action === AuditAction.TRIAGE_SAVE ||
     action === AuditAction.MEDICATION_DISPENSED ||
     action === AuditAction.PROVIDER_DOCUMENTATION_SIGN ||

@@ -4,8 +4,17 @@ import { useEffect, useState } from "react";
 import {
   fetchAdminFacilityBillingIdentity,
   patchAdminFacilityBillingIdentity,
+  fetchAdminFacilityBillingWorkflow,
+  patchAdminFacilityBillingWorkflow,
   type FacilityBillingIdentityPayload,
 } from "@/lib/adminUsersApi";
+import {
+  emptyFacilityBillingWorkflowForm,
+  FacilityBillingWorkflowFields,
+  workflowFormFromPayload,
+  workflowFormToPatch,
+  type FacilityBillingWorkflowFormState,
+} from "@/components/admin/FacilityBillingWorkflowFields";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useI18n } from "@/lib/i18n";
 
@@ -60,13 +69,22 @@ export function FacilityBillingIdentityModal({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState(emptyBillingForm);
+  const [workflowForm, setWorkflowForm] = useState<FacilityBillingWorkflowFormState>(
+    emptyFacilityBillingWorkflowForm(),
+  );
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    void fetchAdminFacilityBillingIdentity(headerFacilityId, targetFacilityId)
-      .then((p) => {
-        if (!cancelled) setForm(payloadToForm(p));
+    void Promise.all([
+      fetchAdminFacilityBillingIdentity(headerFacilityId, targetFacilityId),
+      fetchAdminFacilityBillingWorkflow(headerFacilityId, targetFacilityId),
+    ])
+      .then(([billing, workflow]) => {
+        if (!cancelled) {
+          setForm(payloadToForm(billing));
+          setWorkflowForm(workflowFormFromPayload(workflow));
+        }
       })
       .catch((e: unknown) => {
         onError(
@@ -105,6 +123,11 @@ export function FacilityBillingIdentityModal({
         billingCountry: trim(form.billingCountry),
         billingFacilityTypeLabel: trim(form.billingFacilityTypeLabel),
       });
+      await patchAdminFacilityBillingWorkflow(
+        headerFacilityId,
+        targetFacilityId,
+        workflowFormToPatch(workflowForm),
+      );
       await onSuccess();
     } catch (err: unknown) {
       onError(
@@ -240,6 +263,11 @@ export function FacilityBillingIdentityModal({
                 />
               </label>
             </div>
+            <FacilityBillingWorkflowFields
+              form={workflowForm}
+              onChange={setWorkflowForm}
+              disabled={submitting}
+            />
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 16 }}>
               <button
                 type="button"

@@ -128,13 +128,15 @@ function makeController(opts?: {
   const unifiedTimelineService = {} as never;
   const observationOrderTemplateService = {} as never;
   const billingClassificationService = {} as never;
+  const facilityBillingWorkflowService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
     chartExportService as never,
     unifiedTimelineService,
     observationOrderTemplateService,
-    billingClassificationService
+    billingClassificationService,
+    facilityBillingWorkflowService
   );
   return { controller, chartExportService };
 }

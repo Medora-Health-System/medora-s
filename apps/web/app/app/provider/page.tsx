@@ -14,6 +14,7 @@ import {
   MedoraCardInner,
   MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -78,6 +79,7 @@ type EncounterRow = {
   id: string;
   type?: string;
   status?: string;
+  billingClassification?: string | null;
   createdAt?: string;
   roomLabel?: string | null;
   triage?: { esi?: number | null } | null;
@@ -512,6 +514,7 @@ export default function ProviderPage() {
                                   {t("common.type")} · {typeLabel}
                                 </MedoraCardBadge>
                                 <MedoraCardBadge soft={soft}>{statusLabel}</MedoraCardBadge>
+                                <BillingClassificationBadgeReadOnly classification={encounter.billingClassification} />
                               </MedoraCardBadgeRow>
                             </div>
                             <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.35 }}>

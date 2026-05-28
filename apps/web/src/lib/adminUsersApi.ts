@@ -4,6 +4,7 @@
  */
 
 import type { CreateAdminUserDto, CreateFacilityDto } from "@medora/shared";
+import type { FacilityBillingClassificationMode } from "@medora/shared";
 import { normalizeUserFacingError } from "./userFacingError";
 import { parseApiResponse } from "./apiClient";
 
@@ -174,6 +175,40 @@ export async function patchAdminFacilityBillingIdentity(
     body: JSON.stringify(body),
     facilityId: headerFacilityId,
   }) as Promise<FacilityBillingIdentityPayload>;
+}
+
+export type FacilityBillingWorkflowPayload = {
+  facilityId: string;
+  facilityName: string;
+  billingClassificationMode: FacilityBillingClassificationMode | null;
+  billingSiteType: string | null;
+  allowedEncounterBillingClassifications: string[];
+  allowUrgentCareToEmergencyUpgrade: boolean;
+  requireUcToEdPatientAcknowledgement: boolean;
+  showEncounterBillingControls: boolean;
+};
+
+export async function fetchAdminFacilityBillingWorkflow(
+  headerFacilityId: string,
+  targetFacilityId: string
+): Promise<FacilityBillingWorkflowPayload> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/billing-workflow`, {
+    method: "GET",
+    facilityId: headerFacilityId,
+  }) as Promise<FacilityBillingWorkflowPayload>;
+}
+
+export async function patchAdminFacilityBillingWorkflow(
+  headerFacilityId: string,
+  targetFacilityId: string,
+  body: Record<string, unknown>
+): Promise<FacilityBillingWorkflowPayload> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/billing-workflow`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    facilityId: headerFacilityId,
+  }) as Promise<FacilityBillingWorkflowPayload>;
 }
 
 export type UserBillingIdentityPayload = {

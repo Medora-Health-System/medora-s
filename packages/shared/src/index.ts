@@ -19,6 +19,7 @@ export * from "./encounters/unifiedEncounterTimelineDisplayTitles.js";
 export * from "./encounters/unifiedEncounterTimeline.js";
 export * from "./encounters/edClinicalTimeline.js";
 export * from "./encounters/billingClassification.js";
+export * from "./encounters/facilityBillingWorkflow.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";
 export * from "./billingCaptureV1.js";

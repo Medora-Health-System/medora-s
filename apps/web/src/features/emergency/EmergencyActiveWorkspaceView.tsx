@@ -14,8 +14,7 @@ import {
   tEncounterStatus,
   tEncounterType,
 } from "@/lib/encounterChromeI18n";
-import { BillingClassificationBadge } from "@/components/encounters/BillingClassificationBadge";
-import { BillingClassificationConversionModal } from "@/components/encounters/BillingClassificationConversionModal";
+import { BillingClassificationBadgeInteractive } from "@/components/encounters/BillingClassificationBadgeInteractive";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
@@ -206,7 +205,6 @@ export function EmergencyActiveWorkspaceView() {
   const [triageLoading, setTriageLoading] = useState(false);
   const [showQuickVitals, setShowQuickVitals] = useState(false);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
-  const [showBillingConversion, setShowBillingConversion] = useState(false);
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
@@ -684,6 +682,12 @@ export function EmergencyActiveWorkspaceView() {
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
+  const canChangeBillingClassification =
+    roles.includes("PROVIDER") ||
+    roles.includes("RN") ||
+    roles.includes("ADMIN") ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("BILLING");
   const physicianAssignedForOperational =
     encounter.physicianAssigned?.id != null && String(encounter.physicianAssigned.id).trim() !== ""
       ? {
@@ -1042,27 +1046,17 @@ export function EmergencyActiveWorkspaceView() {
                   <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
                     {tEncounterType(t, typeKey)}
                   </MedoraCardBadge>
-                  <BillingClassificationBadge classification={billingClassKey} t={t} />
+                  {fid ? (
+                    <BillingClassificationBadgeInteractive
+                      encounterId={encounter.id}
+                      facilityId={fid}
+                      classification={billingClassKey}
+                      encounterOpen={encounter.status === "OPEN"}
+                      canEdit={canChangeBillingClassification}
+                      onUpdated={load}
+                    />
+                  ) : null}
                 </MedoraCardBadgeRow>
-                {billingClassKey === "URGENT_CARE" && encounter.status === "OPEN" && canEditOperationalEncounter && fid ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowBillingConversion(true)}
-                    style={{
-                      marginTop: 8,
-                      padding: "6px 10px",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      borderRadius: 8,
-                      border: "1px solid #fed7aa",
-                      background: "#fff7ed",
-                      color: "#c2410c",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("billingClassification.convertUcToEd")}
-                  </button>
-                ) : null}
                 <Link
                   href={erChartHref}
                   style={emergencyChartTouchLinkStyle({ ...linkPill, alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end", fontSize: 13, padding: "7px 12px" })}
@@ -1494,15 +1488,6 @@ export function EmergencyActiveWorkspaceView() {
               </div>
             </div>
           </div>
-        ) : null}
-        {showBillingConversion && fid ? (
-          <BillingClassificationConversionModal
-            encounterId={encounter.id}
-            facilityId={fid}
-            currentClassification={billingClassKey || "URGENT_CARE"}
-            onUpdated={load}
-            onClose={() => setShowBillingConversion(false)}
-          />
         ) : null}
       </div>
     </div>

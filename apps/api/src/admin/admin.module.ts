@@ -26,9 +26,10 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { QueuesModule } from "../queues/queues.module";
 import { ReportsModule } from "../reports/reports.module";
+import { EncountersModule } from "../encounters/encounters.module";
 
 @Module({
-  imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule],
+  imports: [PrismaModule, QueuesModule, ReportsModule, MfaModule, EncountersModule],
   controllers: [
     AdminUsersController,
     AdminFacilitiesController,

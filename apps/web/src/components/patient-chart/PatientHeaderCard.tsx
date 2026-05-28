@@ -13,6 +13,7 @@ import {
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { nirMrnDisplay } from "./patientChartHelpers";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
 export function PatientHeaderCard({
   patient,
@@ -41,7 +42,7 @@ export function PatientHeaderCard({
   /** Ligne déjà formatée (vide si aucune mesure). */
   headerVitalsLine: string;
   hasVitals: boolean;
-  openEncounter: { id: string; type: string; status: string } | null | undefined;
+  openEncounter: { id: string; type: string; status: string; billingClassification?: string | null } | null | undefined;
   canOpenEncounterDetail: boolean;
   showEditButton: boolean;
   onEditClick: () => void;
@@ -156,6 +157,7 @@ export function PatientHeaderCard({
               <span style={{ fontSize: 13, fontWeight: 600, color: administrativeShell ? "#e65100" : "#1565c0" }}>
                 {openBanner}
               </span>
+              <BillingClassificationBadgeReadOnly classification={openEncounter.billingClassification} />
               {administrativeShell ? (
                 <span style={{ fontSize: 12, color: "#bf360c" }}>
                   {t("encounterChrome.patientHeader.clinicalTeamOnly")}

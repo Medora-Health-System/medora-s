@@ -50,6 +50,7 @@ import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { BillingClassificationService } from "./billing-classification.service";
+import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -62,7 +63,8 @@ export class EncountersController {
     private readonly chartExportService: EncounterChartExportService,
     private readonly unifiedTimelineService: UnifiedEncounterTimelineService,
     private readonly observationOrderTemplateService: ObservationOrderTemplateService,
-    private readonly billingClassificationService: BillingClassificationService
+    private readonly billingClassificationService: BillingClassificationService,
+    private readonly facilityBillingWorkflowService: FacilityBillingWorkflowService,
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -163,6 +165,32 @@ export class EncountersController {
       ip: req.ip,
       userAgent: req.headers["user-agent"],
     });
+  }
+
+  /** Phase 19UCED.2 — allowed billing classification transitions for encounter UI. */
+  @Get("encounters/:encounterId/billing-classification/options")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async getBillingClassificationOptions(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.billingClassificationService.getTransitionOptions({
+      encounterId,
+      facilityId,
+      userId: req.user?.userId,
+    });
+  }
+
+  /** Phase 19UCED.2 — facility billing workflow config for active facility. */
+  @Get("facilities/billing-workflow")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async getFacilityBillingWorkflow(@Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.facilityBillingWorkflowService.getForFacility(facilityId);
   }
 
   @Get("patients/:patientId/encounters")

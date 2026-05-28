@@ -7,6 +7,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
 function CreateEncounterModal({
   patientId,
@@ -350,17 +351,20 @@ export function PatientConsultationsTab({
                     </td>
                     <td style={{ padding: "10px 12px" }}>{tEncounterType(t, encounter.type)}</td>
                     <td style={{ padding: "10px 12px" }}>
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: 4,
-                          fontSize: 12,
-                          backgroundColor: encounter.status === "OPEN" ? "#e3f2fd" : "#f5f5f5",
-                          color: encounter.status === "OPEN" ? "#1976d2" : "#666",
-                        }}
-                      >
-                        {tEncounterStatus(t, encounter.status)}
-                      </span>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                        <span
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            fontSize: 12,
+                            backgroundColor: encounter.status === "OPEN" ? "#e3f2fd" : "#f5f5f5",
+                            color: encounter.status === "OPEN" ? "#1976d2" : "#666",
+                          }}
+                        >
+                          {tEncounterStatus(t, encounter.status)}
+                        </span>
+                        <BillingClassificationBadgeReadOnly classification={encounter.billingClassification} />
+                      </div>
                     </td>
                     <td style={{ padding: "10px 12px" }}>{encounter.roomLabel?.trim() || t("common.dash")}</td>
                     <td style={{ padding: "10px 12px" }}>

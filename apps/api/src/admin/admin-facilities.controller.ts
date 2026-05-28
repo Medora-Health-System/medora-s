@@ -3,6 +3,7 @@ import { AuthGuard } from "@nestjs/passport";
 import {
   createFacilityDtoSchema,
   facilityBillingIdentityPatchDtoSchema,
+  facilityBillingWorkflowPatchDtoSchema,
   setFacilityActiveDtoSchema,
   setFacilityLanguageDtoSchema,
 } from "@medora/shared";
@@ -97,5 +98,27 @@ export class AdminFacilitiesController {
       throw new BadRequestException(parsed.error.flatten());
     }
     return this.facilities.updateFacilityBillingIdentityForAdmin(req.user.userId, id, parsed.data);
+  }
+
+  /** Phase 19UCED.2 — encounter billing workflow config (read). */
+  @Get("facilities/:id/billing-workflow")
+  @UseGuards(AuthGuard("jwt"))
+  async getFacilityBillingWorkflow(@Param("id") id: string, @Req() req: { user: { userId: string } }) {
+    return this.facilities.getFacilityBillingWorkflowForAdmin(req.user.userId, id);
+  }
+
+  /** Phase 19UCED.2 — encounter billing workflow config (write). */
+  @Patch("facilities/:id/billing-workflow")
+  @UseGuards(AuthGuard("jwt"))
+  async patchFacilityBillingWorkflow(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: { user: { userId: string } }
+  ) {
+    const parsed = facilityBillingWorkflowPatchDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.flatten());
+    }
+    return this.facilities.updateFacilityBillingWorkflowForAdmin(req.user.userId, id, parsed.data);
   }
 }

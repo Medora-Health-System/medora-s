@@ -4,12 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import type { CreateFacilityDto, FacilityBillingIdentityPatchDto } from "@medora/shared";
+import type { CreateFacilityDto, FacilityBillingIdentityPatchDto, FacilityBillingWorkflowPatchDto } from "@medora/shared";
+import { mapBillingClassificationModeToSiteType } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
 import { randomBytes } from "crypto";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import { BillingIdentityService } from "../billing/billing-identity.service";
+import { FacilityBillingWorkflowService } from "../encounters/facility-billing-workflow.service";
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
@@ -43,7 +45,8 @@ function pickFacilityBillingFromCreateDto(dto: CreateFacilityDto): Partial<Facil
 export class AdminFacilitiesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly billingIdentity: BillingIdentityService
+    private readonly billingIdentity: BillingIdentityService,
+    private readonly facilityBillingWorkflow: FacilityBillingWorkflowService,
   ) {}
 
   async create(dto: CreateFacilityDto, userId: string) {
@@ -59,6 +62,7 @@ export class AdminFacilitiesService {
     const code = `FAC-${randomBytes(6).toString("hex")}`;
     const billingFragment = pickFacilityBillingFromCreateDto(dto);
     const hasBillingInput = Object.keys(billingFragment).length > 0;
+    const workflowMode = dto.billingClassificationMode ?? null;
 
     return this.prisma.$transaction(async (tx) => {
       const facility = await tx.facility.create({
@@ -69,6 +73,16 @@ export class AdminFacilitiesService {
           timezone: DEFAULT_NEW_FACILITY_TIMEZONE,
           defaultLanguage: dto.defaultLanguage ?? "fr",
           ...(hasBillingInput ? billingFragment : {}),
+          ...(workflowMode
+            ? {
+                billingClassificationMode: workflowMode,
+                billingSiteType: mapBillingClassificationModeToSiteType(workflowMode),
+                allowUrgentCareToEmergencyUpgrade: dto.allowUrgentCareToEmergencyUpgrade ?? false,
+                requireUcToEdPatientAcknowledgement: dto.requireUcToEdPatientAcknowledgement ?? true,
+                showEncounterBillingControls: dto.showEncounterBillingControls ?? false,
+                allowedEncounterBillingClassifications: dto.allowedEncounterBillingClassifications ?? [],
+              }
+            : {}),
         },
       });
 
@@ -109,6 +123,20 @@ export class AdminFacilitiesService {
   ) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
     return this.billingIdentity.updateFacilityBillingIdentity(facilityId, dto);
+  }
+
+  async getFacilityBillingWorkflowForAdmin(actorUserId: string, facilityId: string) {
+    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    return this.facilityBillingWorkflow.getForFacility(facilityId);
+  }
+
+  async updateFacilityBillingWorkflowForAdmin(
+    actorUserId: string,
+    facilityId: string,
+    dto: FacilityBillingWorkflowPatchDto
+  ) {
+    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    return this.facilityBillingWorkflow.updateForFacility(facilityId, dto);
   }
 
   private async assertCanManageFacilityBilling(actorUserId: string, facilityId: string) {

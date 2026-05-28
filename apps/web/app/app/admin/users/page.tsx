@@ -11,6 +11,12 @@ import {
 } from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import {
+  emptyFacilityBillingWorkflowForm,
+  FacilityBillingWorkflowFields,
+  workflowFormToPatch,
+  type FacilityBillingWorkflowFormState,
+} from "@/components/admin/FacilityBillingWorkflowFields";
+import {
   fetchAdminUsers,
   createAdminUser,
   createAdminFacility,
@@ -568,6 +574,9 @@ function AddFacilityModal({
   const [billingPostalCode, setBillingPostalCode] = useState("");
   const [billingCountry, setBillingCountry] = useState("");
   const [billingFacilityTypeLabel, setBillingFacilityTypeLabel] = useState("");
+  const [billingWorkflow, setBillingWorkflow] = useState<FacilityBillingWorkflowFormState>(
+    emptyFacilityBillingWorkflowForm(),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -588,6 +597,7 @@ function AddFacilityModal({
       const payload: CreateFacilityDto = {
         name: name.trim(),
         defaultLanguage,
+        ...workflowFormToPatch(billingWorkflow),
       };
       if (showOptionalBilling) {
         const trim = (s: string) => (s.trim() === "" ? undefined : s.trim());
@@ -672,6 +682,7 @@ function AddFacilityModal({
               <option value="en">{t("adminUsers.langEn")}</option>
             </select>
           </div>
+          <FacilityBillingWorkflowFields form={billingWorkflow} onChange={setBillingWorkflow} disabled={submitting} />
           <label
             style={{
               display: "flex",

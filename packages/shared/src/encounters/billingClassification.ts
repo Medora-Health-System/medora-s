@@ -208,12 +208,12 @@ export const BILLING_CLASSIFICATION_BADGE_SOFT: Record<
   BillingClassification,
   { bg: string; text: string; border: string }
 > = {
-  CLINIC_VISIT: { bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" },
-  URGENT_CARE: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0" },
+  CLINIC_VISIT: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+  URGENT_CARE: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
   EMERGENCY_DEPARTMENT: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
   OBSERVATION: { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
-  INPATIENT: { bg: "#eef2ff", text: "#3730a3", border: "#c7d2fe" },
-  PROCEDURE: { bg: "#f8fafc", text: "#334155", border: "#cbd5e1" },
+  INPATIENT: { bg: "#eef2ff", text: "#312e81", border: "#c7d2fe" },
+  PROCEDURE: { bg: "#f8fafc", text: "#334155", border: "#94a3b8" },
   TELEHEALTH: { bg: "#ecfeff", text: "#0e7490", border: "#a5f3fc" },
 };
 

@@ -55,6 +55,7 @@ const encounterChartSelect = {
   admissionSummaryJson: true,
   admittedAt: true,
   workflowState: true,
+  billingClassification: true,
   nurseAssignedUserId: true,
   physicianAssigned: {
     select: { id: true, firstName: true, lastName: true },
@@ -661,6 +662,7 @@ export class ChartSummaryService {
           : null,
         observationStaySummary,
         observationOperational,
+        billingClassification: e.billingClassification ?? null,
       };
     });
 

@@ -16,7 +16,7 @@ import {
   esiLevelFromUnknown,
   esiUnderAvatarNumberStyle,
 } from "@/features/emergency/emergencyEsiDisplay";
-import { BillingClassificationBadge } from "@/components/encounters/BillingClassificationBadge";
+import { BillingClassificationBadgeInteractive } from "@/components/encounters/BillingClassificationBadgeInteractive";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -215,6 +215,12 @@ export function EmergencyTrackboardView() {
   void losTick;
 
   const isProvider = roles.includes("PROVIDER");
+  const canChangeBillingClassification =
+    roles.includes("PROVIDER") ||
+    roles.includes("RN") ||
+    roles.includes("ADMIN") ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("BILLING");
   const isNurse = roles.includes("RN");
   const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
 
@@ -881,10 +887,16 @@ export function EmergencyTrackboardView() {
                                 </span>
                               ) : null}
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
-                              <BillingClassificationBadge
-                                classification={(encounter as { billingClassification?: string }).billingClassification}
-                                t={t}
-                              />
+                              {facilityId ? (
+                                <BillingClassificationBadgeInteractive
+                                  encounterId={encounter.id}
+                                  facilityId={facilityId}
+                                  classification={(encounter as { billingClassification?: string }).billingClassification}
+                                  encounterOpen={encounter.status === "OPEN"}
+                                  canEdit={canChangeBillingClassification}
+                                  onUpdated={loadEncounters}
+                                />
+                              ) : null}
                             </div>
                             <div
                               style={{

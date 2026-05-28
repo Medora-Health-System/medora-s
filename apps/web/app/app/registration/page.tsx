@@ -18,6 +18,7 @@ import { isAppPathAllowedForRoles } from "@/lib/landingRoute";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { MEDORA_PATIENT_PROFILE_UPDATED } from "@/lib/chartEvents";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
 type RegPatientRow = {
   id: string;
@@ -100,6 +101,10 @@ function RegistrationPageInner() {
   const [workspaceInsurance, setWorkspaceInsurance] = useState<InsuranceRow[]>([]);
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+  const [workspaceOpenEncounter, setWorkspaceOpenEncounter] = useState<{
+    id: string;
+    billingClassification?: string | null;
+  } | null>(null);
   const [insuranceSyncVersion, setInsuranceSyncVersion] = useState(0);
   const bumpInsurancePanels = useCallback(() => {
     setInsuranceSyncVersion((v) => v + 1);
@@ -142,12 +147,27 @@ function RegistrationPageInner() {
       setWorkspaceLoading(true);
       setWorkspaceError(null);
       setWorkspaceInsurance([]);
+      setWorkspaceOpenEncounter(null);
       try {
         const p = await apiFetch(`/patients/${patientId}`, { facilityId: effectiveFacilityId });
         if (!p || typeof p !== "object") {
           throw new Error(t("registrationWorkspace.loadError"));
         }
         setWorkspacePatient(p as WorkspacePatient);
+        try {
+          const encs = await apiFetch(`/patients/${patientId}/encounters?limit=8`, {
+            facilityId: effectiveFacilityId,
+          });
+          const open =
+            Array.isArray(encs) ?
+              (encs as { id: string; status?: string; billingClassification?: string | null }[]).find(
+                (e) => e.status === "OPEN",
+              ) ?? null
+            : null;
+          setWorkspaceOpenEncounter(open);
+        } catch {
+          setWorkspaceOpenEncounter(null);
+        }
         try {
           const ins = await apiFetch(`/patients/${patientId}/insurance`, { facilityId: effectiveFacilityId });
           setWorkspaceInsurance(Array.isArray(ins) ? (ins as InsuranceRow[]) : []);
@@ -161,6 +181,7 @@ function RegistrationPageInner() {
       } catch (e) {
         setWorkspacePatient(null);
         setWorkspaceInsurance([]);
+        setWorkspaceOpenEncounter(null);
         setWorkspaceError(
           normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("registrationWorkspace.loadError")
         );
@@ -521,6 +542,16 @@ function RegistrationPageInner() {
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>{t("registrationWorkspace.insuranceSummaryHint")}</div>
                     </div>
+                    {workspaceOpenEncounter ? (
+                      <div style={{ padding: 12, borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff" }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          {t("registrationWorkspace.openEncounterBillingLabel")}
+                        </div>
+                        <div style={{ marginTop: 8 }}>
+                          <BillingClassificationBadgeReadOnly classification={workspaceOpenEncounter.billingClassification} />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 )}
 

@@ -26,6 +26,7 @@ import {
   buildErWorkspaceVitalPairs,
   triagePreviewSliceFromTriageGet,
 } from "@/features/emergency/emergencyTriageDocPreview";
+import { BillingClassificationBadgeInteractive } from "@/components/encounters/BillingClassificationBadgeInteractive";
 import { EmergencyResultsPanel } from "@/features/emergency/EmergencyResultsPanel";
 import { EmergencyQuickVitalsEditor } from "@/features/emergency/EmergencyQuickVitalsEditor";
 import {
@@ -474,6 +475,13 @@ export function EmergencyChartView() {
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
   const canEditOperationalEncounter = roles.includes("RN") || roles.includes("ADMIN");
+  const canChangeBillingClassification =
+    roles.includes("PROVIDER") ||
+    roles.includes("RN") ||
+    roles.includes("ADMIN") ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("BILLING");
+  const billingClassKey = String((encounter as { billingClassification?: string }).billingClassification ?? "").trim();
   const physicianAssignedForOperational =
     encounter.physicianAssigned?.id != null && String(encounter.physicianAssigned.id).trim() !== ""
       ? {
@@ -791,6 +799,16 @@ export function EmergencyChartView() {
                     <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
                       {tEncounterType(t, typeKey)}
                     </MedoraCardBadge>
+                    {fid ? (
+                      <BillingClassificationBadgeInteractive
+                        encounterId={encounter.id}
+                        facilityId={fid}
+                        classification={billingClassKey}
+                        encounterOpen={encounter.status === "OPEN"}
+                        canEdit={canChangeBillingClassification}
+                        onUpdated={load}
+                      />
+                    ) : null}
                   </MedoraCardBadgeRow>
                 </div>
               </div>

@@ -1,4 +1,19 @@
 import { z } from "zod";
+import { billingClassificationSchema } from "../encounters/billingClassification.js";
+import {
+  facilityBillingClassificationModeSchema,
+  facilityBillingWorkflowPatchDtoSchema,
+} from "../encounters/facilityBillingWorkflow.js";
+
+export { facilityBillingWorkflowPatchDtoSchema };
+
+const facilityBillingWorkflowCreateFieldsSchema = z.object({
+  billingClassificationMode: facilityBillingClassificationModeSchema.optional().nullable(),
+  allowedEncounterBillingClassifications: z.array(billingClassificationSchema).optional(),
+  allowUrgentCareToEmergencyUpgrade: z.boolean().optional(),
+  requireUcToEdPatientAcknowledgement: z.boolean().optional(),
+  showEncounterBillingControls: z.boolean().optional(),
+});
 
 const optStr = (max: number) =>
   z
@@ -43,6 +58,7 @@ export const createFacilityDtoSchema = z
     defaultLanguage: z.enum(["fr", "en"]).optional().default("fr"),
   })
   .merge(facilityBillingIdentityFieldsSchema.partial())
+  .merge(facilityBillingWorkflowCreateFieldsSchema.partial())
   .superRefine(refineFacilityBillingNpi);
 
 export const facilityDtoSchema = z.object({

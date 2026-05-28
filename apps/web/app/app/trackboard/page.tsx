@@ -14,6 +14,7 @@ import {
   MedoraCardInner,
   MedoraCompactPatientCardRow,
 } from "@/components/medora-card";
+import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -504,6 +505,9 @@ export default function TrackBoardPage() {
                               }}
                             >
                               <MedoraCardBadge soft={soft}>{encounterStatusBoardLabel(encounter.status, t)}</MedoraCardBadge>
+                              <BillingClassificationBadgeReadOnly
+                                classification={(encounter as { billingClassification?: string }).billingClassification}
+                              />
                               <Link
                                 href={`/app/encounters/${encounter.id}`}
                                 style={{

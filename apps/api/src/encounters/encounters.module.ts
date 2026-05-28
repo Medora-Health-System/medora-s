@@ -10,6 +10,7 @@ import { OrdersModule } from "../orders/orders.module";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { TrackboardModule } from "../trackboard/trackboard.module";
 import { BillingClassificationService } from "./billing-classification.service";
+import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -20,9 +21,15 @@ import { BillingClassificationService } from "./billing-classification.service";
     UnifiedEncounterTimelineService,
     ObservationOrderTemplateService,
     BillingClassificationService,
+    FacilityBillingWorkflowService,
     AuditService,
   ],
-  exports: [EncountersService, EncounterChartExportService, UnifiedEncounterTimelineService],
+  exports: [
+    EncountersService,
+    EncounterChartExportService,
+    UnifiedEncounterTimelineService,
+    FacilityBillingWorkflowService,
+  ],
 })
 export class EncountersModule {}
 

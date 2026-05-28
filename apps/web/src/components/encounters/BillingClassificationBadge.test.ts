@@ -40,4 +40,15 @@ describe("BillingClassificationBadge i18n (19UCED.1)", () => {
       expect(soft.bg.length).toBeGreaterThan(0);
     }
   });
+
+  it("maps operational classifications to distinct badge palettes (19UCED.2)", () => {
+    expect(BILLING_CLASSIFICATION_BADGE_SOFT.URGENT_CARE.text).not.toBe(
+      BILLING_CLASSIFICATION_BADGE_SOFT.EMERGENCY_DEPARTMENT.text,
+    );
+    expect(BILLING_CLASSIFICATION_BADGE_SOFT.CLINIC_VISIT.bg).not.toBe(
+      BILLING_CLASSIFICATION_BADGE_SOFT.PROCEDURE.border,
+    );
+    expect(BILLING_CLASSIFICATION_BADGE_SOFT.TELEHEALTH.text).toMatch(/0e7490/i);
+    expect(BILLING_CLASSIFICATION_BADGE_SOFT.INPATIENT.text).toMatch(/312e81/i);
+  });
 });

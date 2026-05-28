@@ -8,13 +8,18 @@ import {
   type BillingClassification,
   type BillingClassificationTransitionEntry,
   type EncounterBillingClassificationPatchDto,
+  resolveAllowedTargetClassifications,
   resolveDefaultBillingClassification,
-  validateBillingClassificationTransition,
+  validateFacilityBillingTransition,
 } from "@medora/shared";
 import { AuditAction, EncounterStatus, RoleCode, type FacilityBillingSiteType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { toEncounterClinicResponse } from "./encounter-response.util";
+import {
+  facilityBillingWorkflowSelect,
+  facilityWorkflowConfigFromRow,
+} from "./facility-billing-workflow.util";
 
 @Injectable()
 export class BillingClassificationService {
@@ -33,6 +38,50 @@ export class BillingClassificationService {
     });
   }
 
+  async getTransitionOptions(params: { encounterId: string; facilityId: string; userId: string }) {
+    const { encounterId, facilityId, userId } = params;
+    const userRoles = await this.rolesForUser(userId, facilityId);
+    const isAdmin = userRoles.includes(RoleCode.ADMIN) || userRoles.includes(RoleCode.MEDORA_SUPER_ADMIN);
+
+    const [encounter, facility] = await Promise.all([
+      this.prisma.encounter.findFirst({
+        where: { id: encounterId, facilityId },
+        select: { id: true, billingClassification: true, status: true },
+      }),
+      this.prisma.facility.findFirst({
+        where: { id: facilityId },
+        select: facilityBillingWorkflowSelect,
+      }),
+    ]);
+
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    if (!facility) throw new NotFoundException("Facility not found");
+
+    const facilityConfig = facilityWorkflowConfigFromRow(facility);
+    const current = encounter.billingClassification as BillingClassification;
+    const allowedTargets = resolveAllowedTargetClassifications({
+      from: current,
+      facilityConfig,
+      isAdmin,
+    });
+
+    return {
+      currentClassification: current,
+      allowedTargets,
+      showControls: facilityConfig.showEncounterBillingControls,
+      allowChange:
+        facilityConfig.showEncounterBillingControls &&
+        encounter.status !== EncounterStatus.CLOSED &&
+        allowedTargets.length > 0,
+      requireAcknowledgment: facilityConfig.requireUcToEdPatientAcknowledgement,
+      facilityConfig: {
+        billingClassificationMode: facilityConfig.billingClassificationMode,
+        allowUrgentCareToEmergencyUpgrade: facilityConfig.allowUrgentCareToEmergencyUpgrade,
+        showEncounterBillingControls: facilityConfig.showEncounterBillingControls,
+      },
+    };
+  }
+
   async changeBillingClassification(params: {
     encounterId: string;
     facilityId: string;
@@ -45,26 +94,38 @@ export class BillingClassificationService {
     const userRoles = await this.rolesForUser(userId, facilityId);
     const isAdmin = userRoles.includes(RoleCode.ADMIN) || userRoles.includes(RoleCode.MEDORA_SUPER_ADMIN);
 
-    const encounter = await this.prisma.encounter.findFirst({
-      where: { id: encounterId, facilityId },
-    });
-    if (!encounter) {
-      throw new NotFoundException("Encounter not found");
-    }
+    const [encounter, facility] = await Promise.all([
+      this.prisma.encounter.findFirst({ where: { id: encounterId, facilityId } }),
+      this.prisma.facility.findFirst({
+        where: { id: facilityId },
+        select: facilityBillingWorkflowSelect,
+      }),
+    ]);
+
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    if (!facility) throw new NotFoundException("Facility not found");
 
     if (encounter.status === EncounterStatus.CLOSED && !isAdmin) {
       throw new ForbiddenException("Closed encounter billing classification requires admin policy");
     }
 
+    const facilityConfig = facilityWorkflowConfigFromRow(facility);
     const from = encounter.billingClassification as BillingClassification;
     const to = dto.classification;
 
-    const transitionCheck = validateBillingClassificationTransition({ from, to, isAdmin });
+    const transitionCheck = validateFacilityBillingTransition({
+      from,
+      to,
+      facilityConfig,
+      isAdmin,
+    });
     if (!transitionCheck.allowed) {
       throw new ForbiddenException(transitionCheck.code ?? "Billing classification transition not allowed");
     }
 
-    if (transitionCheck.requiresAcknowledgment && !dto.patientAcknowledged) {
+    const requiresAck =
+      transitionCheck.requiresAcknowledgment && facilityConfig.requireUcToEdPatientAcknowledgement;
+    if (requiresAck && !dto.patientAcknowledged) {
       throw new BadRequestException("Patient acknowledgment required for this billing classification change");
     }
 
@@ -103,6 +164,16 @@ export class BillingClassificationService {
       },
     });
 
+    const auditMeta = {
+      fromClassification: from,
+      toClassification: to,
+      reasonCode: dto.reasonCode,
+      patientAcknowledged: dto.patientAcknowledged,
+      acknowledgmentMethod: dto.acknowledgmentMethod,
+      actorId: userId,
+      timestamp: now.toISOString(),
+    };
+
     await this.audit.log(AuditAction.ENCOUNTER_BILLING_CLASSIFICATION_CHANGED, "ENCOUNTER", {
       userId,
       facilityId,
@@ -111,16 +182,37 @@ export class BillingClassificationService {
       entityId: encounter.id,
       ip,
       userAgent,
-      metadata: {
-        fromClassification: from,
-        toClassification: to,
-        reasonCode: dto.reasonCode,
-        patientAcknowledged: dto.patientAcknowledged,
-        acknowledgmentMethod: dto.acknowledgmentMethod,
-        actorId: userId,
-        timestamp: now.toISOString(),
-      },
+      metadata: auditMeta,
     });
+
+    if (from === "URGENT_CARE" && to === "EMERGENCY_DEPARTMENT") {
+      if (dto.patientAcknowledged) {
+        await this.audit.log(AuditAction.UC_TO_ED_PATIENT_ACKNOWLEDGED, "ENCOUNTER", {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId: encounter.id,
+          entityId: encounter.id,
+          ip,
+          userAgent,
+          metadata: {
+            acknowledgmentMethod: dto.acknowledgmentMethod,
+            actorId: userId,
+            timestamp: now.toISOString(),
+          },
+        });
+      }
+      await this.audit.log(AuditAction.UC_TO_ED_CONVERSION_COMPLETED, "ENCOUNTER", {
+        userId,
+        facilityId,
+        patientId: encounter.patientId,
+        encounterId: encounter.id,
+        entityId: encounter.id,
+        ip,
+        userAgent,
+        metadata: auditMeta,
+      });
+    }
 
     return toEncounterClinicResponse(updated);
   }
