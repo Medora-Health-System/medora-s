@@ -6,6 +6,7 @@ import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDo
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6En } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.en";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
+import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.en";
 
 export default {
   common: {
@@ -6385,6 +6386,27 @@ export default {
     templateSoreThroatInfectiousComplaintV1Help: "Click-to-insert prompts for infectious pharyngitis, airway precautions, and follow-up.",
     templateDehydrationViralIllnessComplaintV1: "Dehydration / viral illness (infectious intelligence)",
     templateDehydrationViralIllnessComplaintV1Help: "Click-to-insert prompts for viral illness, hydration status, and disposition.",
+    templateSubgroupEndocrineMetabolic: "Endocrine / Metabolic",
+    templateHyperglycemiaComplaintV1: "Hyperglycemia (endocrine intelligence)",
+    templateHyperglycemiaComplaintV1Help: "Click-to-insert prompts for hyperglycemia, DKA/HHS concern, and disposition.",
+    templateHypoglycemiaComplaintV1: "Hypoglycemia (endocrine intelligence)",
+    templateHypoglycemiaComplaintV1Help: "Click-to-insert prompts for hypoglycemia, recurrence risk, and medication safety.",
+    templateDiabetesSickDayComplaintV1: "Diabetes sick-day (endocrine intelligence)",
+    templateDiabetesSickDayComplaintV1Help: "Click-to-insert prompts for sick-day management, hydration, and return precautions.",
+    templateInsulinMedicationIssueComplaintV1: "Insulin / medication issue (endocrine intelligence)",
+    templateInsulinMedicationIssueComplaintV1Help: "Click-to-insert prompts for insulin access, dosing, and follow-up.",
+    templatePolyuriaPolydipsiaComplaintV1: "Polyuria / polydipsia (endocrine intelligence)",
+    templatePolyuriaPolydipsiaComplaintV1Help: "Click-to-insert prompts for polyuria/polydipsia and metabolic differential.",
+    templateDehydrationMetabolicComplaintV1: "Dehydration — metabolic (endocrine intelligence)",
+    templateDehydrationMetabolicComplaintV1Help: "Click-to-insert prompts for dehydration, oral tolerance, and disposition.",
+    templateElectrolyteAbnormalityComplaintV1: "Electrolyte abnormality (endocrine intelligence)",
+    templateElectrolyteAbnormalityComplaintV1Help: "Click-to-insert prompts for electrolyte concerns, labs/EKG review, and follow-up.",
+    templateThyroidSymptomsComplaintV1: "Thyroid symptoms (endocrine intelligence)",
+    templateThyroidSymptomsComplaintV1Help: "Click-to-insert prompts for thyroid dysfunction symptoms and endocrinology follow-up.",
+    templateGeneralizedWeaknessMetabolicComplaintV1: "Weakness — metabolic (endocrine intelligence)",
+    templateGeneralizedWeaknessMetabolicComplaintV1Help: "Click-to-insert prompts for metabolic weakness, functional status, and disposition.",
+    templateNauseaVomitingMetabolicComplaintV1: "Nausea / vomiting — metabolic (endocrine intelligence)",
+    templateNauseaVomitingMetabolicComplaintV1Help: "Click-to-insert prompts for nausea/vomiting with metabolic/DKA concern and reassessment.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10574,6 +10596,7 @@ export default {
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6En,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7En,
+    ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

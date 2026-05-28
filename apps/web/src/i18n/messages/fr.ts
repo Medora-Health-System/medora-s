@@ -7,6 +7,7 @@ import { providerDocumentationCardiacComplaintIntel19Mdm4Fr } from "./providerDo
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6Fr } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
+import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.fr";
 
 export default {
   ...labels.fr,
@@ -6359,6 +6360,27 @@ export default {
     templateSoreThroatInfectiousComplaintV1Help: "Inserts cliquables — pharyngite infectieuse, voies aériennes et suivi.",
     templateDehydrationViralIllnessComplaintV1: "Déshydratation / maladie virale (intelligence infectieuse)",
     templateDehydrationViralIllnessComplaintV1Help: "Inserts cliquables — maladie virale, hydratation et sortie.",
+    templateSubgroupEndocrineMetabolic: "Endocrinien / métabolique",
+    templateHyperglycemiaComplaintV1: "Hyperglycémie (intelligence endocrinienne)",
+    templateHyperglycemiaComplaintV1Help: "Inserts cliquables — hyperglycémie, suspicion CAD/HHS et sortie.",
+    templateHypoglycemiaComplaintV1: "Hypoglycémie (intelligence endocrinienne)",
+    templateHypoglycemiaComplaintV1Help: "Inserts cliquables — hypoglycémie, récidive et sécurité médicamenteuse.",
+    templateDiabetesSickDayComplaintV1: "Journée de maladie — diabète (intelligence endocrinienne)",
+    templateDiabetesSickDayComplaintV1Help: "Inserts cliquables — journée de maladie, hydratation et consignes de retour.",
+    templateInsulinMedicationIssueComplaintV1: "Insuline / problème médicamenteux (intelligence endocrinienne)",
+    templateInsulinMedicationIssueComplaintV1Help: "Inserts cliquables — accès à l'insuline, posologie et suivi.",
+    templatePolyuriaPolydipsiaComplaintV1: "Polyurie / polydipsie (intelligence endocrinienne)",
+    templatePolyuriaPolydipsiaComplaintV1Help: "Inserts cliquables — polyurie/polydipsie et différentiel métabolique.",
+    templateDehydrationMetabolicComplaintV1: "Déshydratation — métabolique (intelligence endocrinienne)",
+    templateDehydrationMetabolicComplaintV1Help: "Inserts cliquables — déshydratation, tolérance PO et sortie.",
+    templateElectrolyteAbnormalityComplaintV1: "Anomalie électrolytique (intelligence endocrinienne)",
+    templateElectrolyteAbnormalityComplaintV1Help: "Inserts cliquables — électrolytes, bilan/ECG et suivi.",
+    templateThyroidSymptomsComplaintV1: "Symptômes thyroïdiens (intelligence endocrinienne)",
+    templateThyroidSymptomsComplaintV1Help: "Inserts cliquables — dysfonction thyroïdienne et suivi endocrinologique.",
+    templateGeneralizedWeaknessMetabolicComplaintV1: "Faiblesse — métabolique (intelligence endocrinienne)",
+    templateGeneralizedWeaknessMetabolicComplaintV1Help: "Inserts cliquables — faiblesse métabolique, statut fonctionnel et sortie.",
+    templateNauseaVomitingMetabolicComplaintV1: "Nausées / vomissements — métabolique (intelligence endocrinienne)",
+    templateNauseaVomitingMetabolicComplaintV1Help: "Inserts cliquables — nausées/vomissements, suspicion métabolique/CAD et réévaluation.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10557,6 +10579,7 @@ export default {
     ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6Fr,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr,
+    ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

@@ -136,7 +136,17 @@ export type ProviderDocumentationTemplateId =
   | "dental_pain_infection_complaint_v1"
   | "rash_skin_complaint_v1"
   | "sore_throat_infectious_complaint_v1"
-  | "dehydration_viral_illness_complaint_v1";
+  | "dehydration_viral_illness_complaint_v1"
+  | "hyperglycemia_complaint_v1"
+  | "hypoglycemia_complaint_v1"
+  | "diabetes_sick_day_complaint_v1"
+  | "insulin_medication_issue_complaint_v1"
+  | "polyuria_polydipsia_complaint_v1"
+  | "dehydration_metabolic_complaint_v1"
+  | "electrolyte_abnormality_complaint_v1"
+  | "thyroid_symptoms_complaint_v1"
+  | "generalized_weakness_metabolic_complaint_v1"
+  | "nausea_vomiting_metabolic_complaint_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
@@ -144,7 +154,8 @@ export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "cardiac_vascular"
   | "gu_renal"
   | "msk_trauma"
-  | "infectious_ent";
+  | "infectious_ent"
+  | "endocrine_metabolic";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;

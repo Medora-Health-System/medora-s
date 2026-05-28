@@ -122,6 +122,27 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "no_deep_infection", pattern: /\bno\s+deep\s+infection\b/i },
     { id: "benign_infection", pattern: /\bbenign\s+infection\b/i },
     { id: "infection_resolved", pattern: /\binfection\s+resolved\b/i },
+    // Phase 19MDM.8 — endocrine / metabolic
+    { id: "dka_ruled_out", pattern: /\bdka\s+ruled\s+out\b/i },
+    { id: "hhs_ruled_out", pattern: /\bhhs\s+ruled\s+out\b/i },
+    { id: "hypoglycemia_ruled_out", pattern: /\bhypoglycemia\s+ruled\s+out\b/i },
+    { id: "hyperglycemia_ruled_out", pattern: /\bhyperglycemia\s+ruled\s+out\b/i },
+    { id: "thyroid_storm_ruled_out", pattern: /\bthyroid\s+storm\s+ruled\s+out\b/i },
+    { id: "myxedema_ruled_out", pattern: /\bmyxedema\s+ruled\s+out\b/i },
+    { id: "adrenal_crisis_ruled_out", pattern: /\badrenal\s+crisis\s+ruled\s+out\b/i },
+    { id: "glucose_normal", pattern: /\bglucose\s+normal\b/i },
+    { id: "blood_sugar_normal", pattern: /\bblood\s+sugar\s+normal\b/i },
+    { id: "a1c_normal", pattern: /\ba1c\s+normal\b/i },
+    { id: "ketones_negative", pattern: /\bketones?\s+negative\b/i },
+    { id: "anion_gap_normal", pattern: /\banion\s+gap\s+normal\b/i },
+    { id: "bicarbonate_normal", pattern: /\bbicarbonate\s+normal\b/i },
+    { id: "electrolytes_normal", pattern: /\belectrolytes\s+normal\b/i },
+    { id: "metabolic_panel_normal", pattern: /\bmetabolic\s+panel\s+normal\b/i },
+    { id: "thyroid_labs_normal", pattern: /\bthyroid\s+labs\s+normal\b/i },
+    { id: "insulin_not_needed", pattern: /\binsulin\s+not\s+needed\b/i },
+    { id: "diabetes_controlled", pattern: /\bdiabetes\s+controlled\b/i },
+    { id: "diabetic_emergency_ruled_out", pattern: /\bdiabetic\s+emergency\s+ruled\s+out\b/i },
+    { id: "no_diabetic_emergency", pattern: /\bno\s+diabetic\s+emergency\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

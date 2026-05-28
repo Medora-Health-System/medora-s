@@ -95,6 +95,16 @@ import {
   RASH_SKIN_COMPLAINT_V1_INTEL,
   SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL,
   DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL,
+  HYPERGLYCEMIA_COMPLAINT_V1_INTEL,
+  HYPOGLYCEMIA_COMPLAINT_V1_INTEL,
+  DIABETES_SICK_DAY_COMPLAINT_V1_INTEL,
+  INSULIN_MEDICATION_ISSUE_COMPLAINT_V1_INTEL,
+  POLYURIA_POLYDYPSIA_COMPLAINT_V1_INTEL,
+  DEHYDRATION_METABOLIC_COMPLAINT_V1_INTEL,
+  ELECTROLYTE_ABNORMALITY_COMPLAINT_V1_INTEL,
+  THYROID_SYMPTOMS_COMPLAINT_V1_INTEL,
+  GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL,
+  NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -265,6 +275,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   gu_renal: "providerDocumentationWorkspace.templateSubgroupGuRenal",
   msk_trauma: "providerDocumentationWorkspace.templateSubgroupMskTrauma",
   infectious_ent: "providerDocumentationWorkspace.templateSubgroupInfectiousEnt",
+  endocrine_metabolic: "providerDocumentationWorkspace.templateSubgroupEndocrineMetabolic",
 };
 
 function respiratoryComplaintV1Template(
@@ -464,6 +475,47 @@ function infectiousEntComplaintV1Template(
     ],
     complaintIntelligence,
     "infectious_ent"
+  );
+}
+
+function endocrineMetabolicComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.timStartedToday", "erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting"],
+    ["erMseRosChips.posVomiting", "erMseRosChips.posWeakness", "erMseRosChips.posDizziness"],
+    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesWeakness"],
+    ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfSeverePain"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waMedIntox", "erMseMdmGuidance.chronicIllnessExacerbationConsidered"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmGuidance.prescriptionDrugManagementReviewed"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actFluids"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      heent: ["erMseExamChips.heentDryMm"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
+      cardiovascular: ["erMseExamChips.cardioRrr"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.acuteIllnessDocumented"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultHyperglycemiaDkaReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "endocrine_metabolic"
   );
 }
 
@@ -1771,6 +1823,66 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateDehydrationViralIllnessComplaintV1",
     "providerDocumentationWorkspace.templateDehydrationViralIllnessComplaintV1Help",
     DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "hyperglycemia_complaint_v1",
+    "providerDocumentationWorkspace.templateHyperglycemiaComplaintV1",
+    "providerDocumentationWorkspace.templateHyperglycemiaComplaintV1Help",
+    HYPERGLYCEMIA_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "hypoglycemia_complaint_v1",
+    "providerDocumentationWorkspace.templateHypoglycemiaComplaintV1",
+    "providerDocumentationWorkspace.templateHypoglycemiaComplaintV1Help",
+    HYPOGLYCEMIA_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "diabetes_sick_day_complaint_v1",
+    "providerDocumentationWorkspace.templateDiabetesSickDayComplaintV1",
+    "providerDocumentationWorkspace.templateDiabetesSickDayComplaintV1Help",
+    DIABETES_SICK_DAY_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "insulin_medication_issue_complaint_v1",
+    "providerDocumentationWorkspace.templateInsulinMedicationIssueComplaintV1",
+    "providerDocumentationWorkspace.templateInsulinMedicationIssueComplaintV1Help",
+    INSULIN_MEDICATION_ISSUE_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "polyuria_polydipsia_complaint_v1",
+    "providerDocumentationWorkspace.templatePolyuriaPolydipsiaComplaintV1",
+    "providerDocumentationWorkspace.templatePolyuriaPolydipsiaComplaintV1Help",
+    POLYURIA_POLYDYPSIA_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "dehydration_metabolic_complaint_v1",
+    "providerDocumentationWorkspace.templateDehydrationMetabolicComplaintV1",
+    "providerDocumentationWorkspace.templateDehydrationMetabolicComplaintV1Help",
+    DEHYDRATION_METABOLIC_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "electrolyte_abnormality_complaint_v1",
+    "providerDocumentationWorkspace.templateElectrolyteAbnormalityComplaintV1",
+    "providerDocumentationWorkspace.templateElectrolyteAbnormalityComplaintV1Help",
+    ELECTROLYTE_ABNORMALITY_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "thyroid_symptoms_complaint_v1",
+    "providerDocumentationWorkspace.templateThyroidSymptomsComplaintV1",
+    "providerDocumentationWorkspace.templateThyroidSymptomsComplaintV1Help",
+    THYROID_SYMPTOMS_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "generalized_weakness_metabolic_complaint_v1",
+    "providerDocumentationWorkspace.templateGeneralizedWeaknessMetabolicComplaintV1",
+    "providerDocumentationWorkspace.templateGeneralizedWeaknessMetabolicComplaintV1Help",
+    GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL
+  ),
+  endocrineMetabolicComplaintV1Template(
+    "nausea_vomiting_metabolic_complaint_v1",
+    "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1",
+    "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1Help",
+    NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",
