@@ -107,12 +107,22 @@ export type ProviderDocumentationTemplateId =
   | "generalized_weakness_cardiac_equivalent_complaint_v1"
   | "near_syncope_complaint_v1"
   | "exertional_dyspnea_complaint_v1"
-  | "edema_volume_overload_complaint_v1";
+  | "edema_volume_overload_complaint_v1"
+  | "dysuria_complaint_v1"
+  | "hematuria_complaint_v1"
+  | "flank_pain_renal_complaint_v1"
+  | "urinary_retention_complaint_v1"
+  | "testicular_pain_complaint_v1"
+  | "pelvic_pain_complaint_v1"
+  | "vaginal_bleeding_complaint_v1"
+  | "vaginal_discharge_complaint_v1"
+  | "renal_failure_symptoms_complaint_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
   | "respiratory_ent"
-  | "cardiac_vascular";
+  | "cardiac_vascular"
+  | "gu_renal";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;

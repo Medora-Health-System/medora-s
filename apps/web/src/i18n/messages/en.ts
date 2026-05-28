@@ -3,6 +3,7 @@ import { providerDischargeDocumentation19YEn } from "./providerDischargeDocument
 import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
 import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
+import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 
 export default {
   common: {
@@ -6321,6 +6322,25 @@ export default {
     templateExertionalDyspneaComplaintV1Help: "Click-to-insert prompts for exertional shortness of breath and cardiopulmonary differential.",
     templateEdemaVolumeOverloadComplaintV1: "Edema / volume overload (cardiac intelligence)",
     templateEdemaVolumeOverloadComplaintV1Help: "Click-to-insert prompts for edema, volume status, and follow-up.",
+    templateSubgroupGuRenal: "GU / Renal",
+    templateDysuriaComplaintV1: "Dysuria (GU intelligence)",
+    templateDysuriaComplaintV1Help: "Click-to-insert prompts for dysuria, urinary symptoms, and disposition.",
+    templateHematuriaComplaintV1: "Hematuria (GU intelligence)",
+    templateHematuriaComplaintV1Help: "Click-to-insert prompts for hematuria, workup review, and urology follow-up.",
+    templateFlankPainRenalComplaintV1: "Flank pain / renal (GU intelligence)",
+    templateFlankPainRenalComplaintV1Help: "Click-to-insert prompts for flank pain, renal colic differential, and disposition.",
+    templateUrinaryRetentionComplaintV1: "Urinary retention (GU intelligence)",
+    templateUrinaryRetentionComplaintV1Help: "Click-to-insert prompts for urinary retention, bladder assessment, and follow-up.",
+    templateTesticularPainComplaintV1: "Testicular pain (GU intelligence)",
+    templateTesticularPainComplaintV1Help: "Click-to-insert prompts for testicular pain, torsion concerns, and urology follow-up.",
+    templatePelvicPainComplaintV1: "Pelvic pain (GU intelligence)",
+    templatePelvicPainComplaintV1Help: "Click-to-insert prompts for pelvic pain, gynecologic differential, and disposition.",
+    templateVaginalBleedingComplaintV1: "Vaginal bleeding (GU intelligence)",
+    templateVaginalBleedingComplaintV1Help: "Click-to-insert prompts for vaginal bleeding, pregnancy concern, and OB/GYN follow-up.",
+    templateVaginalDischargeComplaintV1: "Vaginal discharge (GU intelligence)",
+    templateVaginalDischargeComplaintV1Help: "Click-to-insert prompts for vaginal discharge, STI concern, and follow-up.",
+    templateRenalFailureSymptomsComplaintV1: "Renal failure symptoms (GU intelligence)",
+    templateRenalFailureSymptomsComplaintV1Help: "Click-to-insert prompts for AKI/CKD symptoms, labs review, and nephrology follow-up.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10507,6 +10527,7 @@ export default {
     ...providerDocumentationGiComplaintIntel19Mdm2En,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
     ...providerDocumentationCardiacComplaintIntel19Mdm4En,
+    ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

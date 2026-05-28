@@ -73,6 +73,24 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "anticoagulation_not_needed", pattern: /\banticoagulation\s+not\s+needed\b/i },
     { id: "stroke_risk_low", pattern: /\bstroke\s+risk\s+low\b/i },
     { id: "blood_clot_ruled_out", pattern: /\bblood\s+clot\s+ruled\s+out\b/i },
+    // Phase 19MDM.5 — GU / renal
+    { id: "uti_ruled_out", pattern: /\buti\s+ruled\s+out\b/i },
+    { id: "pyelonephritis_ruled_out", pattern: /\bpyelonephritis\s+ruled\s+out\b/i },
+    { id: "torsion_ruled_out", pattern: /\btorsion\s+ruled\s+out\b/i },
+    { id: "ectopic_ruled_out", pattern: /\bectopic\s+ruled\s+out\b/i },
+    { id: "sti_ruled_out", pattern: /\bsti\s+ruled\s+out\b/i },
+    { id: "kidney_stone_ruled_out", pattern: /\bkidney\s+stone\s+ruled\s+out\b/i },
+    { id: "renal_failure_ruled_out", pattern: /\brenal\s+failure\s+ruled\s+out\b/i },
+    { id: "ua_negative", pattern: /\bua\s+negative\b/i },
+    { id: "urine_culture_negative", pattern: /\burine\s+culture\s+negative\b/i },
+    { id: "ultrasound_normal", pattern: /\bultrasound\s+normal\b/i },
+    { id: "renal_function_normal", pattern: /\brenal\s+function\s+normal\b/i },
+    { id: "creatinine_normal", pattern: /\bcreatinine\s+normal\b/i },
+    { id: "no_infection", pattern: /\bno\s+infection\b/i },
+    { id: "benign_gu_exam", pattern: /\bbenign\s+gu\s+exam\b/i },
+    { id: "no_emergency_condition", pattern: /\bno\s+emergency\s+condition\b/i },
+    { id: "stone_passed", pattern: /\bstone\s+passed\b/i },
+    { id: "torsion_excluded", pattern: /\btorsion\s+excluded\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

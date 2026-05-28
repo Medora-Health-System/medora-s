@@ -66,6 +66,15 @@ import {
   NEAR_SYNCOPE_COMPLAINT_V1_INTEL,
   EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL,
   EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL,
+  DYSURIA_COMPLAINT_V1_INTEL,
+  HEMATURIA_COMPLAINT_V1_INTEL,
+  FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL,
+  URINARY_RETENTION_COMPLAINT_V1_INTEL,
+  TESTICULAR_PAIN_COMPLAINT_V1_INTEL,
+  PELVIC_PAIN_COMPLAINT_V1_INTEL,
+  VAGINAL_BLEEDING_COMPLAINT_V1_INTEL,
+  VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL,
+  RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -233,6 +242,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   gi_abdominal: "providerDocumentationWorkspace.templateSubgroupGiAbdominal",
   respiratory_ent: "providerDocumentationWorkspace.templateSubgroupRespiratoryEnt",
   cardiac_vascular: "providerDocumentationWorkspace.templateSubgroupCardiacVascular",
+  gu_renal: "providerDocumentationWorkspace.templateSubgroupGuRenal",
 };
 
 function respiratoryComplaintV1Template(
@@ -313,6 +323,44 @@ function cardiacVascularComplaintV1Template(
     ],
     complaintIntelligence,
     "cardiac_vascular"
+  );
+}
+
+function guRenalComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["providerDocumentationWorkspace.stickerHpiDysuria", "erMseHpiChips.timStartedToday"],
+    ["providerDocumentationWorkspace.stickerRosDysuria", "erMseRosChips.posAbdominalPain"],
+    ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesSyncope"],
+    ["erMseRosChips.rfSeverePain", "erMseRosChips.rfPregnancyConcern", "erMseRosChips.rfHypotensionConcern"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdTendernessPresent", "providerDocumentationWorkspace.stickerExamNoCvaTenderness"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.abdominalDifferentialReviewed"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultUtiUrinaryWorkupReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "gu_renal"
   );
 }
 
@@ -1446,6 +1494,60 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateEdemaVolumeOverloadComplaintV1",
     "providerDocumentationWorkspace.templateEdemaVolumeOverloadComplaintV1Help",
     EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "dysuria_complaint_v1",
+    "providerDocumentationWorkspace.templateDysuriaComplaintV1",
+    "providerDocumentationWorkspace.templateDysuriaComplaintV1Help",
+    DYSURIA_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "hematuria_complaint_v1",
+    "providerDocumentationWorkspace.templateHematuriaComplaintV1",
+    "providerDocumentationWorkspace.templateHematuriaComplaintV1Help",
+    HEMATURIA_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "flank_pain_renal_complaint_v1",
+    "providerDocumentationWorkspace.templateFlankPainRenalComplaintV1",
+    "providerDocumentationWorkspace.templateFlankPainRenalComplaintV1Help",
+    FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "urinary_retention_complaint_v1",
+    "providerDocumentationWorkspace.templateUrinaryRetentionComplaintV1",
+    "providerDocumentationWorkspace.templateUrinaryRetentionComplaintV1Help",
+    URINARY_RETENTION_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "testicular_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateTesticularPainComplaintV1",
+    "providerDocumentationWorkspace.templateTesticularPainComplaintV1Help",
+    TESTICULAR_PAIN_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "pelvic_pain_complaint_v1",
+    "providerDocumentationWorkspace.templatePelvicPainComplaintV1",
+    "providerDocumentationWorkspace.templatePelvicPainComplaintV1Help",
+    PELVIC_PAIN_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "vaginal_bleeding_complaint_v1",
+    "providerDocumentationWorkspace.templateVaginalBleedingComplaintV1",
+    "providerDocumentationWorkspace.templateVaginalBleedingComplaintV1Help",
+    VAGINAL_BLEEDING_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "vaginal_discharge_complaint_v1",
+    "providerDocumentationWorkspace.templateVaginalDischargeComplaintV1",
+    "providerDocumentationWorkspace.templateVaginalDischargeComplaintV1Help",
+    VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL
+  ),
+  guRenalComplaintV1Template(
+    "renal_failure_symptoms_complaint_v1",
+    "providerDocumentationWorkspace.templateRenalFailureSymptomsComplaintV1",
+    "providerDocumentationWorkspace.templateRenalFailureSymptomsComplaintV1Help",
+    RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

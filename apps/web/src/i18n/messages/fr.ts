@@ -4,6 +4,7 @@ import { providerDischargeDocumentation19YFr } from "./providerDischargeDocument
 import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumentationGiComplaintIntel19Mdm2.fr";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 import { providerDocumentationCardiacComplaintIntel19Mdm4Fr } from "./providerDocumentationCardiacComplaintIntel19Mdm4.fr";
+import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 
 export default {
   ...labels.fr,
@@ -6295,6 +6296,25 @@ export default {
     templateExertionalDyspneaComplaintV1Help: "Inserts cliquables — dyspnée d'effort et différentiel cardiopulmonaire.",
     templateEdemaVolumeOverloadComplaintV1: "Œdème / surcharge volémique (intelligence cardiaque)",
     templateEdemaVolumeOverloadComplaintV1Help: "Inserts cliquables — œdème, statut volémique et suivi.",
+    templateSubgroupGuRenal: "GU / rénal",
+    templateDysuriaComplaintV1: "Dysurie (intelligence GU)",
+    templateDysuriaComplaintV1Help: "Inserts cliquables — dysurie, symptômes urinaires et sortie.",
+    templateHematuriaComplaintV1: "Hématurie (intelligence GU)",
+    templateHematuriaComplaintV1Help: "Inserts cliquables — hématurie, bilan et suivi urologique.",
+    templateFlankPainRenalComplaintV1: "Douleur lombaire / rénale (intelligence GU)",
+    templateFlankPainRenalComplaintV1Help: "Inserts cliquables — douleur lombaire, colique néphrétique et sortie.",
+    templateUrinaryRetentionComplaintV1: "Rétention urinaire (intelligence GU)",
+    templateUrinaryRetentionComplaintV1Help: "Inserts cliquables — rétention urinaire, vessie et suivi.",
+    templateTesticularPainComplaintV1: "Douleur testiculaire (intelligence GU)",
+    templateTesticularPainComplaintV1Help: "Inserts cliquables — douleur testiculaire, torsion et suivi urologique.",
+    templatePelvicPainComplaintV1: "Douleur pelvienne (intelligence GU)",
+    templatePelvicPainComplaintV1Help: "Inserts cliquables — douleur pelvienne, différentiel gynécologique et sortie.",
+    templateVaginalBleedingComplaintV1: "Saignement vaginal (intelligence GU)",
+    templateVaginalBleedingComplaintV1Help: "Inserts cliquables — saignement vaginal, grossesse et suivi OB/GYN.",
+    templateVaginalDischargeComplaintV1: "Écoulement vaginal (intelligence GU)",
+    templateVaginalDischargeComplaintV1Help: "Inserts cliquables — écoulement vaginal, IST et suivi.",
+    templateRenalFailureSymptomsComplaintV1: "Symptômes d'insuffisance rénale (intelligence GU)",
+    templateRenalFailureSymptomsComplaintV1Help: "Inserts cliquables — IRA/MRC, bilan rénal et suivi néphrologique.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10490,6 +10510,7 @@ export default {
     ...providerDocumentationGiComplaintIntel19Mdm2Fr,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
     ...providerDocumentationCardiacComplaintIntel19Mdm4Fr,
+    ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",
