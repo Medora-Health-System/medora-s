@@ -20,7 +20,6 @@ import { BillingClassificationBadgeInteractive } from "@/components/encounters/B
 import {
   MedoraCard,
   MedoraCardBadge,
-  MedoraCardInner,
   MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
@@ -46,13 +45,17 @@ import {
   type TrackboardOpsPayload,
 } from "@/features/emergency/erTrackboardOperationalBadges";
 import {
-  erTrackboardChipRowStyle,
+  erTrackboardCardInnerStyle,
   erTrackboardFilterActionsStyle,
   erTrackboardFiltersRowStyle,
   erTrackboardOpsRegionStyle,
   erTrackboardPageInnerStyle,
   erTrackboardPageShellStyle,
   erTrackboardPatientListStyle,
+  erTrackboardPersonnelBlockStyle,
+  erTrackboardPersonnelLineStyle,
+  erTrackboardPrimaryBadgeRowStyle,
+  erTrackboardRightColumnMaxWidth,
   erTrackboardSearchFieldStyle,
   erTrackboardTouchControlStyle,
   erTrackboardTouchActionGroupStyle,
@@ -707,9 +710,10 @@ export function EmergencyTrackboardView() {
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
-                    <MedoraCardInner>
+                    <div style={erTrackboardCardInnerStyle(layoutMode)}>
                       <MedoraCompactPatientCardRow
                         stackedLayout={stackedCardLayout}
+                        rightMaxWidth={erTrackboardRightColumnMaxWidth(layoutMode)}
                         avatarInitials={patientInitials(patient)}
                         avatarFooter={
                           <span style={esiUnderAvatarNumberStyle(esiLevel)}>{esiDisplayChar(esiLevel)}</span>
@@ -764,30 +768,10 @@ export function EmergencyTrackboardView() {
                         centerTrailing={
                           <div
                             aria-label={t("emergencyTrackboard.assignedPersonnelLabel")}
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 2,
-                              padding: "4px 8px",
-                              borderRadius: 8,
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#fff",
-                              minWidth: 0,
-                              width: "100%",
-                            }}
+                            style={erTrackboardPersonnelBlockStyle(layoutMode)}
                           >
                             <p
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                fontWeight: 500,
-                                color: "#475569",
-                                lineHeight: 1.25,
-                                overflow: stackedCardLayout ? "visible" : "hidden",
-                                textOverflow: stackedCardLayout ? "clip" : "ellipsis",
-                                whiteSpace: stackedCardLayout ? "normal" : "nowrap",
-                                wordBreak: "break-word",
-                              }}
+                              style={erTrackboardPersonnelLineStyle(layoutMode)}
                               title={phys || undefined}
                             >
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
@@ -798,17 +782,7 @@ export function EmergencyTrackboardView() {
                               </span>
                             </p>
                             <p
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                fontWeight: 500,
-                                color: "#475569",
-                                lineHeight: 1.25,
-                                overflow: stackedCardLayout ? "visible" : "hidden",
-                                textOverflow: stackedCardLayout ? "clip" : "ellipsis",
-                                whiteSpace: stackedCardLayout ? "normal" : "nowrap",
-                                wordBreak: "break-word",
-                              }}
+                              style={erTrackboardPersonnelLineStyle(layoutMode)}
                               title={nurse || undefined}
                             >
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
@@ -867,7 +841,7 @@ export function EmergencyTrackboardView() {
                              * here as well: LOS now lives in its own tile next to
                              * Room (centerLeading).
                              */}
-                            <div style={erTrackboardChipRowStyle(layoutMode)}>
+                            <div style={erTrackboardPrimaryBadgeRowStyle(layoutMode)}>
                               <span
                                 title={dispositionBadge ? t("emergencyTrackboard.dispositionTooltip") : undefined}
                               >
@@ -1035,7 +1009,7 @@ export function EmergencyTrackboardView() {
                       <div
                         role="region"
                         aria-label={t("emergencyTrackboard.ops.regionAria")}
-                        style={erTrackboardOpsRegionStyle()}
+                        style={erTrackboardOpsRegionStyle(layoutMode)}
                       >
                         {opsChips.map((c) => (
                           <MedoraCardBadge key={c.key} soft={c.soft}>
@@ -1043,7 +1017,7 @@ export function EmergencyTrackboardView() {
                           </MedoraCardBadge>
                         ))}
                       </div>
-                    </MedoraCardInner>
+                    </div>
                   </MedoraCard>
                 </li>
               );

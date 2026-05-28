@@ -108,19 +108,19 @@ describe("MEDUI.1 app shell tablet navigation", () => {
 });
 
 describe("MEDUI.1 ED trackboard tablet readability", () => {
-  it("uses tabletReadable single-column layout between 768 and 1199", () => {
-    expect(resolveErTrackboardLayoutMode(768)).toBe("tabletReadable");
-    expect(resolveErTrackboardLayoutMode(1024)).toBe("tabletReadable");
-    expect(resolveErTrackboardLayoutMode(1199)).toBe("tabletReadable");
+  it("uses tabletCompactBoard single-column layout between 768 and 1199 (MEDUI.2B)", () => {
+    expect(resolveErTrackboardLayoutMode(768)).toBe("tabletCompactBoard");
+    expect(resolveErTrackboardLayoutMode(1024)).toBe("tabletCompactBoard");
+    expect(resolveErTrackboardLayoutMode(1199)).toBe("tabletCompactBoard");
     expect(resolveErTrackboardLayoutMode(1200)).toBe("desktopDense");
-    const style = erTrackboardPatientListStyle("tabletReadable");
+    const style = erTrackboardPatientListStyle("tabletCompactBoard");
     expect(style.flexDirection).toBe("column");
     expect(style.gridTemplateColumns).toBeUndefined();
   });
 
   it("keeps touch-sized controls on tablet and compact", () => {
     expect(ER_TRACKBOARD_TOUCH_TARGET_MIN_PX).toBeGreaterThanOrEqual(CLINICAL_MIN_TOUCH_TARGET_PX);
-    expect(erTrackboardUsesStackedCardLayout("tabletReadable")).toBe(true);
+    expect(erTrackboardUsesStackedCardLayout("tabletCompactBoard")).toBe(false);
     expect(erTrackboardUsesStackedCardLayout("compactStacked")).toBe(true);
     expect(erTrackboardUsesStackedCardLayout("desktopDense")).toBe(false);
   });

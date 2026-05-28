@@ -17,24 +17,24 @@ function readWebSource(relativePath: string): string {
   return readFileSync(join(webRoot, relativePath), "utf8");
 }
 
-describe("erTrackboardResponsiveLayout (19M.3 + MEDUI.1)", () => {
+describe("erTrackboardResponsiveLayout (19M.3 + MEDUI.2B)", () => {
   it("resolves layout mode by viewport width", () => {
     expect(resolveErTrackboardLayoutMode(390)).toBe("compactStacked");
     expect(resolveErTrackboardLayoutMode(767)).toBe("compactStacked");
-    expect(resolveErTrackboardLayoutMode(768)).toBe("tabletReadable");
-    expect(resolveErTrackboardLayoutMode(1023)).toBe("tabletReadable");
-    expect(resolveErTrackboardLayoutMode(1199)).toBe("tabletReadable");
+    expect(resolveErTrackboardLayoutMode(768)).toBe("tabletCompactBoard");
+    expect(resolveErTrackboardLayoutMode(1023)).toBe("tabletCompactBoard");
+    expect(resolveErTrackboardLayoutMode(1199)).toBe("tabletCompactBoard");
     expect(resolveErTrackboardLayoutMode(1200)).toBe("desktopDense");
   });
 
-  it("uses stacked cards below desktop breakpoint", () => {
+  it("uses stacked cards only on compact phone", () => {
     expect(erTrackboardUsesStackedCardLayout("compactStacked")).toBe(true);
-    expect(erTrackboardUsesStackedCardLayout("tabletReadable")).toBe(true);
+    expect(erTrackboardUsesStackedCardLayout("tabletCompactBoard")).toBe(false);
     expect(erTrackboardUsesStackedCardLayout("desktopDense")).toBe(false);
   });
 
-  it("uses single-column readable grid on tablet", () => {
-    const style = erTrackboardPatientListStyle("tabletReadable");
+  it("uses single-column compact list on tablet", () => {
+    const style = erTrackboardPatientListStyle("tabletCompactBoard");
     expect(style.display).toBe("flex");
     expect(style.flexDirection).toBe("column");
     expect(style.gridTemplateColumns).toBeUndefined();
