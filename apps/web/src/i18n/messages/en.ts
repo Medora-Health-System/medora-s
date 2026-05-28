@@ -2,6 +2,7 @@ import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
+import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
 
 export default {
   common: {
@@ -6301,6 +6302,25 @@ export default {
     templateChestCongestionComplaintV1Help: "Click-to-insert prompts for chest congestion, cough, and breathing status.",
     templateFluLikeIllnessComplaintV1: "Flu-like illness (respiratory intelligence)",
     templateFluLikeIllnessComplaintV1Help: "Click-to-insert prompts for influenza-like illness, hydration, and follow-up.",
+    templateSubgroupCardiacVascular: "Cardiac / Vascular",
+    templatePalpitationsComplaintV1: "Palpitations (cardiac intelligence)",
+    templatePalpitationsComplaintV1Help: "Click-to-insert prompts for palpitations, arrhythmia concerns, and disposition.",
+    templateHypertensionComplaintV1: "Hypertension / elevated BP (cardiac intelligence)",
+    templateHypertensionComplaintV1Help: "Click-to-insert prompts for elevated blood pressure, symptoms, and follow-up.",
+    templateLegSwellingDvtComplaintV1: "Leg swelling / DVT concern (cardiac intelligence)",
+    templateLegSwellingDvtComplaintV1Help: "Click-to-insert prompts for leg swelling, DVT/PE risk, and disposition.",
+    templateChfSymptomsComplaintV1: "CHF symptoms (cardiac intelligence)",
+    templateChfSymptomsComplaintV1Help: "Click-to-insert prompts for heart failure symptoms, reassessment, and disposition.",
+    templateAfibRapidRateComplaintV1: "AFib / rapid rate (cardiac intelligence)",
+    templateAfibRapidRateComplaintV1Help: "Click-to-insert prompts for atrial fibrillation, rate control, and follow-up.",
+    templateGeneralizedWeaknessCardiacEquivalentComplaintV1: "Weakness — cardiac equivalent (cardiac intelligence)",
+    templateGeneralizedWeaknessCardiacEquivalentComplaintV1Help: "Click-to-insert prompts for weakness as possible cardiac ischemia equivalent.",
+    templateNearSyncopeComplaintV1: "Near syncope (cardiac intelligence)",
+    templateNearSyncopeComplaintV1Help: "Click-to-insert prompts for presyncope, fall risk, and disposition.",
+    templateExertionalDyspneaComplaintV1: "Exertional dyspnea (cardiac intelligence)",
+    templateExertionalDyspneaComplaintV1Help: "Click-to-insert prompts for exertional shortness of breath and cardiopulmonary differential.",
+    templateEdemaVolumeOverloadComplaintV1: "Edema / volume overload (cardiac intelligence)",
+    templateEdemaVolumeOverloadComplaintV1Help: "Click-to-insert prompts for edema, volume status, and follow-up.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10486,6 +10506,7 @@ export default {
     },
     ...providerDocumentationGiComplaintIntel19Mdm2En,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
+    ...providerDocumentationCardiacComplaintIntel19Mdm4En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

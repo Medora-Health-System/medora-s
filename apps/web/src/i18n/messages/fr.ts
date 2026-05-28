@@ -3,6 +3,7 @@ import { erTriageMessagesFr } from "./erTriage.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
 import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumentationGiComplaintIntel19Mdm2.fr";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
+import { providerDocumentationCardiacComplaintIntel19Mdm4Fr } from "./providerDocumentationCardiacComplaintIntel19Mdm4.fr";
 
 export default {
   ...labels.fr,
@@ -6275,6 +6276,25 @@ export default {
     templateChestCongestionComplaintV1Help: "Inserts cliquables — congestion, toux et statut respiratoire.",
     templateFluLikeIllnessComplaintV1: "Syndrome grippal (intelligence plainte)",
     templateFluLikeIllnessComplaintV1Help: "Inserts cliquables — syndrome grippal, hydratation et suivi.",
+    templateSubgroupCardiacVascular: "Cardiaque / vasculaire",
+    templatePalpitationsComplaintV1: "Palpitations (intelligence cardiaque)",
+    templatePalpitationsComplaintV1Help: "Inserts cliquables — palpitations, arythmie et sortie.",
+    templateHypertensionComplaintV1: "Hypertension / TA élevée (intelligence cardiaque)",
+    templateHypertensionComplaintV1Help: "Inserts cliquables — tension artérielle élevée, symptômes et suivi.",
+    templateLegSwellingDvtComplaintV1: "Œdème des jambes / suspicion TVP (intelligence cardiaque)",
+    templateLegSwellingDvtComplaintV1Help: "Inserts cliquables — œdème des jambes, risque TVP/EP et sortie.",
+    templateChfSymptomsComplaintV1: "Symptômes d'insuffisance cardiaque (intelligence cardiaque)",
+    templateChfSymptomsComplaintV1Help: "Inserts cliquables — insuffisance cardiaque, réévaluation et sortie.",
+    templateAfibRapidRateComplaintV1: "FA / tachycardie (intelligence cardiaque)",
+    templateAfibRapidRateComplaintV1Help: "Inserts cliquables — fibrillation auriculaire, contrôle du rythme et suivi.",
+    templateGeneralizedWeaknessCardiacEquivalentComplaintV1: "Faiblesse — équivalent cardiaque (intelligence cardiaque)",
+    templateGeneralizedWeaknessCardiacEquivalentComplaintV1Help: "Inserts cliquables — faiblesse comme possible équivalent d'ischémie.",
+    templateNearSyncopeComplaintV1: "Présyncope (intelligence cardiaque)",
+    templateNearSyncopeComplaintV1Help: "Inserts cliquables — présyncope, risque de chute et sortie.",
+    templateExertionalDyspneaComplaintV1: "Dyspnée d'effort (intelligence cardiaque)",
+    templateExertionalDyspneaComplaintV1Help: "Inserts cliquables — dyspnée d'effort et différentiel cardiopulmonaire.",
+    templateEdemaVolumeOverloadComplaintV1: "Œdème / surcharge volémique (intelligence cardiaque)",
+    templateEdemaVolumeOverloadComplaintV1Help: "Inserts cliquables — œdème, statut volémique et suivi.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10469,6 +10489,7 @@ export default {
     },
     ...providerDocumentationGiComplaintIntel19Mdm2Fr,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
+    ...providerDocumentationCardiacComplaintIntel19Mdm4Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

@@ -57,6 +57,15 @@ import {
   HEMOPTYSIS_COMPLAINT_V1_INTEL,
   CHEST_CONGESTION_COMPLAINT_V1_INTEL,
   FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL,
+  PALPITATIONS_COMPLAINT_V1_INTEL,
+  HYPERTENSION_COMPLAINT_V1_INTEL,
+  LEG_SWELLING_DVT_COMPLAINT_V1_INTEL,
+  CHF_SYMPTOMS_COMPLAINT_V1_INTEL,
+  AFIB_RAPID_RATE_COMPLAINT_V1_INTEL,
+  GENERALIZED_WEAKNESS_CARDIAC_EQUIVALENT_COMPLAINT_V1_INTEL,
+  NEAR_SYNCOPE_COMPLAINT_V1_INTEL,
+  EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL,
+  EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -223,6 +232,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
 > = {
   gi_abdominal: "providerDocumentationWorkspace.templateSubgroupGiAbdominal",
   respiratory_ent: "providerDocumentationWorkspace.templateSubgroupRespiratoryEnt",
+  cardiac_vascular: "providerDocumentationWorkspace.templateSubgroupCardiacVascular",
 };
 
 function respiratoryComplaintV1Template(
@@ -263,6 +273,46 @@ function respiratoryComplaintV1Template(
     ],
     complaintIntelligence,
     "respiratory_ent"
+  );
+}
+
+function cardiacVascularComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.assocChestPain", "erMseHpiChips.assocSob", "erMseHpiChips.assocPalpitations"],
+    ["erMseRosChips.posChestPain", "erMseRosChips.posSob", "erMseRosChips.posDizziness"],
+    ["erMseRosChips.negDeniesSyncope", "erMseRosChips.negDeniesHemoptysis"],
+    ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfSyncope"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary", "erMseMdmChips.waUndifferentiated"],
+      mdmDataReviewed: ["erMseMdmChips.planEcg", "erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actIvMonitor"],
+      mdmPlanSummary: ["erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      cardiovascular: ["erMseExamChips.cardioRrr", "erMseExamChips.cardioNoMurmur", "erMseExamChips.cardioPeripheralPulsesPresent"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.cardiopulmonaryDifferentialReviewed"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.sobWorkupReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "cardiac_vascular"
   );
 }
 
@@ -1342,6 +1392,60 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateFluLikeIllnessComplaintV1",
     "providerDocumentationWorkspace.templateFluLikeIllnessComplaintV1Help",
     FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "palpitations_complaint_v1",
+    "providerDocumentationWorkspace.templatePalpitationsComplaintV1",
+    "providerDocumentationWorkspace.templatePalpitationsComplaintV1Help",
+    PALPITATIONS_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "hypertension_complaint_v1",
+    "providerDocumentationWorkspace.templateHypertensionComplaintV1",
+    "providerDocumentationWorkspace.templateHypertensionComplaintV1Help",
+    HYPERTENSION_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "leg_swelling_dvt_complaint_v1",
+    "providerDocumentationWorkspace.templateLegSwellingDvtComplaintV1",
+    "providerDocumentationWorkspace.templateLegSwellingDvtComplaintV1Help",
+    LEG_SWELLING_DVT_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "chf_symptoms_complaint_v1",
+    "providerDocumentationWorkspace.templateChfSymptomsComplaintV1",
+    "providerDocumentationWorkspace.templateChfSymptomsComplaintV1Help",
+    CHF_SYMPTOMS_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "afib_rapid_rate_complaint_v1",
+    "providerDocumentationWorkspace.templateAfibRapidRateComplaintV1",
+    "providerDocumentationWorkspace.templateAfibRapidRateComplaintV1Help",
+    AFIB_RAPID_RATE_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "generalized_weakness_cardiac_equivalent_complaint_v1",
+    "providerDocumentationWorkspace.templateGeneralizedWeaknessCardiacEquivalentComplaintV1",
+    "providerDocumentationWorkspace.templateGeneralizedWeaknessCardiacEquivalentComplaintV1Help",
+    GENERALIZED_WEAKNESS_CARDIAC_EQUIVALENT_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "near_syncope_complaint_v1",
+    "providerDocumentationWorkspace.templateNearSyncopeComplaintV1",
+    "providerDocumentationWorkspace.templateNearSyncopeComplaintV1Help",
+    NEAR_SYNCOPE_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "exertional_dyspnea_complaint_v1",
+    "providerDocumentationWorkspace.templateExertionalDyspneaComplaintV1",
+    "providerDocumentationWorkspace.templateExertionalDyspneaComplaintV1Help",
+    EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL
+  ),
+  cardiacVascularComplaintV1Template(
+    "edema_volume_overload_complaint_v1",
+    "providerDocumentationWorkspace.templateEdemaVolumeOverloadComplaintV1",
+    "providerDocumentationWorkspace.templateEdemaVolumeOverloadComplaintV1Help",
+    EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

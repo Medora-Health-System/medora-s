@@ -98,9 +98,21 @@ export type ProviderDocumentationTemplateId =
   | "pneumonia_symptoms_complaint_v1"
   | "hemoptysis_complaint_v1"
   | "chest_congestion_complaint_v1"
-  | "flu_like_illness_complaint_v1";
+  | "flu_like_illness_complaint_v1"
+  | "palpitations_complaint_v1"
+  | "hypertension_complaint_v1"
+  | "leg_swelling_dvt_complaint_v1"
+  | "chf_symptoms_complaint_v1"
+  | "afib_rapid_rate_complaint_v1"
+  | "generalized_weakness_cardiac_equivalent_complaint_v1"
+  | "near_syncope_complaint_v1"
+  | "exertional_dyspnea_complaint_v1"
+  | "edema_volume_overload_complaint_v1";
 
-export type ProviderDocumentationTemplatePickerSubgroupKey = "gi_abdominal" | "respiratory_ent";
+export type ProviderDocumentationTemplatePickerSubgroupKey =
+  | "gi_abdominal"
+  | "respiratory_ent"
+  | "cardiac_vascular";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
