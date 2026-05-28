@@ -16,6 +16,7 @@ import {
   esiLevelFromUnknown,
   esiUnderAvatarNumberStyle,
 } from "@/features/emergency/emergencyEsiDisplay";
+import { BillingClassificationBadge } from "@/components/encounters/BillingClassificationBadge";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -880,6 +881,10 @@ export function EmergencyTrackboardView() {
                                 </span>
                               ) : null}
                               <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
+                              <BillingClassificationBadge
+                                classification={(encounter as { billingClassification?: string }).billingClassification}
+                                t={t}
+                              />
                             </div>
                             <div
                               style={{

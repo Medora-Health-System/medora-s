@@ -138,8 +138,10 @@ enum AuditAction {
   MFA_RECOVERY_CODE_USED
   MFA_RECOVERY_CODES_REGENERATED
   MFA_RESET_BY_ADMIN
-  /// Phase 14G-A — user acknowledged a platform announcement (metadata: announcementId, versionKey, severity only).
+  /// Phase 19UCED.1 — user acknowledged a platform announcement (metadata: announcementId, versionKey, severity only).
   PLATFORM_ANNOUNCEMENT_ACKNOWLEDGED
+  /// Phase 19UCED.1 — explicit encounter billing classification change (PHI-safe metadata only).
+  ENCOUNTER_BILLING_CLASSIFICATION_CHANGED
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -425,6 +427,26 @@ enum FacilityType {
   OTHER
 }
 
+/// Phase 19UCED.1 — billing site profile for default encounter billing classification.
+enum FacilityBillingSiteType {
+  CLINIC
+  URGENT_CARE
+  FREESTANDING_ER
+  HOSPITAL
+  HYBRID
+}
+
+/// Phase 19UCED.1 — billing/regulatory classification (distinct from clinical Encounter.type).
+enum BillingClassification {
+  CLINIC_VISIT
+  URGENT_CARE
+  EMERGENCY_DEPARTMENT
+  OBSERVATION
+  INPATIENT
+  PROCEDURE
+  TELEHEALTH
+}
+
 /// National MSPP portal roles (separate from facility-scoped `RoleCode`).
 enum MsppRoleCode {
   MSPP_MINISTRE
@@ -464,6 +486,8 @@ model Facility {
   billingPostalCode          String?
   billingCountry             String?
   billingFacilityTypeLabel   String?
+  /// Phase 19UCED.1 — structured billing site profile for default encounter classification.
+  billingSiteType            FacilityBillingSiteType?
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 
@@ -626,6 +650,8 @@ model User {
   encountersSignedByProvider                 Encounter[]                           @relation("EncounterSignedBy")
   encountersBillingFinalizedBy               Encounter[]                           @relation("EncounterBillingFinalizedBy")
   encountersBillingReopenedBy                Encounter[]                           @relation("EncounterBillingReopenedBy")
+  encountersBillingClassificationChangedBy   Encounter[]                           @relation("EncounterBillingClassificationChangedBy")
+  encountersBillingClassificationAckBy       Encounter[]                           @relation("EncounterBillingClassificationAckBy")
   providerAddendaCreated                     EncounterProviderAddendum[]
   orderItemsCompletedNurse                   OrderItem[]                           @relation("OrderItemNurseCompleted")
   ordersCancelled                            Order[]                               @relation("OrderCancelledBy")
@@ -944,6 +970,17 @@ model Encounter {
   billingReopenedBy            User?                              @relation("EncounterBillingReopenedBy", fields: [billingReopenedByUserId], references: [id], onDelete: SetNull)
   /// Last computed readiness snapshot (blockers, warnings, counts) for audit / UI.
   billingReadinessSnapshotJson Json?
+  /// Phase 19UCED.1 — billing/regulatory classification (one chart; explicit changes only).
+  billingClassification                 BillingClassification @default(URGENT_CARE)
+  billingClassificationChangedAt        DateTime?
+  billingClassificationChangedByUserId    String?
+  billingClassificationChangedBy        User?                 @relation("EncounterBillingClassificationChangedBy", fields: [billingClassificationChangedByUserId], references: [id], onDelete: SetNull)
+  billingClassificationChangeReason     String?
+  billingClassificationAcknowledgedAt   DateTime?
+  billingClassificationAcknowledgedByUserId String?
+  billingClassificationAcknowledgedBy   User?                 @relation("EncounterBillingClassificationAckBy", fields: [billingClassificationAcknowledgedByUserId], references: [id], onDelete: SetNull)
+  billingClassificationAcknowledgmentMethod String?
+  billingClassificationTransitionJson   Json?
   /// Horodatage de la décision d'admission (rempli côté serveur à la 1re sauvegarde du dossier d'admission)
   admittedAt                   DateTime?
 

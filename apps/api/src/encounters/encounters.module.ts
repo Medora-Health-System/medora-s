@@ -9,6 +9,7 @@ import { DiagnosesModule } from "../diagnoses/diagnoses.module";
 import { OrdersModule } from "../orders/orders.module";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { TrackboardModule } from "../trackboard/trackboard.module";
+import { BillingClassificationService } from "./billing-classification.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -18,6 +19,7 @@ import { TrackboardModule } from "../trackboard/trackboard.module";
     EncounterChartExportService,
     UnifiedEncounterTimelineService,
     ObservationOrderTemplateService,
+    BillingClassificationService,
     AuditService,
   ],
   exports: [EncountersService, EncounterChartExportService, UnifiedEncounterTimelineService],

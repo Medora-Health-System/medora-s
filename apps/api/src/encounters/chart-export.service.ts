@@ -189,6 +189,7 @@ export type ChartExportManifest = {
   encounter: {
     id: string;
     type: string;
+    billingClassification: string | null;
     status: string;
     workflowState: string;
     visitReason: string | null;
@@ -1098,6 +1099,7 @@ export class EncounterChartExportService {
       encounter: {
         id: encounter.id,
         type: encounter.type as string,
+        billingClassification: (encounter as { billingClassification?: string }).billingClassification ?? null,
         status: encounter.status as string,
         workflowState: encounter.workflowState as string,
         visitReason: null,

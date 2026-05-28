@@ -5067,6 +5067,32 @@ export default {
     recordLineRoute: "Route",
     recordLineDirections: "Directions",
   },
+  billingClassification: {
+    conversionTitle: "Billing classification conversion",
+    conversionIntro: "Change from {from} to {to}. The clinical chart stays continuous — no new encounter.",
+    acknowledgmentPlaceholder:
+      "The patient was informed that the visit billing classification may change from Urgent Care to Emergency Department based on the level of evaluation and facility policy. The patient acknowledged this change before conversion.",
+    reasonLabel: "Conversion reason",
+    ackMethodLabel: "Patient acknowledgment method",
+    patientAckCheckbox: "The patient acknowledged the billing classification change",
+    confirmConversion: "Confirm conversion",
+    convertUcToEd: "Convert UC → ED (billing)",
+    errorAckRequired: "Patient acknowledgment is required.",
+    errorGeneric: "Unable to update billing classification.",
+    reasonCodes: {
+      HIGHER_ACUITY_WORKUP_REQUIRED: "Higher-acuity workup required",
+      PROVIDER_DIRECTED_ED_EVALUATION: "Provider-directed ED evaluation",
+      PATIENT_AGREED_TO_ED_BILLING: "Patient agreed to ED billing",
+      FACILITY_POLICY: "Facility policy",
+      OTHER: "Other",
+    },
+    ackMethods: {
+      SIGNED_FORM: "Signed form",
+      ELECTRONIC_ACKNOWLEDGMENT: "Electronic acknowledgment",
+      VERBAL_WITH_WITNESS: "Verbal with witness",
+      NOT_APPLICABLE_PER_POLICY: "Not applicable per policy",
+    },
+  },
   emergencyWorkspace: {
     loading: "Loading…",
     errUnauthorizedEncounter: "You do not have access to this encounter.",
@@ -11006,6 +11032,15 @@ export default {
       OPEN: "Open",
       CLOSED: "Closed",
       CANCELLED: "Canceled",
+    },
+    billingClassification: {
+      CLINIC_VISIT: "Clinic",
+      URGENT_CARE: "Urgent Care",
+      EMERGENCY_DEPARTMENT: "ER / ED",
+      OBSERVATION: "Observation",
+      INPATIENT: "Inpatient",
+      PROCEDURE: "Procedure",
+      TELEHEALTH: "Telehealth",
     },
     orderPriorities: {
       ROUTINE: "Routine",

@@ -46,6 +46,7 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     encounter: {
       id: "enc-1",
       type: "EMERGENCY",
+      billingClassification: "EMERGENCY_DEPARTMENT",
       status: "CLOSED",
       workflowState: "DISCHARGED",
       visitReason: null,
@@ -126,12 +127,14 @@ function makeController(opts?: {
   const diagnosesService = {} as never;
   const unifiedTimelineService = {} as never;
   const observationOrderTemplateService = {} as never;
+  const billingClassificationService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
     chartExportService as never,
     unifiedTimelineService,
-    observationOrderTemplateService
+    observationOrderTemplateService,
+    billingClassificationService
   );
   return { controller, chartExportService };
 }

@@ -375,10 +375,11 @@ Tenter d’ouvrir une deuxième consultation ouverte → message d’erreur API 
 | Créer consultation UC | **Disponible** |
 | Créer consultation urgence | **Disponible** |
 | Convertir automatiquement UC → urgence | **Non disponible** |
-| Conversion manuelle type de consultation UC → EMERGENCY en un clic | **Non disponible** |
+| Conversion **classification facturation** UC → Urgences (ED) sur **même consultation** | **Disponible** (Phase 19UCED.1) — acte explicite, motif + reconnaissance patient |
+| Conversion manuelle type de consultation UC → EMERGENCY en un clic | **Non disponible** — le type clinique `Encounter.type` reste distinct ; la classification facturation peut changer |
 | Déclenchement auto par motif de consultation | **Non** — jamais |
 
-**Conséquence aujourd’hui :** si un patient UC devient une urgence, le protocole local doit définir comment **clôturer ou gérer** la consultation UC et **ouvrir une consultation d’urgence** (ou autre voie approuvée par direction), en documentant la continuité.
+**Conséquence :** la conversion UC → ED **facturation** préserve **un seul dossier / une seule consultation** — pas de nouvelle consultation, pas de réinitialisation triage ni documentation. Pour les établissements hybrides, utiliser l’action explicite « Convertir UC → Urgences (facturation) » avec reconnaissance patient.
 
 ## 4.2 Workflow cible (orientation entreprise — évolution produit)
 
@@ -397,9 +398,9 @@ Information du patient / aidant :
         ↓
 Accusé de réception signé (papier ou électronique — politique locale)
         ↓
-Conversion de la visite en CONSULTATION D'URGENCE
+Conversion de la **classification facturation** en URGENCES (ED)
         ↓
-Même dossier patient Medora — documentation continue
+Même consultation Medora — même chart — documentation continue
         ↓
 Tableau des urgences + parcours ED complet
 ```

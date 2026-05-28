@@ -5035,6 +5035,32 @@ export default {
     recordLineRoute: "Voie",
     recordLineDirections: "Posologie",
   },
+  billingClassification: {
+    conversionTitle: "Conversion — classification de facturation",
+    conversionIntro: "Passer de {from} à {to}. Le dossier clinique reste continu — aucune nouvelle consultation.",
+    acknowledgmentPlaceholder:
+      "Le patient a été informé que la classification de facturation peut passer de Soins urgents à Urgences selon le niveau d'évaluation et la politique de l'établissement. Le patient a reconnu ce changement avant la conversion.",
+    reasonLabel: "Motif de conversion",
+    ackMethodLabel: "Mode de reconnaissance patient",
+    patientAckCheckbox: "Le patient a reconnu le changement de classification de facturation",
+    confirmConversion: "Confirmer la conversion",
+    convertUcToEd: "Convertir UC → Urgences (facturation)",
+    errorAckRequired: "La reconnaissance du patient est requise.",
+    errorGeneric: "Impossible de mettre à jour la classification.",
+    reasonCodes: {
+      HIGHER_ACUITY_WORKUP_REQUIRED: "Workup de gravité supérieure requis",
+      PROVIDER_DIRECTED_ED_EVALUATION: "Évaluation urgences demandée par le prestataire",
+      PATIENT_AGREED_TO_ED_BILLING: "Patient d'accord pour facturation urgences",
+      FACILITY_POLICY: "Politique de l'établissement",
+      OTHER: "Autre",
+    },
+    ackMethods: {
+      SIGNED_FORM: "Formulaire signé",
+      ELECTRONIC_ACKNOWLEDGMENT: "Accusé électronique",
+      VERBAL_WITH_WITNESS: "Verbal avec témoin",
+      NOT_APPLICABLE_PER_POLICY: "Non applicable (politique)",
+    },
+  },
   emergencyWorkspace: {
     loading: "Chargement…",
     errUnauthorizedEncounter: "Accès non autorisé à cette consultation.",
@@ -10991,6 +11017,15 @@ export default {
       OPEN: "Ouverte",
       CLOSED: "Terminée",
       CANCELLED: "Annulée",
+    },
+    billingClassification: {
+      CLINIC_VISIT: "Clinique",
+      URGENT_CARE: "Soins urgents",
+      EMERGENCY_DEPARTMENT: "Urgences",
+      OBSERVATION: "Observation",
+      INPATIENT: "Hospitalisation",
+      PROCEDURE: "Procédure",
+      TELEHEALTH: "Télésanté",
     },
     orderPriorities: {
       ROUTINE: "Habituelle",

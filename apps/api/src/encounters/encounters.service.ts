@@ -261,6 +261,7 @@ import {
   mapAuditLogRowToTimelineItem,
   metadataEncounterId,
 } from "../patients/chart-audit-timeline.util";
+import { resolveDefaultBillingClassification } from "@medora/shared";
 import { throwEncounterConcurrentModification } from "./encounter-concurrency.util";
 import { computeDispositionSafetyReadiness } from "./disposition-safety-readiness.util";
 
@@ -323,11 +324,21 @@ export class EncountersService {
       physicianAssignedUserId = physicianCandidate;
     }
 
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: { billingSiteType: true },
+    });
+    const billingClassification = resolveDefaultBillingClassification({
+      facilityBillingSiteType: facility?.billingSiteType ?? null,
+      encounterType: data.type,
+    });
+
     const encounter = await this.prisma.encounter.create({
       data: {
         patientId,
         facilityId,
         type: data.type,
+        billingClassification,
         providerId: data.providerId ?? userId,
         chiefComplaint: chief,
         notes: data.notes?.trim() || undefined,

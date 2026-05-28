@@ -18,6 +18,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     encounter: {
       id: "enc-1",
       type: "EMERGENCY",
+      billingClassification: "EMERGENCY_DEPARTMENT",
       status: "CLOSED",
       workflowState: "DISCHARGED",
       visitReason: null,

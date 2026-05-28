@@ -42,12 +42,14 @@ import {
   encounterUpdateDtoSchema,
   observationOrderTemplateApplyDtoSchema,
   observationReassessmentV1BodySchema,
+  encounterBillingClassificationPatchDtoSchema,
   rosterClinicalUserRoleQuerySchema,
 } from "@medora/shared";
 import { listPatientEncountersQuerySchema } from "./dto";
 import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
+import { BillingClassificationService } from "./billing-classification.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -59,7 +61,8 @@ export class EncountersController {
     private readonly diagnosesService: DiagnosesService,
     private readonly chartExportService: EncounterChartExportService,
     private readonly unifiedTimelineService: UnifiedEncounterTimelineService,
-    private readonly observationOrderTemplateService: ObservationOrderTemplateService
+    private readonly observationOrderTemplateService: ObservationOrderTemplateService,
+    private readonly billingClassificationService: BillingClassificationService
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -134,6 +137,32 @@ export class EncountersController {
       req.ip,
       req.headers["user-agent"]
     );
+  }
+
+  /** Phase 19UCED.1 — explicit billing classification change (one chart; billing only). */
+  @Patch("encounters/:encounterId/billing-classification")
+  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.BILLING)
+  async patchBillingClassification(
+    @Param("encounterId") encounterId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const parsed = encounterBillingClassificationPatchDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.billingClassificationService.changeBillingClassification({
+      encounterId,
+      facilityId,
+      userId: req.user?.userId,
+      dto: parsed.data,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
   }
 
   @Get("patients/:patientId/encounters")

@@ -60,6 +60,10 @@ export function tEncounterType(t: (key: string) => string, type: string): string
   return tEnumKey(t, "encounterChrome.encounterTypes", type);
 }
 
+export function tBillingClassification(t: (key: string) => string, classification: string): string {
+  return tEnumKey(t, "encounterChrome.billingClassification", classification);
+}
+
 export function tEncounterStatus(t: (key: string) => string, status: string): string {
   return tEnumKey(t, "encounterChrome.encounterStatuses", status);
 }
