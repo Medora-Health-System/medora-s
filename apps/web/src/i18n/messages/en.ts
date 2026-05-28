@@ -5,6 +5,7 @@ import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./provid
 import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6En } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.en";
+import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
 
 export default {
   common: {
@@ -6363,6 +6364,27 @@ export default {
     templateMinorHeadInjuryComplaintV1Help: "Click-to-insert prompts for minor head injury, imaging review, and concussion follow-up.",
     templateLacerationSoftTissueComplaintV1: "Laceration / soft tissue (MSK intelligence)",
     templateLacerationSoftTissueComplaintV1Help: "Click-to-insert prompts for laceration, wound care, infection risk, and follow-up.",
+    templateSubgroupInfectiousEnt: "Infectious / ENT",
+    templateFeverComplaintV1: "Fever (infectious intelligence)",
+    templateFeverComplaintV1Help: "Click-to-insert prompts for fever, source evaluation, and disposition.",
+    templateCellulitisSkinInfectionComplaintV1: "Cellulitis / skin infection (infectious intelligence)",
+    templateCellulitisSkinInfectionComplaintV1Help: "Click-to-insert prompts for cellulitis, spread concerns, and follow-up.",
+    templateAbscessSoftTissueComplaintV1: "Abscess / soft tissue (infectious intelligence)",
+    templateAbscessSoftTissueComplaintV1Help: "Click-to-insert prompts for abscess, I&D reassessment, and wound care.",
+    templateWoundInfectionComplaintV1: "Wound infection (infectious intelligence)",
+    templateWoundInfectionComplaintV1Help: "Click-to-insert prompts for wound infection, drainage, and follow-up.",
+    templateEarPainOtitisComplaintV1: "Ear pain / otitis (infectious intelligence)",
+    templateEarPainOtitisComplaintV1Help: "Click-to-insert prompts for ear pain, mastoid concerns, and ENT follow-up.",
+    templateSinusSymptomsComplaintV1: "Sinus symptoms (infectious intelligence)",
+    templateSinusSymptomsComplaintV1Help: "Click-to-insert prompts for sinus congestion, facial pain, and disposition.",
+    templateDentalPainInfectionComplaintV1: "Dental pain / infection (infectious intelligence)",
+    templateDentalPainInfectionComplaintV1Help: "Click-to-insert prompts for dental infection, swelling, and oral surgery follow-up.",
+    templateRashSkinComplaintV1: "Rash / skin (infectious intelligence)",
+    templateRashSkinComplaintV1Help: "Click-to-insert prompts for rash, exposures, and emergent skin findings.",
+    templateSoreThroatInfectiousComplaintV1: "Sore throat — infectious (infectious intelligence)",
+    templateSoreThroatInfectiousComplaintV1Help: "Click-to-insert prompts for infectious pharyngitis, airway precautions, and follow-up.",
+    templateDehydrationViralIllnessComplaintV1: "Dehydration / viral illness (infectious intelligence)",
+    templateDehydrationViralIllnessComplaintV1Help: "Click-to-insert prompts for viral illness, hydration status, and disposition.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10551,6 +10573,7 @@ export default {
     ...providerDocumentationCardiacComplaintIntel19Mdm4En,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6En,
+    ...providerDocumentationInfectiousEntComplaintIntel19Mdm7En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

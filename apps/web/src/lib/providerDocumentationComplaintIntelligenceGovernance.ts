@@ -109,6 +109,19 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "injury_resolved", pattern: /\binjury\s+resolved\b/i },
     { id: "no_acute_findings", pattern: /\bno\s+acute\s+findings\b/i },
     { id: "minor_injury_only", pattern: /\bminor\s+injury\s+only\b/i },
+    // Phase 19MDM.7 — infectious / ENT
+    { id: "abscess_ruled_out", pattern: /\babscess\s+ruled\s+out\b/i },
+    { id: "cellulitis_ruled_out", pattern: /\bcellulitis\s+ruled\s+out\b/i },
+    { id: "mastoiditis_ruled_out", pattern: /\bmastoiditis\s+ruled\s+out\b/i },
+    { id: "necrotizing_infection_ruled_out", pattern: /\bnecrotizing\s+infection\s+ruled\s+out\b/i },
+    { id: "viral_only", pattern: /\bviral\s+only\b/i },
+    { id: "bacterial_only", pattern: /\bbacterial\s+only\b/i },
+    { id: "culture_negative", pattern: /\bculture\s+negative\b/i },
+    { id: "imaging_normal_infectious", pattern: /\bimaging\s+normal\b/i },
+    { id: "no_serious_infection", pattern: /\bno\s+serious\s+infection\b/i },
+    { id: "no_deep_infection", pattern: /\bno\s+deep\s+infection\b/i },
+    { id: "benign_infection", pattern: /\bbenign\s+infection\b/i },
+    { id: "infection_resolved", pattern: /\binfection\s+resolved\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

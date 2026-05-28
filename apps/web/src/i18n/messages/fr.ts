@@ -6,6 +6,7 @@ import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./provid
 import { providerDocumentationCardiacComplaintIntel19Mdm4Fr } from "./providerDocumentationCardiacComplaintIntel19Mdm4.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationMskTraumaComplaintIntel19Mdm6Fr } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.fr";
+import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 
 export default {
   ...labels.fr,
@@ -6337,6 +6338,27 @@ export default {
     templateMinorHeadInjuryComplaintV1Help: "Inserts cliquables — traumatisme crânien, imagerie et suivi commotion.",
     templateLacerationSoftTissueComplaintV1: "Lacération / tissus mous (intelligence MSK)",
     templateLacerationSoftTissueComplaintV1Help: "Inserts cliquables — lacération, soins de plaie, infection et suivi.",
+    templateSubgroupInfectiousEnt: "Infectieux / ORL",
+    templateFeverComplaintV1: "Fièvre (intelligence infectieuse)",
+    templateFeverComplaintV1Help: "Inserts cliquables — fièvre, évaluation de la source et sortie.",
+    templateCellulitisSkinInfectionComplaintV1: "Cellulite / infection cutanée (intelligence infectieuse)",
+    templateCellulitisSkinInfectionComplaintV1Help: "Inserts cliquables — cellulite, extension et suivi.",
+    templateAbscessSoftTissueComplaintV1: "Abcès / tissus mous (intelligence infectieuse)",
+    templateAbscessSoftTissueComplaintV1Help: "Inserts cliquables — abcès, réévaluation après I&D et soins.",
+    templateWoundInfectionComplaintV1: "Infection de plaie (intelligence infectieuse)",
+    templateWoundInfectionComplaintV1Help: "Inserts cliquables — infection de plaie, écoulement et suivi.",
+    templateEarPainOtitisComplaintV1: "Otalgie / otite (intelligence infectieuse)",
+    templateEarPainOtitisComplaintV1Help: "Inserts cliquables — otalgie, mastoïdite et suivi ORL.",
+    templateSinusSymptomsComplaintV1: "Symptômes sinusiens (intelligence infectieuse)",
+    templateSinusSymptomsComplaintV1Help: "Inserts cliquables — congestion sinusienne, douleur faciale et sortie.",
+    templateDentalPainInfectionComplaintV1: "Douleur dentaire / infection (intelligence infectieuse)",
+    templateDentalPainInfectionComplaintV1Help: "Inserts cliquables — infection dentaire, tuméfaction et suivi.",
+    templateRashSkinComplaintV1: "Éruption / peau (intelligence infectieuse)",
+    templateRashSkinComplaintV1Help: "Inserts cliquables — éruption, expositions et signes cutanés urgents.",
+    templateSoreThroatInfectiousComplaintV1: "Mal de gorge — infectieux (intelligence infectieuse)",
+    templateSoreThroatInfectiousComplaintV1Help: "Inserts cliquables — pharyngite infectieuse, voies aériennes et suivi.",
+    templateDehydrationViralIllnessComplaintV1: "Déshydratation / maladie virale (intelligence infectieuse)",
+    templateDehydrationViralIllnessComplaintV1Help: "Inserts cliquables — maladie virale, hydratation et sortie.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10534,6 +10556,7 @@ export default {
     ...providerDocumentationCardiacComplaintIntel19Mdm4Fr,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,
     ...providerDocumentationMskTraumaComplaintIntel19Mdm6Fr,
+    ...providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

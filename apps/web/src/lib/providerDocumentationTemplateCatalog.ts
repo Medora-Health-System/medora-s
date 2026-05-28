@@ -85,6 +85,16 @@ import {
   FALL_TRAUMA_COMPLAINT_V1_INTEL,
   MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
   LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
+  FEVER_COMPLAINT_V1_INTEL,
+  CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL,
+  ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL,
+  WOUND_INFECTION_COMPLAINT_V1_INTEL,
+  EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL,
+  SINUS_SYMPTOMS_COMPLAINT_V1_INTEL,
+  DENTAL_PAIN_INFECTION_COMPLAINT_V1_INTEL,
+  RASH_SKIN_COMPLAINT_V1_INTEL,
+  SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL,
+  DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -254,6 +264,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   cardiac_vascular: "providerDocumentationWorkspace.templateSubgroupCardiacVascular",
   gu_renal: "providerDocumentationWorkspace.templateSubgroupGuRenal",
   msk_trauma: "providerDocumentationWorkspace.templateSubgroupMskTrauma",
+  infectious_ent: "providerDocumentationWorkspace.templateSubgroupInfectiousEnt",
 };
 
 function respiratoryComplaintV1Template(
@@ -412,6 +423,47 @@ function mskTraumaComplaintV1Template(
     ],
     complaintIntelligence,
     "msk_trauma"
+  );
+}
+
+function infectiousEntComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.assocCough", "erMseHpiChips.assocFever", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posFever", "erMseRosChips.posCough", "erMseRosChips.posVomiting"],
+    ["erMseRosChips.negDeniesSob", "erMseRosChips.negDeniesWeakness"],
+    ["erMseRosChips.rfRespDistress", "erMseRosChips.rfAlteredMs", "erMseRosChips.rfBleeding"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waUndifferentiated"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actFluids", "erMseMdmChips.actAntiemetic"],
+      mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      heent: ["erMseExamChips.heentOropharynxClear", "erMseExamChips.heentDryMm"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs"],
+      skin: ["erMseExamChips.skinWarmDry", "erMseExamChips.skinRashPresent"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.acuteIllnessDocumented"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultUriInfectiousWorkup",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "infectious_ent"
   );
 }
 
@@ -1659,6 +1711,66 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1",
     "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1Help",
     LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "fever_complaint_v1",
+    "providerDocumentationWorkspace.templateFeverComplaintV1",
+    "providerDocumentationWorkspace.templateFeverComplaintV1Help",
+    FEVER_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "cellulitis_skin_infection_complaint_v1",
+    "providerDocumentationWorkspace.templateCellulitisSkinInfectionComplaintV1",
+    "providerDocumentationWorkspace.templateCellulitisSkinInfectionComplaintV1Help",
+    CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "abscess_soft_tissue_complaint_v1",
+    "providerDocumentationWorkspace.templateAbscessSoftTissueComplaintV1",
+    "providerDocumentationWorkspace.templateAbscessSoftTissueComplaintV1Help",
+    ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "wound_infection_complaint_v1",
+    "providerDocumentationWorkspace.templateWoundInfectionComplaintV1",
+    "providerDocumentationWorkspace.templateWoundInfectionComplaintV1Help",
+    WOUND_INFECTION_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "ear_pain_otitis_complaint_v1",
+    "providerDocumentationWorkspace.templateEarPainOtitisComplaintV1",
+    "providerDocumentationWorkspace.templateEarPainOtitisComplaintV1Help",
+    EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "sinus_symptoms_complaint_v1",
+    "providerDocumentationWorkspace.templateSinusSymptomsComplaintV1",
+    "providerDocumentationWorkspace.templateSinusSymptomsComplaintV1Help",
+    SINUS_SYMPTOMS_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "dental_pain_infection_complaint_v1",
+    "providerDocumentationWorkspace.templateDentalPainInfectionComplaintV1",
+    "providerDocumentationWorkspace.templateDentalPainInfectionComplaintV1Help",
+    DENTAL_PAIN_INFECTION_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "rash_skin_complaint_v1",
+    "providerDocumentationWorkspace.templateRashSkinComplaintV1",
+    "providerDocumentationWorkspace.templateRashSkinComplaintV1Help",
+    RASH_SKIN_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "sore_throat_infectious_complaint_v1",
+    "providerDocumentationWorkspace.templateSoreThroatInfectiousComplaintV1",
+    "providerDocumentationWorkspace.templateSoreThroatInfectiousComplaintV1Help",
+    SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL
+  ),
+  infectiousEntComplaintV1Template(
+    "dehydration_viral_illness_complaint_v1",
+    "providerDocumentationWorkspace.templateDehydrationViralIllnessComplaintV1",
+    "providerDocumentationWorkspace.templateDehydrationViralIllnessComplaintV1Help",
+    DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

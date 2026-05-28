@@ -126,14 +126,25 @@ export type ProviderDocumentationTemplateId =
   | "hand_wrist_injury_complaint_v1"
   | "fall_trauma_complaint_v1"
   | "minor_head_injury_complaint_v1"
-  | "laceration_soft_tissue_complaint_v1";
+  | "laceration_soft_tissue_complaint_v1"
+  | "fever_complaint_v1"
+  | "cellulitis_skin_infection_complaint_v1"
+  | "abscess_soft_tissue_complaint_v1"
+  | "wound_infection_complaint_v1"
+  | "ear_pain_otitis_complaint_v1"
+  | "sinus_symptoms_complaint_v1"
+  | "dental_pain_infection_complaint_v1"
+  | "rash_skin_complaint_v1"
+  | "sore_throat_infectious_complaint_v1"
+  | "dehydration_viral_illness_complaint_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
   | "respiratory_ent"
   | "cardiac_vascular"
   | "gu_renal"
-  | "msk_trauma";
+  | "msk_trauma"
+  | "infectious_ent";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
