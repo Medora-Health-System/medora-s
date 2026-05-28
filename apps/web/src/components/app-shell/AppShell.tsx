@@ -10,9 +10,13 @@ import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { type GroupedSidebarSection } from "./sidebarNavConfig";
 import { AppShellSidebarNav } from "./AppShellSidebarNav";
+import type { ClinicalViewportMode } from "@/lib/clinicalViewport";
 import {
-  APP_SHELL_DESKTOP_NAV_MEDIA,
+  appShellForceSidebarCollapsed,
+  appShellUsesMobileDrawer,
+  appShellUsesPersistentSidebar,
   resolveActiveNavLabel,
+  resolveAppShellNavLayout,
 } from "./appShellNavHelpers";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "medora_sidebar_collapsed";
@@ -102,21 +106,25 @@ export function AppShell({
     }
   }, []);
 
-  const [desktopNavLayout, setDesktopNavLayout] = useState(false);
+  const [navViewportMode, setNavViewportMode] = useState<ClinicalViewportMode>("desktop");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia(APP_SHELL_DESKTOP_NAV_MEDIA);
-    const sync = () => setDesktopNavLayout(mq.matches);
+    const sync = () => setNavViewportMode(resolveAppShellNavLayout(window.innerWidth));
     sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
   }, []);
 
+  const persistentSidebar = appShellUsesPersistentSidebar(navViewportMode);
+  const mobileDrawerNav = appShellUsesMobileDrawer(navViewportMode);
+  const forceSidebarCollapsed = appShellForceSidebarCollapsed(navViewportMode);
+  const sidebarCollapsedEffective = forceSidebarCollapsed || sidebarCollapsed;
+
   useEffect(() => {
-    if (desktopNavLayout) setMobileNavOpen(false);
-  }, [desktopNavLayout]);
+    if (!mobileDrawerNav) setMobileNavOpen(false);
+  }, [mobileDrawerNav]);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -182,7 +190,7 @@ export function AppShell({
         ) : null}
 
         <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2 md:gap-4 lg:gap-6">
-          {!desktopNavLayout ? (
+          {mobileDrawerNav ? (
             <button
               type="button"
               data-testid="app-shell-mobile-menu-button"
@@ -190,7 +198,7 @@ export function AppShell({
               aria-expanded={mobileNavOpen}
               aria-controls={MOBILE_DRAWER_ID}
               onClick={() => setMobileNavOpen((open) => !open)}
-              className="inline-flex h-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-600/70 bg-slate-900/80 text-slate-100 outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30 lg:hidden"
+              className="inline-flex h-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-600/70 bg-slate-900/80 text-slate-100 outline-none transition-colors hover:border-slate-500 hover:bg-slate-800/90 focus-visible:ring-2 focus-visible:ring-teal-500/30"
             >
               <span className="sr-only">{t("appShell.mobileMenuOpen")}</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -209,9 +217,9 @@ export function AppShell({
             <span className="text-teal-400">-S</span>
           </h1>
 
-          {!desktopNavLayout && activeSectionTitle ? (
+          {mobileDrawerNav && activeSectionTitle ? (
             <p
-              className="min-w-0 truncate text-sm font-medium text-slate-200 lg:hidden"
+              className="min-w-0 truncate text-sm font-medium text-slate-200"
               title={activeSectionTitle}
               data-testid="app-shell-mobile-section-title"
             >
@@ -219,7 +227,7 @@ export function AppShell({
             </p>
           ) : null}
 
-          {desktopNavLayout ? (
+          {navViewportMode === "desktop" || navViewportMode === "tablet" ? (
             <FacilitySelect
               facilities={facilities}
               activeFacility={activeFacility}
@@ -267,13 +275,13 @@ export function AppShell({
         </div>
       </header>
 
-      {!desktopNavLayout && mobileNavOpen ? (
+      {mobileDrawerNav && mobileNavOpen ? (
         <>
           <button
             type="button"
             data-testid="app-shell-mobile-nav-backdrop"
             aria-label={t("appShell.mobileMenuBackdrop")}
-            className="fixed inset-0 z-40 bg-slate-950/60 lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-950/60"
             onClick={closeMobileNav}
           />
           <aside
@@ -282,7 +290,7 @@ export function AppShell({
             aria-modal="true"
             aria-label={t("appShell.mobileNavDrawerLabel")}
             data-testid="app-shell-mobile-nav-drawer"
-            className="fixed inset-y-0 left-0 z-50 flex w-[min(100vw-2rem,280px)] flex-col border-r border-slate-700/40 bg-gradient-to-b from-slate-800 to-slate-950 text-slate-50 shadow-2xl lg:hidden"
+            className="fixed inset-y-0 left-0 z-50 flex w-[min(100vw-2rem,280px)] flex-col border-r border-slate-700/40 bg-gradient-to-b from-slate-800 to-slate-950 text-slate-50 shadow-2xl"
             style={{ padding: "16px 12px 24px", boxSizing: "border-box" }}
           >
             <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
@@ -323,16 +331,17 @@ export function AppShell({
       ) : null}
 
       <div style={{ display: "flex", flex: 1, minWidth: 0, minHeight: 0 }}>
-        {desktopNavLayout ? (
+        {persistentSidebar ? (
           <aside
             data-testid="app-shell-desktop-sidebar"
+            data-nav-viewport-mode={navViewportMode}
             style={{
-              width: sidebarCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
+              width: sidebarCollapsedEffective ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
               flexShrink: 0,
               transition: "width 0.2s ease",
               background: "linear-gradient(180deg, #1e293b 0%, #0f172a 100%)",
               color: "#f8fafc",
-              padding: sidebarCollapsed ? "12px 6px 20px" : "18px 12px 24px",
+              padding: sidebarCollapsedEffective ? "12px 6px 20px" : "18px 12px 24px",
               display: "flex",
               flexDirection: "column",
               borderRight: "1px solid rgba(148,163,184,0.12)",
@@ -341,47 +350,49 @@ export function AppShell({
               boxSizing: "border-box",
             }}
           >
-            <div style={{ marginBottom: sidebarCollapsed ? 8 : 10, flexShrink: 0 }}>
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                aria-expanded={!sidebarCollapsed}
-                aria-controls="medora-app-sidebar-nav"
-                aria-label={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
-                title={sidebarCollapsed ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: sidebarCollapsed ? "center" : "flex-start",
-                  gap: 8,
-                  padding: sidebarCollapsed ? "8px 4px" : "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(148,163,184,0.2)",
-                  background: "rgba(15,23,42,0.5)",
-                  color: "#f8fafc",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                <span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden>
-                  {sidebarCollapsed ? "»" : "«"}
-                </span>
-                {!sidebarCollapsed ? (
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t("appShell.sidebarCollapse")}
+            {navViewportMode === "desktop" ? (
+              <div style={{ marginBottom: sidebarCollapsedEffective ? 8 : 10, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={toggleSidebar}
+                  aria-expanded={!sidebarCollapsedEffective}
+                  aria-controls="medora-app-sidebar-nav"
+                  aria-label={sidebarCollapsedEffective ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
+                  title={sidebarCollapsedEffective ? t("appShell.sidebarExpand") : t("appShell.sidebarCollapse")}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: sidebarCollapsedEffective ? "center" : "flex-start",
+                    gap: 8,
+                    padding: sidebarCollapsedEffective ? "8px 4px" : "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid rgba(148,163,184,0.2)",
+                    background: "rgba(15,23,42,0.5)",
+                    color: "#f8fafc",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <span style={{ fontSize: 14, lineHeight: 1 }} aria-hidden>
+                    {sidebarCollapsedEffective ? "»" : "«"}
                   </span>
-                ) : null}
-              </button>
-            </div>
+                  {!sidebarCollapsedEffective ? (
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t("appShell.sidebarCollapse")}
+                    </span>
+                  ) : null}
+                </button>
+              </div>
+            ) : null}
             <AppShellSidebarNav
               groupedNavSections={groupedNavSections}
               pathname={pathname}
               mounted={mounted}
               bootstrapping={bootstrapping}
-              sidebarCollapsed={sidebarCollapsed}
-              showLabels={!sidebarCollapsed}
+              sidebarCollapsed={sidebarCollapsedEffective}
+              showLabels={!sidebarCollapsedEffective}
               navId="medora-app-sidebar-nav"
               t={t}
             />

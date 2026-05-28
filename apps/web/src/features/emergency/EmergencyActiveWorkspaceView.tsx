@@ -79,10 +79,14 @@ import {
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 import { EmergencyErWorkspaceSectionNav, type ErDashboardTile } from "@/features/emergency/EmergencyErWorkspaceSectionNav";
+import { clinicalPatientSummaryStackStyle } from "@/lib/clinicalViewport";
 import {
   emergencyChartHeaderRailStyle,
   emergencyChartPageShellStyle,
+  emergencyChartPatientSummaryShellStyle,
   emergencyChartTouchLinkStyle,
+  emergencyChartViewportModeFromLayout,
+  emergencyChartVitalsDisplayMode,
   resolveEmergencyChartLayoutMode,
   type EmergencyChartLayoutMode,
 } from "@/features/emergency/emergencyChartResponsiveLayout";
@@ -740,18 +744,10 @@ export function EmergencyActiveWorkspaceView() {
           </div>
         )}
 
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, ...emergencyChartPatientSummaryShellStyle(layoutMode) }}>
         <MedoraCard leftAccentColor="#2563eb" variant="default">
           <MedoraCardInner>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "flex-start",
-                gap: "10px 12px",
-                width: "100%",
-              }}
-            >
+            <div style={clinicalPatientSummaryStackStyle(emergencyChartViewportModeFromLayout(layoutMode))}>
               {/* Gauche : initiales + ESI sous le cercle (pas de gros badge séparé) */}
               <div
                 style={{
@@ -839,6 +835,7 @@ export function EmergencyActiveWorkspaceView() {
                     editable={vitalsQuickEditEnabled}
                     onEditClick={vitalsQuickEditEnabled ? () => setShowQuickVitals(true) : undefined}
                     editAriaLabel={t("erQuickVitals.vitalsEditAria")}
+                    displayMode={emergencyChartVitalsDisplayMode(layoutMode)}
                   />
                   <EmergencyWorkspaceAllergiesCard
                     allergySummary={clinicalStripModel.allergyText}
@@ -929,7 +926,7 @@ export function EmergencyActiveWorkspaceView() {
                           .medora-er-vitals-twocol > * {
                             min-width: 0;
                           }
-                          @media (max-width: 1023.98px) {
+                          @media (max-width: 1199.98px) {
                             .medora-er-vitals-twocol {
                               grid-template-columns: 1fr;
                             }

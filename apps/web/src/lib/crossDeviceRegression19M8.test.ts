@@ -33,19 +33,19 @@ describe("19M.8 — no permanent mobile sidebar", () => {
 
   it("desktop sidebar is conditional on desktop layout breakpoint", () => {
     const src = appShell();
-    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
-    expect(src).toContain("desktopNavLayout");
+    expect(readWebSource("src/components/app-shell/appShellNavHelpers.ts")).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
+    expect(src).toContain("navViewportMode");
     expect(src).toContain('data-testid="app-shell-desktop-sidebar"');
     expect(src).toContain('data-testid="app-shell-mobile-menu-button"');
     expect(src).toContain('data-testid="app-shell-mobile-nav-drawer"');
-    expect(APP_SHELL_DESKTOP_NAV_MEDIA).toContain("1024");
+    expect(APP_SHELL_DESKTOP_NAV_MEDIA).toContain("1200");
   });
 
   it("main content uses full width path when not desktop nav", () => {
     const src = appShell();
     expect(src).toContain('data-testid="app-shell-main-content"');
-    expect(src).toContain("desktopNavLayout ? (");
-    expect(src).toContain("!desktopNavLayout && mobileNavOpen");
+    expect(src).toContain("persistentSidebar ? (");
+    expect(src).toContain("mobileDrawerNav && mobileNavOpen");
   });
 });
 

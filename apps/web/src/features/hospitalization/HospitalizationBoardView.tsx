@@ -42,6 +42,16 @@ import {
   MEDORA_OBSERVATION_ENCOUNTER_REFRESH,
   type ObservationEncounterRefreshDetail,
 } from "@/lib/observationEncounterRefresh";
+import {
+  observationBoardFilterRowStyle,
+  observationBoardPageInnerStyle,
+  observationBoardPatientListStyle,
+  observationBoardSnapshotGridStyle,
+  observationBoardTouchControlStyle,
+  observationBoardUsesStackedCards,
+  resolveObservationBoardLayoutMode,
+  type ObservationBoardLayoutMode,
+} from "./observationBoardResponsiveLayout";
 
 type AcuityTier = "critical" | "monitoring" | "stable";
 
@@ -453,6 +463,16 @@ export function HospitalizationBoardView() {
   const [filterPhysician, setFilterPhysician] = useState("");
   const [filterOperational, setFilterOperational] = useState<ObservationBoardOperationalFilterId>("");
   const [sortOperational, setSortOperational] = useState<ObservationBoardSortId>("default");
+  const [layoutMode, setLayoutMode] = useState<ObservationBoardLayoutMode>("desktopDense");
+
+  useEffect(() => {
+    const sync = () => setLayoutMode(resolveObservationBoardLayoutMode(window.innerWidth));
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
+
+  const stackedCardLayout = observationBoardUsesStackedCards(layoutMode);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -694,14 +714,18 @@ export function HospitalizationBoardView() {
   };
 
   return (
-    <div style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}>
+    <div
+      style={{ minHeight: "calc(100vh - 48px)", backgroundColor: "#f8fafc", padding: "0 0 8px 0" }}
+      data-testid="observation-board-layout"
+      data-layout-mode={layoutMode}
+    >
       {ready && canManagePharmacy && effectiveFacilityId && (
         <div style={{ marginBottom: 16 }}>
           <PharmacyAlertsCard facilityId={effectiveFacilityId} />
         </div>
       )}
 
-      <div style={{ maxWidth: 1152, margin: "0 auto" }}>
+      <div style={observationBoardPageInnerStyle(layoutMode)}>
         <header
           style={{
             display: "flex",
@@ -735,7 +759,7 @@ export function HospitalizationBoardView() {
             <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
               {t("hospitalizationBoard.operationalStripTitle")}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8, alignItems: "stretch" }}>
+            <div style={observationBoardSnapshotGridStyle(layoutMode)}>
               <ObservationOperationalStatChip
                 label={t("hospitalizationBoard.operationalStatActive")}
                 value={observationCensus.activeObservationPatients}
@@ -814,16 +838,7 @@ export function HospitalizationBoardView() {
         ) : null}
 
         {/* Barre unique : recherche à gauche, filtres compacts, actions à droite (V0) */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            flexWrap: "wrap",
-            alignItems: "flex-end",
-            gap: 10,
-            marginBottom: 28,
-          }}
-        >
+        <div style={observationBoardFilterRowStyle(layoutMode)}>
           <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <span style={{ ...filterLabel, marginBottom: 3 }}>{t("hospitalizationBoard.filterSearchLabel")}</span>
             <input
@@ -931,19 +946,22 @@ export function HospitalizationBoardView() {
               type="button"
               onClick={() => void loadEncounters()}
               disabled={loading}
-              style={{
-                height: 40,
-                padding: "0 14px",
-                backgroundColor: "#fff",
-                color: "#334155",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-                cursor: loading ? "not-allowed" : "pointer",
-                fontSize: 13,
-                fontWeight: 500,
-                boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
-                whiteSpace: "nowrap",
-              }}
+              style={observationBoardTouchControlStyle(
+                {
+                  height: layoutMode === "desktopDense" ? 40 : undefined,
+                  padding: "0 14px",
+                  backgroundColor: "#fff",
+                  color: "#334155",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+                  whiteSpace: "nowrap",
+                },
+                layoutMode
+              )}
             >
               {loading ? t("common.loading") : t("common.refresh")}
             </button>
@@ -968,50 +986,53 @@ export function HospitalizationBoardView() {
               onClick={() => {
                 if (singleOpenInpatientRow) void dischargeEncounter(singleOpenInpatientRow);
               }}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 40,
-                padding: "0 16px",
-                backgroundColor:
-                  mockMode === "error" ||
-                  mockMode === "empty" ||
-                  !effectiveFacilityId ||
-                  !singleOpenInpatientRow ||
-                  dischargingId !== null
-                    ? "#f1f5f9"
-                    : "#fff",
-                color:
-                  mockMode === "error" ||
-                  mockMode === "empty" ||
-                  !effectiveFacilityId ||
-                  !singleOpenInpatientRow ||
-                  dischargingId !== null
-                    ? "#64748b"
-                    : "#334155",
-                border: "1px solid #e2e8f0",
-                borderRadius: 12,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor:
-                  mockMode === "error" ||
-                  mockMode === "empty" ||
-                  !effectiveFacilityId ||
-                  !singleOpenInpatientRow ||
-                  dischargingId !== null
-                    ? "not-allowed"
-                    : "pointer",
-                whiteSpace: "nowrap",
-                boxShadow:
-                  mockMode === "error" ||
-                  mockMode === "empty" ||
-                  !effectiveFacilityId ||
-                  !singleOpenInpatientRow ||
-                  dischargingId !== null
-                    ? undefined
-                    : "0 1px 2px rgba(15, 23, 42, 0.05)",
-              }}
+              style={observationBoardTouchControlStyle(
+                {
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: layoutMode === "desktopDense" ? 40 : undefined,
+                  padding: "0 16px",
+                  backgroundColor:
+                    mockMode === "error" ||
+                    mockMode === "empty" ||
+                    !effectiveFacilityId ||
+                    !singleOpenInpatientRow ||
+                    dischargingId !== null
+                      ? "#f1f5f9"
+                      : "#fff",
+                  color:
+                    mockMode === "error" ||
+                    mockMode === "empty" ||
+                    !effectiveFacilityId ||
+                    !singleOpenInpatientRow ||
+                    dischargingId !== null
+                      ? "#64748b"
+                      : "#334155",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor:
+                    mockMode === "error" ||
+                    mockMode === "empty" ||
+                    !effectiveFacilityId ||
+                    !singleOpenInpatientRow ||
+                    dischargingId !== null
+                      ? "not-allowed"
+                      : "pointer",
+                  whiteSpace: "nowrap",
+                  boxShadow:
+                    mockMode === "error" ||
+                    mockMode === "empty" ||
+                    !effectiveFacilityId ||
+                    !singleOpenInpatientRow ||
+                    dischargingId !== null
+                      ? undefined
+                      : "0 1px 2px rgba(15, 23, 42, 0.05)",
+                },
+                layoutMode
+              )}
             >
               {singleOpenInpatientRow && dischargingId === singleOpenInpatientRow.id
                 ? t("hospitalizationBoard.dischargeSending")
@@ -1098,7 +1119,7 @@ export function HospitalizationBoardView() {
             </p>
           </div>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <ul style={observationBoardPatientListStyle(layoutMode)}>
             {filteredEncounters.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
@@ -1122,6 +1143,7 @@ export function HospitalizationBoardView() {
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
                     <MedoraCardInner>
                       <MedoraCompactPatientCardRow
+                        stackedLayout={stackedCardLayout}
                         avatarInitials={patientInitials(patient)}
                         roomLabel={t("common.room")}
                         roomValue={room}

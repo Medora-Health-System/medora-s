@@ -353,7 +353,7 @@ export function EmergencyTrackboardView() {
   return (
     <div style={erTrackboardPageShellStyle(layoutMode)} data-layout-mode={layoutMode}>
       <div
-        style={erTrackboardPageInnerStyle()}
+        style={erTrackboardPageInnerStyle(layoutMode)}
         data-testid="emergency-trackboard-layout"
         data-layout-mode={layoutMode}
       >
@@ -414,12 +414,12 @@ export function EmergencyTrackboardView() {
             href="/app/emergency/triage"
             style={erTrackboardTouchControlStyle(
               {
-                marginLeft: layoutMode === "mobileCard" ? 0 : "auto",
+                marginLeft: layoutMode === "compactStacked" ? 0 : "auto",
                 color: "#2563eb",
                 fontWeight: 600,
                 fontSize: 13,
                 textDecoration: "none",
-                padding: layoutMode === "mobileCard" ? "10px 12px" : undefined,
+                padding: layoutMode === "compactStacked" ? "10px 12px" : undefined,
               },
               layoutMode
             )}
@@ -452,7 +452,7 @@ export function EmergencyTrackboardView() {
               style={erTrackboardTouchControlStyle(
                 {
                   height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
-                  width: layoutMode === "mobileCard" ? "100%" : undefined,
+                  width: layoutMode === "compactStacked" ? "100%" : undefined,
                   padding: "0 14px",
                   backgroundColor: "#fff",
                   color: "#334155",

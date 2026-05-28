@@ -149,7 +149,7 @@ export function EmergencyErWorkspaceSectionNav({
                 onClick={() => {
                   if (!q.disabled) onSelect(q.id);
                 }}
-                style={erDashboardChipButtonStyle(selected, q.disabled)}
+                  style={erDashboardChipButtonStyle(selected, q.disabled, layoutMode)}
               >
                 {q.ariaLabel}
               </button>

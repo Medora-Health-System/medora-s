@@ -1,20 +1,41 @@
 import type { CSSProperties } from "react";
+import {
+  CLINICAL_MIN_TOUCH_TARGET_PX,
+  CLINICAL_VIEWPORT_DESKTOP_MIN,
+  clinicalStickyPatientHeaderStyle,
+  clinicalTouchTargetStyle,
+  resolveClinicalViewportMode,
+  type ClinicalViewportMode,
+  type ClinicalVitalsDisplayMode,
+} from "@/lib/clinicalViewport";
 
-/** Desktop tile navigation (>=1024px). */
-export const EMERGENCY_CHART_DESKTOP_NAV_MEDIA = "(min-width: 1024px)";
+/** Desktop tile navigation (>=1200px). */
+export const EMERGENCY_CHART_DESKTOP_NAV_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN}px)`;
 
-export const EMERGENCY_CHART_TOUCH_TARGET_MIN_PX = 44;
+export const EMERGENCY_CHART_TOUCH_TARGET_MIN_PX = CLINICAL_MIN_TOUCH_TARGET_PX;
 
-export type EmergencyChartLayoutMode = "mobileStacked" | "tabletStacked" | "desktopSplit";
+export type EmergencyChartLayoutMode = "mobileStacked" | "tabletFocused" | "desktopSplit";
+
+/** @deprecated Use tabletFocused. */
+export type EmergencyChartLayoutModeLegacy = "tabletStacked";
 
 export function resolveEmergencyChartLayoutMode(viewportWidth: number): EmergencyChartLayoutMode {
-  if (viewportWidth >= 1280) return "desktopSplit";
-  if (viewportWidth >= 1024) return "tabletStacked";
+  const mode = resolveClinicalViewportMode(viewportWidth);
+  if (mode === "desktop") return "desktopSplit";
+  if (mode === "tablet") return "tabletFocused";
   return "mobileStacked";
 }
 
 export function usesErDesktopTileNav(mode: EmergencyChartLayoutMode): boolean {
-  return mode !== "mobileStacked";
+  return mode === "desktopSplit";
+}
+
+export function usesErFocusedWorkspace(mode: EmergencyChartLayoutMode): boolean {
+  return mode === "mobileStacked" || mode === "tabletFocused";
+}
+
+export function emergencyChartUsesStickyPatientHeader(mode: EmergencyChartLayoutMode): boolean {
+  return mode === "tabletFocused";
 }
 
 export function erDashboardTileGridStyle(): CSSProperties {
@@ -41,18 +62,23 @@ export function erDashboardChipRailStyle(): CSSProperties {
   };
 }
 
-export function erDashboardChipButtonStyle(selected: boolean, disabled: boolean): CSSProperties {
+export function erDashboardChipButtonStyle(
+  selected: boolean,
+  disabled: boolean,
+  mode: EmergencyChartLayoutMode = "mobileStacked"
+): CSSProperties {
+  const tabletFocused = mode === "tabletFocused";
   return {
     flex: "0 0 auto",
     minHeight: EMERGENCY_CHART_TOUCH_TARGET_MIN_PX,
-    minWidth: 44,
-    maxWidth: "min(280px, 70vw)",
-    padding: "10px 14px",
+    minWidth: EMERGENCY_CHART_TOUCH_TARGET_MIN_PX,
+    maxWidth: tabletFocused ? "min(320px, 85vw)" : "min(280px, 70vw)",
+    padding: tabletFocused ? "12px 16px" : "10px 14px",
     borderRadius: 9999,
     border: selected ? "2px solid #2563eb" : "1px solid #e2e8f0",
     background: selected ? "#eff6ff" : "#fff",
     color: disabled ? "#94a3b8" : selected ? "#1d4ed8" : "#334155",
-    fontSize: 13,
+    fontSize: tabletFocused ? 15 : 13,
     fontWeight: selected ? 700 : 600,
     fontFamily: "inherit",
     cursor: disabled ? "not-allowed" : "pointer",
@@ -64,7 +90,7 @@ export function erDashboardChipButtonStyle(selected: boolean, disabled: boolean)
 }
 
 export function emergencyChartHeaderRailStyle(mode: EmergencyChartLayoutMode): CSSProperties {
-  if (mode === "mobileStacked") {
+  if (mode === "mobileStacked" || mode === "tabletFocused") {
     return {
       display: "flex",
       flexDirection: "column",
@@ -88,13 +114,7 @@ export function emergencyChartHeaderRailStyle(mode: EmergencyChartLayoutMode): C
 }
 
 export function emergencyChartTouchLinkStyle(base: CSSProperties): CSSProperties {
-  return {
-    ...base,
-    minHeight: EMERGENCY_CHART_TOUCH_TARGET_MIN_PX,
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
+  return clinicalTouchTargetStyle(base);
 }
 
 export function emergencyChartPageShellStyle(mode: EmergencyChartLayoutMode): CSSProperties {
@@ -107,6 +127,10 @@ export function emergencyChartPageShellStyle(mode: EmergencyChartLayoutMode): CS
   };
 }
 
+export function emergencyChartPatientSummaryShellStyle(mode: EmergencyChartLayoutMode): CSSProperties {
+  return clinicalStickyPatientHeaderStyle(emergencyChartUsesStickyPatientHeader(mode));
+}
+
 export function emergencyChartContentStackStyle(): CSSProperties {
   return {
     display: "flex",
@@ -115,4 +139,20 @@ export function emergencyChartContentStackStyle(): CSSProperties {
     width: "100%",
     minWidth: 0,
   };
+}
+
+export function resolveEmergencyChartViewportMode(viewportWidth: number): ClinicalViewportMode {
+  return resolveClinicalViewportMode(viewportWidth);
+}
+
+export function emergencyChartViewportModeFromLayout(mode: EmergencyChartLayoutMode): ClinicalViewportMode {
+  if (mode === "desktopSplit") return "desktop";
+  if (mode === "tabletFocused") return "tablet";
+  return "compact";
+}
+
+export function emergencyChartVitalsDisplayMode(mode: EmergencyChartLayoutMode): ClinicalVitalsDisplayMode {
+  if (mode === "desktopSplit") return "desktopDense";
+  if (mode === "tabletFocused") return "tabletReadable";
+  return "compactStack";
 }

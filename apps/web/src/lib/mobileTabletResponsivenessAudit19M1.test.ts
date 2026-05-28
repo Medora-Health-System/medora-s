@@ -46,7 +46,7 @@ describe("19M.1 mobile/tablet responsiveness audit anchors", () => {
   it("AppShell mobile drawer resolves C1 shell blocker (19M.2)", () => {
     const src = readWebSource("src/components/app-shell/AppShell.tsx");
     expect(src).toContain('data-testid="app-shell-mobile-menu-button"');
-    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
+    expect(src).toContain("resolveAppShellNavLayout");
   });
 
   it("ProviderDocumentationWorkspace implements responsive layout (19M.5)", () => {

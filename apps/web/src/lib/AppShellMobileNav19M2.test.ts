@@ -34,10 +34,12 @@ describe("19M.2 app shell mobile navigation", () => {
 
   it("desktop sidebar still renders at desktop layout breakpoint", () => {
     const src = appShellSource();
-    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
-    expect(readWebSource("src/components/app-shell/appShellNavHelpers.ts")).toContain(APP_SHELL_DESKTOP_NAV_MEDIA);
+    const helpers = readWebSource("src/components/app-shell/appShellNavHelpers.ts");
+    expect(helpers).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
+    expect(APP_SHELL_DESKTOP_NAV_MEDIA).toBe("(min-width: 1200px)");
+    expect(src).toContain("resolveAppShellNavLayout");
     expect(src).toContain('data-testid="app-shell-desktop-sidebar"');
-    expect(src).toContain("desktopNavLayout ? (");
+    expect(src).toContain("persistentSidebar ? (");
     expect(src).toContain("SIDEBAR_WIDTH_EXPANDED");
   });
 
@@ -46,7 +48,7 @@ describe("19M.2 app shell mobile navigation", () => {
     expect(src).toContain("[mobileNavOpen, setMobileNavOpen]");
     expect(src).toContain("useState(false)");
     expect(src).toContain("setMobileNavOpen((open) => !open)");
-    expect(src).toContain("!desktopNavLayout && mobileNavOpen");
+    expect(src).toContain("mobileDrawerNav && mobileNavOpen");
   });
 
   it("backdrop closes the mobile drawer", () => {
@@ -81,7 +83,7 @@ describe("19M.2 app shell mobile navigation", () => {
     const src = appShellSource();
     expect(src).toContain('data-testid="app-shell-main-content"');
     expect(src).toContain("px-3 py-3 md:px-5 md:py-5 lg:p-6");
-    expect(src).toContain("desktopNavLayout ? (");
+    expect(src).toContain("persistentSidebar ? (");
     expect(src).toContain(") : null}");
   });
 
@@ -118,7 +120,7 @@ describe("19M.2 app shell mobile navigation", () => {
 
   it("resolves 19M.1 C1 app shell blocker with mobile drawer pattern", () => {
     const src = appShellSource();
-    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
+    expect(src).toContain("mobileDrawerNav");
     expect(src).toContain('data-testid="app-shell-mobile-nav-drawer"');
     expect(src).not.toMatch(/mobileMenuOpen.*false.*permanent sidebar/i);
   });
@@ -129,6 +131,6 @@ describe("19M.1 mobile audit anchors after 19M.2", () => {
     const src = readWebSource("src/components/app-shell/AppShell.tsx");
     expect(src).toContain('data-testid="app-shell-mobile-menu-button"');
     expect(src).toContain('data-testid="app-shell-mobile-nav-drawer"');
-    expect(src).toContain("APP_SHELL_DESKTOP_NAV_MEDIA");
+    expect(src).toContain("resolveAppShellNavLayout");
   });
 });

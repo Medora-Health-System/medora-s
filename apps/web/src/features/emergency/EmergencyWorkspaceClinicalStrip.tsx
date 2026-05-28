@@ -2,21 +2,44 @@
 
 import React from "react";
 import { useI18n } from "@/lib/i18n";
+import type { ClinicalVitalsDisplayMode } from "@/lib/clinicalViewport";
+import {
+  clinicalVitalsGridStyle,
+  clinicalVitalsLabelStyle,
+  clinicalVitalsShellStyle,
+  clinicalVitalsValueStyle,
+} from "@/lib/clinicalViewport";
 
 /** Paires label / valeur serrées (label près de la valeur). */
-function VitalPair({ label, value }: { label: string; value: string }) {
+function VitalPair({
+  label,
+  value,
+  displayMode,
+}: {
+  label: string;
+  value: string;
+  displayMode: ClinicalVitalsDisplayMode;
+}) {
+  if (displayMode === "compactStack") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <span style={clinicalVitalsLabelStyle(displayMode)}>{label}</span>
+        <span style={clinicalVitalsValueStyle(displayMode)}>{value}</span>
+      </div>
+    );
+  }
   return (
     <span
       style={{
         display: "inline-flex",
         flexWrap: "nowrap",
         alignItems: "baseline",
-        gap: 4,
+        gap: displayMode === "tabletReadable" ? 6 : 4,
         minWidth: 0,
       }}
     >
-      <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, flexShrink: 0 }}>{label}:</span>
-      <span style={{ fontSize: 12, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" }}>{value}</span>
+      <span style={clinicalVitalsLabelStyle(displayMode)}>{label}:</span>
+      <span style={clinicalVitalsValueStyle(displayMode)}>{value}</span>
     </span>
   );
 }
@@ -31,6 +54,7 @@ export function EmergencyWorkspaceVitalsCard({
   editable = false,
   onEditClick,
   editAriaLabel,
+  displayMode = "desktopDense",
 }: {
   vitalPairs: { label: string; value: string }[];
   loading: boolean;
@@ -38,6 +62,7 @@ export function EmergencyWorkspaceVitalsCard({
   editable?: boolean;
   onEditClick?: () => void;
   editAriaLabel?: string;
+  displayMode?: ClinicalVitalsDisplayMode;
 }) {
   const { t } = useI18n();
   if (loading) {
@@ -66,18 +91,7 @@ export function EmergencyWorkspaceVitalsCard({
   const taille = p.length >= 7 ? p[6] : null;
 
   const interactive = Boolean(editable && onEditClick);
-  const shellStyle: React.CSSProperties = {
-    padding: "8px 10px",
-    borderRadius: 10,
-    border: interactive ? "1px solid #bae6fd" : "1px solid #e2e8f0",
-    backgroundColor: interactive ? "#f8fafc" : "#fff",
-    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.04)",
-    minWidth: 0,
-    flex: "1 1 160px",
-    maxWidth: "100%",
-    boxSizing: "border-box",
-    cursor: interactive ? "pointer" : "default",
-  };
+  const shellStyle: React.CSSProperties = clinicalVitalsShellStyle(displayMode, interactive);
 
   return (
     <div
@@ -100,7 +114,7 @@ export function EmergencyWorkspaceVitalsCard({
       <p
         style={{
           margin: 0,
-          fontSize: 9,
+          fontSize: displayMode === "desktopDense" ? 9 : 11,
           fontWeight: 700,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
@@ -109,36 +123,28 @@ export function EmergencyWorkspaceVitalsCard({
       >
         {t("emergencyWorkspaceClinicalStrip.vitalsTitle")}
       </p>
-      <div
-        style={{
-          marginTop: 6,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "4px 10px",
-          alignItems: "baseline",
-        }}
-      >
+      <div style={clinicalVitalsGridStyle(displayMode)}>
         {rowA ? (
           <>
-            <VitalPair label={rowA[0].label} value={rowA[0].value} />
-            <VitalPair label={rowA[1].label} value={rowA[1].value} />
+            <VitalPair label={rowA[0].label} value={rowA[0].value} displayMode={displayMode} />
+            <VitalPair label={rowA[1].label} value={rowA[1].value} displayMode={displayMode} />
           </>
         ) : null}
         {rowB ? (
           <>
-            <VitalPair label={rowB[0].label} value={rowB[0].value} />
-            <VitalPair label={rowB[1].label} value={rowB[1].value} />
+            <VitalPair label={rowB[0].label} value={rowB[0].value} displayMode={displayMode} />
+            <VitalPair label={rowB[1].label} value={rowB[1].value} displayMode={displayMode} />
           </>
         ) : null}
         {rowC ? (
           <>
-            <VitalPair label={rowC[0].label} value={rowC[0].value} />
-            <VitalPair label={rowC[1].label} value={rowC[1].value} />
+            <VitalPair label={rowC[0].label} value={rowC[0].value} displayMode={displayMode} />
+            <VitalPair label={rowC[1].label} value={rowC[1].value} displayMode={displayMode} />
           </>
         ) : null}
         {taille ? (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <VitalPair label={taille.label} value={taille.value} />
+          <div style={{ gridColumn: displayMode === "compactStack" ? undefined : "1 / -1" }}>
+            <VitalPair label={taille.label} value={taille.value} displayMode={displayMode} />
           </div>
         ) : null}
       </div>

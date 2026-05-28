@@ -20,22 +20,23 @@ function readWebSource(relativePath: string): string {
   return readFileSync(join(webRoot, relativePath), "utf8");
 }
 
-describe("emergencyChartResponsiveLayout (19M.4)", () => {
+describe("emergencyChartResponsiveLayout (19M.4 + MEDUI.1)", () => {
   it("resolves layout modes by viewport width", () => {
     expect(resolveEmergencyChartLayoutMode(390)).toBe("mobileStacked");
-    expect(resolveEmergencyChartLayoutMode(1023)).toBe("mobileStacked");
-    expect(resolveEmergencyChartLayoutMode(1024)).toBe("tabletStacked");
-    expect(resolveEmergencyChartLayoutMode(1279)).toBe("tabletStacked");
-    expect(resolveEmergencyChartLayoutMode(1280)).toBe("desktopSplit");
+    expect(resolveEmergencyChartLayoutMode(767)).toBe("mobileStacked");
+    expect(resolveEmergencyChartLayoutMode(768)).toBe("tabletFocused");
+    expect(resolveEmergencyChartLayoutMode(1024)).toBe("tabletFocused");
+    expect(resolveEmergencyChartLayoutMode(1199)).toBe("tabletFocused");
+    expect(resolveEmergencyChartLayoutMode(1200)).toBe("desktopSplit");
   });
 
-  it("uses desktop tile nav at >=1024px", () => {
+  it("uses desktop tile nav only at >=1200px", () => {
     expect(usesErDesktopTileNav("mobileStacked")).toBe(false);
-    expect(usesErDesktopTileNav("tabletStacked")).toBe(true);
+    expect(usesErDesktopTileNav("tabletFocused")).toBe(false);
     expect(usesErDesktopTileNav("desktopSplit")).toBe(true);
   });
 
-  it("preserves 10-tile desktop grid helper for >=1024px nav", () => {
+  it("preserves 10-tile desktop grid helper for >=1200px nav", () => {
     expect(erDashboardTileGridStyle().gridTemplateColumns).toBe("repeat(10, minmax(0, 1fr))");
   });
 
@@ -57,8 +58,8 @@ describe("emergencyChartResponsiveLayout (19M.4)", () => {
     expect(EMERGENCY_CHART_TOUCH_TARGET_MIN_PX).toBeGreaterThanOrEqual(44);
   });
 
-  it("exports desktop nav media query", () => {
-    expect(EMERGENCY_CHART_DESKTOP_NAV_MEDIA).toBe("(min-width: 1024px)");
+  it("exports desktop nav media query at clinical desktop breakpoint", () => {
+    expect(EMERGENCY_CHART_DESKTOP_NAV_MEDIA).toBe("(min-width: 1200px)");
   });
 });
 
@@ -115,6 +116,6 @@ describe("Emergency active workspace + chart responsive wiring (19M.4)", () => {
   it("clinical strip cards allow full-width wrap on narrow viewports", () => {
     const stripSource = readWebSource("src/features/emergency/EmergencyWorkspaceClinicalStrip.tsx");
     expect(stripSource).toContain('maxWidth: "100%"');
-    expect(stripSource).toContain('minWidth: 0');
+    expect(stripSource).toContain("clinicalVitalsGridStyle");
   });
 });

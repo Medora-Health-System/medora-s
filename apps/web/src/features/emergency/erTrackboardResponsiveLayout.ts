@@ -1,22 +1,31 @@
 import type { CSSProperties } from "react";
+import {
+  CLINICAL_VIEWPORT_DESKTOP_MIN,
+  CLINICAL_VIEWPORT_TABLET_MIN,
+  clinicalMinTouchTarget,
+  clinicalTabletCardGridStyle,
+  resolveClinicalWorkspaceDensity,
+  type ClinicalWorkspaceDensity,
+} from "@/lib/clinicalViewport";
 
-/** Mobile stacked cards (<768px). */
-export const ER_TRACKBOARD_MOBILE_LAYOUT_MEDIA = "(max-width: 767.98px)";
+/** @deprecated Use CLINICAL_VIEWPORT_TABLET_MIN from clinicalViewport. */
+export const ER_TRACKBOARD_MOBILE_LAYOUT_MEDIA = `(max-width: ${CLINICAL_VIEWPORT_TABLET_MIN - 0.02}px)`;
 
-/** Tablet compact cards (768–1023px). */
-export const ER_TRACKBOARD_TABLET_LAYOUT_MEDIA = "(min-width: 768px) and (max-width: 1023.98px)";
+/** @deprecated Use clinical viewport tablet range. */
+export const ER_TRACKBOARD_TABLET_LAYOUT_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_TABLET_MIN}px) and (max-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN - 0.02}px)`;
 
-/** Desktop dense rows (>=1024px). */
-export const ER_TRACKBOARD_DESKTOP_LAYOUT_MEDIA = "(min-width: 1024px)";
+/** Desktop dense rows (>=1200px). */
+export const ER_TRACKBOARD_DESKTOP_LAYOUT_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN}px)`;
 
-export const ER_TRACKBOARD_TOUCH_TARGET_MIN_PX = 44;
+export const ER_TRACKBOARD_TOUCH_TARGET_MIN_PX = clinicalMinTouchTarget.minHeight as number;
 
-export type ErTrackboardLayoutMode = "mobileCard" | "tabletCard" | "desktopDense";
+export type ErTrackboardLayoutMode = ClinicalWorkspaceDensity;
+
+/** @deprecated Use compactStacked. */
+export type ErTrackboardLayoutModeLegacy = "mobileCard" | "tabletCard" | "desktopDense";
 
 export function resolveErTrackboardLayoutMode(viewportWidth: number): ErTrackboardLayoutMode {
-  if (viewportWidth >= 1024) return "desktopDense";
-  if (viewportWidth >= 768) return "tabletCard";
-  return "mobileCard";
+  return resolveClinicalWorkspaceDensity(viewportWidth);
 }
 
 export function erTrackboardUsesStackedCardLayout(mode: ErTrackboardLayoutMode): boolean {
@@ -27,30 +36,31 @@ export function erTrackboardPageShellStyle(mode: ErTrackboardLayoutMode): CSSPro
   return {
     minHeight: "calc(100vh - 48px)",
     backgroundColor: "#f8fafc",
-    padding: mode === "mobileCard" ? "0 0 12px 0" : "0 0 8px 0",
+    padding: mode === "compactStacked" ? "0 0 12px 0" : "0 0 8px 0",
     minWidth: 0,
     boxSizing: "border-box",
   };
 }
 
-export function erTrackboardPageInnerStyle(): CSSProperties {
+export function erTrackboardPageInnerStyle(mode: ErTrackboardLayoutMode): CSSProperties {
   return {
-    maxWidth: 1152,
+    maxWidth: mode === "desktopDense" ? 1152 : "none",
     margin: "0 auto",
     width: "100%",
     minWidth: 0,
     boxSizing: "border-box",
+    padding: mode === "tabletReadable" ? "0 12px" : undefined,
   };
 }
 
 export function erTrackboardFiltersRowStyle(mode: ErTrackboardLayoutMode): CSSProperties {
   return {
     display: "flex",
-    flexDirection: mode === "mobileCard" ? "column" : "row",
+    flexDirection: mode === "compactStacked" ? "column" : "row",
     flexWrap: "wrap",
-    alignItems: mode === "mobileCard" ? "stretch" : "flex-end",
-    gap: mode === "mobileCard" ? 12 : 10,
-    marginBottom: mode === "mobileCard" ? 20 : 28,
+    alignItems: mode === "compactStacked" ? "stretch" : "flex-end",
+    gap: mode === "compactStacked" ? 12 : 10,
+    marginBottom: mode === "compactStacked" ? 20 : 28,
     width: "100%",
     minWidth: 0,
   };
@@ -69,8 +79,8 @@ export function erTrackboardFilterActionsStyle(mode: ErTrackboardLayoutMode): CS
     display: "flex",
     alignItems: "center",
     gap: 8,
-    marginLeft: mode === "mobileCard" ? 0 : "auto",
-    width: mode === "mobileCard" ? "100%" : "auto",
+    marginLeft: mode === "compactStacked" ? 0 : "auto",
+    width: mode === "compactStacked" ? "100%" : "auto",
   };
 }
 
@@ -82,19 +92,17 @@ export function erTrackboardPatientListStyle(mode: ErTrackboardLayoutMode): CSSP
     width: "100%",
     minWidth: 0,
   };
-  if (mode === "tabletCard") {
+  if (mode === "tabletReadable" || mode === "compactStacked") {
     return {
       ...base,
-      display: "grid",
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-      gap: 8,
+      ...clinicalTabletCardGridStyle(),
     };
   }
   return {
     ...base,
     display: "flex",
     flexDirection: "column",
-    gap: mode === "mobileCard" ? 10 : 6,
+    gap: 6,
   };
 }
 
@@ -117,7 +125,7 @@ export function erTrackboardChipRowStyle(mode: ErTrackboardLayoutMode): CSSPrope
     display: "flex",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
+    gap: mode === "tabletReadable" ? 6 : 4,
     justifyContent: mode === "desktopDense" ? "flex-end" : "flex-start",
     width: "100%",
     minWidth: 0,
