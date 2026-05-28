@@ -48,6 +48,15 @@ import {
   HERNIA_COMPLAINT_V1_INTEL,
   RECTAL_PAIN_COMPLAINT_V1_INTEL,
   DYSPHAGIA_COMPLAINT_V1_INTEL,
+  COUGH_COMPLAINT_V1_INTEL,
+  URI_CONGESTION_COMPLAINT_V1_INTEL,
+  SORE_THROAT_COMPLAINT_V1_INTEL,
+  ASTHMA_WHEEZING_COMPLAINT_V1_INTEL,
+  COPD_EXACERBATION_COMPLAINT_V1_INTEL,
+  PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL,
+  HEMOPTYSIS_COMPLAINT_V1_INTEL,
+  CHEST_CONGESTION_COMPLAINT_V1_INTEL,
+  FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -213,7 +222,49 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   string
 > = {
   gi_abdominal: "providerDocumentationWorkspace.templateSubgroupGiAbdominal",
+  respiratory_ent: "providerDocumentationWorkspace.templateSubgroupRespiratoryEnt",
 };
+
+function respiratoryComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChips.assocCough", "erMseHpiChips.assocSob", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posCough", "erMseRosChips.posSob", "erMseRosChips.posFever"],
+    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesHemoptysis"],
+    ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypoxia"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waCardiopulmonary", "erMseMdmChips.waInfectious"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"],
+      mdmPlanSummary: ["erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      respiratory: ["erMseExamChips.respNoDistress", "erMseExamChips.respClearBs", "erMseExamChips.respWheezing"],
+      heent: ["erMseExamChips.heentOropharynxClear"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.cardiopulmonaryDifferentialReviewed"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultUriInfectiousWorkup",
+      "providerDocumentationPromptReminders.sobWorkupReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    complaintIntelligence,
+    "respiratory_ent"
+  );
+}
 
 function giComplaintV1Template(
   id: ProviderDocumentationTemplateId,
@@ -1237,6 +1288,60 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateDysphagiaComplaintV1",
     "providerDocumentationWorkspace.templateDysphagiaComplaintV1Help",
     DYSPHAGIA_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "cough_complaint_v1",
+    "providerDocumentationWorkspace.templateCoughComplaintV1",
+    "providerDocumentationWorkspace.templateCoughComplaintV1Help",
+    COUGH_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "uri_congestion_complaint_v1",
+    "providerDocumentationWorkspace.templateUriCongestionComplaintV1",
+    "providerDocumentationWorkspace.templateUriCongestionComplaintV1Help",
+    URI_CONGESTION_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "sore_throat_complaint_v1",
+    "providerDocumentationWorkspace.templateSoreThroatComplaintV1",
+    "providerDocumentationWorkspace.templateSoreThroatComplaintV1Help",
+    SORE_THROAT_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "asthma_wheezing_complaint_v1",
+    "providerDocumentationWorkspace.templateAsthmaWheezingComplaintV1",
+    "providerDocumentationWorkspace.templateAsthmaWheezingComplaintV1Help",
+    ASTHMA_WHEEZING_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "copd_exacerbation_complaint_v1",
+    "providerDocumentationWorkspace.templateCopdExacerbationComplaintV1",
+    "providerDocumentationWorkspace.templateCopdExacerbationComplaintV1Help",
+    COPD_EXACERBATION_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "pneumonia_symptoms_complaint_v1",
+    "providerDocumentationWorkspace.templatePneumoniaSymptomsComplaintV1",
+    "providerDocumentationWorkspace.templatePneumoniaSymptomsComplaintV1Help",
+    PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "hemoptysis_complaint_v1",
+    "providerDocumentationWorkspace.templateHemoptysisComplaintV1",
+    "providerDocumentationWorkspace.templateHemoptysisComplaintV1Help",
+    HEMOPTYSIS_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "chest_congestion_complaint_v1",
+    "providerDocumentationWorkspace.templateChestCongestionComplaintV1",
+    "providerDocumentationWorkspace.templateChestCongestionComplaintV1Help",
+    CHEST_CONGESTION_COMPLAINT_V1_INTEL
+  ),
+  respiratoryComplaintV1Template(
+    "flu_like_illness_complaint_v1",
+    "providerDocumentationWorkspace.templateFluLikeIllnessComplaintV1",
+    "providerDocumentationWorkspace.templateFluLikeIllnessComplaintV1Help",
+    FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

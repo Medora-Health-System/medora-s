@@ -1,6 +1,7 @@
 import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
+import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
 
 export default {
   common: {
@@ -6281,6 +6282,25 @@ export default {
     templateRectalPainComplaintV1Help: "Click-to-insert prompts for rectal pain and anorectal differential.",
     templateDysphagiaComplaintV1: "Dysphagia (GI intelligence)",
     templateDysphagiaComplaintV1Help: "Click-to-insert prompts for dysphagia, airway, and swallowing risk.",
+    templateSubgroupRespiratoryEnt: "Respiratory / ENT",
+    templateCoughComplaintV1: "Cough (respiratory intelligence)",
+    templateCoughComplaintV1Help: "Click-to-insert prompts for cough evaluation, exam, MDM, and disposition.",
+    templateUriCongestionComplaintV1: "URI / congestion (respiratory intelligence)",
+    templateUriCongestionComplaintV1Help: "Click-to-insert prompts for upper respiratory congestion and related symptoms.",
+    templateSoreThroatComplaintV1: "Sore throat (respiratory intelligence)",
+    templateSoreThroatComplaintV1Help: "Click-to-insert prompts for pharyngitis evaluation and airway precautions.",
+    templateAsthmaWheezingComplaintV1: "Asthma / wheezing (respiratory intelligence)",
+    templateAsthmaWheezingComplaintV1Help: "Click-to-insert prompts for asthma exacerbation and bronchodilator reassessment.",
+    templateCopdExacerbationComplaintV1: "COPD exacerbation (respiratory intelligence)",
+    templateCopdExacerbationComplaintV1Help: "Click-to-insert prompts for COPD exacerbation, oxygen use, and disposition.",
+    templatePneumoniaSymptomsComplaintV1: "Pneumonia symptoms (respiratory intelligence)",
+    templatePneumoniaSymptomsComplaintV1Help: "Click-to-insert prompts for lower respiratory infection symptoms without diagnostic certainty.",
+    templateHemoptysisComplaintV1: "Hemoptysis (respiratory intelligence)",
+    templateHemoptysisComplaintV1Help: "Click-to-insert prompts for hemoptysis severity, workup, and disposition.",
+    templateChestCongestionComplaintV1: "Chest congestion (respiratory intelligence)",
+    templateChestCongestionComplaintV1Help: "Click-to-insert prompts for chest congestion, cough, and breathing status.",
+    templateFluLikeIllnessComplaintV1: "Flu-like illness (respiratory intelligence)",
+    templateFluLikeIllnessComplaintV1Help: "Click-to-insert prompts for influenza-like illness, hydration, and follow-up.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10465,6 +10485,7 @@ export default {
       rosVaginalDischarge: "vaginal discharge",
     },
     ...providerDocumentationGiComplaintIntel19Mdm2En,
+    ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",

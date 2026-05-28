@@ -34,6 +34,22 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "ruled_out_generic", pattern: /\bruled\s+out\b/i },
     { id: "workup_negative", pattern: /\bworkup\s+negative\b/i },
     { id: "patient_stable", pattern: /\bpatient\s+stable\b/i },
+    // Phase 19MDM.3 — respiratory / ENT
+    { id: "pneumonia_ruled_out", pattern: /\bpneumonia\s+ruled\s+out\b/i },
+    { id: "pe_ruled_out", pattern: /\b(pe|pulmonary\s+embolism)\s+ruled\s+out\b/i },
+    { id: "acs_ruled_out", pattern: /\b(acs|acute\s+coronary\s+syndrome)\s+ruled\s+out\b/i },
+    { id: "respiratory_failure_ruled_out", pattern: /\brespiratory\s+failure\s+ruled\s+out\b/i },
+    { id: "sepsis_ruled_out", pattern: /\bsepsis\s+ruled\s+out\b/i },
+    { id: "covid_negative", pattern: /\bcovid\s+negative\b/i },
+    { id: "flu_negative", pattern: /\bflu\s+negative\b/i },
+    { id: "cxr_normal", pattern: /\b(chest\s+x-?ray|cxr)\s+normal\b/i },
+    { id: "d_dimer_negative", pattern: /\bd-?dimer\s+negative\b/i },
+    { id: "oxygen_saturation_normal", pattern: /\boxygen\s+saturation\s+normal\b/i },
+    { id: "lungs_clear", pattern: /\blungs\s+clear\b/i },
+    { id: "no_respiratory_distress", pattern: /\bno\s+respiratory\s+distress\b/i },
+    { id: "no_pneumonia", pattern: /\bno\s+pneumonia\b/i },
+    { id: "no_pe", pattern: /\bno\s+pe\b/i },
+    { id: "symptoms_resolved", pattern: /\bsymptoms\s+resolved\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

@@ -34,6 +34,10 @@ import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
 } from "./providerDocumentationGiComplaintIntelligence19Mdm2";
+import {
+  RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+  RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS,
+} from "./providerDocumentationRespiratoryComplaintIntelligence19Mdm3";
 
 export type ProviderDocumentationComplaintIntelligence = {
   hpi?: string[];
@@ -3928,6 +3932,7 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   male_genital_complaint: MALE_GENITAL_COMPLAINT_INTEL,
   female_pelvic_gyn_complaint: FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
   ...GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+  ...RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
 };
 
 export const BATCH1_COMPLAINT_TEMPLATE_IDS = ["chest_pain", "sob", "abdominal_pain"] as const;
@@ -3980,6 +3985,7 @@ export const BATCH10_COMPLAINT_TEMPLATE_IDS = [
   "female_pelvic_gyn_complaint",
 ] as const;
 export const BATCH11_GI_COMPLAINT_TEMPLATE_IDS = GI_COMPLAINT_V1_TEMPLATE_IDS;
+export const BATCH12_RESPIRATORY_COMPLAINT_TEMPLATE_IDS = RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS;
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -3992,6 +3998,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH9_COMPLAINT_TEMPLATE_IDS,
   ...BATCH10_COMPLAINT_TEMPLATE_IDS,
   ...BATCH11_GI_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH12_RESPIRATORY_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
 ] as const;
@@ -4033,6 +4040,19 @@ export {
   GI_COMPLAINT_V1_TEMPLATE_IDS,
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
 } from "./providerDocumentationGiComplaintIntelligence19Mdm2";
+export {
+  COUGH_COMPLAINT_V1_INTEL,
+  URI_CONGESTION_COMPLAINT_V1_INTEL,
+  SORE_THROAT_COMPLAINT_V1_INTEL,
+  ASTHMA_WHEEZING_COMPLAINT_V1_INTEL,
+  COPD_EXACERBATION_COMPLAINT_V1_INTEL,
+  PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL,
+  HEMOPTYSIS_COMPLAINT_V1_INTEL,
+  CHEST_CONGESTION_COMPLAINT_V1_INTEL,
+  FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL,
+  RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS,
+  RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+} from "./providerDocumentationRespiratoryComplaintIntelligence19Mdm3";
 
 export function complaintIntelligenceFieldKeys(): ProviderDocumentationTemplateStringField[] {
   return [

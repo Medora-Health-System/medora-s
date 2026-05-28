@@ -2,6 +2,7 @@ import { labels } from "@/lib/uiLabels";
 import { erTriageMessagesFr } from "./erTriage.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
 import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumentationGiComplaintIntel19Mdm2.fr";
+import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 
 export default {
   ...labels.fr,
@@ -6255,6 +6256,25 @@ export default {
     templateRectalPainComplaintV1Help: "Inserts cliquables pour douleur rectale et différentiel anorectal.",
     templateDysphagiaComplaintV1: "Dysphagie (intelligence plainte)",
     templateDysphagiaComplaintV1Help: "Inserts cliquables pour dysphagie, voies aériennes et déglutition.",
+    templateSubgroupRespiratoryEnt: "Respiratoire / ORL",
+    templateCoughComplaintV1: "Toux (intelligence plainte)",
+    templateCoughComplaintV1Help: "Inserts cliquables — toux, examen, MDM et sortie.",
+    templateUriCongestionComplaintV1: "IVRS / congestion (intelligence plainte)",
+    templateUriCongestionComplaintV1Help: "Inserts cliquables — congestion nasale et symptômes ORL associés.",
+    templateSoreThroatComplaintV1: "Mal de gorge (intelligence plainte)",
+    templateSoreThroatComplaintV1Help: "Inserts cliquables — pharyngite et précautions des voies aériennes.",
+    templateAsthmaWheezingComplaintV1: "Asthme / sifflements (intelligence plainte)",
+    templateAsthmaWheezingComplaintV1Help: "Inserts cliquables — exacerbation asthme et réévaluation après traitement.",
+    templateCopdExacerbationComplaintV1: "Exacerbation BPCO (intelligence plainte)",
+    templateCopdExacerbationComplaintV1Help: "Inserts cliquables — exacerbation BPCO, oxygène et disposition.",
+    templatePneumoniaSymptomsComplaintV1: "Symptômes pneumonie (intelligence plainte)",
+    templatePneumoniaSymptomsComplaintV1Help: "Inserts cliquables — infection respiratoire basse sans certitude diagnostique.",
+    templateHemoptysisComplaintV1: "Hémoptysie (intelligence plainte)",
+    templateHemoptysisComplaintV1Help: "Inserts cliquables — hémoptysie, gravité et disposition.",
+    templateChestCongestionComplaintV1: "Congestion thoracique (intelligence plainte)",
+    templateChestCongestionComplaintV1Help: "Inserts cliquables — congestion, toux et statut respiratoire.",
+    templateFluLikeIllnessComplaintV1: "Syndrome grippal (intelligence plainte)",
+    templateFluLikeIllnessComplaintV1Help: "Inserts cliquables — syndrome grippal, hydratation et suivi.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10448,6 +10468,7 @@ export default {
       rosVaginalDischarge: "vaginal discharge",
     },
     ...providerDocumentationGiComplaintIntel19Mdm2Fr,
+    ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

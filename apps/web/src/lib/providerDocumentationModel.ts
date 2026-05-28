@@ -89,9 +89,18 @@ export type ProviderDocumentationTemplateId =
   | "flank_pain_complaint_v1"
   | "hernia_complaint_v1"
   | "rectal_pain_complaint_v1"
-  | "dysphagia_complaint_v1";
+  | "dysphagia_complaint_v1"
+  | "cough_complaint_v1"
+  | "uri_congestion_complaint_v1"
+  | "sore_throat_complaint_v1"
+  | "asthma_wheezing_complaint_v1"
+  | "copd_exacerbation_complaint_v1"
+  | "pneumonia_symptoms_complaint_v1"
+  | "hemoptysis_complaint_v1"
+  | "chest_congestion_complaint_v1"
+  | "flu_like_illness_complaint_v1";
 
-export type ProviderDocumentationTemplatePickerSubgroupKey = "gi_abdominal";
+export type ProviderDocumentationTemplatePickerSubgroupKey = "gi_abdominal" | "respiratory_ent";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;
