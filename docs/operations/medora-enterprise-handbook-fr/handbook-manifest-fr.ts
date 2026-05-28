@@ -1,13 +1,16 @@
 /**
- * Medora-S — Manifeste du manuel entreprise français (M-BOOK.FR.11)
+ * Medora-S — Manifeste du manuel entreprise français (M-BOOK.FR.11 + FR.12)
  *
  * Métadonnées structurées pour assemblage PDF/DOCX, formation, déploiement Haïti.
  * Documentation uniquement — ne modifie pas le comportement produit.
  *
- * Source de vérité machine pour tests : frenchHandbookEnterpriseAssembly19MBookFr11.test.ts
+ * Source de vérité machine pour tests :
+ * - frenchHandbookEnterpriseAssembly19MBookFr11.test.ts
+ * - frenchHandbookExportAssets19MBookFr12.test.ts
  */
 
 export const MBOOK_FR11_ENTERPRISE_HANDBOOK_VERSION = "M-BOOK.FR.11";
+export const MBOOK_FR12_EXPORT_VERSION = "M-BOOK.FR.12";
 export const MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT = "docs/operations/medora-enterprise-handbook-fr";
 
 export type MobileRelevance = "high" | "medium" | "low" | "none";
@@ -200,4 +203,38 @@ export const ENTERPRISE_HANDBOOK_ASSET_PLACEHOLDERS = [
   `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/assets-placeholders/screenshots`,
   `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/assets-placeholders/diagrams`,
   `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/assets-placeholders/icons`,
+] as const;
+
+/** M-BOOK.FR.12 — export assets and pipeline paths */
+export const ENTERPRISE_HANDBOOK_EXPORT_ASSETS = {
+  diagramsDir: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/assets/diagrams`,
+  screenshotsDir: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/assets/screenshots`,
+  assembledMarkdown: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/exports/assembled/medora-enterprise-handbook-fr-assembled.md`,
+  screenshotManifest: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/exports/screenshot-manifest-fr.ts`,
+  exportPipeline: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/exports/export-pipeline.md`,
+  screenshotRunbook: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/exports/screenshot-capture-runbook.md`,
+  buildDir: `${MBOOK_FR11_ENTERPRISE_HANDBOOK_ROOT}/exports/build`,
+} as const;
+
+export const ENTERPRISE_HANDBOOK_DIAGRAM_BASENAMES = [
+  "medora-fr-diag-registration-flux-principal",
+  "medora-fr-diag-registration-types-consultation",
+  "medora-fr-diag-triage-flux-principal",
+  "medora-fr-diag-triage-reevaluation-esi",
+  "medora-fr-diag-provider-doc-flux",
+  "medora-fr-diag-complaint-intelligence",
+  "medora-fr-diag-nursing-soins-flux",
+  "medora-fr-diag-nursing-sortie-execution",
+  "medora-fr-diag-disposition-cycle",
+  "medora-fr-diag-orientation-disposition-distinction",
+  "medora-fr-diag-admission-observation",
+  "medora-fr-diag-roi-cycle-vie",
+  "medora-fr-diag-carry-forward-cycle",
+  "medora-fr-diag-connectivite-degradee",
+  "medora-fr-diag-haiti-deploiement",
+  "medora-fr-diag-haiti-super-users",
+  "medora-fr-diag-formation-par-role",
+  "medora-fr-diag-certification-niveaux",
+  "medora-fr-diag-formation-calendrier-haiti",
+  "medora-fr-diag-parcours-patient-ed-master",
 ] as const;

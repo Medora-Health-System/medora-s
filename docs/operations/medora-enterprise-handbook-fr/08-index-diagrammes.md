@@ -1,8 +1,8 @@
 # Inventaire des diagrammes — Manuel entreprise Medora-S
 
-**Phase:** M-BOOK.FR.11  
+**Phase:** M-BOOK.FR.11 · assets FR.12  
 **Section:** V.2  
-**Statut:** Scaffolding — **aucun diagramme généré dans cette phase**
+**Statut:** 20 diagrammes SVG (+ PNG) générés — M-BOOK.FR.12
 
 ---
 

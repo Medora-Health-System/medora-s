@@ -1,8 +1,8 @@
 # Inventaire des captures d'écran — Manuel entreprise Medora-S
 
-**Phase:** M-BOOK.FR.11  
+**Phase:** M-BOOK.FR.11 · assets FR.12  
 **Section:** V.1  
-**Statut:** Scaffolding — **aucune capture générée dans cette phase**
+**Statut:** Placeholders P1 générés (FR.12) — remplacer par captures formation avant diffusion
 
 ---
 
