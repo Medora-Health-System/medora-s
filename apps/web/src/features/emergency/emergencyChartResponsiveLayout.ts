@@ -2,12 +2,13 @@ import type { CSSProperties } from "react";
 import {
   CLINICAL_MIN_TOUCH_TARGET_PX,
   CLINICAL_VIEWPORT_DESKTOP_MIN,
-  clinicalStickyPatientHeaderStyle,
   clinicalTouchTargetStyle,
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
   type ClinicalVitalsDisplayMode,
 } from "@/lib/clinicalViewport";
+import { clinicalStickyPatientContextStyle } from "@/lib/clinicalTouchNavigation";
+import { resolveTabletCompactClinicalHeaderMode } from "@/features/emergency/emergencyChartCompactTabletHeader";
 
 /** Desktop tile navigation (>=1200px). */
 export const EMERGENCY_CHART_DESKTOP_NAV_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN}px)`;
@@ -34,8 +35,22 @@ export function usesErFocusedWorkspace(mode: EmergencyChartLayoutMode): boolean 
   return mode === "mobileStacked" || mode === "tabletFocused";
 }
 
-export function emergencyChartUsesStickyPatientHeader(mode: EmergencyChartLayoutMode): boolean {
-  return mode === "tabletFocused";
+export function emergencyChartUsesStickyPatientHeader(
+  mode: EmergencyChartLayoutMode,
+  viewportWidth?: number
+): boolean {
+  if (mode !== "tabletFocused") return false;
+  if (viewportWidth != null && resolveTabletCompactClinicalHeaderMode(viewportWidth)) {
+    return false;
+  }
+  return true;
+}
+
+export function emergencyChartUsesCompactStickyStrip(
+  mode: EmergencyChartLayoutMode,
+  viewportWidth: number
+): boolean {
+  return mode === "tabletFocused" && resolveTabletCompactClinicalHeaderMode(viewportWidth);
 }
 
 export function erDashboardTileGridStyle(): CSSProperties {
@@ -127,8 +142,11 @@ export function emergencyChartPageShellStyle(mode: EmergencyChartLayoutMode): CS
   };
 }
 
-export function emergencyChartPatientSummaryShellStyle(mode: EmergencyChartLayoutMode): CSSProperties {
-  return clinicalStickyPatientHeaderStyle(emergencyChartUsesStickyPatientHeader(mode));
+export function emergencyChartPatientSummaryShellStyle(
+  mode: EmergencyChartLayoutMode,
+  viewportWidth?: number
+): CSSProperties {
+  return clinicalStickyPatientContextStyle(emergencyChartUsesStickyPatientHeader(mode, viewportWidth));
 }
 
 export function emergencyChartContentStackStyle(): CSSProperties {
@@ -151,8 +169,16 @@ export function emergencyChartViewportModeFromLayout(mode: EmergencyChartLayoutM
   return "compact";
 }
 
-export function emergencyChartVitalsDisplayMode(mode: EmergencyChartLayoutMode): ClinicalVitalsDisplayMode {
+export function emergencyChartVitalsDisplayMode(
+  mode: EmergencyChartLayoutMode,
+  viewportWidth?: number
+): ClinicalVitalsDisplayMode {
   if (mode === "desktopSplit") return "desktopDense";
-  if (mode === "tabletFocused") return "tabletReadable";
+  if (mode === "tabletFocused") {
+    if (viewportWidth != null && resolveTabletCompactClinicalHeaderMode(viewportWidth)) {
+      return "tabletCompactDense";
+    }
+    return "tabletReadable";
+  }
   return "compactStack";
 }

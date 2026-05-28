@@ -16,7 +16,7 @@ export type ClinicalViewportMode = "compact" | "tablet" | "desktop";
 
 export type ClinicalWorkspaceDensity = "compactStacked" | "tabletReadable" | "desktopDense";
 
-export type ClinicalVitalsDisplayMode = "compactStack" | "tabletReadable" | "desktopDense";
+export type ClinicalVitalsDisplayMode = "compactStack" | "tabletReadable" | "tabletCompactDense" | "desktopDense";
 
 export function resolveClinicalViewportMode(width: number): ClinicalViewportMode {
   if (width >= CLINICAL_VIEWPORT_DESKTOP_MIN) return "desktop";
@@ -122,12 +122,18 @@ export function clinicalVitalsLabelStyle(mode: ClinicalVitalsDisplayMode): CSSPr
   if (mode === "desktopDense") {
     return { fontSize: 11, color: "#64748b", fontWeight: 600, flexShrink: 0 };
   }
+  if (mode === "tabletCompactDense") {
+    return { fontSize: 12, color: "#64748b", fontWeight: 600, flexShrink: 0 };
+  }
   return { fontSize: 13, color: "#64748b", fontWeight: 600, flexShrink: 0 };
 }
 
 export function clinicalVitalsValueStyle(mode: ClinicalVitalsDisplayMode): CSSProperties {
   if (mode === "desktopDense") {
     return { fontSize: 12, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
+  }
+  if (mode === "tabletCompactDense") {
+    return { fontSize: 14, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
   }
   return { fontSize: 16, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
 }
@@ -140,6 +146,17 @@ export function clinicalVitalsGridStyle(mode: ClinicalVitalsDisplayMode): CSSPro
       flexDirection: "column",
       gap: 8,
       alignItems: "stretch",
+      minWidth: 0,
+      width: "100%",
+    };
+  }
+  if (mode === "tabletCompactDense") {
+    return {
+      marginTop: 4,
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "4px 8px",
+      alignItems: "baseline",
       minWidth: 0,
       width: "100%",
     };
@@ -157,7 +174,8 @@ export function clinicalVitalsGridStyle(mode: ClinicalVitalsDisplayMode): CSSPro
 
 export function clinicalVitalsShellStyle(mode: ClinicalVitalsDisplayMode, interactive: boolean): CSSProperties {
   const base: CSSProperties = {
-    padding: mode === "desktopDense" ? "8px 10px" : "12px 14px",
+    padding:
+      mode === "desktopDense" ? "8px 10px" : mode === "tabletCompactDense" ? "8px 10px" : "12px 14px",
     borderRadius: 10,
     border: interactive ? "1px solid #bae6fd" : "1px solid #e2e8f0",
     backgroundColor: interactive ? "#f8fafc" : "#fff",
@@ -169,6 +187,9 @@ export function clinicalVitalsShellStyle(mode: ClinicalVitalsDisplayMode, intera
   };
   if (mode === "desktopDense") {
     return { ...base, flex: "1 1 160px" };
+  }
+  if (mode === "tabletCompactDense") {
+    return { ...base, flex: "1 1 100%", width: "100%", minHeight: 0 };
   }
   return { ...base, flex: "1 1 100%", width: "100%" };
 }

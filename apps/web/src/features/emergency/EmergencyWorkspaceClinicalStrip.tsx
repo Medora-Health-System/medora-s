@@ -34,7 +34,7 @@ function VitalPair({
         display: "inline-flex",
         flexWrap: "nowrap",
         alignItems: "baseline",
-        gap: displayMode === "tabletReadable" ? 6 : 4,
+        gap: displayMode === "tabletReadable" ? 6 : displayMode === "tabletCompactDense" ? 4 : 4,
         minWidth: 0,
       }}
     >
@@ -114,7 +114,7 @@ export function EmergencyWorkspaceVitalsCard({
       <p
         style={{
           margin: 0,
-          fontSize: displayMode === "desktopDense" ? 9 : 11,
+          fontSize: displayMode === "desktopDense" ? 9 : displayMode === "tabletCompactDense" ? 10 : 11,
           fontWeight: 700,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
@@ -156,20 +156,22 @@ export function EmergencyWorkspaceVitalsCard({
 export function EmergencyWorkspaceAllergiesCard({
   allergySummary,
   loading,
+  compact = false,
 }: {
   allergySummary: string;
   loading: boolean;
+  compact?: boolean;
 }) {
   const { t } = useI18n();
   return (
     <div
       style={{
-        padding: "8px 10px",
+        padding: compact ? "8px 10px" : "8px 10px",
         borderRadius: 10,
         border: "1px solid #fecaca",
         backgroundColor: "#fef2f2",
         minWidth: 0,
-        flex: "1 1 140px",
+        flex: compact ? "1 1 100%" : "1 1 140px",
         maxWidth: "100%",
         boxSizing: "border-box",
         alignSelf: "stretch",
@@ -178,7 +180,7 @@ export function EmergencyWorkspaceAllergiesCard({
       <p
         style={{
           margin: 0,
-          fontSize: 9,
+          fontSize: compact ? 10 : 9,
           fontWeight: 700,
           letterSpacing: "0.06em",
           textTransform: "uppercase",
@@ -189,10 +191,10 @@ export function EmergencyWorkspaceAllergiesCard({
       </p>
       <p
         style={{
-          margin: "4px 0 0 0",
-          fontSize: 12,
+          margin: compact ? "2px 0 0 0" : "4px 0 0 0",
+          fontSize: compact ? 13 : 12,
           color: "#991b1b",
-          lineHeight: 1.35,
+          lineHeight: 1.3,
           fontWeight: 600,
           wordBreak: "break-word",
         }}

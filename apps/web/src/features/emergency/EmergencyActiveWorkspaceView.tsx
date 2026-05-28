@@ -79,7 +79,21 @@ import {
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 import { EmergencyErWorkspaceSectionNav, type ErDashboardTile } from "@/features/emergency/EmergencyErWorkspaceSectionNav";
+import { EmergencyErWorkspaceBottomRail } from "@/features/emergency/EmergencyErWorkspaceBottomRail";
+import { EmergencyWorkspaceCompactTabletSummary } from "@/features/emergency/EmergencyWorkspaceCompactTabletSummary";
+import {
+  emergencyChartCompactCardInnerPaddingStyle,
+  emergencyChartPatientSummaryOuterStyle,
+  emergencyChartUsesCompactTabletHeader,
+  emergencyChartWorkspaceContentContainmentStyle,
+} from "@/features/emergency/emergencyChartCompactTabletHeader";
+import { emergencyChartUsesBottomRail } from "@/features/emergency/emergencyChartTouchNavigationMode";
 import { clinicalPatientSummaryStackStyle } from "@/lib/clinicalViewport";
+import {
+  clinicalSafeScrollPaddingStyle,
+  clinicalStickyActionBarStyle,
+  clinicalThumbReachActionStyle,
+} from "@/lib/clinicalTouchNavigation";
 import {
   emergencyChartHeaderRailStyle,
   emergencyChartPageShellStyle,
@@ -213,6 +227,7 @@ export function EmergencyActiveWorkspaceView() {
 
   const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
   const [layoutMode, setLayoutMode] = useState<EmergencyChartLayoutMode>("desktopSplit");
+  const [viewportWidth, setViewportWidth] = useState(1280);
 
   const [encounter, setEncounter] = useState<EncounterShell | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,6 +286,7 @@ export function EmergencyActiveWorkspaceView() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const applyLayoutMode = () => {
+      setViewportWidth(window.innerWidth);
       setLayoutMode(resolveEmergencyChartLayoutMode(window.innerWidth));
     };
     applyLayoutMode();
@@ -706,12 +722,18 @@ export function EmergencyActiveWorkspaceView() {
   const formatEncounterDt = (iso: string | null | undefined) =>
     iso ? formatEncounterChromeDateTime(iso, language) : t("common.dash");
 
+  const usesBottomRail = emergencyChartUsesBottomRail(layoutMode);
+  const touchScrollPadding = clinicalSafeScrollPaddingStyle(usesBottomRail);
+  const usesTouchActionBar = layoutMode !== "desktopSplit";
+  const compactTabletHeader = emergencyChartUsesCompactTabletHeader(layoutMode, viewportWidth);
+  const vitalsDisplayMode = emergencyChartVitalsDisplayMode(layoutMode, viewportWidth);
+
   return (
-    <div style={emergencyChartPageShellStyle(layoutMode)}>
+    <div style={{ ...emergencyChartPageShellStyle(layoutMode), ...touchScrollPadding }}>
       <div style={{ width: "100%", maxWidth: "none", minWidth: 0, boxSizing: "border-box" }}>
         <MedoraCardActionsMediaStyle />
 
-        <header style={{ marginBottom: 20 }}>
+        <header style={{ marginBottom: compactTabletHeader ? 10 : 20 }}>
           <p style={{ margin: "0 0 8px 0", fontSize: 13 }}>
             <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
               {t("emergencyWorkspace.backTrackboard")}
@@ -720,16 +742,18 @@ export function EmergencyActiveWorkspaceView() {
           <h1
             style={{
               margin: 0,
-              fontSize: "clamp(1.35rem, 2.5vw, 1.65rem)",
+              fontSize: compactTabletHeader ? "1.25rem" : "clamp(1.35rem, 2.5vw, 1.65rem)",
               fontWeight: 600,
               color: "#0f172a",
             }}
           >
             {t("emergencyWorkspace.pageTitle")}
           </h1>
-          <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
-            {t("emergencyWorkspace.pageSubtitle")}
-          </p>
+          {!compactTabletHeader ? (
+            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
+              {t("emergencyWorkspace.pageSubtitle")}
+            </p>
+          ) : null}
         </header>
 
         {!isEmergencyType && (
@@ -744,8 +768,62 @@ export function EmergencyActiveWorkspaceView() {
           </div>
         )}
 
-        <div style={{ marginBottom: 16, ...emergencyChartPatientSummaryShellStyle(layoutMode) }}>
+        <div
+          style={{
+            ...emergencyChartPatientSummaryOuterStyle(layoutMode, compactTabletHeader),
+            ...emergencyChartPatientSummaryShellStyle(layoutMode, viewportWidth),
+          }}
+          data-compact-tablet-header={compactTabletHeader ? "true" : "false"}
+        >
         <MedoraCard leftAccentColor="#2563eb" variant="default">
+          {compactTabletHeader ? (
+            <div style={emergencyChartCompactCardInnerPaddingStyle()}>
+              <EmergencyWorkspaceCompactTabletSummary
+                patient={patient ?? undefined}
+                encounterId={encounterId}
+                fid={fid}
+                patientInitials={patientInitials(patient ?? undefined)}
+                headerEsiLevel={headerEsiLevel}
+                triageLoading={triageLoading}
+                fullPatientName={fullPatientName(patient ?? undefined, t)}
+                complaintLine={complaintLine}
+                roomDisplay={roomDisplay}
+                statusKey={statusKey}
+                typeKey={typeKey}
+                billingClassKey={billingClassKey}
+                statusSoft={statusSoft}
+                vitalPairs={clinicalStripModel.pairs}
+                allergyText={clinicalStripModel.allergyText}
+                vitalsDisplayMode={vitalsDisplayMode}
+                vitalsQuickEditEnabled={vitalsQuickEditEnabled}
+                onVitalsEdit={() => setShowQuickVitals(true)}
+                vitalsEditAriaLabel={t("erQuickVitals.vitalsEditAria")}
+                canDocumentIvAccess={canDocumentIvAccess}
+                showQuickVitals={showQuickVitals}
+                setShowQuickVitals={setShowQuickVitals}
+                showIvAccessModal={showIvAccessModal}
+                setShowIvAccessModal={setShowIvAccessModal}
+                showProcedureLauncherModal={showProcedureLauncherModal}
+                setShowProcedureLauncherModal={setShowProcedureLauncherModal}
+                triageSnapshot={triageSnapshot}
+                onVitalsSaved={async () => {
+                  setTriageRefresh((r) => r + 1);
+                }}
+                onIvRecorded={() => setResultsRefresh((r) => r + 1)}
+                onProcedureRecorded={() => setResultsRefresh((r) => r + 1)}
+                encounterOpen={encounter.status === "OPEN"}
+                canChangeBillingClassification={canChangeBillingClassification}
+                onBillingUpdated={load}
+                showOperationalPanel={showOperationalPanel}
+                setShowOperationalPanel={setShowOperationalPanel}
+                erChartHref={erChartHref}
+                genericEncounterHref={genericEncounterHref}
+                isLocked={isLocked}
+                encounterStatus={encounter.status ?? "OPEN"}
+                t={t}
+              />
+            </div>
+          ) : (
           <MedoraCardInner>
             <div style={clinicalPatientSummaryStackStyle(emergencyChartViewportModeFromLayout(layoutMode))}>
               {/* Gauche : initiales + ESI sous le cercle (pas de gros badge séparé) */}
@@ -835,7 +913,7 @@ export function EmergencyActiveWorkspaceView() {
                     editable={vitalsQuickEditEnabled}
                     onEditClick={vitalsQuickEditEnabled ? () => setShowQuickVitals(true) : undefined}
                     editAriaLabel={t("erQuickVitals.vitalsEditAria")}
-                    displayMode={emergencyChartVitalsDisplayMode(layoutMode)}
+                    displayMode={vitalsDisplayMode}
                   />
                   <EmergencyWorkspaceAllergiesCard
                     allergySummary={clinicalStripModel.allergyText}
@@ -1054,30 +1132,46 @@ export function EmergencyActiveWorkspaceView() {
                     />
                   ) : null}
                 </MedoraCardBadgeRow>
+                <div style={clinicalStickyActionBarStyle(usesTouchActionBar)}>
                 <Link
                   href={erChartHref}
-                  style={emergencyChartTouchLinkStyle({ ...linkPill, alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end", fontSize: 13, padding: "7px 12px" })}
+                  style={clinicalThumbReachActionStyle(
+                    emergencyChartTouchLinkStyle({
+                      ...linkPill,
+                      alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end",
+                      fontSize: 13,
+                      padding: "7px 12px",
+                      textDecoration: "none",
+                      color: "#1d4ed8",
+                      border: "1px solid #bfdbfe",
+                      backgroundColor: "#eff6ff",
+                    })
+                  )}
                 >
                   {t("emergencyWorkspace.linkFullEncounter")}
                 </Link>
                 <Link
                   href={genericEncounterHref}
-                  style={{
-                    ...emergencyChartTouchLinkStyle({
+                  style={clinicalThumbReachActionStyle(
+                    emergencyChartTouchLinkStyle({
                       alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end",
                       fontSize: 12,
                       fontWeight: 600,
                       color: "#64748b",
                       textDecoration: "none",
                       padding: "8px 12px",
-                    }),
-                  }}
+                      border: "1px solid #e2e8f0",
+                      backgroundColor: "#fff",
+                    })
+                  )}
                 >
                   {t("emergencyWorkspace.linkMedoraChartRef")}
                 </Link>
+                </div>
               </div>
             </div>
           </MedoraCardInner>
+          )}
         </MedoraCard>
         </div>
 
@@ -1114,9 +1208,17 @@ export function EmergencyActiveWorkspaceView() {
 
         <section
           aria-label={t("emergencyWorkspace.activeZoneAria")}
-          style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, width: "100%" }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 14,
+            minWidth: 0,
+            width: "100%",
+            ...emergencyChartWorkspaceContentContainmentStyle(compactTabletHeader),
+          }}
           data-testid="emergency-active-workspace-content"
           data-layout-mode={layoutMode}
+          data-compact-tablet-header={compactTabletHeader ? "true" : "false"}
         >
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitle[activeSection]}</h2>
 
@@ -1486,6 +1588,14 @@ export function EmergencyActiveWorkspaceView() {
             </div>
           </div>
         ) : null}
+
+        <EmergencyErWorkspaceBottomRail
+          tiles={erDashboardTiles}
+          activeSection={activeSection}
+          onSelect={setActiveSection}
+          layoutMode={layoutMode}
+          ariaLabel={t("emergencyWorkspace.dashboardHeading")}
+        />
       </div>
     </div>
   );

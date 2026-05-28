@@ -60,6 +60,8 @@ describe("clinicalViewport", () => {
     const tablet = clinicalVitalsGridStyle("tabletReadable");
     expect(tablet.display).toBe("grid");
     expect(tablet.gridTemplateColumns).toBe("1fr 1fr");
+    const compactDense = clinicalVitalsGridStyle("tabletCompactDense");
+    expect(compactDense.gridTemplateColumns).toBe("1fr 1fr");
     const compact = clinicalVitalsGridStyle("compactStack");
     expect(compact.flexDirection).toBe("column");
   });
