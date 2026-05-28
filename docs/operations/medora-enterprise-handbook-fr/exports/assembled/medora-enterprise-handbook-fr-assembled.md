@@ -1547,6 +1547,14 @@ Tableau des urgences + parcours ED complet
 - **Une consultation, un dossier, un flux clinique** — les couches 19UCED.3–7 sont composées sans dupliquer le dossier ni altérer le flux clinique.
 - La **politique institutionnelle de facturation et de codage** reste requise pour toute décision finale.
 
+### 4.6.7 Analytique gouvernance facturation (19UCED.9)
+
+- Medora introduit des **tableaux de bord de gouvernance facturation et analytique revenus** pour l'administration et les équipes facturation.
+- Métriques **agrégées uniquement** — classification, conversions UC↔ED, préparation export, révisions charges/codage, aperçu assemblage réclamation.
+- **Aucune donnée PHI patient** au niveau individuel ; pas de génération ni soumission de réclamation ; pas de calcul de remboursement.
+- **Une consultation, un dossier, un flux clinique** — la gouvernance observe les couches 19UCED.1–8 sans les modifier.
+- La **supervision institutionnelle** reste requise pour toute décision opérationnelle ou financière.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

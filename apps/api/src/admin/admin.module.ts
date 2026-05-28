@@ -13,6 +13,8 @@ import { AdminSystemHealthController } from "./admin-system-health.controller";
 import { AdminComplianceController } from "./admin-compliance.controller";
 import { AdminCatalogAuditController } from "./admin-catalog-audit.controller";
 import { AdminRoiMonitoringController } from "./admin-roi-monitoring.controller";
+import { AdminBillingGovernanceController } from "./admin-billing-governance.controller";
+import { AdminBillingGovernanceService } from "./admin-billing-governance.service";
 import { AdminExportMonitoringController } from "./admin-export-monitoring.controller";
 import { AdminMfaController } from "./admin-mfa.controller";
 import { MfaModule } from "../auth/mfa/mfa.module";
@@ -42,6 +44,7 @@ import { EncountersModule } from "../encounters/encounters.module";
     AdminComplianceController,
     AdminCatalogAuditController,
     AdminRoiMonitoringController,
+    AdminBillingGovernanceController,
     AdminMfaController,
   ],
   providers: [
@@ -55,6 +58,7 @@ import { EncountersModule } from "../encounters/encounters.module";
     SystemHealthService,
     AdminComplianceService,
     AdminCatalogAuditService,
+    AdminBillingGovernanceService,
     AuditService,
   ],
 })
