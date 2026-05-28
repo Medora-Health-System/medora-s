@@ -20,7 +20,6 @@ import type { ObservationOperationalSnapshot } from "@medora/shared";
 import {
   MedoraCard,
   MedoraCardBadge,
-  MedoraCardInner,
   MedoraCompactPatientCardRow,
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
@@ -43,12 +42,26 @@ import {
   type ObservationEncounterRefreshDetail,
 } from "@/lib/observationEncounterRefresh";
 import {
+  observationBoardCardInnerStyle,
+  observationBoardCensusActionButtonStyle,
   observationBoardFilterRowStyle,
+  observationBoardIdentityLineStyle,
+  observationBoardIdentityTitleStyle,
   observationBoardPageInnerStyle,
   observationBoardPatientListStyle,
+  observationBoardPersonnelBlockStyle,
+  observationBoardPersonnelLineStyle,
+  observationBoardPrimaryBadgeRowStyle,
+  observationBoardRightColumnMaxWidth,
   observationBoardSnapshotGridStyle,
+  observationBoardSnapshotSectionStyle,
+  observationBoardSnapshotTitleStyle,
+  observationBoardStatChipLabelStyle,
+  observationBoardStatChipShellStyle,
+  observationBoardStatChipValueStyle,
   observationBoardTouchActionGroupStyle,
   observationBoardTouchControlStyle,
+  observationBoardUsesCompactCensus,
   observationBoardUsesStackedCards,
   resolveObservationBoardLayoutMode,
   type ObservationBoardLayoutMode,
@@ -118,9 +131,11 @@ const OBS_DISP_OUTCOME_I18N: Record<ErDispositionOutcomeUi, string> = {
 function ObservationDispositionBoardChips({
   encounter,
   t,
+  compact = false,
 }: {
   encounter: HospitalisationBoardEncounterRow;
   t: (key: string) => string;
+  compact?: boolean;
 }) {
   const model = resolveObservationBoardDispositionModel({
     status: encounter.status,
@@ -158,7 +173,7 @@ function ObservationDispositionBoardChips({
   }
   return (
     <span title={t("hospitalizationBoard.dispositionChipTitle")}>
-      <MedoraCardBadge soft={tone}>{label}</MedoraCardBadge>
+      <MedoraCardBadge compact={compact} soft={tone}>{label}</MedoraCardBadge>
     </span>
   );
 }
@@ -167,136 +182,148 @@ function ObservationOpsChips({
   obs,
   resultsPendingCount,
   t,
+  compact = false,
+  inline = false,
+  rowStyle,
 }: {
   obs: ObservationOperationalSnapshot;
   resultsPendingCount: number;
   t: (key: string) => string;
+  compact?: boolean;
+  inline?: boolean;
+  rowStyle?: React.CSSProperties;
 }) {
   const chips: React.ReactNode[] = [];
   chips.push(
     <span key="los" title={t("hospitalizationBoard.obsLosChipTitle")}>
-      <MedoraCardBadge soft={OBS_SOFT}>{obs.losLabel}</MedoraCardBadge>
+      <MedoraCardBadge compact={compact} soft={OBS_SOFT}>{obs.losLabel}</MedoraCardBadge>
     </span>
   );
   const f = obs.flags;
   if (obs.extendedStay24h) {
     chips.push(
-      <MedoraCardBadge key="24" soft={OBS_WARN}>
+      <MedoraCardBadge key="24" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeExtended24h")}
       </MedoraCardBadge>
     );
   } else if (obs.overnightUtcSpan) {
     chips.push(
-      <MedoraCardBadge key="night" soft={OBS_SOFT}>
+      <MedoraCardBadge key="night" compact={compact} soft={OBS_SOFT}>
         {t("hospitalizationBoard.badgeOvernightUtc")}
       </MedoraCardBadge>
     );
   }
   if (f.criticalLabsUnacked) {
     chips.push(
-      <MedoraCardBadge key="crit" soft={OBS_DANGER}>
+      <MedoraCardBadge key="crit" compact={compact} soft={OBS_DANGER}>
         {t("hospitalizationBoard.badgeCriticalUnacked")}
       </MedoraCardBadge>
     );
   }
   if (f.providerReassessmentOverdue && f.rnObservationReassessmentOverdue) {
     chips.push(
-      <MedoraCardBadge key="ro" soft={OBS_DANGER}>
+      <MedoraCardBadge key="ro" compact={compact} soft={OBS_DANGER}>
         {t("hospitalizationBoard.badgeReassessmentOverdue")}
       </MedoraCardBadge>
     );
   } else if (f.providerReassessmentOverdue) {
     chips.push(
-      <MedoraCardBadge key="ropo" soft={OBS_DANGER}>
+      <MedoraCardBadge key="ropo" compact={compact} soft={OBS_DANGER}>
         {t("hospitalizationBoard.badgeProviderObsReassessmentOverdue")}
       </MedoraCardBadge>
     );
   } else if (f.rnObservationReassessmentOverdue) {
     chips.push(
-      <MedoraCardBadge key="rorn" soft={OBS_DANGER}>
+      <MedoraCardBadge key="rorn" compact={compact} soft={OBS_DANGER}>
         {t("hospitalizationBoard.badgeRnObsReassessmentOverdue")}
       </MedoraCardBadge>
     );
   } else if (f.providerReassessmentDue && f.rnObservationReassessmentDue) {
     chips.push(
-      <MedoraCardBadge key="rd" soft={OBS_WARN}>
+      <MedoraCardBadge key="rd" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeReassessmentDue")}
       </MedoraCardBadge>
     );
   } else if (f.providerReassessmentDue) {
     chips.push(
-      <MedoraCardBadge key="rdp" soft={OBS_WARN}>
+      <MedoraCardBadge key="rdp" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeProviderObsReassessmentDue")}
       </MedoraCardBadge>
     );
   } else if (f.rnObservationReassessmentDue) {
     chips.push(
-      <MedoraCardBadge key="rdrn" soft={OBS_WARN}>
+      <MedoraCardBadge key="rdrn" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeRnObsReassessmentDue")}
       </MedoraCardBadge>
     );
   }
   if (obs.vitalsStale) {
     chips.push(
-      <MedoraCardBadge key="vs" soft={OBS_WARN}>
+      <MedoraCardBadge key="vs" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeVitalsStale")}
       </MedoraCardBadge>
     );
   }
   if (f.readyForDischarge) {
     chips.push(
-      <MedoraCardBadge key="prd" soft={OBS_OK}>
+      <MedoraCardBadge key="prd" compact={compact} soft={OBS_OK}>
         {t("hospitalizationBoard.badgeReadyDischarge")}
       </MedoraCardBadge>
     );
   }
   if (f.dispositionPhase) {
     chips.push(
-      <MedoraCardBadge key="disp" soft={OBS_SOFT}>
+      <MedoraCardBadge key="disp" compact={compact} soft={OBS_SOFT}>
         {t("hospitalizationBoard.badgeDisposition")}
       </MedoraCardBadge>
     );
   }
   if (f.boardingOperational) {
     chips.push(
-      <MedoraCardBadge key="bd" soft={OBS_SOFT}>
+      <MedoraCardBadge key="bd" compact={compact} soft={OBS_SOFT}>
         {t("hospitalizationBoard.badgeBoarding")}
       </MedoraCardBadge>
     );
   }
   if (resultsPendingCount > 0) {
     chips.push(
-      <MedoraCardBadge key="pend" soft={OBS_SOFT}>
+      <MedoraCardBadge key="pend" compact={compact} soft={OBS_SOFT}>
         {t("hospitalizationBoard.badgeResultsPending").replace("{count}", String(resultsPendingCount))}
       </MedoraCardBadge>
     );
   }
   if (f.assignPhysicianGap) {
     chips.push(
-      <MedoraCardBadge key="md" soft={OBS_WARN}>
+      <MedoraCardBadge key="md" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeNoPhysician")}
       </MedoraCardBadge>
     );
   }
   if (f.assignRnGap) {
     chips.push(
-      <MedoraCardBadge key="rn" soft={OBS_WARN}>
+      <MedoraCardBadge key="rn" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.badgeNoRn")}
       </MedoraCardBadge>
     );
   }
 
+  if (inline) {
+    return <>{chips.slice(0, 8)}</>;
+  }
+
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 4,
-        justifyContent: "flex-end",
-        marginTop: 4,
-        maxWidth: 320,
-      }}
+      style={
+        rowStyle ?? {
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 4,
+          justifyContent: "flex-end",
+          marginTop: 4,
+          maxWidth: 320,
+        }
+      }
     >
       {chips.slice(0, 8)}
     </div>
@@ -306,9 +333,15 @@ function ObservationOpsChips({
 function ObservationEscalationHintBadges({
   encounter,
   t,
+  compact = false,
+  inline = false,
+  rowStyle,
 }: {
   encounter: HospitalisationBoardEncounterRow;
   t: (key: string) => string;
+  compact?: boolean;
+  inline?: boolean;
+  rowStyle?: React.CSSProperties;
 }) {
   if ((encounter.status ?? "").trim() !== "OPEN") return null;
   const o = encounter.observationOps ?? null;
@@ -316,65 +349,70 @@ function ObservationEscalationHintBadges({
   const nodes: React.ReactNode[] = [];
   if (observationBoardRnAssignmentGap(encounter)) {
     nodes.push(
-      <MedoraCardBadge key="e-rn" soft={OBS_WARN}>
+      <MedoraCardBadge key="e-rn" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.escalationNeedsRn")}
       </MedoraCardBadge>
     );
   }
   if (observationBoardProviderAssignmentGap(encounter)) {
     nodes.push(
-      <MedoraCardBadge key="e-md" soft={OBS_WARN}>
+      <MedoraCardBadge key="e-md" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.escalationNeedsProvider")}
       </MedoraCardBadge>
     );
   }
   if (o?.flags.reassessmentOverdue) {
     nodes.push(
-      <MedoraCardBadge key="e-re" soft={OBS_DANGER}>
+      <MedoraCardBadge key="e-re" compact={compact} soft={OBS_DANGER}>
         {t("hospitalizationBoard.escalationReassessOverdue")}
       </MedoraCardBadge>
     );
   }
   if (o?.vitalsStale) {
     nodes.push(
-      <MedoraCardBadge key="e-vs" soft={OBS_WARN}>
+      <MedoraCardBadge key="e-vs" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.escalationVitalsStale")}
       </MedoraCardBadge>
     );
   }
   if (o?.extendedStay24h) {
     nodes.push(
-      <MedoraCardBadge key="e-24" soft={OBS_WARN}>
+      <MedoraCardBadge key="e-24" compact={compact} soft={OBS_WARN}>
         {t("hospitalizationBoard.escalationLos24")}
       </MedoraCardBadge>
     );
   }
   if (pend > 0) {
     nodes.push(
-      <MedoraCardBadge key="e-pend" soft={OBS_SOFT}>
+      <MedoraCardBadge key="e-pend" compact={compact} soft={OBS_SOFT}>
         {t("hospitalizationBoard.escalationPendingResults")}
       </MedoraCardBadge>
     );
   }
   if (o?.flags.readyForDischarge) {
     nodes.push(
-      <MedoraCardBadge key="e-rfd" soft={OBS_OK}>
+      <MedoraCardBadge key="e-rfd" compact={compact} soft={OBS_OK}>
         {t("hospitalizationBoard.escalationReadyDischargeReview")}
       </MedoraCardBadge>
     );
   }
   if (nodes.length === 0) return null;
+  if (inline) {
+    return <>{nodes}</>;
+  }
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 4,
-        justifyContent: "flex-end",
-        marginTop: 4,
-        maxWidth: 320,
-      }}
+      style={
+        rowStyle ?? {
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 4,
+          justifyContent: "flex-end",
+          marginTop: 4,
+          maxWidth: 320,
+        }
+      }
     >
       {nodes}
     </div>
@@ -393,37 +431,17 @@ function ObservationOperationalStatChip({
   label,
   value,
   title,
+  layoutMode,
 }: {
   label: string;
   value: string | number;
   title?: string;
+  layoutMode: ObservationBoardLayoutMode;
 }) {
   return (
-    <span
-      title={title}
-      style={{
-        display: "inline-flex",
-        flexDirection: "column",
-        minWidth: 54,
-        padding: "6px 8px",
-        borderRadius: 8,
-        border: "1px solid #e2e8f0",
-        backgroundColor: "#fafafa",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 9,
-          fontWeight: 600,
-          color: "#64748b",
-          textTransform: "uppercase",
-          letterSpacing: "0.04em",
-          lineHeight: 1.2,
-        }}
-      >
-        {label}
-      </span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>{value}</span>
+    <span title={title} style={observationBoardStatChipShellStyle(layoutMode)}>
+      <span style={observationBoardStatChipLabelStyle(layoutMode)}>{label}</span>
+      <span style={observationBoardStatChipValueStyle(layoutMode)}>{value}</span>
     </span>
   );
 }
@@ -474,6 +492,7 @@ export function HospitalizationBoardView() {
   }, []);
 
   const stackedCardLayout = observationBoardUsesStackedCards(layoutMode);
+  const usesCompactCensus = observationBoardUsesCompactCensus(layoutMode);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -747,65 +766,68 @@ export function HospitalizationBoardView() {
         </header>
 
         {encounters.length > 0 && mockMode !== "error" ? (
-          <section
-            style={{
-              marginBottom: 16,
-              padding: "12px 14px",
-              borderRadius: 12,
-              border: "1px solid #e2e8f0",
-              backgroundColor: "#fff",
-              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
+          <section style={observationBoardSnapshotSectionStyle(layoutMode)}>
+            <div style={observationBoardSnapshotTitleStyle(layoutMode)}>
               {t("hospitalizationBoard.operationalStripTitle")}
             </div>
             <div style={observationBoardSnapshotGridStyle(layoutMode)}>
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatActive")}
                 value={observationCensus.activeObservationPatients}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatRnUnassigned")}
                 value={observationCensus.rnUnassignedCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatMdUnassigned")}
                 value={observationCensus.providerUnassignedCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatReassessOverdue")}
                 value={observationCensus.reassessmentOverdueCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatRnReassessOverdue")}
                 value={observationCensus.rnReassessmentOverdueCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatMdReassessOverdue")}
                 value={observationCensus.providerReassessmentOverdueCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatVitalsStale")}
                 value={observationCensus.vitalsStaleCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatPendingPatients")}
                 value={observationCensus.pendingResultsPatientsCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatPendingSum")}
                 value={observationCensus.sumPendingResultsCounts}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatCriticalPatients")}
                 value={observationCensus.criticalResultPatientsCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatLos24")}
                 value={observationCensus.los24hOrMoreCount}
               />
               <ObservationOperationalStatChip
+                layoutMode={layoutMode}
                 label={t("hospitalizationBoard.operationalStatReadyDischarge")}
                 value={observationCensus.dischargeReadyOpenCount}
               />
@@ -1142,40 +1164,21 @@ export function HospitalizationBoardView() {
               return (
                 <li key={encounter.id}>
                   <MedoraCard leftAccentColor={borderLeft} variant="default">
-                    <MedoraCardInner>
+                    <div style={observationBoardCardInnerStyle(layoutMode)}>
                       <MedoraCompactPatientCardRow
                         stackedLayout={stackedCardLayout}
+                        rightMaxWidth={observationBoardRightColumnMaxWidth(layoutMode)}
                         avatarInitials={patientInitials(patient)}
                         roomLabel={t("common.room")}
                         roomValue={room}
-                        rightMaxWidth={320}
-                        centerTrailingMaxWidth={260}
+                        centerTrailingMaxWidth={usesCompactCensus ? 200 : 260}
                         centerTrailing={
                           <div
                             aria-label={t("emergencyTrackboard.assignedPersonnelLabel")}
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 2,
-                              padding: "4px 8px",
-                              borderRadius: 8,
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#fff",
-                              minWidth: 0,
-                              width: "100%",
-                            }}
+                            style={observationBoardPersonnelBlockStyle(layoutMode)}
                           >
                             <p
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                fontWeight: 500,
-                                color: "#475569",
-                                lineHeight: 1.25,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
+                              style={observationBoardPersonnelLineStyle(layoutMode)}
                               title={physName || undefined}
                             >
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
@@ -1186,16 +1189,7 @@ export function HospitalizationBoardView() {
                               </span>
                             </p>
                             <p
-                              style={{
-                                margin: 0,
-                                fontSize: 11,
-                                fontWeight: 500,
-                                color: "#475569",
-                                lineHeight: 1.25,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
+                              style={observationBoardPersonnelLineStyle(layoutMode)}
                               title={nurseName || undefined}
                             >
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
@@ -1209,18 +1203,8 @@ export function HospitalizationBoardView() {
                         }
                         identity={
                           <>
-                            <h2
-                              style={{
-                                margin: 0,
-                                fontSize: 14,
-                                fontWeight: 600,
-                                color: "#0f172a",
-                                lineHeight: 1.2,
-                              }}
-                            >
-                              {fullPatientName(patient)}
-                            </h2>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+                            <h2 style={observationBoardIdentityTitleStyle(layoutMode)}>{fullPatientName(patient)}</h2>
+                            <p style={observationBoardIdentityLineStyle(layoutMode, { fontSize: 12, color: "#64748b" })}>
                               {formatAgeYearsSexForLocale(
                                 patient?.dob ?? null,
                                 patient?.sexAtBirth ?? null,
@@ -1228,8 +1212,8 @@ export function HospitalizationBoardView() {
                                 language
                               )}
                             </p>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>{cc}</p>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                            <p style={observationBoardIdentityLineStyle(layoutMode, { fontSize: 12, color: "#334155" })}>{cc}</p>
+                            <p style={observationBoardIdentityLineStyle(layoutMode, { fontSize: 11, color: "#64748b" })}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("clinicalTrackboardPage.esiIndex")}</span>{" "}
                               {esiDisplay}
                               {" · "}
@@ -1240,42 +1224,62 @@ export function HospitalizationBoardView() {
                         }
                         right={
                           <>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 4,
-                                justifyContent: "flex-end",
-                              }}
-                            >
-                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
-                            </div>
-                            {obs ? (
-                              <>
-                                <ObservationDispositionBoardChips encounter={encounter} t={t} />
-                                <ObservationEscalationHintBadges encounter={encounter} t={t} />
-                                <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
-                              </>
+                            {usesCompactCensus ? (
+                              <div style={observationBoardPrimaryBadgeRowStyle(layoutMode)}>
+                                <MedoraCardBadge compact soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
+                                {obs ? (
+                                  <>
+                                    <ObservationDispositionBoardChips encounter={encounter} t={t} compact />
+                                    <ObservationEscalationHintBadges encounter={encounter} t={t} compact inline />
+                                    <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} compact inline />
+                                  </>
+                                ) : (
+                                  <ObservationEscalationHintBadges encounter={encounter} t={t} compact inline />
+                                )}
+                              </div>
                             ) : (
-                              <ObservationEscalationHintBadges encounter={encounter} t={t} />
+                              <>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    flexWrap: "wrap",
+                                    gap: 4,
+                                    justifyContent: "flex-end",
+                                  }}
+                                >
+                                  <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
+                                </div>
+                                {obs ? (
+                                  <>
+                                    <ObservationDispositionBoardChips encounter={encounter} t={t} />
+                                    <ObservationEscalationHintBadges encounter={encounter} t={t} />
+                                    <ObservationOpsChips obs={obs} resultsPendingCount={resultsPendingCount} t={t} />
+                                  </>
+                                ) : (
+                                  <ObservationEscalationHintBadges encounter={encounter} t={t} />
+                                )}
+                              </>
                             )}
                             <div style={observationBoardTouchActionGroupStyle(layoutMode)}>
                               <Link
                                 href={`/app/encounters/${encounter.id}`}
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  padding: "4px 10px",
-                                  borderRadius: 8,
-                                  border: "1px solid #bfdbfe",
-                                  backgroundColor: "#eff6ff",
-                                  color: "#1d4ed8",
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  textDecoration: "none",
-                                }}
+                                style={observationBoardCensusActionButtonStyle(
+                                  {
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "4px 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid #bfdbfe",
+                                    backgroundColor: "#eff6ff",
+                                    color: "#1d4ed8",
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    textDecoration: "none",
+                                  },
+                                  layoutMode
+                                )}
                               >
                                 {t("common.view")}
                               </Link>
@@ -1295,26 +1299,29 @@ export function HospitalizationBoardView() {
                                       ? t("emergencyTrackboard.assignProviderMine")
                                       : t("emergencyTrackboard.assignProviderMe")
                                   }
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                    backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
-                                    color: isPhysMine ? "#065f46" : "#0f172a",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor:
-                                      assigningId === encounter.id ||
-                                      isPhysMine ||
-                                      mockMode === "error" ||
-                                      mockMode === "empty" ||
-                                      !effectiveFacilityId
-                                        ? "default"
-                                        : "pointer",
-                                  }}
+                                  style={observationBoardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: isPhysMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                      backgroundColor: isPhysMine ? "#d1fae5" : "#fff",
+                                      color: isPhysMine ? "#065f46" : "#0f172a",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor:
+                                        assigningId === encounter.id ||
+                                        isPhysMine ||
+                                        mockMode === "error" ||
+                                        mockMode === "empty" ||
+                                        !effectiveFacilityId
+                                          ? "default"
+                                          : "pointer",
+                                    },
+                                    layoutMode
+                                  )}
                                 >
                                   {isPhysMine
                                     ? t("emergencyTrackboard.assignProviderMine")
@@ -1339,26 +1346,29 @@ export function HospitalizationBoardView() {
                                       ? t("emergencyTrackboard.assignNurseMine")
                                       : t("emergencyTrackboard.assignNurseMe")
                                   }
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
-                                    backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
-                                    color: isNurseMine ? "#065f46" : "#0f172a",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor:
-                                      assigningId === encounter.id ||
-                                      isNurseMine ||
-                                      mockMode === "error" ||
-                                      mockMode === "empty" ||
-                                      !effectiveFacilityId
-                                        ? "default"
-                                        : "pointer",
-                                  }}
+                                  style={observationBoardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: isNurseMine ? "1px solid #6ee7b7" : "1px solid #cbd5e1",
+                                      backgroundColor: isNurseMine ? "#d1fae5" : "#fff",
+                                      color: isNurseMine ? "#065f46" : "#0f172a",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor:
+                                        assigningId === encounter.id ||
+                                        isNurseMine ||
+                                        mockMode === "error" ||
+                                        mockMode === "empty" ||
+                                        !effectiveFacilityId
+                                          ? "default"
+                                          : "pointer",
+                                    },
+                                    layoutMode
+                                  )}
                                 >
                                   {isNurseMine
                                     ? t("emergencyTrackboard.assignNurseMine")
@@ -1376,30 +1386,33 @@ export function HospitalizationBoardView() {
                                     encounter.status !== "OPEN" ||
                                     (encounter.type ?? "").trim() !== "INPATIENT"
                                   }
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "4px 10px",
-                                    borderRadius: 8,
-                                    border: "1px solid #cbd5e1",
-                                    backgroundColor: "#fff",
-                                    color: "#475569",
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor:
-                                      dischargingId === encounter.id ||
-                                      encounter.status !== "OPEN" ||
-                                      (encounter.type ?? "").trim() !== "INPATIENT"
-                                        ? "not-allowed"
-                                        : "pointer",
-                                    opacity:
-                                      dischargingId === encounter.id ||
-                                      encounter.status !== "OPEN" ||
-                                      (encounter.type ?? "").trim() !== "INPATIENT"
-                                        ? 0.6
-                                        : 1,
-                                  }}
+                                  style={observationBoardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: "1px solid #cbd5e1",
+                                      backgroundColor: "#fff",
+                                      color: "#475569",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor:
+                                        dischargingId === encounter.id ||
+                                        encounter.status !== "OPEN" ||
+                                        (encounter.type ?? "").trim() !== "INPATIENT"
+                                          ? "not-allowed"
+                                          : "pointer",
+                                      opacity:
+                                        dischargingId === encounter.id ||
+                                        encounter.status !== "OPEN" ||
+                                        (encounter.type ?? "").trim() !== "INPATIENT"
+                                          ? 0.6
+                                          : 1,
+                                    },
+                                    layoutMode
+                                  )}
                                   aria-label={t("hospitalizationBoard.rowDischargeAriaLabel")}
                                 >
                                   {dischargingId === encounter.id
@@ -1424,7 +1437,7 @@ export function HospitalizationBoardView() {
                           </>
                         }
                       />
-                    </MedoraCardInner>
+                    </div>
                   </MedoraCard>
                 </li>
               );

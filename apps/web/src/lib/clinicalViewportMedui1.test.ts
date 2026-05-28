@@ -193,20 +193,21 @@ describe("MEDUI.1 vitals readability", () => {
 });
 
 describe("MEDUI.1 observation board tablet optimization", () => {
-  it("uses 2-column operational snapshot grid on tablet", () => {
-    const grid = observationBoardSnapshotGridStyle("tabletReadable");
+  it("uses compact 3-column operational snapshot grid on tablet (MEDUI.2D)", () => {
+    const grid = observationBoardSnapshotGridStyle("tabletCompactBoard");
     expect(grid.display).toBe("grid");
-    expect(grid.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+    expect(grid.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
   });
 
-  it("uses readable full-width patient cards and touch actions", () => {
-    expect(resolveObservationBoardLayoutMode(900)).toBe("tabletReadable");
-    const list = observationBoardPatientListStyle("tabletReadable");
+  it("uses horizontal census cards and touch actions on tablet", () => {
+    expect(resolveObservationBoardLayoutMode(900)).toBe("tabletCompactBoard");
+    const list = observationBoardPatientListStyle("tabletCompactBoard");
     expect(list.flexDirection).toBe("column");
     const board = readWebSource("src/features/hospitalization/HospitalizationBoardView.tsx");
     expect(board).toContain("stackedLayout={stackedCardLayout}");
     expect(board).toContain("observationBoardTouchControlStyle");
-    const touched = observationBoardTouchControlStyle({ padding: "4px 8px" }, "tabletReadable");
+    expect(board).toContain("observationBoardUsesCompactCensus");
+    const touched = observationBoardTouchControlStyle({ padding: "4px 8px" }, "tabletCompactBoard");
     expect(touched.minHeight).toBeGreaterThanOrEqual(44);
   });
 });

@@ -46,8 +46,11 @@ import {
 } from "@/features/emergency/erTrackboardOperationalBadges";
 import {
   erTrackboardCardInnerStyle,
+  erTrackboardCensusActionButtonStyle,
   erTrackboardFilterActionsStyle,
   erTrackboardFiltersRowStyle,
+  erTrackboardIdentityLineStyle,
+  erTrackboardIdentityTitleStyle,
   erTrackboardOpsRegionStyle,
   erTrackboardPageInnerStyle,
   erTrackboardPageShellStyle,
@@ -59,6 +62,7 @@ import {
   erTrackboardSearchFieldStyle,
   erTrackboardTouchControlStyle,
   erTrackboardTouchActionGroupStyle,
+  erTrackboardUsesCompactCensus,
   erTrackboardUsesStackedCardLayout,
   ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
   resolveErTrackboardLayoutMode,
@@ -227,6 +231,7 @@ export function EmergencyTrackboardView() {
     roles.includes("BILLING");
   const isNurse = roles.includes("RN");
   const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
+  const usesCompactCensus = erTrackboardUsesCompactCensus(layoutMode);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -796,18 +801,10 @@ export function EmergencyTrackboardView() {
                         }
                         identity={
                           <>
-                            <h2
-                              style={{
-                                margin: 0,
-                                fontSize: 14,
-                                fontWeight: 600,
-                                color: "#0f172a",
-                                lineHeight: 1.2,
-                              }}
-                            >
+                            <h2 style={erTrackboardIdentityTitleStyle(layoutMode)}>
                               {fullPatientName(patient, dash)}
                             </h2>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.3 }}>
+                            <p style={erTrackboardIdentityLineStyle(layoutMode, { fontSize: 12, color: "#64748b" })}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("encounterChrome.labelNirMrn")}</span>{" "}
                               {nirLine}
                               {" · "}
@@ -819,14 +816,14 @@ export function EmergencyTrackboardView() {
                                 t
                               )}
                             </p>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#334155", lineHeight: 1.3 }}>
+                            <p style={erTrackboardIdentityLineStyle(layoutMode, { fontSize: 12, color: "#334155" })}>
                               <span style={{ fontWeight: 600, color: "#64748b", fontSize: 11 }}>
                                 {t("emergencyTrackboard.chiefComplaintShort")}
                               </span>
                               {" — "}
                               {cc}
                             </p>
-                            <p style={{ margin: "2px 0 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>
+                            <p style={erTrackboardIdentityLineStyle(layoutMode, { fontSize: 11, color: "#64748b" })}>
                               <span style={{ fontWeight: 600, color: "#475569" }}>{t("emergencyTrackboard.arrivalLabel")}</span>{" "}
                               {arrivalDisplay}
                             </p>
@@ -845,23 +842,23 @@ export function EmergencyTrackboardView() {
                               <span
                                 title={dispositionBadge ? t("emergencyTrackboard.dispositionTooltip") : undefined}
                               >
-                                <MedoraCardBadge soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
+                                <MedoraCardBadge compact={usesCompactCensus} soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
                               </span>
                               {sortieInfirmierOk ? (
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
-                                  <MedoraCardBadge soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
+                                  <MedoraCardBadge compact={usesCompactCensus} soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
                                     {t("emergencyTrackboard.executedBadge")}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
                               {showTransferPendingChip ? (
                                 <span title={t("emergencyTrackboard.transferPendingTooltip")}>
-                                  <MedoraCardBadge soft={{ bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" }}>
+                                  <MedoraCardBadge compact={usesCompactCensus} soft={{ bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" }}>
                                     {t("emergencyTrackboard.disposition.transferPending")}
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
-                              <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
+                              <MedoraCardBadge compact={usesCompactCensus} soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
                               {facilityId ? (
                                 <BillingClassificationBadgeInteractive
                                   encounterId={encounter.id}
@@ -881,7 +878,7 @@ export function EmergencyTrackboardView() {
                             >
                               <Link
                                 href={emergencyChartPath(encounter.id)}
-                                style={erTrackboardTouchControlStyle(
+                                style={erTrackboardCensusActionButtonStyle(
                                   {
                                     display: "inline-flex",
                                     alignItems: "center",
@@ -902,7 +899,7 @@ export function EmergencyTrackboardView() {
                               </Link>
                               <Link
                                 href={emergencyActiveWorkspacePath(encounter.id)}
-                                style={erTrackboardTouchControlStyle(
+                                style={erTrackboardCensusActionButtonStyle(
                                   {
                                     display: "inline-flex",
                                     alignItems: "center",
@@ -931,7 +928,7 @@ export function EmergencyTrackboardView() {
                                       ? t("emergencyTrackboard.assignProviderMine")
                                       : t("emergencyTrackboard.assignProviderMe")
                                   }
-                                  style={erTrackboardTouchControlStyle(
+                                  style={erTrackboardCensusActionButtonStyle(
                                     {
                                       display: "inline-flex",
                                       alignItems: "center",
@@ -965,7 +962,7 @@ export function EmergencyTrackboardView() {
                                       ? t("emergencyTrackboard.assignNurseMine")
                                       : t("emergencyTrackboard.assignNurseMe")
                                   }
-                                  style={erTrackboardTouchControlStyle(
+                                  style={erTrackboardCensusActionButtonStyle(
                                     {
                                       display: "inline-flex",
                                       alignItems: "center",
@@ -1012,7 +1009,7 @@ export function EmergencyTrackboardView() {
                         style={erTrackboardOpsRegionStyle(layoutMode)}
                       >
                         {opsChips.map((c) => (
-                          <MedoraCardBadge key={c.key} soft={c.soft}>
+                          <MedoraCardBadge key={c.key} compact={usesCompactCensus} soft={c.soft}>
                             {c.text}
                           </MedoraCardBadge>
                         ))}

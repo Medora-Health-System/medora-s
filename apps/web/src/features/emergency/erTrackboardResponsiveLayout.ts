@@ -28,12 +28,22 @@ export const ER_TRACKBOARD_TABLET_COMPACT_CARD_PADDING = "10px 12px";
 /** Compact tablet board list gap between patient cards. */
 export const ER_TRACKBOARD_TABLET_COMPACT_LIST_GAP_PX = 6;
 
+/**
+ * MEDUI.2D — tablet census action button min touch height. Kept >=40 so actions
+ * stay touch-safe while shrinking card height (the 44px constant still governs
+ * search/refresh chrome controls).
+ */
+export const ER_TRACKBOARD_CENSUS_ACTION_MIN_PX = 40;
+
+/** MEDUI.2D — approximate target tablet census card height ceiling (documentation/test anchor). */
+export const ER_TRACKBOARD_CENSUS_CARD_TARGET_MAX_HEIGHT_PX = 160;
+
 export type ErTrackboardLayoutMode = "compactStacked" | "tabletCompactBoard" | "desktopDense";
 
 /** @deprecated Use compactStacked. */
 export type ErTrackboardLayoutModeLegacy = "mobileCard" | "tabletCard" | "desktopDense";
 
-/** @deprecated MEDUI.1 alias — observation board still uses ClinicalWorkspaceDensity.tabletReadable. */
+/** @deprecated MEDUI.1 alias — other modules may still reference ClinicalWorkspaceDensity.tabletReadable. */
 export type ErTrackboardLayoutModeClinicalAlias = ClinicalWorkspaceDensity;
 
 export function resolveErTrackboardLayoutMode(viewportWidth: number): ErTrackboardLayoutMode {
@@ -44,6 +54,11 @@ export function resolveErTrackboardLayoutMode(viewportWidth: number): ErTrackboa
 
 export function erTrackboardUsesStackedCardLayout(mode: ErTrackboardLayoutMode): boolean {
   return mode === "compactStacked";
+}
+
+/** MEDUI.2D — tablet uses the dense horizontal census layout (compact pills/actions). */
+export function erTrackboardUsesCompactCensus(mode: ErTrackboardLayoutMode): boolean {
+  return mode === "tabletCompactBoard";
 }
 
 export function erTrackboardPageShellStyle(mode: ErTrackboardLayoutMode): CSSProperties {
@@ -258,4 +273,58 @@ export function erTrackboardRightColumnMaxWidth(mode: ErTrackboardLayoutMode): n
   if (mode === "tabletCompactBoard") return 300;
   if (mode === "compactStacked") return 240;
   return 240;
+}
+
+/**
+ * MEDUI.2D — census action button. Tablet keeps a >=40px touch target with no
+ * extra vertical padding so the row stays short; phone keeps the full 44px
+ * target; desktop is untouched.
+ */
+export function erTrackboardCensusActionButtonStyle(
+  base: CSSProperties,
+  mode: ErTrackboardLayoutMode
+): CSSProperties {
+  if (mode === "desktopDense") return base;
+  if (mode === "tabletCompactBoard") {
+    return {
+      ...base,
+      minHeight: ER_TRACKBOARD_CENSUS_ACTION_MIN_PX,
+      paddingTop: 0,
+      paddingBottom: 0,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+    };
+  }
+  return {
+    ...base,
+    minHeight: ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  };
+}
+
+/** MEDUI.2D — census patient name. Tablet trims line spacing to compress card height. */
+export function erTrackboardIdentityTitleStyle(mode: ErTrackboardLayoutMode): CSSProperties {
+  return {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#0f172a",
+    lineHeight: mode === "tabletCompactBoard" ? 1.15 : 1.2,
+  };
+}
+
+/** MEDUI.2D — census identity metadata lines. Tablet trims top margin to compress height. */
+export function erTrackboardIdentityLineStyle(
+  mode: ErTrackboardLayoutMode,
+  base: CSSProperties
+): CSSProperties {
+  const compact = mode === "tabletCompactBoard";
+  return {
+    ...base,
+    margin: compact ? "1px 0 0 0" : "2px 0 0 0",
+    lineHeight: compact ? 1.25 : 1.3,
+  };
 }
