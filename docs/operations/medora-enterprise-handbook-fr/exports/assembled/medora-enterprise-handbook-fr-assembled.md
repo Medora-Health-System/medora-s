@@ -1511,6 +1511,13 @@ Tableau des urgences + parcours ED complet
 - La voie d’export (professionnel CMS-1500, établissement UB-04, ou les deux) et les éléments manquants (diagnostic, identité de facturation établissement, payeur) sont **indicateurs de révision** pour l’équipe facturation.
 - **La politique institutionnelle de facturation reste requise** ; Medora n’auto-convertit pas la classification selon le motif, l’ESI ou les ordres.
 
+### 4.6.2 Séparation professionnel / établissement (19UCED.4)
+
+- Medora sépare la **préparation facturation professionnelle** (CMS-1500) de la **préparation facturation établissement** (UB-04) en **aperçu uniquement**.
+- **Aucune réclamation n’est générée ni soumise** — pas de montant, pas de clearinghouse.
+- **Une consultation, un dossier, un flux clinique** : seuls les indicateurs de grand livre / export sont séparés pour la révision facturation.
+- La politique institutionnelle reste requise pour décider quels côtés s’appliquent (ex. observation, hospitalisation).
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

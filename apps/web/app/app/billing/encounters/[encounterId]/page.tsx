@@ -18,10 +18,15 @@ import {
 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { EncounterBillingExportReadinessCard } from "@/components/billing/EncounterBillingExportReadinessCard";
+import { EncounterBillingLedgerReadinessCard } from "@/components/billing/EncounterBillingLedgerReadinessCard";
 import {
   fetchEncounterBillingExportReadiness,
   type EncounterBillingExportReadinessPayload,
 } from "@/lib/billingExportReadinessApi";
+import {
+  fetchEncounterBillingLedgerReadiness,
+  type EncounterBillingLedgerReadinessPayload,
+} from "@/lib/billingLedgerReadinessApi";
 
 type LedgerEventRow = {
   id: string;
@@ -962,6 +967,9 @@ export default function BillingEncounterLedgerPage() {
   );
   const [exportRouteReadinessError, setExportRouteReadinessError] = useState<string | null>(null);
   const [exportRouteReadinessLoading, setExportRouteReadinessLoading] = useState(false);
+  const [ledgerReadiness, setLedgerReadiness] = useState<EncounterBillingLedgerReadinessPayload | null>(null);
+  const [ledgerReadinessError, setLedgerReadinessError] = useState<string | null>(null);
+  const [ledgerReadinessLoading, setLedgerReadinessLoading] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -1004,6 +1012,8 @@ export default function BillingEncounterLedgerPage() {
     setError(null);
     setExportRouteReadinessLoading(true);
     setExportRouteReadinessError(null);
+    setLedgerReadinessLoading(true);
+    setLedgerReadinessError(null);
     try {
       const [
         summaryOutcome,
@@ -1018,6 +1028,7 @@ export default function BillingEncounterLedgerPage() {
         manualReviewGateOutcome,
         reviewDecisionsOutcome,
         exportRouteReadinessOutcome,
+        ledgerReadinessOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -1031,6 +1042,7 @@ export default function BillingEncounterLedgerPage() {
           apiFetch(`/billing/encounters/${encounterId}/manual-review-gate`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/review-decisions`, { facilityId }),
           fetchEncounterBillingExportReadiness(facilityId, encounterId),
+          fetchEncounterBillingLedgerReadiness(facilityId, encounterId),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -1049,6 +1061,8 @@ export default function BillingEncounterLedgerPage() {
         setBillingReviewDecisions([]);
         setExportRouteReadiness(null);
         setExportRouteReadinessError(null);
+        setLedgerReadiness(null);
+        setLedgerReadinessError(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -1127,6 +1141,17 @@ export default function BillingEncounterLedgerPage() {
         setExportRouteReadiness(null);
         setExportRouteReadinessError(t("billingExportReadiness.loadError"));
       }
+      if (
+        ledgerReadinessOutcome.status === "fulfilled" &&
+        ledgerReadinessOutcome.value &&
+        typeof ledgerReadinessOutcome.value === "object"
+      ) {
+        setLedgerReadiness(ledgerReadinessOutcome.value as EncounterBillingLedgerReadinessPayload);
+        setLedgerReadinessError(null);
+      } else {
+        setLedgerReadiness(null);
+        setLedgerReadinessError(t("billingLedgerReadiness.loadError"));
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
@@ -1145,10 +1170,13 @@ export default function BillingEncounterLedgerPage() {
       setBillingReviewDecisions([]);
       setExportRouteReadiness(null);
       setExportRouteReadinessError(null);
+      setLedgerReadiness(null);
+      setLedgerReadinessError(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
       setExportRouteReadinessLoading(false);
+      setLedgerReadinessLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
 
@@ -1789,6 +1817,13 @@ export default function BillingEncounterLedgerPage() {
           data={exportRouteReadiness}
           loading={exportRouteReadinessLoading}
           error={exportRouteReadinessError}
+        />
+      ) : null}
+      {!loading && !error && data ? (
+        <EncounterBillingLedgerReadinessCard
+          data={ledgerReadiness}
+          loading={ledgerReadinessLoading}
+          error={ledgerReadinessError}
         />
       ) : null}
       {manualReviewGate && manualReviewGate.unresolvedCount > 0 ? (

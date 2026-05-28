@@ -12,6 +12,7 @@ import { TrackboardModule } from "../trackboard/trackboard.module";
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
+import { BillingLedgerReadinessService } from "./billing-ledger-readiness.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -24,6 +25,7 @@ import { BillingExportReadinessService } from "./billing-export-readiness.servic
     BillingClassificationService,
     FacilityBillingWorkflowService,
     BillingExportReadinessService,
+    BillingLedgerReadinessService,
     AuditService,
   ],
   exports: [

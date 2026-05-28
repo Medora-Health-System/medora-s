@@ -52,6 +52,7 @@ import { ObservationOrderTemplateService } from "./observation-order-template.se
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
+import { BillingLedgerReadinessService } from "./billing-ledger-readiness.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -67,6 +68,7 @@ export class EncountersController {
     private readonly billingClassificationService: BillingClassificationService,
     private readonly facilityBillingWorkflowService: FacilityBillingWorkflowService,
     private readonly billingExportReadinessService: BillingExportReadinessService,
+    private readonly billingLedgerReadinessService: BillingLedgerReadinessService,
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -193,6 +195,17 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.billingExportReadinessService.getForEncounter({ encounterId, facilityId });
+  }
+
+  /** Phase 19UCED.4 — read-only professional vs facility ledger readiness preview. */
+  @Get("encounters/:encounterId/billing-ledger-readiness")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.FRONT_DESK)
+  async getEncounterBillingLedgerReadiness(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.billingLedgerReadinessService.getForEncounter({ encounterId, facilityId });
   }
 
   /** Phase 19UCED.2 — facility billing workflow config for active facility. */
