@@ -1555,6 +1555,13 @@ Tableau des urgences + parcours ED complet
 - **Une consultation, un dossier, un flux clinique** — la gouvernance observe les couches 19UCED.1–8 sans les modifier.
 - La **supervision institutionnelle** reste requise pour toute décision opérationnelle ou financière.
 
+### 4.6.8 Finalisation et audit de release (19UCED.10)
+
+- Phase de **durcissement et audit de release** pour l'initiative 19UCED.1–19UCED.9.
+- Vérifications : architecture un-chart, garanties lecture seule, RBAC, PHI, régression, gouvernance.
+- Documents opérationnels : `docs/operations/19uced-release-readiness.md`, `docs/operations/19uced-operational-risk-register.md`.
+- **Aucune nouvelle fonctionnalité métier** — finalisation uniquement.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  
