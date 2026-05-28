@@ -26,6 +26,7 @@ import { ExternalBillingAutomationService } from "../billing/external-billing-au
 import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stabilization.service";
 import { ClaimOperationalEventService } from "../billing/claim-operational-event.service";
 import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
+import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 
 @Module({
   imports: [PrismaModule],
@@ -53,6 +54,7 @@ import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearin
     ClearinghouseOpsService,
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,
+    ChargeCaptureReviewService,
   ],
   exports: [
     QueuesService,

@@ -19,6 +19,12 @@ import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
+import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
+import {
+  billingClassificationSchema,
+  chargeReviewDomainSchema,
+  chargeReviewStatusSchema,
+} from "@medora/shared";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { patchInfusionBillingReviewBodySchema } from "./dto/infusion-billing-review.dto";
 
@@ -40,7 +46,8 @@ function externalExportAlertRoute(req: { method: string; originalUrl?: string; u
 export class BillingController {
   constructor(
     private readonly billingService: BillingService,
-    private readonly externalBillingExport: ExternalBillingExportService
+    private readonly externalBillingExport: ExternalBillingExportService,
+    private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
   ) {}
 
   @Get("billing/encounters/:encounterId/readiness")
@@ -62,6 +69,63 @@ export class BillingController {
   async getManualBillingReviewQueue(@Req() req: any) {
     const facilityId = req.facilityId;
     return this.billingService.getManualBillingReviewQueue(facilityId);
+  }
+
+  /** Phase 19UCED.6 — read-only charge capture / revenue review queue (no claim submission). */
+  @Get("billing/charge-review")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getChargeReviewQueue(
+    @Req() req: any,
+    @Query("status") statusRaw?: string,
+    @Query("domain") domainRaw?: string,
+    @Query("billingClassification") billingClassificationRaw?: string,
+    @Query("dateFrom") dateFromRaw?: string,
+    @Query("dateTo") dateToRaw?: string,
+    @Query("encounterOpen") encounterOpenRaw?: string,
+    @Query("manualReviewOnly") manualReviewOnlyRaw?: string,
+    @Query("limit") limitRaw?: string,
+  ) {
+    const facilityId = req.facilityId;
+    const statusParsed = statusRaw?.trim()
+      ? chargeReviewStatusSchema.safeParse(statusRaw.trim())
+      : null;
+    if (statusParsed && !statusParsed.success) {
+      throw new BadRequestException("Invalid status filter");
+    }
+    const domainParsed = domainRaw?.trim()
+      ? chargeReviewDomainSchema.safeParse(domainRaw.trim())
+      : null;
+    if (domainParsed && !domainParsed.success) {
+      throw new BadRequestException("Invalid domain filter");
+    }
+    const classificationParsed = billingClassificationRaw?.trim()
+      ? billingClassificationSchema.safeParse(billingClassificationRaw.trim())
+      : null;
+    if (classificationParsed && !classificationParsed.success) {
+      throw new BadRequestException("Invalid billingClassification filter");
+    }
+    const encounterOpen =
+      encounterOpenRaw?.trim().toLowerCase() === "true"
+        ? true
+        : encounterOpenRaw?.trim().toLowerCase() === "false"
+          ? false
+          : undefined;
+    const manualReviewOnly =
+      manualReviewOnlyRaw?.trim().toLowerCase() === "true" ||
+      manualReviewOnlyRaw?.trim() === "1";
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+
+    return this.chargeCaptureReviewService.getQueue({
+      facilityId,
+      status: statusParsed?.success ? statusParsed.data : undefined,
+      domain: domainParsed?.success ? domainParsed.data : undefined,
+      billingClassification: classificationParsed?.success ? classificationParsed.data : undefined,
+      dateFrom: dateFromRaw?.trim() ? new Date(dateFromRaw.trim()) : undefined,
+      dateTo: dateToRaw?.trim() ? new Date(dateToRaw.trim()) : undefined,
+      encounterOpen,
+      manualReviewOnly: manualReviewOnly || undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
   }
 
   @Get("billing/encounters/:encounterId/manual-review-gate")

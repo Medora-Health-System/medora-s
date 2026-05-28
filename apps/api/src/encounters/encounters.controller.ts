@@ -54,6 +54,7 @@ import { FacilityBillingWorkflowService } from "./facility-billing-workflow.serv
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
 import { BillingLedgerReadinessService } from "./billing-ledger-readiness.service";
 import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
+import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -71,6 +72,7 @@ export class EncountersController {
     private readonly billingExportReadinessService: BillingExportReadinessService,
     private readonly billingLedgerReadinessService: BillingLedgerReadinessService,
     private readonly facilityFeeReadinessService: FacilityFeeReadinessService,
+    private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -219,6 +221,17 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.facilityFeeReadinessService.getForEncounter({ encounterId, facilityId });
+  }
+
+  /** Phase 19UCED.6 — read-only charge capture / revenue review summary (no claim submission). */
+  @Get("encounters/:encounterId/charge-review")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.FRONT_DESK)
+  async getEncounterChargeReview(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.chargeCaptureReviewService.getForEncounter({ encounterId, facilityId });
   }
 
   /** Phase 19UCED.2 — facility billing workflow config for active facility. */

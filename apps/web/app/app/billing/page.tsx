@@ -171,7 +171,7 @@ export default function BillingPage() {
     <div>
       <h1>{t("billingPage.title")}</h1>
       <p>{t("billingPage.subtitle")}</p>
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
         <Link
           href="/app/billing/manual-review"
           style={{
@@ -187,6 +187,22 @@ export default function BillingPage() {
           }}
         >
           {t("billingPage.manualReviewOpen")}
+        </Link>
+        <Link
+          href="/app/billing/charge-review"
+          style={{
+            display: "inline-block",
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            color: "#0f172a",
+            fontWeight: 600,
+            textDecoration: "none",
+            fontSize: 14,
+          }}
+        >
+          {t("billingPage.chargeReviewOpen")}
         </Link>
       </div>
       {effectiveFacilityId ? (

@@ -14,6 +14,7 @@ import { FacilityBillingWorkflowService } from "./facility-billing-workflow.serv
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
 import { BillingLedgerReadinessService } from "./billing-ledger-readiness.service";
 import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
+import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -28,6 +29,7 @@ import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
     BillingExportReadinessService,
     BillingLedgerReadinessService,
     FacilityFeeReadinessService,
+    ChargeCaptureReviewService,
     AuditService,
   ],
   exports: [

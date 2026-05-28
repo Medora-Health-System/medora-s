@@ -1525,6 +1525,13 @@ Tableau des urgences + parcours ED complet
 - Les indicateurs sont **informatifs et non bloquants** pour le flux clinique.
 - **Une consultation, un dossier** — la gouvernance institutionnelle de facturation reste requise.
 
+### 4.6.4 Espace révision capture de charges et revenus (19UCED.6)
+
+- Medora introduit un **espace de révision capture de charges / revenus** pour les équipes facturation et administration.
+- **Aperçu uniquement** — aucune réclamation générée ni soumise ; pas d'auto-codage CPT/HCPCS ; pas de clearinghouse.
+- **Une consultation, un dossier, un flux clinique** — la révision organise les métadonnées de préparation facturation sans dupliquer le dossier ni bloquer le flux clinique.
+- La **politique institutionnelle de facturation et de codage** reste requise pour toute décision finale.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

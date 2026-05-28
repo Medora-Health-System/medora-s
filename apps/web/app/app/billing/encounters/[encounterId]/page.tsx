@@ -20,6 +20,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { EncounterBillingExportReadinessCard } from "@/components/billing/EncounterBillingExportReadinessCard";
 import { EncounterBillingLedgerReadinessCard } from "@/components/billing/EncounterBillingLedgerReadinessCard";
 import { EncounterFacilityFeeReadinessCard } from "@/components/billing/EncounterFacilityFeeReadinessCard";
+import { EncounterChargeReviewCard } from "@/components/billing/EncounterChargeReviewCard";
 import {
   fetchEncounterBillingExportReadiness,
   type EncounterBillingExportReadinessPayload,
@@ -32,6 +33,10 @@ import {
   fetchEncounterFacilityFeeReadiness,
   type EncounterFacilityFeeReadinessPayload,
 } from "@/lib/facilityFeeReadinessApi";
+import {
+  fetchEncounterChargeReview,
+  type EncounterChargeReviewPayload,
+} from "@/lib/chargeCaptureReviewApi";
 
 type LedgerEventRow = {
   id: string;
@@ -978,6 +983,9 @@ export default function BillingEncounterLedgerPage() {
   const [facilityFeeReadiness, setFacilityFeeReadiness] = useState<EncounterFacilityFeeReadinessPayload | null>(null);
   const [facilityFeeReadinessError, setFacilityFeeReadinessError] = useState<string | null>(null);
   const [facilityFeeReadinessLoading, setFacilityFeeReadinessLoading] = useState(false);
+  const [chargeReview, setChargeReview] = useState<EncounterChargeReviewPayload | null>(null);
+  const [chargeReviewError, setChargeReviewError] = useState<string | null>(null);
+  const [chargeReviewLoading, setChargeReviewLoading] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -1024,6 +1032,8 @@ export default function BillingEncounterLedgerPage() {
     setLedgerReadinessError(null);
     setFacilityFeeReadinessLoading(true);
     setFacilityFeeReadinessError(null);
+    setChargeReviewLoading(true);
+    setChargeReviewError(null);
     try {
       const [
         summaryOutcome,
@@ -1040,6 +1050,7 @@ export default function BillingEncounterLedgerPage() {
         exportRouteReadinessOutcome,
         ledgerReadinessOutcome,
         facilityFeeReadinessOutcome,
+        chargeReviewOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -1055,6 +1066,7 @@ export default function BillingEncounterLedgerPage() {
           fetchEncounterBillingExportReadiness(facilityId, encounterId),
           fetchEncounterBillingLedgerReadiness(facilityId, encounterId),
           fetchEncounterFacilityFeeReadiness(facilityId, encounterId),
+          fetchEncounterChargeReview(facilityId, encounterId),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -1077,6 +1089,8 @@ export default function BillingEncounterLedgerPage() {
         setLedgerReadinessError(null);
         setFacilityFeeReadiness(null);
         setFacilityFeeReadinessError(null);
+        setChargeReview(null);
+        setChargeReviewError(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -1177,6 +1191,17 @@ export default function BillingEncounterLedgerPage() {
         setFacilityFeeReadiness(null);
         setFacilityFeeReadinessError(t("facilityFeeReadiness.loadError"));
       }
+      if (
+        chargeReviewOutcome.status === "fulfilled" &&
+        chargeReviewOutcome.value &&
+        typeof chargeReviewOutcome.value === "object"
+      ) {
+        setChargeReview(chargeReviewOutcome.value as EncounterChargeReviewPayload);
+        setChargeReviewError(null);
+      } else {
+        setChargeReview(null);
+        setChargeReviewError(t("chargeCaptureReview.loadError"));
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
@@ -1199,12 +1224,15 @@ export default function BillingEncounterLedgerPage() {
       setLedgerReadinessError(null);
       setFacilityFeeReadiness(null);
       setFacilityFeeReadinessError(null);
+      setChargeReview(null);
+      setChargeReviewError(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
       setExportRouteReadinessLoading(false);
       setLedgerReadinessLoading(false);
       setFacilityFeeReadinessLoading(false);
+      setChargeReviewLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
 
@@ -1839,6 +1867,13 @@ export default function BillingEncounterLedgerPage() {
             </button>
           </div>
         </div>
+      ) : null}
+      {!loading && !error && data ? (
+        <EncounterChargeReviewCard
+          data={chargeReview}
+          loading={chargeReviewLoading}
+          error={chargeReviewError}
+        />
       ) : null}
       {!loading && !error && data ? (
         <EncounterBillingExportReadinessCard
