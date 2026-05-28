@@ -56,6 +56,7 @@ import { BillingLedgerReadinessService } from "./billing-ledger-readiness.servic
 import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
 import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
+import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -75,6 +76,7 @@ export class EncountersController {
     private readonly facilityFeeReadinessService: FacilityFeeReadinessService,
     private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
+    private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
   ) {}
 
   @Post("patients/:patientId/encounters/outpatient")
@@ -245,6 +247,17 @@ export class EncountersController {
       throw new BadRequestException("Facility ID required");
     }
     return this.codingIntegrityReviewService.getForEncounter({ encounterId, facilityId });
+  }
+
+  /** Phase 19UCED.8 — read-only claim assembly / export orchestration preview (no claim submission). */
+  @Get("encounters/:encounterId/claim-assembly-preview")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.PROVIDER, RoleCode.FRONT_DESK)
+  async getEncounterClaimAssemblyPreview(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    return this.claimAssemblyPreviewService.getForEncounter({ encounterId, facilityId });
   }
 
   /** Phase 19UCED.2 — facility billing workflow config for active facility. */

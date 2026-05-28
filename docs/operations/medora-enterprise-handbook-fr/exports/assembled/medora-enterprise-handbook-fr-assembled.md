@@ -1539,6 +1539,14 @@ Tableau des urgences + parcours ED complet
 - **Aperçu opérationnel uniquement** — pas d'auto-codage CPT/ICD, pas de génération ni soumission de réclamation.
 - **Une consultation, un dossier, un flux de documentation** — aucune modification automatique des notes, diagnostics ou MDM.
 
+### 4.6.6 Assemblage réclamation et orchestration export (19UCED.8)
+
+- Medora introduit un **aperçu d'assemblage réclamation et d'orchestration export** pour les équipes facturation et administration.
+- Paquets **professionnel CMS-1500** et **établissement UB-04** organisés selon la classification — **aperçu uniquement**.
+- **Aucune réclamation finale générée** ; pas de soumission clearinghouse ; pas d'auto-codage ; pas de calcul de remboursement.
+- **Une consultation, un dossier, un flux clinique** — les couches 19UCED.3–7 sont composées sans dupliquer le dossier ni altérer le flux clinique.
+- La **politique institutionnelle de facturation et de codage** reste requise pour toute décision finale.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

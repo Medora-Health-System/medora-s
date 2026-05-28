@@ -220,6 +220,22 @@ export default function BillingPage() {
         >
           {t("billingPage.codingReviewOpen")}
         </Link>
+        <Link
+          href="/app/billing/claim-assembly-preview"
+          style={{
+            display: "inline-block",
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            color: "#0f172a",
+            fontWeight: 600,
+            textDecoration: "none",
+            fontSize: 14,
+          }}
+        >
+          {t("billingPage.claimAssemblyPreviewOpen")}
+        </Link>
       </div>
       {effectiveFacilityId ? (
         <div

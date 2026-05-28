@@ -21,10 +21,13 @@ import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
+import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
 import {
   billingClassificationSchema,
   chargeReviewDomainSchema,
   chargeReviewStatusSchema,
+  claimAssemblyPackageTypeSchema,
+  claimAssemblyPreviewStatusSchema,
   codingIntegrityDomainSchema,
   codingIntegrityStatusSchema,
 } from "@medora/shared";
@@ -52,6 +55,7 @@ export class BillingController {
     private readonly externalBillingExport: ExternalBillingExportService,
     private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
+    private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
   ) {}
 
   @Get("billing/encounters/:encounterId/readiness")
@@ -185,6 +189,65 @@ export class BillingController {
       observationOnly: observationOnly || undefined,
       providerClarificationOnly: providerClarificationOnly || undefined,
       complianceOnly: complianceOnly || undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
+
+  /** Phase 19UCED.8 — read-only claim assembly / export orchestration preview queue. */
+  @Get("billing/claim-assembly-preview")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getClaimAssemblyPreviewQueue(
+    @Req() req: any,
+    @Query("status") statusRaw?: string,
+    @Query("packageType") packageTypeRaw?: string,
+    @Query("billingClassification") billingClassificationRaw?: string,
+    @Query("dateFrom") dateFromRaw?: string,
+    @Query("dateTo") dateToRaw?: string,
+    @Query("manualReviewOnly") manualReviewOnlyRaw?: string,
+    @Query("professionalOnly") professionalOnlyRaw?: string,
+    @Query("facilityOnly") facilityOnlyRaw?: string,
+    @Query("limit") limitRaw?: string,
+  ) {
+    const facilityId = req.facilityId;
+    const statusParsed = statusRaw?.trim()
+      ? claimAssemblyPreviewStatusSchema.safeParse(statusRaw.trim())
+      : null;
+    if (statusParsed && !statusParsed.success) {
+      throw new BadRequestException("Invalid status filter");
+    }
+    const packageTypeParsed = packageTypeRaw?.trim()
+      ? claimAssemblyPackageTypeSchema.safeParse(packageTypeRaw.trim())
+      : null;
+    if (packageTypeParsed && !packageTypeParsed.success) {
+      throw new BadRequestException("Invalid packageType filter");
+    }
+    const classificationParsed = billingClassificationRaw?.trim()
+      ? billingClassificationSchema.safeParse(billingClassificationRaw.trim())
+      : null;
+    if (classificationParsed && !classificationParsed.success) {
+      throw new BadRequestException("Invalid billingClassification filter");
+    }
+    const manualReviewOnly =
+      manualReviewOnlyRaw?.trim().toLowerCase() === "true" ||
+      manualReviewOnlyRaw?.trim() === "1";
+    const professionalOnly =
+      professionalOnlyRaw?.trim().toLowerCase() === "true" ||
+      professionalOnlyRaw?.trim() === "1";
+    const facilityOnly =
+      facilityOnlyRaw?.trim().toLowerCase() === "true" ||
+      facilityOnlyRaw?.trim() === "1";
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+
+    return this.claimAssemblyPreviewService.getQueue({
+      facilityId,
+      status: statusParsed?.success ? statusParsed.data : undefined,
+      packageType: packageTypeParsed?.success ? packageTypeParsed.data : undefined,
+      billingClassification: classificationParsed?.success ? classificationParsed.data : undefined,
+      dateFrom: dateFromRaw?.trim() ? new Date(dateFromRaw.trim()) : undefined,
+      dateTo: dateToRaw?.trim() ? new Date(dateToRaw.trim()) : undefined,
+      manualReviewOnly: manualReviewOnly || undefined,
+      professionalOnly: professionalOnly || undefined,
+      facilityOnly: facilityOnly || undefined,
       limit: Number.isFinite(limit) ? limit : undefined,
     });
   }

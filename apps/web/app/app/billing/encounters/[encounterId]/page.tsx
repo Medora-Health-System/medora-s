@@ -22,6 +22,7 @@ import { EncounterBillingLedgerReadinessCard } from "@/components/billing/Encoun
 import { EncounterFacilityFeeReadinessCard } from "@/components/billing/EncounterFacilityFeeReadinessCard";
 import { EncounterChargeReviewCard } from "@/components/billing/EncounterChargeReviewCard";
 import { EncounterCodingIntegrityReviewCard } from "@/components/billing/EncounterCodingIntegrityReviewCard";
+import { EncounterClaimAssemblyPreviewCard } from "@/components/billing/EncounterClaimAssemblyPreviewCard";
 import {
   fetchEncounterBillingExportReadiness,
   type EncounterBillingExportReadinessPayload,
@@ -42,6 +43,10 @@ import {
   fetchEncounterCodingReview,
   type EncounterCodingReviewPayload,
 } from "@/lib/codingIntegrityReviewApi";
+import {
+  fetchEncounterClaimAssemblyPreview,
+  type EncounterClaimAssemblyPreviewPayload,
+} from "@/lib/claimAssemblyPreviewApi";
 
 type LedgerEventRow = {
   id: string;
@@ -994,6 +999,9 @@ export default function BillingEncounterLedgerPage() {
   const [codingReview, setCodingReview] = useState<EncounterCodingReviewPayload | null>(null);
   const [codingReviewError, setCodingReviewError] = useState<string | null>(null);
   const [codingReviewLoading, setCodingReviewLoading] = useState(false);
+  const [claimAssemblyPreview, setClaimAssemblyPreview] = useState<EncounterClaimAssemblyPreviewPayload | null>(null);
+  const [claimAssemblyPreviewError, setClaimAssemblyPreviewError] = useState<string | null>(null);
+  const [claimAssemblyPreviewLoading, setClaimAssemblyPreviewLoading] = useState(false);
 
   const locale = encounterBcp47(language);
   const canEditLines = roles.includes("BILLING") || roles.includes("ADMIN");
@@ -1044,6 +1052,8 @@ export default function BillingEncounterLedgerPage() {
     setChargeReviewError(null);
     setCodingReviewLoading(true);
     setCodingReviewError(null);
+    setClaimAssemblyPreviewLoading(true);
+    setClaimAssemblyPreviewError(null);
     try {
       const [
         summaryOutcome,
@@ -1062,6 +1072,7 @@ export default function BillingEncounterLedgerPage() {
         facilityFeeReadinessOutcome,
         chargeReviewOutcome,
         codingReviewOutcome,
+        claimAssemblyPreviewOutcome,
       ] = await Promise.allSettled([
           apiFetch(`/billing/encounters/${encounterId}/summary`, { facilityId }),
           apiFetch(`/billing/encounters/${encounterId}/readiness`, { facilityId }),
@@ -1079,6 +1090,7 @@ export default function BillingEncounterLedgerPage() {
           fetchEncounterFacilityFeeReadiness(facilityId, encounterId),
           fetchEncounterChargeReview(facilityId, encounterId),
           fetchEncounterCodingReview(facilityId, encounterId),
+          fetchEncounterClaimAssemblyPreview(facilityId, encounterId),
         ]);
       if (summaryOutcome.status === "rejected") {
         setData(null);
@@ -1105,6 +1117,8 @@ export default function BillingEncounterLedgerPage() {
         setChargeReviewError(null);
         setCodingReview(null);
         setCodingReviewError(null);
+        setClaimAssemblyPreview(null);
+        setClaimAssemblyPreviewError(null);
         setError(t("billingPage.billingSummaryLoadError"));
         return;
       }
@@ -1227,6 +1241,17 @@ export default function BillingEncounterLedgerPage() {
         setCodingReview(null);
         setCodingReviewError(t("codingIntegrityReview.loadError"));
       }
+      if (
+        claimAssemblyPreviewOutcome.status === "fulfilled" &&
+        claimAssemblyPreviewOutcome.value &&
+        typeof claimAssemblyPreviewOutcome.value === "object"
+      ) {
+        setClaimAssemblyPreview(claimAssemblyPreviewOutcome.value as EncounterClaimAssemblyPreviewPayload);
+        setClaimAssemblyPreviewError(null);
+      } else {
+        setClaimAssemblyPreview(null);
+        setClaimAssemblyPreviewError(t("claimAssemblyPreview.loadError"));
+      }
     } catch {
       setData(null);
       setClaimAssembly(null);
@@ -1253,6 +1278,8 @@ export default function BillingEncounterLedgerPage() {
       setChargeReviewError(null);
       setCodingReview(null);
       setCodingReviewError(null);
+      setClaimAssemblyPreview(null);
+      setClaimAssemblyPreviewError(null);
       setError(t("billingPage.billingSummaryLoadError"));
     } finally {
       setLoading(false);
@@ -1261,6 +1288,7 @@ export default function BillingEncounterLedgerPage() {
       setFacilityFeeReadinessLoading(false);
       setChargeReviewLoading(false);
       setCodingReviewLoading(false);
+      setClaimAssemblyPreviewLoading(false);
     }
   }, [encounterId, facilityId, ready, t]);
 
@@ -1895,6 +1923,13 @@ export default function BillingEncounterLedgerPage() {
             </button>
           </div>
         </div>
+      ) : null}
+      {!loading && !error && data ? (
+        <EncounterClaimAssemblyPreviewCard
+          data={claimAssemblyPreview}
+          loading={claimAssemblyPreviewLoading}
+          error={claimAssemblyPreviewError}
+        />
       ) : null}
       {!loading && !error && data ? (
         <EncounterCodingIntegrityReviewCard

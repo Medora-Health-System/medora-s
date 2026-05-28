@@ -28,6 +28,7 @@ import { ClaimOperationalEventService } from "../billing/claim-operational-event
 import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
+import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
 
 @Module({
   imports: [PrismaModule],
@@ -57,6 +58,7 @@ import { CodingIntegrityReviewService } from "../encounters/coding-integrity-rev
     ClearinghouseAckWebhookGuard,
     ChargeCaptureReviewService,
     CodingIntegrityReviewService,
+    ClaimAssemblyPreviewService,
   ],
   exports: [
     QueuesService,

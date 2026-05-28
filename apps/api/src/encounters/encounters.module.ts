@@ -16,6 +16,7 @@ import { BillingLedgerReadinessService } from "./billing-ledger-readiness.servic
 import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
 import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
+import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -32,6 +33,7 @@ import { CodingIntegrityReviewService } from "./coding-integrity-review.service"
     FacilityFeeReadinessService,
     ChargeCaptureReviewService,
     CodingIntegrityReviewService,
+    ClaimAssemblyPreviewService,
     AuditService,
   ],
   exports: [
