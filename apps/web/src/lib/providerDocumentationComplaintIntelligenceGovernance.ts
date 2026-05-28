@@ -91,6 +91,24 @@ export const COMPLAINT_INTELLIGENCE_UNSAFE_PHRASE_RULES: readonly ComplaintIntel
     { id: "no_emergency_condition", pattern: /\bno\s+emergency\s+condition\b/i },
     { id: "stone_passed", pattern: /\bstone\s+passed\b/i },
     { id: "torsion_excluded", pattern: /\btorsion\s+excluded\b/i },
+    // Phase 19MDM.6 — MSK / trauma
+    { id: "fracture_ruled_out", pattern: /\bfracture\s+ruled\s+out\b/i },
+    { id: "dislocation_ruled_out", pattern: /\bdislocation\s+ruled\s+out\b/i },
+    { id: "spinal_injury_ruled_out", pattern: /\bspinal\s+injury\s+ruled\s+out\b/i },
+    { id: "intracranial_injury_ruled_out", pattern: /\bintracranial\s+injury\s+ruled\s+out\b/i },
+    { id: "compartment_syndrome_ruled_out", pattern: /\bcompartment\s+syndrome\s+ruled\s+out\b/i },
+    { id: "concussion_ruled_out", pattern: /\bconcussion\s+ruled\s+out\b/i },
+    { id: "xray_negative", pattern: /\bx-?ray\s+negative\b/i },
+    { id: "mri_negative", pattern: /\bmri\s+negative\b/i },
+    { id: "imaging_normal", pattern: /\bimaging\s+normal\b/i },
+    { id: "no_fracture", pattern: /\bno\s+fracture\b/i },
+    { id: "no_dislocation", pattern: /\bno\s+dislocation\b/i },
+    { id: "no_serious_injury", pattern: /\bno\s+serious\s+injury\b/i },
+    { id: "benign_trauma_exam", pattern: /\bbenign\s+trauma\s+exam\b/i },
+    { id: "neurologically_intact", pattern: /\bneurologically\s+intact\b/i },
+    { id: "injury_resolved", pattern: /\binjury\s+resolved\b/i },
+    { id: "no_acute_findings", pattern: /\bno\s+acute\s+findings\b/i },
+    { id: "minor_injury_only", pattern: /\bminor\s+injury\s+only\b/i },
   ];
 
 export function complaintIntelligenceTextViolations(text: string): string[] {

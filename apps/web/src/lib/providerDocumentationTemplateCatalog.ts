@@ -75,6 +75,16 @@ import {
   VAGINAL_BLEEDING_COMPLAINT_V1_INTEL,
   VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL,
   RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL,
+  BACK_PAIN_COMPLAINT_V1_INTEL,
+  NECK_PAIN_COMPLAINT_V1_INTEL,
+  SHOULDER_INJURY_COMPLAINT_V1_INTEL,
+  KNEE_INJURY_COMPLAINT_V1_INTEL,
+  ANKLE_FOOT_INJURY_COMPLAINT_V1_INTEL,
+  HIP_PAIN_INJURY_COMPLAINT_V1_INTEL,
+  HAND_WRIST_INJURY_COMPLAINT_V1_INTEL,
+  FALL_TRAUMA_COMPLAINT_V1_INTEL,
+  MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL,
+  LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL,
   HEADACHE_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   SOB_COMPLAINT_INTEL,
@@ -243,6 +253,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATE_PICKER_SUBGROUP_LABEL_KEYS: Record<
   respiratory_ent: "providerDocumentationWorkspace.templateSubgroupRespiratoryEnt",
   cardiac_vascular: "providerDocumentationWorkspace.templateSubgroupCardiacVascular",
   gu_renal: "providerDocumentationWorkspace.templateSubgroupGuRenal",
+  msk_trauma: "providerDocumentationWorkspace.templateSubgroupMskTrauma",
 };
 
 function respiratoryComplaintV1Template(
@@ -361,6 +372,46 @@ function guRenalComplaintV1Template(
     ],
     complaintIntelligence,
     "gu_renal"
+  );
+}
+
+function mskTraumaComplaintV1Template(
+  id: ProviderDocumentationTemplateId,
+  labelKey: string,
+  helperKey: string,
+  complaintIntelligence: ProviderDocumentationComplaintIntelligence
+): TemplateSpec {
+  return adultTemplate(
+    id,
+    labelKey,
+    helperKey,
+    ["erMseHpiChipsTrauma.mechanismReviewed", "erMseHpiChips.timStartedToday"],
+    ["erMseRosChips.posWeakness", "erMseRosChips.posAbdominalPain"],
+    ["erMseRosChips.negDeniesSyncope", "erMseRosChips.negDeniesWeakness"],
+    ["erMseRosChips.rfNeuroDeficit", "erMseRosChips.rfSeverePain"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waTrauma", "erMseMdmChips.waUndifferentiated"],
+      mdmDataReviewed: ["erMseMdmChips.planImaging", "erMseMdmChips.planLabs"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actPain", "erMseMdmChips.actSafety"],
+      mdmPlanSummary: ["erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      musculoskeletal: ["erMseExamChips.mskTendernessPresent", "erMseExamChips.mskRomNormal", "erMseExamChips.mskDeformityNoted"],
+      neuroPsych: ["erMseExamChips.neuroFollowsCommands", "erMseExamChips.neuroFocalDeficitNoted"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.traumaSurveyDocumented"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.traumaMechanism",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    complaintIntelligence,
+    "msk_trauma"
   );
 }
 
@@ -1548,6 +1599,66 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateRenalFailureSymptomsComplaintV1",
     "providerDocumentationWorkspace.templateRenalFailureSymptomsComplaintV1Help",
     RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "back_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateBackPainComplaintV1",
+    "providerDocumentationWorkspace.templateBackPainComplaintV1Help",
+    BACK_PAIN_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "neck_pain_complaint_v1",
+    "providerDocumentationWorkspace.templateNeckPainComplaintV1",
+    "providerDocumentationWorkspace.templateNeckPainComplaintV1Help",
+    NECK_PAIN_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "shoulder_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateShoulderInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateShoulderInjuryComplaintV1Help",
+    SHOULDER_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "knee_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateKneeInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateKneeInjuryComplaintV1Help",
+    KNEE_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "ankle_foot_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateAnkleFootInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateAnkleFootInjuryComplaintV1Help",
+    ANKLE_FOOT_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "hip_pain_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateHipPainInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateHipPainInjuryComplaintV1Help",
+    HIP_PAIN_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "hand_wrist_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateHandWristInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateHandWristInjuryComplaintV1Help",
+    HAND_WRIST_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "fall_trauma_complaint_v1",
+    "providerDocumentationWorkspace.templateFallTraumaComplaintV1",
+    "providerDocumentationWorkspace.templateFallTraumaComplaintV1Help",
+    FALL_TRAUMA_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "minor_head_injury_complaint_v1",
+    "providerDocumentationWorkspace.templateMinorHeadInjuryComplaintV1",
+    "providerDocumentationWorkspace.templateMinorHeadInjuryComplaintV1Help",
+    MINOR_HEAD_INJURY_COMPLAINT_V1_INTEL
+  ),
+  mskTraumaComplaintV1Template(
+    "laceration_soft_tissue_complaint_v1",
+    "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1",
+    "providerDocumentationWorkspace.templateLacerationSoftTissueComplaintV1Help",
+    LACERATION_SOFT_TISSUE_COMPLAINT_V1_INTEL
   ),
   {
     id: "observation_reassessment",

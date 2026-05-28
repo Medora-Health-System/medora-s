@@ -116,13 +116,24 @@ export type ProviderDocumentationTemplateId =
   | "pelvic_pain_complaint_v1"
   | "vaginal_bleeding_complaint_v1"
   | "vaginal_discharge_complaint_v1"
-  | "renal_failure_symptoms_complaint_v1";
+  | "renal_failure_symptoms_complaint_v1"
+  | "back_pain_complaint_v1"
+  | "neck_pain_complaint_v1"
+  | "shoulder_injury_complaint_v1"
+  | "knee_injury_complaint_v1"
+  | "ankle_foot_injury_complaint_v1"
+  | "hip_pain_injury_complaint_v1"
+  | "hand_wrist_injury_complaint_v1"
+  | "fall_trauma_complaint_v1"
+  | "minor_head_injury_complaint_v1"
+  | "laceration_soft_tissue_complaint_v1";
 
 export type ProviderDocumentationTemplatePickerSubgroupKey =
   | "gi_abdominal"
   | "respiratory_ent"
   | "cardiac_vascular"
-  | "gu_renal";
+  | "gu_renal"
+  | "msk_trauma";
 
 export type ProviderDocumentationWorkspaceState = {
   activeTemplateId: ProviderDocumentationTemplateId | null;

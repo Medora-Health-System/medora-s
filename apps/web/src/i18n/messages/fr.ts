@@ -5,6 +5,7 @@ import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumen
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 import { providerDocumentationCardiacComplaintIntel19Mdm4Fr } from "./providerDocumentationCardiacComplaintIntel19Mdm4.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
+import { providerDocumentationMskTraumaComplaintIntel19Mdm6Fr } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.fr";
 
 export default {
   ...labels.fr,
@@ -6315,6 +6316,27 @@ export default {
     templateVaginalDischargeComplaintV1Help: "Inserts cliquables — écoulement vaginal, IST et suivi.",
     templateRenalFailureSymptomsComplaintV1: "Symptômes d'insuffisance rénale (intelligence GU)",
     templateRenalFailureSymptomsComplaintV1Help: "Inserts cliquables — IRA/MRC, bilan rénal et suivi néphrologique.",
+    templateSubgroupMskTrauma: "MSK / traumatique",
+    templateBackPainComplaintV1: "Douleur dorsale (intelligence MSK)",
+    templateBackPainComplaintV1Help: "Inserts cliquables — douleur dorsale, signes neuro et sortie.",
+    templateNeckPainComplaintV1: "Douleur cervicale (intelligence MSK)",
+    templateNeckPainComplaintV1Help: "Inserts cliquables — douleur cervicale, signes d'alerte et suivi.",
+    templateShoulderInjuryComplaintV1: "Blessure d'épaule (intelligence MSK)",
+    templateShoulderInjuryComplaintV1Help: "Inserts cliquables — blessure d'épaule, ROM et suivi orthopédique.",
+    templateKneeInjuryComplaintV1: "Blessure du genou (intelligence MSK)",
+    templateKneeInjuryComplaintV1Help: "Inserts cliquables — blessure du genou, appui et sortie.",
+    templateAnkleFootInjuryComplaintV1: "Blessure cheville / pied (intelligence MSK)",
+    templateAnkleFootInjuryComplaintV1Help: "Inserts cliquables — cheville/pied, statut neurovasculaire et suivi.",
+    templateHipPainInjuryComplaintV1: "Douleur / blessure de hanche (intelligence MSK)",
+    templateHipPainInjuryComplaintV1Help: "Inserts cliquables — hanche, mobilité et sortie.",
+    templateHandWristInjuryComplaintV1: "Blessure main / poignet (intelligence MSK)",
+    templateHandWristInjuryComplaintV1Help: "Inserts cliquables — main/poignet, tendons/nerfs et suivi.",
+    templateFallTraumaComplaintV1: "Chute / traumatisme (intelligence MSK)",
+    templateFallTraumaComplaintV1Help: "Inserts cliquables — mécanisme de chute, bilan traumatique et consignes de retour.",
+    templateMinorHeadInjuryComplaintV1: "Traumatisme crânien mineur (intelligence MSK)",
+    templateMinorHeadInjuryComplaintV1Help: "Inserts cliquables — traumatisme crânien, imagerie et suivi commotion.",
+    templateLacerationSoftTissueComplaintV1: "Lacération / tissus mous (intelligence MSK)",
+    templateLacerationSoftTissueComplaintV1Help: "Inserts cliquables — lacération, soins de plaie, infection et suivi.",
     templateObservationReassessment: "Réévaluation observation",
     templateObservationReassessmentHelp: "Évolution, résultats en attente, signes vitaux, surveillance, aptitude sortie / transfert.",
     templateCategoryCardiopulmonary: "Cardiopulmonaire",
@@ -10511,6 +10533,7 @@ export default {
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
     ...providerDocumentationCardiacComplaintIntel19Mdm4Fr,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,
+    ...providerDocumentationMskTraumaComplaintIntel19Mdm6Fr,
   },
   erMseProviderPanel: {
     title: "Évaluation médicale (urgences)",

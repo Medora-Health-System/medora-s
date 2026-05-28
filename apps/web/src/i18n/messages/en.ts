@@ -4,6 +4,7 @@ import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumen
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
 import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
+import { providerDocumentationMskTraumaComplaintIntel19Mdm6En } from "./providerDocumentationMskTraumaComplaintIntel19Mdm6.en";
 
 export default {
   common: {
@@ -6341,6 +6342,27 @@ export default {
     templateVaginalDischargeComplaintV1Help: "Click-to-insert prompts for vaginal discharge, STI concern, and follow-up.",
     templateRenalFailureSymptomsComplaintV1: "Renal failure symptoms (GU intelligence)",
     templateRenalFailureSymptomsComplaintV1Help: "Click-to-insert prompts for AKI/CKD symptoms, labs review, and nephrology follow-up.",
+    templateSubgroupMskTrauma: "MSK / Trauma",
+    templateBackPainComplaintV1: "Back pain (MSK intelligence)",
+    templateBackPainComplaintV1Help: "Click-to-insert prompts for back pain, neuro red flags, and disposition.",
+    templateNeckPainComplaintV1: "Neck pain (MSK intelligence)",
+    templateNeckPainComplaintV1Help: "Click-to-insert prompts for neck pain, cervical red flags, and follow-up.",
+    templateShoulderInjuryComplaintV1: "Shoulder injury (MSK intelligence)",
+    templateShoulderInjuryComplaintV1Help: "Click-to-insert prompts for shoulder injury, ROM, and ortho follow-up.",
+    templateKneeInjuryComplaintV1: "Knee injury (MSK intelligence)",
+    templateKneeInjuryComplaintV1Help: "Click-to-insert prompts for knee injury, weight-bearing, and disposition.",
+    templateAnkleFootInjuryComplaintV1: "Ankle / foot injury (MSK intelligence)",
+    templateAnkleFootInjuryComplaintV1Help: "Click-to-insert prompts for ankle/foot injury, neurovascular status, and follow-up.",
+    templateHipPainInjuryComplaintV1: "Hip pain / injury (MSK intelligence)",
+    templateHipPainInjuryComplaintV1Help: "Click-to-insert prompts for hip pain/injury, mobility, and disposition.",
+    templateHandWristInjuryComplaintV1: "Hand / wrist injury (MSK intelligence)",
+    templateHandWristInjuryComplaintV1Help: "Click-to-insert prompts for hand/wrist injury, tendon/neuro concerns, and follow-up.",
+    templateFallTraumaComplaintV1: "Fall / trauma (MSK intelligence)",
+    templateFallTraumaComplaintV1Help: "Click-to-insert prompts for fall mechanism, trauma survey, and return precautions.",
+    templateMinorHeadInjuryComplaintV1: "Minor head injury (MSK intelligence)",
+    templateMinorHeadInjuryComplaintV1Help: "Click-to-insert prompts for minor head injury, imaging review, and concussion follow-up.",
+    templateLacerationSoftTissueComplaintV1: "Laceration / soft tissue (MSK intelligence)",
+    templateLacerationSoftTissueComplaintV1Help: "Click-to-insert prompts for laceration, wound care, infection risk, and follow-up.",
     templateObservationReassessment: "Observation reassessment",
     templateObservationReassessmentHelp: "Interval symptoms, pending results, vitals, monitoring, discharge/transfer readiness.",
     templateCategoryCardiopulmonary: "Cardiopulmonary",
@@ -10528,6 +10550,7 @@ export default {
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
     ...providerDocumentationCardiacComplaintIntel19Mdm4En,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
+    ...providerDocumentationMskTraumaComplaintIntel19Mdm6En,
   },
   erMseProviderPanel: {
     title: "Provider documentation (ED)",
