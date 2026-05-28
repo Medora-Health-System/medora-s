@@ -6,11 +6,18 @@ import {
   diagnosisOrdersOrderCardShellStyle,
   diagnosisOrdersOrderGroupHeaderStyle,
   diagnosisOrdersTouchButtonStyle,
+  diagnosisOrdersUsesTabletCompactDensity,
   type DiagnosisOrdersLayoutMode,
 } from "@/features/emergency/diagnosisOrdersResponsiveLayout";
 
-export function ErOrderGroupHeaderCard({ children }: { children: React.ReactNode }) {
-  return <div style={diagnosisOrdersOrderGroupHeaderStyle()}>{children}</div>;
+export function ErOrderGroupHeaderCard({
+  layoutMode,
+  children,
+}: {
+  layoutMode: DiagnosisOrdersLayoutMode;
+  children: React.ReactNode;
+}) {
+  return <div style={diagnosisOrdersOrderGroupHeaderStyle(layoutMode)}>{children}</div>;
 }
 
 export function ErOrderLineCard({
@@ -42,26 +49,27 @@ export function ErOrderLineCard({
   highlightPending?: boolean;
   fieldLabels: { status: string; time: string; issued: string; attribution: string };
 }) {
+  const compactTablet = diagnosisOrdersUsesTabletCompactDensity(layoutMode);
   const metaLabel: React.CSSProperties = {
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: "0.04em",
     textTransform: "uppercase",
     color: "#64748b",
-    marginBottom: 2,
+    marginBottom: compactTablet ? 1 : 2,
   };
 
   return (
     <div
       style={{
-        ...diagnosisOrdersOrderCardShellStyle(),
+        ...diagnosisOrdersOrderCardShellStyle(layoutMode),
         ...(highlightPending ? { backgroundColor: "rgba(254, 243, 199, 0.28)" } : {}),
       }}
     >
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-start", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: compactTablet ? 6 : 8, alignItems: "flex-start", justifyContent: "space-between" }}>
         <div style={{ minWidth: 0, flex: "1 1 160px" }}>
           <div style={metaLabel}>{categoryLabel}</div>
-          <div style={{ ...diagnosisOrdersLabelWrapStyle(), fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+          <div style={{ ...diagnosisOrdersLabelWrapStyle(), fontSize: compactTablet ? 12 : 13, fontWeight: 600, color: "#0f172a" }}>
             {orderTitle}
           </div>
           {orderSubLines}
@@ -69,7 +77,14 @@ export function ErOrderLineCard({
         {cancelControl ? <div style={{ flexShrink: 0 }}>{cancelControl}</div> : null}
       </div>
 
-      <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+      <div
+        style={{
+          marginTop: compactTablet ? 6 : 8,
+          display: "grid",
+          gridTemplateColumns: compactTablet ? "1fr 1fr" : "1fr",
+          gap: compactTablet ? 4 : 6,
+        }}
+      >
         <div>
           <div style={metaLabel}>{fieldLabels.status}</div>
           <div style={{ fontSize: 12, color: "#334155", ...diagnosisOrdersLabelWrapStyle() }}>{statusSection}</div>
@@ -93,10 +108,10 @@ export function ErOrderLineCard({
       {actions ? (
         <div
           style={{
-            marginTop: 10,
+            marginTop: compactTablet ? 6 : 10,
             display: "flex",
             flexWrap: "wrap",
-            gap: 8,
+            gap: compactTablet ? 6 : 8,
             alignItems: "center",
             width: "100%",
             minWidth: 0,

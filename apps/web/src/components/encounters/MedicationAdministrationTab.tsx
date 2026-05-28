@@ -61,6 +61,15 @@ import { MedicationAdministrationEffectiveTimeModal } from "@/components/encount
 import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
 import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
 import {
+  clinicalTabletCompactBannerStyle,
+  clinicalTabletCompactHistoryItemStyle,
+  clinicalTabletCompactMarCellStyle,
+  clinicalTabletCompactMarHeaderCellStyle,
+  clinicalTabletUsesCompactPanel,
+  resolveClinicalTabletPanelDensityMode,
+} from "@/lib/clinicalTabletPanelDensity";
+import { CLINICAL_MIN_TOUCH_TARGET_PX } from "@/lib/clinicalViewport";
+import {
   MedicationAdministrationAdjustedBadge,
   MedicationAdministrationClockButton,
   MedicationAdministrationDocumentButton,
@@ -388,6 +397,17 @@ export function MedicationAdministrationTab({
   useEffect(() => {
     const id = setInterval(() => setInfusionClockTick((n) => n + 1), 15_000);
     return () => clearInterval(id);
+  }, []);
+
+  const [panelDensity, setPanelDensity] = useState(() =>
+    typeof window !== "undefined" ? resolveClinicalTabletPanelDensityMode(window.innerWidth) : "default"
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyDensity = () => setPanelDensity(resolveClinicalTabletPanelDensityMode(window.innerWidth));
+    applyDensity();
+    window.addEventListener("resize", applyDensity);
+    return () => window.removeEventListener("resize", applyDensity);
   }, []);
 
   useEffect(() => {
@@ -1042,6 +1062,20 @@ export function MedicationAdministrationTab({
 
   const isOpen = encounterStatus === "OPEN";
   const nowMs = Date.now();
+  const marCompact = clinicalTabletUsesCompactPanel(panelDensity);
+  const marTableHeaderCellStyle: React.CSSProperties = marCompact
+    ? { ...clinicalTabletCompactMarHeaderCellStyle(), textAlign: "left" }
+    : { padding: "10px 8px", textAlign: "left", fontSize: 12 };
+  const marTablePrimaryCellStyle: React.CSSProperties = marCompact
+    ? { ...clinicalTabletCompactMarCellStyle(), verticalAlign: "top" }
+    : { padding: "12px 8px", fontSize: 13 };
+  const marTableMetricCellStyle: React.CSSProperties = marCompact
+    ? { ...MAR_TABLE_METRIC_CELL, ...clinicalTabletCompactMarCellStyle() }
+    : MAR_TABLE_METRIC_CELL;
+  const marTableControlsCellStyle: React.CSSProperties = marCompact
+    ? { ...MAR_TABLE_CONTROLS_CELL, ...clinicalTabletCompactMarCellStyle() }
+    : MAR_TABLE_CONTROLS_CELL;
+  const marAdministerMinHeight = marCompact ? CLINICAL_MIN_TOUCH_TARGET_PX : 40;
 
   return (
     <div
@@ -1061,18 +1095,28 @@ export function MedicationAdministrationTab({
       {marQueuedOfflineNotice ? (
         <div
           role="alert"
-          style={{
-            marginBottom: 12,
-            marginTop: error ? 8 : 0,
-            padding: "12px 14px",
-            borderRadius: 8,
-            border: "1px solid #ef9a9a",
-            backgroundColor: "#ffebee",
-            fontSize: 13,
-            color: "#b71c1c",
-            lineHeight: 1.5,
-            fontWeight: 600,
-          }}
+          style={
+            marCompact
+              ? clinicalTabletCompactBannerStyle({
+                  marginTop: error ? 8 : 0,
+                  border: "1px solid #ef9a9a",
+                  backgroundColor: "#ffebee",
+                  color: "#b71c1c",
+                  fontWeight: 600,
+                })
+              : {
+                  marginBottom: 12,
+                  marginTop: error ? 8 : 0,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #ef9a9a",
+                  backgroundColor: "#ffebee",
+                  fontSize: 13,
+                  color: "#b71c1c",
+                  lineHeight: 1.5,
+                  fontWeight: 600,
+                }
+          }
         >
           {t("marTab.offlineNotice")}
         </div>
@@ -1081,20 +1125,29 @@ export function MedicationAdministrationTab({
       {marAllergyDocSummary ? (
         <div
           role="status"
-          style={{
-            marginBottom: 12,
-            marginTop: error || marQueuedOfflineNotice ? 8 : 0,
-            padding: "12px 14px",
-            borderRadius: 8,
-            border: "1px solid #fecaca",
-            backgroundColor: "#fef2f2",
-            fontSize: 13,
-            color: "#7f1d1d",
-            lineHeight: 1.45,
-          }}
+          style={
+            marCompact
+              ? clinicalTabletCompactBannerStyle({
+                  marginTop: error || marQueuedOfflineNotice ? 8 : 0,
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                  color: "#7f1d1d",
+                })
+              : {
+                  marginBottom: 12,
+                  marginTop: error || marQueuedOfflineNotice ? 8 : 0,
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #fecaca",
+                  backgroundColor: "#fef2f2",
+                  fontSize: 13,
+                  color: "#7f1d1d",
+                  lineHeight: 1.45,
+                }
+          }
         >
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
-          <div style={{ marginBottom: 8, fontWeight: 600 }}>{t("marTab.allergyTopBannerLead")}</div>
+          <div style={{ fontWeight: 800, marginBottom: marCompact ? 4 : 6 }}>{t("marTab.allergyDocTitle")}</div>
+          <div style={{ marginBottom: marCompact ? 4 : 8, fontWeight: 600 }}>{t("marTab.allergyTopBannerLead")}</div>
           <div style={MAR_CELL_WRAP_LONG_TEXT}>
             {marAllergyDocSummary.length > 320 ? `${marAllergyDocSummary.slice(0, 320)}…` : marAllergyDocSummary}
           </div>
@@ -1103,7 +1156,7 @@ export function MedicationAdministrationTab({
 
       <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
 
-      <h3 style={{ margin: "0 0 8px 0", fontSize: 16 }}>{t("marTab.title")}</h3>
+      <h3 style={{ margin: marCompact ? "0 0 6px 0" : "0 0 8px 0", fontSize: marCompact ? 15 : 16 }}>{t("marTab.title")}</h3>
       {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{t("marTab.closedHint")}</p> : null}
 
       {loading ? (
@@ -1147,19 +1200,19 @@ export function MedicationAdministrationTab({
             </colgroup>
             <thead>
               <tr style={{ borderBottom: "2px solid #ddd", backgroundColor: "#f5f5f5" }}>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnCategory")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnIssued")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnWhen")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnOrderLine")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12, verticalAlign: "bottom" }}>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnCategory")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnIssued")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnWhen")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnOrderLine")}</th>
+                <th style={{ ...marTableHeaderCellStyle, verticalAlign: "bottom" }}>
                   {t("marTab.columnLastAction")}
                 </th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarStarted")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarStopped")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarPerformedBy")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarElapsed")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnMarControls")}</th>
-                <th style={{ padding: "10px 8px", textAlign: "left", fontSize: 12 }}>{t("marTab.columnTitle")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnMarStarted")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnMarStopped")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnMarPerformedBy")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnMarElapsed")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnMarControls")}</th>
+                <th style={marTableHeaderCellStyle}>{t("marTab.columnTitle")}</th>
               </tr>
             </thead>
             <tbody>
@@ -1315,7 +1368,7 @@ export function MedicationAdministrationTab({
                     style={{
                       padding: "8px 10px",
                       fontSize: 13,
-                      minHeight: 40,
+                      minHeight: marAdministerMinHeight,
                       width: "100%",
                       minWidth: 0,
                       boxSizing: "border-box",
@@ -1576,13 +1629,13 @@ export function MedicationAdministrationTab({
                       backgroundColor: latest?.pendingSync ? "#fff8e1" : undefined,
                     }}
                   >
-                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#334155", fontWeight: 600 }}>
+                    <td style={{ ...marTablePrimaryCellStyle, color: "#334155", fontWeight: 600 }}>
                       {t("marTab.columnCategoryValue")}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
+                    <td style={{ ...marTablePrimaryCellStyle, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                       {issuedCell}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 13, color: "#424242" }}>
+                    <td style={{ ...marTablePrimaryCellStyle, color: "#424242" }}>
                       {latest ? (
                         <MedicationAdministrationTimeCell row={latest} dateLocale={dateLocale} t={t} />
                       ) : (
@@ -1603,7 +1656,7 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ padding: "12px 8px", fontSize: 14, ...MAR_CELL_WRAP_LONG_TEXT }}>
+                    <td style={{ ...marTablePrimaryCellStyle, fontSize: marCompact ? 13 : 14, ...MAR_CELL_WRAP_LONG_TEXT }}>
                       <div style={{ fontWeight: 600 }}>{displayName}</div>
                       {row.routeHint ? (
                         <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
@@ -1617,24 +1670,15 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                     </td>
-                    <td
-                      style={{
-                        padding: "10px 8px",
-                        fontSize: 12,
-                        verticalAlign: "top",
-                        minWidth: 0,
-                        ...MAR_CELL_WRAP_LONG_TEXT,
-                        color: "#334155",
-                      }}
-                    >
+                    <td style={marTableMetricCellStyle}>
                       {marLastAction}
                     </td>
-                    <td style={MAR_TABLE_METRIC_CELL}>{marStarted}</td>
-                    <td style={MAR_TABLE_METRIC_CELL}>{marStopped}</td>
-                    <td style={MAR_TABLE_METRIC_CELL}>{marPerformer}</td>
-                    <td style={MAR_TABLE_METRIC_CELL}>{marElapsed}</td>
-                    <td style={MAR_TABLE_CONTROLS_CELL}>{marControlsWithClock}</td>
-                    <td style={{ padding: "12px 8px", fontSize: 12, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
+                    <td style={marTableMetricCellStyle}>{marStarted}</td>
+                    <td style={marTableMetricCellStyle}>{marStopped}</td>
+                    <td style={marTableMetricCellStyle}>{marPerformer}</td>
+                    <td style={marTableMetricCellStyle}>{marElapsed}</td>
+                    <td style={marTableControlsCellStyle}>{marControlsWithClock}</td>
+                    <td style={{ ...marTablePrimaryCellStyle, fontSize: 12, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
                       {titleCell}
                     </td>
                   </tr>
@@ -1645,7 +1689,7 @@ export function MedicationAdministrationTab({
         </div>
       )}
 
-      <h3 style={{ margin: "24px 0 8px 0", fontSize: 16 }}>{t("marTab.historyTitle")}</h3>
+      <h3 style={{ margin: marCompact ? "16px 0 6px 0" : "24px 0 8px 0", fontSize: marCompact ? 15 : 16 }}>{t("marTab.historyTitle")}</h3>
       {loading ? null : admins.length === 0 ? (
         <p style={{ color: "#666", fontSize: 14 }}>{t("marTab.empty")}</p>
       ) : (
@@ -1668,14 +1712,23 @@ export function MedicationAdministrationTab({
               return (
                 <li
                   key={r.id}
-                  style={{
-                    padding: "12px 14px",
-                    marginBottom: 8,
-                    backgroundColor: "#fafafa",
-                    borderRadius: 8,
-                    border: "1px solid #eee",
-                    fontSize: 14,
-                  }}
+                  style={
+                    marCompact
+                      ? clinicalTabletCompactHistoryItemStyle({
+                          backgroundColor: "#fafafa",
+                          borderRadius: 8,
+                          border: "1px solid #eee",
+                          fontSize: 13,
+                        })
+                      : {
+                          padding: "12px 14px",
+                          marginBottom: 8,
+                          backgroundColor: "#fafafa",
+                          borderRadius: 8,
+                          border: "1px solid #eee",
+                          fontSize: 14,
+                        }
+                  }
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                     <div style={{ flex: 1, minWidth: 0 }}>

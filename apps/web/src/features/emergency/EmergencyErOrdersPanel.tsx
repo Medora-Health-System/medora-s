@@ -34,7 +34,12 @@ import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDispl
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "@/lib/orderAttribution";
 import {
+  diagnosisOrdersDomainGridStyle,
+  diagnosisOrdersDomainSummaryListStyle,
+  diagnosisOrdersDomainSummaryTileStyle,
   diagnosisOrdersListStyle,
+  diagnosisOrdersQuickActionGridStyle,
+  diagnosisOrdersSectionDividerStyle,
   diagnosisOrdersTableScrollWrapStyle,
   diagnosisOrdersTableStyle,
   diagnosisOrdersUsesCardLayout,
@@ -803,28 +808,19 @@ export function EmergencyErOrdersPanel({
         ) : labelsByDomain == null ? (
           <p style={{ margin: 0, fontSize: 13, color: "#b91c1c" }}>{t("erEmergencyOrders.loadOrdersError")}</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: layoutMode === "tabletCard" ? 8 : 12, width: "100%" }}>
             <div
               style={{
                 display: "flex",
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 12,
+                gap: layoutMode === "tabletCard" ? 8 : 12,
                 width: "100%",
                 alignItems: "stretch",
               }}
             >
             {canOpenOrderQuickActions ? (
-              <div
-                style={{
-                  flex: "1 1 200px",
-                  minWidth: 0,
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                  alignContent: "start",
-                }}
-              >
+              <div style={diagnosisOrdersQuickActionGridStyle(layoutMode)}>
                 <button type="button" onClick={() => openModal("LAB")} style={touchBtn()}>
                   {t("erEmergencyOrders.quickLab")}
                 </button>
@@ -840,16 +836,7 @@ export function EmergencyErOrdersPanel({
               </div>
             ) : null}
 
-            <div
-              style={{
-                flex: "1 1 200px",
-                minWidth: 0,
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-                alignContent: "start",
-              }}
-            >
+            <div style={diagnosisOrdersDomainGridStyle(layoutMode)}>
               {DOMAIN_ORDER.map((d) => {
                 const lines = labelsByDomain[d];
                 const empty = lines.length === 0;
@@ -857,21 +844,16 @@ export function EmergencyErOrdersPanel({
                   <div
                     key={d}
                     style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
+                      ...diagnosisOrdersDomainSummaryTileStyle(layoutMode),
                       border: empty ? "1px dashed #cbd5e1" : "1px solid #e2e8f0",
                       backgroundColor: empty ? "#fafafa" : "#fff",
-                      fontSize: 11,
-                      color: "#334155",
-                      lineHeight: 1.35,
-                      minHeight: 72,
                     }}
                   >
-                    <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{t(domainHeadingKey(d))}</div>
+                    <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: empty ? 0 : 3 }}>{t(domainHeadingKey(d))}</div>
                     {empty ? (
                       <div style={{ color: "#64748b" }}>{t("erEmergencyOrders.emptyDomain")}</div>
                     ) : (
-                      <ul style={{ margin: 0, paddingLeft: 14, maxHeight: 120, overflow: "auto" }}>
+                      <ul style={diagnosisOrdersDomainSummaryListStyle(layoutMode)}>
                         {lines.slice(0, 12).map((line, i) => (
                           <li key={`${d}-${i}`} style={{ marginBottom: 2, overflowWrap: "anywhere", whiteSpace: "normal" }}>
                             {line}
@@ -893,7 +875,7 @@ export function EmergencyErOrdersPanel({
             </div>
             </div>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+            <div style={diagnosisOrdersSectionDividerStyle(layoutMode)}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
                 {t("erEmergencyOrders.openOrdersTitle")}
               </div>
@@ -987,7 +969,7 @@ export function EmergencyErOrdersPanel({
                             ...(layoutMode === "tabletCard" ? { gridColumn: "1 / -1" } : {}),
                           }}
                         >
-                          <ErOrderGroupHeaderCard>
+                          <ErOrderGroupHeaderCard layoutMode={layoutMode}>
                             {categoryLabel} · {o.type}
                           </ErOrderGroupHeaderCard>
                         </li>
@@ -1593,7 +1575,7 @@ export function EmergencyErOrdersPanel({
               )}
             </div>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+            <div style={diagnosisOrdersSectionDividerStyle(layoutMode)}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
                 {t("erEmergencyOrders.completedOrdersTitle")}
               </div>
@@ -1935,7 +1917,7 @@ export function EmergencyErOrdersPanel({
               )}
             </div>
 
-            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+            <div style={diagnosisOrdersSectionDividerStyle(layoutMode)}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", marginBottom: 6 }}>
                 {t("erEmergencyOrders.cancelledOrdersTitle")}
               </div>

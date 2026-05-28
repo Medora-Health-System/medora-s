@@ -27,7 +27,8 @@ describe("diagnosisOrdersResponsiveLayout (19M.9)", () => {
     expect(resolveDiagnosisOrdersLayoutMode(767)).toBe("mobileCard");
     expect(resolveDiagnosisOrdersLayoutMode(768)).toBe("tabletCard");
     expect(resolveDiagnosisOrdersLayoutMode(1023)).toBe("tabletCard");
-    expect(resolveDiagnosisOrdersLayoutMode(1024)).toBe("desktopDense");
+    expect(resolveDiagnosisOrdersLayoutMode(1199)).toBe("tabletCard");
+    expect(resolveDiagnosisOrdersLayoutMode(1200)).toBe("desktopDense");
   });
 
   it("uses card layout on mobile and tablet only", () => {
@@ -133,10 +134,11 @@ describe("EmergencyErOrdersPanel responsive wiring (19M.9)", () => {
     expect(source).toContain('aria-label={t("cancelOrderModal.cancelOrderLineAria")}');
     expect(source).toContain("runOrderItemLifecycleAction");
     expect(source).toContain("runInfusionAction");
+    expect(cardsSource).toContain("diagnosisOrdersOrderCardShellStyle(layoutMode)");
     expect(cardsSource).toContain("diagnosisOrdersTouchButtonStyle");
   });
 
-  it("preserves desktop dense table path at >=1024px", () => {
+  it("preserves desktop dense table path at >=1200px", () => {
     expect(source).toContain("usesOrderCards ?");
     expect(source).toContain("diagnosisOrdersTableStyle(layoutMode, 720)");
     expect(source).toContain("diagnosisOrdersTableStyle(layoutMode, 640)");

@@ -1535,6 +1535,10 @@ export default {
       suspenseLoading: "Loading...",
       errorFallback: "Unable to sign in. Please try again.",
       errorNetwork: "Unable to sign in. Check your connection and try again.",
+      languageLabel: "Language",
+      languageToggleAria: "Choose sign-in language",
+      langFr: "French",
+      langEn: "English",
     },
     forgotPassword: {
       brandTagline: "Patient chart and care follow-up for resource-limited health facilities.",

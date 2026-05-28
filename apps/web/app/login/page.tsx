@@ -162,6 +162,56 @@ function LoginForm() {
         >
           {stage.kind === "credentials" && (
             <>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 12,
+                }}
+                aria-label={t("auth.login.languageToggleAria")}
+              >
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{t("auth.login.languageLabel")}</span>
+                <button
+                  type="button"
+                  onClick={() => setLanguage("fr")}
+                  aria-pressed={language === "fr"}
+                  style={{
+                    minHeight: 44,
+                    minWidth: 44,
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: language === "fr" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                    backgroundColor: language === "fr" ? "#eff6ff" : "#fff",
+                    color: language === "fr" ? "#1d4ed8" : "#334155",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("auth.login.langFr")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage("en")}
+                  aria-pressed={language === "en"}
+                  style={{
+                    minHeight: 44,
+                    minWidth: 44,
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    border: language === "en" ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                    backgroundColor: language === "en" ? "#eff6ff" : "#fff",
+                    color: language === "en" ? "#1d4ed8" : "#334155",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("auth.login.langEn")}
+                </button>
+              </div>
               <h2
                 style={{
                   margin: "0 0 8px 0",

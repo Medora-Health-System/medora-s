@@ -1,21 +1,30 @@
 import type { CSSProperties } from "react";
+import { CLINICAL_VIEWPORT_DESKTOP_MIN } from "@/lib/clinicalViewport";
+import {
+  clinicalTabletCompactPanelPadding,
+  clinicalTabletCompactRowGapPx,
+} from "@/lib/clinicalTabletPanelDensity";
 
-export const DIAGNOSIS_ORDERS_DESKTOP_DENSE_MEDIA = "(min-width: 1024px)";
-export const DIAGNOSIS_ORDERS_TABLET_CARD_MEDIA = "(min-width: 768px) and (max-width: 1023.98px)";
-export const DIAGNOSIS_ORDERS_MOBILE_CARD_MEDIA = "(max-width: 767.98px)";
+export const DIAGNOSIS_ORDERS_DESKTOP_DENSE_MEDIA = `(min-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN}px)`;
+export const DIAGNOSIS_ORDERS_TABLET_CARD_MEDIA = `(min-width: 768px) and (max-width: ${CLINICAL_VIEWPORT_DESKTOP_MIN - 0.02}px)`;
+export const DIAGNOSIS_ORDERS_MOBILE_CARD_MEDIA = `(max-width: 767.98px)`;
 
 export const DIAGNOSIS_ORDERS_TOUCH_TARGET_MIN_PX = 44;
 
 export type DiagnosisOrdersLayoutMode = "mobileCard" | "tabletCard" | "desktopDense";
 
 export function resolveDiagnosisOrdersLayoutMode(viewportWidth: number): DiagnosisOrdersLayoutMode {
-  if (viewportWidth >= 1024) return "desktopDense";
+  if (viewportWidth >= CLINICAL_VIEWPORT_DESKTOP_MIN) return "desktopDense";
   if (viewportWidth >= 768) return "tabletCard";
   return "mobileCard";
 }
 
 export function diagnosisOrdersUsesCardLayout(mode: DiagnosisOrdersLayoutMode): boolean {
   return mode !== "desktopDense";
+}
+
+export function diagnosisOrdersUsesTabletCompactDensity(mode: DiagnosisOrdersLayoutMode): boolean {
+  return mode === "tabletCard";
 }
 
 export function diagnosisOrdersListStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
@@ -31,7 +40,7 @@ export function diagnosisOrdersListStyle(mode: DiagnosisOrdersLayoutMode): CSSPr
       ...base,
       display: "grid",
       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-      gap: 10,
+      gap: clinicalTabletCompactRowGapPx,
     };
   }
   return {
@@ -42,9 +51,10 @@ export function diagnosisOrdersListStyle(mode: DiagnosisOrdersLayoutMode): CSSPr
   };
 }
 
-export function diagnosisOrdersDiagnosisCardShellStyle(): CSSProperties {
+export function diagnosisOrdersDiagnosisCardShellStyle(mode: DiagnosisOrdersLayoutMode = "desktopDense"): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
   return {
-    padding: "12px 14px",
+    padding: compact ? clinicalTabletCompactPanelPadding : "12px 14px",
     borderRadius: 10,
     border: "1px solid #e2e8f0",
     backgroundColor: "#fff",
@@ -88,16 +98,17 @@ export function diagnosisOrdersTableScrollWrapStyle(mode: DiagnosisOrdersLayoutM
   return {
     overflowX: mode === "desktopDense" ? "auto" : "visible",
     overflowY: "auto",
-    maxHeight: "min(65vh, 560px)",
+    maxHeight: mode === "tabletCard" ? "min(58vh, 480px)" : "min(65vh, 560px)",
     WebkitOverflowScrolling: "touch",
     width: "100%",
     minWidth: 0,
   };
 }
 
-export function diagnosisOrdersOrderCardShellStyle(): CSSProperties {
+export function diagnosisOrdersOrderCardShellStyle(mode: DiagnosisOrdersLayoutMode = "mobileCard"): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
   return {
-    padding: "10px 12px",
+    padding: compact ? clinicalTabletCompactPanelPadding : "10px 12px",
     borderRadius: 10,
     border: "1px solid #cbd5e1",
     backgroundColor: "#fff",
@@ -107,9 +118,10 @@ export function diagnosisOrdersOrderCardShellStyle(): CSSProperties {
   };
 }
 
-export function diagnosisOrdersOrderGroupHeaderStyle(): CSSProperties {
+export function diagnosisOrdersOrderGroupHeaderStyle(mode: DiagnosisOrdersLayoutMode = "mobileCard"): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
   return {
-    padding: "6px 10px",
+    padding: compact ? "4px 8px" : "6px 10px",
     borderRadius: 8,
     backgroundColor: "#f1f5f9",
     border: "1px solid #cbd5e1",
@@ -119,6 +131,61 @@ export function diagnosisOrdersOrderGroupHeaderStyle(): CSSProperties {
     width: "100%",
     minWidth: 0,
     boxSizing: "border-box",
+  };
+}
+
+export function diagnosisOrdersDomainSummaryTileStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
+  return {
+    padding: compact ? clinicalTabletCompactPanelPadding : "8px 10px",
+    borderRadius: 10,
+    fontSize: 11,
+    color: "#334155",
+    lineHeight: 1.3,
+    minHeight: compact ? 52 : 72,
+    boxSizing: "border-box",
+  };
+}
+
+export function diagnosisOrdersDomainSummaryListStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
+  return {
+    margin: 0,
+    paddingLeft: 14,
+    maxHeight: compact ? 88 : 120,
+    overflow: "auto",
+  };
+}
+
+export function diagnosisOrdersQuickActionGridStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
+  return {
+    flex: "1 1 200px",
+    minWidth: 0,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: compact ? clinicalTabletCompactRowGapPx : 8,
+    alignContent: "start",
+  };
+}
+
+export function diagnosisOrdersDomainGridStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
+  return {
+    flex: "1 1 200px",
+    minWidth: 0,
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: compact ? clinicalTabletCompactRowGapPx : 8,
+    alignContent: "start",
+  };
+}
+
+export function diagnosisOrdersSectionDividerStyle(mode: DiagnosisOrdersLayoutMode): CSSProperties {
+  const compact = diagnosisOrdersUsesTabletCompactDensity(mode);
+  return {
+    borderTop: "1px solid #e2e8f0",
+    paddingTop: compact ? 6 : 10,
   };
 }
 

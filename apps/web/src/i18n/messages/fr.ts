@@ -1484,6 +1484,10 @@ export default {
       suspenseLoading: "Chargement…",
       errorFallback: "Échec de la connexion. Réessayez.",
       errorNetwork: "Échec de la connexion. Vérifiez votre connexion et réessayez.",
+      languageLabel: "Langue",
+      languageToggleAria: "Choisir la langue de connexion",
+      langFr: "Français",
+      langEn: "English",
     },
     forgotPassword: {
       brandTagline:

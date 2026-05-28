@@ -4,8 +4,14 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { defaultLanguage, supportedLanguages, type SupportedLanguage } from "./config";
 import frMessages from "./messages/fr";
 import enMessages from "./messages/en";
-
-const STORAGE_KEY = "medora_locale";
+import {
+  persistFacilityUiLanguage,
+  readCachedFacilityUiLanguage,
+  readStoredUiLanguageRaw,
+  resolveBrowserUiLanguage,
+  resolveClientUiLanguage,
+  UI_LANGUAGE_STORAGE_KEY,
+} from "./resolveClientUiLanguage";
 
 const messagesByLang: Record<SupportedLanguage, unknown> = {
   fr: frMessages,
@@ -68,17 +74,16 @@ export function I18nProvider({
     try {
       if (facilityLanguage && isSupportedLanguage(facilityLanguage)) {
         setLanguageState(facilityLanguage);
+        persistFacilityUiLanguage(facilityLanguage);
         return;
       }
 
-      const raw =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem(STORAGE_KEY)
-          : null;
-
-      if (raw && isSupportedLanguage(raw)) {
-        setLanguageState(raw);
-      }
+      const resolved = resolveClientUiLanguage({
+        storedLanguage: readStoredUiLanguageRaw(),
+        cachedFacilityLanguage: readCachedFacilityUiLanguage(),
+        browserLanguage: resolveBrowserUiLanguage(),
+      });
+      setLanguageState(resolved);
     } catch {
       // ignore
     }
@@ -87,7 +92,7 @@ export function I18nProvider({
   const setLanguage = useCallback((lang: SupportedLanguage) => {
     setLanguageState(lang);
     try {
-      window.localStorage.setItem(STORAGE_KEY, lang);
+      window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, lang);
     } catch {
       // ignore
     }
