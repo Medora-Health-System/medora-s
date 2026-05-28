@@ -56,6 +56,44 @@ describe("facilityBillingWorkflow (19UCED.2)", () => {
     expect(targets).toEqual(["EMERGENCY_DEPARTMENT"]);
   });
 
+  it("hybrid resolves ED→UC for ED trackboard encounters (19UCED.2A)", () => {
+    const targets = resolveAllowedTargetClassifications({
+      from: "EMERGENCY_DEPARTMENT",
+      facilityConfig: hybridConfig,
+      isAdmin: false,
+    });
+    expect(targets).toEqual(["URGENT_CARE"]);
+  });
+
+  it("hybrid legacy false flags bootstrap when allowed list empty (19UCED.2A)", () => {
+    const legacyHybrid = resolveFacilityBillingWorkflowConfig({
+      billingClassificationMode: "HYBRID_UC_ED",
+      billingSiteType: "HYBRID",
+      allowedEncounterBillingClassifications: [],
+      allowUrgentCareToEmergencyUpgrade: false,
+      showEncounterBillingControls: false,
+    });
+    expect(legacyHybrid.allowUrgentCareToEmergencyUpgrade).toBe(true);
+    expect(legacyHybrid.showEncounterBillingControls).toBe(true);
+    const targets = resolveAllowedTargetClassifications({
+      from: "EMERGENCY_DEPARTMENT",
+      facilityConfig: legacyHybrid,
+      isAdmin: false,
+    });
+    expect(targets).toEqual(["URGENT_CARE"]);
+  });
+
+  it("hybrid explicit false flags respected when admin disables controls", () => {
+    const disabledHybrid = resolveFacilityBillingWorkflowConfig({
+      billingClassificationMode: "HYBRID_UC_ED",
+      billingSiteType: "HYBRID",
+      allowedEncounterBillingClassifications: ["URGENT_CARE", "EMERGENCY_DEPARTMENT"],
+      allowUrgentCareToEmergencyUpgrade: false,
+      showEncounterBillingControls: false,
+    });
+    expect(disabledHybrid.showEncounterBillingControls).toBe(false);
+  });
+
   it("hospital enterprise allows ED→Observation", () => {
     const hospital = resolveFacilityBillingWorkflowConfig({
       billingClassificationMode: "HOSPITAL_ENTERPRISE",

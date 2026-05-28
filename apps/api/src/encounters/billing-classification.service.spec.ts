@@ -205,4 +205,20 @@ describe("BillingClassificationService (19UCED.1/2)", () => {
     expect(opts.allowedTargets).toContain("EMERGENCY_DEPARTMENT");
     expect(opts.allowChange).toBe(false);
   });
+
+  it("getTransitionOptions returns ED→UC for hybrid ED trackboard encounter (19UCED.2A)", async () => {
+    const { svc } = makeService({
+      ...baseEncounter,
+      type: "EMERGENCY",
+      billingClassification: "EMERGENCY_DEPARTMENT",
+    });
+    const opts = await svc.getTransitionOptions({
+      encounterId: "e1",
+      facilityId: "f1",
+      userId: "u1",
+    });
+    expect(opts.currentClassification).toBe("EMERGENCY_DEPARTMENT");
+    expect(opts.allowedTargets).toContain("URGENT_CARE");
+    expect(opts.allowChange).toBe(true);
+  });
 });

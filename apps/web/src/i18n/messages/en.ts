@@ -5104,6 +5104,8 @@ export default {
     badgeActionHint: "Change billing classification",
     changeToLabel: "Change to",
     noTransitions: "No transitions allowed for this facility.",
+    controlsDisabled: "Billing classification controls are disabled for this facility.",
+    changeNotPermitted: "Change not permitted for your role or encounter status.",
     errorAckRequired: "Patient acknowledgment is required.",
     errorGeneric: "Unable to update billing classification.",
     historyTitle: "Billing classification history",

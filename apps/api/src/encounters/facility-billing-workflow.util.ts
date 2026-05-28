@@ -49,6 +49,15 @@ export function facilityWorkflowPatchData(dto: {
     data.billingClassificationMode = dto.billingClassificationMode;
     if (dto.billingClassificationMode) {
       data.billingSiteType = mapBillingClassificationModeToSiteType(dto.billingClassificationMode);
+      const isHybridOrHospital =
+        dto.billingClassificationMode === "HYBRID_UC_ED" ||
+        dto.billingClassificationMode === "HOSPITAL_ENTERPRISE";
+      if (isHybridOrHospital && dto.allowUrgentCareToEmergencyUpgrade === undefined) {
+        data.allowUrgentCareToEmergencyUpgrade = true;
+      }
+      if (isHybridOrHospital && dto.showEncounterBillingControls === undefined) {
+        data.showEncounterBillingControls = true;
+      }
     }
   }
   if (dto.allowedEncounterBillingClassifications !== undefined) {

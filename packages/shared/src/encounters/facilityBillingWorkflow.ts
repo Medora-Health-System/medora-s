@@ -116,15 +116,27 @@ export function resolveFacilityBillingWorkflowConfig(
         : [...ALL_CLASSIFICATIONS];
 
   const isHybridOrHospital = mode === "HYBRID_UC_ED" || mode === "HOSPITAL_ENTERPRISE";
+  const hybridFlags = hybridOperationalFlags(input, isHybridOrHospital);
+
+  // 19UCED.2A — pre-fix creates persisted HYBRID mode with both flags false and empty allowed list.
+  const rawAllowedEmpty = (input.allowedEncounterBillingClassifications?.length ?? 0) === 0;
+  if (
+    mode === "HYBRID_UC_ED" &&
+    rawAllowedEmpty &&
+    input.allowUrgentCareToEmergencyUpgrade === false &&
+    input.showEncounterBillingControls === false
+  ) {
+    hybridFlags.allowUrgentCareToEmergencyUpgrade = true;
+    hybridFlags.showEncounterBillingControls = true;
+  }
 
   return {
     billingClassificationMode: mode,
     billingSiteType: input.billingSiteType ?? (mode ? mapBillingClassificationModeToSiteType(mode) : null),
     allowedEncounterBillingClassifications,
-    allowUrgentCareToEmergencyUpgrade:
-      input.allowUrgentCareToEmergencyUpgrade ?? (isHybridOrHospital ? true : false),
+    allowUrgentCareToEmergencyUpgrade: hybridFlags.allowUrgentCareToEmergencyUpgrade,
     requireUcToEdPatientAcknowledgement: input.requireUcToEdPatientAcknowledgement ?? true,
-    showEncounterBillingControls: input.showEncounterBillingControls ?? isHybridOrHospital,
+    showEncounterBillingControls: hybridFlags.showEncounterBillingControls,
   };
 }
 
@@ -135,6 +147,30 @@ const OPERATIONAL_TRANSITIONS: Partial<Record<BillingClassification, BillingClas
   EMERGENCY_DEPARTMENT: ["OBSERVATION", "INPATIENT"],
   OBSERVATION: ["INPATIENT"],
 };
+
+/** Hybrid UC+ED sites: bidirectional UC ↔ ED only (not observation/inpatient on trackboard). */
+function operationalTransitionCandidates(
+  from: BillingClassification,
+  mode: FacilityBillingClassificationMode | null,
+): BillingClassification[] {
+  if (mode === "HYBRID_UC_ED") {
+    if (from === "URGENT_CARE") return ["EMERGENCY_DEPARTMENT"];
+    if (from === "EMERGENCY_DEPARTMENT") return ["URGENT_CARE"];
+    return [];
+  }
+  return OPERATIONAL_TRANSITIONS[from] ?? [];
+}
+
+function hybridOperationalFlags(input: FacilityBillingWorkflowInput, isHybridOrHospital: boolean) {
+  return {
+    allowUrgentCareToEmergencyUpgrade: isHybridOrHospital
+      ? (input.allowUrgentCareToEmergencyUpgrade ?? true)
+      : Boolean(input.allowUrgentCareToEmergencyUpgrade ?? false),
+    showEncounterBillingControls: isHybridOrHospital
+      ? (input.showEncounterBillingControls ?? true)
+      : Boolean(input.showEncounterBillingControls ?? false),
+  };
+}
 
 export type AllowedTransitionResult = {
   allowed: boolean;
@@ -151,7 +187,7 @@ export function resolveAllowedTargetClassifications(params: {
   const { from, facilityConfig, isAdmin } = params;
   const mode = facilityConfig.billingClassificationMode;
   const allowedSet = new Set(facilityConfig.allowedEncounterBillingClassifications);
-  const candidates = OPERATIONAL_TRANSITIONS[from] ?? [];
+  const candidates = operationalTransitionCandidates(from, mode);
 
   return candidates.filter((to) => {
     if (to === from || !allowedSet.has(to)) return false;
@@ -221,6 +257,29 @@ export function validateFacilityBillingTransition(params: {
   }
 
   if (from === "EMERGENCY_DEPARTMENT" && to === "URGENT_CARE") {
+    if (mode === "HYBRID_UC_ED") {
+      if (!facilityConfig.showEncounterBillingControls) {
+        return {
+          allowed: false,
+          requiresAcknowledgment: false,
+          requiresElevatedPermission: false,
+          code: "BILLING_CONTROLS_DISABLED_FOR_FACILITY",
+        };
+      }
+      if (!facilityConfig.allowedEncounterBillingClassifications.includes(to)) {
+        return {
+          allowed: false,
+          requiresAcknowledgment: false,
+          requiresElevatedPermission: false,
+          code: "CLASSIFICATION_NOT_ALLOWED_FOR_FACILITY",
+        };
+      }
+      return {
+        allowed: true,
+        requiresAcknowledgment: false,
+        requiresElevatedPermission: false,
+      };
+    }
     return {
       allowed: isAdmin,
       requiresAcknowledgment: true,
@@ -241,7 +300,7 @@ export function validateFacilityBillingTransition(params: {
     };
   }
 
-  const candidates = OPERATIONAL_TRANSITIONS[from] ?? [];
+  const candidates = operationalTransitionCandidates(from, mode);
   if (!candidates.includes(to) && !isAdmin) {
     return {
       allowed: false,

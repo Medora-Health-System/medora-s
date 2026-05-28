@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import {
@@ -23,6 +24,8 @@ import {
 
 @Injectable()
 export class BillingClassificationService {
+  private readonly logger = new Logger(BillingClassificationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
@@ -65,7 +68,7 @@ export class BillingClassificationService {
       isAdmin,
     });
 
-    return {
+    const result = {
       currentClassification: current,
       allowedTargets,
       showControls: facilityConfig.showEncounterBillingControls,
@@ -80,6 +83,23 @@ export class BillingClassificationService {
         showEncounterBillingControls: facilityConfig.showEncounterBillingControls,
       },
     };
+
+    if (process.env.BILLING_WORKFLOW_DEBUG === "1") {
+      this.logger.debug(
+        JSON.stringify({
+          facilityId,
+          encounterId,
+          mode: facilityConfig.billingClassificationMode,
+          showControls: facilityConfig.showEncounterBillingControls,
+          allowUcToEd: facilityConfig.allowUrgentCareToEmergencyUpgrade,
+          currentClassification: current,
+          allowedTargets,
+          allowChange: result.allowChange,
+        }),
+      );
+    }
+
+    return result;
   }
 
   async changeBillingClassification(params: {

@@ -77,9 +77,13 @@ export class AdminFacilitiesService {
             ? {
                 billingClassificationMode: workflowMode,
                 billingSiteType: mapBillingClassificationModeToSiteType(workflowMode),
-                allowUrgentCareToEmergencyUpgrade: dto.allowUrgentCareToEmergencyUpgrade ?? false,
+                allowUrgentCareToEmergencyUpgrade:
+                  dto.allowUrgentCareToEmergencyUpgrade ??
+                  (workflowMode === "HYBRID_UC_ED" || workflowMode === "HOSPITAL_ENTERPRISE"),
                 requireUcToEdPatientAcknowledgement: dto.requireUcToEdPatientAcknowledgement ?? true,
-                showEncounterBillingControls: dto.showEncounterBillingControls ?? false,
+                showEncounterBillingControls:
+                  dto.showEncounterBillingControls ??
+                  (workflowMode === "HYBRID_UC_ED" || workflowMode === "HOSPITAL_ENTERPRISE"),
                 allowedEncounterBillingClassifications: dto.allowedEncounterBillingClassifications ?? [],
               }
             : {}),

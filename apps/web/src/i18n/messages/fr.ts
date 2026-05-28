@@ -5072,6 +5072,8 @@ export default {
     badgeActionHint: "Modifier la classification de facturation",
     changeToLabel: "Changer vers",
     noTransitions: "Aucune transition autorisée pour cet établissement.",
+    controlsDisabled: "Les contrôles de classification sont désactivés pour cet établissement.",
+    changeNotPermitted: "Modification non autorisée pour votre rôle ou le statut de la consultation.",
     errorAckRequired: "La reconnaissance du patient est requise.",
     errorGeneric: "Impossible de mettre à jour la classification.",
     historyTitle: "Historique de classification de facturation",

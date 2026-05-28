@@ -29,6 +29,7 @@ export function BillingClassificationBadgeInteractive({
   const [loading, setLoading] = useState(false);
   const [allowedTargets, setAllowedTargets] = useState<BillingClassification[]>([]);
   const [allowChange, setAllowChange] = useState(false);
+  const [showControls, setShowControls] = useState(false);
   const [target, setTarget] = useState<BillingClassification | null>(null);
 
   const loadOptions = useCallback(async () => {
@@ -36,9 +37,11 @@ export function BillingClassificationBadgeInteractive({
     try {
       const opts = await fetchBillingClassificationOptions(facilityId, encounterId);
       setAllowedTargets(opts.allowedTargets);
+      setShowControls(opts.showControls);
       setAllowChange(opts.allowChange && canEdit && encounterOpen);
     } catch {
       setAllowedTargets([]);
+      setShowControls(false);
       setAllowChange(false);
     } finally {
       setLoading(false);
@@ -124,8 +127,12 @@ export function BillingClassificationBadgeInteractive({
                   {t(`encounterChrome.billingClassification.${to}`)}
                 </button>
               ))
-            ) : (
+            ) : !showControls ? (
+              <p style={{ margin: 8, fontSize: 12, color: "#64748b" }}>{t("billingClassification.controlsDisabled")}</p>
+            ) : allowedTargets.length === 0 ? (
               <p style={{ margin: 8, fontSize: 12, color: "#64748b" }}>{t("billingClassification.noTransitions")}</p>
+            ) : (
+              <p style={{ margin: 8, fontSize: 12, color: "#64748b" }}>{t("billingClassification.changeNotPermitted")}</p>
             )}
           </div>
         </>
