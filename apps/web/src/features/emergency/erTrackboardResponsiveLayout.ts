@@ -7,6 +7,7 @@ import {
   resolveClinicalWorkspaceDensity,
   type ClinicalWorkspaceDensity,
 } from "@/lib/clinicalViewport";
+import { clinicalTouchActionGroupStyle } from "@/lib/clinicalTouchNavigation";
 
 /** @deprecated Use CLINICAL_VIEWPORT_TABLET_MIN from clinicalViewport. */
 export const ER_TRACKBOARD_MOBILE_LAYOUT_MEDIA = `(max-width: ${CLINICAL_VIEWPORT_TABLET_MIN - 0.02}px)`;
@@ -144,4 +145,8 @@ export function erTrackboardOpsRegionStyle(): CSSProperties {
     width: "100%",
     minWidth: 0,
   };
+}
+
+export function erTrackboardTouchActionGroupStyle(mode: ErTrackboardLayoutMode): CSSProperties {
+  return clinicalTouchActionGroupStyle(mode !== "desktopDense");
 }

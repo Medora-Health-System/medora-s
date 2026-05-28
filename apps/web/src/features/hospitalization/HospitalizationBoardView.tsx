@@ -47,6 +47,7 @@ import {
   observationBoardPageInnerStyle,
   observationBoardPatientListStyle,
   observationBoardSnapshotGridStyle,
+  observationBoardTouchActionGroupStyle,
   observationBoardTouchControlStyle,
   observationBoardUsesStackedCards,
   resolveObservationBoardLayoutMode,
@@ -1259,16 +1260,7 @@ export function HospitalizationBoardView() {
                             ) : (
                               <ObservationEscalationHintBadges encounter={encounter} t={t} />
                             )}
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "row",
-                                flexWrap: "wrap",
-                                gap: 4,
-                                alignItems: "center",
-                                justifyContent: "flex-end",
-                              }}
-                            >
+                            <div style={observationBoardTouchActionGroupStyle(layoutMode)}>
                               <Link
                                 href={`/app/encounters/${encounter.id}`}
                                 style={{

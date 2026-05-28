@@ -55,6 +55,7 @@ import {
   erTrackboardPatientListStyle,
   erTrackboardSearchFieldStyle,
   erTrackboardTouchControlStyle,
+  erTrackboardTouchActionGroupStyle,
   erTrackboardUsesStackedCardLayout,
   ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
   resolveErTrackboardLayoutMode,
@@ -900,7 +901,7 @@ export function EmergencyTrackboardView() {
                             </div>
                             <div
                               style={{
-                                ...erTrackboardChipRowStyle(layoutMode),
+                                ...erTrackboardTouchActionGroupStyle(layoutMode),
                                 alignItems: "center",
                               }}
                             >

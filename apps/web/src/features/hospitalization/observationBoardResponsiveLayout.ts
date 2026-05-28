@@ -7,6 +7,7 @@ import {
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
+import { clinicalTouchActionGroupStyle } from "@/lib/clinicalTouchNavigation";
 
 export const OBSERVATION_BOARD_TOUCH_TARGET_MIN_PX = CLINICAL_MIN_TOUCH_TARGET_PX;
 
@@ -86,4 +87,8 @@ export function observationBoardFilterRowStyle(mode: ObservationBoardLayoutMode)
     width: "100%",
     minWidth: 0,
   };
+}
+
+export function observationBoardTouchActionGroupStyle(mode: ObservationBoardLayoutMode): CSSProperties {
+  return clinicalTouchActionGroupStyle(mode !== "desktopDense");
 }

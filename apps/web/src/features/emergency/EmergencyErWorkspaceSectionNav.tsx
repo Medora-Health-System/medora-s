@@ -14,6 +14,7 @@ import {
   type EmergencyChartLayoutMode,
   usesErDesktopTileNav,
 } from "@/features/emergency/emergencyChartResponsiveLayout";
+import { emergencyChartUsesBottomRail } from "@/features/emergency/emergencyChartTouchNavigationMode";
 
 const DASHBOARD_SHORT_LABELS: Record<string, string> = {
   T: "Triage",
@@ -52,11 +53,16 @@ export function EmergencyErWorkspaceSectionNav({
 }) {
   const chipRefs = useRef<Partial<Record<ErWorkspaceSection, HTMLButtonElement | null>>>({});
   const desktopNav = usesErDesktopTileNav(layoutMode);
+  const bottomRailNav = emergencyChartUsesBottomRail(layoutMode);
 
   useEffect(() => {
-    if (desktopNav) return;
+    if (desktopNav || bottomRailNav) return;
     chipRefs.current[activeSection]?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
-  }, [activeSection, desktopNav]);
+  }, [activeSection, desktopNav, bottomRailNav]);
+
+  if (bottomRailNav) {
+    return null;
+  }
 
   return (
     <section aria-label={heading} style={{ marginBottom: 20 }}>
