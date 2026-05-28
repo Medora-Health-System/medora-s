@@ -1,0 +1,102 @@
+{
+  "medora-fr-diag-registration-flux-principal": {
+    "id": "D-01",
+    "title": "Flux inscription patient",
+    "steps": ["Recherche patient", "Création fiche", "Ouverture visite", "Routage clinique"]
+  },
+  "medora-fr-diag-registration-types-consultation": {
+    "id": "D-02",
+    "title": "Types de consultation",
+    "steps": ["Arrivée", "Urgences (ED)", "Soins urgents (UC)", "Clinique"]
+  },
+  "medora-fr-diag-triage-flux-principal": {
+    "id": "D-03",
+    "title": "Flux triage urgences",
+    "steps": ["Arrivée", "Signes vitaux", "Indice ESI", "Enregistrement triage"]
+  },
+  "medora-fr-diag-triage-reevaluation-esi": {
+    "id": "D-04",
+    "title": "Réévaluation ESI",
+    "steps": ["Aggravation", "Nouvelle saisie ESI", "Mise à jour tableau"]
+  },
+  "medora-fr-diag-provider-doc-flux": {
+    "id": "D-05",
+    "title": "Documentation médicale",
+    "steps": ["HPI", "ROS", "Examen", "MDM", "Ordres"]
+  },
+  "medora-fr-diag-complaint-intelligence": {
+    "id": "D-06",
+    "title": "Intelligence motif",
+    "steps": ["Motif saisi", "Pastilles proposées", "Insertion manuelle", "Revue clinicien"]
+  },
+  "medora-fr-diag-nursing-soins-flux": {
+    "id": "D-07",
+    "title": "Soins infirmiers",
+    "steps": ["Chevet", "Réévaluation", "MAR", "Documentation soins"]
+  },
+  "medora-fr-diag-nursing-sortie-execution": {
+    "id": "D-08",
+    "title": "Exécution sortie infirmière",
+    "steps": ["Orientation prestataire", "Actes infirmiers", "Consignes retour", "Clôture"]
+  },
+  "medora-fr-diag-disposition-cycle": {
+    "id": "D-09",
+    "title": "Cycle orientation",
+    "steps": ["Décision orientation", "Panneau disposition", "Destination", "Suivi"]
+  },
+  "medora-fr-diag-orientation-disposition-distinction": {
+    "id": "D-10",
+    "title": "Orientation vs disposition vs exécution",
+    "steps": ["Médecin: orientation", "Dossier: disposition", "Infirmier: exécution"]
+  },
+  "medora-fr-diag-admission-observation": {
+    "id": "D-11",
+    "title": "Admission observation",
+    "steps": ["Décision admission", "Dossier observation", "Handoff équipe"]
+  },
+  "medora-fr-diag-roi-cycle-vie": {
+    "id": "D-12",
+    "title": "Cycle de vie ROI",
+    "steps": ["Demande accès", "Revue admin", "Approbation", "Audit"]
+  },
+  "medora-fr-diag-carry-forward-cycle": {
+    "id": "D-13",
+    "title": "Cycle carry-forward (19T)",
+    "steps": ["Triage enregistré", "Reprise dossier", "Réconciliation", "Validation section"]
+  },
+  "medora-fr-diag-connectivite-degradee": {
+    "id": "D-14",
+    "title": "Connectivité dégradée",
+    "steps": ["Panne réseau", "Protocole papier", "Reconnexion", "Pending sync", "Vérification"]
+  },
+  "medora-fr-diag-haiti-deploiement": {
+    "id": "D-15",
+    "title": "Déploiement Haïti",
+    "steps": ["Préparation", "Formation 4 sem.", "Go-live", "Debrief direction"]
+  },
+  "medora-fr-diag-haiti-super-users": {
+    "id": "D-16",
+    "title": "Super-utilisateurs Haïti",
+    "steps": ["Nomination SU", "Support niveau 1", "Escalade admin", "Relève backup"]
+  },
+  "medora-fr-diag-formation-par-role": {
+    "id": "D-17",
+    "title": "Formation par rôle",
+    "steps": ["Accueil: Vol. 1", "Triage: Vol. 2", "Médecin: Vol. 3", "Admin: Vol. 7"]
+  },
+  "medora-fr-diag-certification-niveaux": {
+    "id": "D-18",
+    "title": "Niveaux certification",
+    "steps": ["N0 Observation", "N1 Supervisé", "N2 Autonomie", "N3 Super-user"]
+  },
+  "medora-fr-diag-formation-calendrier-haiti": {
+    "id": "D-19",
+    "title": "Calendrier formation Haïti",
+    "steps": ["Sem. 1 Accueil/triage", "Sem. 2 Doc/soins", "Sem. 3 Auxiliaires", "Sem. 4 Admin/ROI"]
+  },
+  "medora-fr-diag-parcours-patient-ed-master": {
+    "id": "D-20",
+    "title": "Parcours patient ED",
+    "steps": ["Accueil", "Triage", "Documentation", "Ordres", "Soins", "Orientation", "Sortie"]
+  }
+}

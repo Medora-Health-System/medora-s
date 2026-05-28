@@ -17,7 +17,12 @@
     "dev:api": "npm run dev --workspace=@medora/api",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "handbook:diagrams": "node scripts/handbook/render-diagrams.mjs --png",
+    "handbook:screenshots:placeholders": "node scripts/handbook/render-screenshot-placeholders.mjs",
+    "handbook:assemble": "node scripts/handbook/assemble-handbook.mjs",
+    "handbook:export": "node scripts/handbook/export-handbook.mjs",
+    "handbook:assets": "pnpm handbook:diagrams && pnpm handbook:screenshots:placeholders && pnpm handbook:assemble"
   }
 }
 
