@@ -20,10 +20,13 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
+import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 import {
   billingClassificationSchema,
   chargeReviewDomainSchema,
   chargeReviewStatusSchema,
+  codingIntegrityDomainSchema,
+  codingIntegrityStatusSchema,
 } from "@medora/shared";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
 import { patchInfusionBillingReviewBodySchema } from "./dto/infusion-billing-review.dto";
@@ -48,6 +51,7 @@ export class BillingController {
     private readonly billingService: BillingService,
     private readonly externalBillingExport: ExternalBillingExportService,
     private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
+    private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
   ) {}
 
   @Get("billing/encounters/:encounterId/readiness")
@@ -124,6 +128,63 @@ export class BillingController {
       dateTo: dateToRaw?.trim() ? new Date(dateToRaw.trim()) : undefined,
       encounterOpen,
       manualReviewOnly: manualReviewOnly || undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
+
+  /** Phase 19UCED.7 — read-only coding integrity / documentation review queue. */
+  @Get("coding/review-queue")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getCodingReviewQueue(
+    @Req() req: any,
+    @Query("status") statusRaw?: string,
+    @Query("domain") domainRaw?: string,
+    @Query("billingClassification") billingClassificationRaw?: string,
+    @Query("dateFrom") dateFromRaw?: string,
+    @Query("dateTo") dateToRaw?: string,
+    @Query("observationOnly") observationOnlyRaw?: string,
+    @Query("providerClarificationOnly") providerClarificationOnlyRaw?: string,
+    @Query("complianceOnly") complianceOnlyRaw?: string,
+    @Query("limit") limitRaw?: string,
+  ) {
+    const facilityId = req.facilityId;
+    const statusParsed = statusRaw?.trim()
+      ? codingIntegrityStatusSchema.safeParse(statusRaw.trim())
+      : null;
+    if (statusParsed && !statusParsed.success) {
+      throw new BadRequestException("Invalid status filter");
+    }
+    const domainParsed = domainRaw?.trim()
+      ? codingIntegrityDomainSchema.safeParse(domainRaw.trim())
+      : null;
+    if (domainParsed && !domainParsed.success) {
+      throw new BadRequestException("Invalid domain filter");
+    }
+    const classificationParsed = billingClassificationRaw?.trim()
+      ? billingClassificationSchema.safeParse(billingClassificationRaw.trim())
+      : null;
+    if (classificationParsed && !classificationParsed.success) {
+      throw new BadRequestException("Invalid billingClassification filter");
+    }
+    const observationOnly =
+      observationOnlyRaw?.trim().toLowerCase() === "true" || observationOnlyRaw?.trim() === "1";
+    const providerClarificationOnly =
+      providerClarificationOnlyRaw?.trim().toLowerCase() === "true" ||
+      providerClarificationOnlyRaw?.trim() === "1";
+    const complianceOnly =
+      complianceOnlyRaw?.trim().toLowerCase() === "true" || complianceOnlyRaw?.trim() === "1";
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+
+    return this.codingIntegrityReviewService.getQueue({
+      facilityId,
+      status: statusParsed?.success ? statusParsed.data : undefined,
+      domain: domainParsed?.success ? domainParsed.data : undefined,
+      billingClassification: classificationParsed?.success ? classificationParsed.data : undefined,
+      dateFrom: dateFromRaw?.trim() ? new Date(dateFromRaw.trim()) : undefined,
+      dateTo: dateToRaw?.trim() ? new Date(dateToRaw.trim()) : undefined,
+      observationOnly: observationOnly || undefined,
+      providerClarificationOnly: providerClarificationOnly || undefined,
+      complianceOnly: complianceOnly || undefined,
       limit: Number.isFinite(limit) ? limit : undefined,
     });
   }

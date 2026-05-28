@@ -15,6 +15,7 @@ import { BillingExportReadinessService } from "./billing-export-readiness.servic
 import { BillingLedgerReadinessService } from "./billing-ledger-readiness.service";
 import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
 import { ChargeCaptureReviewService } from "./charge-capture-review.service";
+import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -30,6 +31,7 @@ import { ChargeCaptureReviewService } from "./charge-capture-review.service";
     BillingLedgerReadinessService,
     FacilityFeeReadinessService,
     ChargeCaptureReviewService,
+    CodingIntegrityReviewService,
     AuditService,
   ],
   exports: [

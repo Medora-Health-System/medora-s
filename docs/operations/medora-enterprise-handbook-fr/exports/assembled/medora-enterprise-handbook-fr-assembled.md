@@ -1532,6 +1532,13 @@ Tableau des urgences + parcours ED complet
 - **Une consultation, un dossier, un flux clinique** — la révision organise les métadonnées de préparation facturation sans dupliquer le dossier ni bloquer le flux clinique.
 - La **politique institutionnelle de facturation et de codage** reste requise pour toute décision finale.
 
+### 4.6.5 Intégrité codage et révision documentation (19UCED.7)
+
+- Medora ajoute une **couche opérationnelle de révision intégrité codage / documentation** pour les équipes facturation, codage, conformité et administration.
+- Indicateurs : complétude documentation, clarification prestataire, révision observation, révision conformité — **métadonnées de révision uniquement**.
+- **Aperçu opérationnel uniquement** — pas d'auto-codage CPT/ICD, pas de génération ni soumission de réclamation.
+- **Une consultation, un dossier, un flux de documentation** — aucune modification automatique des notes, diagnostics ou MDM.
+
 ## 4.7 Attentes de documentation
 
 - Motif de conversion et heure.  

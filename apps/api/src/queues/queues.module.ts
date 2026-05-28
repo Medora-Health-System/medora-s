@@ -27,6 +27,7 @@ import { ClearinghouseStabilizationService } from "../billing/clearinghouse-stab
 import { ClaimOperationalEventService } from "../billing/claim-operational-event.service";
 import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearinghouse-observability.service";
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
+import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 
 @Module({
   imports: [PrismaModule],
@@ -55,6 +56,7 @@ import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.
     BillingIdentityService,
     ClearinghouseAckWebhookGuard,
     ChargeCaptureReviewService,
+    CodingIntegrityReviewService,
   ],
   exports: [
     QueuesService,
