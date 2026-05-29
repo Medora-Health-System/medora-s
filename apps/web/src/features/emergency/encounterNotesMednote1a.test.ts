@@ -60,7 +60,8 @@ describe("MEDNOTE.1A legal chart hardening guards", () => {
   it("chart export HTML and JSON manifest include full note body field", () => {
     expect(chartExportHtmlSource).toContain("encounterNotes");
     expect(chartExportHtmlSource).toContain("n.body");
-    expect(chartExportServiceSource).toContain("body: n.body");
+    expect(chartExportServiceSource).toContain("mapEncounterNoteForLegalChart");
+    expect(chartExportServiceSource).toContain("body:");
     expect(chartExportServiceSource).not.toContain("encounterNotePreview");
   });
 
@@ -77,13 +78,14 @@ describe("MEDNOTE.1A legal chart hardening guards", () => {
     expect(serviceSource).not.toMatch(/erNotesV1.*update|nursingAssessment.*update/i);
   });
 
-  it("append-only API — POST only, no PATCH/PUT note body routes", () => {
+  it("append-only API — no PATCH/PUT note body routes; body never updated in place", () => {
     expect(controllerSource).toContain('@Post("encounters/:id/notes")');
     expect(controllerSource).toContain('@Get("encounters/:id/notes")');
     expect(controllerSource).not.toMatch(/@Patch\("encounters\/:id\/notes/i);
     expect(controllerSource).not.toMatch(/@Put\("encounters\/:id\/notes/i);
     expect(serviceSource).toContain("encounterNote.create");
-    expect(serviceSource).not.toMatch(/encounterNote\.(update|upsert|delete)/);
+    expect(serviceSource).not.toMatch(/update\(\{[\s\S]*body:/);
+    expect(serviceSource).not.toMatch(/encounterNote\.(upsert|delete)/);
   });
 
   it("audit uses allowlisted metadata builder", () => {

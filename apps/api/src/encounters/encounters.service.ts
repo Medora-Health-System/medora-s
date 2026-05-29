@@ -106,6 +106,8 @@ import {
   type ObservationReassessmentV1Body,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
   legacyErNotesV1DisplayEntries,
+  mapEncounterNoteForLegalChart,
+  mapClinicalDocumentationEntryForLegalChart,
 } from "@medora/shared";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
@@ -479,8 +481,40 @@ export class EncountersService {
           },
         },
         encounterNotes: {
-          where: { voidedAt: null },
           orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            noteType: true,
+            body: true,
+            authorUserId: true,
+            authorDisplayNameSnapshot: true,
+            authorRoleSnapshot: true,
+            createdAt: true,
+            voidedAt: true,
+            voidedByUserId: true,
+            voidReasonCode: true,
+            isAmendment: true,
+            amendedFromNoteId: true,
+            amendmentReason: true,
+            requiresCosign: true,
+            cosignedAt: true,
+            cosignedByUserId: true,
+            cosignRoleSnapshot: true,
+          },
+        },
+        clinicalDocumentationEntries: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            encounterId: true,
+            category: true,
+            cardId: true,
+            authorDisplayNameSnapshot: true,
+            authorRoleSnapshot: true,
+            createdAt: true,
+            payloadJson: true,
+            voidedAt: true,
+          },
         },
       },
     });
@@ -519,7 +553,7 @@ export class EncountersService {
       }
     }
 
-    const { providerAddenda: _rawAddenda, encounterNotes: _rawNotes, ...encounterForClinic } = encounter;
+    const { providerAddenda: _rawAddenda, encounterNotes: _rawNotes, clinicalDocumentationEntries: _rawEdoc, ...encounterForClinic } = encounter;
     const res = toEncounterClinicResponse(encounterForClinic as typeof encounter) as Record<string, unknown>;
     const signedByDisplayFr =
       encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedBy
@@ -531,23 +565,32 @@ export class EncountersService {
         ? { ...res, closedByDisplayFr }
         : res;
 
-    const relationalNotes = (_rawNotes ?? []).map((n) => ({
-      id: n.id,
-      noteType: n.noteType,
-      body: n.body,
-      authorDisplayName: n.authorDisplayNameSnapshot,
-      authorRoleTitle: n.authorRoleSnapshot,
-      createdAt: n.createdAt.toISOString(),
-    }));
-    const legacyNotes = legacyErNotesV1DisplayEntries(encounter.nursingAssessment, encounter.id);
+    const relationalNotes = (_rawNotes ?? []).map((n) =>
+      mapEncounterNoteForLegalChart({
+        ...n,
+        authorDisplayNameSnapshot: n.authorDisplayNameSnapshot,
+        authorRoleSnapshot: n.authorRoleSnapshot,
+      })
+    );
+    const legacyNotes = legacyErNotesV1DisplayEntries(encounter.nursingAssessment, encounter.id).map(
+      (n) => mapEncounterNoteForLegalChart({ ...n, legacy: true })
+    );
     const encounterNotes = [...relationalNotes, ...legacyNotes].sort((a, b) =>
       b.createdAt.localeCompare(a.createdAt)
+    );
+
+    const clinicalDocumentationEntries = (_rawEdoc ?? []).map((row) =>
+      mapClinicalDocumentationEntryForLegalChart({
+        ...row,
+        payloadJson: row.payloadJson,
+      })
     );
 
     const withAddenda = {
       ...withClosed,
       providerAddenda: this.mapProviderAddendaForApi(_rawAddenda ?? []),
       encounterNotes,
+      clinicalDocumentationEntries,
     };
 
     let withTrackboard: Record<string, unknown> = withAddenda;

@@ -18,6 +18,7 @@ import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import { EncounterNotesService } from "./encounter-notes.service";
+import { ClinicalDocumentationService } from "./clinical-documentation.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -36,6 +37,7 @@ import { EncounterNotesService } from "./encounter-notes.service";
     CodingIntegrityReviewService,
     ClaimAssemblyPreviewService,
     EncounterNotesService,
+    ClinicalDocumentationService,
     AuditService,
   ],
   exports: [

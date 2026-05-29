@@ -14,6 +14,7 @@ import {
   MedoraCardRoomBlock,
   MedoraCardTitle,
 } from "@/components/medora-card";
+import { ClinicalDocumentationHub } from "@/features/clinical-documentation/ClinicalDocumentationHub";
 import {
   applyStructuredNarrativeFragment,
   buildErNursingReassessmentPreviewModel,
@@ -637,6 +638,7 @@ export function EmergencyNursingReassessmentPanel({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   /** Most recent timestamp (epoch ms) at which the structured grid auto-rebuilt the narrative block. */
   const [structuredAckTick, setStructuredAckTick] = useState<number>(0);
+  const [clinicalDocHubOpen, setClinicalDocHubOpen] = useState(false);
   /**
    * UI-visible "structured documentation updated" indicator. Set true on every structured grid
    * change and auto-cleared after a short window so it doesn't permanently consume bedside space.
@@ -1480,24 +1482,55 @@ export function EmergencyNursingReassessmentPanel({
 
         {!isObservationEncounter ? (
           <MedoraCardActions railBorderTopColor="#e2e8f0" gap={10} minWidth={0} alignItems="flex-start">
-            <Link
-              href={nursingTabHref}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "8px 14px",
-                borderRadius: 10,
-                border: "1px solid #bae6fd",
-                backgroundColor: "#f0f9ff",
-                color: "#0369a1",
-                fontSize: 13,
-                fontWeight: 600,
-                textDecoration: "none",
-              }}
-            >
-              {t("emergencyNursingReassessment.openNursingTab")}
-            </Link>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                data-testid="clinical-documentation-entry"
+                onClick={() => setClinicalDocHubOpen((v) => !v)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 14px",
+                  borderRadius: 10,
+                  border: "1px solid #0ea5e9",
+                  backgroundColor: clinicalDocHubOpen ? "#e0f2fe" : "#f0f9ff",
+                  color: "#0369a1",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("clinicalDocumentation.entryButton")}
+              </button>
+              <Link
+                href={nursingTabHref}
+                data-testid="clinical-documentation-chart-reference"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "8px 12px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  color: "#64748b",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  textDecoration: "none",
+                }}
+              >
+                {t("clinicalDocumentation.chartReferenceLink")}
+              </Link>
+            </div>
           </MedoraCardActions>
+        ) : null}
+
+        {clinicalDocHubOpen && !isObservationEncounter ? (
+          <ClinicalDocumentationHub
+            careSetting="ED"
+            encounterId={encounterId}
+            facilityId={facilityId}
+            onClose={() => setClinicalDocHubOpen(false)}
+          />
         ) : null}
 
         {loadingTriage ? (

@@ -118,17 +118,75 @@ function EncounterBlock({
         <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
           <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{t("encounterNotes.chartSectionTitle")}</p>
           {(enc.encounterNotes ?? []).map((note) => (
-            <div key={note.id} style={{ marginBottom: 10 }}>
+            <div
+              key={note.id}
+              style={{
+                marginBottom: 10,
+                padding: note.voidedAt ? "8px 10px" : undefined,
+                background: note.voidedAt ? "#fef2f2" : undefined,
+                borderRadius: note.voidedAt ? 8 : undefined,
+              }}
+            >
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
                 {t("encounterNotes.chartLine")
                   .replace("{type}", t(`encounterNotes.noteType.${note.noteType}`))
                   .replace("{name}", note.authorDisplayName)
                   .replace("{role}", note.authorRoleTitle)
                   .replace("{datetime}", formatDt(note.createdAt))}
+                {note.isAmendment ? ` — ${t("encounterNotes.badgeAmendment")}` : ""}
+                {note.voidedAt ? ` — ${t("encounterNotes.badgeVoided")}` : ""}
+                {note.cosignedAt ? ` — ${t("encounterNotes.badgeCosigned")}` : ""}
               </div>
-              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{note.body}</div>
+              {note.isAmendment && note.amendmentReason ? (
+                <div style={{ fontSize: 12, color: "#1d4ed8", marginBottom: 4 }}>
+                  {t("encounterNotes.amendmentReasonLabel")}: {note.amendmentReason}
+                </div>
+              ) : null}
+              {note.voidedAt && note.voidReasonCode ? (
+                <div style={{ fontSize: 12, color: "#b91c1c", marginBottom: 4 }}>
+                  {t("encounterNotes.voidReasonLabel")}:{" "}
+                  {t(`encounterNotes.voidReason.${note.voidReasonCode}`)}
+                </div>
+              ) : null}
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
+                  lineHeight: 1.45,
+                  color: note.voidedAt ? "#94a3b8" : undefined,
+                  textDecoration: note.voidedAt ? "line-through" : undefined,
+                }}
+              >
+                {note.body}
+              </div>
             </div>
           ))}
+        </div>
+      ) : null}
+      {(enc.clinicalDocumentationEntries ?? []).length > 0 ? (
+        <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
+          <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{t("clinicalDocumentation.chartSectionTitle")}</p>
+          {(enc.clinicalDocumentationEntries ?? []).map((entry) => {
+            const title =
+              language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+            return (
+              <div key={entry.id} style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                  {title} — {entry.authorDisplayName} ({entry.authorRoleTitle}) —{" "}
+                  {formatDt(entry.createdAt)}
+                  {entry.voidedAt ? ` — ${t("clinicalDocumentation.entryVoided")}` : ""}
+                </div>
+                {(entry.payloadSummary ?? []).length > 0 ? (
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {(entry.payloadSummary ?? []).map((line) => (
+                      <li key={`${entry.id}-${line.key}`}>
+                        <strong>{line.key}</strong>: {line.value}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
       {children}

@@ -47,6 +47,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       nursingDocumentation: null,
       providerAddenda: [],
       encounterNotes: [],
+      clinicalDocumentationEntries: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",
         admittedAt: null,
@@ -334,5 +335,73 @@ describe("chart-export-html.util", () => {
     expect(html).toContain("Marie Infirmière");
     expect(html).toContain("Infirmier(ère)");
     expect(html).toContain("NURSING");
+  });
+
+  it("renders voided and amended encounter notes in legal export HTML (MEDNOTE.2)", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          encounterNotes: [
+            {
+              id: "note-original",
+              noteType: "PROVIDER",
+              body: "Chest pain improved.",
+              authorDisplayName: "Dr A",
+              authorRoleTitle: "Provider",
+              createdAt: "2026-05-28T08:15:00.000Z",
+              voidedAt: "2026-05-28T09:00:00.000Z",
+              voidReasonCode: "ENTERED_IN_ERROR",
+            },
+            {
+              id: "note-amend",
+              noteType: "PROVIDER",
+              body: "Correction: chest pain persisted after nitroglycerin.",
+              authorDisplayName: "Dr A",
+              authorRoleTitle: "Provider",
+              createdAt: "2026-05-28T08:42:00.000Z",
+              isAmendment: true,
+              amendmentReason: "Correction after reassessment",
+              amendedFromNoteId: "note-original",
+            },
+          ],
+        },
+      })
+    );
+    expect(html).toContain("[VOIDED]");
+    expect(html).toContain("ENTERED_IN_ERROR");
+    expect(html).toContain("[AMENDMENT]");
+    expect(html).toContain("Chest pain improved.");
+    expect(html).toContain("Correction: chest pain persisted after nitroglycerin.");
+  });
+
+  it("renders structured clinical documentation key/value summary (EDOC.2)", () => {
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          clinicalDocumentationEntries: [
+            {
+              id: "edoc-1",
+              encounterId: "enc-1",
+              category: "OBSERVATION_DOCUMENTATION",
+              cardId: "edoc_basic_structured_v1",
+              cardTitleEn: "Structured Entry — Basic",
+              cardTitleFr: "Saisie structurée — de base",
+              authorDisplayName: "Marie Infirmière",
+              authorRoleTitle: "Infirmier(ère)",
+              createdAt: "2026-05-28T15:00:00.000Z",
+              payloadJson: { items: [{ key: "Pain", value: "2/10" }] },
+              payloadSummary: [{ key: "Pain", value: "2/10" }],
+              voidedAt: null,
+            },
+          ],
+        },
+      })
+    );
+    expect(html).toContain("Clinical documentation (structured)");
+    expect(html).toContain("Pain");
+    expect(html).toContain("2/10");
+    expect(html).toContain("Marie Infirmière");
   });
 });

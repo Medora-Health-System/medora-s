@@ -61,6 +61,7 @@ function makeEncounterRow(overrides: Partial<Record<string, unknown>> = {}) {
     facility: { id: "facility-A", name: "Clinique A" },
     providerAddenda: [],
     encounterNotes: [],
+    clinicalDocumentationEntries: [],
     ...overrides,
   };
 }

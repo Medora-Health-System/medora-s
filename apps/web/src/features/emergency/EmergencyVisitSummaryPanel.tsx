@@ -16,6 +16,8 @@ import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import {
   buildEmergencyVisitSummaryModel,
   type ClinicalDocumentationEventApiEntry,
+  type ClinicalDocumentationLegalChartEntry,
+  type ClinicalDocumentationPayloadSummaryLine,
   type NursingReassessmentApiEntry,
   type VisitSummaryDocumentationHistoryEntry,
   type VisitSummaryReassessmentEntry,
@@ -942,13 +944,16 @@ export function EmergencyVisitSummaryPanel({
                     style={{
                       marginBottom: 10,
                       padding: "10px 12px",
-                      border: "1px solid #e2e8f0",
+                      border: `1px solid ${note.voidedAt ? "#fecaca" : "#e2e8f0"}`,
                       borderRadius: 10,
-                      background: "#fff",
+                      background: note.voidedAt ? "#fef2f2" : "#fff",
                     }}
                   >
                     <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
                       {t(`encounterNotes.noteType.${note.noteType ?? "OTHER"}`)} — {note.authorDisplayName ?? "—"}
+                      {note.isAmendment ? ` · ${t("encounterNotes.badgeAmendment")}` : ""}
+                      {note.voidedAt ? ` · ${t("encounterNotes.badgeVoided")}` : ""}
+                      {note.cosignedAt ? ` · ${t("encounterNotes.badgeCosigned")}` : ""}
                     </div>
                     <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
                       {note.authorRoleTitle ?? "—"} —{" "}
@@ -956,11 +961,80 @@ export function EmergencyVisitSummaryPanel({
                         ? formatEncounterChromeDateTime(note.createdAt, language)
                         : "—"}
                     </div>
-                    <div style={{ fontSize: 13, color: "#475569", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                    {note.amendmentReason ? (
+                      <div style={{ fontSize: 12, color: "#1d4ed8", marginBottom: 4 }}>
+                        {t("encounterNotes.amendmentReasonLabel")}: {note.amendmentReason}
+                      </div>
+                    ) : null}
+                    {note.voidReasonCode ? (
+                      <div style={{ fontSize: 12, color: "#b91c1c", marginBottom: 4 }}>
+                        {t("encounterNotes.voidReasonLabel")}:{" "}
+                        {t(`encounterNotes.voidReason.${note.voidReasonCode}`)}
+                      </div>
+                    ) : null}
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: note.voidedAt ? "#94a3b8" : "#475569",
+                        whiteSpace: "pre-wrap",
+                        lineHeight: 1.45,
+                        textDecoration: note.voidedAt ? "line-through" : undefined,
+                      }}
+                    >
                       {note.body ?? ""}
                     </div>
                   </li>
                 ))}
+              </ul>
+            </MedoraCardInner>
+          </MedoraCard>
+        ) : null}
+
+        {(encounter.clinicalDocumentationEntries ?? []).length > 0 ? (
+          <MedoraCard leftAccentColor="#64748b" variant="default">
+            <MedoraCardInner>
+              <p style={sectionTitle}>{t("clinicalDocumentation.summarySectionTitle")}</p>
+              <ul style={{ margin: "8px 0 0 0", paddingLeft: 0, listStyle: "none" }}>
+                {(encounter.clinicalDocumentationEntries ?? []).map(
+                  (entry: ClinicalDocumentationLegalChartEntry) => {
+                  const title =
+                    language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+                  const summaryLines: ClinicalDocumentationPayloadSummaryLine[] =
+                    entry.payloadSummary ?? [];
+                  return (
+                    <li
+                      key={entry.id}
+                      style={{
+                        marginBottom: 10,
+                        padding: "10px 12px",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 10,
+                        background: "#fff",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
+                        {title} — {entry.authorDisplayName ?? "—"}
+                        {entry.voidedAt ? ` · ${t("clinicalDocumentation.entryVoided")}` : ""}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                        {entry.authorRoleTitle ?? "—"} —{" "}
+                        {entry.createdAt
+                          ? formatEncounterChromeDateTime(entry.createdAt, language)
+                          : "—"}
+                      </div>
+                      {summaryLines.length > 0 ? (
+                        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569" }}>
+                          {summaryLines.map((line: ClinicalDocumentationPayloadSummaryLine) => (
+                            <li key={`${entry.id}-${line.key}`}>
+                              <strong>{line.key}</strong>: {line.value}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                }
+                )}
               </ul>
             </MedoraCardInner>
           </MedoraCard>

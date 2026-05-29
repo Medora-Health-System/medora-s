@@ -100,6 +100,7 @@ function makeEncounterRow() {
     facility: { id: "facility-A", name: "Clinique A" },
     providerAddenda: [],
     encounterNotes: [],
+    clinicalDocumentationEntries: [],
   };
 }
 

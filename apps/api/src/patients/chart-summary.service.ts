@@ -4,6 +4,8 @@ import { PrismaService } from "../prisma/prisma.service";
 import {
   buildPatientClinicalHistorySummary,
   legacyErNotesV1DisplayEntries,
+  mapEncounterNoteForLegalChart,
+  mapClinicalDocumentationEntryForLegalChart,
   patientClinicalHistoryProfileFromJson,
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
@@ -76,15 +78,39 @@ const encounterChartSelect = {
     },
   },
   encounterNotes: {
-    where: { voidedAt: null },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       noteType: true,
       body: true,
+      authorUserId: true,
       authorDisplayNameSnapshot: true,
       authorRoleSnapshot: true,
       createdAt: true,
+      voidedAt: true,
+      voidedByUserId: true,
+      voidReasonCode: true,
+      isAmendment: true,
+      amendedFromNoteId: true,
+      amendmentReason: true,
+      requiresCosign: true,
+      cosignedAt: true,
+      cosignedByUserId: true,
+      cosignRoleSnapshot: true,
+    },
+  },
+  clinicalDocumentationEntries: {
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      encounterId: true,
+      category: true,
+      cardId: true,
+      authorDisplayNameSnapshot: true,
+      authorRoleSnapshot: true,
+      createdAt: true,
+      payloadJson: true,
+      voidedAt: true,
     },
   },
   triage: {
@@ -610,25 +636,25 @@ export class ChartSummaryService {
           : null,
       }));
 
-      const relationalNotes = (e.encounterNotes ?? []).map((n) => ({
-        id: n.id,
-        noteType: n.noteType,
-        body: n.body,
-        authorDisplayName: n.authorDisplayNameSnapshot,
-        authorRoleTitle: n.authorRoleSnapshot,
-        createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
-      }));
-      const legacyNotes = legacyErNotesV1DisplayEntries(e.nursingAssessment, e.id).map((n) => ({
-        id: n.id,
-        noteType: n.noteType,
-        body: n.body,
-        authorDisplayName: n.authorDisplayName,
-        authorRoleTitle: n.authorRoleTitle,
-        createdAt: n.createdAt,
-        legacy: true as const,
-      }));
+      const relationalNotes = (e.encounterNotes ?? []).map((n) =>
+        mapEncounterNoteForLegalChart({
+          ...n,
+          authorDisplayNameSnapshot: n.authorDisplayNameSnapshot,
+          authorRoleSnapshot: n.authorRoleSnapshot,
+        })
+      );
+      const legacyNotes = legacyErNotesV1DisplayEntries(e.nursingAssessment, e.id).map((n) =>
+        mapEncounterNoteForLegalChart({ ...n, legacy: true })
+      );
       const encounterNotes = [...relationalNotes, ...legacyNotes].sort((a, b) =>
         b.createdAt.localeCompare(a.createdAt)
+      );
+
+      const clinicalDocumentationEntries = (e.clinicalDocumentationEntries ?? []).map((row) =>
+        mapClinicalDocumentationEntryForLegalChart({
+          ...row,
+          payloadJson: row.payloadJson,
+        })
       );
 
       const observationStaySummary = computeObservationStaySummaryForExport({
@@ -673,6 +699,7 @@ export class ChartSummaryService {
         providerDocumentationSignedByDisplayFr,
         providerAddenda,
         encounterNotes,
+        clinicalDocumentationEntries,
         followUpDate: e.followUpDate,
         createdAt: e.createdAt,
         dischargedAt: e.dischargedAt,

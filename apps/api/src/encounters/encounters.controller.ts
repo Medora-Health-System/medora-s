@@ -58,7 +58,13 @@ import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
 import { EncounterNotesService } from "./encounter-notes.service";
-import { encounterNoteCreateDtoSchema } from "@medora/shared";
+import { ClinicalDocumentationService } from "./clinical-documentation.service";
+import {
+  encounterNoteCreateDtoSchema,
+  encounterNoteAmendDtoSchema,
+  encounterNoteVoidDtoSchema,
+  clinicalDocumentationEntryCreateDtoSchema,
+} from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -80,6 +86,7 @@ export class EncountersController {
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
     private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
     private readonly encounterNotesService: EncounterNotesService,
+    private readonly clinicalDocumentationService: ClinicalDocumentationService,
   ) {}
 
   /** MEDNOTE.1 — list append-only encounter notes (+ optional legacy erNotesV1 read-only). */
@@ -109,6 +116,108 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
     return this.encounterNotesService.createNote(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** MEDNOTE.2 — author-only amendment (creates linked note; original untouched). */
+  @Post("encounters/:id/notes/:noteId/amend")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async amendEncounterNote(
+    @Param("id") id: string,
+    @Param("noteId") noteId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const parsed = encounterNoteAmendDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encounterNotesService.amendNote(
+      facilityId,
+      id,
+      noteId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** MEDNOTE.2 — authorized reviewer void (note body preserved). */
+  @Post("encounters/:id/notes/:noteId/void")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async voidEncounterNote(
+    @Param("id") id: string,
+    @Param("noteId") noteId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const parsed = encounterNoteVoidDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encounterNotesService.voidNote(
+      facilityId,
+      id,
+      noteId,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** MEDNOTE.2 — authorized reviewer cosign. */
+  @Post("encounters/:id/notes/:noteId/cosign")
+  @RequireRoles(RoleCode.PROVIDER, RoleCode.ADMIN)
+  async cosignEncounterNote(
+    @Param("id") id: string,
+    @Param("noteId") noteId: string,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    return this.encounterNotesService.cosignNote(
+      facilityId,
+      id,
+      noteId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** EDOC.2 — list append-only structured clinical documentation entries. */
+  @Get("encounters/:id/clinical-documentation")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async listClinicalDocumentationEntries(@Param("id") id: string, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    return this.clinicalDocumentationService.listForEncounter(facilityId, id, {
+      includeVoided: true,
+    });
+  }
+
+  @Post("encounters/:id/clinical-documentation")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async createClinicalDocumentationEntry(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const parsed = clinicalDocumentationEntryCreateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.clinicalDocumentationService.createEntry(
       facilityId,
       id,
       parsed.data,

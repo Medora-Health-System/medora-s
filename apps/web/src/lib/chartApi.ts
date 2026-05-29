@@ -103,7 +103,7 @@ export type ChartSummaryEncounter = {
     createdAt: string;
     createdByDisplayFr: string | null;
   }>;
-  /** MEDNOTE.1 — append-only encounter notes registry. */
+  /** MEDNOTE.1/2 — append-only encounter notes registry. */
   encounterNotes?: Array<{
     id: string;
     noteType: string;
@@ -112,6 +112,29 @@ export type ChartSummaryEncounter = {
     authorRoleTitle: string;
     createdAt: string;
     legacy?: boolean;
+    voidedAt?: string | null;
+    voidReasonCode?: string | null;
+    isAmendment?: boolean;
+    amendedFromNoteId?: string | null;
+    amendmentReason?: string | null;
+    requiresCosign?: boolean;
+    cosignedAt?: string | null;
+    cosignRoleSnapshot?: string | null;
+  }>;
+  /** EDOC.2 — append-only structured clinical documentation. */
+  clinicalDocumentationEntries?: Array<{
+    id: string;
+    encounterId: string;
+    category: string;
+    cardId: string;
+    cardTitleEn: string;
+    cardTitleFr: string;
+    authorDisplayName: string;
+    authorRoleTitle: string;
+    createdAt: string;
+    payloadJson: Record<string, unknown>;
+    payloadSummary: Array<{ key: string; value: string }>;
+    voidedAt: string | null;
   }>;
   followUpDate: string | null;
   createdAt: string;

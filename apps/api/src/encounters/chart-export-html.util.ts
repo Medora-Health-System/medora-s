@@ -23,6 +23,34 @@ function esc(s: string | null | undefined): string {
   return escapeHtml(s ?? "");
 }
 
+function encounterNoteGovernanceHtml(n: {
+  voidedAt?: string | null;
+  voidReasonCode?: string | null;
+  isAmendment?: boolean;
+  amendmentReason?: string | null;
+  requiresCosign?: boolean;
+  cosignedAt?: string | null;
+  cosignRoleSnapshot?: string | null;
+}): string {
+  const parts: string[] = [];
+  if (n.voidedAt) {
+    parts.push(`<strong>[VOIDED]</strong> Reason: ${esc(n.voidReasonCode ?? "—")}`);
+  }
+  if (n.isAmendment) {
+    parts.push(
+      `<strong>[AMENDMENT]</strong>${n.amendmentReason ? ` — ${esc(n.amendmentReason)}` : ""}`
+    );
+  }
+  if (n.requiresCosign) {
+    if (n.cosignedAt) {
+      parts.push(`<strong>[COSIGNED]</strong> (${esc(n.cosignRoleSnapshot ?? "—")})`);
+    } else if (!n.voidedAt) {
+      parts.push(`<strong>[PENDING COSIGN]</strong>`);
+    }
+  }
+  return parts.length ? `<div class="muted">${parts.join(" ")}</div>` : "";
+}
+
 const NO_DATA = "No data documented";
 
 const PROCEDURE_EXPORT_LABELS = {
@@ -337,8 +365,28 @@ export function renderEncounterChartExportHtml(
               (n) =>
                 `<li><span class="muted">${esc(n.createdAt)}</span> — ${esc(n.noteType)} — ${esc(
                   n.authorDisplayName
-                )} (${esc(n.authorRoleTitle)})<div class="pre-text">${esc(n.body)}</div></li>`
+                )} (${esc(n.authorRoleTitle)})${encounterNoteGovernanceHtml(n)}<div class="pre-text">${esc(n.body)}</div></li>`
             )
+            .join("")}</ul>`
+    }
+    <h3>Clinical documentation (structured)</h3>
+    ${
+      (enc.clinicalDocumentationEntries ?? []).length === 0
+        ? `<p class="muted">${esc(NO_DATA)}</p>`
+        : `<ul>${(enc.clinicalDocumentationEntries ?? [])
+            .map((entry) => {
+              const title = entry.cardTitleFr || entry.cardTitleEn || entry.cardId;
+              const summary =
+                (entry.payloadSummary ?? []).length === 0
+                  ? ""
+                  : `<ul>${(entry.payloadSummary ?? [])
+                      .map((line) => `<li><strong>${esc(line.key)}</strong>: ${esc(line.value)}</li>`)
+                      .join("")}</ul>`;
+              const voidTag = entry.voidedAt ? ` <span class="muted">(voided ${esc(entry.voidedAt)})</span>` : "";
+              return `<li><span class="muted">${esc(entry.createdAt)}</span> — ${esc(
+                entry.category
+              )} — ${esc(title)} — ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})${voidTag}${summary}</li>`;
+            })
             .join("")}</ul>`
     }
   `;

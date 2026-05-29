@@ -402,7 +402,39 @@ type EncounterLike = {
     authorRoleTitle?: string;
     createdAt?: string;
     legacy?: boolean;
+    voidedAt?: string | null;
+    voidReasonCode?: string | null;
+    isAmendment?: boolean;
+    amendedFromNoteId?: string | null;
+    amendmentReason?: string | null;
+    requiresCosign?: boolean;
+    cosignedAt?: string | null;
+    cosignRoleSnapshot?: string | null;
   }> | null;
+  clinicalDocumentationEntries?: Array<{
+    id: string;
+    encounterId: string;
+    category: string;
+    cardId: string;
+    cardTitleEn: string;
+    cardTitleFr: string;
+    authorDisplayName: string;
+    authorRoleTitle: string;
+    createdAt: string;
+    payloadJson: Record<string, unknown>;
+    payloadSummary: Array<{ key: string; value: string }>;
+    voidedAt: string | null;
+  }> | null;
+};
+
+/** EDOC.2 — persisted structured documentation row on encounter / chart APIs. */
+export type ClinicalDocumentationLegalChartEntry = NonNullable<
+  EncounterLike["clinicalDocumentationEntries"]
+>[number];
+
+export type ClinicalDocumentationPayloadSummaryLine = {
+  key: string;
+  value: string;
 };
 
 function formatIsoForLocale(iso: string | null | undefined, locale: SupportedLanguage): string {

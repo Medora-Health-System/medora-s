@@ -344,15 +344,53 @@ export function getPatientChartPrintHtml(params: {
               (enc.encounterNotes ?? []).length > 0
                 ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>${esc(pc("encounterNotes"))}</strong></p>${(enc.encounterNotes ?? [])
                     .map(
-                      (note) =>
-                        `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(
+                      (note) => {
+                        const tags: string[] = [];
+                        if (note.voidedAt) tags.push("[VOIDED]");
+                        if (note.isAmendment) tags.push("[AMENDMENT]");
+                        if (note.cosignedAt) tags.push("[COSIGNED]");
+                        const tagLine = tags.length ? `<span style="color:#64748b;"> ${esc(tags.join(" "))}</span>` : "";
+                        const reasonLine =
+                          note.voidReasonCode
+                            ? `<p style="margin:2px 0;font-size:10px;color:#b91c1c;">${esc(String(note.voidReasonCode))}</p>`
+                            : note.amendmentReason
+                              ? `<p style="margin:2px 0;font-size:10px;color:#1d4ed8;">${esc(note.amendmentReason)}</p>`
+                              : "";
+                        return `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(
                           note.noteType ?? "—"
                         )}</strong> — ${esc(note.authorDisplayName ?? "—")} (${esc(
                           note.authorRoleTitle ?? "—"
-                        )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(note.createdAt, lang))}</p><p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
+                        )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(note.createdAt, lang))}${tagLine}</p>${reasonLine}<p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
                           note.body ?? ""
-                        )}</p></div>`
+                        )}</p></div>`;
+                      }
                     )
+                    .join("")}`
+                : ""
+            }
+            ${
+              (enc.clinicalDocumentationEntries ?? []).length > 0
+                ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>${esc(pc("clinicalDocumentation"))}</strong></p>${(enc.clinicalDocumentationEntries ?? [])
+                    .map((entry) => {
+                      const title = lang === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+                      const summary =
+                        (entry.payloadSummary ?? []).length > 0
+                          ? `<ul style="margin:4px 0 0 16px;">${(entry.payloadSummary ?? [])
+                              .map(
+                                (line) =>
+                                  `<li><strong>${esc(line.key)}</strong>: ${esc(line.value)}</li>`
+                              )
+                              .join("")}</ul>`
+                          : "";
+                      const voidTag = entry.voidedAt
+                        ? ` <span style="color:#b91c1c;">[${esc(printT(lang, "clinicalDocumentation.entryVoided"))}]</span>`
+                        : "";
+                      return `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(
+                        title
+                      )}</strong> — ${esc(entry.authorDisplayName ?? "—")} (${esc(
+                        entry.authorRoleTitle ?? "—"
+                      )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(entry.createdAt, lang))}${voidTag}</p>${summary}</div>`;
+                    })
                     .join("")}`
                 : ""
             }

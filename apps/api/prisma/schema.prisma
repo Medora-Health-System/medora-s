@@ -146,6 +146,12 @@ enum AuditAction {
   UC_TO_ED_CONVERSION_COMPLETED
   /// Phase 19UCED.2 — patient acknowledgment captured for UC→ED conversion (PHI-safe metadata).
   UC_TO_ED_PATIENT_ACKNOWLEDGED
+  /// MEDNOTE.2 — encounter note governance (PHI-safe metadata only).
+  ENCOUNTER_NOTE_AMENDED
+  ENCOUNTER_NOTE_VOIDED
+  ENCOUNTER_NOTE_COSIGNED
+  /// EDOC.2 — structured clinical documentation entry created (PHI-safe metadata only).
+  ENCOUNTER_CLINICAL_DOCUMENTATION_CREATED
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -550,6 +556,7 @@ model Facility {
   encounterClinicalEvents          EncounterClinicalEvent[]
   /// MEDNOTE.1 — append-only encounter notes registry.
   encounterNotes                   EncounterNote[]
+  clinicalDocumentationEntries     EncounterClinicalDocumentationEntry[]
   /// Phase 5F — immutable encounter chart export snapshots originating at this facility.
   encounterChartExports            EncounterChartExport[]
   /// Phase 5G — Release of Information (ROI) requests for this facility.
@@ -677,6 +684,9 @@ model User {
   /// MEDNOTE.1 — encounter notes authored by this user.
   encounterNotesAuthored                     EncounterNote[]                       @relation("EncounterNoteAuthor")
   encounterNotesVoided                       EncounterNote[]                       @relation("EncounterNoteVoidedBy")
+  encounterNotesCosigned                     EncounterNote[]                       @relation("EncounterNoteCosignedBy")
+  clinicalDocumentationEntriesAuthored       EncounterClinicalDocumentationEntry[] @relation("ClinicalDocumentationEntryAuthor")
+  clinicalDocumentationEntriesVoided         EncounterClinicalDocumentationEntry[] @relation("ClinicalDocumentationEntryVoidedBy")
   orderItemsCompletedNurse                   OrderItem[]                           @relation("OrderItemNurseCompleted")
   ordersCancelled                            Order[]                               @relation("OrderCancelledBy")
   msppUserRoleAssignments                    MsppUserRoleAssignment[]
@@ -819,6 +829,7 @@ model Patient {
   encounterClinicalEvents   EncounterClinicalEvent[]
   /// MEDNOTE.1 — append-only encounter notes registry.
   encounterNotes            EncounterNote[]
+  clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
   /// Phase 5F — immutable encounter chart export snapshots tied to this patient.
   encounterChartExports     EncounterChartExport[]
   /// Phase 5G — Release of Information requests for this patient.
@@ -1047,6 +1058,7 @@ model Encounter {
   encounterClinicalEvents   EncounterClinicalEvent[]
   /// MEDNOTE.1 — append-only encounter notes registry.
   encounterNotes            EncounterNote[]
+  clinicalDocumentationEntries EncounterClinicalDocumentationEntry[]
   /// Phase 5F — immutable encounter chart export snapshots created from this encounter.
   chartExports              EncounterChartExport[]
   /// Phase 5G — ROI requests scoped to this encounter (optional when request is patient-wide).
@@ -1221,8 +1233,17 @@ enum EncounterNoteType {
   OTHER
 }
 
+/// MEDNOTE.2 — governed void reason codes (note body preserved; never deleted).
+enum EncounterNoteVoidReasonCode {
+  WRONG_PATIENT
+  DUPLICATE_ENTRY
+  ENTERED_IN_ERROR
+  TRAINING_RECORD
+  OTHER
+}
+
 model EncounterNote {
-  id                        String            @id @default(uuid())
+  id                        String                       @id @default(uuid())
   encounterId               String
   patientId                 String
   facilityId                String
@@ -1231,19 +1252,60 @@ model EncounterNote {
   authorUserId              String
   authorDisplayNameSnapshot String
   authorRoleSnapshot        String
-  createdAt                 DateTime          @default(now())
+  createdAt                 DateTime                     @default(now())
+  voidedAt                  DateTime?
+  voidedByUserId            String?
+  voidReasonCode            EncounterNoteVoidReasonCode?
+  isAmendment               Boolean                      @default(false)
+  amendedFromNoteId         String?
+  amendmentReason           String?
+  requiresCosign            Boolean                      @default(false)
+  cosignedAt                DateTime?
+  cosignedByUserId          String?
+  cosignRoleSnapshot        String?
+
+  encounter   Encounter      @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient     Patient        @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility    Facility       @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  author      User           @relation("EncounterNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  voidedBy    User?          @relation("EncounterNoteVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
+  cosignedBy  User?          @relation("EncounterNoteCosignedBy", fields: [cosignedByUserId], references: [id], onDelete: SetNull)
+  amendedFrom EncounterNote? @relation("EncounterNoteAmendment", fields: [amendedFromNoteId], references: [id], onDelete: Restrict)
+  amendments  EncounterNote[] @relation("EncounterNoteAmendment")
+
+  @@index([encounterId, createdAt])
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([authorUserId])
+  @@index([amendedFromNoteId])
+}
+
+/// EDOC.2 — append-only structured clinical documentation entries (legal chart).
+model EncounterClinicalDocumentationEntry {
+  id                        String    @id @default(uuid())
+  facilityId                String
+  encounterId               String
+  patientId                 String
+  category                  String
+  cardId                    String
+  payloadJson               Json
+  authorUserId              String
+  authorDisplayNameSnapshot String
+  authorRoleSnapshot        String
+  createdAt                 DateTime  @default(now())
   voidedAt                  DateTime?
   voidedByUserId            String?
 
   encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
   patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  author    User      @relation("EncounterNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
-  voidedBy  User?     @relation("EncounterNoteVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
+  author    User      @relation("ClinicalDocumentationEntryAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  voidedBy  User?     @relation("ClinicalDocumentationEntryVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
 
   @@index([encounterId, createdAt])
   @@index([facilityId])
   @@index([patientId])
+  @@index([cardId])
   @@index([authorUserId])
 }
 

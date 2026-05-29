@@ -1,14 +1,26 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { EncounterNoteType } from "@medora/shared";
-import { defaultEncounterNoteTypeForRole, encounterNotePreview } from "@medora/shared";
+import type { EncounterNoteType, EncounterNoteVoidReasonCode } from "@medora/shared";
+import {
+  canAmendEncounterNote,
+  canCosignEncounterNote,
+  canVoidEncounterNote,
+  defaultEncounterNoteTypeForRole,
+  encounterNotePendingCosign,
+  encounterNotePreview,
+  ENCOUNTER_NOTE_VOID_REASON_CODES,
+} from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
+  amendEncounterNote,
+  cosignEncounterNote,
   createEncounterNote,
   fetchEncounterNotes,
+  voidEncounterNote,
   type EncounterNoteRow,
 } from "@/lib/encounterNotesApi";
 import {
@@ -69,6 +81,7 @@ export function EmergencyErNotesPanel({
   onSaved: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
+  const { userId } = useFacilityAndRoles();
   const narrow = useNarrowLayout();
   const readOnly = (status ?? "").trim() !== "OPEN" || isLocked;
 
@@ -84,6 +97,12 @@ export function EmergencyErNotesPanel({
   const [notes, setNotes] = useState<EncounterNoteRow[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [actionNoteId, setActionNoteId] = useState<string | null>(null);
+  const [actionKind, setActionKind] = useState<"amend" | "void" | null>(null);
+  const [amendBody, setAmendBody] = useState("");
+  const [amendReason, setAmendReason] = useState("");
+  const [voidReasonCode, setVoidReasonCode] = useState<EncounterNoteVoidReasonCode>("ENTERED_IN_ERROR");
+  const [actionSaving, setActionSaving] = useState(false);
 
   useEffect(() => {
     setNoteType(defaultNoteType);
@@ -117,6 +136,79 @@ export function EmergencyErNotesPanel({
       else next.add(id);
       return next;
     });
+  };
+
+  const resetAction = () => {
+    setActionNoteId(null);
+    setActionKind(null);
+    setAmendBody("");
+    setAmendReason("");
+    setVoidReasonCode("ENTERED_IN_ERROR");
+  };
+
+  const handleAmend = async (noteId: string) => {
+    if (!amendBody.trim() || !amendReason.trim()) return;
+    setActionSaving(true);
+    try {
+      await amendEncounterNote(encounterId, noteId, facilityId, {
+        body: amendBody.trim(),
+        amendmentReason: amendReason.trim(),
+      });
+      resetAction();
+      await loadNotes();
+      await Promise.resolve(onSaved());
+      alert(t("encounterNotes.amendOk"));
+    } catch (e) {
+      alert(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterNotes.amendFailed")
+      );
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const handleVoid = async (noteId: string) => {
+    setActionSaving(true);
+    try {
+      await voidEncounterNote(encounterId, noteId, facilityId, { voidReasonCode });
+      resetAction();
+      await loadNotes();
+      await Promise.resolve(onSaved());
+      alert(t("encounterNotes.voidOk"));
+    } catch (e) {
+      alert(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterNotes.voidFailed")
+      );
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const handleCosign = async (noteId: string) => {
+    if (!window.confirm(t("encounterNotes.cosignConfirm"))) return;
+    setActionSaving(true);
+    try {
+      await cosignEncounterNote(encounterId, noteId, facilityId);
+      await loadNotes();
+      await Promise.resolve(onSaved());
+      alert(t("encounterNotes.cosignOk"));
+    } catch (e) {
+      alert(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterNotes.cosignFailed")
+      );
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
+  const badgeStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "2px 8px",
+    borderRadius: 9999,
   };
 
   const handleSave = async () => {
@@ -264,35 +356,71 @@ export function EmergencyErNotesPanel({
           {filteredNotes.map((note) => {
             const expanded = expandedIds.has(note.id);
             const preview = encounterNotePreview(note.body);
+            const roles = roleCodes ?? [];
+            const showAmend =
+              !readOnly &&
+              canAmendEncounterNote({ ...note, legacy: note.legacy }, userId || undefined);
+            const showVoid = !readOnly && canVoidEncounterNote(note, roles);
+            const showCosign = !readOnly && canCosignEncounterNote(note, roles);
+            const pendingCosign = encounterNotePendingCosign(note);
+            const isActionTarget = actionNoteId === note.id;
             return (
               <li
                 key={note.id}
                 data-testid="encounter-note-card"
                 data-legacy-readonly={note.legacy ? "true" : undefined}
+                data-voided={note.voidedAt ? "true" : undefined}
+                data-amendment={note.isAmendment ? "true" : undefined}
                 style={{
-                  background: "#fff",
-                  border: "1px solid #e2e8f0",
+                  background: note.voidedAt ? "#fef2f2" : "#fff",
+                  border: `1px solid ${note.voidedAt ? "#fecaca" : "#e2e8f0"}`,
                   borderRadius: 10,
                   padding: "10px 12px",
                 }}
               >
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 6 }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: "2px 8px",
-                      borderRadius: 9999,
-                      background: "#f1f5f9",
-                      color: "#475569",
-                    }}
-                  >
+                  <span style={{ ...badgeStyle, background: "#f1f5f9", color: "#475569" }}>
                     {t(`encounterNotes.noteType.${note.noteType}`)}
                   </span>
                   {note.legacy ? (
                     <span style={{ fontSize: 11, color: "#92400e" }}>{t("encounterNotes.legacyBadge")}</span>
                   ) : null}
+                  {note.isAmendment ? (
+                    <span style={{ ...badgeStyle, background: "#dbeafe", color: "#1d4ed8" }}>
+                      {t("encounterNotes.badgeAmendment")}
+                    </span>
+                  ) : null}
+                  {note.voidedAt ? (
+                    <span style={{ ...badgeStyle, background: "#fee2e2", color: "#b91c1c" }}>
+                      {t("encounterNotes.badgeVoided")}
+                    </span>
+                  ) : null}
+                  {note.cosignedAt ? (
+                    <span style={{ ...badgeStyle, background: "#dcfce7", color: "#15803d" }}>
+                      {t("encounterNotes.badgeCosigned")}
+                    </span>
+                  ) : pendingCosign ? (
+                    <span style={{ ...badgeStyle, background: "#fef9c3", color: "#a16207" }}>
+                      {t("encounterNotes.badgePendingCosign")}
+                    </span>
+                  ) : null}
                 </div>
+                {note.isAmendment && note.amendmentReason ? (
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "#1d4ed8" }}>
+                    {t("encounterNotes.amendmentReasonLabel")}: {note.amendmentReason}
+                  </p>
+                ) : null}
+                {note.voidedAt && note.voidReasonCode ? (
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "#b91c1c" }}>
+                    {t("encounterNotes.voidReasonLabel")}:{" "}
+                    {t(`encounterNotes.voidReason.${note.voidReasonCode}`)}
+                  </p>
+                ) : null}
+                {note.cosignedAt && note.cosignRoleSnapshot ? (
+                  <p style={{ margin: "0 0 4px", fontSize: 12, color: "#15803d" }}>
+                    {t("encounterNotes.cosignLine").replace("{role}", note.cosignRoleSnapshot)}
+                  </p>
+                ) : null}
                 <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
                   {note.authorDisplayName}
                 </p>
@@ -304,7 +432,15 @@ export function EmergencyErNotesPanel({
                 </p>
                 <p
                   data-testid={expanded ? "encounter-note-full-body" : "encounter-note-preview-body"}
-                  style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                  style={{
+                    margin: 0,
+                    fontSize: 13,
+                    color: note.voidedAt ? "#94a3b8" : "#334155",
+                    lineHeight: 1.45,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                    textDecoration: note.voidedAt ? "line-through" : "none",
+                  }}
                 >
                   {expanded ? note.body : preview}
                 </p>
@@ -324,6 +460,174 @@ export function EmergencyErNotesPanel({
                   >
                     {expanded ? t("encounterNotes.collapse") : t("encounterNotes.expand")}
                   </button>
+                ) : null}
+                {(showAmend || showVoid || showCosign) && !note.legacy ? (
+                  <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {showAmend ? (
+                      <button
+                        type="button"
+                        data-testid="encounter-note-amend-btn"
+                        disabled={actionSaving}
+                        onClick={() => {
+                          resetAction();
+                          setActionNoteId(note.id);
+                          setActionKind("amend");
+                          setAmendBody("");
+                          setAmendReason("");
+                        }}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                          background: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("encounterNotes.actionAmend")}
+                      </button>
+                    ) : null}
+                    {showVoid ? (
+                      <button
+                        type="button"
+                        data-testid="encounter-note-void-btn"
+                        disabled={actionSaving}
+                        onClick={() => {
+                          resetAction();
+                          setActionNoteId(note.id);
+                          setActionKind("void");
+                        }}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "1px solid #fecaca",
+                          background: "#fff",
+                          color: "#b91c1c",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("encounterNotes.actionVoid")}
+                      </button>
+                    ) : null}
+                    {showCosign ? (
+                      <button
+                        type="button"
+                        data-testid="encounter-note-cosign-btn"
+                        disabled={actionSaving}
+                        onClick={() => void handleCosign(note.id)}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "1px solid #bbf7d0",
+                          background: "#fff",
+                          color: "#15803d",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("encounterNotes.actionCosign")}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+                {isActionTarget && actionKind === "amend" ? (
+                  <div data-testid="encounter-note-amend-form" style={{ marginTop: 10 }}>
+                    <textarea
+                      value={amendBody}
+                      onChange={(e) => setAmendBody(e.target.value)}
+                      rows={4}
+                      placeholder={t("encounterNotes.amendBodyPlaceholder")}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        marginBottom: 6,
+                        padding: 8,
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        fontSize: 13,
+                      }}
+                    />
+                    <input
+                      value={amendReason}
+                      onChange={(e) => setAmendReason(e.target.value)}
+                      placeholder={t("encounterNotes.amendReasonPlaceholder")}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        marginBottom: 6,
+                        padding: 8,
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        fontSize: 13,
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        disabled={actionSaving || !amendBody.trim() || !amendReason.trim()}
+                        onClick={() => void handleAmend(note.id)}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "none",
+                          background: "#0f172a",
+                          color: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("encounterNotes.amendSubmit")}
+                      </button>
+                      <button type="button" onClick={resetAction} style={{ fontSize: 12 }}>
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {isActionTarget && actionKind === "void" ? (
+                  <div data-testid="encounter-note-void-form" style={{ marginTop: 10 }}>
+                    <select
+                      value={voidReasonCode}
+                      onChange={(e) => setVoidReasonCode(e.target.value as EncounterNoteVoidReasonCode)}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        marginBottom: 6,
+                        padding: 8,
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        fontSize: 13,
+                      }}
+                    >
+                      {ENCOUNTER_NOTE_VOID_REASON_CODES.map((code) => (
+                        <option key={code} value={code}>
+                          {t(`encounterNotes.voidReason.${code}`)}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
+                        type="button"
+                        disabled={actionSaving}
+                        onClick={() => void handleVoid(note.id)}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          borderRadius: 8,
+                          border: "none",
+                          background: "#b91c1c",
+                          color: "#fff",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("encounterNotes.voidSubmit")}
+                      </button>
+                      <button type="button" onClick={resetAction} style={{ fontSize: 12 }}>
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
               </li>
             );

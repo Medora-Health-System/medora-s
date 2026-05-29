@@ -17,7 +17,25 @@ describe("encounterNote legal chart audit (MEDNOTE.1A)", () => {
       authorRole: "RN",
       bodyLength: 42,
     });
-    expect(Object.keys(meta).sort()).toEqual([...ALLOWED_ENCOUNTER_NOTE_AUDIT_KEYS].sort());
+    expect(Object.keys(meta).sort()).toEqual(
+      ["authorRole", "authorUserId", "bodyLength", "encounterId", "noteId", "noteType", "patientId"].sort()
+    );
+    assertEncounterNoteAuditMetadataSafe(meta as Record<string, unknown>);
+  });
+
+  it("builds MEDNOTE.2 governance audit metadata", () => {
+    const meta = buildEncounterNoteAuditMetadata({
+      encounterId: "e1",
+      patientId: "p1",
+      noteId: "n2",
+      amendedFromNoteId: "n1",
+      amendedByUserId: "u1",
+      reasonCode: "Correction",
+      isAmendment: true,
+    });
+    for (const key of Object.keys(meta)) {
+      expect(ALLOWED_ENCOUNTER_NOTE_AUDIT_KEYS).toContain(key);
+    }
     assertEncounterNoteAuditMetadataSafe(meta as Record<string, unknown>);
   });
 

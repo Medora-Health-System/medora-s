@@ -13,6 +13,8 @@ import {
 import {
   buildDocumentedProcedureSummaryMeta,
   legacyErNotesV1DisplayEntries,
+  mapEncounterNoteForLegalChart,
+  mapClinicalDocumentationEntryForLegalChart,
   readCanonicalProcedureTypeFromPayload,
   readLinkedProcedureEventIdFromPayload,
   readPayloadVersionFromPayload,
@@ -243,7 +245,7 @@ export type ChartExportManifest = {
       createdAt: string;
       createdByDisplayFr: string | null;
     }>;
-    /** MEDNOTE.1 — append-only encounter notes (legal chart record). */
+    /** MEDNOTE.1/2 — append-only encounter notes (legal chart record). */
     encounterNotes: Array<{
       id: string;
       noteType: string;
@@ -252,6 +254,29 @@ export type ChartExportManifest = {
       authorRoleTitle: string;
       createdAt: string;
       legacy?: boolean;
+      voidedAt?: string | null;
+      voidReasonCode?: string | null;
+      isAmendment?: boolean;
+      amendedFromNoteId?: string | null;
+      amendmentReason?: string | null;
+      requiresCosign?: boolean;
+      cosignedAt?: string | null;
+      cosignRoleSnapshot?: string | null;
+    }>;
+    /** EDOC.2 — append-only structured clinical documentation entries. */
+    clinicalDocumentationEntries: Array<{
+      id: string;
+      encounterId: string;
+      category: string;
+      cardId: string;
+      cardTitleEn: string;
+      cardTitleFr: string;
+      authorDisplayName: string;
+      authorRoleTitle: string;
+      createdAt: string;
+      payloadJson: Record<string, unknown>;
+      payloadSummary: Array<{ key: string; value: string }>;
+      voidedAt: string | null;
     }>;
     /** Phase 13C — additive operational LOS metadata for observation / short stay (INPATIENT only). Omitted on legacy stored snapshots. */
     observationStay?: ObservationStaySummaryForExport;
@@ -749,7 +774,6 @@ export class EncounterChartExportService {
           },
         },
         encounterNotes: {
-          where: { voidedAt: null },
           orderBy: { createdAt: "asc" },
           select: {
             id: true,
@@ -758,6 +782,30 @@ export class EncounterChartExportService {
             authorDisplayNameSnapshot: true,
             authorRoleSnapshot: true,
             createdAt: true,
+            voidedAt: true,
+            voidedByUserId: true,
+            voidReasonCode: true,
+            isAmendment: true,
+            amendedFromNoteId: true,
+            amendmentReason: true,
+            requiresCosign: true,
+            cosignedAt: true,
+            cosignedByUserId: true,
+            cosignRoleSnapshot: true,
+          },
+        },
+        clinicalDocumentationEntries: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            encounterId: true,
+            category: true,
+            cardId: true,
+            authorDisplayNameSnapshot: true,
+            authorRoleSnapshot: true,
+            createdAt: true,
+            payloadJson: true,
+            voidedAt: true,
           },
         },
       },
@@ -1088,28 +1136,26 @@ export class EncounterChartExportService {
       createdByDisplayFr: userDisplayFr(ad.createdBy),
     }));
 
-    const relationalEncounterNotes = (encounter.encounterNotes ?? []).map((n) => ({
-      id: n.id,
-      noteType: n.noteType as string,
-      body: n.body,
-      authorDisplayName: n.authorDisplayNameSnapshot,
-      authorRoleTitle: n.authorRoleSnapshot,
-      createdAt: n.createdAt.toISOString(),
-    }));
+    const relationalEncounterNotes = (encounter.encounterNotes ?? []).map((n) =>
+      mapEncounterNoteForLegalChart({
+        ...n,
+        authorDisplayNameSnapshot: n.authorDisplayNameSnapshot,
+        authorRoleSnapshot: n.authorRoleSnapshot,
+      })
+    );
     const legacyEncounterNotes = legacyErNotesV1DisplayEntries(
       encounter.nursingAssessment,
       encounter.id
-    ).map((n) => ({
-      id: n.id,
-      noteType: n.noteType,
-      body: n.body,
-      authorDisplayName: n.authorDisplayName,
-      authorRoleTitle: n.authorRoleTitle,
-      createdAt: n.createdAt,
-      legacy: true as const,
-    }));
+    ).map((n) => mapEncounterNoteForLegalChart({ ...n, legacy: true }));
     const encounterNotes = [...relationalEncounterNotes, ...legacyEncounterNotes].sort((a, b) =>
       a.createdAt.localeCompare(b.createdAt)
+    );
+
+    const clinicalDocumentationEntries = (encounter.clinicalDocumentationEntries ?? []).map((row) =>
+      mapClinicalDocumentationEntryForLegalChart({
+        ...row,
+        payloadJson: row.payloadJson,
+      })
     );
 
     /* ---------- Deferred domains (Phase 5F backend manifest scope) ---------- */
@@ -1183,6 +1229,7 @@ export class EncounterChartExportService {
         nursingDocumentation: initialNursingDocumentationFromAssessment(encounter.nursingAssessment),
         providerAddenda,
         encounterNotes,
+        clinicalDocumentationEntries,
         observationStay,
       },
       patient: {
