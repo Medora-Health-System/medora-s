@@ -1,4 +1,5 @@
 import { BLOOD_PRODUCT_INITIATION_CARD_ID, BLOOD_PRODUCT_VERIFICATION_CARD_ID } from "./bloodProductDocumentationPayloads.js";
+import { requiresImmediateWitnessCaptureForBelongingsPayload } from "./belongingsValuablesDocumentationPayloads.js";
 import { HIGH_ALERT_INFUSION_VERIFICATION_CARD_ID } from "./highAlertInfusionDocumentationPayloads.js";
 import { RESTRAINT_INITIATION_CARD_ID } from "./restraintDocumentationPayloads.js";
 
@@ -26,6 +27,17 @@ export const EDOC_8B_FUTURE_IMMEDIATE_WITNESS_CANDIDATES = [
   "safety_belongings_checklist",
 ] as const;
 
+/** EDOC.8B + EDOC.9 — card and payload rules for pre-save witness capture. */
+export function requiresImmediateWitnessCaptureForPayload(
+  cardId: string,
+  payload: Record<string, unknown>
+): boolean {
+  if ((DEFAULT_IMMEDIATE_WITNESS_CAPTURE_CARD_IDS as readonly string[]).includes(cardId)) {
+    return true;
+  }
+  return requiresImmediateWitnessCaptureForBelongingsPayload(cardId, payload);
+}
+
 export function requiresImmediateWitnessCapture(cardId: string): boolean {
-  return (DEFAULT_IMMEDIATE_WITNESS_CAPTURE_CARD_IDS as readonly string[]).includes(cardId);
+  return requiresImmediateWitnessCaptureForPayload(cardId, {});
 }

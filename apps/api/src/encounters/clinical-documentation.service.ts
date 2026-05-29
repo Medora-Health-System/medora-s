@@ -16,7 +16,7 @@ import {
   clinicalDocumentationEntryCreateDtoSchema,
   clinicalDocumentationEntryCreateWithWitnessDtoSchema,
   parseFacilityClinicalDocumentationWitnessPolicy,
-  requiresImmediateWitnessCapture,
+  requiresImmediateWitnessCaptureForPayload,
   resolveRequiresWitnessSignatureForClinicalDocumentationEntry,
   validatePayloadForCard,
   type ClinicalDocumentationEntryCreateDto,
@@ -237,7 +237,12 @@ export class ClinicalDocumentationService {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
 
-    if (!requiresImmediateWitnessCapture(parsed.data.cardId)) {
+    if (
+      !requiresImmediateWitnessCaptureForPayload(
+        parsed.data.cardId,
+        parsed.data.payloadJson as Record<string, unknown>
+      )
+    ) {
       throw new BadRequestException(
         "This card does not support immediate witness capture on create."
       );

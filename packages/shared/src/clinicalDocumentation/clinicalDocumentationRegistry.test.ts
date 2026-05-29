@@ -10,14 +10,15 @@ import {
 } from "./clinicalDocumentationRegistry.js";
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
-  it("exports all 12 categories with metadata (EDOC.8 adds HIGH_ALERT_INFUSION_DOCUMENTATION)", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(12);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(12);
+  it("exports all 13 categories with metadata (EDOC.9 adds BELONGINGS_VALUABLES_DOCUMENTATION)", () => {
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(13);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(13);
     for (const cat of CLINICAL_DOCUMENTATION_CATEGORIES) {
       expect(CLINICAL_DOCUMENTATION_CATEGORY_META.some((m) => m.id === cat)).toBe(true);
     }
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("RESTRAINT_DOCUMENTATION");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("HIGH_ALERT_INFUSION_DOCUMENTATION");
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("BELONGINGS_VALUABLES_DOCUMENTATION");
   });
 
   it("contains key cards with EN/FR titles", () => {

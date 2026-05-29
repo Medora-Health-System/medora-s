@@ -10,7 +10,16 @@ import {
   EncounterChartExportService,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
-import { EDOC_BASIC_STRUCTURED_CARD_ID, IO_PO_INTAKE_CARD_ID, IO_URINE_OUTPUT_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, RESTRAINT_INITIATION_CARD_ID, RESTRAINT_RENEWAL_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
+import {
+  BELONGINGS_TRANSFER_SECURITY_CARD_ID,
+  EDOC_BASIC_STRUCTURED_CARD_ID,
+  IO_PO_INTAKE_CARD_ID,
+  IO_URINE_OUTPUT_CARD_ID,
+  OBS_PO_CHALLENGE_CARD_ID,
+  RESTRAINT_INITIATION_CARD_ID,
+  RESTRAINT_RENEWAL_CARD_ID,
+  STROKE_NIHSS_CARD_ID,
+} from "@medora/shared";
 
 const SAMPLE_ENTRY = {
   id: "edoc-legal-1",
@@ -665,6 +674,55 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     expect(htmlEn).toContain("HIGH_ALERT_INFUSION_DOCUMENTATION");
     expect(htmlEn).toContain("Heparin protocol");
     expect(htmlEn).toContain("[PENDING WITNESS]");
+  });
+
+  it("renders belongings security transfer summary and witness in export (EDOC.9)", async () => {
+    const transferPayload = {
+      transferredAt: "2026-05-28T21:00:00.000Z",
+      bagIdentifier: "BAG-SEC-LEGAL",
+      transferredByUserAcknowledged: true,
+      receivedBySecurityName: "Security Desk",
+      storageLocation: "SECURITY",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-belongings-transfer",
+          category: "BELONGINGS_VALUABLES_DOCUMENTATION",
+          cardId: BELONGINGS_TRANSFER_SECURITY_CARD_ID,
+          payloadJson: transferPayload,
+          requiresWitnessSignature: true,
+          witnessedAt: new Date("2026-05-28T21:05:00.000Z"),
+          witnessedByUserId: "user-rn-2",
+          witnessDisplayNameSnapshot: "Jean Témoin",
+          witnessRoleSnapshot: "Infirmier(ère)",
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(transferPayload);
+    expect(row.witnessStatus).toBe("WITNESSED");
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Bag ID")).toBe(true);
+    expect(row.payloadSummaryEn!.some((l) => l.value === "Security Desk")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("BELONGINGS_VALUABLES_DOCUMENTATION");
+    expect(htmlEn).toContain("BAG-SEC-LEGAL");
+    expect(htmlEn).toContain("Jean Témoin");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

@@ -16,7 +16,7 @@ describe("clinical documentation immediate witness (EDOC.8B)", () => {
   const api = readFileSync(join(webSrcRoot, "lib/clinicalDocumentationApi.ts"), "utf8");
 
   it("hub routes immediate-witness cards through pre-save modal flow", () => {
-    expect(hub).toContain("requiresImmediateWitnessCapture");
+    expect(hub).toContain("requiresImmediateWitnessCaptureForPayload");
     expect(hub).toContain("submitClinicalDocumentation");
     expect(hub).toContain("immediateWitnessDraft");
     expect(hub).toContain("createClinicalDocumentationEntryWithWitness");

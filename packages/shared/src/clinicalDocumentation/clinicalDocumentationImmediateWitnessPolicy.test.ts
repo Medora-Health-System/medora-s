@@ -12,7 +12,14 @@ import { EDOC4_STROKE_DOCUMENTATION_CARD_IDS } from "./strokeDocumentationPayloa
 import { EDOC5_INTAKE_OUTPUT_CARD_IDS } from "./intakeOutputDocumentationPayloads.js";
 import { HIGH_ALERT_INFUSION_VERIFICATION_CARD_ID } from "./highAlertInfusionDocumentationPayloads.js";
 import { RESTRAINT_INITIATION_CARD_ID } from "./restraintDocumentationPayloads.js";
-import { requiresImmediateWitnessCapture } from "./clinicalDocumentationImmediateWitnessPolicy.js";
+import {
+  BELONGINGS_TRANSFER_SECURITY_CARD_ID,
+  VALUABLES_INVENTORY_CARD_ID,
+} from "./belongingsValuablesDocumentationPayloads.js";
+import {
+  requiresImmediateWitnessCapture,
+  requiresImmediateWitnessCaptureForPayload,
+} from "./clinicalDocumentationImmediateWitnessPolicy.js";
 
 describe("EDOC.8B immediate witness capture policy", () => {
   it("requires immediate witness for high-risk cards", () => {
@@ -35,6 +42,38 @@ describe("EDOC.8B immediate witness capture policy", () => {
     for (const cardId of EDOC3_OBSERVATION_DOCUMENTATION_CARD_IDS) {
       expect(requiresImmediateWitnessCapture(cardId)).toBe(false);
     }
+    expect(requiresImmediateWitnessCapture(BELONGINGS_TRANSFER_SECURITY_CARD_ID)).toBe(true);
+    expect(requiresImmediateWitnessCapture(VALUABLES_INVENTORY_CARD_ID)).toBe(false);
+  });
+
+  it("EDOC.9 payload-aware immediate witness for valuables secured", () => {
+    expect(
+      requiresImmediateWitnessCaptureForPayload(VALUABLES_INVENTORY_CARD_ID, {
+        documentedAt: "2026-05-28T12:00:00.000Z",
+        cashPresent: false,
+        jewelryPresent: false,
+        electronicsPresent: false,
+        walletOrPursePresent: false,
+        keysPresent: false,
+        identificationPresent: false,
+        patientDeclinedValuablesInventory: false,
+        valuablesSecured: false,
+      })
+    ).toBe(false);
+    expect(
+      requiresImmediateWitnessCaptureForPayload(VALUABLES_INVENTORY_CARD_ID, {
+        documentedAt: "2026-05-28T12:00:00.000Z",
+        cashPresent: false,
+        jewelryPresent: false,
+        electronicsPresent: false,
+        walletOrPursePresent: false,
+        keysPresent: false,
+        identificationPresent: false,
+        patientDeclinedValuablesInventory: false,
+        valuablesSecured: true,
+        securityBagIdentifier: "SEC-1",
+      })
+    ).toBe(true);
   });
 });
 

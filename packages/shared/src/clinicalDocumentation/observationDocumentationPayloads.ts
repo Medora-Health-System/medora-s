@@ -20,6 +20,10 @@ import {
   validateHighAlertInfusionPayloadForCard,
 } from "./highAlertInfusionDocumentationPayloads.js";
 import {
+  EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS,
+  validateBelongingsValuablesPayloadForCard,
+} from "./belongingsValuablesDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -150,6 +154,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS,
   ...EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
   ...EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS,
+  ...EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -191,6 +196,13 @@ export function validatePayloadForCard(
     (EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return infusionResult;
+  }
+  const belongingsResult = validateBelongingsValuablesPayloadForCard(cardId, payload);
+  if (
+    belongingsResult.ok ||
+    (EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return belongingsResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

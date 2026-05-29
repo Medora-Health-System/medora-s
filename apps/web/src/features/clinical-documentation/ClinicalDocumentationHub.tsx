@@ -12,7 +12,7 @@ import {
   type ClinicalDocumentationCategory,
   listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
-  requiresImmediateWitnessCapture,
+  requiresImmediateWitnessCaptureForPayload,
   searchClinicalDocumentationCards,
   selectClinicalDocumentationPayloadSummary,
 } from "@medora/shared";
@@ -49,6 +49,10 @@ import {
   ClinicalDocumentationHighAlertInfusionForm,
   isEdoc8HighAlertInfusionFormCard,
 } from "./ClinicalDocumentationHighAlertInfusionForm";
+import {
+  ClinicalDocumentationBelongingsValuablesForm,
+  isEdoc9BelongingsValuablesFormCard,
+} from "./ClinicalDocumentationBelongingsValuablesForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
@@ -253,7 +257,7 @@ export function ClinicalDocumentationHub({
     card: ClinicalDocumentationCard,
     payload: Record<string, unknown>
   ): Promise<void> => {
-    if (requiresImmediateWitnessCapture(card.id)) {
+    if (requiresImmediateWitnessCaptureForPayload(card.id, payload)) {
       setSaveMessage(null);
       setWitnessModalEntry(null);
       setImmediateWitnessDraft({ card, payload });
@@ -736,6 +740,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc8HighAlertInfusionFormCard(c.id) ? (
                 <ClinicalDocumentationHighAlertInfusionForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc9BelongingsValuablesFormCard(c.id) ? (
+                <ClinicalDocumentationBelongingsValuablesForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => submitClinicalDocumentation(c, payload)}

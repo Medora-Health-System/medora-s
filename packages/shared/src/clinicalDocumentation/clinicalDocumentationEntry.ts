@@ -34,6 +34,10 @@ import {
   summarizeHighAlertInfusionDocumentationPayload,
 } from "./highAlertInfusionDocumentationPayloads.js";
 import {
+  EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS,
+  summarizeBelongingsValuablesDocumentationPayload,
+} from "./belongingsValuablesDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -56,6 +60,7 @@ export * from "./clinicalDocumentationFieldOptions.js";
 export * from "./restraintDocumentationPayloads.js";
 export * from "./bloodProductDocumentationPayloads.js";
 export * from "./highAlertInfusionDocumentationPayloads.js";
+export * from "./belongingsValuablesDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -273,6 +278,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const infusionLines = summarizeHighAlertInfusionDocumentationPayload(cardId, payload, locale);
     if (infusionLines.length > 0) return infusionLines;
+  }
+  if ((EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const belongingsLines = summarizeBelongingsValuablesDocumentationPayload(cardId, payload, locale);
+    if (belongingsLines.length > 0) return belongingsLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];
