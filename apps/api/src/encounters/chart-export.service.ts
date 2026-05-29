@@ -277,6 +277,8 @@ export type ChartExportManifest = {
       createdAt: string;
       payloadJson: Record<string, unknown>;
       payloadSummary: Array<{ key: string; value: string }>;
+      payloadSummaryEn?: Array<{ key: string; value: string }>;
+      payloadSummaryFr?: Array<{ key: string; value: string }>;
       voidedAt: string | null;
       requiresWitnessSignature: boolean;
       witnessStatus: string;

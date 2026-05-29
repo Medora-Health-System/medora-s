@@ -75,7 +75,9 @@ describe("clinicalDocumentationEntry (EDOC.2)", () => {
       voidedAt: null,
     });
     expect(mapped.cardTitleEn).toBe(titles.cardTitleEn);
-    expect(mapped.payloadSummary).toEqual([{ key: "Pain", value: "2/10" }]);
+    expect(mapped.payloadSummary).toEqual(mapped.payloadSummaryEn);
+    expect(mapped.payloadSummaryEn).toEqual([{ key: "Pain", value: "2/10" }]);
+    expect(mapped.payloadSummaryFr).toEqual([{ key: "Pain", value: "2/10" }]);
   });
 
   it("audit metadata uses allowlist only", () => {

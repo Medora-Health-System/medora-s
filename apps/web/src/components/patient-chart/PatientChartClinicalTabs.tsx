@@ -11,6 +11,7 @@ import {
   tOrderItemStatusForWorklist,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { isOrderItemDoneForChart } from "@/constants/orderStatusLabels";
 import { catalogMedicationNameForLocale } from "@/lib/orderItemDisplayFr";
 import { nursingAssessmentDisplayLines, nursingAssessmentSignatureForLocale } from "./patientChartHelpers";
@@ -187,9 +188,9 @@ function EncounterBlock({
                       .replace("{when}", formatDt(entry.witnessedAt))}
                   </div>
                 ) : null}
-                {(entry.payloadSummary ?? []).length > 0 ? (
+                {selectClinicalDocumentationPayloadSummary(entry, language === "en" ? "en" : "fr").length > 0 ? (
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {(entry.payloadSummary ?? []).map((line) => (
+                    {selectClinicalDocumentationPayloadSummary(entry, language === "en" ? "en" : "fr").map((line) => (
                       <li key={`${entry.id}-${line.key}`}>
                         <strong>{line.key}</strong>: {line.value}
                       </li>

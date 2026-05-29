@@ -135,14 +135,16 @@ describe("EDOC.6 restraint documentation payloads", () => {
   it("payload summaries render restraint key facts", () => {
     const summary = summarizeRestraintDocumentationPayload(
       RESTRAINT_INITIATION_CARD_ID,
-      INITIATION_VALID
+      INITIATION_VALID,
+      "fr"
     );
     expect(summary.some((l) => l.key === "Type" && l.value === "Comportementale")).toBe(true);
     expect(summary.some((l) => l.key === "Motif")).toBe(true);
 
     const legal = summarizeClinicalDocumentationPayload(
       RESTRAINT_INITIATION_CARD_ID,
-      INITIATION_VALID
+      INITIATION_VALID,
+      "fr"
     );
     expect(legal.some((l) => l.key === "Type")).toBe(true);
   });

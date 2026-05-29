@@ -189,7 +189,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res, setHeader } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    const out = await controller.getChartExport("enc-1", undefined, req, res);
+    const out = await controller.getChartExport("enc-1", undefined, undefined, req, res);
 
     expect(out).toBe(manifest);
     expect(setHeader).not.toHaveBeenCalled();
@@ -208,7 +208,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res, setHeader } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    const out = await controller.getChartExport("enc-1", "json", req, res);
+    const out = await controller.getChartExport("enc-1", "json", undefined, req, res);
 
     expect(out).toBe(manifest);
     expect(setHeader).not.toHaveBeenCalled();
@@ -227,7 +227,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res, setHeader } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    const out = await controller.getChartExport("enc-1", "html", req, res);
+    const out = await controller.getChartExport("enc-1", "html", undefined, req, res);
 
     expect(typeof out).toBe("string");
     const html = out as string;
@@ -250,7 +250,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    const html = (await controller.getChartExport("enc-1", "html", req, res)) as string;
+    const html = (await controller.getChartExport("enc-1", "html", undefined, req, res)) as string;
 
     expect(html).toContain("Live preview — not a finalized legal record export");
     expect(html).not.toContain("Generated encounter chart export");
@@ -261,7 +261,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    const html = (await controller.getChartExport("enc-1", "html", req, res)) as string;
+    const html = (await controller.getChartExport("enc-1", "html", undefined, req, res)) as string;
 
     expect(html).toContain("Generated encounter chart export");
     expect(html).toContain("not an immutable legal snapshot");
@@ -272,10 +272,10 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController();
     const { req, res } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    await expect(controller.getChartExport("enc-1", "pdf", req, res)).rejects.toBeInstanceOf(
+    await expect(controller.getChartExport("enc-1", "pdf", undefined, req, res)).rejects.toBeInstanceOf(
       BadRequestException
     );
-    await expect(controller.getChartExport("enc-1", "xml", req, res)).rejects.toBeInstanceOf(
+    await expect(controller.getChartExport("enc-1", "xml", undefined, req, res)).rejects.toBeInstanceOf(
       BadRequestException
     );
     expect(chartExportService.getManifest).not.toHaveBeenCalled();
@@ -285,7 +285,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController();
     const { req, res } = makeReqRes({ facilityId: null, userId: "u-1" });
 
-    await expect(controller.getChartExport("enc-1", "html", req, res)).rejects.toBeInstanceOf(
+    await expect(controller.getChartExport("enc-1", "html", undefined, req, res)).rejects.toBeInstanceOf(
       BadRequestException
     );
     expect(chartExportService.getManifest).not.toHaveBeenCalled();
@@ -297,7 +297,7 @@ describe("EncountersController.getChartExport", () => {
     });
     const { req, res } = makeReqRes({ facilityId: "fac-WRONG", userId: "u-1" });
 
-    await expect(controller.getChartExport("enc-1", "html", req, res)).rejects.toBeInstanceOf(
+    await expect(controller.getChartExport("enc-1", "html", undefined, req, res)).rejects.toBeInstanceOf(
       NotFoundException
     );
   });
@@ -307,7 +307,7 @@ describe("EncountersController.getChartExport", () => {
     const { controller, chartExportService } = makeController({ getManifest: jest.fn().mockResolvedValue(manifest) });
     const { req, res, setHeader } = makeReqRes({ facilityId: "fac-1", userId: "u-1" });
 
-    await controller.getChartExport("enc-1", "  HTML  ", req, res);
+    await controller.getChartExport("enc-1", "  HTML  ", undefined, req, res);
     expect(setHeader).toHaveBeenCalledWith("Content-Type", "text/html; charset=utf-8");
     expect(chartExportService.getManifest).toHaveBeenLastCalledWith(
       "fac-1",

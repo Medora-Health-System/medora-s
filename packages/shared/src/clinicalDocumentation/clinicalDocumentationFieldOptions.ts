@@ -179,8 +179,26 @@ export const NIHSS_SEVERITY_BAND_LABEL_EN: Record<NihssSeverityBand, string> = {
   SEVERE: "Severe",
 };
 
-export const NIHSS_FIELD_LABEL_FR: Record<NihssScoredFieldKey, string> = {
+export const NIHSS_FIELD_LABEL_EN: Record<NihssScoredFieldKey, string> = {
   levelOfConsciousness: "NIHSS LOC",
+  locQuestions: "NIHSS LOC questions",
+  locCommands: "NIHSS LOC commands",
+  bestGaze: "NIHSS best gaze",
+  visualFields: "NIHSS visual fields",
+  facialPalsy: "NIHSS facial palsy",
+  motorArmLeft: "NIHSS motor arm L",
+  motorArmRight: "NIHSS motor arm R",
+  motorLegLeft: "NIHSS motor leg L",
+  motorLegRight: "NIHSS motor leg R",
+  limbAtaxia: "NIHSS limb ataxia",
+  sensory: "NIHSS sensory",
+  bestLanguage: "NIHSS best language",
+  dysarthria: "NIHSS dysarthria",
+  extinctionInattention: "NIHSS extinction/inattention",
+};
+
+export const NIHSS_FIELD_LABEL_FR: Record<NihssScoredFieldKey, string> = {
+  levelOfConsciousness: "NIHSS conscience",
   locQuestions: "NIHSS questions LOC",
   locCommands: "NIHSS commandes LOC",
   bestGaze: "NIHSS regard",
@@ -218,7 +236,7 @@ export function findClinicalDocumentationOption<T extends string | number | bool
 export function formatNihssItemSummary(
   fieldKey: NihssScoredFieldKey,
   score: number,
-  locale: "en" | "fr" = "fr"
+  locale: "en" | "fr" = "en"
 ): string | null {
   const options = NIHSS_FIELD_OPTIONS[fieldKey];
   const option = findClinicalDocumentationOption(options, score);

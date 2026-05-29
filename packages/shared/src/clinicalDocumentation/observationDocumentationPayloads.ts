@@ -11,6 +11,11 @@ import {
   EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS,
   validateRestraintPayloadForCard,
 } from "./restraintDocumentationPayloads.js";
+import {
+  clinicalDocYesNo,
+  pickLocalizedEnumLabel,
+  type ClinicalDocumentationSummaryLocale,
+} from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.2 — minimal foundation card (generic key/value only for this card). */
 export const EDOC_BASIC_STRUCTURED_CARD_ID = "edoc_basic_structured_v1" as const;
@@ -166,13 +171,11 @@ export function validatePayloadForCard(
   return validateRestraintPayloadForCard(cardId, payload);
 }
 
-function yesNoFr(v: boolean): string {
-  return v ? "Oui" : "Non";
-}
-
-function enumLabelFr(map: Record<string, string>, value: string): string {
-  return map[value] ?? value;
-}
+const PO_TOLERATED_EN: Record<string, string> = {
+  YES: "Yes",
+  NO: "No",
+  PARTIAL: "Partial",
+};
 
 const PO_TOLERATED_FR: Record<string, string> = {
   YES: "Oui",
@@ -180,11 +183,26 @@ const PO_TOLERATED_FR: Record<string, string> = {
   PARTIAL: "Partiel",
 };
 
+const TRIAL_RESULT_EN: Record<string, string> = {
+  PASSED: "Passed",
+  FAILED: "Failed",
+  PARTIAL: "Partial",
+  STOPPED: "Stopped",
+};
+
 const TRIAL_RESULT_FR: Record<string, string> = {
   PASSED: "Réussi",
   FAILED: "Échoué",
   PARTIAL: "Partiel",
   STOPPED: "Arrêté",
+};
+
+const ASSISTANCE_EN: Record<string, string> = {
+  NONE: "None",
+  STANDBY: "Standby",
+  ONE_PERSON: "1 person",
+  TWO_PERSON: "2 people",
+  DEVICE: "Assistive device",
 };
 
 const ASSISTANCE_FR: Record<string, string> = {
@@ -195,10 +213,22 @@ const ASSISTANCE_FR: Record<string, string> = {
   DEVICE: "Aide technique",
 };
 
+const DISTANCE_UNIT_EN: Record<string, string> = {
+  FEET: "feet",
+  METERS: "meters",
+  STEPS: "steps",
+};
+
 const DISTANCE_UNIT_FR: Record<string, string> = {
   FEET: "pieds",
   METERS: "mètres",
   STEPS: "pas",
+};
+
+const CONDITION_EN: Record<string, string> = {
+  IMPROVED: "Improved",
+  UNCHANGED: "Unchanged",
+  WORSENED: "Worsened",
 };
 
 const CONDITION_FR: Record<string, string> = {
@@ -207,10 +237,11 @@ const CONDITION_FR: Record<string, string> = {
   WORSENED: "Détérioré",
 };
 
-/** French key/value lines for legal chart (product language). */
+/** Localized key/value lines for observation cards. */
 export function summarizeObservationDocumentationPayload(
   cardId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
 ): Array<{ key: string; value: string }> {
   switch (cardId) {
     case OBS_PO_CHALLENGE_CARD_ID: {
@@ -218,14 +249,26 @@ export function summarizeObservationDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Résultat", value: enumLabelFr(TRIAL_RESULT_FR, d.result) },
-        { key: "Tolérance", value: enumLabelFr(PO_TOLERATED_FR, d.tolerated) },
-        { key: "Substance", value: d.substance },
-        { key: "Quantité", value: d.amount },
-        { key: "Début", value: d.startTime },
-        { key: "Nausées", value: yesNoFr(d.nausea) },
-        { key: "Vomissements", value: yesNoFr(d.vomiting) },
-        { key: "Douleur abdominale", value: yesNoFr(d.abdominalPain) },
+        {
+          key: locale === "en" ? "Result" : "Résultat",
+          value: pickLocalizedEnumLabel(TRIAL_RESULT_EN, TRIAL_RESULT_FR, d.result, locale),
+        },
+        {
+          key: locale === "en" ? "Tolerated" : "Tolérance",
+          value: pickLocalizedEnumLabel(PO_TOLERATED_EN, PO_TOLERATED_FR, d.tolerated, locale),
+        },
+        { key: locale === "en" ? "Substance" : "Substance", value: d.substance },
+        { key: locale === "en" ? "Amount" : "Quantité", value: d.amount },
+        { key: locale === "en" ? "Start" : "Début", value: d.startTime },
+        { key: locale === "en" ? "Nausea" : "Nausées", value: clinicalDocYesNo(d.nausea, locale) },
+        {
+          key: locale === "en" ? "Vomiting" : "Vomissements",
+          value: clinicalDocYesNo(d.vomiting, locale),
+        },
+        {
+          key: locale === "en" ? "Abdominal pain" : "Douleur abdominale",
+          value: clinicalDocYesNo(d.abdominalPain, locale),
+        },
       ];
       if (d.notes?.trim()) lines.push({ key: "Notes", value: d.notes.trim() });
       return lines;
@@ -235,17 +278,32 @@ export function summarizeObservationDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Résultat", value: enumLabelFr(TRIAL_RESULT_FR, d.result) },
+        {
+          key: locale === "en" ? "Result" : "Résultat",
+          value: pickLocalizedEnumLabel(TRIAL_RESULT_EN, TRIAL_RESULT_FR, d.result, locale),
+        },
         {
           key: "Distance",
-          value: `${d.distance} ${enumLabelFr(DISTANCE_UNIT_FR, d.distanceUnit)}`,
+          value: `${d.distance} ${pickLocalizedEnumLabel(DISTANCE_UNIT_EN, DISTANCE_UNIT_FR, d.distanceUnit, locale)}`,
         },
-        { key: "Assistance", value: enumLabelFr(ASSISTANCE_FR, d.assistanceLevel) },
-        { key: "Démarche stable", value: yesNoFr(d.gaitSteady) },
-        { key: "Vertiges", value: yesNoFr(d.dizziness) },
-        { key: "Dyspnée", value: yesNoFr(d.shortnessOfBreath) },
-        { key: "Douleur", value: yesNoFr(d.pain) },
-        { key: "Désaturation O₂", value: yesNoFr(d.oxygenDesaturation) },
+        {
+          key: locale === "en" ? "Assistance" : "Assistance",
+          value: pickLocalizedEnumLabel(ASSISTANCE_EN, ASSISTANCE_FR, d.assistanceLevel, locale),
+        },
+        {
+          key: locale === "en" ? "Steady gait" : "Démarche stable",
+          value: clinicalDocYesNo(d.gaitSteady, locale),
+        },
+        { key: locale === "en" ? "Dizziness" : "Vertiges", value: clinicalDocYesNo(d.dizziness, locale) },
+        {
+          key: locale === "en" ? "Shortness of breath" : "Dyspnée",
+          value: clinicalDocYesNo(d.shortnessOfBreath, locale),
+        },
+        { key: locale === "en" ? "Pain" : "Douleur", value: clinicalDocYesNo(d.pain, locale) },
+        {
+          key: locale === "en" ? "Oxygen desaturation" : "Désaturation O₂",
+          value: clinicalDocYesNo(d.oxygenDesaturation, locale),
+        },
       ];
       if (d.notes?.trim()) lines.push({ key: "Notes", value: d.notes.trim() });
       return lines;
@@ -255,13 +313,30 @@ export function summarizeObservationDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: "État", value: enumLabelFr(CONDITION_FR, d.patientCondition) },
-        { key: "Heure", value: d.reassessmentTime },
-        { key: "Médecin avisé", value: yesNoFr(d.providerNotified) },
-        { key: "Signes vitaux revus", value: yesNoFr(d.vitalsReviewed) },
-        { key: "Résultats en attente", value: yesNoFr(d.pendingResults) },
+        {
+          key: locale === "en" ? "Condition" : "État",
+          value: pickLocalizedEnumLabel(CONDITION_EN, CONDITION_FR, d.patientCondition, locale),
+        },
+        { key: locale === "en" ? "Time" : "Heure", value: d.reassessmentTime },
+        {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(d.providerNotified, locale),
+        },
+        {
+          key: locale === "en" ? "Vitals reviewed" : "Signes vitaux revus",
+          value: clinicalDocYesNo(d.vitalsReviewed, locale),
+        },
+        {
+          key: locale === "en" ? "Pending results" : "Résultats en attente",
+          value: clinicalDocYesNo(d.pendingResults, locale),
+        },
       ];
-      if (d.painScore != null) lines.push({ key: "Douleur (0-10)", value: String(d.painScore) });
+      if (d.painScore != null) {
+        lines.push({
+          key: locale === "en" ? "Pain (0-10)" : "Douleur (0-10)",
+          value: String(d.painScore),
+        });
+      }
       if (d.notes?.trim()) lines.push({ key: "Notes", value: d.notes.trim() });
       return lines;
     }
@@ -270,13 +345,28 @@ export function summarizeObservationDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Motif attente", value: d.boardingReason },
-        { key: "Emplacement", value: d.location },
-        { key: "Contrôle sécurité", value: yesNoFr(d.safetyCheckCompleted) },
-        { key: "Confort offert", value: yesNoFr(d.comfortMeasuresOffered) },
-        { key: "Nutrition offerte", value: yesNoFr(d.nutritionOffered) },
-        { key: "Toilette offerte", value: yesNoFr(d.toiletingOffered) },
-        { key: "Médecin informé", value: yesNoFr(d.providerUpdated) },
+        { key: locale === "en" ? "Boarding reason" : "Motif attente", value: d.boardingReason },
+        { key: locale === "en" ? "Location" : "Emplacement", value: d.location },
+        {
+          key: locale === "en" ? "Safety check" : "Contrôle sécurité",
+          value: clinicalDocYesNo(d.safetyCheckCompleted, locale),
+        },
+        {
+          key: locale === "en" ? "Comfort offered" : "Confort offert",
+          value: clinicalDocYesNo(d.comfortMeasuresOffered, locale),
+        },
+        {
+          key: locale === "en" ? "Nutrition offered" : "Nutrition offerte",
+          value: clinicalDocYesNo(d.nutritionOffered, locale),
+        },
+        {
+          key: locale === "en" ? "Toileting offered" : "Toilette offerte",
+          value: clinicalDocYesNo(d.toiletingOffered, locale),
+        },
+        {
+          key: locale === "en" ? "Provider updated" : "Médecin informé",
+          value: clinicalDocYesNo(d.providerUpdated, locale),
+        },
       ];
       if (d.notes?.trim()) lines.push({ key: "Notes", value: d.notes.trim() });
       return lines;
@@ -285,21 +375,39 @@ export function summarizeObservationDocumentationPayload(
       const p = dischargeReadinessPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const checklist = [
-        ["Consignes", d.instructionsReviewed],
-        ["Médicaments", d.medicationsReviewed],
-        ["Suivi", d.followUpReviewed],
-        ["Signes d'alerte", d.returnPrecautionsReviewed],
-        ["Transport", d.transportationConfirmed],
-        ["Compréhension patient", d.patientVerbalizedUnderstanding],
-      ] as const;
+      const checklist =
+        locale === "en"
+          ? ([
+              ["Instructions", d.instructionsReviewed],
+              ["Medications", d.medicationsReviewed],
+              ["Follow-up", d.followUpReviewed],
+              ["Return precautions", d.returnPrecautionsReviewed],
+              ["Transportation", d.transportationConfirmed],
+              ["Patient understanding", d.patientVerbalizedUnderstanding],
+            ] as const)
+          : ([
+              ["Consignes", d.instructionsReviewed],
+              ["Médicaments", d.medicationsReviewed],
+              ["Suivi", d.followUpReviewed],
+              ["Signes d'alerte", d.returnPrecautionsReviewed],
+              ["Transport", d.transportationConfirmed],
+              ["Compréhension patient", d.patientVerbalizedUnderstanding],
+            ] as const);
       const done = checklist.filter(([, v]) => v).map(([k]) => k);
       const lines: Array<{ key: string; value: string }> = [
         {
-          key: "Liste de contrôle",
-          value: done.length > 0 ? done.join(", ") : "Aucun élément coché",
+          key: locale === "en" ? "Checklist" : "Liste de contrôle",
+          value:
+            done.length > 0
+              ? done.join(", ")
+              : locale === "en"
+                ? "No items checked"
+                : "Aucun élément coché",
         },
-        { key: "Obstacles identifiés", value: yesNoFr(d.barriersIdentified) },
+        {
+          key: locale === "en" ? "Barriers identified" : "Obstacles identifiés",
+          value: clinicalDocYesNo(d.barriersIdentified, locale),
+        },
       ];
       if (d.notes?.trim()) lines.push({ key: "Notes", value: d.notes.trim() });
       return lines;

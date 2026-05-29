@@ -30,7 +30,7 @@ describe("EDOC.2A legal chart surfaces (clinical documentation)", () => {
     expect(summaryPanel).toContain("entry.authorDisplayName");
     expect(summaryPanel).toContain("entry.authorRoleTitle");
     expect(summaryPanel).toContain("entry.createdAt");
-    expect(summaryPanel).toContain("payloadSummary");
+    expect(summaryPanel).toContain("selectClinicalDocumentationPayloadSummary");
     expect(summaryPanel).toContain("line.key");
     expect(summaryPanel).toContain("line.value");
     expect(summaryPanel).not.toContain("preview-only");
@@ -39,22 +39,23 @@ describe("EDOC.2A legal chart surfaces (clinical documentation)", () => {
   it("patient chart tabs and print layout render clinical documentation entries", () => {
     expect(chartTabs).toContain("clinicalDocumentation.chartSectionTitle");
     expect(chartTabs).toContain("clinicalDocumentationEntries");
-    expect(chartTabs).toContain("payloadSummary");
+    expect(chartTabs).toContain("selectClinicalDocumentationPayloadSummary");
     expect(printLayout).toContain('pc("clinicalDocumentation")');
-    expect(printLayout).toContain("entry.payloadSummary");
+    expect(printLayout).toContain("selectClinicalDocumentationPayloadSummary");
     expect(printLayout).toContain("line.key");
     expect(printLayout).toContain("line.value");
   });
 
-  it("chart API type includes full payloadJson for legal record", () => {
+  it("chart API type includes full payloadJson and bilingual summaries for legal record", () => {
     expect(chartApi).toContain("clinicalDocumentationEntries");
     expect(chartApi).toContain("payloadJson: Record<string, unknown>");
-    expect(chartApi).toContain("payloadSummary: Array<{ key: string; value: string }>");
+    expect(chartApi).toContain("payloadSummaryEn");
+    expect(chartApi).toContain("payloadSummaryFr");
   });
 
-  it("hub displays saved entries with author, role, time, and summary lines", () => {
+  it("hub displays saved entries with author, role, time, and localized summary lines", () => {
     expect(hub).toContain("clinicalDocumentation.savedEntriesTitle");
-    expect(hub).toContain("entry.payloadSummary");
+    expect(hub).toContain("selectClinicalDocumentationPayloadSummary");
     expect(hub).toContain("entry.authorDisplayName");
     expect(hub).toContain("entry.authorRoleTitle");
   });

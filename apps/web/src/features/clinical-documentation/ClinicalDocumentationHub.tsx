@@ -13,6 +13,7 @@ import {
   listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
   searchClinicalDocumentationCards,
+  selectClinicalDocumentationPayloadSummary,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -379,9 +380,9 @@ export function ClinicalDocumentationHub({
                           .replace("{when}", formatWhen(entry.witnessedAt))}
                       </p>
                     ) : null}
-                    {(entry.payloadSummary ?? []).length > 0 ? (
+                    {selectClinicalDocumentationPayloadSummary(entry, locale).length > 0 ? (
                       <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12, color: "#334155" }}>
-                        {entry.payloadSummary.map((line) => (
+                        {selectClinicalDocumentationPayloadSummary(entry, locale).map((line) => (
                           <li key={`${entry.id}-${line.key}`}>
                             <strong>{line.key}</strong>: {line.value}
                           </li>

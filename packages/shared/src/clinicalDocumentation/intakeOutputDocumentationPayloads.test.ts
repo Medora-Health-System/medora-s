@@ -276,7 +276,7 @@ describe("EDOC.5 intake & output documentation", () => {
       unit: "ML",
       route: "IV",
       fluidType: "Normal saline",
-    });
+    }, "fr");
     expect(fluid.some((l) => l.key === "Apport" && l.value.includes("500 mL"))).toBe(true);
 
     const summary = summarizeIntakeOutputDocumentationPayload(IO_INTAKE_OUTPUT_SUMMARY_CARD_ID, {
@@ -288,7 +288,7 @@ describe("EDOC.5 intake & output documentation", () => {
       includesEstimatedValues: false,
       reviewedByNurse: true,
       providerNotified: false,
-    });
+    }, "fr");
     expect(summary).toEqual(
       expect.arrayContaining([
         { key: "Apports", value: "1200 mL" },
@@ -304,7 +304,7 @@ describe("EDOC.5 intake & output documentation", () => {
       productType: "PRBC",
       transfusionRecordLinked: true,
       reactionSuspected: false,
-    });
+    }, "fr");
     expect(blood.some((l) => l.key === "Lien transfusion" && l.value === "Oui")).toBe(true);
   });
 });

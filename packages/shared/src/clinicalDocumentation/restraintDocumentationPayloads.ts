@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  clinicalDocYesNo,
+  pickLocalizedEnumLabel,
+  type ClinicalDocumentationSummaryLocale,
+} from "./clinicalDocumentationSummaryLocale.js";
 
 /** Preserve persisted registry IDs for initiation/reassessment. */
 export const RESTRAINT_INITIATION_CARD_ID = "safety_restraint_initial" as const;
@@ -172,11 +177,29 @@ export function validateRestraintPayloadForCard(
   return { ok: true, data };
 }
 
+const RESTRAINT_TYPE_EN: Record<string, string> = {
+  PHYSICAL: "Physical",
+  BEHAVIORAL: "Behavioral",
+  MEDICAL: "Medical",
+  SECLUSION: "Seclusion",
+};
+
 const RESTRAINT_TYPE_FR: Record<string, string> = {
   PHYSICAL: "Physique",
   BEHAVIORAL: "Comportementale",
   MEDICAL: "Médicale",
   SECLUSION: "Isolement",
+};
+
+const REASON_EN: Record<string, string> = {
+  VIOLENT_BEHAVIOR: "Violent behavior",
+  SELF_DESTRUCTIVE: "Self-destructive",
+  PULLING_LINES: "Pulling lines",
+  PULLING_TUBES: "Pulling tubes",
+  FALL_RISK: "Fall risk",
+  INTERFERENCE_WITH_CARE: "Interference with care",
+  ALTERED_MENTAL_STATUS: "Altered mental status",
+  OTHER: "Other",
 };
 
 const REASON_FR: Record<string, string> = {
@@ -190,17 +213,31 @@ const REASON_FR: Record<string, string> = {
   OTHER: "Autre",
 };
 
+const NORMAL_ABNORMAL_EN: Record<string, string> = {
+  NORMAL: "Normal",
+  ABNORMAL: "Abnormal",
+};
+
 const NORMAL_ABNORMAL_FR: Record<string, string> = {
   NORMAL: "Normal",
   ABNORMAL: "Anormal",
 };
 
-function yesNoFr(v: boolean): string {
-  return v ? "Oui" : "Non";
-}
-
-function formatAlternativesFr(values: string[]): string {
-  const map: Record<string, string> = {
+function formatAlternatives(
+  values: string[],
+  locale: ClinicalDocumentationSummaryLocale
+): string {
+  const mapEn: Record<string, string> = {
+    VERBAL_DEESCALATION: "Verbal de-escalation",
+    REORIENTATION: "Reorientation",
+    FAMILY_PRESENCE: "Family presence",
+    SITTER: "Sitter",
+    REDIRECTION: "Redirection",
+    ENVIRONMENTAL_MODIFICATION: "Environmental modification",
+    MEDICATION: "Medication",
+    OTHER: "Other",
+  };
+  const mapFr: Record<string, string> = {
     VERBAL_DEESCALATION: "Désescalade verbale",
     REORIENTATION: "Réorientation",
     FAMILY_PRESENCE: "Présence familiale",
@@ -210,76 +247,152 @@ function formatAlternativesFr(values: string[]): string {
     MEDICATION: "Médication",
     OTHER: "Autre",
   };
+  const map = locale === "en" ? mapEn : mapFr;
   return values.map((v) => map[v] ?? v).join(", ");
 }
 
 export function summarizeRestraintDocumentationPayload(
   cardId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
 ): Array<{ key: string; value: string }> {
   switch (cardId) {
     case RESTRAINT_INITIATION_CARD_ID: {
       const p = restraintInitiationPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: "Type", value: RESTRAINT_TYPE_FR[p.data.restraintType] ?? p.data.restraintType },
-        { key: "Motif", value: REASON_FR[p.data.reasonForRestraint] ?? p.data.reasonForRestraint },
         {
-          key: "Alternatives tentées",
-          value: formatAlternativesFr(p.data.alternativesAttempted),
+          key: locale === "en" ? "Type" : "Type",
+          value: pickLocalizedEnumLabel(RESTRAINT_TYPE_EN, RESTRAINT_TYPE_FR, p.data.restraintType, locale),
         },
-        { key: "Besoin continu", value: yesNoFr(p.data.continuedNeed) },
-        { key: "Circulation", value: NORMAL_ABNORMAL_FR[p.data.circulationAssessment] ?? p.data.circulationAssessment },
-        { key: "Ordre médecin vérifié", value: yesNoFr(p.data.physicianOrderVerified) },
-        { key: "Médecin prescripteur", value: p.data.orderingProviderId },
-        { key: "Évalué le", value: p.data.assessmentTime },
+        {
+          key: locale === "en" ? "Reason" : "Motif",
+          value: pickLocalizedEnumLabel(REASON_EN, REASON_FR, p.data.reasonForRestraint, locale),
+        },
+        {
+          key: locale === "en" ? "Alternatives attempted" : "Alternatives tentées",
+          value: formatAlternatives(p.data.alternativesAttempted, locale),
+        },
+        {
+          key: locale === "en" ? "Continued need" : "Besoin continu",
+          value: clinicalDocYesNo(p.data.continuedNeed, locale),
+        },
+        {
+          key: locale === "en" ? "Circulation" : "Circulation",
+          value: pickLocalizedEnumLabel(
+            NORMAL_ABNORMAL_EN,
+            NORMAL_ABNORMAL_FR,
+            p.data.circulationAssessment,
+            locale
+          ),
+        },
+        {
+          key: locale === "en" ? "Physician order verified" : "Ordre médecin vérifié",
+          value: clinicalDocYesNo(p.data.physicianOrderVerified, locale),
+        },
+        {
+          key: locale === "en" ? "Ordering provider" : "Médecin prescripteur",
+          value: p.data.orderingProviderId,
+        },
+        { key: locale === "en" ? "Assessed at" : "Évalué le", value: p.data.assessmentTime },
       ];
     }
     case RESTRAINT_FACE_TO_FACE_CARD_ID: {
       const p = restraintFaceToFacePayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: "Évaluation face-à-face", value: p.data.evaluationTime },
-        { key: "Danger pour soi", value: yesNoFr(p.data.dangerToSelf) },
-        { key: "Danger pour autrui", value: yesNoFr(p.data.dangerToOthers) },
-        { key: "Besoin continu", value: yesNoFr(p.data.continuedNeedForRestraint) },
-        { key: "Évaluateur", value: p.data.providerEvaluatorId },
+        {
+          key: locale === "en" ? "Face-to-face evaluation" : "Évaluation face-à-face",
+          value: p.data.evaluationTime,
+        },
+        {
+          key: locale === "en" ? "Danger to self" : "Danger pour soi",
+          value: clinicalDocYesNo(p.data.dangerToSelf, locale),
+        },
+        {
+          key: locale === "en" ? "Danger to others" : "Danger pour autrui",
+          value: clinicalDocYesNo(p.data.dangerToOthers, locale),
+        },
+        {
+          key: locale === "en" ? "Continued need" : "Besoin continu",
+          value: clinicalDocYesNo(p.data.continuedNeedForRestraint, locale),
+        },
+        {
+          key: locale === "en" ? "Evaluator" : "Évaluateur",
+          value: p.data.providerEvaluatorId,
+        },
       ];
     }
     case RESTRAINT_REASSESSMENT_CARD_ID: {
       const p = restraintReassessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: "Réévaluation", value: p.data.assessmentTime },
-        { key: "Voies aériennes", value: NORMAL_ABNORMAL_FR[p.data.airway] ?? p.data.airway },
-        { key: "Circulation", value: NORMAL_ABNORMAL_FR[p.data.circulation] ?? p.data.circulation },
-        { key: "Intégrité cutanée", value: NORMAL_ABNORMAL_FR[p.data.skinIntegrity] ?? p.data.skinIntegrity },
-        { key: "Besoin continu", value: yesNoFr(p.data.continuedNeed) },
+        { key: locale === "en" ? "Reassessment" : "Réévaluation", value: p.data.assessmentTime },
+        {
+          key: locale === "en" ? "Airway" : "Voies aériennes",
+          value: pickLocalizedEnumLabel(NORMAL_ABNORMAL_EN, NORMAL_ABNORMAL_FR, p.data.airway, locale),
+        },
+        {
+          key: locale === "en" ? "Circulation" : "Circulation",
+          value: pickLocalizedEnumLabel(
+            NORMAL_ABNORMAL_EN,
+            NORMAL_ABNORMAL_FR,
+            p.data.circulation,
+            locale
+          ),
+        },
+        {
+          key: locale === "en" ? "Skin integrity" : "Intégrité cutanée",
+          value: pickLocalizedEnumLabel(
+            NORMAL_ABNORMAL_EN,
+            NORMAL_ABNORMAL_FR,
+            p.data.skinIntegrity,
+            locale
+          ),
+        },
+        {
+          key: locale === "en" ? "Continued need" : "Besoin continu",
+          value: clinicalDocYesNo(p.data.continuedNeed, locale),
+        },
       ];
     }
     case RESTRAINT_RENEWAL_CARD_ID: {
       const p = restraintRenewalPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: "Renouvellement", value: p.data.renewalTime },
-        { key: "Médecin prescripteur", value: p.data.orderingProviderId },
-        { key: "Besoin continu", value: yesNoFr(p.data.continuedNeed) },
+        { key: locale === "en" ? "Renewal" : "Renouvellement", value: p.data.renewalTime },
+        {
+          key: locale === "en" ? "Ordering provider" : "Médecin prescripteur",
+          value: p.data.orderingProviderId,
+        },
+        {
+          key: locale === "en" ? "Continued need" : "Besoin continu",
+          value: clinicalDocYesNo(p.data.continuedNeed, locale),
+        },
       ];
     }
     case RESTRAINT_DISCONTINUATION_CARD_ID: {
       const p = restraintDiscontinuationPayloadSchema.safeParse(payload);
       if (!p.success) return [];
-      const criteriaMap: Record<string, string> = {
+      const criteriaEn: Record<string, string> = {
+        CALM: "Calm",
+        FOLLOWS_COMMANDS: "Follows commands",
+        NO_LONGER_DANGER: "No longer a danger",
+        MEDICAL_DEVICE_SECURE: "Medical devices secure",
+        OTHER: "Other",
+      };
+      const criteriaFr: Record<string, string> = {
         CALM: "Calme",
         FOLLOWS_COMMANDS: "Suit les consignes",
         NO_LONGER_DANGER: "Plus de danger",
         MEDICAL_DEVICE_SECURE: "Dispositifs sécurisés",
         OTHER: "Autre",
       };
+      const criteriaMap = locale === "en" ? criteriaEn : criteriaFr;
       return [
-        { key: "Arrêt", value: p.data.discontinuedTime },
+        { key: locale === "en" ? "Discontinued" : "Arrêt", value: p.data.discontinuedTime },
         {
-          key: "Critères",
+          key: locale === "en" ? "Criteria met" : "Critères",
           value: p.data.criteriaMet.map((c) => criteriaMap[c] ?? c).join(", "),
         },
       ];

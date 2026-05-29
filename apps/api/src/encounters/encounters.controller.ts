@@ -593,6 +593,7 @@ export class EncountersController {
   async getChartExport(
     @Param("id") id: string,
     @Query("format") formatRaw: string | undefined,
+    @Query("locale") localeRaw: string | undefined,
     @Req() req: any,
     @Res({ passthrough: true }) res: Response
   ) {
@@ -615,7 +616,8 @@ export class EncountersController {
     );
     if (exportFormat === "html") {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
-      return renderEncounterChartExportHtml(manifest);
+      const exportLocale = localeRaw?.trim().toLowerCase() === "fr" ? "fr" : "en";
+      return renderEncounterChartExportHtml(manifest, { locale: exportLocale });
     }
     return manifest;
   }

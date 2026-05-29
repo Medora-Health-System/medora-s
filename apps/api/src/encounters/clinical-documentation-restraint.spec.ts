@@ -125,7 +125,8 @@ describe("ClinicalDocumentationService — restraint (EDOC.6)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(RESTRAINT_INITIATION_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Type")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Type")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Type")).toBe(true);
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -205,7 +206,8 @@ describe("ClinicalDocumentationService — restraint (EDOC.6)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(RESTRAINT_FACE_TO_FACE_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Évaluateur")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Évaluateur")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Evaluator")).toBe(true);
   });
 
   it("POST Reassessment persists (EDOC.6)", async () => {
@@ -252,7 +254,8 @@ describe("ClinicalDocumentationService — restraint (EDOC.6)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(RESTRAINT_RENEWAL_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Renouvellement")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Renouvellement")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Renewal")).toBe(true);
   });
 
   it("POST Discontinuation persists (EDOC.6)", async () => {
@@ -272,7 +275,8 @@ describe("ClinicalDocumentationService — restraint (EDOC.6)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(RESTRAINT_DISCONTINUATION_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Critères")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Critères")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Criteria met")).toBe(true);
   });
 
   it("rejects invalid Restraint Initiation payload (EDOC.6)", async () => {

@@ -13,6 +13,7 @@ import {
   printT,
 } from "@/lib/printI18n";
 import { calculateAge } from "@/lib/patientDisplay";
+import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import {
   diagnosisDisplayFr,
@@ -373,9 +374,13 @@ export function getPatientChartPrintHtml(params: {
                 ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>${esc(pc("clinicalDocumentation"))}</strong></p>${(enc.clinicalDocumentationEntries ?? [])
                     .map((entry) => {
                       const title = lang === "en" ? entry.cardTitleEn : entry.cardTitleFr;
+                      const summaryLines = selectClinicalDocumentationPayloadSummary(
+                        entry,
+                        lang === "en" ? "en" : "fr"
+                      );
                       const summary =
-                        (entry.payloadSummary ?? []).length > 0
-                          ? `<ul style="margin:4px 0 0 16px;">${(entry.payloadSummary ?? [])
+                        summaryLines.length > 0
+                          ? `<ul style="margin:4px 0 0 16px;">${summaryLines
                               .map(
                                 (line) =>
                                   `<li><strong>${esc(line.key)}</strong>: ${esc(line.value)}</li>`

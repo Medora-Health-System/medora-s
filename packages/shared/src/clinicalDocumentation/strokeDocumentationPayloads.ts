@@ -2,11 +2,18 @@ import { z } from "zod";
 import {
   deriveNihssSeverityBand,
   formatNihssItemSummary,
+  NIHSS_FIELD_LABEL_EN,
   NIHSS_FIELD_LABEL_FR,
   NIHSS_SCORED_FIELD_KEYS,
+  NIHSS_SEVERITY_BAND_LABEL_EN,
   NIHSS_SEVERITY_BAND_LABEL_FR,
   type NihssScoredFieldKey,
 } from "./clinicalDocumentationFieldOptions.js";
+import {
+  clinicalDocYesNo,
+  pickLocalizedEnumLabel,
+  type ClinicalDocumentationSummaryLocale,
+} from "./clinicalDocumentationSummaryLocale.js";
 
 /** EDOC.4 — stroke documentation card IDs (preserve registry IDs). */
 export const STROKE_NIHSS_CARD_ID = "stroke_nihss" as const;
@@ -335,14 +342,22 @@ export function deriveVanResult(
   return "NEGATIVE";
 }
 
-function yesNoFr(v: boolean): string {
-  return v ? "Oui" : "Non";
-}
+const SWALLOW_RESULT_EN: Record<string, string> = {
+  PASSED: "Passed",
+  FAILED: "Failed",
+  DEFERRED: "Deferred",
+};
 
 const SWALLOW_RESULT_FR: Record<string, string> = {
   PASSED: "Réussi",
   FAILED: "Échoué",
   DEFERRED: "Reporté",
+};
+
+const SCREEN_RESULT_EN: Record<string, string> = {
+  NEGATIVE: "Negative",
+  POSITIVE: "Positive",
+  INCOMPLETE: "Incomplete",
 };
 
 const SCREEN_RESULT_FR: Record<string, string> = {
@@ -351,39 +366,55 @@ const SCREEN_RESULT_FR: Record<string, string> = {
   INCOMPLETE: "Incomplet",
 };
 
+const CHANGES_EN: Record<string, string> = {
+  YES: "Yes",
+  NO: "No",
+  UNKNOWN: "Unknown",
+};
+
 const CHANGES_FR: Record<string, string> = {
   YES: "Oui",
   NO: "Non",
   UNKNOWN: "Inconnu",
 };
 
-/** French legal summary lines for stroke cards. */
+/** Localized legal summary lines for stroke cards. */
 export function summarizeStrokeDocumentationPayload(
   cardId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
 ): Array<{ key: string; value: string }> {
+  const nihssFieldLabels = locale === "en" ? NIHSS_FIELD_LABEL_EN : NIHSS_FIELD_LABEL_FR;
+  const severityLabels = locale === "en" ? NIHSS_SEVERITY_BAND_LABEL_EN : NIHSS_SEVERITY_BAND_LABEL_FR;
+
   switch (cardId) {
     case STROKE_NIHSS_CARD_ID: {
       const p = nihssPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Score NIHSS total", value: String(d.totalScore) },
         {
-          key: "Bande de sévérité NIHSS",
-          value: NIHSS_SEVERITY_BAND_LABEL_FR[deriveNihssSeverityBand(d.totalScore)],
+          key: locale === "en" ? "NIHSS total score" : "Score NIHSS total",
+          value: String(d.totalScore),
         },
-        { key: "Évalué le", value: d.assessedAt },
+        {
+          key: locale === "en" ? "NIHSS severity band" : "Bande de sévérité NIHSS",
+          value: severityLabels[deriveNihssSeverityBand(d.totalScore)],
+        },
+        { key: locale === "en" ? "Assessed at" : "Évalué le", value: d.assessedAt },
       ];
       for (const fieldKey of NIHSS_SCORED_FIELD_KEYS) {
         const score = d[fieldKey as NihssScoredFieldKey];
-        const summary = formatNihssItemSummary(fieldKey, score, "fr");
+        const summary = formatNihssItemSummary(fieldKey, score, locale);
         if (summary) {
-          lines.push({ key: NIHSS_FIELD_LABEL_FR[fieldKey], value: summary });
+          lines.push({ key: nihssFieldLabels[fieldKey], value: summary });
         }
       }
       if (d.unableToAssessReason?.trim()) {
-        lines.push({ key: "Raison non évaluable", value: d.unableToAssessReason.trim() });
+        lines.push({
+          key: locale === "en" ? "Unable to assess reason" : "Raison non évaluable",
+          value: d.unableToAssessReason.trim(),
+        });
       }
       return lines;
     }
@@ -392,24 +423,47 @@ export function summarizeStrokeDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       return [
-        { key: "Résultat", value: SWALLOW_RESULT_FR[d.result] ?? d.result },
-        { key: "NPO recommandé", value: yesNoFr(d.npoRecommended) },
-        { key: "Médecin avisé", value: yesNoFr(d.providerNotified) },
+        {
+          key: locale === "en" ? "Result" : "Résultat",
+          value: pickLocalizedEnumLabel(SWALLOW_RESULT_EN, SWALLOW_RESULT_FR, d.result, locale),
+        },
+        {
+          key: locale === "en" ? "NPO recommended" : "NPO recommandé",
+          value: clinicalDocYesNo(d.npoRecommended, locale),
+        },
+        {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(d.providerNotified, locale),
+        },
       ];
     }
     case STROKE_CINCINNATI_CARD_ID: {
       const p = cincinnatiStrokeScalePayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const abnormal: string[] = [];
-      if (d.facialDroop === "ABNORMAL") abnormal.push("asymétrie faciale");
-      if (d.armDrift === "ABNORMAL") abnormal.push("dérive du bras");
-      if (d.speech === "ABNORMAL") abnormal.push("parole");
+      const abnormal =
+        locale === "en"
+          ? [
+              d.facialDroop === "ABNORMAL" ? "facial asymmetry" : null,
+              d.armDrift === "ABNORMAL" ? "arm drift" : null,
+              d.speech === "ABNORMAL" ? "speech" : null,
+            ].filter(Boolean)
+          : [
+              d.facialDroop === "ABNORMAL" ? "asymétrie faciale" : null,
+              d.armDrift === "ABNORMAL" ? "dérive du bras" : null,
+              d.speech === "ABNORMAL" ? "parole" : null,
+            ].filter(Boolean);
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Résultat", value: SCREEN_RESULT_FR[d.result] ?? d.result },
+        {
+          key: locale === "en" ? "Result" : "Résultat",
+          value: pickLocalizedEnumLabel(SCREEN_RESULT_EN, SCREEN_RESULT_FR, d.result, locale),
+        },
       ];
       if (abnormal.length > 0) {
-        lines.push({ key: "Éléments anormaux", value: abnormal.join(", ") });
+        lines.push({
+          key: locale === "en" ? "Abnormal elements" : "Éléments anormaux",
+          value: abnormal.join(", "),
+        });
       }
       return lines;
     }
@@ -417,22 +471,36 @@ export function summarizeStrokeDocumentationPayload(
       const p = vanAssessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const d = p.data;
-      const signs: string[] = [];
-      if (d.visualDisturbance) signs.push("trouble visuel");
-      if (d.aphasia) signs.push("aphasie");
-      if (d.neglect) signs.push("négligence");
+      const signs =
+        locale === "en"
+          ? [
+              d.visualDisturbance ? "visual disturbance" : null,
+              d.aphasia ? "aphasia" : null,
+              d.neglect ? "neglect" : null,
+            ].filter(Boolean)
+          : [
+              d.visualDisturbance ? "trouble visuel" : null,
+              d.aphasia ? "aphasie" : null,
+              d.neglect ? "négligence" : null,
+            ].filter(Boolean);
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Résultat", value: SCREEN_RESULT_FR[d.result] ?? d.result },
+        {
+          key: locale === "en" ? "Result" : "Résultat",
+          value: pickLocalizedEnumLabel(SCREEN_RESULT_EN, SCREEN_RESULT_FR, d.result, locale),
+        },
       ];
       if (signs.length > 0) {
-        lines.push({ key: "Signes corticaux", value: signs.join(", ") });
+        lines.push({
+          key: locale === "en" ? "Cortical signs" : "Signes corticaux",
+          value: signs.join(", "),
+        });
       }
       return lines;
     }
     case STROKE_ABCD2_CARD_ID: {
       const p = abcd2PayloadSchema.safeParse(payload);
       if (!p.success) return [];
-      return [{ key: "Score ABCD2", value: String(p.data.totalScore) }];
+      return [{ key: "ABCD2 score", value: String(p.data.totalScore) }];
     }
     case STROKE_TIMELINE_CARD_ID: {
       const p = strokeTimelinePayloadSchema.safeParse(payload);
@@ -441,12 +509,23 @@ export function summarizeStrokeDocumentationPayload(
       const lines: Array<{ key: string; value: string }> = [
         { key: "LKW", value: d.lastKnownWellTime },
       ];
-      if (d.ctCompletedTime) lines.push({ key: "TDM terminée", value: d.ctCompletedTime });
+      if (d.ctCompletedTime) {
+        lines.push({
+          key: locale === "en" ? "CT completed" : "TDM terminée",
+          value: d.ctCompletedTime,
+        });
+      }
       if (d.thrombolyticDecisionTime) {
-        lines.push({ key: "Décision thrombolyse", value: d.thrombolyticDecisionTime });
+        lines.push({
+          key: locale === "en" ? "Thrombolytic decision" : "Décision thrombolyse",
+          value: d.thrombolyticDecisionTime,
+        });
       }
       if (d.thrombolyticGivenTime) {
-        lines.push({ key: "Thrombolyse administrée", value: d.thrombolyticGivenTime });
+        lines.push({
+          key: locale === "en" ? "Thrombolytic given" : "Thrombolyse administrée",
+          value: d.thrombolyticGivenTime,
+        });
       }
       return lines;
     }
@@ -456,10 +535,13 @@ export function summarizeStrokeDocumentationPayload(
       const d = p.data;
       return [
         {
-          key: "Changement vs précédent",
-          value: CHANGES_FR[d.changesFromPrior] ?? d.changesFromPrior,
+          key: locale === "en" ? "Change vs prior" : "Changement vs précédent",
+          value: pickLocalizedEnumLabel(CHANGES_EN, CHANGES_FR, d.changesFromPrior, locale),
         },
-        { key: "Médecin avisé", value: yesNoFr(d.providerNotified) },
+        {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(d.providerNotified, locale),
+        },
       ];
     }
     default:

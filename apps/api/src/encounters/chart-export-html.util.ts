@@ -8,6 +8,11 @@
  */
 
 import type { ChartExportManifest } from "./chart-export.service";
+import {
+  selectClinicalDocumentationCardTitle,
+  selectClinicalDocumentationPayloadSummary,
+  type ClinicalDocumentationSummaryLocale,
+} from "@medora/shared";
 
 /** HTML entity escape for text nodes and attribute-safe contexts. */
 export function escapeHtml(s: string): string {
@@ -375,11 +380,13 @@ export function renderEncounterChartExportHtml(
         ? `<p class="muted">${esc(NO_DATA)}</p>`
         : `<ul>${(enc.clinicalDocumentationEntries ?? [])
             .map((entry) => {
-              const title = entry.cardTitleFr || entry.cardTitleEn || entry.cardId;
+              const edocLocale: ClinicalDocumentationSummaryLocale = locale === "fr" ? "fr" : "en";
+              const title = selectClinicalDocumentationCardTitle(entry, edocLocale);
+              const summaryLines = selectClinicalDocumentationPayloadSummary(entry, edocLocale);
               const summary =
-                (entry.payloadSummary ?? []).length === 0
+                summaryLines.length === 0
                   ? ""
-                  : `<ul>${(entry.payloadSummary ?? [])
+                  : `<ul>${summaryLines
                       .map((line) => `<li><strong>${esc(line.key)}</strong>: ${esc(line.value)}</li>`)
                       .join("")}</ul>`;
               const voidTag = entry.voidedAt ? ` <span class="muted">(voided ${esc(entry.voidedAt)})</span>` : "";

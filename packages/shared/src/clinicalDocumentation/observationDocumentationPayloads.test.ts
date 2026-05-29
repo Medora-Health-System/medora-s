@@ -127,23 +127,28 @@ describe("observationDocumentationPayloads (EDOC.3)", () => {
   });
 
   it("generates French payload summaries per card", () => {
-    const poSummary = summarizeObservationDocumentationPayload(OBS_PO_CHALLENGE_CARD_ID, poValid);
+    const poSummary = summarizeObservationDocumentationPayload(OBS_PO_CHALLENGE_CARD_ID, poValid, "fr");
     expect(poSummary.some((l) => l.key === "Résultat" && l.value === "Réussi")).toBe(true);
     expect(poSummary.some((l) => l.key === "Substance")).toBe(true);
 
     const ambSummary = summarizeObservationDocumentationPayload(
       OBS_AMBULATION_TRIAL_CARD_ID,
-      ambValid
+      ambValid,
+      "fr"
     );
     expect(ambSummary.some((l) => l.key === "Distance")).toBe(true);
 
-    const reassessSummary = summarizeObservationDocumentationPayload(OBS_REASSESSMENT_CARD_ID, {
+    const reassessSummary = summarizeObservationDocumentationPayload(
+      OBS_REASSESSMENT_CARD_ID,
+      {
       reassessmentTime: "2026-05-28T15:00:00.000Z",
       patientCondition: "WORSENED",
       vitalsReviewed: true,
       pendingResults: true,
       providerNotified: true,
-    });
+      },
+      "fr"
+    );
     expect(reassessSummary.some((l) => l.key === "Médecin avisé")).toBe(true);
 
     const legal = mapClinicalDocumentationEntryForLegalChart({

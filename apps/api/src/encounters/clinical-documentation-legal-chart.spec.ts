@@ -291,13 +291,16 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const manifest = await service.getManifest("facility-A", "enc-1");
     expect(manifest.encounter.clinicalDocumentationEntries[0]?.payloadJson).toEqual(poPayload);
     expect(
-      manifest.encounter.clinicalDocumentationEntries[0]?.payloadSummary.some(
+      manifest.encounter.clinicalDocumentationEntries[0]?.payloadSummaryEn?.some(
         (l) => l.key === "Substance" && l.value === "Apple juice"
       )
     ).toBe(true);
-    const html = renderEncounterChartExportHtml(manifest);
-    expect(html).toContain("Apple juice");
-    expect(html).toContain("Réussi");
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("Apple juice");
+    expect(htmlEn).toContain("Passed");
+    expect(htmlEn).not.toContain("Réussi");
+    const htmlFr = renderEncounterChartExportHtml(manifest, { locale: "fr" });
+    expect(htmlFr).toContain("Réussi");
   });
 
   it("renders NIHSS in chart export JSON and HTML (EDOC.4 stroke)", async () => {
@@ -347,12 +350,18 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     ).getManifest("facility-A", "enc-1");
     const row = manifest.encounter.clinicalDocumentationEntries[0]!;
     expect(row.payloadJson).toEqual(nihssPayload);
-    expect(row.payloadSummary.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(
+    expect(row.payloadSummaryEn!.some((l) => l.key === "NIHSS total score" && l.value === "5")).toBe(
       true
     );
-    const html = renderEncounterChartExportHtml(manifest);
-    expect(html).toContain("Score NIHSS total");
-    expect(html).toContain("STROKE_DOCUMENTATION");
+    expect(row.payloadSummaryFr!.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(
+      true
+    );
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("NIHSS total score");
+    expect(htmlEn).not.toContain("Score NIHSS total");
+    expect(htmlEn).toContain("STROKE_DOCUMENTATION");
+    const htmlFr = renderEncounterChartExportHtml(manifest, { locale: "fr" });
+    expect(htmlFr).toContain("Score NIHSS total");
   });
 
   it("renders PO Intake in chart export JSON and HTML (EDOC.5)", async () => {
@@ -392,10 +401,13 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     ).getManifest("facility-A", "enc-1");
     const row = manifest.encounter.clinicalDocumentationEntries[0]!;
     expect(row.payloadJson).toEqual(poPayload);
-    expect(row.payloadSummary.some((l) => l.key === "PO")).toBe(true);
-    const html = renderEncounterChartExportHtml(manifest);
-    expect(html).toContain("INTAKE_OUTPUT");
-    expect(html).toContain("240 mL");
+    expect(row.payloadSummaryEn!.some((l) => l.key === "PO")).toBe(true);
+    expect(row.payloadSummary).toEqual(row.payloadSummaryEn);
+    const htmlDefault = renderEncounterChartExportHtml(manifest);
+    expect(htmlDefault).toContain("INTAKE_OUTPUT");
+    expect(htmlDefault).toContain("240 mL");
+    expect(htmlDefault).toContain("Tolerated");
+    expect(htmlDefault).not.toContain("Tolérance");
   });
 
   it("renders Urine Output and witness status in export when configured (EDOC.5)", async () => {
@@ -505,16 +517,25 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     )!;
     expect(initiationRow.payloadJson).toEqual(initiationPayload);
     expect(initiationRow.witnessStatus).toBe("WITNESSED");
-    expect(initiationRow.payloadSummary.some((l) => l.key === "Type")).toBe(true);
+    expect(initiationRow.payloadSummaryEn!.some((l) => l.key === "Type" && l.value === "Behavioral")).toBe(
+      true
+    );
+    expect(initiationRow.payloadSummaryFr!.some((l) => l.key === "Type" && l.value === "Comportementale")).toBe(
+      true
+    );
     const renewalRow = manifest.encounter.clinicalDocumentationEntries.find(
       (e) => e.cardId === RESTRAINT_RENEWAL_CARD_ID
     )!;
-    expect(renewalRow.payloadSummary.some((l) => l.key === "Renouvellement")).toBe(true);
-    const html = renderEncounterChartExportHtml(manifest);
-    expect(html).toContain("RESTRAINT_DOCUMENTATION");
-    expect(html).toContain("Comportementale");
-    expect(html).toContain("Paul Témoin");
-    expect(html).toContain("Renouvellement");
+    expect(renewalRow.payloadSummaryFr!.some((l) => l.key === "Renouvellement")).toBe(true);
+    expect(renewalRow.payloadSummaryEn!.some((l) => l.key === "Renewal")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("RESTRAINT_DOCUMENTATION");
+    expect(htmlEn).toContain("Behavioral");
+    expect(htmlEn).not.toContain("Comportementale");
+    expect(htmlEn).toContain("Paul Témoin");
+    const htmlFr = renderEncounterChartExportHtml(manifest, { locale: "fr" });
+    expect(htmlFr).toContain("Comportementale");
+    expect(htmlFr).toContain("Renouvellement");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

@@ -26,6 +26,13 @@ import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
+import {
+  type ClinicalDocumentationPayloadSummaryLine,
+  type ClinicalDocumentationSummaryEntry,
+  type ClinicalDocumentationSummaryLocale,
+} from "./clinicalDocumentationSummaryLocale.js";
+
+export * from "./clinicalDocumentationSummaryLocale.js";
 
 export {
   EDOC_BASIC_STRUCTURED_CARD_ID,
@@ -202,32 +209,33 @@ export function resolveClinicalDocumentationEntryTitles(cardId: string): {
   };
 }
 
-/** Key/value summary for legal chart (French labels for observation cards). */
+/** Key/value summary for legal chart and UI (locale-aware). */
 export function summarizeClinicalDocumentationPayload(
   cardId: string,
-  payload: Record<string, unknown>
-): Array<{ key: string; value: string }> {
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
+): ClinicalDocumentationPayloadSummaryLine[] {
   if (
     (EDOC3_OBSERVATION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId) ||
     cardId === EDOC_BASIC_STRUCTURED_CARD_ID
   ) {
-    const observationLines = summarizeObservationDocumentationPayload(cardId, payload);
+    const observationLines = summarizeObservationDocumentationPayload(cardId, payload, locale);
     if (observationLines.length > 0) return observationLines;
   }
   if ((EDOC4_STROKE_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
-    const strokeLines = summarizeStrokeDocumentationPayload(cardId, payload);
+    const strokeLines = summarizeStrokeDocumentationPayload(cardId, payload, locale);
     if (strokeLines.length > 0) return strokeLines;
   }
   if ((EDOC5_INTAKE_OUTPUT_CARD_IDS as readonly string[]).includes(cardId)) {
-    const ioLines = summarizeIntakeOutputDocumentationPayload(cardId, payload);
+    const ioLines = summarizeIntakeOutputDocumentationPayload(cardId, payload, locale);
     if (ioLines.length > 0) return ioLines;
   }
   if ((EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
-    const restraintLines = summarizeRestraintDocumentationPayload(cardId, payload);
+    const restraintLines = summarizeRestraintDocumentationPayload(cardId, payload, locale);
     if (restraintLines.length > 0) return restraintLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
-    const lines: Array<{ key: string; value: string }> = [];
+    const lines: ClinicalDocumentationPayloadSummaryLine[] = [];
     for (const item of payload.items) {
       if (item && typeof item === "object" && !Array.isArray(item)) {
         const row = item as Record<string, unknown>;
@@ -239,6 +247,45 @@ export function summarizeClinicalDocumentationPayload(
     return lines;
   }
   return [];
+}
+
+export function summarizeClinicalDocumentationPayloadBilingual(
+  cardId: string,
+  payload: Record<string, unknown>
+): {
+  payloadSummaryEn: ClinicalDocumentationPayloadSummaryLine[];
+  payloadSummaryFr: ClinicalDocumentationPayloadSummaryLine[];
+} {
+  return {
+    payloadSummaryEn: summarizeClinicalDocumentationPayload(cardId, payload, "en"),
+    payloadSummaryFr: summarizeClinicalDocumentationPayload(cardId, payload, "fr"),
+  };
+}
+
+/**
+ * Select localized summary lines for UI or chart export rendering.
+ * English never falls back to French legacy fields. Regenerates from payloadJson when needed.
+ */
+export function selectClinicalDocumentationPayloadSummary(
+  entry: ClinicalDocumentationSummaryEntry,
+  locale: ClinicalDocumentationSummaryLocale
+): ClinicalDocumentationPayloadSummaryLine[] {
+  if (locale === "en") {
+    if (entry.payloadSummaryEn && entry.payloadSummaryEn.length > 0) {
+      return entry.payloadSummaryEn;
+    }
+    if (entry.cardId && entry.payloadJson) {
+      return summarizeClinicalDocumentationPayload(entry.cardId, entry.payloadJson, "en");
+    }
+    return [];
+  }
+  if (entry.payloadSummaryFr && entry.payloadSummaryFr.length > 0) {
+    return entry.payloadSummaryFr;
+  }
+  if (entry.cardId && entry.payloadJson) {
+    return summarizeClinicalDocumentationPayload(entry.cardId, entry.payloadJson, "fr");
+  }
+  return entry.payloadSummary ?? entry.payloadSummaryEn ?? [];
 }
 
 export function mapClinicalDocumentationEntryResponse(input: {
@@ -304,15 +351,24 @@ export function mapClinicalDocumentationEntryResponse(input: {
 }
 
 export type ClinicalDocumentationEntryLegalChartRow = ClinicalDocumentationEntryResponse & {
-  payloadSummary: Array<{ key: string; value: string }>;
+  /** @deprecated Prefer payloadSummaryEn / payloadSummaryFr; defaults to English (payloadSummaryEn). */
+  payloadSummary: ClinicalDocumentationPayloadSummaryLine[];
+  payloadSummaryEn: ClinicalDocumentationPayloadSummaryLine[];
+  payloadSummaryFr: ClinicalDocumentationPayloadSummaryLine[];
 };
 
 export function mapClinicalDocumentationEntryForLegalChart(
   input: Parameters<typeof mapClinicalDocumentationEntryResponse>[0]
 ): ClinicalDocumentationEntryLegalChartRow {
   const base = mapClinicalDocumentationEntryResponse(input);
+  const { payloadSummaryEn, payloadSummaryFr } = summarizeClinicalDocumentationPayloadBilingual(
+    base.cardId,
+    base.payloadJson
+  );
   return {
     ...base,
-    payloadSummary: summarizeClinicalDocumentationPayload(base.cardId, base.payloadJson),
+    payloadSummaryEn,
+    payloadSummaryFr,
+    payloadSummary: payloadSummaryEn,
   };
 }

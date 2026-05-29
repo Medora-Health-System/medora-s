@@ -17,12 +17,12 @@ import {
   buildEmergencyVisitSummaryModel,
   type ClinicalDocumentationEventApiEntry,
   type ClinicalDocumentationLegalChartEntry,
-  type ClinicalDocumentationPayloadSummaryLine,
   type NursingReassessmentApiEntry,
   type VisitSummaryDocumentationHistoryEntry,
   type VisitSummaryReassessmentEntry,
   type VisitSummaryTextBlock,
 } from "./emergencyVisitSummaryModel";
+import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
@@ -999,8 +999,10 @@ export function EmergencyVisitSummaryPanel({
                   (entry: ClinicalDocumentationLegalChartEntry) => {
                   const title =
                     language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
-                  const summaryLines: ClinicalDocumentationPayloadSummaryLine[] =
-                    entry.payloadSummary ?? [];
+                  const summaryLines = selectClinicalDocumentationPayloadSummary(
+                    entry,
+                    language === "en" ? "en" : "fr"
+                  );
                   return (
                     <li
                       key={entry.id}
@@ -1039,7 +1041,7 @@ export function EmergencyVisitSummaryPanel({
                       ) : null}
                       {summaryLines.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569" }}>
-                          {summaryLines.map((line: ClinicalDocumentationPayloadSummaryLine) => (
+                          {summaryLines.map((line) => (
                             <li key={`${entry.id}-${line.key}`}>
                               <strong>{line.key}</strong>: {line.value}
                             </li>

@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  clinicalDocYesNo,
+  pickLocalizedEnumLabel,
+  type ClinicalDocumentationSummaryLocale,
+} from "./clinicalDocumentationSummaryLocale.js";
 
 export const IO_INTAKE_OUTPUT_SUMMARY_CARD_ID = "io_intake_output" as const;
 export const IO_FLUID_INTAKE_CARD_ID = "io_fluid_intake" as const;
@@ -304,10 +309,25 @@ function formatMl(amountMl: number, unit: string, rawAmount: number): string {
   return `${rawAmount} ${unit}`;
 }
 
+const TOLERATED_EN: Record<string, string> = {
+  YES: "Yes",
+  NO: "No",
+  PARTIAL: "Partial",
+};
+
 const TOLERATED_FR: Record<string, string> = {
   YES: "Oui",
   NO: "Non",
   PARTIAL: "Partiel",
+};
+
+const URINE_METHOD_EN: Record<string, string> = {
+  VOIDED: "Voided",
+  FOLEY: "Foley",
+  STRAIGHT_CATH: "Straight cath",
+  URINAL: "Urinal",
+  BEDPAN: "Bedpan",
+  OTHER: "Other",
 };
 
 const URINE_METHOD_FR: Record<string, string> = {
@@ -317,6 +337,15 @@ const URINE_METHOD_FR: Record<string, string> = {
   URINAL: "Urinal",
   BEDPAN: "Bassin",
   OTHER: "Autre",
+};
+
+const PRODUCT_TYPE_EN: Record<string, string> = {
+  PRBC: "PRBC",
+  FFP: "FFP",
+  PLATELETS: "Platelets",
+  CRYO: "Cryo",
+  WHOLE_BLOOD: "Whole blood",
+  OTHER: "Other",
 };
 
 const PRODUCT_TYPE_FR: Record<string, string> = {
@@ -330,17 +359,24 @@ const PRODUCT_TYPE_FR: Record<string, string> = {
 
 export function summarizeIntakeOutputDocumentationPayload(
   cardId: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
 ): Array<{ key: string; value: string }> {
   switch (cardId) {
     case IO_INTAKE_OUTPUT_SUMMARY_CARD_ID: {
       const p = intakeOutputSummaryPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       return [
-        { key: "Apports", value: `${p.data.totalIntakeMl} mL` },
-        { key: "Sorties", value: `${p.data.totalOutputMl} mL` },
         {
-          key: "Bilan",
+          key: locale === "en" ? "Intake" : "Apports",
+          value: `${p.data.totalIntakeMl} mL`,
+        },
+        {
+          key: locale === "en" ? "Output" : "Sorties",
+          value: `${p.data.totalOutputMl} mL`,
+        },
+        {
+          key: locale === "en" ? "Net balance" : "Bilan",
           value: `${p.data.netBalanceMl >= 0 ? "+" : ""}${p.data.netBalanceMl} mL`,
         },
       ];
@@ -350,10 +386,10 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Apport",
+          key: locale === "en" ? "Intake" : "Apport",
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} — ${p.data.fluidType}`,
         },
-        { key: "Enregistré", value: p.data.recordedAt },
+        { key: locale === "en" ? "Recorded" : "Enregistré", value: p.data.recordedAt },
       ];
     }
     case IO_PO_INTAKE_CARD_ID: {
@@ -364,7 +400,10 @@ export function summarizeIntakeOutputDocumentationPayload(
           key: "PO",
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${p.data.substance}`,
         },
-        { key: "Tolérance", value: TOLERATED_FR[p.data.tolerated] ?? p.data.tolerated },
+        {
+          key: locale === "en" ? "Tolerated" : "Tolérance",
+          value: pickLocalizedEnumLabel(TOLERATED_EN, TOLERATED_FR, p.data.tolerated, locale),
+        },
       ];
     }
     case IO_IV_INTAKE_CARD_ID: {
@@ -372,7 +411,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Apport IV",
+          key: locale === "en" ? "IV intake" : "Apport IV",
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${p.data.fluidType}`,
         },
       ];
@@ -382,12 +421,12 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Apport produit sanguin",
-          value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${PRODUCT_TYPE_FR[p.data.productType] ?? p.data.productType}`,
+          key: locale === "en" ? "Blood product intake" : "Apport produit sanguin",
+          value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} ${pickLocalizedEnumLabel(PRODUCT_TYPE_EN, PRODUCT_TYPE_FR, p.data.productType, locale)}`,
         },
         {
-          key: "Lien transfusion",
-          value: p.data.transfusionRecordLinked ? "Oui" : "Non",
+          key: locale === "en" ? "Transfusion link" : "Lien transfusion",
+          value: clinicalDocYesNo(p.data.transfusionRecordLinked, locale),
         },
       ];
     }
@@ -396,21 +435,24 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Sortie",
+          key: locale === "en" ? "Output" : "Sortie",
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)}`,
         },
-        { key: "Méthode", value: URINE_METHOD_FR[p.data.method] ?? p.data.method },
+        {
+          key: locale === "en" ? "Method" : "Méthode",
+          value: pickLocalizedEnumLabel(URINE_METHOD_EN, URINE_METHOD_FR, p.data.method, locale),
+        },
       ];
     }
     case IO_STOOL_OUTPUT_CARD_ID: {
       const p = stoolOutputPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Occurrences", value: String(p.data.occurrenceCount) },
+        { key: locale === "en" ? "Occurrences" : "Occurrences", value: String(p.data.occurrenceCount) },
       ];
       if (p.data.estimatedAmount != null) {
         lines.push({
-          key: "Volume estimé",
+          key: locale === "en" ? "Estimated volume" : "Volume estimé",
           value: formatMl(
             convertAmountToMl(p.data.estimatedAmount, p.data.unit ?? "ML"),
             p.data.unit ?? "ML",
@@ -424,11 +466,11 @@ export function summarizeIntakeOutputDocumentationPayload(
       const p = emesisOutputPayloadSchema.safeParse(payload);
       if (!p.success) return [];
       const lines: Array<{ key: string; value: string }> = [
-        { key: "Occurrences", value: String(p.data.occurrenceCount) },
+        { key: locale === "en" ? "Occurrences" : "Occurrences", value: String(p.data.occurrenceCount) },
       ];
       if (p.data.amount != null && p.data.unit) {
         lines.unshift({
-          key: "Sortie",
+          key: locale === "en" ? "Output" : "Sortie",
           value: formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount),
         });
       }
@@ -439,7 +481,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Sortie NG",
+          key: locale === "en" ? "NG output" : "Sortie NG",
           value: formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount),
         },
       ];
@@ -449,7 +491,7 @@ export function summarizeIntakeOutputDocumentationPayload(
       if (!p.success) return [];
       return [
         {
-          key: "Drain",
+          key: locale === "en" ? "Drain" : "Drain",
           value: `${formatMl(convertAmountToMl(p.data.amount, p.data.unit), p.data.unit, p.data.amount)} — ${p.data.drainType}`,
         },
       ];

@@ -187,16 +187,20 @@ describe("strokeDocumentationPayloads (EDOC.4 stroke suite)", () => {
   });
 
   it("payload summaries render stroke key facts with NIHSS value + meaning", () => {
-    const nihssSummary = summarizeStrokeDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID);
-    expect(nihssSummary.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(true);
-    expect(nihssSummary.some((l) => l.key === "Bande de sévérité NIHSS")).toBe(true);
+    const nihssSummaryFr = summarizeStrokeDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID, "fr");
+    expect(nihssSummaryFr.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(true);
+    expect(nihssSummaryFr.some((l) => l.key === "Bande de sévérité NIHSS")).toBe(true);
     expect(
-      nihssSummary.some(
-        (l) => l.key === "NIHSS LOC" && l.value.includes("0 —") && l.value.includes("Alerte")
+      nihssSummaryFr.some(
+        (l) => l.key === "NIHSS conscience" && l.value.includes("0 —") && l.value.includes("Alerte")
       )
     ).toBe(true);
-    const legal = summarizeClinicalDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID);
-    expect(legal.some((l) => l.key === "Score NIHSS total")).toBe(true);
-    expect(legal.some((l) => l.key === "NIHSS LOC")).toBe(true);
+    const legalFr = summarizeClinicalDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID, "fr");
+    expect(legalFr.some((l) => l.key === "Score NIHSS total")).toBe(true);
+    expect(legalFr.some((l) => l.key === "NIHSS conscience")).toBe(true);
+
+    const nihssSummaryEn = summarizeStrokeDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID, "en");
+    expect(nihssSummaryEn.some((l) => l.key === "NIHSS total score")).toBe(true);
+    expect(nihssSummaryEn.some((l) => l.key === "NIHSS LOC")).toBe(true);
   });
 });

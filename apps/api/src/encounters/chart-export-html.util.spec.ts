@@ -394,6 +394,8 @@ describe("chart-export-html.util", () => {
               createdAt: "2026-05-28T15:00:00.000Z",
               payloadJson: { items: [{ key: "Pain", value: "2/10" }] },
               payloadSummary: [{ key: "Pain", value: "2/10" }],
+              payloadSummaryEn: [{ key: "Pain", value: "2/10" }],
+              payloadSummaryFr: [{ key: "Pain", value: "2/10" }],
               voidedAt: null,
               requiresWitnessSignature: false,
               witnessStatus: "NOT_REQUIRED",
@@ -410,5 +412,68 @@ describe("chart-export-html.util", () => {
     expect(html).toContain("Pain");
     expect(html).toContain("2/10");
     expect(html).toContain("Marie Infirmière");
+  });
+
+  it("default clinical documentation HTML export uses English, not French (EDOC.I18N.1)", () => {
+    const nihssPayload = {
+      assessedAt: "2026-05-28T17:00:00.000Z",
+      levelOfConsciousness: 0,
+      locQuestions: 1,
+      locCommands: 0,
+      bestGaze: 0,
+      visualFields: 0,
+      facialPalsy: 1,
+      motorArmLeft: 2,
+      motorArmRight: 0,
+      motorLegLeft: 1,
+      motorLegRight: 0,
+      limbAtaxia: 0,
+      sensory: 0,
+      bestLanguage: 0,
+      dysarthria: 0,
+      extinctionInattention: 0,
+      totalScore: 5,
+    };
+    const legacyEntry = {
+      id: "edoc-legacy-fr",
+      encounterId: "enc-1",
+      category: "STROKE_DOCUMENTATION",
+      cardId: "stroke_nihss",
+      cardTitleEn: "NIHSS",
+      cardTitleFr: "NIHSS",
+      authorUserId: "user-rn-1",
+      authorDisplayName: "Marie Infirmière",
+      authorRoleTitle: "RN",
+      createdAt: "2026-05-28T15:00:00.000Z",
+      payloadJson: nihssPayload,
+      payloadSummary: [{ key: "Score NIHSS total", value: "5" }],
+      voidedAt: null,
+      requiresWitnessSignature: false,
+      witnessStatus: "NOT_REQUIRED",
+      witnessedAt: null,
+      witnessedByUserId: null,
+      witnessDisplayName: null,
+      witnessRoleTitle: null,
+    };
+    const htmlDefault = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          clinicalDocumentationEntries: [legacyEntry],
+        },
+      })
+    );
+    expect(htmlDefault).toContain("NIHSS total score");
+    expect(htmlDefault).not.toContain("Score NIHSS total");
+    const htmlFr = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          clinicalDocumentationEntries: [legacyEntry],
+        },
+      }),
+      { locale: "fr" }
+    );
+    expect(htmlFr).toContain("Score NIHSS total");
   });
 });

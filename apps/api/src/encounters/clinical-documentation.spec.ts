@@ -381,7 +381,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(OBS_AMBULATION_TRIAL_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Distance")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Distance")).toBe(true);
   });
 
   it("rejects invalid PO Challenge payload", async () => {
@@ -462,7 +462,8 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(STROKE_NIHSS_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Score NIHSS total")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "NIHSS total score")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Score NIHSS total")).toBe(true);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
@@ -568,7 +569,8 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(IO_PO_INTAKE_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "PO")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "PO")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "PO")).toBe(true);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
@@ -585,7 +587,8 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(IO_URINE_OUTPUT_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Méthode")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Méthode")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Method")).toBe(true);
   });
 
   it("POST Blood Product Intake persists as I&O only (EDOC.5)", async () => {
@@ -601,7 +604,8 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "u1"
     );
     expect(saved.cardId).toBe(IO_BLOOD_PRODUCT_INTAKE_CARD_ID);
-    expect(saved.payloadSummary.some((l) => l.key === "Apport produit sanguin")).toBe(true);
+    expect(saved.payloadSummaryFr.some((l) => l.key === "Apport produit sanguin")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Blood product intake")).toBe(true);
     expect(create).toHaveBeenCalledTimes(1);
   });
 
