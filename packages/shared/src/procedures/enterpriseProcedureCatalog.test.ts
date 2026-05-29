@@ -146,8 +146,12 @@ describe("enterprise procedure search (MEDPROC.1)", () => {
   });
 
   it("matches EKG by ekg and ecg", () => {
-    expect(filterEnterpriseProcedures("ekg", "en").some((entry) => entry.id === "ekg_ecg")).toBe(true);
-    expect(filterEnterpriseProcedures("ecg", "en").some((entry) => entry.id === "ekg_ecg")).toBe(true);
+    const ekgMatches = filterEnterpriseProcedures("ekg", "en").map((entry) => entry.id);
+    const ecgMatches = filterEnterpriseProcedures("ecg", "en").map((entry) => entry.id);
+    expect(ekgMatches).toContain("ekg_ecg");
+    expect(ekgMatches).toContain("ekg_rhythm_strip");
+    expect(ecgMatches).toContain("ekg_ecg");
+    expect(ecgMatches).toContain("ekg_rhythm_strip");
   });
 
   it("matches Foley by foley", () => {

@@ -76,7 +76,7 @@ describe("enterpriseProcedureOrderValidation (MEDPROC.2)", () => {
       items: [
         {
           catalogItemType: "CARE",
-          manualLabel: "EKG / ECG",
+          manualLabel: "EKG / ECG 12-Lead",
           enterpriseProcedureId: "ekg_ecg",
         },
       ],
