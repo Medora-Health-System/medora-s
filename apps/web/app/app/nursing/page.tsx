@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { fetchOpenEncounters, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { countPendingNurseMedicationLines } from "@/lib/nurseMedicationWorkload";
+import { collectProcedureWorkQueueItems, type ProcedureWorkQueueItem } from "@medora/shared";
+import { ProcedureWorkQueuePanel } from "@/components/clinical/ProcedureWorkQueuePanel";
 import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
@@ -138,6 +140,7 @@ export default function NursingPage() {
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<EncounterRow[]>([]);
+  const [procedureQueueItems, setProcedureQueueItems] = useState<ProcedureWorkQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -163,10 +166,21 @@ export default function NursingPage() {
     setFetchError(null);
     try {
       const open = await fetchOpenEncounters(effectiveFacilityId);
+      const procedureItems: ProcedureWorkQueueItem[] = [];
       const withWorkload = await Promise.all(
         open.map(async (enc: { id: string }) => {
           try {
             const orders = await fetchOrdersForEncounter(effectiveFacilityId, enc.id);
+            procedureItems.push(
+              ...collectProcedureWorkQueueItems(orders, {
+                executionRoleCategory: "NURSING",
+                encounterId: enc.id,
+              }),
+              ...collectProcedureWorkQueueItems(orders, {
+                executionRoleCategory: "RESPIRATORY",
+                encounterId: enc.id,
+              })
+            );
             return {
               ...enc,
               pendingMedicationCount: countPendingNurseMedicationLines(orders),
@@ -176,6 +190,7 @@ export default function NursingPage() {
           }
         })
       );
+      setProcedureQueueItems(procedureItems);
       setEncounters(withWorkload);
     } catch {
       setFetchError(t("openEncountersTable.loadError"));
@@ -273,6 +288,14 @@ export default function NursingPage() {
             {t("clinicalDashboard.nursingSubtitle")}
           </p>
         </header>
+
+        <ProcedureWorkQueuePanel
+          title={t("procedureExecutionLinkage.nursingQueueTitle")}
+          subline={t("procedureExecutionLinkage.nursingQueueSubline")}
+          items={procedureQueueItems}
+          encounterHref={(encounterId) => `/app/encounters/${encounterId}`}
+          emptyLabel={t("procedureExecutionLinkage.nursingQueueEmpty")}
+        />
 
         <div
           style={{

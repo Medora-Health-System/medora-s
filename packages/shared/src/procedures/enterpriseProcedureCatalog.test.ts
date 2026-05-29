@@ -62,6 +62,15 @@ describe("enterprise procedure catalog (MEDPROC.1)", () => {
     expect(iv?.requiresProcedureNote).toBe(false);
   });
 
+  it("stores MEDPROC.4 execution profile metadata on catalog entries", () => {
+    const intubation = enterpriseProcedureById("endotracheal_intubation");
+    expect(intubation?.executionRoleCategory).toBe("PROVIDER");
+    expect(intubation?.completeRoles).toEqual(["PROVIDER"]);
+    const foley = enterpriseProcedureById("foley_catheter");
+    expect(foley?.executionRoleCategory).toBe("NURSING");
+    expect(foley?.completeRoles).toEqual(["RN"]);
+  });
+
   it("marks all catalog entries orderable in this phase", () => {
     expect(ENTERPRISE_PROCEDURE_CATALOG.every((entry) => entry.orderable)).toBe(true);
   });

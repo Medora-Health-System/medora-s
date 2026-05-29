@@ -17,6 +17,7 @@ import { assertCanTransition } from "../common/workflow/status.transitions";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import {
   assertAckOrStartActor,
+  assertCompleteActorForItem,
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
@@ -638,13 +639,12 @@ export class QueuesService {
           "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
         );
       }
-      assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
+      assertCompleteActorForItem(orderItem, roleCodes);
     } else {
       assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
     }
 
     const fromStatus = orderItem.status;
-
     const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, status);
 
     const updated = await this.prisma.orderItem.update({

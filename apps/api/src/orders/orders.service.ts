@@ -33,6 +33,7 @@ import { logError as medoraLogError } from "../common/logging/medoraLogger";
 import {
   assertAckOrStartActor,
   assertCareProcedureEffectiveTimeActor,
+  assertCompleteActorForItem,
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
@@ -2162,7 +2163,7 @@ export class OrdersService {
         "Cette ligne doit être dispensée par la pharmacie avant d'être terminée."
       );
     }
-    assertDepartmentRoleForItem(orderItem.catalogItemType, requestorRoleCodes);
+    assertCompleteActorForItem(orderItem, requestorRoleCodes);
     assertCanTransition(orderItem.status, OrderStatus.COMPLETED);
 
     const lifecycleState = applyLifecycleWithStatus(

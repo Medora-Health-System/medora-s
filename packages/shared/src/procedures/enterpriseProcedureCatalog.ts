@@ -41,6 +41,28 @@ export const ENTERPRISE_PROCEDURE_ROLE_HINTS = ["PROVIDER", "RN", "TECH", "RT", 
 
 export type EnterpriseProcedureRoleHint = (typeof ENTERPRISE_PROCEDURE_ROLE_HINTS)[number];
 
+export const ENTERPRISE_PROCEDURE_EXECUTION_ROLE_CATEGORIES = [
+  "PROVIDER",
+  "NURSING",
+  "RESPIRATORY",
+  "LAB",
+  "RADIOLOGY",
+  "MULTI_ROLE",
+] as const;
+
+export type EnterpriseProcedureExecutionRoleCategory =
+  (typeof ENTERPRISE_PROCEDURE_EXECUTION_ROLE_CATEGORIES)[number];
+
+export const ENTERPRISE_PROCEDURE_EXECUTION_ROLES = [
+  "PROVIDER",
+  "RN",
+  "RT",
+  "LAB_TECH",
+  "RADIOLOGY_TECH",
+] as const;
+
+export type EnterpriseProcedureExecutionRole = (typeof ENTERPRISE_PROCEDURE_EXECUTION_ROLES)[number];
+
 export type EnterpriseProcedureDocumentationTemplateId = DocumentedProcedureType | "LACERATION";
 
 export type EnterpriseProcedureDefinition = {
@@ -57,9 +79,91 @@ export type EnterpriseProcedureDefinition = {
   assistingRoleHints: EnterpriseProcedureRoleHint[];
   completionRoleHints: EnterpriseProcedureRoleHint[];
   billingMappingStatus: EnterpriseProcedureBillingMappingStatus;
+  /** MEDPROC.4 — primary execution queue category (metadata only). */
+  executionRoleCategory: EnterpriseProcedureExecutionRoleCategory;
+  /** MEDPROC.4 — roles allowed to acknowledge/start. */
+  acknowledgeRoles: EnterpriseProcedureExecutionRole[];
+  /** MEDPROC.4 — roles allowed to complete. */
+  completeRoles: EnterpriseProcedureExecutionRole[];
 };
 
 const ALL_SETTINGS: EnterpriseProcedureCareSetting[] = [...ENTERPRISE_PROCEDURE_CARE_SETTINGS];
+
+function roleHintToExecutionRole(hint: EnterpriseProcedureRoleHint): EnterpriseProcedureExecutionRole | null {
+  if (hint === "PROVIDER") return "PROVIDER";
+  if (hint === "RN" || hint === "ANY") return "RN";
+  if (hint === "RT") return "RT";
+  if (hint === "TECH") return "LAB_TECH";
+  return null;
+}
+
+function uniqueExecutionRoles(roles: EnterpriseProcedureExecutionRole[]): EnterpriseProcedureExecutionRole[] {
+  return [...new Set(roles)];
+}
+
+function deriveExecutionProfile(
+  entry: EnterpriseProcedureCatalogEntryInput
+): Pick<EnterpriseProcedureDefinition, "executionRoleCategory" | "acknowledgeRoles" | "completeRoles"> {
+  if (
+    entry.executionRoleCategory &&
+    entry.acknowledgeRoles?.length &&
+    entry.completeRoles?.length
+  ) {
+    return {
+      executionRoleCategory: entry.executionRoleCategory,
+      acknowledgeRoles: entry.acknowledgeRoles,
+      completeRoles: entry.completeRoles,
+    };
+  }
+
+  const performers = entry.performerRoleHints ?? ["RN"];
+  const completion = entry.completionRoleHints?.length ? entry.completionRoleHints : performers;
+  const completionExec = uniqueExecutionRoles(
+    completion.map(roleHintToExecutionRole).filter((r): r is EnterpriseProcedureExecutionRole => Boolean(r))
+  );
+
+  if (entry.category === "SPECIMEN_COLLECTION") {
+    return {
+      executionRoleCategory: "LAB",
+      acknowledgeRoles: ["LAB_TECH", "RN"],
+      completeRoles: ["LAB_TECH", "RN"],
+    };
+  }
+
+  const hasProvider = performers.includes("PROVIDER");
+  const hasRt = performers.includes("RT");
+  const hasRn = performers.includes("RN") || performers.includes("ANY");
+
+  if (hasRt && !hasProvider) {
+    return {
+      executionRoleCategory: "RESPIRATORY",
+      acknowledgeRoles: ["RT"],
+      completeRoles: ["RT"],
+    };
+  }
+
+  if (hasProvider && !hasRn) {
+    return {
+      executionRoleCategory: "PROVIDER",
+      acknowledgeRoles: ["PROVIDER", "RN"],
+      completeRoles: ["PROVIDER"],
+    };
+  }
+
+  if (hasProvider && hasRn) {
+    return {
+      executionRoleCategory: "MULTI_ROLE",
+      acknowledgeRoles: ["PROVIDER", "RN"],
+      completeRoles: completionExec.length ? completionExec : ["RN", "PROVIDER"],
+    };
+  }
+
+  return {
+    executionRoleCategory: "NURSING",
+    acknowledgeRoles: ["RN"],
+    completeRoles: completionExec.length ? completionExec : ["RN"],
+  };
+}
 
 export type EnterpriseProcedureCatalogEntryInput = Pick<
   EnterpriseProcedureDefinition,
@@ -72,6 +176,7 @@ export function buildEnterpriseProcedureDefinition(
   entry: EnterpriseProcedureCatalogEntryInput
 ): EnterpriseProcedureDefinition {
   const hasDocTemplate = Boolean(entry.documentationTemplateId);
+  const execution = deriveExecutionProfile(entry);
   return {
     aliases: [],
     careSettingApplicability: ALL_SETTINGS,
@@ -81,6 +186,7 @@ export function buildEnterpriseProcedureDefinition(
     performerRoleHints: ["RN"],
     requiresProcedureNote: hasDocTemplate,
     billingMappingStatus: hasDocTemplate ? "REVIEW_REQUIRED" : "NOT_MAPPED",
+    ...execution,
     ...entry,
   };
 }
@@ -101,6 +207,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN", "RT"],
     completionRoleHints: ["PROVIDER", "RN"],
+    executionRoleCategory: "PROVIDER",
+    acknowledgeRoles: ["PROVIDER", "RN"],
+    completeRoles: ["PROVIDER"],
   }),
   procedure({
     id: "oxygen_therapy",
@@ -117,6 +226,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["neb", "nebulizer", "nebulisation", "inhalation treatment"],
     category: "AIRWAY",
     performerRoleHints: ["RN", "RT"],
+    executionRoleCategory: "RESPIRATORY",
+    acknowledgeRoles: ["RT"],
+    completeRoles: ["RT"],
   }),
   procedure({
     id: "suctioning",
@@ -227,6 +339,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["blood draw", "phlebotomy", "specimen", "venipuncture"],
     category: "SPECIMEN_COLLECTION",
     performerRoleHints: ["RN", "TECH"],
+    executionRoleCategory: "LAB",
+    acknowledgeRoles: ["LAB_TECH", "RN"],
+    completeRoles: ["LAB_TECH", "RN"],
   }),
 
   // Wound / trauma
@@ -313,6 +428,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     category: "GU",
     documentationTemplateId: "FOLEY_CATHETER",
     performerRoleHints: ["RN", "PROVIDER"],
+    executionRoleCategory: "NURSING",
+    acknowledgeRoles: ["RN"],
+    completeRoles: ["RN"],
   }),
   procedure({
     id: "urinary_catheter_insertion",
@@ -450,6 +568,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     category: "MONITORING",
     documentationTemplateId: "GLUCOSE_CHECK",
     performerRoleHints: ["RN"],
+    executionRoleCategory: "NURSING",
+    acknowledgeRoles: ["RN"],
+    completeRoles: ["RN"],
   }),
   procedure({
     id: "patient_transport",

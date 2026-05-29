@@ -1,5 +1,10 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { OrderItem, RoleCode } from "@prisma/client";
+import {
+  requestorMayAcknowledgeEnterpriseProcedure,
+  requestorMayCompleteEnterpriseProcedure,
+  resolveProcedureExecutionProfile,
+} from "@medora/shared";
 
 /** Shared with PATCH /orders/items/:id/status and OrdersService item actions. */
 export function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: RoleCode[]) {
@@ -35,6 +40,49 @@ export function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: 
     return;
   }
   throw new BadRequestException("Type de ligne d'ordre non pris en charge.");
+}
+
+function roleCodesAsStrings(roleCodes: RoleCode[]): string[] {
+  return roleCodes.map((code) => String(code));
+}
+
+/** MEDPROC.4 — enterprise procedure CARE lines use catalog execution roles. */
+function assertEnterpriseProcedureCareActor(
+  orderItem: Pick<OrderItem, "catalogItemType" | "enterpriseProcedureId">,
+  roleCodes: RoleCode[],
+  action: "acknowledge" | "complete"
+) {
+  if (orderItem.catalogItemType !== "CARE") return false;
+  const enterpriseProcedureId = orderItem.enterpriseProcedureId?.trim();
+  if (!enterpriseProcedureId) return false;
+
+  const profile = resolveProcedureExecutionProfile({ enterpriseProcedureId });
+  if (!profile) return false;
+
+  if (roleCodes.includes(RoleCode.ADMIN)) return true;
+
+  const allowed =
+    action === "complete"
+      ? requestorMayCompleteEnterpriseProcedure(roleCodesAsStrings(roleCodes), profile)
+      : requestorMayAcknowledgeEnterpriseProcedure(roleCodesAsStrings(roleCodes), profile);
+
+  if (!allowed) {
+    throw new ForbiddenException(
+      action === "complete"
+        ? "Rôle non autorisé pour terminer cette procédure."
+        : "Rôle non autorisé pour accuser réception de cette procédure."
+    );
+  }
+  return true;
+}
+
+/** MEDPROC.4 — completion actor for order item lines. */
+export function assertCompleteActorForItem(
+  orderItem: Pick<OrderItem, "catalogItemType" | "enterpriseProcedureId">,
+  roleCodes: RoleCode[]
+) {
+  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "complete")) return;
+  assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
 }
 
 /** CARE/procedure effective clinical time correction — after item is confirmed CARE (not med/lab/imaging). */
@@ -76,5 +124,6 @@ export function assertAckOrStartActor(orderItem: OrderItem, roleCodes: RoleCode[
     }
     return;
   }
+  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "acknowledge")) return;
   assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
 }

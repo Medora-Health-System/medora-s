@@ -3,7 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
-import { fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
+import { fetchOpenEncounters, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
+import { collectProcedureWorkQueueItems, type ProcedureWorkQueueItem } from "@medora/shared";
+import { ProcedureWorkQueuePanel } from "@/components/clinical/ProcedureWorkQueuePanel";
 import { encounterBcp47, tEncounterStatus, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
@@ -136,6 +138,7 @@ export default function ProviderPage() {
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<EncounterRow[]>([]);
+  const [procedureQueueItems, setProcedureQueueItems] = useState<ProcedureWorkQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -161,7 +164,29 @@ export default function ProviderPage() {
     setFetchError(null);
     try {
       const open = await fetchOpenEncounters(effectiveFacilityId);
-      setEncounters(Array.isArray(open) ? open : []);
+      const procedureItems: ProcedureWorkQueueItem[] = [];
+      const rows = Array.isArray(open) ? open : [];
+      await Promise.all(
+        rows.map(async (enc: { id: string }) => {
+          try {
+            const orders = await fetchOrdersForEncounter(effectiveFacilityId, enc.id);
+            procedureItems.push(
+              ...collectProcedureWorkQueueItems(orders, {
+                executionRoleCategory: "PROVIDER",
+                encounterId: enc.id,
+              }),
+              ...collectProcedureWorkQueueItems(orders, {
+                executionRoleCategory: "MULTI_ROLE",
+                encounterId: enc.id,
+              })
+            );
+          } catch {
+            /* ignore per-encounter order fetch errors */
+          }
+        })
+      );
+      setProcedureQueueItems(procedureItems);
+      setEncounters(rows);
     } catch {
       setFetchError(t("openEncountersTable.loadError"));
       setEncounters([]);
@@ -258,6 +283,14 @@ export default function ProviderPage() {
             {t("clinicalDashboard.providerSubtitle")}
           </p>
         </header>
+
+        <ProcedureWorkQueuePanel
+          title={t("procedureExecutionLinkage.providerQueueTitle")}
+          subline={t("procedureExecutionLinkage.providerQueueSubline")}
+          items={procedureQueueItems}
+          encounterHref={(encounterId) => `/app/encounters/${encounterId}`}
+          emptyLabel={t("procedureExecutionLinkage.providerQueueEmpty")}
+        />
 
         <div
           style={{
