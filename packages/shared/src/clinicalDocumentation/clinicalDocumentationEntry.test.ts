@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { describe, expect, it } from "vitest";
 import {
-  ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
   CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES,
   EDOC_BASIC_STRUCTURED_CARD_ID,
   assertClinicalDocumentationAuditMetadataSafe,
   assertClinicalDocumentationEntryCreateAllowed,
   buildClinicalDocumentationAuditMetadata,
+  buildClinicalDocumentationWitnessAuditMetadata,
   clinicalDocumentationEntryCreateDtoSchema,
   mapClinicalDocumentationEntryForLegalChart,
   resolveClinicalDocumentationEntryTitles,
@@ -68,6 +67,7 @@ describe("clinicalDocumentationEntry (EDOC.2)", () => {
       encounterId: "enc1",
       category: validBasic.category,
       cardId: validBasic.cardId,
+      authorUserId: "u1",
       authorDisplayNameSnapshot: "Jane",
       authorRoleSnapshot: "RN",
       createdAt: "2026-05-28T12:00:00.000Z",
@@ -79,7 +79,7 @@ describe("clinicalDocumentationEntry (EDOC.2)", () => {
   });
 
   it("audit metadata uses allowlist only", () => {
-    const meta = buildClinicalDocumentationAuditMetadata({
+    const createMeta = buildClinicalDocumentationAuditMetadata({
       entryId: "entry1",
       encounterId: "enc1",
       patientId: "pat1",
@@ -89,10 +89,38 @@ describe("clinicalDocumentationEntry (EDOC.2)", () => {
       authorRole: "RN",
       payloadKeyCount: 1,
     });
-    expect(Object.keys(meta).sort()).toEqual([...ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS].sort());
-    expect(() => assertClinicalDocumentationAuditMetadataSafe(meta as Record<string, unknown>)).not.toThrow();
+    expect(Object.keys(createMeta).sort()).toEqual(
+      [
+        "encounterId",
+        "patientId",
+        "entryId",
+        "category",
+        "cardId",
+        "authorUserId",
+        "authorRole",
+        "payloadKeyCount",
+      ].sort()
+    );
     expect(() =>
-      assertClinicalDocumentationAuditMetadataSafe({ ...meta, payloadJson: {} } as Record<string, unknown>)
+      assertClinicalDocumentationAuditMetadataSafe(createMeta as Record<string, unknown>)
+    ).not.toThrow();
+
+    const witnessMeta = buildClinicalDocumentationWitnessAuditMetadata({
+      entryId: "entry1",
+      encounterId: "enc1",
+      patientId: "pat1",
+      category: validBasic.category,
+      cardId: validBasic.cardId,
+      authorUserId: "u1",
+      authorRole: "RN",
+      witnessUserId: "u2",
+      witnessRole: "RN",
+    });
+    expect(() =>
+      assertClinicalDocumentationAuditMetadataSafe(witnessMeta as Record<string, unknown>)
+    ).not.toThrow();
+    expect(() =>
+      assertClinicalDocumentationAuditMetadataSafe({ ...createMeta, payloadJson: {} } as Record<string, unknown>)
     ).toThrow(/Forbidden/);
   });
 });

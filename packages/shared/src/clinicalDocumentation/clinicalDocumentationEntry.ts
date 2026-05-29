@@ -4,6 +4,22 @@ import {
   CLINICAL_DOCUMENTATION_CATEGORIES,
   type ClinicalDocumentationCategory,
 } from "./clinicalDocumentationTypes.js";
+import {
+  summarizeObservationDocumentationPayload,
+  validatePayloadForCard,
+  EDOC_BASIC_STRUCTURED_CARD_ID,
+  EDOC3_OBSERVATION_DOCUMENTATION_CARD_IDS,
+} from "./observationDocumentationPayloads.js";
+import {
+  resolveClinicalDocumentationWitnessStatus,
+  type ClinicalDocumentationWitnessStatus,
+} from "./clinicalDocumentationWitnessGovernance.js";
+
+export {
+  EDOC_BASIC_STRUCTURED_CARD_ID,
+  edocBasicStructuredPayloadSchema,
+} from "./observationDocumentationPayloads.js";
+export * from "./observationDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -25,11 +41,18 @@ export type ClinicalDocumentationEntryResponse = {
   cardId: string;
   cardTitleEn: string;
   cardTitleFr: string;
+  authorUserId: string;
   authorDisplayName: string;
   authorRoleTitle: string;
   createdAt: string;
   payloadJson: Record<string, unknown>;
   voidedAt: string | null;
+  requiresWitnessSignature: boolean;
+  witnessStatus: ClinicalDocumentationWitnessStatus;
+  witnessedAt: string | null;
+  witnessedByUserId: string | null;
+  witnessDisplayName: string | null;
+  witnessRoleTitle: string | null;
 };
 
 export const FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS = [
@@ -61,6 +84,8 @@ export const ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS = [
   "authorUserId",
   "authorRole",
   "payloadKeyCount",
+  "witnessUserId",
+  "witnessRole",
 ] as const;
 
 export type ClinicalDocumentationAuditMetadata = {
@@ -80,6 +105,24 @@ export function buildClinicalDocumentationAuditMetadata(
   return { ...input };
 }
 
+export type ClinicalDocumentationWitnessAuditMetadata = {
+  encounterId: string;
+  patientId: string;
+  entryId: string;
+  category: string;
+  cardId: string;
+  authorUserId: string;
+  authorRole: string;
+  witnessUserId: string;
+  witnessRole: string;
+};
+
+export function buildClinicalDocumentationWitnessAuditMetadata(
+  input: ClinicalDocumentationWitnessAuditMetadata
+): ClinicalDocumentationWitnessAuditMetadata {
+  return { ...input };
+}
+
 export function assertClinicalDocumentationAuditMetadataSafe(
   meta: Record<string, unknown>
 ): void {
@@ -95,34 +138,15 @@ export function assertClinicalDocumentationAuditMetadataSafe(
   }
 }
 
-/** EDOC.2 — minimal payload for the first AVAILABLE card.
- * Generic payloadJson is intentionally allowed only for this foundation card.
- * EDOC.3+ cards (NIHSS, I&O, PO Challenge, CPR, blood products, sedation, etc.) must add
- * card-specific validators in validatePayloadForAvailableCard before AVAILABLE. */
-export const EDOC_BASIC_STRUCTURED_CARD_ID = "edoc_basic_structured_v1" as const;
-
-const basicItemSchema = z.object({
-  key: z.string().trim().min(1).max(120),
-  value: z.string().trim().min(1).max(500),
-});
-
-export const edocBasicStructuredPayloadSchema = z.object({
-  items: z.array(basicItemSchema).min(1).max(20),
-});
-
 export function validatePayloadForAvailableCard(
   cardId: string,
   payload: Record<string, unknown>
 ): { ok: true } | { ok: false; message: string } {
-  if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID) {
-    const parsed = edocBasicStructuredPayloadSchema.safeParse(payload);
-    if (!parsed.success) {
-      return { ok: false, message: "Invalid structured entry payload" };
-    }
-    return { ok: true };
+  const result = validatePayloadForCard(cardId, payload);
+  if (!result.ok) {
+    return { ok: false, message: result.message };
   }
-  // EDOC.3+: add per-card schemas here (NIHSS, I&O, PO Challenge, etc.) before marking AVAILABLE.
-  return { ok: false, message: "Card is not available for structured save" };
+  return { ok: true };
 }
 
 export function assertClinicalDocumentationEntryCreateAllowed(
@@ -162,12 +186,20 @@ export function resolveClinicalDocumentationEntryTitles(cardId: string): {
   };
 }
 
-/** Shallow key/value summary for legal chart display (no deep PHI expansion). */
+/** Key/value summary for legal chart (French labels for observation cards). */
 export function summarizeClinicalDocumentationPayload(
+  cardId: string,
   payload: Record<string, unknown>
 ): Array<{ key: string; value: string }> {
-  const lines: Array<{ key: string; value: string }> = [];
-  if (Array.isArray(payload.items)) {
+  if (
+    (EDOC3_OBSERVATION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId) ||
+    cardId === EDOC_BASIC_STRUCTURED_CARD_ID
+  ) {
+    const observationLines = summarizeObservationDocumentationPayload(cardId, payload);
+    if (observationLines.length > 0) return observationLines;
+  }
+  if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
+    const lines: Array<{ key: string; value: string }> = [];
     for (const item of payload.items) {
       if (item && typeof item === "object" && !Array.isArray(item)) {
         const row = item as Record<string, unknown>;
@@ -178,17 +210,7 @@ export function summarizeClinicalDocumentationPayload(
     }
     return lines;
   }
-  for (const [key, value] of Object.entries(payload)) {
-    if (value == null) continue;
-    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-      lines.push({ key, value: String(value) });
-    } else if (Array.isArray(value)) {
-      lines.push({ key, value: `[${value.length} items]` });
-    } else if (typeof value === "object") {
-      lines.push({ key, value: "[object]" });
-    }
-  }
-  return lines.slice(0, 40);
+  return [];
 }
 
 export function mapClinicalDocumentationEntryResponse(input: {
@@ -196,11 +218,17 @@ export function mapClinicalDocumentationEntryResponse(input: {
   encounterId: string;
   category: string;
   cardId: string;
+  authorUserId: string;
   authorDisplayNameSnapshot: string;
   authorRoleSnapshot: string;
   createdAt: Date | string;
   payloadJson: unknown;
   voidedAt?: Date | string | null;
+  requiresWitnessSignature?: boolean;
+  witnessedAt?: Date | string | null;
+  witnessedByUserId?: string | null;
+  witnessDisplayNameSnapshot?: string | null;
+  witnessRoleSnapshot?: string | null;
 }): ClinicalDocumentationEntryResponse {
   const titles = resolveClinicalDocumentationEntryTitles(input.cardId);
   const createdAt =
@@ -211,6 +239,13 @@ export function mapClinicalDocumentationEntryResponse(input: {
       : input.voidedAt instanceof Date
         ? input.voidedAt.toISOString()
         : String(input.voidedAt);
+  const witnessedAt =
+    input.witnessedAt == null
+      ? null
+      : input.witnessedAt instanceof Date
+        ? input.witnessedAt.toISOString()
+        : String(input.witnessedAt);
+  const requiresWitnessSignature = input.requiresWitnessSignature ?? false;
   return {
     id: input.id,
     encounterId: input.encounterId,
@@ -218,6 +253,7 @@ export function mapClinicalDocumentationEntryResponse(input: {
     cardId: input.cardId,
     cardTitleEn: titles.cardTitleEn,
     cardTitleFr: titles.cardTitleFr,
+    authorUserId: input.authorUserId,
     authorDisplayName: input.authorDisplayNameSnapshot,
     authorRoleTitle: input.authorRoleSnapshot,
     createdAt,
@@ -226,6 +262,16 @@ export function mapClinicalDocumentationEntryResponse(input: {
         ? (input.payloadJson as Record<string, unknown>)
         : {},
     voidedAt,
+    requiresWitnessSignature,
+    witnessStatus: resolveClinicalDocumentationWitnessStatus({
+      requiresWitnessSignature,
+      witnessedAt,
+      voidedAt,
+    }),
+    witnessedAt,
+    witnessedByUserId: input.witnessedByUserId ?? null,
+    witnessDisplayName: input.witnessDisplayNameSnapshot ?? null,
+    witnessRoleTitle: input.witnessRoleSnapshot ?? null,
   };
 }
 
@@ -239,6 +285,6 @@ export function mapClinicalDocumentationEntryForLegalChart(
   const base = mapClinicalDocumentationEntryResponse(input);
   return {
     ...base,
-    payloadSummary: summarizeClinicalDocumentationPayload(base.payloadJson),
+    payloadSummary: summarizeClinicalDocumentationPayload(base.cardId, base.payloadJson),
   };
 }

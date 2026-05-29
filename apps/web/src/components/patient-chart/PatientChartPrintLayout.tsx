@@ -385,11 +385,19 @@ export function getPatientChartPrintHtml(params: {
                       const voidTag = entry.voidedAt
                         ? ` <span style="color:#b91c1c;">[${esc(printT(lang, "clinicalDocumentation.entryVoided"))}]</span>`
                         : "";
+                      const witnessPending =
+                        entry.requiresWitnessSignature && !entry.witnessedAt && !entry.voidedAt
+                          ? ` <span style="color:#a16207;">[${esc(printT(lang, "clinicalDocumentation.badgePendingWitness"))}]</span>`
+                          : "";
+                      const witnessTag =
+                        entry.witnessedAt && entry.witnessDisplayName
+                          ? ` — ${esc(printT(lang, "clinicalDocumentation.witnessLine").replace("{name}", entry.witnessDisplayName).replace("{role}", entry.witnessRoleTitle ?? "—").replace("{when}", entry.witnessedAt))}`
+                          : "";
                       return `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(
                         title
                       )}</strong> — ${esc(entry.authorDisplayName ?? "—")} (${esc(
                         entry.authorRoleTitle ?? "—"
-                      )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(entry.createdAt, lang))}${voidTag}</p>${summary}</div>`;
+                      )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(entry.createdAt, lang))}${voidTag}${witnessPending}${witnessTag}</p>${summary}</div>`;
                     })
                     .join("")}`
                 : ""

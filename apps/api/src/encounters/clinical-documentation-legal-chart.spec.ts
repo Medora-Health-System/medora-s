@@ -10,13 +10,14 @@ import {
   EncounterChartExportService,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
-import { EDOC_BASIC_STRUCTURED_CARD_ID } from "@medora/shared";
+import { EDOC_BASIC_STRUCTURED_CARD_ID, OBS_PO_CHALLENGE_CARD_ID } from "@medora/shared";
 
 const SAMPLE_ENTRY = {
   id: "edoc-legal-1",
   encounterId: "enc-1",
   category: "OBSERVATION_DOCUMENTATION",
   cardId: EDOC_BASIC_STRUCTURED_CARD_ID,
+  authorUserId: "user-rn-1",
   authorDisplayNameSnapshot: "Marie Infirmière",
   authorRoleSnapshot: "Infirmier(ère)",
   createdAt: new Date("2026-05-28T15:00:00.000Z"),
@@ -27,9 +28,34 @@ const SAMPLE_ENTRY = {
     ],
   },
   voidedAt: null,
+  requiresWitnessSignature: false,
+  witnessedAt: null,
+  witnessedByUserId: null,
+  witnessDisplayNameSnapshot: null,
+  witnessRoleSnapshot: null,
 };
 
-function makePrismaForEdoc() {
+type EdocPrismaRow = {
+  id: string;
+  encounterId: string;
+  category: string;
+  cardId: string;
+  authorUserId: string;
+  authorDisplayNameSnapshot: string;
+  authorRoleSnapshot: string;
+  createdAt: Date;
+  payloadJson: unknown;
+  voidedAt: Date | null;
+  requiresWitnessSignature: boolean;
+  witnessedAt: Date | null;
+  witnessedByUserId: string | null;
+  witnessDisplayNameSnapshot: string | null;
+  witnessRoleSnapshot: string | null;
+};
+
+function makePrismaForEdoc(overrides?: {
+  clinicalDocumentationEntries?: EdocPrismaRow[];
+}) {
   const encounter = {
     id: "enc-1",
     facilityId: "facility-A",
@@ -71,7 +97,7 @@ function makePrismaForEdoc() {
     facility: { id: "facility-A", name: "Clinique A" },
     providerAddenda: [],
     encounterNotes: [],
-    clinicalDocumentationEntries: [SAMPLE_ENTRY],
+    clinicalDocumentationEntries: overrides?.clinicalDocumentationEntries ?? [SAMPLE_ENTRY],
   };
 
   return {
@@ -168,6 +194,110 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
         expect(html).toContain("Ambulatory with assist");
         expect(html).not.toContain("preview-only");
       });
+  });
+
+  it("renders pending witness and witnessed signatures in HTML export (EDOC.4)", async () => {
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-pending",
+          cardId: "blood_transfusion",
+          category: "BLOOD_PRODUCT_DOCUMENTATION",
+          requiresWitnessSignature: true,
+          witnessedAt: null,
+        },
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-witnessed",
+          cardId: "blood_transfusion",
+          category: "BLOOD_PRODUCT_DOCUMENTATION",
+          requiresWitnessSignature: true,
+          witnessedAt: new Date("2026-05-28T16:30:00.000Z"),
+          witnessedByUserId: "user-rn-2",
+          witnessDisplayNameSnapshot: "Paul Témoin",
+          witnessRoleSnapshot: "Infirmier(ère)",
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("[PENDING WITNESS]");
+    expect(html).toContain("[WITNESSED]");
+    expect(html).toContain("Paul Témoin");
+    expect(manifest.encounter.clinicalDocumentationEntries[0]?.witnessStatus).toBe("PENDING_WITNESS");
+    expect(manifest.encounter.clinicalDocumentationEntries[1]?.witnessStatus).toBe("WITNESSED");
+  });
+
+  it("renders PO Challenge full payload in manifest and HTML (EDOC.3)", async () => {
+    const poPayload = {
+      startTime: "2026-05-28T16:00:00.000Z",
+      substance: "Apple juice",
+      amount: "120 mL",
+      tolerated: "YES",
+      nausea: false,
+      vomiting: false,
+      abdominalPain: false,
+      result: "PASSED",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          id: "edoc-po-1",
+          encounterId: "enc-1",
+          category: "OBSERVATION_DOCUMENTATION",
+          cardId: OBS_PO_CHALLENGE_CARD_ID,
+          authorUserId: "user-rn-1",
+          authorDisplayNameSnapshot: "Marie Infirmière",
+          authorRoleSnapshot: "Infirmier(ère)",
+          createdAt: new Date("2026-05-28T16:00:00.000Z"),
+          payloadJson: poPayload,
+          voidedAt: null,
+          requiresWitnessSignature: false,
+          witnessedAt: null,
+          witnessedByUserId: null,
+          witnessDisplayNameSnapshot: null,
+          witnessRoleSnapshot: null,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const service = new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    );
+    const manifest = await service.getManifest("facility-A", "enc-1");
+    expect(manifest.encounter.clinicalDocumentationEntries[0]?.payloadJson).toEqual(poPayload);
+    expect(
+      manifest.encounter.clinicalDocumentationEntries[0]?.payloadSummary.some(
+        (l) => l.key === "Substance" && l.value === "Apple juice"
+      )
+    ).toBe(true);
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("Apple juice");
+    expect(html).toContain("Réussi");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

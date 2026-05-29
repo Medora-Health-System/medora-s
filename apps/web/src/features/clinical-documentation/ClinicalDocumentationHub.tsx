@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CLINICAL_DOCUMENTATION_CATEGORY_META,
   EDOC_BASIC_STRUCTURED_CARD_ID,
+  canWitnessClinicalDocumentationEntry,
+  clinicalDocumentationPendingWitness,
   type ClinicalDocumentationCard,
   type ClinicalDocumentationCategory,
   listClinicalDocumentationCardsByCategory,
@@ -11,11 +13,17 @@ import {
   searchClinicalDocumentationCards,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   createClinicalDocumentationEntry,
   fetchClinicalDocumentationEntries,
+  witnessClinicalDocumentationEntry,
   type ClinicalDocumentationEntryRow,
 } from "@/lib/clinicalDocumentationApi";
+import {
+  ClinicalDocumentationObservationForm,
+  isEdoc3ObservationFormCard,
+} from "./ClinicalDocumentationObservationForm";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -66,6 +74,7 @@ export function ClinicalDocumentationHub({
   onClose?: () => void;
 }) {
   const { t, language } = useI18n();
+  const { userId, roles } = useFacilityAndRoles();
   const locale = language === "en" ? "en" : "fr";
   const [selectedCategory, setSelectedCategory] = useState<ClinicalDocumentationCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
@@ -129,6 +138,49 @@ export function ClinicalDocumentationHub({
     }
   };
 
+  const saveMessageForEntry = (entry: { requiresWitnessSignature: boolean; witnessStatus: string }) => {
+    if (entry.requiresWitnessSignature && entry.witnessStatus === "PENDING_WITNESS") {
+      return t("clinicalDocumentation.savePendingWitness");
+    }
+    return t("clinicalDocumentation.saveOk");
+  };
+
+  const handleWitness = async (entryId: string) => {
+    if (!encounterId || !facilityId) return;
+    if (!window.confirm(t("clinicalDocumentation.witnessConfirm"))) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      await witnessClinicalDocumentationEntry(encounterId, entryId, facilityId);
+      setSaveMessage(t("clinicalDocumentation.witnessOk"));
+      await loadEntries();
+    } catch {
+      setSaveMessage(t("clinicalDocumentation.witnessFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveObservationEntry = async (card: ClinicalDocumentationCard, payload: Record<string, unknown>) => {
+    if (!encounterId || !facilityId) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      const saved = await createClinicalDocumentationEntry(encounterId, facilityId, {
+        category: card.category,
+        cardId: card.id,
+        payloadJson: payload,
+      });
+      setSaveMessage(saveMessageForEntry(saved));
+      setExpandedCardId(null);
+      await loadEntries();
+    } catch {
+      setSaveMessage(t("clinicalDocumentation.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveBasicStructured = async (card: ClinicalDocumentationCard) => {
     if (!encounterId || !facilityId) return;
     const items = basicItems
@@ -141,12 +193,12 @@ export function ClinicalDocumentationHub({
     setSaving(true);
     setSaveMessage(null);
     try {
-      await createClinicalDocumentationEntry(encounterId, facilityId, {
+      const saved = await createClinicalDocumentationEntry(encounterId, facilityId, {
         category: card.category,
         cardId: card.id,
         payloadJson: { items },
       });
-      setSaveMessage(t("clinicalDocumentation.saveOk"));
+      setSaveMessage(saveMessageForEntry(saved));
       setExpandedCardId(null);
       setBasicItems([{ key: "", value: "" }]);
       await loadEntries();
@@ -228,38 +280,104 @@ export function ClinicalDocumentationHub({
             </p>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-              {entries.map((entry) => (
-                <li
-                  key={entry.id}
-                  data-testid="clinical-documentation-saved-entry"
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 10,
-                    border: "1px solid #f1f5f9",
-                    background: "#f8fafc",
-                  }}
-                >
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
-                    {entryDisplayTitle(entry, locale)}
-                    {entry.voidedAt ? ` — ${t("clinicalDocumentation.entryVoided")}` : ""}
-                  </p>
-                  <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>
-                    {t("clinicalDocumentation.entryMeta")
-                      .replace("{author}", entry.authorDisplayName)
-                      .replace("{role}", entry.authorRoleTitle)
-                      .replace("{when}", formatWhen(entry.createdAt))}
-                  </p>
-                  {(entry.payloadSummary ?? []).length > 0 ? (
-                    <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12, color: "#334155" }}>
-                      {entry.payloadSummary.map((line) => (
-                        <li key={`${entry.id}-${line.key}`}>
-                          <strong>{line.key}</strong>: {line.value}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </li>
-              ))}
+              {entries.map((entry) => {
+                const pendingWitness = clinicalDocumentationPendingWitness(entry);
+                const showWitness =
+                  canPersist &&
+                  canWitnessClinicalDocumentationEntry(entry, userId || undefined, roles);
+                return (
+                  <li
+                    key={entry.id}
+                    data-testid="clinical-documentation-saved-entry"
+                    data-witness-status={entry.witnessStatus}
+                    style={{
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1px solid #f1f5f9",
+                      background: "#f8fafc",
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+                      {entryDisplayTitle(entry, locale)}
+                      {entry.voidedAt ? ` — ${t("clinicalDocumentation.entryVoided")}` : ""}
+                      {pendingWitness ? (
+                        <span
+                          data-testid="clinical-documentation-pending-witness-badge"
+                          style={{
+                            marginLeft: 6,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            padding: "2px 6px",
+                            borderRadius: 9999,
+                            background: "#fef9c3",
+                            color: "#a16207",
+                          }}
+                        >
+                          {t("clinicalDocumentation.badgePendingWitness")}
+                        </span>
+                      ) : null}
+                      {entry.witnessedAt ? (
+                        <span
+                          style={{
+                            marginLeft: 6,
+                            fontSize: 10,
+                            fontWeight: 600,
+                            padding: "2px 6px",
+                            borderRadius: 9999,
+                            background: "#dcfce7",
+                            color: "#15803d",
+                          }}
+                        >
+                          {t("clinicalDocumentation.badgeWitnessed")}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>
+                      {t("clinicalDocumentation.entryMeta")
+                        .replace("{author}", entry.authorDisplayName)
+                        .replace("{role}", entry.authorRoleTitle)
+                        .replace("{when}", formatWhen(entry.createdAt))}
+                    </p>
+                    {entry.witnessedAt && entry.witnessDisplayName ? (
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>
+                        {t("clinicalDocumentation.witnessLine")
+                          .replace("{name}", entry.witnessDisplayName)
+                          .replace("{role}", entry.witnessRoleTitle ?? "—")
+                          .replace("{when}", formatWhen(entry.witnessedAt))}
+                      </p>
+                    ) : null}
+                    {(entry.payloadSummary ?? []).length > 0 ? (
+                      <ul style={{ margin: "6px 0 0", paddingLeft: 16, fontSize: 12, color: "#334155" }}>
+                        {entry.payloadSummary.map((line) => (
+                          <li key={`${entry.id}-${line.key}`}>
+                            <strong>{line.key}</strong>: {line.value}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {showWitness ? (
+                      <button
+                        type="button"
+                        data-testid="clinical-documentation-witness-button"
+                        disabled={saving}
+                        onClick={() => void handleWitness(entry.id)}
+                        style={{
+                          marginTop: 6,
+                          padding: "5px 10px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          borderRadius: 8,
+                          border: "1px solid #cbd5e1",
+                          background: "#fff",
+                          cursor: saving ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {t("clinicalDocumentation.witnessAction")}
+                      </button>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -440,6 +558,14 @@ export function ClinicalDocumentationHub({
               >
                 {openLabel(c)}
               </button>
+
+              {expandedCardId === c.id && isEdoc3ObservationFormCard(c.id) ? (
+                <ClinicalDocumentationObservationForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                />
+              ) : null}
 
               {expandedCardId === c.id && c.id === EDOC_BASIC_STRUCTURED_CARD_ID ? (
                 <div

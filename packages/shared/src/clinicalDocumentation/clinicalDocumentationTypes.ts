@@ -66,6 +66,8 @@ export type ClinicalDocumentationCard = {
   searchAliases: readonly string[];
   descriptionEn: string;
   descriptionFr: string;
+  /** EDOC.4 — platform default dual-signature when true (facility policy may extend). */
+  requiresWitnessSignature?: boolean;
 };
 
 export type ClinicalDocumentationCategoryMeta = {

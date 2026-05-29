@@ -227,6 +227,26 @@ export class EncountersController {
     );
   }
 
+  /** EDOC.4 — second signer witnesses structured clinical documentation entry. */
+  @Post("encounters/:id/clinical-documentation/:entryId/witness")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async witnessClinicalDocumentationEntry(
+    @Param("id") id: string,
+    @Param("entryId") entryId: string,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    return this.clinicalDocumentationService.witnessEntry(
+      facilityId,
+      id,
+      entryId,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
   @Post("patients/:patientId/encounters/outpatient")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
   async createOutpatientVisit(

@@ -12,11 +12,12 @@ import {
   listFoundationOnlyCardIds,
 } from "./clinicalDocumentationPayloadGovernance.js";
 
-describe("clinicalDocumentationPayloadGovernance (EDOC.2A)", () => {
-  it("only the EDOC.2 basic card may use generic payload in AVAILABLE registry", () => {
+describe("clinicalDocumentationPayloadGovernance (EDOC.2A / EDOC.3)", () => {
+  it("AVAILABLE cards have registered validators; only basic card allows generic payload", () => {
     expect(EDOC_GENERIC_PAYLOAD_ALLOWED_CARD_IDS).toEqual([EDOC_BASIC_STRUCTURED_CARD_ID]);
     expect(() => assertRegistryAvailableCardsHavePayloadValidators()).not.toThrow();
     expect(cardHasRegisteredPayloadValidator(EDOC_BASIC_STRUCTURED_CARD_ID)).toBe(true);
+    expect(cardHasRegisteredPayloadValidator("obs_po_challenge")).toBe(true);
     expect(cardHasRegisteredPayloadValidator("score_nihss")).toBe(false);
     expect(cardHasRegisteredPayloadValidator("io_intake_output")).toBe(false);
   });

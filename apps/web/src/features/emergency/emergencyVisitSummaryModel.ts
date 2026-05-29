@@ -418,12 +418,19 @@ type EncounterLike = {
     cardId: string;
     cardTitleEn: string;
     cardTitleFr: string;
+    authorUserId: string;
     authorDisplayName: string;
     authorRoleTitle: string;
     createdAt: string;
     payloadJson: Record<string, unknown>;
     payloadSummary: Array<{ key: string; value: string }>;
     voidedAt: string | null;
+    requiresWitnessSignature: boolean;
+    witnessStatus: string;
+    witnessedAt: string | null;
+    witnessedByUserId: string | null;
+    witnessDisplayName: string | null;
+    witnessRoleTitle: string | null;
   }> | null;
 };
 

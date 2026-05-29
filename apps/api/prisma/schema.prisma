@@ -152,6 +152,8 @@ enum AuditAction {
   ENCOUNTER_NOTE_COSIGNED
   /// EDOC.2 — structured clinical documentation entry created (PHI-safe metadata only).
   ENCOUNTER_CLINICAL_DOCUMENTATION_CREATED
+  /// EDOC.4 — second signer witnessed clinical documentation (PHI-safe metadata only).
+  ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED
 }
 
 /// Phase 5G — category of external / formal record release request.
@@ -513,6 +515,8 @@ model Facility {
   allowUrgentCareToEmergencyUpgrade      Boolean                 @default(false)
   requireUcToEdPatientAcknowledgement    Boolean                 @default(true)
   showEncounterBillingControls           Boolean                 @default(false)
+  /// EDOC.4 — optional facility overrides for dual-signature clinical documentation cards.
+  clinicalDocumentationWitnessPolicyJson Json?
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 
@@ -686,6 +690,7 @@ model User {
   encounterNotesVoided                       EncounterNote[]                       @relation("EncounterNoteVoidedBy")
   encounterNotesCosigned                     EncounterNote[]                       @relation("EncounterNoteCosignedBy")
   clinicalDocumentationEntriesAuthored       EncounterClinicalDocumentationEntry[] @relation("ClinicalDocumentationEntryAuthor")
+  clinicalDocumentationEntriesWitnessed      EncounterClinicalDocumentationEntry[] @relation("ClinicalDocumentationEntryWitnessedBy")
   clinicalDocumentationEntriesVoided         EncounterClinicalDocumentationEntry[] @relation("ClinicalDocumentationEntryVoidedBy")
   orderItemsCompletedNurse                   OrderItem[]                           @relation("OrderItemNurseCompleted")
   ordersCancelled                            Order[]                               @relation("OrderCancelledBy")
@@ -1293,6 +1298,12 @@ model EncounterClinicalDocumentationEntry {
   authorDisplayNameSnapshot String
   authorRoleSnapshot        String
   createdAt                 DateTime  @default(now())
+  /// EDOC.4 — frozen at create from facility + card policy.
+  requiresWitnessSignature  Boolean   @default(false)
+  witnessedAt               DateTime?
+  witnessedByUserId         String?
+  witnessDisplayNameSnapshot String?
+  witnessRoleSnapshot       String?
   voidedAt                  DateTime?
   voidedByUserId            String?
 
@@ -1300,6 +1311,7 @@ model EncounterClinicalDocumentationEntry {
   patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
   facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   author    User      @relation("ClinicalDocumentationEntryAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  witnessedBy User?   @relation("ClinicalDocumentationEntryWitnessedBy", fields: [witnessedByUserId], references: [id], onDelete: SetNull)
   voidedBy  User?     @relation("ClinicalDocumentationEntryVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
 
   @@index([encounterId, createdAt])
@@ -1307,6 +1319,7 @@ model EncounterClinicalDocumentationEntry {
   @@index([patientId])
   @@index([cardId])
   @@index([authorUserId])
+  @@index([witnessedByUserId])
 }
 
 model Order {

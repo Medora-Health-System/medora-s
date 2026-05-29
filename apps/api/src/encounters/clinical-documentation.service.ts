@@ -9,9 +9,12 @@ import {
   assertClinicalDocumentationAuditMetadataSafe,
   assertClinicalDocumentationEntryCreateAllowed,
   buildClinicalDocumentationAuditMetadata,
-  clinicalDocumentationEntryCreateDtoSchema,
+  buildClinicalDocumentationWitnessAuditMetadata,
+  canActAsClinicalDocumentationWitness,
   mapClinicalDocumentationEntryForLegalChart,
-  mapClinicalDocumentationEntryResponse,
+  clinicalDocumentationEntryCreateDtoSchema,
+  parseFacilityClinicalDocumentationWitnessPolicy,
+  resolveRequiresWitnessSignature,
   type ClinicalDocumentationEntryCreateDto,
   type ClinicalDocumentationEntryLegalChartRow,
 } from "@medora/shared";
@@ -19,16 +22,22 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { assertEncounterOpenForClinicalMutation } from "./encounter-sign-lock.util";
 
-const entrySelect = {
+export const clinicalDocumentationEntrySelect = {
   id: true,
   encounterId: true,
   category: true,
   cardId: true,
+  authorUserId: true,
   authorDisplayNameSnapshot: true,
   authorRoleSnapshot: true,
   createdAt: true,
   payloadJson: true,
   voidedAt: true,
+  requiresWitnessSignature: true,
+  witnessedAt: true,
+  witnessedByUserId: true,
+  witnessDisplayNameSnapshot: true,
+  witnessRoleSnapshot: true,
 } as const;
 
 @Injectable()
@@ -60,7 +69,7 @@ export class ClinicalDocumentationService {
     const rows = await this.prisma.encounterClinicalDocumentationEntry.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      select: entrySelect,
+      select: clinicalDocumentationEntrySelect,
     });
 
     return {
@@ -71,6 +80,38 @@ export class ClinicalDocumentationService {
         })
       ),
     };
+  }
+
+  private async resolveAuthorSnapshot(userId: string, facilityId: string) {
+    const author = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      include: { role: { select: { code: true, name: true } } },
+    });
+    const roleRows = userRoles.flatMap((r) =>
+      r.role ? [{ code: String(r.role.code), name: r.role.name ?? null }] : []
+    );
+    const sortedRoles = [...roleRows].sort((a, b) => a.code.localeCompare(b.code));
+    const authorDisplayNameSnapshot = [author?.firstName?.trim(), author?.lastName?.trim()]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || "—";
+    const authorRoleSnapshot =
+      sortedRoles[0]?.name?.trim() || sortedRoles[0]?.code?.trim() || "—";
+    return { authorDisplayNameSnapshot, authorRoleSnapshot, roleCodes: sortedRoles.map((r) => r.code) };
+  }
+
+  private async loadFacilityWitnessPolicy(facilityId: string) {
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: { clinicalDocumentationWitnessPolicyJson: true },
+    });
+    return parseFacilityClinicalDocumentationWitnessPolicy(
+      facility?.clinicalDocumentationWitnessPolicyJson
+    );
   }
 
   async createEntry(
@@ -102,24 +143,15 @@ export class ClinicalDocumentationService {
     if (!encounter) throw new NotFoundException("Encounter not found");
     assertEncounterOpenForClinicalMutation(encounter);
 
-    const author = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { firstName: true, lastName: true },
-    });
-    const userRoles = await this.prisma.userRole.findMany({
-      where: { userId, facilityId, isActive: true },
-      include: { role: { select: { code: true, name: true } } },
-    });
-    const roleRows = userRoles.flatMap((r) =>
-      r.role ? [{ code: String(r.role.code), name: r.role.name ?? null }] : []
+    const { authorDisplayNameSnapshot, authorRoleSnapshot } = await this.resolveAuthorSnapshot(
+      userId,
+      facilityId
     );
-    const sortedRoles = [...roleRows].sort((a, b) => a.code.localeCompare(b.code));
-    const authorDisplayNameSnapshot = [author?.firstName?.trim(), author?.lastName?.trim()]
-      .filter(Boolean)
-      .join(" ")
-      .trim() || "—";
-    const authorRoleSnapshot =
-      sortedRoles[0]?.name?.trim() || sortedRoles[0]?.code?.trim() || "—";
+    const facilityWitnessPolicy = await this.loadFacilityWitnessPolicy(facilityId);
+    const requiresWitnessSignature = resolveRequiresWitnessSignature(
+      parsed.data.cardId,
+      facilityWitnessPolicy
+    );
 
     const payloadKeyCount = Object.keys(parsed.data.payloadJson).length;
 
@@ -135,8 +167,9 @@ export class ClinicalDocumentationService {
           authorUserId: userId,
           authorDisplayNameSnapshot,
           authorRoleSnapshot,
+          requiresWitnessSignature,
         },
-        select: entrySelect,
+        select: clinicalDocumentationEntrySelect,
       });
 
       const auditMetadata = buildClinicalDocumentationAuditMetadata({
@@ -173,17 +206,116 @@ export class ClinicalDocumentationService {
     });
   }
 
+  async witnessEntry(
+    facilityId: string,
+    encounterId: string,
+    entryId: string,
+    userId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    assertEncounterOpenForClinicalMutation(encounter);
+
+    const existing = await this.prisma.encounterClinicalDocumentationEntry.findFirst({
+      where: { id: entryId, encounterId, facilityId },
+      select: clinicalDocumentationEntrySelect,
+    });
+    if (!existing) throw new NotFoundException("Clinical documentation entry not found");
+    if (existing.voidedAt) {
+      throw new BadRequestException("Cannot witness a voided entry.");
+    }
+    if (!existing.requiresWitnessSignature) {
+      throw new BadRequestException("This entry does not require witness signature.");
+    }
+    if (existing.witnessedAt) {
+      throw new BadRequestException("Entry already witnessed.");
+    }
+    if (existing.authorUserId === userId) {
+      throw new BadRequestException("Author cannot witness their own entry.");
+    }
+
+    const { authorDisplayNameSnapshot, authorRoleSnapshot, roleCodes } =
+      await this.resolveAuthorSnapshot(userId, facilityId);
+    if (!canActAsClinicalDocumentationWitness(roleCodes)) {
+      throw new ForbiddenException("Autorisation insuffisante pour témoigner.");
+    }
+
+    const witnessed = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.encounterClinicalDocumentationEntry.update({
+        where: { id: entryId },
+        data: {
+          witnessedAt: new Date(),
+          witnessedByUserId: userId,
+          witnessDisplayNameSnapshot: authorDisplayNameSnapshot,
+          witnessRoleSnapshot: authorRoleSnapshot,
+        },
+        select: clinicalDocumentationEntrySelect,
+      });
+
+      const auditMetadata = buildClinicalDocumentationWitnessAuditMetadata({
+        encounterId,
+        patientId: encounter.patientId,
+        entryId: row.id,
+        category: row.category,
+        cardId: row.cardId,
+        authorUserId: existing.authorUserId,
+        authorRole: existing.authorRoleSnapshot,
+        witnessUserId: userId,
+        witnessRole: authorRoleSnapshot,
+      });
+      assertClinicalDocumentationAuditMetadataSafe(auditMetadata as Record<string, unknown>);
+
+      await this.audit.log(
+        AuditAction.ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED,
+        "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
+        {
+          userId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          entityId: row.id,
+          ip,
+          userAgent,
+          critical: true,
+          metadata: auditMetadata,
+          tx,
+        }
+      );
+
+      return row;
+    });
+
+    return mapClinicalDocumentationEntryForLegalChart({
+      ...witnessed,
+      payloadJson: witnessed.payloadJson,
+    });
+  }
+
   mapEntriesForLegalChart(
     rows: Array<{
       id: string;
       encounterId: string;
       category: string;
       cardId: string;
+      authorUserId: string;
       authorDisplayNameSnapshot: string;
       authorRoleSnapshot: string;
       createdAt: Date;
       payloadJson: unknown;
       voidedAt: Date | null;
+      requiresWitnessSignature?: boolean;
+      witnessedAt?: Date | null;
+      witnessedByUserId?: string | null;
+      witnessDisplayNameSnapshot?: string | null;
+      witnessRoleSnapshot?: string | null;
     }>
   ): ClinicalDocumentationEntryLegalChartRow[] {
     return rows.map((row) =>

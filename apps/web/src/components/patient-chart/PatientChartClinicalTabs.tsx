@@ -174,7 +174,19 @@ function EncounterBlock({
                   {title} — {entry.authorDisplayName} ({entry.authorRoleTitle}) —{" "}
                   {formatDt(entry.createdAt)}
                   {entry.voidedAt ? ` — ${t("clinicalDocumentation.entryVoided")}` : ""}
+                  {entry.requiresWitnessSignature && !entry.witnessedAt && !entry.voidedAt
+                    ? ` — ${t("clinicalDocumentation.badgePendingWitness")}`
+                    : ""}
+                  {entry.witnessedAt ? ` — ${t("clinicalDocumentation.badgeWitnessed")}` : ""}
                 </div>
+                {entry.witnessedAt && entry.witnessDisplayName ? (
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                    {t("clinicalDocumentation.witnessLine")
+                      .replace("{name}", entry.witnessDisplayName)
+                      .replace("{role}", entry.witnessRoleTitle ?? "—")
+                      .replace("{when}", formatDt(entry.witnessedAt))}
+                  </div>
+                ) : null}
                 {(entry.payloadSummary ?? []).length > 0 ? (
                   <ul style={{ margin: 0, paddingLeft: 18 }}>
                     {(entry.payloadSummary ?? []).map((line) => (

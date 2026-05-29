@@ -1,8 +1,8 @@
 import { CLINICAL_DOCUMENTATION_CARDS } from "./clinicalDocumentationRegistry.js";
 import {
+  CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS,
   EDOC_BASIC_STRUCTURED_CARD_ID,
-  validatePayloadForAvailableCard,
-} from "./clinicalDocumentationEntry.js";
+} from "./observationDocumentationPayloads.js";
 
 /**
  * EDOC.2 payload policy (foundation only):
@@ -14,7 +14,7 @@ import {
 export const EDOC_GENERIC_PAYLOAD_ALLOWED_CARD_IDS = [EDOC_BASIC_STRUCTURED_CARD_ID] as const;
 
 export function cardHasRegisteredPayloadValidator(cardId: string): boolean {
-  return validatePayloadForAvailableCard(cardId, { items: [{ key: "x", value: "y" }] }).ok === true;
+  return CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS.includes(cardId);
 }
 
 /**

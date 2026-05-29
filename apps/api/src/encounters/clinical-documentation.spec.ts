@@ -4,27 +4,56 @@ import {
   ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
   EDOC_BASIC_STRUCTURED_CARD_ID,
   FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
+  OBS_AMBULATION_TRIAL_CARD_ID,
+  OBS_PO_CHALLENGE_CARD_ID,
 } from "@medora/shared";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
 
-describe("ClinicalDocumentationService (EDOC.2)", () => {
+describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
   const entryRow = {
     id: "edoc1",
     encounterId: "e1",
     category: "OBSERVATION_DOCUMENTATION",
     cardId: EDOC_BASIC_STRUCTURED_CARD_ID,
+    authorUserId: "u1",
     authorDisplayNameSnapshot: "Jane Nurse",
     authorRoleSnapshot: "RN",
     createdAt: new Date("2026-05-28T12:00:00.000Z"),
     payloadJson: { items: [{ key: "Pain", value: "2/10" }] },
     voidedAt: null,
+    requiresWitnessSignature: false,
+    witnessedAt: null,
+    witnessedByUserId: null,
+    witnessDisplayNameSnapshot: null,
+    witnessRoleSnapshot: null,
   };
 
   function buildService(overrides?: {
     encounter?: Record<string, unknown> | null;
     entries?: Array<Record<string, unknown>>;
+    facilityPolicy?: Record<string, unknown> | null;
+    existingEntry?: Record<string, unknown> | null;
   }) {
-    const create = jest.fn().mockResolvedValue(entryRow);
+    const create = jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({
+        ...entryRow,
+        id: "edoc-new",
+        cardId: String(data.cardId ?? entryRow.cardId),
+        category: String(data.category ?? entryRow.category),
+        payloadJson: data.payloadJson ?? entryRow.payloadJson,
+        requiresWitnessSignature: Boolean(data.requiresWitnessSignature),
+        authorUserId: String(data.authorUserId ?? entryRow.authorUserId),
+      })
+    );
+    const update = jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({
+        ...(overrides?.existingEntry ?? entryRow),
+        witnessedAt: data.witnessedAt ?? new Date("2026-05-28T13:00:00.000Z"),
+        witnessedByUserId: data.witnessedByUserId ?? "u2",
+        witnessDisplayNameSnapshot: data.witnessDisplayNameSnapshot ?? "Bob Witness",
+        witnessRoleSnapshot: data.witnessRoleSnapshot ?? "RN",
+      })
+    );
     const prisma = {
       encounter: {
         findFirst: jest.fn().mockResolvedValue(
@@ -39,19 +68,36 @@ describe("ClinicalDocumentationService (EDOC.2)", () => {
               }
         ),
       },
+      facility: {
+        findFirst: jest.fn().mockResolvedValue({
+          clinicalDocumentationWitnessPolicyJson: overrides?.facilityPolicy ?? null,
+        }),
+      },
       encounterClinicalDocumentationEntry: {
         findMany: jest.fn().mockResolvedValue(overrides?.entries ?? [entryRow]),
+        findFirst: jest.fn().mockResolvedValue(overrides?.existingEntry ?? entryRow),
         create,
+        update,
       },
       user: {
-        findUnique: jest.fn().mockResolvedValue({ firstName: "Jane", lastName: "Nurse" }),
+        findUnique: jest.fn().mockImplementation(({ where }: { where: { id: string } }) => {
+          if (where.id === "u2") {
+            return Promise.resolve({ firstName: "Bob", lastName: "Witness" });
+          }
+          return Promise.resolve({ firstName: "Jane", lastName: "Nurse" });
+        }),
       },
       userRole: {
-        findMany: jest.fn().mockResolvedValue([{ role: { code: "RN", name: "Infirmier(ère)" } }]),
+        findMany: jest.fn().mockImplementation(({ where }: { where: { userId: string } }) => {
+          if (where.userId === "u2") {
+            return Promise.resolve([{ role: { code: "RN", name: "Infirmier(ère)" } }]);
+          }
+          return Promise.resolve([{ role: { code: "RN", name: "Infirmier(ère)" } }]);
+        }),
       },
       $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
         fn({
-          encounterClinicalDocumentationEntry: { create },
+          encounterClinicalDocumentationEntry: { create, update },
         })
       ),
     };
@@ -61,6 +107,7 @@ describe("ClinicalDocumentationService (EDOC.2)", () => {
       prisma,
       audit,
       create,
+      update,
     };
   }
 
@@ -85,7 +132,92 @@ describe("ClinicalDocumentationService (EDOC.2)", () => {
     );
     expect(saved.authorDisplayName).toBe("Jane Nurse");
     expect(saved.authorRoleTitle).toBe("RN");
+    expect(saved.witnessStatus).toBe("NOT_REQUIRED");
     expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("sets requiresWitnessSignature from facility policy (EDOC.4)", async () => {
+    const { svc, create } = buildService({
+      facilityPolicy: { additionalCardIds: [OBS_PO_CHALLENGE_CARD_ID] },
+    });
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "OBSERVATION_DOCUMENTATION",
+        cardId: OBS_PO_CHALLENGE_CARD_ID,
+        payloadJson: {
+          startTime: "2026-05-28T14:00:00.000Z",
+          substance: "Water",
+          amount: "8 oz",
+          tolerated: "YES",
+          nausea: false,
+          vomiting: false,
+          abdominalPain: false,
+          result: "PASSED",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requiresWitnessSignature: true }),
+      })
+    );
+  });
+
+  it("witnesses pending entry and audits signer ids (EDOC.4)", async () => {
+    const pendingEntry = {
+      ...entryRow,
+      id: "edoc-pending",
+      cardId: OBS_PO_CHALLENGE_CARD_ID,
+      requiresWitnessSignature: true,
+      witnessedAt: null,
+    };
+    const { svc, audit, update } = buildService({ existingEntry: pendingEntry });
+    const witnessed = await svc.witnessEntry("f1", "e1", "edoc-pending", "u2");
+    expect(witnessed.witnessStatus).toBe("WITNESSED");
+    expect(witnessed.witnessDisplayName).toBe("Bob Witness");
+    expect(update).toHaveBeenCalled();
+    expect(audit.log).toHaveBeenCalledWith(
+      AuditAction.ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED,
+      "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          entryId: "edoc-pending",
+          authorUserId: "u1",
+          witnessUserId: "u2",
+          witnessRole: "Infirmier(ère)",
+        }),
+      })
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    for (const forbidden of FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
+      expect(meta).not.toHaveProperty(forbidden);
+    }
+    for (const key of ["encounterId", "patientId", "entryId", "authorUserId", "witnessUserId"]) {
+      expect(ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS).toContain(key);
+    }
+  });
+
+  it("rejects self-witness", async () => {
+    const pendingEntry = {
+      ...entryRow,
+      requiresWitnessSignature: true,
+      witnessedAt: null,
+    };
+    const { svc, update } = buildService({ existingEntry: pendingEntry });
+    await expect(svc.witnessEntry("f1", "e1", "edoc1", "u1")).rejects.toBeInstanceOf(
+      BadRequestException
+    );
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("rejects witness when not required", async () => {
+    const { svc } = buildService({ existingEntry: entryRow });
+    await expect(svc.witnessEntry("f1", "e1", "edoc1", "u2")).rejects.toBeInstanceOf(
+      BadRequestException
+    );
   });
 
   it("two creates produce two rows (service called twice)", async () => {
@@ -178,7 +310,7 @@ describe("ClinicalDocumentationService (EDOC.2)", () => {
       "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
       expect.objectContaining({
         metadata: expect.objectContaining({
-          entryId: "edoc1",
+          entryId: "edoc-new",
           cardId: EDOC_BASIC_STRUCTURED_CARD_ID,
           payloadKeyCount: 1,
         }),
@@ -189,7 +321,106 @@ describe("ClinicalDocumentationService (EDOC.2)", () => {
       expect(meta).not.toHaveProperty(forbidden);
     }
     for (const allowed of ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
+      if (allowed === "witnessUserId" || allowed === "witnessRole") continue;
       expect(meta).toHaveProperty(allowed);
     }
+  });
+
+  it("POST PO Challenge persists append-only entry (EDOC.3)", async () => {
+    const { svc, create } = buildService();
+    const payload = {
+      startTime: "2026-05-28T14:00:00.000Z",
+      substance: "Water",
+      amount: "8 oz",
+      tolerated: "YES",
+      nausea: false,
+      vomiting: false,
+      abdominalPain: false,
+      result: "PASSED",
+    };
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "OBSERVATION_DOCUMENTATION",
+        cardId: OBS_PO_CHALLENGE_CARD_ID,
+        payloadJson: payload,
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(OBS_PO_CHALLENGE_CARD_ID);
+    expect((saved.payloadJson as typeof payload).substance).toBe("Water");
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST Ambulation Trial persists (EDOC.3)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "OBSERVATION_DOCUMENTATION",
+        cardId: OBS_AMBULATION_TRIAL_CARD_ID,
+        payloadJson: {
+          assistanceLevel: "ONE_PERSON",
+          distance: 100,
+          distanceUnit: "FEET",
+          gaitSteady: true,
+          dizziness: false,
+          shortnessOfBreath: false,
+          pain: false,
+          oxygenDesaturation: false,
+          result: "PARTIAL",
+        },
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(OBS_AMBULATION_TRIAL_CARD_ID);
+    expect(saved.payloadSummary.some((l) => l.key === "Distance")).toBe(true);
+  });
+
+  it("rejects invalid PO Challenge payload", async () => {
+    const { svc, create } = buildService();
+    await expect(
+      svc.createEntry(
+        "f1",
+        "e1",
+        {
+          category: "OBSERVATION_DOCUMENTATION",
+          cardId: OBS_PO_CHALLENGE_CARD_ID,
+          payloadJson: { result: "PASSED" },
+        },
+        "u1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("audit metadata excludes notes for PO Challenge (EDOC.3)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "OBSERVATION_DOCUMENTATION",
+        cardId: OBS_PO_CHALLENGE_CARD_ID,
+        payloadJson: {
+          startTime: "2026-05-28T14:00:00.000Z",
+          substance: "Jello",
+          amount: "1 cup",
+          tolerated: "YES",
+          nausea: false,
+          vomiting: false,
+          abdominalPain: false,
+          result: "PASSED",
+          notes: "Patient tolerated well — should not appear in audit",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("payloadJson");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 });

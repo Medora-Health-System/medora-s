@@ -1015,6 +1015,10 @@ export function EmergencyVisitSummaryPanel({
                       <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
                         {title} — {entry.authorDisplayName ?? "—"}
                         {entry.voidedAt ? ` · ${t("clinicalDocumentation.entryVoided")}` : ""}
+                        {entry.requiresWitnessSignature && !entry.witnessedAt && !entry.voidedAt
+                          ? ` · ${t("clinicalDocumentation.badgePendingWitness")}`
+                          : ""}
+                        {entry.witnessedAt ? ` · ${t("clinicalDocumentation.badgeWitnessed")}` : ""}
                       </div>
                       <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
                         {entry.authorRoleTitle ?? "—"} —{" "}
@@ -1022,6 +1026,17 @@ export function EmergencyVisitSummaryPanel({
                           ? formatEncounterChromeDateTime(entry.createdAt, language)
                           : "—"}
                       </div>
+                      {entry.witnessedAt && entry.witnessDisplayName ? (
+                        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                          {t("clinicalDocumentation.witnessLine")
+                            .replace("{name}", entry.witnessDisplayName)
+                            .replace("{role}", entry.witnessRoleTitle ?? "—")
+                            .replace(
+                              "{when}",
+                              formatEncounterChromeDateTime(entry.witnessedAt, language)
+                            )}
+                        </div>
+                      ) : null}
                       {summaryLines.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569" }}>
                           {summaryLines.map((line: ClinicalDocumentationPayloadSummaryLine) => (

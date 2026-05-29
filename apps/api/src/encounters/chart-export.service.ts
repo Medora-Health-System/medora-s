@@ -271,12 +271,19 @@ export type ChartExportManifest = {
       cardId: string;
       cardTitleEn: string;
       cardTitleFr: string;
+      authorUserId: string;
       authorDisplayName: string;
       authorRoleTitle: string;
       createdAt: string;
       payloadJson: Record<string, unknown>;
       payloadSummary: Array<{ key: string; value: string }>;
       voidedAt: string | null;
+      requiresWitnessSignature: boolean;
+      witnessStatus: string;
+      witnessedAt: string | null;
+      witnessedByUserId: string | null;
+      witnessDisplayName: string | null;
+      witnessRoleTitle: string | null;
     }>;
     /** Phase 13C — additive operational LOS metadata for observation / short stay (INPATIENT only). Omitted on legacy stored snapshots. */
     observationStay?: ObservationStaySummaryForExport;
@@ -801,11 +808,17 @@ export class EncounterChartExportService {
             encounterId: true,
             category: true,
             cardId: true,
+            authorUserId: true,
             authorDisplayNameSnapshot: true,
             authorRoleSnapshot: true,
             createdAt: true,
             payloadJson: true,
             voidedAt: true,
+            requiresWitnessSignature: true,
+            witnessedAt: true,
+            witnessedByUserId: true,
+            witnessDisplayNameSnapshot: true,
+            witnessRoleSnapshot: true,
           },
         },
       },

@@ -35,6 +35,8 @@ export * from "./encounters/erNotesV1LegacyRead.js";
 export * from "./clinicalDocumentation/clinicalDocumentationRegistry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationEntry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationPayloadGovernance.js";
+export * from "./clinicalDocumentation/clinicalDocumentationWitnessPolicy.js";
+export * from "./clinicalDocumentation/clinicalDocumentationWitnessGovernance.js";
 export * from "./observationReassessmentV1.js";
 export * from "./observationOrderTemplate.js";
 export * from "./billingCaptureV1.js";

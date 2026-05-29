@@ -383,9 +383,17 @@ export function renderEncounterChartExportHtml(
                       .map((line) => `<li><strong>${esc(line.key)}</strong>: ${esc(line.value)}</li>`)
                       .join("")}</ul>`;
               const voidTag = entry.voidedAt ? ` <span class="muted">(voided ${esc(entry.voidedAt)})</span>` : "";
+              const witnessPending =
+                entry.requiresWitnessSignature && !entry.witnessedAt && !entry.voidedAt
+                  ? ` <strong>[PENDING WITNESS]</strong>`
+                  : "";
+              const witnessLine =
+                entry.witnessedAt && entry.witnessDisplayName
+                  ? ` — <strong>[WITNESSED]</strong> ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")}) ${esc(entry.witnessedAt)}`
+                  : "";
               return `<li><span class="muted">${esc(entry.createdAt)}</span> — ${esc(
                 entry.category
-              )} — ${esc(title)} — ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})${voidTag}${summary}</li>`;
+              )} — ${esc(title)} — ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})${witnessPending}${witnessLine}${voidTag}${summary}</li>`;
             })
             .join("")}</ul>`
     }
