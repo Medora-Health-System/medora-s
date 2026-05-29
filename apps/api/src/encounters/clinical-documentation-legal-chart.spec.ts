@@ -10,7 +10,7 @@ import {
   EncounterChartExportService,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
-import { EDOC_BASIC_STRUCTURED_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
+import { EDOC_BASIC_STRUCTURED_CARD_ID, IO_PO_INTAKE_CARD_ID, IO_URINE_OUTPUT_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
 
 const SAMPLE_ENTRY = {
   id: "edoc-legal-1",
@@ -353,6 +353,91 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const html = renderEncounterChartExportHtml(manifest);
     expect(html).toContain("Score NIHSS total");
     expect(html).toContain("STROKE_DOCUMENTATION");
+  });
+
+  it("renders PO Intake in chart export JSON and HTML (EDOC.5)", async () => {
+    const poPayload = {
+      recordedAt: "2026-05-28T18:00:00.000Z",
+      amount: 240,
+      unit: "ML",
+      substance: "eau",
+      tolerated: "YES",
+      nausea: false,
+      vomiting: false,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-io-po-1",
+          category: "INTAKE_OUTPUT",
+          cardId: IO_PO_INTAKE_CARD_ID,
+          payloadJson: poPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(poPayload);
+    expect(row.payloadSummary.some((l) => l.key === "PO")).toBe(true);
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("INTAKE_OUTPUT");
+    expect(html).toContain("240 mL");
+  });
+
+  it("renders Urine Output and witness status in export when configured (EDOC.5)", async () => {
+    const urinePayload = {
+      recordedAt: "2026-05-28T19:00:00.000Z",
+      amount: 400,
+      unit: "ML",
+      method: "FOLEY",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-io-urine-1",
+          category: "INTAKE_OUTPUT",
+          cardId: IO_URINE_OUTPUT_CARD_ID,
+          payloadJson: urinePayload,
+          requiresWitnessSignature: true,
+          witnessedAt: null,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    expect(manifest.encounter.clinicalDocumentationEntries[0]?.witnessStatus).toBe(
+      "PENDING_WITNESS"
+    );
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("[PENDING WITNESS]");
+    expect(html).toContain("400 mL");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

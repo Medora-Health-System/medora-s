@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CLINICAL_DOCUMENTATION_CATEGORY_META,
   EDOC_BASIC_STRUCTURED_CARD_ID,
+  EDOC5_INTAKE_OUTPUT_CARD_IDS,
+  calculateIntakeOutputTotals,
   canWitnessClinicalDocumentationEntry,
   clinicalDocumentationPendingWitness,
   type ClinicalDocumentationCard,
@@ -28,6 +30,10 @@ import {
   ClinicalDocumentationStrokeForm,
   isEdoc4StrokeFormCard,
 } from "./ClinicalDocumentationStrokeForm";
+import {
+  ClinicalDocumentationIntakeOutputForm,
+  isEdoc5IntakeOutputFormCard,
+} from "./ClinicalDocumentationIntakeOutputForm";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -119,6 +125,25 @@ export function ClinicalDocumentationHub({
     if (selectedCategory === "ALL") return searched;
     return searched.filter((c) => c.category === selectedCategory);
   }, [careSetting, locale, search, selectedCategory]);
+
+  const intakeOutputTotals = useMemo(() => {
+    const ioEntries = entries
+      .filter(
+        (e) =>
+          !e.voidedAt &&
+          (EDOC5_INTAKE_OUTPUT_CARD_IDS as readonly string[]).includes(e.cardId)
+      )
+      .map((e) => ({
+        cardId: e.cardId,
+        payload: (e.payloadJson ?? {}) as Record<string, unknown>,
+      }));
+    return calculateIntakeOutputTotals(ioEntries);
+  }, [entries]);
+
+  const showIntakeOutputTotals =
+    intakeOutputTotals.totalIntakeMl > 0 ||
+    intakeOutputTotals.totalOutputMl > 0 ||
+    selectedCategory === "INTAKE_OUTPUT";
 
   const categoryMeta = (id: ClinicalDocumentationCategory) =>
     CLINICAL_DOCUMENTATION_CATEGORY_META.find((m) => m.id === id);
@@ -469,6 +494,40 @@ export function ClinicalDocumentationHub({
         <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b" }}>{saveMessage}</p>
       ) : null}
 
+      {showIntakeOutputTotals ? (
+        <div
+          data-testid="clinical-documentation-io-mini-totals"
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            marginBottom: 10,
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            background: "#fff",
+            fontSize: 12,
+            color: "#334155",
+          }}
+        >
+          <span>
+            {t("clinicalDocumentation.forms.intakeOutput.miniTotalIntake")}:{" "}
+            <strong>{intakeOutputTotals.totalIntakeMl} mL</strong>
+          </span>
+          <span>
+            {t("clinicalDocumentation.forms.intakeOutput.miniTotalOutput")}:{" "}
+            <strong>{intakeOutputTotals.totalOutputMl} mL</strong>
+          </span>
+          <span>
+            {t("clinicalDocumentation.forms.intakeOutput.miniNetBalance")}:{" "}
+            <strong>
+              {intakeOutputTotals.netBalanceMl >= 0 ? "+" : ""}
+              {intakeOutputTotals.netBalanceMl} mL
+            </strong>
+          </span>
+        </div>
+      ) : null}
+
       {scopedCards.length === 0 ? (
         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("clinicalDocumentation.noCards")}</p>
       ) : (
@@ -573,6 +632,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc4StrokeFormCard(c.id) ? (
                 <ClinicalDocumentationStrokeForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc5IntakeOutputFormCard(c.id) ? (
+                <ClinicalDocumentationIntakeOutputForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => saveObservationEntry(c, payload)}

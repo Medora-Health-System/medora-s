@@ -623,6 +623,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["I&O", "intake output", "entrées sorties", "fluid balance"],
     descriptionEn: "Comprehensive intake and output record.",
     descriptionFr: "Bilan entrées / sorties global.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_fluid_intake",
@@ -637,13 +639,15 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["fluid intake", "apports"],
     descriptionEn: "IV and other fluid intake.",
     descriptionFr: "Apports hydriques (IV et autres).",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_po_intake",
     titleEn: "PO Intake",
     titleFr: "Apports per os",
     category: "INTAKE_OUTPUT",
-    careSettings: ED_OBS,
+    careSettings: ED_INPATIENT,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.intakeOutput.poIntake",
     repeatable: true,
@@ -651,6 +655,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["PO intake", "oral intake", "per os"],
     descriptionEn: "Oral intake documentation.",
     descriptionFr: "Apports par voie orale.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_iv_intake",
@@ -665,6 +671,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["IV intake", "intravenous"],
     descriptionEn: "Intravenous fluid intake.",
     descriptionFr: "Apports intraveineux.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_blood_product_intake",
@@ -679,6 +687,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["blood intake", "transfusion volume"],
     descriptionEn: "Blood product volume as intake.",
     descriptionFr: "Volume produit sanguin (apport).",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_urine_output",
@@ -693,6 +703,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["urine output", "diurèse"],
     descriptionEn: "Urine output measurement.",
     descriptionFr: "Mesure de la diurèse.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_stool_output",
@@ -707,6 +719,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["stool", "selles", "bowel"],
     descriptionEn: "Stool output documentation.",
     descriptionFr: "Documentation selles.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_emesis_output",
@@ -721,6 +735,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["emesis", "vomit", "vomissements"],
     descriptionEn: "Emesis output documentation.",
     descriptionFr: "Documentation vomissements.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_ng_output",
@@ -735,13 +751,15 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["NG output", "nasogastric"],
     descriptionEn: "Nasogastric drainage output.",
     descriptionFr: "Sorties par sonde nasogastrique.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
   card({
     id: "io_drain_output",
     titleEn: "Drain Output",
     titleFr: "Drains",
     category: "INTAKE_OUTPUT",
-    careSettings: ["INPATIENT", "ICU"],
+    careSettings: ED_INPATIENT,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.intakeOutput.drain",
     repeatable: true,
@@ -749,6 +767,8 @@ const INTAKE_OUTPUT_CARDS: ClinicalDocumentationCard[] = [
     searchAliases: ["drain output", "JP drain", "drain"],
     descriptionEn: "Surgical drain output.",
     descriptionFr: "Sorties de drains chirurgicaux.",
+    implementationStatus: "AVAILABLE",
+    status: "ACTIVE",
   }),
 ];
 

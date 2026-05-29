@@ -3,6 +3,10 @@ import {
   EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
   validateStrokePayloadForCard,
 } from "./strokeDocumentationPayloads.js";
+import {
+  EDOC5_INTAKE_OUTPUT_CARD_IDS,
+  validateIntakeOutputPayloadForCard,
+} from "./intakeOutputDocumentationPayloads.js";
 
 /** EDOC.2 — minimal foundation card (generic key/value only for this card). */
 export const EDOC_BASIC_STRUCTURED_CARD_ID = "edoc_basic_structured_v1" as const;
@@ -121,10 +125,11 @@ const PAYLOAD_SCHEMA_BY_CARD_ID: Record<
   [OBS_DISCHARGE_READINESS_CARD_ID]: dischargeReadinessPayloadSchema,
 };
 
-/** Cards with registered Zod validators (EDOC.2 basic + EDOC.3 observation + EDOC.4 stroke). */
+/** Cards with registered Zod validators (EDOC.2 basic + EDOC.3 observation + EDOC.4 stroke + EDOC.5 I&O). */
 export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...Object.keys(PAYLOAD_SCHEMA_BY_CARD_ID),
   ...EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
+  ...EDOC5_INTAKE_OUTPUT_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -139,7 +144,14 @@ export function validatePayloadForCard(
     }
     return { ok: true, data: parsed.data as Record<string, unknown> };
   }
-  return validateStrokePayloadForCard(cardId, payload);
+  const strokeResult = validateStrokePayloadForCard(cardId, payload);
+  if (
+    strokeResult.ok ||
+    (EDOC4_STROKE_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return strokeResult;
+  }
+  return validateIntakeOutputPayloadForCard(cardId, payload);
 }
 
 function yesNoFr(v: boolean): string {

@@ -19,7 +19,7 @@ describe("clinicalDocumentationPayloadGovernance (EDOC.2A / EDOC.3)", () => {
     expect(cardHasRegisteredPayloadValidator(EDOC_BASIC_STRUCTURED_CARD_ID)).toBe(true);
     expect(cardHasRegisteredPayloadValidator("obs_po_challenge")).toBe(true);
     expect(cardHasRegisteredPayloadValidator("score_nihss")).toBe(false);
-    expect(cardHasRegisteredPayloadValidator("io_intake_output")).toBe(false);
+    expect(cardHasRegisteredPayloadValidator("io_intake_output")).toBe(true);
   });
 
   it("foundation-only cards cannot be saved", () => {

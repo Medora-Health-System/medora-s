@@ -4,6 +4,9 @@ import {
   ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
   EDOC_BASIC_STRUCTURED_CARD_ID,
   FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
+  IO_BLOOD_PRODUCT_INTAKE_CARD_ID,
+  IO_PO_INTAKE_CARD_ID,
+  IO_URINE_OUTPUT_CARD_ID,
   OBS_AMBULATION_TRIAL_CARD_ID,
   OBS_PO_CHALLENGE_CARD_ID,
   STROKE_NIHSS_CARD_ID,
@@ -516,6 +519,120 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
         category: "STROKE_DOCUMENTATION",
         cardId: STROKE_NIHSS_CARD_ID,
         payloadJson: NIHSS_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requiresWitnessSignature: true }),
+      })
+    );
+  });
+
+  const PO_INTAKE_PAYLOAD = {
+    recordedAt: "2026-05-28T14:00:00.000Z",
+    amount: 240,
+    unit: "ML",
+    substance: "water",
+    tolerated: "YES",
+    nausea: false,
+    vomiting: false,
+  };
+
+  const URINE_OUTPUT_PAYLOAD = {
+    recordedAt: "2026-05-28T15:00:00.000Z",
+    amount: 400,
+    unit: "ML",
+    method: "FOLEY",
+  };
+
+  const BLOOD_PRODUCT_INTAKE_PAYLOAD = {
+    recordedAt: "2026-05-28T16:00:00.000Z",
+    amount: 350,
+    unit: "ML",
+    productType: "PRBC",
+    transfusionRecordLinked: false,
+    reactionSuspected: false,
+  };
+
+  it("POST PO Intake persists (EDOC.5)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "INTAKE_OUTPUT",
+        cardId: IO_PO_INTAKE_CARD_ID,
+        payloadJson: PO_INTAKE_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(IO_PO_INTAKE_CARD_ID);
+    expect(saved.payloadSummary.some((l) => l.key === "PO")).toBe(true);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST Urine Output persists (EDOC.5)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "INTAKE_OUTPUT",
+        cardId: IO_URINE_OUTPUT_CARD_ID,
+        payloadJson: URINE_OUTPUT_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(IO_URINE_OUTPUT_CARD_ID);
+    expect(saved.payloadSummary.some((l) => l.key === "Méthode")).toBe(true);
+  });
+
+  it("POST Blood Product Intake persists as I&O only (EDOC.5)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "INTAKE_OUTPUT",
+        cardId: IO_BLOOD_PRODUCT_INTAKE_CARD_ID,
+        payloadJson: BLOOD_PRODUCT_INTAKE_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(IO_BLOOD_PRODUCT_INTAKE_CARD_ID);
+    expect(saved.payloadSummary.some((l) => l.key === "Apport produit sanguin")).toBe(true);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects invalid negative I&O amount (EDOC.5)", async () => {
+    const { svc, create } = buildService();
+    await expect(
+      svc.createEntry(
+        "f1",
+        "e1",
+        {
+          category: "INTAKE_OUTPUT",
+          cardId: IO_PO_INTAKE_CARD_ID,
+          payloadJson: { ...PO_INTAKE_PAYLOAD, amount: -10 },
+        },
+        "u1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("witness policy can mark Blood Product Intake pending when configured (EDOC.5)", async () => {
+    const { svc, create } = buildService({
+      facilityPolicy: { additionalCardIds: [IO_BLOOD_PRODUCT_INTAKE_CARD_ID] },
+    });
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "INTAKE_OUTPUT",
+        cardId: IO_BLOOD_PRODUCT_INTAKE_CARD_ID,
+        payloadJson: BLOOD_PRODUCT_INTAKE_PAYLOAD,
       },
       "u1"
     );

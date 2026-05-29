@@ -15,6 +15,10 @@ import {
   summarizeStrokeDocumentationPayload,
 } from "./strokeDocumentationPayloads.js";
 import {
+  EDOC5_INTAKE_OUTPUT_CARD_IDS,
+  summarizeIntakeOutputDocumentationPayload,
+} from "./intakeOutputDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -25,6 +29,7 @@ export {
 } from "./observationDocumentationPayloads.js";
 export * from "./observationDocumentationPayloads.js";
 export * from "./strokeDocumentationPayloads.js";
+export * from "./intakeOutputDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -206,6 +211,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC4_STROKE_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const strokeLines = summarizeStrokeDocumentationPayload(cardId, payload);
     if (strokeLines.length > 0) return strokeLines;
+  }
+  if ((EDOC5_INTAKE_OUTPUT_CARD_IDS as readonly string[]).includes(cardId)) {
+    const ioLines = summarizeIntakeOutputDocumentationPayload(cardId, payload);
+    if (ioLines.length > 0) return ioLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: Array<{ key: string; value: string }> = [];
