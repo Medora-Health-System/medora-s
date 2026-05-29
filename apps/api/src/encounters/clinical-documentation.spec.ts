@@ -6,6 +6,8 @@ import {
   FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS,
   OBS_AMBULATION_TRIAL_CARD_ID,
   OBS_PO_CHALLENGE_CARD_ID,
+  STROKE_NIHSS_CARD_ID,
+  STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
 
@@ -422,5 +424,105 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("payloadJson");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  const NIHSS_PAYLOAD = {
+    assessedAt: "2026-05-28T14:00:00.000Z",
+    levelOfConsciousness: 0,
+    locQuestions: 1,
+    locCommands: 0,
+    bestGaze: 0,
+    visualFields: 0,
+    facialPalsy: 1,
+    motorArmLeft: 2,
+    motorArmRight: 0,
+    motorLegLeft: 1,
+    motorLegRight: 0,
+    limbAtaxia: 0,
+    sensory: 0,
+    bestLanguage: 0,
+    dysarthria: 0,
+    extinctionInattention: 0,
+    totalScore: 5,
+  };
+
+  it("POST NIHSS persists (EDOC.4 stroke)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: STROKE_NIHSS_CARD_ID,
+        payloadJson: NIHSS_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(STROKE_NIHSS_CARD_ID);
+    expect(saved.payloadSummary.some((l) => l.key === "Score NIHSS total")).toBe(true);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("POST Swallow Screen persists (EDOC.4 stroke)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: STROKE_SWALLOW_SCREEN_CARD_ID,
+        payloadJson: {
+          screenedAt: "2026-05-28T14:00:00.000Z",
+          alertEnoughForScreen: true,
+          facialDroopOrWeakness: false,
+          speechDifficulty: false,
+          coughOrWetVoice: false,
+          failedWaterTrial: false,
+          result: "PASSED",
+          npoRecommended: false,
+          providerNotified: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.cardId).toBe(STROKE_SWALLOW_SCREEN_CARD_ID);
+  });
+
+  it("rejects invalid NIHSS payload (EDOC.4 stroke)", async () => {
+    const { svc, create } = buildService();
+    await expect(
+      svc.createEntry(
+        "f1",
+        "e1",
+        {
+          category: "STROKE_DOCUMENTATION",
+          cardId: STROKE_NIHSS_CARD_ID,
+          payloadJson: { ...NIHSS_PAYLOAD, totalScore: 99 },
+        },
+        "u1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("witness policy can mark NIHSS pending when configured (EDOC.4 stroke)", async () => {
+    const { svc, create } = buildService({
+      facilityPolicy: { additionalCardIds: [STROKE_NIHSS_CARD_ID] },
+    });
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: STROKE_NIHSS_CARD_ID,
+        payloadJson: NIHSS_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ requiresWitnessSignature: true }),
+      })
+    );
   });
 });

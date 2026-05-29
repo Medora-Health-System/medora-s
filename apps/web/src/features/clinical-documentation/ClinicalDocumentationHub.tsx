@@ -24,6 +24,10 @@ import {
   ClinicalDocumentationObservationForm,
   isEdoc3ObservationFormCard,
 } from "./ClinicalDocumentationObservationForm";
+import {
+  ClinicalDocumentationStrokeForm,
+  isEdoc4StrokeFormCard,
+} from "./ClinicalDocumentationStrokeForm";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -561,6 +565,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc3ObservationFormCard(c.id) ? (
                 <ClinicalDocumentationObservationForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc4StrokeFormCard(c.id) ? (
+                <ClinicalDocumentationStrokeForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => saveObservationEntry(c, payload)}

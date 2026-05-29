@@ -62,6 +62,7 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
   it("category listing returns stroke and cardiac cards", () => {
     const stroke = listClinicalDocumentationCardsByCategory("STROKE_DOCUMENTATION");
     expect(stroke.some((c) => c.id === "stroke_swallow_screen")).toBe(true);
+    expect(getClinicalDocumentationCardById("stroke_nihss")?.implementationStatus).toBe("AVAILABLE");
     const cardiac = listClinicalDocumentationCardsByCategory("CARDIAC_MONITORING_DOCUMENTATION");
     expect(cardiac.some((c) => c.id === "cardiac_ekg_12_lead")).toBe(true);
     expect(cardiac.some((c) => c.id === "cardiac_telemetry_initiation")).toBe(true);

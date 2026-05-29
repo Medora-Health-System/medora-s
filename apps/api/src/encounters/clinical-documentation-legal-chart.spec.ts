@@ -10,7 +10,7 @@ import {
   EncounterChartExportService,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
-import { EDOC_BASIC_STRUCTURED_CARD_ID, OBS_PO_CHALLENGE_CARD_ID } from "@medora/shared";
+import { EDOC_BASIC_STRUCTURED_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
 
 const SAMPLE_ENTRY = {
   id: "edoc-legal-1",
@@ -298,6 +298,61 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const html = renderEncounterChartExportHtml(manifest);
     expect(html).toContain("Apple juice");
     expect(html).toContain("Réussi");
+  });
+
+  it("renders NIHSS in chart export JSON and HTML (EDOC.4 stroke)", async () => {
+    const nihssPayload = {
+      assessedAt: "2026-05-28T17:00:00.000Z",
+      levelOfConsciousness: 0,
+      locQuestions: 1,
+      locCommands: 0,
+      bestGaze: 0,
+      visualFields: 0,
+      facialPalsy: 1,
+      motorArmLeft: 2,
+      motorArmRight: 0,
+      motorLegLeft: 1,
+      motorLegRight: 0,
+      limbAtaxia: 0,
+      sensory: 0,
+      bestLanguage: 0,
+      dysarthria: 0,
+      extinctionInattention: 0,
+      totalScore: 5,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-nihss-1",
+          category: "STROKE_DOCUMENTATION",
+          cardId: STROKE_NIHSS_CARD_ID,
+          payloadJson: nihssPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(nihssPayload);
+    expect(row.payloadSummary.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(
+      true
+    );
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("Score NIHSS total");
+    expect(html).toContain("STROKE_DOCUMENTATION");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
+  validateStrokePayloadForCard,
+} from "./strokeDocumentationPayloads.js";
 
 /** EDOC.2 — minimal foundation card (generic key/value only for this card). */
 export const EDOC_BASIC_STRUCTURED_CARD_ID = "edoc_basic_structured_v1" as const;
@@ -117,24 +121,25 @@ const PAYLOAD_SCHEMA_BY_CARD_ID: Record<
   [OBS_DISCHARGE_READINESS_CARD_ID]: dischargeReadinessPayloadSchema,
 };
 
-/** Cards with registered Zod validators (EDOC.2 basic + EDOC.3 observation). */
-export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = Object.keys(
-  PAYLOAD_SCHEMA_BY_CARD_ID
-) as string[];
+/** Cards with registered Zod validators (EDOC.2 basic + EDOC.3 observation + EDOC.4 stroke). */
+export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
+  ...Object.keys(PAYLOAD_SCHEMA_BY_CARD_ID),
+  ...EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
+] as string[];
 
 export function validatePayloadForCard(
   cardId: string,
   payload: Record<string, unknown>
 ): { ok: true; data: Record<string, unknown> } | { ok: false; message: string } {
   const schema = PAYLOAD_SCHEMA_BY_CARD_ID[cardId];
-  if (!schema) {
-    return { ok: false, message: "Card is not available for structured save" };
+  if (schema) {
+    const parsed = schema.safeParse(payload);
+    if (!parsed.success) {
+      return { ok: false, message: "Invalid clinical documentation payload" };
+    }
+    return { ok: true, data: parsed.data as Record<string, unknown> };
   }
-  const parsed = schema.safeParse(payload);
-  if (!parsed.success) {
-    return { ok: false, message: "Invalid clinical documentation payload" };
-  }
-  return { ok: true, data: parsed.data as Record<string, unknown> };
+  return validateStrokePayloadForCard(cardId, payload);
 }
 
 function yesNoFr(v: boolean): string {
