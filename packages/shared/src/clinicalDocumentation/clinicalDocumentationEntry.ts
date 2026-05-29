@@ -24,10 +24,13 @@ import {
 } from "./restraintDocumentationPayloads.js";
 import {
   EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
+  finalizeBloodProductPayloadAfterWitness,
+  formatClinicalDocumentationSignerSummaryLines,
   summarizeBloodProductDocumentationPayload,
 } from "./bloodProductDocumentationPayloads.js";
 import {
   EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS,
+  finalizeHighAlertInfusionPayloadAfterWitness,
   summarizeHighAlertInfusionDocumentationPayload,
 } from "./highAlertInfusionDocumentationPayloads.js";
 import {
@@ -65,6 +68,15 @@ export const clinicalDocumentationEntryCreateDtoSchema = z.object({
 
 export type ClinicalDocumentationEntryCreateDto = z.infer<
   typeof clinicalDocumentationEntryCreateDtoSchema
+>;
+
+export const clinicalDocumentationEntryCreateWithWitnessDtoSchema =
+  clinicalDocumentationEntryCreateDtoSchema.extend({
+    witnessUserId: z.string().trim().min(1).max(120),
+  });
+
+export type ClinicalDocumentationEntryCreateWithWitnessDto = z.infer<
+  typeof clinicalDocumentationEntryCreateWithWitnessDtoSchema
 >;
 
 export type ClinicalDocumentationEntryResponse = {
@@ -154,6 +166,16 @@ export function buildClinicalDocumentationWitnessAuditMetadata(
   input: ClinicalDocumentationWitnessAuditMetadata
 ): ClinicalDocumentationWitnessAuditMetadata {
   return { ...input };
+}
+
+/** Unified payload finalization after witness (EDOC.8B — blood product, high-alert verification). */
+export function finalizeClinicalDocumentationPayloadAfterWitness(
+  cardId: string,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  let result = finalizeBloodProductPayloadAfterWitness(cardId, payload);
+  result = finalizeHighAlertInfusionPayloadAfterWitness(cardId, result);
+  return result;
 }
 
 export function assertClinicalDocumentationAuditMetadataSafe(
@@ -383,10 +405,39 @@ export function mapClinicalDocumentationEntryForLegalChart(
     base.cardId,
     base.payloadJson
   );
+  const includeSignerLines =
+    base.requiresWitnessSignature ||
+    (EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(base.cardId);
+  const signerEn = includeSignerLines
+    ? formatClinicalDocumentationSignerSummaryLines(
+        {
+          authorDisplayName: base.authorDisplayName,
+          authorRoleTitle: base.authorRoleTitle,
+          witnessedAt: base.witnessedAt,
+          witnessDisplayName: base.witnessDisplayName,
+          witnessRoleTitle: base.witnessRoleTitle,
+        },
+        "en"
+      )
+    : [];
+  const signerFr = includeSignerLines
+    ? formatClinicalDocumentationSignerSummaryLines(
+        {
+          authorDisplayName: base.authorDisplayName,
+          authorRoleTitle: base.authorRoleTitle,
+          witnessedAt: base.witnessedAt,
+          witnessDisplayName: base.witnessDisplayName,
+          witnessRoleTitle: base.witnessRoleTitle,
+        },
+        "fr"
+      )
+    : [];
+  const mergedEn = [...signerEn, ...payloadSummaryEn];
+  const mergedFr = [...signerFr, ...payloadSummaryFr];
   return {
     ...base,
-    payloadSummaryEn,
-    payloadSummaryFr,
-    payloadSummary: payloadSummaryEn,
+    payloadSummaryEn: mergedEn,
+    payloadSummaryFr: mergedFr,
+    payloadSummary: mergedEn,
   };
 }

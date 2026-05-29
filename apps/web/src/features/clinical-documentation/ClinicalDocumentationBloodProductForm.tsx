@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import {
   BLOOD_PRODUCT_COMPLETION_CARD_ID,
   BLOOD_PRODUCT_INITIATION_CARD_ID,
+  BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_REACTION_CARD_ID,
   BLOOD_PRODUCT_REASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_SPECIAL_REQUIREMENT_OPTIONS,
@@ -22,6 +23,10 @@ import {
   ClinicalDocumentationBooleanField,
   ClinicalDocumentationSelectField,
 } from "./ClinicalDocumentationFieldControls";
+import {
+  BloodProductVolumeSelect,
+  isValidBloodProductUnitVolumeMl,
+} from "./BloodProductVolumeSelect";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -172,6 +177,7 @@ export function ClinicalDocumentationBloodProductForm({
     verificationTime: nowLocalDatetimeValue(),
     productType: "PRBC" as (typeof BLOOD_PRODUCT_TYPE_OPTIONS)[number]["value"],
     unitIdentifier: "",
+    unitVolumeMl: 250,
     patientIdentityVerified: true,
     bloodTypeVerified: true,
     crossmatchVerified: true,
@@ -185,6 +191,7 @@ export function ClinicalDocumentationBloodProductForm({
     startTime: nowLocalDatetimeValue(),
     productType: "PRBC" as (typeof BLOOD_PRODUCT_TYPE_OPTIONS)[number]["value"],
     unitIdentifier: "",
+    unitVolumeMl: 250,
     baselineTemperature: "37.0",
     baselineHeartRate: 80,
     baselineRespRate: 16,
@@ -212,25 +219,48 @@ export function ClinicalDocumentationBloodProductForm({
     notes: "",
   });
 
+  const [preAssessment, setPreAssessment] = useState({
+    assessmentTime: nowLocalDatetimeValue(),
+    productType: "PRBC" as (typeof BLOOD_PRODUCT_TYPE_OPTIONS)[number]["value"],
+    unitIdentifier: "",
+    unitVolumeMl: 250,
+    baselineTemperature: "37.0",
+    baselineHeartRate: 80,
+    baselineRespRate: 16,
+    baselineBloodPressure: "120/80",
+    baselineSpo2: 98,
+    patientIdentityVerified: true,
+    consentVerified: true,
+    symptomsPresent: false,
+    symptomChecklist: [] as string[],
+    notes: "",
+  });
+
   const [reaction, setReaction] = useState({
     reactionTime: nowLocalDatetimeValue(),
-    reactionType: "SUSPECTED" as (typeof BLOOD_REACTION_TYPE_OPTIONS)[number]["value"],
-    symptoms: ["FEVER"] as string[],
-    transfusionStopped: true,
-    providerNotified: true,
-    bloodBankNotified: true,
-    reactionWorkupStarted: true,
+    reactionType: "NO_REACTION" as (typeof BLOOD_REACTION_TYPE_OPTIONS)[number]["value"],
+    symptoms: [] as string[],
+    providerNotified: false,
+    interventionRequired: false,
+    transfusionStopped: false,
+    bloodBankNotified: false,
+    reactionWorkupStarted: false,
     notes: "",
   });
 
   const [completion, setCompletion] = useState({
     completionTime: nowLocalDatetimeValue(),
+    endTime: nowLocalDatetimeValue(),
     productType: "PRBC" as (typeof BLOOD_PRODUCT_TYPE_OPTIONS)[number]["value"],
     unitIdentifier: "",
     volumeInfusedMl: 250,
+    postTemperature: "37.0",
+    postHeartRate: 80,
+    postRespRate: 16,
+    postBloodPressure: "120/80",
+    postSpo2: 98,
+    reactionObserved: false,
     transfusionCompleted: true,
-    reactionOccurred: false,
-    postVitalsReviewed: true,
     providerNotified: false,
     notes: "",
   });
@@ -250,14 +280,34 @@ export function ClinicalDocumentationBloodProductForm({
     if (cardId === BLOOD_PRODUCT_INITIATION_CARD_ID) {
       return t("clinicalDocumentation.forms.bloodProduct.initiationWitnessNotice");
     }
-    if (cardId === BLOOD_PRODUCT_COMPLETION_CARD_ID) {
-      return t("clinicalDocumentation.forms.bloodProduct.completionWitnessNotice");
-    }
     return null;
   }, [cardId, t]);
 
+  const reactionDocumented = reaction.reactionType !== "NO_REACTION";
+
   async function save() {
     setValidationError(null);
+    if (
+      cardId === BLOOD_PRODUCT_VERIFICATION_CARD_ID &&
+      !isValidBloodProductUnitVolumeMl(verification.unitVolumeMl)
+    ) {
+      setValidationError(t("clinicalDocumentation.forms.bloodProduct.validationError"));
+      return;
+    }
+    if (
+      cardId === BLOOD_PRODUCT_INITIATION_CARD_ID &&
+      !isValidBloodProductUnitVolumeMl(initiation.unitVolumeMl)
+    ) {
+      setValidationError(t("clinicalDocumentation.forms.bloodProduct.validationError"));
+      return;
+    }
+    if (
+      cardId === BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID &&
+      !isValidBloodProductUnitVolumeMl(preAssessment.unitVolumeMl)
+    ) {
+      setValidationError(t("clinicalDocumentation.forms.bloodProduct.validationError"));
+      return;
+    }
     let payload: Record<string, unknown>;
     switch (cardId) {
       case BLOOD_PRODUCT_VERIFICATION_CARD_ID:
@@ -270,6 +320,24 @@ export function ClinicalDocumentationBloodProductForm({
         payload = {
           ...initiation,
           startTime: toIsoFromLocalDatetime(initiation.startTime),
+        };
+        break;
+      case BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID:
+        payload = {
+          assessmentTime: toIsoFromLocalDatetime(preAssessment.assessmentTime),
+          productType: preAssessment.productType,
+          unitIdentifier: preAssessment.unitIdentifier,
+          unitVolumeMl: preAssessment.unitVolumeMl,
+          baselineTemperature: preAssessment.baselineTemperature,
+          baselineHeartRate: preAssessment.baselineHeartRate,
+          baselineRespRate: preAssessment.baselineRespRate,
+          baselineBloodPressure: preAssessment.baselineBloodPressure,
+          baselineSpo2: preAssessment.baselineSpo2,
+          patientIdentityVerified: preAssessment.patientIdentityVerified,
+          consentVerified: preAssessment.consentVerified,
+          symptomsPresent: preAssessment.symptomsPresent,
+          symptomChecklist: preAssessment.symptomChecklist,
+          notes: preAssessment.notes || undefined,
         };
         break;
       case BLOOD_PRODUCT_REASSESSMENT_CARD_ID:
@@ -288,6 +356,7 @@ export function ClinicalDocumentationBloodProductForm({
         payload = {
           ...completion,
           completionTime: toIsoFromLocalDatetime(completion.completionTime),
+          endTime: toIsoFromLocalDatetime(completion.endTime),
         };
         break;
       case MASSIVE_TRANSFUSION_PROTOCOL_EVENT_CARD_ID:
@@ -344,6 +413,13 @@ export function ClinicalDocumentationBloodProductForm({
               value={verification.unitIdentifier}
               onChange={(v) => setVerification({ ...verification, unitIdentifier: v })}
               testId="blood-verification-unit-id"
+            />
+            <BloodProductVolumeSelect
+              unitVolumeMl={verification.unitVolumeMl}
+              onChangeVolumeMl={(unitVolumeMl) =>
+                setVerification({ ...verification, unitVolumeMl })
+              }
+              testIdPrefix="blood-verification"
             />
             <ClinicalDocumentationSelectField
               label={t("clinicalDocumentation.forms.bloodProduct.specialRequirements")}
@@ -416,6 +492,11 @@ export function ClinicalDocumentationBloodProductForm({
               onChange={(v) => setInitiation({ ...initiation, unitIdentifier: v })}
               testId="blood-initiation-unit-id"
             />
+            <BloodProductVolumeSelect
+              unitVolumeMl={initiation.unitVolumeMl}
+              onChangeVolumeMl={(unitVolumeMl) => setInitiation({ ...initiation, unitVolumeMl })}
+              testIdPrefix="blood-initiation"
+            />
           </div>
           <div style={rowStyle}>
             <TextField
@@ -473,6 +554,99 @@ export function ClinicalDocumentationBloodProductForm({
         </>
       ) : null}
 
+      {cardId === BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID ? (
+        <>
+          <div style={rowStyle}>
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.assessmentTime")}
+              value={preAssessment.assessmentTime}
+              onChange={(v) => setPreAssessment({ ...preAssessment, assessmentTime: v })}
+              testId="blood-pre-assessment-time"
+              type="datetime-local"
+            />
+            <ClinicalDocumentationSelectField
+              label={t("clinicalDocumentation.forms.bloodProduct.productType")}
+              value={preAssessment.productType}
+              options={BLOOD_PRODUCT_TYPE_OPTIONS}
+              locale={locale}
+              onChange={(v) => setPreAssessment({ ...preAssessment, productType: v })}
+            />
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.unitIdentifier")}
+              value={preAssessment.unitIdentifier}
+              onChange={(v) => setPreAssessment({ ...preAssessment, unitIdentifier: v })}
+              testId="blood-pre-assessment-unit-id"
+            />
+            <BloodProductVolumeSelect
+              unitVolumeMl={preAssessment.unitVolumeMl}
+              onChangeVolumeMl={(unitVolumeMl) =>
+                setPreAssessment({ ...preAssessment, unitVolumeMl })
+              }
+              testIdPrefix="blood-pre-assessment"
+            />
+          </div>
+          <div style={rowStyle}>
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.baselineTemperature")}
+              value={preAssessment.baselineTemperature}
+              onChange={(v) => setPreAssessment({ ...preAssessment, baselineTemperature: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.baselineHeartRate")}
+              value={preAssessment.baselineHeartRate}
+              onChange={(v) => setPreAssessment({ ...preAssessment, baselineHeartRate: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.baselineRespRate")}
+              value={preAssessment.baselineRespRate}
+              onChange={(v) => setPreAssessment({ ...preAssessment, baselineRespRate: v })}
+            />
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.baselineBloodPressure")}
+              value={preAssessment.baselineBloodPressure}
+              onChange={(v) => setPreAssessment({ ...preAssessment, baselineBloodPressure: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.baselineSpo2")}
+              value={preAssessment.baselineSpo2}
+              onChange={(v) => setPreAssessment({ ...preAssessment, baselineSpo2: v })}
+            />
+          </div>
+          <div style={rowStyle}>
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.bloodProduct.patientIdentityVerified")}
+              value={preAssessment.patientIdentityVerified}
+              locale={locale}
+              onChange={(v) => setPreAssessment({ ...preAssessment, patientIdentityVerified: v })}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.bloodProduct.consentVerified")}
+              value={preAssessment.consentVerified}
+              locale={locale}
+              onChange={(v) => setPreAssessment({ ...preAssessment, consentVerified: v })}
+            />
+          </div>
+          <ClinicalDocumentationBooleanField
+            label={t("clinicalDocumentation.forms.bloodProduct.symptomsPresent")}
+            value={preAssessment.symptomsPresent}
+            locale={locale}
+            onChange={(v) => setPreAssessment({ ...preAssessment, symptomsPresent: v })}
+          />
+          {preAssessment.symptomsPresent ? (
+            <CheckboxMulti
+              label={t("clinicalDocumentation.forms.bloodProduct.symptomChecklist")}
+              options={BLOOD_REASSESSMENT_SYMPTOM_OPTIONS}
+              selected={preAssessment.symptomChecklist}
+              locale={locale}
+              onChange={(symptomChecklist) =>
+                setPreAssessment({ ...preAssessment, symptomChecklist })
+              }
+              testIdPrefix="blood-pre-assessment-symptom"
+            />
+          ) : null}
+        </>
+      ) : null}
+
       {cardId === BLOOD_PRODUCT_REASSESSMENT_CARD_ID ? (
         <>
           <div style={rowStyle}>
@@ -521,7 +695,9 @@ export function ClinicalDocumentationBloodProductForm({
               options={BLOOD_REASSESSMENT_SYMPTOM_OPTIONS}
               selected={reassessment.symptomChecklist}
               locale={locale}
-              onChange={(symptomChecklist) => setReassessment({ ...reassessment, symptomChecklist })}
+              onChange={(symptomChecklist) =>
+                setReassessment({ ...reassessment, symptomChecklist })
+              }
               testIdPrefix="blood-reassessment-symptom"
             />
           ) : null}
@@ -561,40 +737,50 @@ export function ClinicalDocumentationBloodProductForm({
               testId="blood-reaction-type"
             />
           </div>
-          <CheckboxMulti
-            label={t("clinicalDocumentation.forms.bloodProduct.reactionSymptoms")}
-            options={BLOOD_REACTION_SYMPTOM_OPTIONS}
-            selected={reaction.symptoms}
-            locale={locale}
-            onChange={(symptoms) => setReaction({ ...reaction, symptoms })}
-            testIdPrefix="blood-reaction-symptom"
-          />
-          <div style={rowStyle}>
-            <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.transfusionStopped")}
-              value={reaction.transfusionStopped}
-              locale={locale}
-              onChange={(v) => setReaction({ ...reaction, transfusionStopped: v })}
-            />
-            <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.providerNotified")}
-              value={reaction.providerNotified}
-              locale={locale}
-              onChange={(v) => setReaction({ ...reaction, providerNotified: v })}
-            />
-            <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.bloodBankNotified")}
-              value={reaction.bloodBankNotified}
-              locale={locale}
-              onChange={(v) => setReaction({ ...reaction, bloodBankNotified: v })}
-            />
-            <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.reactionWorkupStarted")}
-              value={reaction.reactionWorkupStarted}
-              locale={locale}
-              onChange={(v) => setReaction({ ...reaction, reactionWorkupStarted: v })}
-            />
-          </div>
+          {reactionDocumented ? (
+            <>
+              <CheckboxMulti
+                label={t("clinicalDocumentation.forms.bloodProduct.reactionSymptoms")}
+                options={BLOOD_REACTION_SYMPTOM_OPTIONS}
+                selected={reaction.symptoms}
+                locale={locale}
+                onChange={(symptoms) => setReaction({ ...reaction, symptoms })}
+                testIdPrefix="blood-reaction-symptom"
+              />
+              <div style={rowStyle}>
+                <ClinicalDocumentationBooleanField
+                  label={t("clinicalDocumentation.forms.bloodProduct.providerNotified")}
+                  value={reaction.providerNotified}
+                  locale={locale}
+                  onChange={(v) => setReaction({ ...reaction, providerNotified: v })}
+                />
+                <ClinicalDocumentationBooleanField
+                  label={t("clinicalDocumentation.forms.bloodProduct.interventionRequired")}
+                  value={reaction.interventionRequired}
+                  locale={locale}
+                  onChange={(v) => setReaction({ ...reaction, interventionRequired: v })}
+                />
+                <ClinicalDocumentationBooleanField
+                  label={t("clinicalDocumentation.forms.bloodProduct.transfusionStopped")}
+                  value={reaction.transfusionStopped}
+                  locale={locale}
+                  onChange={(v) => setReaction({ ...reaction, transfusionStopped: v })}
+                />
+                <ClinicalDocumentationBooleanField
+                  label={t("clinicalDocumentation.forms.bloodProduct.bloodBankNotified")}
+                  value={reaction.bloodBankNotified}
+                  locale={locale}
+                  onChange={(v) => setReaction({ ...reaction, bloodBankNotified: v })}
+                />
+                <ClinicalDocumentationBooleanField
+                  label={t("clinicalDocumentation.forms.bloodProduct.reactionWorkupStarted")}
+                  value={reaction.reactionWorkupStarted}
+                  locale={locale}
+                  onChange={(v) => setReaction({ ...reaction, reactionWorkupStarted: v })}
+                />
+              </div>
+            </>
+          ) : null}
         </>
       ) : null}
 
@@ -605,7 +791,14 @@ export function ClinicalDocumentationBloodProductForm({
               label={t("clinicalDocumentation.forms.bloodProduct.completionTime")}
               value={completion.completionTime}
               onChange={(v) => setCompletion({ ...completion, completionTime: v })}
-              testId="blood-completion-time"
+              testId="blood-completion-completion-time"
+              type="datetime-local"
+            />
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.endTime")}
+              value={completion.endTime}
+              onChange={(v) => setCompletion({ ...completion, endTime: v })}
+              testId="blood-completion-end-time"
               type="datetime-local"
             />
             <ClinicalDocumentationSelectField
@@ -627,6 +820,33 @@ export function ClinicalDocumentationBloodProductForm({
             />
           </div>
           <div style={rowStyle}>
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.postTemperature")}
+              value={completion.postTemperature}
+              onChange={(v) => setCompletion({ ...completion, postTemperature: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.postHeartRate")}
+              value={completion.postHeartRate}
+              onChange={(v) => setCompletion({ ...completion, postHeartRate: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.postRespRate")}
+              value={completion.postRespRate}
+              onChange={(v) => setCompletion({ ...completion, postRespRate: v })}
+            />
+            <TextField
+              label={t("clinicalDocumentation.forms.bloodProduct.postBloodPressure")}
+              value={completion.postBloodPressure}
+              onChange={(v) => setCompletion({ ...completion, postBloodPressure: v })}
+            />
+            <NumberField
+              label={t("clinicalDocumentation.forms.bloodProduct.postSpo2")}
+              value={completion.postSpo2}
+              onChange={(v) => setCompletion({ ...completion, postSpo2: v })}
+            />
+          </div>
+          <div style={rowStyle}>
             <ClinicalDocumentationBooleanField
               label={t("clinicalDocumentation.forms.bloodProduct.transfusionCompleted")}
               value={completion.transfusionCompleted}
@@ -634,16 +854,10 @@ export function ClinicalDocumentationBloodProductForm({
               onChange={(v) => setCompletion({ ...completion, transfusionCompleted: v })}
             />
             <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.reactionOccurred")}
-              value={completion.reactionOccurred}
+              label={t("clinicalDocumentation.forms.bloodProduct.reactionObserved")}
+              value={completion.reactionObserved}
               locale={locale}
-              onChange={(v) => setCompletion({ ...completion, reactionOccurred: v })}
-            />
-            <ClinicalDocumentationBooleanField
-              label={t("clinicalDocumentation.forms.bloodProduct.postVitalsReviewed")}
-              value={completion.postVitalsReviewed}
-              locale={locale}
-              onChange={(v) => setCompletion({ ...completion, postVitalsReviewed: v })}
+              onChange={(v) => setCompletion({ ...completion, reactionObserved: v })}
             />
             <ClinicalDocumentationBooleanField
               label={t("clinicalDocumentation.forms.bloodProduct.providerNotified")}

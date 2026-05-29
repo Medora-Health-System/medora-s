@@ -4,16 +4,19 @@ import { getClinicalDocumentationCardById } from "./clinicalDocumentationRegistr
 import {
   BLOOD_PRODUCT_COMPLETION_CARD_ID,
   BLOOD_PRODUCT_INITIATION_CARD_ID,
+  BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_REACTION_CARD_ID,
   BLOOD_PRODUCT_REASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_VERIFICATION_CARD_ID,
   EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
   MASSIVE_TRANSFUSION_PROTOCOL_EVENT_CARD_ID,
+  appendBloodProductPatientSummaryLines,
   bloodProductCompletionPayloadSchema,
   bloodProductInitiationPayloadSchema,
   bloodProductReactionPayloadSchema,
   bloodProductReassessmentPayloadSchema,
   bloodProductVerificationPayloadSchema,
+  finalizeBloodProductPayloadAfterWitness,
   massiveTransfusionProtocolEventPayloadSchema,
   summarizeBloodProductDocumentationPayload,
   validateBloodProductPayloadForCard,
@@ -31,6 +34,7 @@ const VERIFICATION_VALID = {
   verificationTime: NOW,
   productType: "PRBC",
   unitIdentifier: "UNIT-12345",
+  unitVolumeMl: 250,
   patientIdentityVerified: true,
   bloodTypeVerified: true,
   crossmatchVerified: true,
@@ -43,6 +47,7 @@ const INITIATION_VALID = {
   startTime: NOW,
   productType: "FFP",
   unitIdentifier: "UNIT-12345",
+  unitVolumeMl: 200,
   baselineTemperature: "37.0",
   baselineHeartRate: 88,
   baselineRespRate: 18,
@@ -54,13 +59,22 @@ const INITIATION_VALID = {
   administrationStarted: true,
 };
 
-describe("EDOC.7 blood product documentation payloads", () => {
+describe("EDOC.7 / EDOC.7A blood product documentation payloads", () => {
   it("blood product cards marked AVAILABLE in BLOOD_PRODUCT_DOCUMENTATION category", () => {
     for (const cardId of EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS) {
       const card = getClinicalDocumentationCardById(cardId);
       expect(card?.implementationStatus).toBe("AVAILABLE");
       expect(card?.category).toBe("BLOOD_PRODUCT_DOCUMENTATION");
     }
+  });
+
+  it("pre-assessment and reassessment card titles (EDOC.7A)", () => {
+    expect(getClinicalDocumentationCardById(BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID)?.titleEn).toBe(
+      "Blood Product Pre-Assessment"
+    );
+    expect(getClinicalDocumentationCardById(BLOOD_PRODUCT_REASSESSMENT_CARD_ID)?.titleEn).toBe(
+      "Blood Product Reassessment (15-Minute Check)"
+    );
   });
 
   it("verification schema accepts valid payload and sets PENDING_WITNESS status", () => {
@@ -72,11 +86,24 @@ describe("EDOC.7 blood product documentation payloads", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.verificationStatus).toBe("PENDING_WITNESS");
+      expect(result.data.unitVolumeMl).toBe(250);
     }
   });
 
-  it("verification requires witness via default policy", () => {
+  it("verification and initiation require witness via default policy (EDOC.7A)", () => {
     expect(resolveWitness(BLOOD_PRODUCT_VERIFICATION_CARD_ID)).toBe(true);
+    expect(resolveWitness(BLOOD_PRODUCT_INITIATION_CARD_ID)).toBe(true);
+  });
+
+  it("initiation sets PENDING_WITNESS on save (EDOC.7A)", () => {
+    const result = validateBloodProductPayloadForCard(
+      BLOOD_PRODUCT_INITIATION_CARD_ID,
+      INITIATION_VALID
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.initiationStatus).toBe("PENDING_WITNESS");
+    }
   });
 
   it("no self-witness for verification entries", () => {
@@ -94,50 +121,59 @@ describe("EDOC.7 blood product documentation payloads", () => {
     ).toBe(false);
   });
 
-  it("initiation schema accepts valid payload", () => {
-    expect(bloodProductInitiationPayloadSchema.safeParse(INITIATION_VALID).success).toBe(true);
-  });
-
-  it("reassessment schema accepts valid payload", () => {
-    expect(
-      bloodProductReassessmentPayloadSchema.safeParse({
-        assessmentTime: NOW,
-        temperature: "37.2",
-        heartRate: 90,
-        respRate: 18,
-        bloodPressure: "120/80",
-        spo2: 96,
-        symptomsPresent: false,
-        symptomChecklist: [],
-        providerNotified: false,
-        continuedAdministration: true,
-      }).success
-    ).toBe(true);
-  });
-
-  it("reaction schema accepts valid payload", () => {
+  it("reaction schema requires symptoms, provider notification, and intervention when not NO_REACTION", () => {
     expect(
       bloodProductReactionPayloadSchema.safeParse({
         reactionTime: NOW,
-        reactionType: "FEBRILE",
-        symptoms: ["FEVER", "CHILLS"],
-        transfusionStopped: true,
+        reactionType: "NO_REACTION",
+        symptoms: [],
+        providerNotified: false,
+        interventionRequired: false,
+        transfusionStopped: false,
+        bloodBankNotified: false,
+        reactionWorkupStarted: false,
+      }).success
+    ).toBe(true);
+    expect(
+      bloodProductReactionPayloadSchema.safeParse({
+        reactionTime: NOW,
+        reactionType: "FEBRILE_NON_HEMOLYTIC",
+        symptoms: [],
         providerNotified: true,
+        interventionRequired: true,
+        transfusionStopped: true,
+        bloodBankNotified: true,
+        reactionWorkupStarted: true,
+      }).success
+    ).toBe(false);
+    expect(
+      bloodProductReactionPayloadSchema.safeParse({
+        reactionTime: NOW,
+        reactionType: "SUSPECTED",
+        symptoms: ["FEVER"],
+        providerNotified: true,
+        interventionRequired: true,
+        transfusionStopped: true,
         bloodBankNotified: true,
         reactionWorkupStarted: true,
       }).success
     ).toBe(true);
   });
 
-  it("completion schema accepts valid payload and enriches billing readiness metadata", () => {
+  it("completion schema accepts end time, volume, post vitals, and reaction observed (EDOC.7A/7B)", () => {
     const result = validateBloodProductPayloadForCard(BLOOD_PRODUCT_COMPLETION_CARD_ID, {
       completionTime: NOW,
+      endTime: NOW,
       productType: "PRBC",
       unitIdentifier: "UNIT-12345",
       volumeInfusedMl: 250,
+      postTemperature: "37.0",
+      postHeartRate: 82,
+      postRespRate: 16,
+      postBloodPressure: "118/76",
+      postSpo2: 97,
+      reactionObserved: false,
       transfusionCompleted: true,
-      reactionOccurred: false,
-      postVitalsReviewed: true,
       providerNotified: false,
     });
     expect(result.ok).toBe(true);
@@ -152,21 +188,82 @@ describe("EDOC.7 blood product documentation payloads", () => {
     }
   });
 
-  it("MTP schema accepts valid payload", () => {
+  it("finalizeBloodProductPayloadAfterWitness marks verification and initiation VERIFIED", () => {
     expect(
-      massiveTransfusionProtocolEventPayloadSchema.safeParse({
-        eventTime: NOW,
-        eventType: "ACTIVATED",
-        initiatedBy: "provider-1",
-        reason: "Hemorrhagic shock",
-      }).success
-    ).toBe(true);
+      finalizeBloodProductPayloadAfterWitness(BLOOD_PRODUCT_VERIFICATION_CARD_ID, {
+        verificationStatus: "PENDING_WITNESS",
+      }).verificationStatus
+    ).toBe("VERIFIED");
+    expect(
+      finalizeBloodProductPayloadAfterWitness(BLOOD_PRODUCT_INITIATION_CARD_ID, {
+        initiationStatus: "PENDING_WITNESS",
+      }).initiationStatus
+    ).toBe("VERIFIED");
   });
 
   it("all EDOC.7 card IDs registered in payload validator list", () => {
     for (const cardId of EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS) {
       expect(CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS).toContain(cardId);
     }
+  });
+
+  it("bilingual summaries include volume and reaction outcome", () => {
+    const en = summarizeBloodProductDocumentationPayload(
+      BLOOD_PRODUCT_VERIFICATION_CARD_ID,
+      VERIFICATION_VALID,
+      "en"
+    );
+    expect(en.some((l) => l.key === "Unit volume (mL)" && l.value === "250")).toBe(true);
+
+    const legalEn = summarizeClinicalDocumentationPayload(
+      BLOOD_PRODUCT_COMPLETION_CARD_ID,
+      {
+        completionTime: NOW,
+        endTime: NOW,
+        productType: "PLATELETS",
+        unitIdentifier: "UNIT-99",
+        volumeInfusedMl: 1,
+        postTemperature: "37.0",
+        postHeartRate: 80,
+        postRespRate: 16,
+        postBloodPressure: "120/80",
+        postSpo2: 98,
+        reactionObserved: true,
+        transfusionCompleted: true,
+        providerNotified: true,
+      },
+      "en"
+    );
+    expect(legalEn.some((l) => l.key === "Reaction observed")).toBe(true);
+  });
+
+  it("patient summary highlights type, volume, witness, and reaction", () => {
+    const lines = appendBloodProductPatientSummaryLines(
+      BLOOD_PRODUCT_REACTION_CARD_ID,
+      {
+        productType: "PRBC",
+        reactionTime: NOW,
+        reactionType: "TRALI",
+        symptoms: ["DYSPNEA"],
+        providerNotified: true,
+        interventionRequired: true,
+        transfusionStopped: true,
+        bloodBankNotified: true,
+        reactionWorkupStarted: true,
+      },
+      "en",
+      { witnessDisplayName: "Paul Witness", witnessStatus: "WITNESSED" }
+    );
+    expect(lines.some((l) => l.key === "Blood product type")).toBe(true);
+    expect(lines.some((l) => l.key === "Witness" && l.value === "Paul Witness")).toBe(true);
+    expect(lines.some((l) => l.key === "Reaction outcome" && l.value === "TRALI")).toBe(true);
+  });
+
+  it("reaction and reassessment cards allow single signer (no default witness)", () => {
+    expect(resolveWitness(BLOOD_PRODUCT_REACTION_CARD_ID)).toBe(false);
+    expect(resolveWitness(BLOOD_PRODUCT_REASSESSMENT_CARD_ID)).toBe(false);
+    expect(resolveWitness(BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID)).toBe(false);
+    expect(resolveWitness(MASSIVE_TRANSFUSION_PROTOCOL_EVENT_CARD_ID)).toBe(false);
   });
 
   it("validatePayloadForCard routes blood product cards", () => {
@@ -176,52 +273,27 @@ describe("EDOC.7 blood product documentation payloads", () => {
     expect(validatePayloadForCard(BLOOD_PRODUCT_INITIATION_CARD_ID, INITIATION_VALID).ok).toBe(
       true
     );
-  });
-
-  it("bilingual summaries for verification and completion", () => {
-    const en = summarizeBloodProductDocumentationPayload(
-      BLOOD_PRODUCT_VERIFICATION_CARD_ID,
-      VERIFICATION_VALID,
-      "en"
-    );
-    const fr = summarizeBloodProductDocumentationPayload(
-      BLOOD_PRODUCT_VERIFICATION_CARD_ID,
-      VERIFICATION_VALID,
-      "fr"
-    );
-    expect(en.some((l) => l.key === "Unit ID" && l.value === "UNIT-12345")).toBe(true);
-    expect(fr.some((l) => l.key === "N° unité" && l.value === "UNIT-12345")).toBe(true);
-
-    const legalEn = summarizeClinicalDocumentationPayload(
-      BLOOD_PRODUCT_COMPLETION_CARD_ID,
-      {
-        completionTime: NOW,
-        productType: "PLATELETS",
-        unitIdentifier: "UNIT-99",
-        volumeInfusedMl: 1,
-        transfusionCompleted: true,
-        reactionOccurred: true,
-        postVitalsReviewed: true,
-        providerNotified: true,
-      },
-      "en"
-    );
-    expect(legalEn.some((l) => l.key === "Reaction occurred")).toBe(true);
-  });
-
-  it("initiation and completion witness configurable via facility policy", () => {
-    expect(resolveWitness(BLOOD_PRODUCT_INITIATION_CARD_ID)).toBe(false);
-    expect(resolveWitness(BLOOD_PRODUCT_COMPLETION_CARD_ID)).toBe(false);
     expect(
-      resolveWitness(BLOOD_PRODUCT_INITIATION_CARD_ID, {
-        additionalCardIds: [BLOOD_PRODUCT_INITIATION_CARD_ID],
-      })
+      bloodProductReassessmentPayloadSchema.safeParse({
+        assessmentTime: NOW,
+        temperature: "37.2",
+        heartRate: 90,
+        respRate: 18,
+        bloodPressure: "120/80",
+        spo2: 96,
+        symptomsPresent: false,
+        symptomChecklist: [],
+        providerNotified: false,
+        continuedAdministration: true,
+      }).success
     ).toBe(true);
-  });
-
-  it("reaction card allows single signer (no default witness)", () => {
-    expect(resolveWitness(BLOOD_PRODUCT_REACTION_CARD_ID)).toBe(false);
-    expect(resolveWitness(BLOOD_PRODUCT_REASSESSMENT_CARD_ID)).toBe(false);
-    expect(resolveWitness(MASSIVE_TRANSFUSION_PROTOCOL_EVENT_CARD_ID)).toBe(false);
+    expect(
+      massiveTransfusionProtocolEventPayloadSchema.safeParse({
+        eventTime: NOW,
+        eventType: "ACTIVATED",
+        initiatedBy: "provider-1",
+        reason: "Hemorrhagic shock",
+      }).success
+    ).toBe(true);
   });
 });

@@ -49,7 +49,8 @@ describe("clinical documentation blood product (EDOC.7)", () => {
 
   it("completion form renders", () => {
     expect(form).toContain("BLOOD_PRODUCT_COMPLETION_CARD_ID");
-    expect(form).toContain("blood-completion-time");
+    expect(form).toContain("blood-completion-completion-time");
+    expect(form).toContain("blood-completion-end-time");
   });
 
   it("MTP form renders", () => {
@@ -62,9 +63,10 @@ describe("clinical documentation blood product (EDOC.7)", () => {
     expect(form).toContain("clinical-documentation-blood-product-form");
   });
 
-  it("witness pending badge handled by hub (shared EDOC.4)", () => {
+  it("witness pending badge handled by hub (shared EDOC.4 / EDOC.7A modal)", () => {
     expect(hub).toContain("PENDING_WITNESS");
     expect(hub).toContain("witnessClinicalDocumentationEntry");
+    expect(hub).toContain("ClinicalDocumentationWitnessSearchModal");
   });
 
   it("card guards match registry ids", () => {

@@ -3,6 +3,7 @@ import { AuditAction, EncounterStatus } from "@prisma/client";
 import {
   BLOOD_PRODUCT_COMPLETION_CARD_ID,
   BLOOD_PRODUCT_INITIATION_CARD_ID,
+  BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_REACTION_CARD_ID,
   BLOOD_PRODUCT_REASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_VERIFICATION_CARD_ID,
@@ -46,6 +47,7 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
     const update = jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
       Promise.resolve({
         ...(overrides?.existingEntry ?? entryRow),
+        payloadJson: data.payloadJson ?? (overrides?.existingEntry ?? entryRow).payloadJson,
         witnessedAt: data.witnessedAt ?? new Date("2026-05-28T13:00:00.000Z"),
         witnessedByUserId: data.witnessedByUserId ?? "u2",
         witnessDisplayNameSnapshot: data.witnessDisplayNameSnapshot ?? "Bob Witness",
@@ -102,6 +104,7 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
     verificationTime: "2026-05-28T12:00:00.000Z",
     productType: "PRBC",
     unitIdentifier: "UNIT-ABC",
+    unitVolumeMl: 250,
     patientIdentityVerified: true,
     bloodTypeVerified: true,
     crossmatchVerified: true,
@@ -114,6 +117,7 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
     startTime: "2026-05-28T12:30:00.000Z",
     productType: "PRBC",
     unitIdentifier: "UNIT-ABC",
+    unitVolumeMl: 250,
     baselineTemperature: "37.0",
     baselineHeartRate: 80,
     baselineRespRate: 16,
@@ -150,16 +154,42 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
     );
   });
 
-  it("witnesses Blood Product Verification (EDOC.7)", async () => {
+  it("POST Blood Product Initiation requires witness (EDOC.7A)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "BLOOD_PRODUCT_DOCUMENTATION",
+        cardId: BLOOD_PRODUCT_INITIATION_CARD_ID,
+        payloadJson: INITIATION_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          requiresWitnessSignature: true,
+          payloadJson: expect.objectContaining({ initiationStatus: "PENDING_WITNESS" }),
+        }),
+      })
+    );
+  });
+
+  it("witnesses Blood Product Verification and finalizes payload status (EDOC.7A)", async () => {
     const pendingEntry = {
       ...entryRow,
       id: "edoc-blood-pending",
+      payloadJson: VERIFICATION_PAYLOAD,
       requiresWitnessSignature: true,
       witnessedAt: null,
     };
     const { svc, audit } = buildService({ existingEntry: pendingEntry });
     const witnessed = await svc.witnessEntry("f1", "e1", "edoc-blood-pending", "u2");
     expect(witnessed.witnessStatus).toBe("WITNESSED");
+    expect(witnessed.payloadJson).toEqual(
+      expect.objectContaining({ verificationStatus: "VERIFIED" })
+    );
     expect(audit.log).toHaveBeenCalledWith(
       AuditAction.ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED,
       "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
@@ -201,6 +231,41 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
     expect(saved.payloadSummaryEn.some((l) => l.key === "Start time")).toBe(true);
   });
 
+  it("POST Blood Product Pre-Assessment persists without completion fields (EDOC.7B)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "BLOOD_PRODUCT_DOCUMENTATION",
+        cardId: BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T12:45:00.000Z",
+          productType: "PRBC",
+          unitIdentifier: "UNIT-PA",
+          unitVolumeMl: 350,
+          baselineTemperature: "37.0",
+          baselineHeartRate: 78,
+          baselineRespRate: 16,
+          baselineBloodPressure: "119/77",
+          baselineSpo2: 98,
+          patientIdentityVerified: true,
+          consentVerified: true,
+          symptomsPresent: false,
+          symptomChecklist: [],
+        },
+      },
+      "u1"
+    );
+    const payload = create.mock.calls.at(-1)?.[0]?.data?.payloadJson as Record<string, unknown>;
+    expect(payload.unitVolumeMl).toBe(350);
+    expect(payload).not.toHaveProperty("completionTime");
+    expect(payload).not.toHaveProperty("endTime");
+    expect(payload).not.toHaveProperty("volumeInfusedMl");
+    expect(payload).not.toHaveProperty("postHeartRate");
+    expect(payload).not.toHaveProperty("reactionObserved");
+  });
+
   it("POST Reassessment persists (EDOC.7)", async () => {
     const { svc } = buildService();
     const saved = await svc.createEntry(
@@ -237,10 +302,11 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
         cardId: BLOOD_PRODUCT_REACTION_CARD_ID,
         payloadJson: {
           reactionTime: "2026-05-28T13:30:00.000Z",
-          reactionType: "FEBRILE",
+          reactionType: "FEBRILE_NON_HEMOLYTIC",
           symptoms: ["FEVER", "CHILLS"],
-          transfusionStopped: true,
           providerNotified: true,
+          interventionRequired: true,
+          transfusionStopped: true,
           bloodBankNotified: true,
           reactionWorkupStarted: true,
         },
@@ -265,12 +331,17 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
         cardId: BLOOD_PRODUCT_COMPLETION_CARD_ID,
         payloadJson: {
           completionTime: "2026-05-28T14:00:00.000Z",
+          endTime: "2026-05-28T14:00:00.000Z",
           productType: "PRBC",
           unitIdentifier: "UNIT-ABC",
           volumeInfusedMl: 250,
+          postTemperature: "37.0",
+          postHeartRate: 80,
+          postRespRate: 16,
+          postBloodPressure: "120/80",
+          postSpo2: 98,
+          reactionObserved: false,
           transfusionCompleted: true,
-          reactionOccurred: false,
-          postVitalsReviewed: true,
           providerNotified: false,
         },
       },
@@ -280,6 +351,11 @@ describe("ClinicalDocumentationService — blood product (EDOC.7)", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           payloadJson: expect.objectContaining({
+            completionTime: "2026-05-28T14:00:00.000Z",
+            endTime: "2026-05-28T14:00:00.000Z",
+            volumeInfusedMl: 250,
+            postHeartRate: 80,
+            reactionObserved: false,
             billingReadinessMetadata: expect.objectContaining({
               capturePhase: "EDOC.7",
               claimsGenerationDeferred: true,

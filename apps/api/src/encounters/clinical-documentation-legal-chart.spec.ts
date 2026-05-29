@@ -543,13 +543,14 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
       verificationTime: "2026-05-28T15:00:00.000Z",
       productType: "PRBC",
       unitIdentifier: "UNIT-777",
+      unitVolumeMl: 250,
       patientIdentityVerified: true,
       bloodTypeVerified: true,
       crossmatchVerified: true,
       expirationVerified: true,
       consentVerified: true,
       specialRequirements: "LEUKOREDUCED",
-      verificationStatus: "PENDING_WITNESS",
+      verificationStatus: "VERIFIED",
     };
     const prisma = makePrismaForEdoc({
       clinicalDocumentationEntries: [
@@ -601,10 +602,14 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     expect(verifyRow.payloadSummaryEn!.some((l) => l.key === "Unit ID" && l.value === "UNIT-777")).toBe(
       true
     );
+    expect(verifyRow.payloadSummaryEn!.some((l) => l.key === "Primary signer")).toBe(true);
+    expect(verifyRow.payloadSummaryEn!.some((l) => l.key === "Witness signer")).toBe(true);
     expect(verifyRow.witnessStatus).toBe("WITNESSED");
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("BLOOD_PRODUCT_DOCUMENTATION");
     expect(htmlEn).toContain("UNIT-777");
+    expect(htmlEn).toContain("Primary signer");
+    expect(htmlEn).toContain("Witness signer");
     expect(htmlEn).toContain("[WITNESSED]");
     expect(htmlEn).toContain("MTP status");
     expect(manifest.encounter.clinicalDocumentationEntries[1]?.payloadJson.eventType).toBe("ACTIVATED");

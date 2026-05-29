@@ -7,6 +7,7 @@ import {
 
 export const BLOOD_PRODUCT_VERIFICATION_CARD_ID = "blood_product_verification" as const;
 export const BLOOD_PRODUCT_INITIATION_CARD_ID = "blood_product_initiation" as const;
+export const BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID = "blood_product_pre_assessment" as const;
 export const BLOOD_PRODUCT_REASSESSMENT_CARD_ID = "blood_product_reassessment" as const;
 export const BLOOD_PRODUCT_REACTION_CARD_ID = "blood_product_reaction" as const;
 export const BLOOD_PRODUCT_COMPLETION_CARD_ID = "blood_product_completion" as const;
@@ -16,6 +17,7 @@ export const MASSIVE_TRANSFUSION_PROTOCOL_EVENT_CARD_ID =
 export const EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS = [
   BLOOD_PRODUCT_VERIFICATION_CARD_ID,
   BLOOD_PRODUCT_INITIATION_CARD_ID,
+  BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_REASSESSMENT_CARD_ID,
   BLOOD_PRODUCT_REACTION_CARD_ID,
   BLOOD_PRODUCT_COMPLETION_CARD_ID,
@@ -43,12 +45,6 @@ export const BLOOD_PRODUCT_SPECIAL_REQUIREMENT_VALUES = [
   "OTHER",
 ] as const;
 
-export const BLOOD_PRODUCT_VERIFICATION_STATUS_VALUES = [
-  "DRAFT",
-  "PENDING_WITNESS",
-  "VERIFIED",
-] as const;
-
 export const BLOOD_REASSESSMENT_SYMPTOM_VALUES = [
   "FEVER",
   "CHILLS",
@@ -64,15 +60,27 @@ export const BLOOD_REASSESSMENT_SYMPTOM_VALUES = [
 ] as const;
 
 export const BLOOD_REACTION_TYPE_VALUES = [
-  "FEBRILE",
+  "NO_REACTION",
+  "SUSPECTED",
+  "CONFIRMED",
+  "ACUTE_HEMOLYTIC",
+  "FEBRILE_NON_HEMOLYTIC",
   "ALLERGIC",
   "ANAPHYLACTIC",
   "TRALI",
   "TACO",
-  "HEMOLYTIC",
-  "SUSPECTED",
   "OTHER",
 ] as const;
+
+/** Shared witness workflow status for verification and initiation (EDOC.7A). */
+export const BLOOD_PRODUCT_WITNESS_WORKFLOW_STATUS_VALUES = [
+  "DRAFT",
+  "PENDING_WITNESS",
+  "VERIFIED",
+] as const;
+
+/** @deprecated Use BLOOD_PRODUCT_WITNESS_WORKFLOW_STATUS_VALUES */
+export const BLOOD_PRODUCT_VERIFICATION_STATUS_VALUES = BLOOD_PRODUCT_WITNESS_WORKFLOW_STATUS_VALUES;
 
 export const BLOOD_REACTION_SYMPTOM_VALUES = [
   "FEVER",
@@ -107,6 +115,29 @@ const isoDateTimeString = z
 
 const productType = z.enum(BLOOD_PRODUCT_TYPE_VALUES);
 const specialRequirements = z.enum(BLOOD_PRODUCT_SPECIAL_REQUIREMENT_VALUES);
+/** Canonical unit volume (mL) — numeric only; presets defined in EDOC.7B. */
+export const BLOOD_PRODUCT_UNIT_VOLUME_PRESET_ML = [250, 300, 350, 500] as const;
+export const bloodProductUnitVolumeMlFieldSchema = z.number().positive().max(100_000);
+const unitVolumeMl = bloodProductUnitVolumeMlFieldSchema;
+const witnessWorkflowStatus = z.enum(BLOOD_PRODUCT_WITNESS_WORKFLOW_STATUS_VALUES).optional();
+
+/** Completion-only payload keys — must not appear on pre-assessment (EDOC.7B). */
+export const BLOOD_PRODUCT_COMPLETION_ONLY_FIELD_NAMES = [
+  "completionTime",
+  "endTime",
+  "volumeInfusedMl",
+  "postTemperature",
+  "postHeartRate",
+  "postRespRate",
+  "postBloodPressure",
+  "postSpo2",
+  "reactionObserved",
+  "transfusionCompleted",
+  "providerNotified",
+  "billingReadinessMetadata",
+] as const;
+
+export const EDOC_7C_BLOOD_MONITORING_TIMERS_BACKLOG_ID = "EDOC.7C" as const;
 
 export const bloodProductBillingReadinessMetadataSchema = z.object({
   capturePhase: z.literal("EDOC.7"),
@@ -120,6 +151,7 @@ export const bloodProductVerificationPayloadSchema = z.object({
   verificationTime: isoDateTimeString,
   productType,
   unitIdentifier,
+  unitVolumeMl,
   patientIdentityVerified: z.boolean(),
   bloodTypeVerified: z.boolean(),
   crossmatchVerified: z.boolean(),
@@ -127,13 +159,14 @@ export const bloodProductVerificationPayloadSchema = z.object({
   consentVerified: z.boolean(),
   specialRequirements,
   verificationNotes: optionalNotes,
-  verificationStatus: z.enum(BLOOD_PRODUCT_VERIFICATION_STATUS_VALUES).optional(),
+  verificationStatus: witnessWorkflowStatus,
 });
 
 export const bloodProductInitiationPayloadSchema = z.object({
   startTime: isoDateTimeString,
   productType,
   unitIdentifier,
+  unitVolumeMl,
   baselineTemperature: z.string().trim().min(1).max(40),
   baselineHeartRate: z.number().int().min(0).max(300),
   baselineRespRate: z.number().int().min(0).max(120),
@@ -145,8 +178,43 @@ export const bloodProductInitiationPayloadSchema = z.object({
   consentVerified: z.boolean(),
   administrationStarted: z.boolean(),
   notes: optionalNotes,
+  initiationStatus: witnessWorkflowStatus,
 });
 
+/**
+ * EDOC.7C — Blood Monitoring Timers (backlog only; not implemented).
+ * Future: 15-minute reassessment due time after initiation, due/overdue status,
+ * nursing dashboard reminders, transfusion audit / Joint Commission readiness.
+ */
+export const bloodProductPreAssessmentPayloadSchema = z
+  .object({
+    assessmentTime: isoDateTimeString,
+    productType,
+    unitIdentifier,
+    unitVolumeMl,
+    baselineTemperature: z.string().trim().min(1).max(40),
+    baselineHeartRate: z.number().int().min(0).max(300),
+    baselineRespRate: z.number().int().min(0).max(120),
+    baselineBloodPressure: z.string().trim().min(1).max(40),
+    baselineSpo2: z.number().int().min(0).max(100),
+    patientIdentityVerified: z.boolean(),
+    consentVerified: z.boolean(),
+    symptomsPresent: z.boolean(),
+    symptomChecklist: z.array(z.enum(BLOOD_REASSESSMENT_SYMPTOM_VALUES)),
+    notes: optionalNotes,
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (data.symptomsPresent && data.symptomChecklist.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Symptom checklist required when symptoms present",
+        path: ["symptomChecklist"],
+      });
+    }
+  });
+
+/** EDOC.7C backlog — 15-minute reassessment monitoring (timers deferred). */
 export const bloodProductReassessmentPayloadSchema = z
   .object({
     assessmentTime: isoDateTimeString,
@@ -171,25 +239,56 @@ export const bloodProductReassessmentPayloadSchema = z
     }
   });
 
-export const bloodProductReactionPayloadSchema = z.object({
-  reactionTime: isoDateTimeString,
-  reactionType: z.enum(BLOOD_REACTION_TYPE_VALUES),
-  symptoms: z.array(z.enum(BLOOD_REACTION_SYMPTOM_VALUES)).min(1),
-  transfusionStopped: z.boolean(),
-  providerNotified: z.boolean(),
-  bloodBankNotified: z.boolean(),
-  reactionWorkupStarted: z.boolean(),
-  notes: optionalNotes,
-});
+export const bloodProductReactionPayloadSchema = z
+  .object({
+    reactionTime: isoDateTimeString,
+    reactionType: z.enum(BLOOD_REACTION_TYPE_VALUES),
+    symptoms: z.array(z.enum(BLOOD_REACTION_SYMPTOM_VALUES)),
+    providerNotified: z.boolean(),
+    interventionRequired: z.boolean(),
+    transfusionStopped: z.boolean(),
+    bloodBankNotified: z.boolean(),
+    reactionWorkupStarted: z.boolean(),
+    notes: optionalNotes,
+  })
+  .superRefine((data, ctx) => {
+    if (data.reactionType === "NO_REACTION") return;
+    if (data.symptoms.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Symptoms required when reaction is documented",
+        path: ["symptoms"],
+      });
+    }
+    if (!data.providerNotified) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provider notification required when reaction is documented",
+        path: ["providerNotified"],
+      });
+    }
+    if (!data.interventionRequired) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Intervention required when reaction is documented",
+        path: ["interventionRequired"],
+      });
+    }
+  });
 
 export const bloodProductCompletionPayloadSchema = z.object({
   completionTime: isoDateTimeString,
+  endTime: isoDateTimeString,
   productType,
   unitIdentifier,
-  volumeInfusedMl: z.number().min(0).max(100_000),
+  volumeInfusedMl: unitVolumeMl,
+  postTemperature: z.string().trim().min(1).max(40),
+  postHeartRate: z.number().int().min(0).max(300),
+  postRespRate: z.number().int().min(0).max(120),
+  postBloodPressure: z.string().trim().min(1).max(40),
+  postSpo2: z.number().int().min(0).max(100),
+  reactionObserved: z.boolean(),
   transfusionCompleted: z.boolean(),
-  reactionOccurred: z.boolean(),
-  postVitalsReviewed: z.boolean(),
   providerNotified: z.boolean(),
   notes: optionalNotes,
   billingReadinessMetadata: bloodProductBillingReadinessMetadataSchema.optional(),
@@ -206,6 +305,7 @@ export const massiveTransfusionProtocolEventPayloadSchema = z.object({
 const BLOOD_PRODUCT_PAYLOAD_SCHEMA_BY_CARD_ID: Record<string, z.ZodType<Record<string, unknown>>> = {
   [BLOOD_PRODUCT_VERIFICATION_CARD_ID]: bloodProductVerificationPayloadSchema,
   [BLOOD_PRODUCT_INITIATION_CARD_ID]: bloodProductInitiationPayloadSchema,
+  [BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID]: bloodProductPreAssessmentPayloadSchema,
   [BLOOD_PRODUCT_REASSESSMENT_CARD_ID]: bloodProductReassessmentPayloadSchema,
   [BLOOD_PRODUCT_REACTION_CARD_ID]: bloodProductReactionPayloadSchema,
   [BLOOD_PRODUCT_COMPLETION_CARD_ID]: bloodProductCompletionPayloadSchema,
@@ -228,6 +328,12 @@ export function enrichBloodProductPayloadForPersistence(
       verificationStatus: "PENDING_WITNESS",
     };
   }
+  if (cardId === BLOOD_PRODUCT_INITIATION_CARD_ID) {
+    return {
+      ...payload,
+      initiationStatus: "PENDING_WITNESS",
+    };
+  }
   if (cardId === BLOOD_PRODUCT_COMPLETION_CARD_ID) {
     const p = bloodProductCompletionPayloadSchema.safeParse(payload);
     if (!p.success) return payload;
@@ -238,11 +344,41 @@ export function enrichBloodProductPayloadForPersistence(
         claimsGenerationDeferred: true,
         productTypeCapturable: true,
         completionCapturable: true,
-        reactionCapturable: p.data.reactionOccurred,
+        reactionCapturable: p.data.reactionObserved,
       },
     };
   }
   return payload;
+}
+
+/** After EDOC witness API finalization — mark verification/initiation legally complete in payload. */
+export function finalizeBloodProductPayloadAfterWitness(
+  cardId: string,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  if (cardId === BLOOD_PRODUCT_VERIFICATION_CARD_ID) {
+    return { ...payload, verificationStatus: "VERIFIED" };
+  }
+  if (cardId === BLOOD_PRODUCT_INITIATION_CARD_ID) {
+    return { ...payload, initiationStatus: "VERIFIED" };
+  }
+  return payload;
+}
+
+export function isBloodProductWitnessGatedCardId(cardId: string): boolean {
+  return (
+    cardId === BLOOD_PRODUCT_VERIFICATION_CARD_ID || cardId === BLOOD_PRODUCT_INITIATION_CARD_ID
+  );
+}
+
+export function isBloodProductEntryLegallyComplete(input: {
+  cardId: string;
+  requiresWitnessSignature: boolean;
+  witnessedAt: Date | string | null;
+}): boolean {
+  if (!isBloodProductWitnessGatedCardId(input.cardId)) return true;
+  if (!input.requiresWitnessSignature) return true;
+  return input.witnessedAt != null;
 }
 
 export function validateBloodProductPayloadForCard(
@@ -301,24 +437,28 @@ const SPECIAL_REQ_FR: Record<string, string> = {
 };
 
 const REACTION_TYPE_EN: Record<string, string> = {
-  FEBRILE: "Febrile",
+  NO_REACTION: "No reaction",
+  SUSPECTED: "Suspected",
+  CONFIRMED: "Confirmed",
+  ACUTE_HEMOLYTIC: "Acute hemolytic",
+  FEBRILE_NON_HEMOLYTIC: "Febrile non-hemolytic",
   ALLERGIC: "Allergic",
   ANAPHYLACTIC: "Anaphylactic",
   TRALI: "TRALI",
   TACO: "TACO",
-  HEMOLYTIC: "Hemolytic",
-  SUSPECTED: "Suspected",
   OTHER: "Other",
 };
 
 const REACTION_TYPE_FR: Record<string, string> = {
-  FEBRILE: "Febrile",
+  NO_REACTION: "Aucune réaction",
+  SUSPECTED: "Suspectée",
+  CONFIRMED: "Confirmée",
+  ACUTE_HEMOLYTIC: "Hémolytique aiguë",
+  FEBRILE_NON_HEMOLYTIC: "Febrile non hémolytique",
   ALLERGIC: "Allergique",
   ANAPHYLACTIC: "Anaphylactique",
   TRALI: "TRALI",
   TACO: "TACO",
-  HEMOLYTIC: "Hémolytique",
-  SUSPECTED: "Suspectée",
   OTHER: "Autre",
 };
 
@@ -410,7 +550,119 @@ export function resolveBloodProductVerificationDisplayStatus(
   const parsed = bloodProductVerificationPayloadSchema.safeParse(payload);
   const stored = parsed.success ? parsed.data.verificationStatus : undefined;
   if (stored === "DRAFT") return "DRAFT";
+  if (stored === "VERIFIED") return "VERIFIED";
   return "PENDING_WITNESS";
+}
+
+export function resolveBloodProductInitiationDisplayStatus(
+  payload: Record<string, unknown>,
+  witnessStatus: string | undefined
+): "DRAFT" | "PENDING_WITNESS" | "VERIFIED" {
+  if (witnessStatus === "WITNESSED") return "VERIFIED";
+  const parsed = bloodProductInitiationPayloadSchema.safeParse(payload);
+  const stored = parsed.success ? parsed.data.initiationStatus : undefined;
+  if (stored === "DRAFT") return "DRAFT";
+  if (stored === "VERIFIED") return "VERIFIED";
+  return "PENDING_WITNESS";
+}
+
+export type BloodProductPatientSummaryContext = {
+  witnessDisplayName?: string | null;
+  witnessStatus?: string;
+};
+
+export function appendBloodProductPatientSummaryLines(
+  cardId: string,
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale,
+  context?: BloodProductPatientSummaryContext
+): Array<{ key: string; value: string }> {
+  const lines = summarizeBloodProductDocumentationPayload(cardId, payload, locale);
+  const productTypeRaw =
+    typeof payload.productType === "string" ? payload.productType : undefined;
+  if (productTypeRaw) {
+    const productLine = {
+      key: locale === "en" ? "Blood product type" : "Type produit sanguin",
+      value: pickLocalizedEnumLabel(
+        PRODUCT_TYPE_EN,
+        PRODUCT_TYPE_FR,
+        productTypeRaw as (typeof BLOOD_PRODUCT_TYPE_VALUES)[number],
+        locale
+      ),
+    };
+    if (!lines.some((l) => l.key === productLine.key)) {
+      lines.unshift(productLine);
+    }
+  }
+  const volumeMl =
+    typeof payload.volumeInfusedMl === "number"
+      ? payload.volumeInfusedMl
+      : typeof payload.unitVolumeMl === "number"
+        ? payload.unitVolumeMl
+        : undefined;
+  if (volumeMl != null) {
+    lines.push({
+      key: locale === "en" ? "Volume (mL)" : "Volume (mL)",
+      value: String(volumeMl),
+    });
+  }
+  if (context?.witnessDisplayName && context.witnessStatus === "WITNESSED") {
+    lines.push({
+      key: locale === "en" ? "Witness" : "Témoin",
+      value: context.witnessDisplayName,
+    });
+  } else if (context?.witnessStatus === "PENDING_WITNESS") {
+    lines.push({
+      key: locale === "en" ? "Witness" : "Témoin",
+      value: locale === "en" ? "Pending" : "En attente",
+    });
+  }
+  const reactionParsed = bloodProductReactionPayloadSchema.safeParse(payload);
+  if (reactionParsed.success) {
+    lines.push({
+      key: locale === "en" ? "Reaction outcome" : "Issue réaction",
+      value: pickLocalizedEnumLabel(
+        REACTION_TYPE_EN,
+        REACTION_TYPE_FR,
+        reactionParsed.data.reactionType,
+        locale
+      ),
+    });
+  } else if (cardId === BLOOD_PRODUCT_COMPLETION_CARD_ID) {
+    const completionParsed = bloodProductCompletionPayloadSchema.safeParse(payload);
+    if (completionParsed.success) {
+      lines.push({
+        key: locale === "en" ? "Reaction outcome" : "Issue réaction",
+        value: clinicalDocYesNo(completionParsed.data.reactionObserved, locale),
+      });
+    }
+  }
+  return lines;
+}
+
+export function formatClinicalDocumentationSignerSummaryLines(
+  input: {
+    authorDisplayName: string;
+    authorRoleTitle: string;
+    witnessedAt?: string | null;
+    witnessDisplayName?: string | null;
+    witnessRoleTitle?: string | null;
+  },
+  locale: ClinicalDocumentationSummaryLocale
+): Array<{ key: string; value: string }> {
+  const lines: Array<{ key: string; value: string }> = [
+    {
+      key: locale === "en" ? "Primary signer" : "Signataire principal",
+      value: `${input.authorDisplayName} (${input.authorRoleTitle})`,
+    },
+  ];
+  if (input.witnessedAt && input.witnessDisplayName) {
+    lines.push({
+      key: locale === "en" ? "Witness signer" : "Signataire témoin",
+      value: `${input.witnessDisplayName} (${input.witnessRoleTitle ?? "—"})`,
+    });
+  }
+  return lines;
 }
 
 export function summarizeBloodProductDocumentationPayload(
@@ -435,6 +687,10 @@ export function summarizeBloodProductDocumentationPayload(
         {
           key: locale === "en" ? "Unit ID" : "N° unité",
           value: p.data.unitIdentifier,
+        },
+        {
+          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          value: String(p.data.unitVolumeMl),
         },
         {
           key: locale === "en" ? "Patient identity" : "Identité patient",
@@ -497,8 +753,27 @@ export function summarizeBloodProductDocumentationPayload(
         },
         { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
         {
+          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          value: String(p.data.unitVolumeMl),
+        },
+        {
           key: locale === "en" ? "Start time" : "Heure début",
           value: p.data.startTime,
+        },
+        {
+          key: locale === "en" ? "Initiation status" : "Statut initiation",
+          value:
+            p.data.initiationStatus === "VERIFIED"
+              ? locale === "en"
+                ? "Verified"
+                : "Vérifié"
+              : p.data.initiationStatus === "DRAFT"
+                ? locale === "en"
+                  ? "Draft"
+                  : "Brouillon"
+                : locale === "en"
+                  ? "Pending witness"
+                  : "Témoin en attente",
         },
         {
           key: locale === "en" ? "Administration started" : "Administration démarrée",
@@ -510,6 +785,74 @@ export function summarizeBloodProductDocumentationPayload(
         },
       ];
     }
+    case BLOOD_PRODUCT_PRE_ASSESSMENT_CARD_ID: {
+      const p = bloodProductPreAssessmentPayloadSchema.safeParse(payload);
+      if (!p.success) return [];
+      const lines: Array<{ key: string; value: string }> = [
+        {
+          key: locale === "en" ? "Assessment time" : "Heure évaluation",
+          value: p.data.assessmentTime,
+        },
+        {
+          key: locale === "en" ? "Product" : "Produit",
+          value: pickLocalizedEnumLabel(
+            PRODUCT_TYPE_EN,
+            PRODUCT_TYPE_FR,
+            p.data.productType,
+            locale
+          ),
+        },
+        { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
+        {
+          key: locale === "en" ? "Unit volume (mL)" : "Volume unité (mL)",
+          value: String(p.data.unitVolumeMl),
+        },
+        {
+          key: locale === "en" ? "Baseline temperature" : "Température initiale",
+          value: p.data.baselineTemperature,
+        },
+        {
+          key: locale === "en" ? "Heart rate" : "Fréquence cardiaque",
+          value: String(p.data.baselineHeartRate),
+        },
+        {
+          key: locale === "en" ? "Respiratory rate" : "Fréquence respiratoire",
+          value: String(p.data.baselineRespRate),
+        },
+        {
+          key: locale === "en" ? "Blood pressure" : "Tension artérielle",
+          value: p.data.baselineBloodPressure,
+        },
+        {
+          key: locale === "en" ? "SpO₂" : "SpO₂",
+          value: String(p.data.baselineSpo2),
+        },
+        {
+          key: locale === "en" ? "Patient identity" : "Identité patient",
+          value: clinicalDocYesNo(p.data.patientIdentityVerified, locale),
+        },
+        {
+          key: locale === "en" ? "Consent" : "Consentement",
+          value: clinicalDocYesNo(p.data.consentVerified, locale),
+        },
+        {
+          key: locale === "en" ? "Symptoms present" : "Symptômes",
+          value: clinicalDocYesNo(p.data.symptomsPresent, locale),
+        },
+      ];
+      if (p.data.symptomChecklist.length > 0) {
+        lines.push({
+          key: locale === "en" ? "Symptoms" : "Signes",
+          value: formatSymptomList(
+            p.data.symptomChecklist,
+            REASSESS_SYMPTOM_EN,
+            REASSESS_SYMPTOM_FR,
+            locale
+          ),
+        });
+      }
+      return lines;
+    }
     case BLOOD_PRODUCT_REASSESSMENT_CARD_ID: {
       const p = bloodProductReassessmentPayloadSchema.safeParse(payload);
       if (!p.success) return [];
@@ -519,12 +862,36 @@ export function summarizeBloodProductDocumentationPayload(
           value: p.data.assessmentTime,
         },
         {
+          key: locale === "en" ? "Temperature" : "Température",
+          value: p.data.temperature,
+        },
+        {
+          key: locale === "en" ? "Heart rate" : "Fréquence cardiaque",
+          value: String(p.data.heartRate),
+        },
+        {
+          key: locale === "en" ? "Respiratory rate" : "Fréquence respiratoire",
+          value: String(p.data.respRate),
+        },
+        {
+          key: locale === "en" ? "Blood pressure" : "Tension artérielle",
+          value: p.data.bloodPressure,
+        },
+        {
+          key: locale === "en" ? "SpO₂" : "SpO₂",
+          value: String(p.data.spo2),
+        },
+        {
           key: locale === "en" ? "Symptoms present" : "Symptômes",
           value: clinicalDocYesNo(p.data.symptomsPresent, locale),
         },
         {
           key: locale === "en" ? "Continued administration" : "Administration poursuivie",
           value: clinicalDocYesNo(p.data.continuedAdministration, locale),
+        },
+        {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
       if (p.data.symptomChecklist.length > 0) {
@@ -567,6 +934,14 @@ export function summarizeBloodProductDocumentationPayload(
           ),
         },
         {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(p.data.providerNotified, locale),
+        },
+        {
+          key: locale === "en" ? "Intervention required" : "Intervention requise",
+          value: clinicalDocYesNo(p.data.interventionRequired, locale),
+        },
+        {
           key: locale === "en" ? "Transfusion stopped" : "Transfusion arrêtée",
           value: clinicalDocYesNo(p.data.transfusionStopped, locale),
         },
@@ -591,20 +966,44 @@ export function summarizeBloodProductDocumentationPayload(
         },
         { key: locale === "en" ? "Unit ID" : "N° unité", value: p.data.unitIdentifier },
         {
-          key: locale === "en" ? "Completion time" : "Heure fin",
+          key: locale === "en" ? "Completion time" : "Heure fin transfusion",
           value: p.data.completionTime,
+        },
+        {
+          key: locale === "en" ? "End time" : "Heure fin",
+          value: p.data.endTime,
         },
         {
           key: locale === "en" ? "Volume infused (mL)" : "Volume perfusé (mL)",
           value: String(p.data.volumeInfusedMl),
         },
         {
-          key: locale === "en" ? "Reaction occurred" : "Réaction survenue",
-          value: clinicalDocYesNo(p.data.reactionOccurred, locale),
+          key: locale === "en" ? "Post temperature" : "Température post",
+          value: p.data.postTemperature,
+        },
+        {
+          key: locale === "en" ? "Post heart rate" : "Fréquence cardiaque post",
+          value: String(p.data.postHeartRate),
+        },
+        {
+          key: locale === "en" ? "Post blood pressure" : "Tension post",
+          value: p.data.postBloodPressure,
+        },
+        {
+          key: locale === "en" ? "Post SpO₂" : "SpO₂ post",
+          value: String(p.data.postSpo2),
+        },
+        {
+          key: locale === "en" ? "Reaction observed" : "Réaction observée",
+          value: clinicalDocYesNo(p.data.reactionObserved, locale),
         },
         {
           key: locale === "en" ? "Transfusion completed" : "Transfusion terminée",
           value: clinicalDocYesNo(p.data.transfusionCompleted, locale),
+        },
+        {
+          key: locale === "en" ? "Provider notified" : "Médecin avisé",
+          value: clinicalDocYesNo(p.data.providerNotified, locale),
         },
       ];
     }

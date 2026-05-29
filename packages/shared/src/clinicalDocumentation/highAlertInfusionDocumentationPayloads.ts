@@ -230,6 +230,17 @@ export function isEdoc8HighAlertInfusionDocumentationCardId(
   return (EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId);
 }
 
+/** After witness finalization — mark verification legally complete in payload (EDOC.8B). */
+export function finalizeHighAlertInfusionPayloadAfterWitness(
+  cardId: string,
+  payload: Record<string, unknown>
+): Record<string, unknown> {
+  if (cardId === HIGH_ALERT_INFUSION_VERIFICATION_CARD_ID) {
+    return { ...payload, verificationStatus: "VERIFIED" };
+  }
+  return payload;
+}
+
 export function enrichHighAlertInfusionPayloadForPersistence(
   cardId: string,
   payload: Record<string, unknown>

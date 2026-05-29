@@ -12,6 +12,7 @@ import {
   type ClinicalDocumentationCategory,
   listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
+  requiresImmediateWitnessCapture,
   searchClinicalDocumentationCards,
   selectClinicalDocumentationPayloadSummary,
 } from "@medora/shared";
@@ -19,6 +20,7 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   createClinicalDocumentationEntry,
+  createClinicalDocumentationEntryWithWitness,
   fetchClinicalDocumentationEntries,
   witnessClinicalDocumentationEntry,
   type ClinicalDocumentationEntryRow,
@@ -47,6 +49,7 @@ import {
   ClinicalDocumentationHighAlertInfusionForm,
   isEdoc8HighAlertInfusionFormCard,
 } from "./ClinicalDocumentationHighAlertInfusionForm";
+import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -72,6 +75,11 @@ const cardShell: React.CSSProperties = {
 };
 
 type BasicItem = { key: string; value: string };
+
+type ImmediateWitnessDraft = {
+  card: ClinicalDocumentationCard;
+  payload: Record<string, unknown>;
+};
 
 function cardTitle(card: ClinicalDocumentationCard, locale: "en" | "fr"): string {
   return locale === "fr" ? card.titleFr : card.titleEn;
@@ -107,6 +115,12 @@ export function ClinicalDocumentationHub({
   const [basicItems, setBasicItems] = useState<BasicItem[]>([{ key: "", value: "" }]);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [witnessModalEntry, setWitnessModalEntry] = useState<ClinicalDocumentationEntryRow | null>(
+    null
+  );
+  const [immediateWitnessDraft, setImmediateWitnessDraft] = useState<ImmediateWitnessDraft | null>(
+    null
+  );
 
   const canPersist = Boolean(encounterId && facilityId);
 
@@ -187,20 +201,65 @@ export function ClinicalDocumentationHub({
     return t("clinicalDocumentation.saveOk");
   };
 
-  const handleWitness = async (entryId: string) => {
+  const finalizeWitness = async (entryId: string) => {
     if (!encounterId || !facilityId) return;
-    if (!window.confirm(t("clinicalDocumentation.witnessConfirm"))) return;
     setSaving(true);
     setSaveMessage(null);
     try {
       await witnessClinicalDocumentationEntry(encounterId, entryId, facilityId);
       setSaveMessage(t("clinicalDocumentation.witnessOk"));
+      setWitnessModalEntry(null);
       await loadEntries();
     } catch {
       setSaveMessage(t("clinicalDocumentation.witnessFailed"));
     } finally {
       setSaving(false);
     }
+  };
+
+  const openWitnessModal = (entry: ClinicalDocumentationEntryRow) => {
+    setImmediateWitnessDraft(null);
+    setWitnessModalEntry(entry);
+  };
+
+  const cancelImmediateWitnessDraft = () => {
+    setImmediateWitnessDraft(null);
+    setSaveMessage(t("clinicalDocumentation.witnessModal.cancelWithoutSave"));
+  };
+
+  const finalizeImmediateWitness = async (witnessUserId: string) => {
+    if (!immediateWitnessDraft || !encounterId || !facilityId) return;
+    setSaving(true);
+    setSaveMessage(null);
+    try {
+      await createClinicalDocumentationEntryWithWitness(encounterId, facilityId, {
+        category: immediateWitnessDraft.card.category,
+        cardId: immediateWitnessDraft.card.id,
+        payloadJson: immediateWitnessDraft.payload,
+        witnessUserId,
+      });
+      setSaveMessage(t("clinicalDocumentation.saveOk"));
+      setImmediateWitnessDraft(null);
+      setExpandedCardId(null);
+      await loadEntries();
+    } catch {
+      setSaveMessage(t("clinicalDocumentation.saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitClinicalDocumentation = async (
+    card: ClinicalDocumentationCard,
+    payload: Record<string, unknown>
+  ): Promise<void> => {
+    if (requiresImmediateWitnessCapture(card.id)) {
+      setSaveMessage(null);
+      setWitnessModalEntry(null);
+      setImmediateWitnessDraft({ card, payload });
+      return;
+    }
+    await saveObservationEntry(card, payload);
   };
 
   const saveObservationEntry = async (card: ClinicalDocumentationCard, payload: Record<string, unknown>) => {
@@ -402,7 +461,7 @@ export function ClinicalDocumentationHub({
                         type="button"
                         data-testid="clinical-documentation-witness-button"
                         disabled={saving}
-                        onClick={() => void handleWitness(entry.id)}
+                        onClick={() => openWitnessModal(entry)}
                         style={{
                           marginTop: 6,
                           padding: "5px 10px",
@@ -639,7 +698,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationObservationForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -647,7 +706,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationStrokeForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -655,7 +714,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationIntakeOutputForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -663,7 +722,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationRestraintForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -671,7 +730,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationBloodProductForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -679,7 +738,7 @@ export function ClinicalDocumentationHub({
                 <ClinicalDocumentationHighAlertInfusionForm
                   cardId={c.id}
                   saving={saving}
-                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
                 />
               ) : null}
 
@@ -775,6 +834,40 @@ export function ClinicalDocumentationHub({
             String(listClinicalDocumentationCardsByCategory(selectedCategory).length)
           )}
         </p>
+      ) : null}
+
+      {(witnessModalEntry || immediateWitnessDraft) && facilityId ? (
+        <ClinicalDocumentationWitnessSearchModal
+          facilityId={facilityId}
+          currentUserId={userId}
+          authorDisplayName={
+            witnessModalEntry?.authorDisplayName ?? t("clinicalDocumentation.witnessModal.currentAuthor")
+          }
+          cardTitle={
+            immediateWitnessDraft
+              ? cardTitle(immediateWitnessDraft.card, locale)
+              : entryDisplayTitle(witnessModalEntry!, locale)
+          }
+          mode={immediateWitnessDraft ? "pre-save" : "existing-entry"}
+          open
+          saving={saving}
+          onClose={() => {
+            if (immediateWitnessDraft) {
+              cancelImmediateWitnessDraft();
+              return;
+            }
+            setWitnessModalEntry(null);
+          }}
+          onFinalize={async (witnessUserId) => {
+            if (immediateWitnessDraft) {
+              await finalizeImmediateWitness(witnessUserId);
+              return;
+            }
+            if (witnessModalEntry) {
+              await finalizeWitness(witnessModalEntry.id);
+            }
+          }}
+        />
       ) : null}
     </div>
   );

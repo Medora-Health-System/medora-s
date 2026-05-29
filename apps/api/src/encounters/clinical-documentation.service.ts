@@ -11,12 +11,16 @@ import {
   buildClinicalDocumentationAuditMetadata,
   buildClinicalDocumentationWitnessAuditMetadata,
   canActAsClinicalDocumentationWitness,
+  finalizeClinicalDocumentationPayloadAfterWitness,
   mapClinicalDocumentationEntryForLegalChart,
   clinicalDocumentationEntryCreateDtoSchema,
+  clinicalDocumentationEntryCreateWithWitnessDtoSchema,
   parseFacilityClinicalDocumentationWitnessPolicy,
+  requiresImmediateWitnessCapture,
   resolveRequiresWitnessSignatureForClinicalDocumentationEntry,
   validatePayloadForCard,
   type ClinicalDocumentationEntryCreateDto,
+  type ClinicalDocumentationEntryCreateWithWitnessDto,
   type ClinicalDocumentationEntryLegalChartRow,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -216,6 +220,196 @@ export class ClinicalDocumentationService {
     });
   }
 
+  async createEntryWithWitness(
+    facilityId: string,
+    encounterId: string,
+    dto: ClinicalDocumentationEntryCreateWithWitnessDto,
+    authorUserId: string | undefined,
+    ip?: string,
+    userAgent?: string
+  ) {
+    if (!authorUserId) {
+      throw new ForbiddenException("Authentification requise.");
+    }
+
+    const parsed = clinicalDocumentationEntryCreateWithWitnessDtoSchema.safeParse(dto);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
+    if (!requiresImmediateWitnessCapture(parsed.data.cardId)) {
+      throw new BadRequestException(
+        "This card does not support immediate witness capture on create."
+      );
+    }
+
+    if (parsed.data.witnessUserId === authorUserId) {
+      throw new BadRequestException("Author cannot witness their own entry.");
+    }
+
+    try {
+      assertClinicalDocumentationEntryCreateAllowed(parsed.data);
+    } catch (e) {
+      throw new BadRequestException(e instanceof Error ? e.message : "Invalid payload");
+    }
+
+    const payloadValidation = validatePayloadForCard(
+      parsed.data.cardId,
+      parsed.data.payloadJson as Record<string, unknown>
+    );
+    if (!payloadValidation.ok) {
+      throw new BadRequestException(payloadValidation.message);
+    }
+
+    const witnessUser = await this.prisma.user.findFirst({
+      where: { id: parsed.data.witnessUserId, isActive: true },
+      select: { id: true },
+    });
+    if (!witnessUser) {
+      throw new BadRequestException("Witness user not found or inactive.");
+    }
+
+    const witnessRoles = await this.prisma.userRole.findMany({
+      where: {
+        userId: parsed.data.witnessUserId,
+        facilityId,
+        isActive: true,
+      },
+      include: { role: { select: { code: true, name: true } } },
+    });
+    if (witnessRoles.length === 0) {
+      throw new BadRequestException("Witness user has no active facility access.");
+    }
+
+    const witnessRoleRows = witnessRoles.flatMap((r) =>
+      r.role ? [{ code: String(r.role.code), name: r.role.name ?? null }] : []
+    );
+    const witnessRoleCodes = witnessRoleRows.map((r) => r.code);
+    if (!canActAsClinicalDocumentationWitness(witnessRoleCodes)) {
+      throw new ForbiddenException("Autorisation insuffisante pour témoigner.");
+    }
+
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+    });
+    if (!encounter) throw new NotFoundException("Encounter not found");
+    assertEncounterOpenForClinicalMutation(encounter);
+
+    const { authorDisplayNameSnapshot, authorRoleSnapshot } = await this.resolveAuthorSnapshot(
+      authorUserId,
+      facilityId
+    );
+    const {
+      authorDisplayNameSnapshot: witnessDisplayNameSnapshot,
+      authorRoleSnapshot: witnessRoleSnapshot,
+    } = await this.resolveAuthorSnapshot(parsed.data.witnessUserId, facilityId);
+
+    const facilityWitnessPolicy = await this.loadFacilityWitnessPolicy(facilityId);
+    const requiresWitnessSignature = resolveRequiresWitnessSignatureForClinicalDocumentationEntry(
+      parsed.data.cardId,
+      payloadValidation.data,
+      facilityWitnessPolicy
+    );
+    if (!requiresWitnessSignature) {
+      throw new BadRequestException("This card does not require witness signature.");
+    }
+
+    const finalizedPayload = finalizeClinicalDocumentationPayloadAfterWitness(
+      parsed.data.cardId,
+      payloadValidation.data
+    );
+    const payloadKeyCount = Object.keys(finalizedPayload).length;
+    const witnessedAt = new Date();
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.encounterClinicalDocumentationEntry.create({
+        data: {
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          category: parsed.data.category,
+          cardId: parsed.data.cardId,
+          payloadJson: finalizedPayload as Prisma.InputJsonValue,
+          authorUserId,
+          authorDisplayNameSnapshot,
+          authorRoleSnapshot,
+          requiresWitnessSignature: true,
+          witnessedAt,
+          witnessedByUserId: parsed.data.witnessUserId,
+          witnessDisplayNameSnapshot,
+          witnessRoleSnapshot,
+        },
+        select: clinicalDocumentationEntrySelect,
+      });
+
+      const createAuditMetadata = buildClinicalDocumentationAuditMetadata({
+        encounterId,
+        patientId: encounter.patientId,
+        entryId: row.id,
+        category: row.category,
+        cardId: row.cardId,
+        authorUserId,
+        authorRole: authorRoleSnapshot,
+        payloadKeyCount,
+      });
+      assertClinicalDocumentationAuditMetadataSafe(createAuditMetadata as Record<string, unknown>);
+
+      await this.audit.log(
+        AuditAction.ENCOUNTER_CLINICAL_DOCUMENTATION_CREATED,
+        "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
+        {
+          userId: authorUserId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          entityId: row.id,
+          ip,
+          userAgent,
+          critical: true,
+          metadata: createAuditMetadata,
+          tx,
+        }
+      );
+
+      const witnessAuditMetadata = buildClinicalDocumentationWitnessAuditMetadata({
+        encounterId,
+        patientId: encounter.patientId,
+        entryId: row.id,
+        category: row.category,
+        cardId: row.cardId,
+        authorUserId,
+        authorRole: authorRoleSnapshot,
+        witnessUserId: parsed.data.witnessUserId,
+        witnessRole: witnessRoleSnapshot,
+      });
+      assertClinicalDocumentationAuditMetadataSafe(witnessAuditMetadata as Record<string, unknown>);
+
+      await this.audit.log(
+        AuditAction.ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED,
+        "ENCOUNTER_CLINICAL_DOCUMENTATION_ENTRY",
+        {
+          userId: parsed.data.witnessUserId,
+          facilityId,
+          patientId: encounter.patientId,
+          encounterId,
+          entityId: row.id,
+          ip,
+          userAgent,
+          critical: true,
+          metadata: witnessAuditMetadata,
+          tx,
+        }
+      );
+
+      return row;
+    });
+
+    return mapClinicalDocumentationEntryForLegalChart({
+      ...created,
+      payloadJson: created.payloadJson,
+    });
+  }
+
   async witnessEntry(
     facilityId: string,
     encounterId: string,
@@ -258,6 +452,17 @@ export class ClinicalDocumentationService {
       throw new ForbiddenException("Autorisation insuffisante pour témoigner.");
     }
 
+    const existingPayload =
+      existing.payloadJson &&
+      typeof existing.payloadJson === "object" &&
+      !Array.isArray(existing.payloadJson)
+        ? (existing.payloadJson as Record<string, unknown>)
+        : {};
+    const finalizedPayload = finalizeClinicalDocumentationPayloadAfterWitness(
+      existing.cardId,
+      existingPayload
+    );
+
     const witnessed = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterClinicalDocumentationEntry.update({
         where: { id: entryId },
@@ -266,6 +471,7 @@ export class ClinicalDocumentationService {
           witnessedByUserId: userId,
           witnessDisplayNameSnapshot: authorDisplayNameSnapshot,
           witnessRoleSnapshot: authorRoleSnapshot,
+          payloadJson: finalizedPayload as Prisma.InputJsonValue,
         },
         select: clinicalDocumentationEntrySelect,
       });

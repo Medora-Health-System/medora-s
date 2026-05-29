@@ -22,7 +22,11 @@ import {
   type VisitSummaryReassessmentEntry,
   type VisitSummaryTextBlock,
 } from "./emergencyVisitSummaryModel";
-import { selectClinicalDocumentationPayloadSummary } from "@medora/shared";
+import {
+  appendBloodProductPatientSummaryLines,
+  EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
+  selectClinicalDocumentationPayloadSummary,
+} from "@medora/shared";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
@@ -999,10 +1003,20 @@ export function EmergencyVisitSummaryPanel({
                   (entry: ClinicalDocumentationLegalChartEntry) => {
                   const title =
                     language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
-                  const summaryLines = selectClinicalDocumentationPayloadSummary(
-                    entry,
-                    language === "en" ? "en" : "fr"
-                  );
+                  const summaryLocale = language === "en" ? "en" : "fr";
+                  const summaryLines = (
+                    EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]
+                  ).includes(entry.cardId)
+                    ? appendBloodProductPatientSummaryLines(
+                        entry.cardId,
+                        entry.payloadJson ?? {},
+                        summaryLocale,
+                        {
+                          witnessDisplayName: entry.witnessDisplayName,
+                          witnessStatus: entry.witnessStatus,
+                        }
+                      )
+                    : selectClinicalDocumentationPayloadSummary(entry, summaryLocale);
                   return (
                     <li
                       key={entry.id}

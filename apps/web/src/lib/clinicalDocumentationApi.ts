@@ -1,5 +1,8 @@
 import { apiFetch } from "./apiClient";
-import type { ClinicalDocumentationEntryCreateDto } from "@medora/shared";
+import type {
+  ClinicalDocumentationEntryCreateDto,
+  ClinicalDocumentationEntryCreateWithWitnessDto,
+} from "@medora/shared";
 
 export type ClinicalDocumentationEntryRow = {
   id: string;
@@ -40,6 +43,18 @@ export async function createClinicalDocumentationEntry(
   body: ClinicalDocumentationEntryCreateDto
 ): Promise<ClinicalDocumentationEntryRow> {
   return apiFetch(`/encounters/${encounterId}/clinical-documentation`, {
+    method: "POST",
+    headers: { "x-facility-id": facilityId },
+    body: JSON.stringify(body),
+  }) as Promise<ClinicalDocumentationEntryRow>;
+}
+
+export async function createClinicalDocumentationEntryWithWitness(
+  encounterId: string,
+  facilityId: string,
+  body: ClinicalDocumentationEntryCreateWithWitnessDto
+): Promise<ClinicalDocumentationEntryRow> {
+  return apiFetch(`/encounters/${encounterId}/clinical-documentation/with-witness`, {
     method: "POST",
     headers: { "x-facility-id": facilityId },
     body: JSON.stringify(body),

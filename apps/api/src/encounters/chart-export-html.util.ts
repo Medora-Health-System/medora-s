@@ -398,9 +398,16 @@ export function renderEncounterChartExportHtml(
                 entry.witnessedAt && entry.witnessDisplayName
                   ? ` — <strong>[WITNESSED]</strong> ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")}) ${esc(entry.witnessedAt)}`
                   : "";
+              const primarySigner = `<strong>${esc(
+                locale === "fr" ? "Signataire principal" : "Primary signer"
+              )}</strong>: ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})`;
+              const witnessSigner =
+                entry.witnessedAt && entry.witnessDisplayName
+                  ? ` — <strong>${esc(locale === "fr" ? "Témoin" : "Witness signer")}</strong>: ${esc(entry.witnessDisplayName)} (${esc(entry.witnessRoleTitle ?? "—")})`
+                  : "";
               return `<li><span class="muted">${esc(entry.createdAt)}</span> — ${esc(
                 entry.category
-              )} — ${esc(title)} — ${esc(entry.authorDisplayName)} (${esc(entry.authorRoleTitle)})${witnessPending}${witnessLine}${voidTag}${summary}</li>`;
+              )} — ${esc(title)} — ${primarySigner}${witnessSigner}${witnessPending}${witnessLine}${voidTag}${summary}</li>`;
             })
             .join("")}</ul>`
     }

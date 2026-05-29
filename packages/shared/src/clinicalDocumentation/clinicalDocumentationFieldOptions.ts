@@ -501,13 +501,19 @@ export const BLOOD_REASSESSMENT_SYMPTOM_OPTIONS: ClinicalDocumentationFieldOptio
 ];
 
 export const BLOOD_REACTION_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
-  { value: "FEBRILE", labelEn: "Febrile", labelFr: "Febrile" },
+  { value: "NO_REACTION", labelEn: "No reaction", labelFr: "Aucune réaction" },
+  { value: "SUSPECTED", labelEn: "Suspected", labelFr: "Suspectée" },
+  { value: "CONFIRMED", labelEn: "Confirmed", labelFr: "Confirmée" },
+  { value: "ACUTE_HEMOLYTIC", labelEn: "Acute hemolytic", labelFr: "Hémolytique aiguë" },
+  {
+    value: "FEBRILE_NON_HEMOLYTIC",
+    labelEn: "Febrile non-hemolytic",
+    labelFr: "Febrile non hémolytique",
+  },
   { value: "ALLERGIC", labelEn: "Allergic", labelFr: "Allergique" },
   { value: "ANAPHYLACTIC", labelEn: "Anaphylactic", labelFr: "Anaphylactique" },
   { value: "TRALI", labelEn: "TRALI", labelFr: "TRALI" },
   { value: "TACO", labelEn: "TACO", labelFr: "TACO" },
-  { value: "HEMOLYTIC", labelEn: "Hemolytic", labelFr: "Hémolytique" },
-  { value: "SUSPECTED", labelEn: "Suspected", labelFr: "Suspectée" },
   { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
 ];
 

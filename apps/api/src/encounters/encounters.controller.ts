@@ -64,6 +64,7 @@ import {
   encounterNoteAmendDtoSchema,
   encounterNoteVoidDtoSchema,
   clinicalDocumentationEntryCreateDtoSchema,
+  clinicalDocumentationEntryCreateWithWitnessDtoSchema,
 } from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
@@ -218,6 +219,30 @@ export class EncountersController {
       throw new BadRequestException("Invalid payload", { cause: parsed.error });
     }
     return this.clinicalDocumentationService.createEntry(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  /** EDOC.8B — create high-risk clinical documentation with immediate witness in one transaction. */
+  @Post("encounters/:id/clinical-documentation/with-witness")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async createClinicalDocumentationEntryWithWitness(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const parsed = clinicalDocumentationEntryCreateWithWitnessDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.clinicalDocumentationService.createEntryWithWitness(
       facilityId,
       id,
       parsed.data,
