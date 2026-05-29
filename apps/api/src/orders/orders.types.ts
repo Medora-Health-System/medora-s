@@ -92,6 +92,8 @@ export type OrderItemNestedCreate = {
   catalogItemType: string;
   manualLabel?: string | null;
   manualSecondaryText?: string | null;
+  /** MEDPROC.2: canonical enterprise procedure id (CARE only). Future billing key — not CPT/HCPCS. */
+  enterpriseProcedureId?: string | null;
   notes?: string;
   quantity?: number;
   strength?: string;
@@ -156,6 +158,12 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
     notes: optionalTrimmedString(item.notes ?? undefined),
     quantity: item.quantity,
   };
+  if (orderType === "CARE") {
+    const enterpriseProcedureId = item.enterpriseProcedureId?.trim();
+    if (enterpriseProcedureId) {
+      base.enterpriseProcedureId = enterpriseProcedureId;
+    }
+  }
   if (orderType !== "MEDICATION") {
     return stripUndefinedKeys(base) as OrderItemNestedCreate;
   }

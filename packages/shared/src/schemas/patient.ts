@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
+import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
@@ -449,6 +450,11 @@ export const orderItemCreateDtoSchema = z.object({
   medicationFulfillmentIntent: medicationFulfillmentIntentSchema.optional(),
   /** MEDICATION only: horaire d’administration prévu (optionnel). */
   intendedAdministrationAt: z.coerce.date().optional().nullable(),
+  /**
+   * CARE only (MEDPROC.2): canonical enterprise procedure catalog id.
+   * manualLabel remains localized display snapshot — not billing/reporting identity.
+   */
+  enterpriseProcedureId: z.string().max(128).optional(),
 });
 
 export type OrderItemCreateDto = z.infer<typeof orderItemCreateDtoSchema>;
@@ -474,6 +480,18 @@ export const orderCreateDtoSchema = z
   })
   .superRefine((data, ctx) => {
     data.items.forEach((it, i) => {
+      const enterpriseValidation = validateEnterpriseProcedureIdForOrderItem({
+        orderType: data.type,
+        catalogItemType: it.catalogItemType,
+        enterpriseProcedureId: it.enterpriseProcedureId,
+      });
+      if (!enterpriseValidation.ok) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: enterpriseValidation.message,
+          path: ["items", i, "enterpriseProcedureId"],
+        });
+      }
       const hasCatalog = Boolean(it.catalogItemId);
       const hasManual = Boolean(it.manualLabel?.trim());
       if (!hasCatalog && !hasManual) {

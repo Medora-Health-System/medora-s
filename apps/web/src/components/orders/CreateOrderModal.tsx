@@ -570,6 +570,9 @@ function buildPayload(
         catalogItemId: null,
         catalogItemType: "CARE" as const,
         manualLabel: (it.manualLabel ?? it._label).trim(),
+        ...(it._enterpriseProcedureId?.trim()
+          ? { enterpriseProcedureId: it._enterpriseProcedureId.trim() }
+          : {}),
         notes: it.notes?.trim() || undefined,
       })),
     };

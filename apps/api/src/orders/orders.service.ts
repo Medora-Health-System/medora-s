@@ -1318,6 +1318,7 @@ export class OrdersService {
             manualLabel: it.manualLabel,
             manualSecondaryText: it.manualSecondaryText,
             strength: it.strength,
+            enterpriseProcedureId: it.enterpriseProcedureId,
           };
           return {
             ...it,

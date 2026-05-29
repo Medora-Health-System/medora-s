@@ -7,13 +7,23 @@
  *
  * Phase E legacy fields: catalog `name` is internal/compat; `displayNameEn` is English display; `displayNameFr`
  * is French display. English UI must not treat `name` as the English label.
+ *
+ * MEDPROC.2: CARE lines with enterpriseProcedureId resolve display from shared enterprise catalog;
+ * manualLabel is fallback for legacy/custom tasks.
  */
+
+import {
+  enterpriseProcedureById,
+  resolveEnterpriseProcedureDisplayName,
+} from "../procedures/enterpriseProcedureCatalog.js";
 
 export type OrderItemLabelInput = {
   catalogItemType: string;
   manualLabel?: string | null;
   manualSecondaryText?: string | null;
   strength?: string | null;
+  /** MEDPROC.2: canonical enterprise procedure id for CARE lines (display resolved from shared catalog). */
+  enterpriseProcedureId?: string | null;
 };
 
 export type CatalogLabLabel = {
@@ -118,6 +128,25 @@ function firstAcceptableLineLabel(
   return null;
 }
 
+function enterpriseProcedureOrderDisplayLabel(
+  enterpriseProcedureId: string | null | undefined,
+  lang: "fr" | "en"
+): string | null {
+  const id = enterpriseProcedureId?.trim();
+  if (!id) return null;
+  const definition = enterpriseProcedureById(id);
+  if (!definition) return null;
+  return resolveEnterpriseProcedureDisplayName(definition, lang);
+}
+
+function careOrderDisplayLabel(it: OrderItemLabelInput, lang: "fr" | "en"): string {
+  const fromEnterprise = enterpriseProcedureOrderDisplayLabel(it.enterpriseProcedureId, lang);
+  if (fromEnterprise) return fromEnterprise;
+  const man = firstAcceptableLineLabel(it.catalogItemType, acceptableManualOrderLine(it));
+  if (man) return man;
+  return typeFallback(it.catalogItemType, lang);
+}
+
 /**
  * French-first catalog label (legacy product default).
  * Order: displayNameFr → name → displayNameEn → manual → type fallback.
@@ -162,6 +191,9 @@ export function buildOrderItemDisplayLabelFr(
       return str ? `${base} ${str}` : base;
     }
     return typeFallback(it.catalogItemType, "fr");
+  }
+  if (it.catalogItemType === "CARE") {
+    return careOrderDisplayLabel(it, "fr");
   }
   const man = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
   if (man) return man;
@@ -227,6 +259,9 @@ export function buildOrderItemDisplayLabelEn(
       return str ? `${base} ${str}` : base;
     }
     return typeFallback(it.catalogItemType, "en");
+  }
+  if (it.catalogItemType === "CARE") {
+    return careOrderDisplayLabel(it, "en");
   }
   const man = firstAcceptableLineLabel(it.catalogItemType, manualLineStr);
   if (man) return man;

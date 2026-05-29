@@ -199,6 +199,7 @@ describe("MEDPROC.1 create order integration guards", () => {
     expect(modalSource).toContain("addCareCatalogProcedure");
     expect(modalSource).toContain("create-order-care-catalog-");
     expect(modalSource).toContain("_enterpriseProcedureId");
+    expect(modalSource).toContain("enterpriseProcedureId: it._enterpriseProcedureId.trim()");
   });
 
   it("preserves care presets and custom care task", () => {
@@ -214,14 +215,16 @@ describe("MEDPROC.1 create order integration guards", () => {
   it("documents MEDPROC.2 persistence guardrail for enterpriseProcedureId", () => {
     const typesSource = readFileSync(join(webRoot, "src/components/orders/createOrderModal/types.ts"), "utf8");
     expect(typesSource).toMatch(/MEDPROC\.2 must persist.*enterpriseProcedureId/i);
-    expect(typesSource).toMatch(/manualLabel.*localized display text only/i);
+    expect(typesSource).toMatch(/manualLabel.*localized display snapshot only/i);
     expect(modalSource).toContain("MEDPROC.2: persist enterpriseProcedureId on OrderItem");
   });
 
-  it("keeps MEDPROC.1 foundation-only boundary (no backend persistence yet)", () => {
-    const apiOrders = readFileSync(join(webRoot, "../api/src/orders/orders.service.ts"), "utf8");
-    expect(apiOrders).not.toContain("enterpriseProcedureId");
-    expect(modalSource).toContain("_enterpriseProcedureId");
-    expect(modalSource).toMatch(/manualLabel: trimmed/);
+  it("persists enterpriseProcedureId through API create path (MEDPROC.2)", () => {
+    const apiOrdersTypes = readFileSync(
+      join(webRoot, "../api/src/orders/orders.types.ts"),
+      "utf8"
+    );
+    expect(apiOrdersTypes).toContain("enterpriseProcedureId");
+    expect(apiOrdersTypes).toMatch(/orderType === "CARE"/);
   });
 });

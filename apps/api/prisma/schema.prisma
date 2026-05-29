@@ -1250,6 +1250,8 @@ model OrderItem {
   catalogItemType                 String // "LAB_TEST", "IMAGING_STUDY", "MEDICATION"
   /// Libellé saisi à la main lorsque l’article n’existe pas au catalogue (analyse, examen, médicament).
   manualLabel                     String?
+  /// Canonical enterprise procedure catalog id (MEDPROC.2) — stable identity for CARE lines; manualLabel is display snapshot.
+  enterpriseProcedureId           String?
   /// Précision (ex. région imagerie) ou texte secondaire d’affichage.
   manualSecondaryText             String?
   quantity                        Int?
@@ -1321,6 +1323,7 @@ model OrderItem {
   @@index([medicationFulfillmentIntent])
   @@index([medicationProductId])
   @@index([medicationPackageId])
+  @@index([enterpriseProcedureId])
 }
 
 /// ER-ORDER-LIFECYCLE: immutable audit events for all order domains.

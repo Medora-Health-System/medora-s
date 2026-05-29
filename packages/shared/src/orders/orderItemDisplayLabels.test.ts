@@ -9,6 +9,28 @@ import {
 describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
   const itLab = { catalogItemType: "LAB_TEST" as const, manualLabel: null, manualSecondaryText: null, strength: null };
 
+  it("CARE with enterpriseProcedureId prefers catalog display over manualLabel snapshot", () => {
+    const label = buildOrderItemDisplayLabelEn(
+      {
+        catalogItemType: "CARE",
+        manualLabel: "Legacy manual",
+        enterpriseProcedureId: "central_line_placement",
+      },
+      null,
+      null,
+      null
+    );
+    expect(label).toBe("Central line placement");
+  });
+
+  it("CARE without enterpriseProcedureId falls back to manualLabel", () => {
+    const label = buildOrderItemDisplayLabelFr({
+      catalogItemType: "CARE",
+      manualLabel: "Tâche infirmière personnalisée",
+    });
+    expect(label).toBe("Tâche infirmière personnalisée");
+  });
+
   it("EN lab label prefers displayNameEn over code when both acceptable", () => {
     const s = buildOrderItemDisplayLabelEn(
       itLab,
