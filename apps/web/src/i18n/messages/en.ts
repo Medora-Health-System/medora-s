@@ -15020,6 +15020,7 @@ export default {
           dysarthria: "Dysarthria",
           extinctionInattention: "Extinction / inattention",
           unableReason: "Unable to assess reason (optional)",
+          severityBand: "NIHSS severity band",
         },
         swallow: {
           screenedAt: "Screen time",

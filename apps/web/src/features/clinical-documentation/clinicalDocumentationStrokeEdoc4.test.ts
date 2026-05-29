@@ -24,10 +24,12 @@ describe("clinical documentation stroke suite (EDOC.4)", () => {
     expect(hub).toContain("clinical-documentation-hub");
   });
 
-  it("NIHSS form opens with calculated score", () => {
+  it("NIHSS form opens with calculated score and structured dropdowns", () => {
     expect(strokeForm).toContain("clinical-documentation-stroke-form");
     expect(strokeForm).toContain("STROKE_NIHSS_CARD_ID");
     expect(strokeForm).toContain("clinical-documentation-nihss-total");
+    expect(strokeForm).toContain("clinical-documentation-nihss-severity-band");
+    expect(strokeForm).toContain("ClinicalDocumentationScoreSelectField");
     expect(strokeForm).toContain("calculateNihssTotal");
   });
 

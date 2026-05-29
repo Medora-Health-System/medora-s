@@ -30,6 +30,7 @@ export {
 export * from "./observationDocumentationPayloads.js";
 export * from "./strokeDocumentationPayloads.js";
 export * from "./intakeOutputDocumentationPayloads.js";
+export * from "./clinicalDocumentationFieldOptions.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;

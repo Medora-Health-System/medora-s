@@ -186,10 +186,17 @@ describe("strokeDocumentationPayloads (EDOC.4 stroke suite)", () => {
     ).toBe(false);
   });
 
-  it("payload summaries render stroke key facts", () => {
+  it("payload summaries render stroke key facts with NIHSS value + meaning", () => {
     const nihssSummary = summarizeStrokeDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID);
     expect(nihssSummary.some((l) => l.key === "Score NIHSS total" && l.value === "5")).toBe(true);
+    expect(nihssSummary.some((l) => l.key === "Bande de sévérité NIHSS")).toBe(true);
+    expect(
+      nihssSummary.some(
+        (l) => l.key === "NIHSS LOC" && l.value.includes("0 —") && l.value.includes("Alerte")
+      )
+    ).toBe(true);
     const legal = summarizeClinicalDocumentationPayload(STROKE_NIHSS_CARD_ID, NIHSS_VALID);
     expect(legal.some((l) => l.key === "Score NIHSS total")).toBe(true);
+    expect(legal.some((l) => l.key === "NIHSS LOC")).toBe(true);
   });
 });

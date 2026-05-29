@@ -2,7 +2,18 @@
 
 import React, { useMemo, useState } from "react";
 import {
+  ABCD2_CLINICAL_FEATURE_OPTIONS,
+  ABCD2_DURATION_OPTIONS,
+  CINCINNATI_ELEMENT_OPTIONS,
+  deriveNihssSeverityBand,
   EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
+  NIHSS_FIELD_OPTIONS,
+  NIHSS_SCORED_FIELD_KEYS,
+  NIHSS_SEVERITY_BAND_LABEL_EN,
+  NIHSS_SEVERITY_BAND_LABEL_FR,
+  NEURO_CHANGES_FROM_PRIOR_OPTIONS,
+  NEURO_FIELD_OPTIONS,
+  SWALLOW_RESULT_OPTIONS,
   STROKE_ABCD2_CARD_ID,
   STROKE_CINCINNATI_CARD_ID,
   STROKE_NEURO_CHECKS_CARD_ID,
@@ -15,8 +26,15 @@ import {
   deriveCincinnatiResult,
   deriveVanResult,
   validateStrokePayloadForCard,
+  type NihssScoredFieldKey,
+  type NeuroSelectFieldKey,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import {
+  ClinicalDocumentationBooleanField,
+  ClinicalDocumentationScoreSelectField,
+  ClinicalDocumentationSelectField,
+} from "./ClinicalDocumentationFieldControls";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -75,34 +93,6 @@ function CheckboxField({
   );
 }
 
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <span style={labelStyle}>{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={fieldStyle}
-      />
-    </div>
-  );
-}
-
 const defaultNihss = () => ({
   assessedAt: nowLocalDatetimeValue(),
   levelOfConsciousness: 0,
@@ -133,7 +123,8 @@ export function ClinicalDocumentationStrokeForm({
   saving: boolean;
   onSubmit: (payload: Record<string, unknown>) => Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const locale = language === "en" ? "en" : "fr";
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const [nihss, setNihss] = useState(defaultNihss);
@@ -191,21 +182,22 @@ export function ClinicalDocumentationStrokeForm({
   });
   const [neuro, setNeuro] = useState({
     assessedAt: nowLocalDatetimeValue(),
-    levelOfConsciousness: "",
-    orientation: "",
-    pupils: "",
-    gripLeft: "",
-    gripRight: "",
-    motorLeft: "",
-    motorRight: "",
-    sensation: "",
-    speech: "",
+    levelOfConsciousness: "ALERT",
+    orientation: "ORIENTED_X4",
+    pupils: "EQUAL_REACTIVE",
+    gripLeft: "NORMAL",
+    gripRight: "NORMAL",
+    motorLeft: "NORMAL",
+    motorRight: "NORMAL",
+    sensation: "INTACT",
+    speech: "NORMAL",
     changesFromPrior: "NO" as "YES" | "NO" | "UNKNOWN",
     providerNotified: false,
     notes: "",
   });
 
   const nihssTotal = useMemo(() => calculateNihssTotal(nihss), [nihss]);
+  const nihssSeverityBand = useMemo(() => deriveNihssSeverityBand(nihssTotal), [nihssTotal]);
   const cincinnatiResult = useMemo(() => deriveCincinnatiResult(cincinnati), [cincinnati]);
   const vanResult = useMemo(() => deriveVanResult(van), [van]);
   const abcd2Total = useMemo(() => calculateAbcd2Total(abcd2), [abcd2]);
@@ -352,17 +344,44 @@ export function ClinicalDocumentationStrokeForm({
     options: Array<{ value: string; label: string }>,
     onChange: (v: string) => void
   ) => (
-    <div>
-      <span style={labelStyle}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={fieldStyle}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </div>
+    <ClinicalDocumentationSelectField
+      label={label}
+      value={value}
+      options={options.map((o) => ({ value: o.value, labelEn: o.label, labelFr: o.label }))}
+      locale={locale}
+      onChange={onChange}
+    />
   );
+
+  const nihssFieldLabelKey: Record<NihssScoredFieldKey, string> = {
+    levelOfConsciousness: "clinicalDocumentation.forms.stroke.nihss.loc",
+    locQuestions: "clinicalDocumentation.forms.stroke.nihss.locQuestions",
+    locCommands: "clinicalDocumentation.forms.stroke.nihss.locCommands",
+    bestGaze: "clinicalDocumentation.forms.stroke.nihss.bestGaze",
+    visualFields: "clinicalDocumentation.forms.stroke.nihss.visualFields",
+    facialPalsy: "clinicalDocumentation.forms.stroke.nihss.facialPalsy",
+    motorArmLeft: "clinicalDocumentation.forms.stroke.nihss.motorArmLeft",
+    motorArmRight: "clinicalDocumentation.forms.stroke.nihss.motorArmRight",
+    motorLegLeft: "clinicalDocumentation.forms.stroke.nihss.motorLegLeft",
+    motorLegRight: "clinicalDocumentation.forms.stroke.nihss.motorLegRight",
+    limbAtaxia: "clinicalDocumentation.forms.stroke.nihss.limbAtaxia",
+    sensory: "clinicalDocumentation.forms.stroke.nihss.sensory",
+    bestLanguage: "clinicalDocumentation.forms.stroke.nihss.bestLanguage",
+    dysarthria: "clinicalDocumentation.forms.stroke.nihss.dysarthria",
+    extinctionInattention: "clinicalDocumentation.forms.stroke.nihss.extinctionInattention",
+  };
+
+  const neuroFieldLabelKey: Record<NeuroSelectFieldKey, string> = {
+    levelOfConsciousness: "clinicalDocumentation.forms.stroke.neuro.levelOfConsciousness",
+    orientation: "clinicalDocumentation.forms.stroke.neuro.orientation",
+    pupils: "clinicalDocumentation.forms.stroke.neuro.pupils",
+    gripLeft: "clinicalDocumentation.forms.stroke.neuro.gripLeft",
+    gripRight: "clinicalDocumentation.forms.stroke.neuro.gripRight",
+    motorLeft: "clinicalDocumentation.forms.stroke.neuro.motorLeft",
+    motorRight: "clinicalDocumentation.forms.stroke.neuro.motorRight",
+    sensation: "clinicalDocumentation.forms.stroke.neuro.sensation",
+    speech: "clinicalDocumentation.forms.stroke.neuro.speech",
+  };
 
   return (
     <div
@@ -382,24 +401,29 @@ export function ClinicalDocumentationStrokeForm({
             />
           </div>
           <div style={rowStyle}>
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.loc")} value={nihss.levelOfConsciousness} min={0} max={3} onChange={(v) => setNihss((s) => ({ ...s, levelOfConsciousness: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.locQuestions")} value={nihss.locQuestions} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, locQuestions: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.locCommands")} value={nihss.locCommands} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, locCommands: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.bestGaze")} value={nihss.bestGaze} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, bestGaze: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.visualFields")} value={nihss.visualFields} min={0} max={3} onChange={(v) => setNihss((s) => ({ ...s, visualFields: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.facialPalsy")} value={nihss.facialPalsy} min={0} max={3} onChange={(v) => setNihss((s) => ({ ...s, facialPalsy: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.motorArmLeft")} value={nihss.motorArmLeft} min={0} max={4} onChange={(v) => setNihss((s) => ({ ...s, motorArmLeft: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.motorArmRight")} value={nihss.motorArmRight} min={0} max={4} onChange={(v) => setNihss((s) => ({ ...s, motorArmRight: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.motorLegLeft")} value={nihss.motorLegLeft} min={0} max={4} onChange={(v) => setNihss((s) => ({ ...s, motorLegLeft: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.motorLegRight")} value={nihss.motorLegRight} min={0} max={4} onChange={(v) => setNihss((s) => ({ ...s, motorLegRight: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.limbAtaxia")} value={nihss.limbAtaxia} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, limbAtaxia: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.sensory")} value={nihss.sensory} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, sensory: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.bestLanguage")} value={nihss.bestLanguage} min={0} max={3} onChange={(v) => setNihss((s) => ({ ...s, bestLanguage: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.dysarthria")} value={nihss.dysarthria} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, dysarthria: v }))} />
-            <NumberField label={t("clinicalDocumentation.forms.stroke.nihss.extinctionInattention")} value={nihss.extinctionInattention} min={0} max={2} onChange={(v) => setNihss((s) => ({ ...s, extinctionInattention: v }))} />
+            {NIHSS_SCORED_FIELD_KEYS.map((fieldKey) => (
+              <ClinicalDocumentationScoreSelectField
+                key={fieldKey}
+                label={t(nihssFieldLabelKey[fieldKey])}
+                value={nihss[fieldKey]}
+                options={NIHSS_FIELD_OPTIONS[fieldKey]}
+                locale={locale}
+                onChange={(v) => setNihss((s) => ({ ...s, [fieldKey]: v }))}
+                testId={`clinical-documentation-nihss-${fieldKey}`}
+              />
+            ))}
           </div>
           <p data-testid="clinical-documentation-nihss-total" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
             {t("clinicalDocumentation.forms.stroke.calculatedScore")}: {nihssTotal}
+          </p>
+          <p
+            data-testid="clinical-documentation-nihss-severity-band"
+            style={{ margin: 0, fontSize: 12, color: "#475569" }}
+          >
+            {t("clinicalDocumentation.forms.stroke.nihss.severityBand")}:{" "}
+            {locale === "fr"
+              ? NIHSS_SEVERITY_BAND_LABEL_FR[nihssSeverityBand]
+              : NIHSS_SEVERITY_BAND_LABEL_EN[nihssSeverityBand]}
           </p>
           <div>
             <span style={labelStyle}>{t("clinicalDocumentation.forms.stroke.nihss.unableReason")}</span>
@@ -431,11 +455,10 @@ export function ClinicalDocumentationStrokeForm({
           {enumSelect(
             t("clinicalDocumentation.forms.stroke.result"),
             swallow.result,
-            [
-              { value: "PASSED", label: t("clinicalDocumentation.forms.stroke.enums.swallow.PASSED") },
-              { value: "FAILED", label: t("clinicalDocumentation.forms.stroke.enums.swallow.FAILED") },
-              { value: "DEFERRED", label: t("clinicalDocumentation.forms.stroke.enums.swallow.DEFERRED") },
-            ],
+            SWALLOW_RESULT_OPTIONS.map((o) => ({
+              value: o.value,
+              label: locale === "fr" ? o.labelFr : o.labelEn,
+            })),
             (v) => setSwallow((s) => ({ ...s, result: v as typeof swallow.result }))
           )}
         </>
@@ -448,18 +471,18 @@ export function ClinicalDocumentationStrokeForm({
             <input type="datetime-local" value={cincinnati.assessedAt} onChange={(e) => setCincinnati((s) => ({ ...s, assessedAt: e.target.value }))} style={fieldStyle} />
           </div>
           <div style={rowStyle}>
-            {(["facialDroop", "armDrift", "speech"] as const).map((key) =>
-              enumSelect(
-                t(`clinicalDocumentation.forms.stroke.cincinnati.${key}`),
-                cincinnati[key],
-                [
-                  { value: "NORMAL", label: t("clinicalDocumentation.forms.stroke.enums.element.NORMAL") },
-                  { value: "ABNORMAL", label: t("clinicalDocumentation.forms.stroke.enums.element.ABNORMAL") },
-                  { value: "UNABLE_TO_ASSESS", label: t("clinicalDocumentation.forms.stroke.enums.element.UNABLE_TO_ASSESS") },
-                ],
-                (v) => setCincinnati((s) => ({ ...s, [key]: v as typeof cincinnati.facialDroop }))
-              )
-            )}
+            {(["facialDroop", "armDrift", "speech"] as const).map((key) => (
+              <ClinicalDocumentationSelectField
+                key={key}
+                label={t(`clinicalDocumentation.forms.stroke.cincinnati.${key}`)}
+                value={cincinnati[key]}
+                options={CINCINNATI_ELEMENT_OPTIONS}
+                locale={locale}
+                onChange={(v) =>
+                  setCincinnati((s) => ({ ...s, [key]: v as typeof cincinnati.facialDroop }))
+                }
+              />
+            ))}
           </div>
           <p data-testid="clinical-documentation-cincinnati-result" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
             {t("clinicalDocumentation.forms.stroke.derivedResult")}: {t(`clinicalDocumentation.forms.stroke.enums.screen.${cincinnatiResult}`)}
@@ -475,11 +498,36 @@ export function ClinicalDocumentationStrokeForm({
             <input type="datetime-local" value={van.assessedAt} onChange={(e) => setVan((s) => ({ ...s, assessedAt: e.target.value }))} style={fieldStyle} />
           </div>
           <div style={rowStyle}>
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.van.armWeakness")} checked={van.armWeaknessPresent} onChange={(v) => setVan((s) => ({ ...s, armWeaknessPresent: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.van.visualDisturbance")} checked={van.visualDisturbance} onChange={(v) => setVan((s) => ({ ...s, visualDisturbance: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.van.aphasia")} checked={van.aphasia} onChange={(v) => setVan((s) => ({ ...s, aphasia: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.van.neglect")} checked={van.neglect} onChange={(v) => setVan((s) => ({ ...s, neglect: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.providerNotified")} checked={van.providerNotified} onChange={(v) => setVan((s) => ({ ...s, providerNotified: v }))} />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.van.armWeakness")}
+              value={van.armWeaknessPresent}
+              locale={locale}
+              onChange={(v) => setVan((s) => ({ ...s, armWeaknessPresent: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.van.visualDisturbance")}
+              value={van.visualDisturbance}
+              locale={locale}
+              onChange={(v) => setVan((s) => ({ ...s, visualDisturbance: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.van.aphasia")}
+              value={van.aphasia}
+              locale={locale}
+              onChange={(v) => setVan((s) => ({ ...s, aphasia: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.van.neglect")}
+              value={van.neglect}
+              locale={locale}
+              onChange={(v) => setVan((s) => ({ ...s, neglect: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.providerNotified")}
+              value={van.providerNotified}
+              locale={locale}
+              onChange={(v) => setVan((s) => ({ ...s, providerNotified: v }))}
+            />
           </div>
           <p data-testid="clinical-documentation-van-result" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
             {t("clinicalDocumentation.forms.stroke.derivedResult")}: {t(`clinicalDocumentation.forms.stroke.enums.screen.${vanResult}`)}
@@ -494,30 +542,41 @@ export function ClinicalDocumentationStrokeForm({
             <input type="datetime-local" value={abcd2.assessedAt} onChange={(e) => setAbcd2((s) => ({ ...s, assessedAt: e.target.value }))} style={fieldStyle} />
           </div>
           <div style={rowStyle}>
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.abcd2.age60")} checked={abcd2.age60OrOlder} onChange={(v) => setAbcd2((s) => ({ ...s, age60OrOlder: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.abcd2.bpElevated")} checked={abcd2.bloodPressureElevated} onChange={(v) => setAbcd2((s) => ({ ...s, bloodPressureElevated: v }))} />
-            <CheckboxField label={t("clinicalDocumentation.forms.stroke.abcd2.diabetes")} checked={abcd2.diabetes} onChange={(v) => setAbcd2((s) => ({ ...s, diabetes: v }))} />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.abcd2.age60")}
+              value={abcd2.age60OrOlder}
+              locale={locale}
+              onChange={(v) => setAbcd2((s) => ({ ...s, age60OrOlder: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.abcd2.bpElevated")}
+              value={abcd2.bloodPressureElevated}
+              locale={locale}
+              onChange={(v) => setAbcd2((s) => ({ ...s, bloodPressureElevated: v }))}
+            />
+            <ClinicalDocumentationBooleanField
+              label={t("clinicalDocumentation.forms.stroke.abcd2.diabetes")}
+              value={abcd2.diabetes}
+              locale={locale}
+              onChange={(v) => setAbcd2((s) => ({ ...s, diabetes: v }))}
+            />
           </div>
-          {enumSelect(
-            t("clinicalDocumentation.forms.stroke.abcd2.clinicalFeature"),
-            abcd2.clinicalFeature,
-            [
-              { value: "UNILATERAL_WEAKNESS", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Feature.UNILATERAL_WEAKNESS") },
-              { value: "SPEECH_WITHOUT_WEAKNESS", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Feature.SPEECH_WITHOUT_WEAKNESS") },
-              { value: "OTHER", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Feature.OTHER") },
-            ],
-            (v) => setAbcd2((s) => ({ ...s, clinicalFeature: v as typeof abcd2.clinicalFeature }))
-          )}
-          {enumSelect(
-            t("clinicalDocumentation.forms.stroke.abcd2.duration"),
-            abcd2.duration,
-            [
-              { value: "GREATER_EQUAL_60_MIN", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Duration.GREATER_EQUAL_60_MIN") },
-              { value: "TEN_TO_59_MIN", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Duration.TEN_TO_59_MIN") },
-              { value: "LESS_THAN_10_MIN", label: t("clinicalDocumentation.forms.stroke.enums.abcd2Duration.LESS_THAN_10_MIN") },
-            ],
-            (v) => setAbcd2((s) => ({ ...s, duration: v as typeof abcd2.duration }))
-          )}
+          <ClinicalDocumentationSelectField
+            label={t("clinicalDocumentation.forms.stroke.abcd2.clinicalFeature")}
+            value={abcd2.clinicalFeature}
+            options={ABCD2_CLINICAL_FEATURE_OPTIONS}
+            locale={locale}
+            onChange={(v) =>
+              setAbcd2((s) => ({ ...s, clinicalFeature: v as typeof abcd2.clinicalFeature }))
+            }
+          />
+          <ClinicalDocumentationSelectField
+            label={t("clinicalDocumentation.forms.stroke.abcd2.duration")}
+            value={abcd2.duration}
+            options={ABCD2_DURATION_OPTIONS}
+            locale={locale}
+            onChange={(v) => setAbcd2((s) => ({ ...s, duration: v as typeof abcd2.duration }))}
+          />
           <p data-testid="clinical-documentation-abcd2-total" style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
             {t("clinicalDocumentation.forms.stroke.calculatedScore")}: {abcd2Total}
           </p>
@@ -564,41 +623,33 @@ export function ClinicalDocumentationStrokeForm({
             <input type="datetime-local" value={neuro.assessedAt} onChange={(e) => setNeuro((s) => ({ ...s, assessedAt: e.target.value }))} style={fieldStyle} />
           </div>
           <div style={rowStyle}>
-            {(
-              [
-                "levelOfConsciousness",
-                "orientation",
-                "pupils",
-                "gripLeft",
-                "gripRight",
-                "motorLeft",
-                "motorRight",
-                "sensation",
-                "speech",
-              ] as const
-            ).map((key) => (
-              <div key={key}>
-                <span style={labelStyle}>{t(`clinicalDocumentation.forms.stroke.neuro.${key}`)}</span>
-                <input
-                  type="text"
-                  value={neuro[key]}
-                  onChange={(e) => setNeuro((s) => ({ ...s, [key]: e.target.value }))}
-                  style={fieldStyle}
-                />
-              </div>
+            {(Object.keys(NEURO_FIELD_OPTIONS) as NeuroSelectFieldKey[]).map((key) => (
+              <ClinicalDocumentationSelectField
+                key={key}
+                label={t(neuroFieldLabelKey[key])}
+                value={neuro[key]}
+                options={NEURO_FIELD_OPTIONS[key]}
+                locale={locale}
+                onChange={(v) => setNeuro((s) => ({ ...s, [key]: v }))}
+                testId={`clinical-documentation-neuro-${key}`}
+              />
             ))}
           </div>
-          {enumSelect(
-            t("clinicalDocumentation.forms.stroke.neuro.changesFromPrior"),
-            neuro.changesFromPrior,
-            [
-              { value: "YES", label: t("clinicalDocumentation.forms.enums.tolerated.YES") },
-              { value: "NO", label: t("clinicalDocumentation.forms.enums.tolerated.NO") },
-              { value: "UNKNOWN", label: t("clinicalDocumentation.forms.stroke.enums.changes.UNKNOWN") },
-            ],
-            (v) => setNeuro((s) => ({ ...s, changesFromPrior: v as typeof neuro.changesFromPrior }))
-          )}
-          <CheckboxField label={t("clinicalDocumentation.forms.stroke.providerNotified")} checked={neuro.providerNotified} onChange={(v) => setNeuro((s) => ({ ...s, providerNotified: v }))} />
+          <ClinicalDocumentationSelectField
+            label={t("clinicalDocumentation.forms.stroke.neuro.changesFromPrior")}
+            value={neuro.changesFromPrior}
+            options={NEURO_CHANGES_FROM_PRIOR_OPTIONS}
+            locale={locale}
+            onChange={(v) =>
+              setNeuro((s) => ({ ...s, changesFromPrior: v as typeof neuro.changesFromPrior }))
+            }
+          />
+          <ClinicalDocumentationBooleanField
+            label={t("clinicalDocumentation.forms.stroke.providerNotified")}
+            value={neuro.providerNotified}
+            locale={locale}
+            onChange={(v) => setNeuro((s) => ({ ...s, providerNotified: v }))}
+          />
         </>
       ) : null}
 

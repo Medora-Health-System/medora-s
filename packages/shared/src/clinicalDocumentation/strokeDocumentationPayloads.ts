@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  deriveNihssSeverityBand,
+  formatNihssItemSummary,
+  NIHSS_FIELD_LABEL_FR,
+  NIHSS_SCORED_FIELD_KEYS,
+  NIHSS_SEVERITY_BAND_LABEL_FR,
+  type NihssScoredFieldKey,
+} from "./clinicalDocumentationFieldOptions.js";
 
 /** EDOC.4 — stroke documentation card IDs (preserve registry IDs). */
 export const STROKE_NIHSS_CARD_ID = "stroke_nihss" as const;
@@ -361,8 +369,19 @@ export function summarizeStrokeDocumentationPayload(
       const d = p.data;
       const lines: Array<{ key: string; value: string }> = [
         { key: "Score NIHSS total", value: String(d.totalScore) },
+        {
+          key: "Bande de sévérité NIHSS",
+          value: NIHSS_SEVERITY_BAND_LABEL_FR[deriveNihssSeverityBand(d.totalScore)],
+        },
         { key: "Évalué le", value: d.assessedAt },
       ];
+      for (const fieldKey of NIHSS_SCORED_FIELD_KEYS) {
+        const score = d[fieldKey as NihssScoredFieldKey];
+        const summary = formatNihssItemSummary(fieldKey, score, "fr");
+        if (summary) {
+          lines.push({ key: NIHSS_FIELD_LABEL_FR[fieldKey], value: summary });
+        }
+      }
       if (d.unableToAssessReason?.trim()) {
         lines.push({ key: "Raison non évaluable", value: d.unableToAssessReason.trim() });
       }
@@ -436,7 +455,10 @@ export function summarizeStrokeDocumentationPayload(
       if (!p.success) return [];
       const d = p.data;
       return [
-        { key: "Changement vs précédent", value: CHANGES_FR[d.changesFromPrior] ?? d.changesFromPrior },
+        {
+          key: "Changement vs précédent",
+          value: CHANGES_FR[d.changesFromPrior] ?? d.changesFromPrior,
+        },
         { key: "Médecin avisé", value: yesNoFr(d.providerNotified) },
       ];
     }
