@@ -7,8 +7,11 @@ import { useI18n } from "@/lib/i18n";
 import { tBillingClassification } from "@/lib/encounterChromeI18n";
 import {
   fetchChargeReviewQueue,
+  fetchEncounterChargeReview,
   type ChargeReviewQueueRow,
+  type EncounterChargeReviewPayload,
 } from "@/lib/chargeCaptureReviewApi";
+import { ProcedureBillableEventsCard } from "@/components/billing/ProcedureBillableEventsCard";
 import {
   chargeReviewClassificationFilterOptions,
   chargeReviewDomainFilterOptions,
@@ -40,6 +43,7 @@ export default function ChargeReviewPage() {
   const [encounterOpenFilter, setEncounterOpenFilter] = useState<"" | "open" | "closed">("");
   const [manualReviewOnly, setManualReviewOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<EncounterChargeReviewPayload | null>(null);
 
   const load = useCallback(async () => {
     if (!ready || !facilityId) return;
@@ -82,6 +86,25 @@ export default function ChargeReviewPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!ready || !facilityId || !selectedId) {
+      setSelectedDetail(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchEncounterChargeReview(facilityId, selectedId)
+      .then((payload) => {
+        if (!cancelled) setSelectedDetail(payload);
+      })
+      .catch((err) => {
+        console.error("charge review encounter detail failed", err);
+        if (!cancelled) setSelectedDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, facilityId, selectedId]);
 
   const selectedRow = useMemo(
     () => rows.find((r) => r.encounterId === selectedId) ?? null,
@@ -327,6 +350,9 @@ export default function ChargeReviewPage() {
                 ) : (
                   <p style={{ fontSize: 12, color: "#64748b" }}>{t("chargeCaptureReview.noMissingItems")}</p>
                 )}
+                {selectedDetail?.procedureBillableEvents?.length ? (
+                  <ProcedureBillableEventsCard events={selectedDetail.procedureBillableEvents} compact />
+                ) : null}
               </>
             ) : (
               <p style={{ fontSize: 13, color: "#64748b" }}>{t("chargeCaptureReview.selectRowHint")}</p>

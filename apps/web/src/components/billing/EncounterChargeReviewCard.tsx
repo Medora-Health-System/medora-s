@@ -10,6 +10,7 @@ import {
 } from "@/lib/chargeCaptureReviewDisplay";
 import { tBillingClassification } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { ProcedureBillableEventsCard } from "@/components/billing/ProcedureBillableEventsCard";
 
 type Props = {
   data: EncounterChargeReviewPayload | null;
@@ -127,6 +128,9 @@ export function EncounterChargeReviewCard({ data, loading, error, compact }: Pro
         {data.eventCounts.facilityEventCount} / {data.eventCounts.unknownSideEventCount} /{" "}
         {data.eventCounts.procedureCodeCount}
       </div>
+      {data.procedureBillableEvents?.length ? (
+        <ProcedureBillableEventsCard events={data.procedureBillableEvents} compact={compact} />
+      ) : null}
     </div>
   );
 }

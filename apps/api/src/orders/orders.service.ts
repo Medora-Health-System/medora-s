@@ -58,6 +58,7 @@ import {
   type CareProcedureEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
+import { tryEnterpriseProcedureBillableReviewEvent } from "../billing/enterprise-procedure-billable-review.util";
 import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -2290,6 +2291,10 @@ export class OrdersService {
           createdByUserId: userId ?? null,
         })
       );
+      void tryEnterpriseProcedureBillableReviewEvent(this.prisma, {
+        facilityId,
+        orderItemId,
+      });
     }
 
     return updated;

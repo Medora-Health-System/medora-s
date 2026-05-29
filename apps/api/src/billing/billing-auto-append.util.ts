@@ -517,7 +517,7 @@ export async function tryAutoSupplyOrderItemCompleted(
   }
 }
 
-/** After a CARE (procedure) order line is completed — map `manualLabel` via BillingCatalog PROCEDURE (Phase 4.6). */
+/** After a CARE (procedure) order line is completed — enterprise catalog (MEDPROC.6) or legacy manualLabel mapping. */
 export async function tryAutoProcedureCareOrderItemCompleted(
   prisma: PrismaService,
   input: { facilityId: string; orderItemId: string }
@@ -528,6 +528,14 @@ export async function tryAutoProcedureCareOrderItemCompleted(
       include: { order: true },
     });
     if (!orderItem || orderItem.catalogItemType !== "CARE") return;
+
+    if (orderItem.enterpriseProcedureId?.trim()) {
+      const { tryEnterpriseProcedureBillableReviewEvent } = await import(
+        "./enterprise-procedure-billable-review.util"
+      );
+      await tryEnterpriseProcedureBillableReviewEvent(prisma, input);
+      return;
+    }
 
     const labelFallback = orderItem.manualLabel?.trim() || "Procedure / care";
     const procCode = orderItem.manualLabel?.trim() || null;

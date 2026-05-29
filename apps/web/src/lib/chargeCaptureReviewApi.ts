@@ -5,6 +5,7 @@ import type {
   ChargeReviewDomain,
   ChargeReviewReason,
   ChargeReviewStatus,
+  EnterpriseProcedureBillableReviewEventSummary,
   FacilityFeeReadinessStatus,
 } from "@medora/shared";
 import type { EncounterBillingExportReadinessPayload } from "@/lib/billingExportReadinessApi";
@@ -46,6 +47,7 @@ export type EncounterChargeReviewPayload = ChargeReviewQueueRow & {
   exportReadiness: EncounterBillingExportReadinessPayload;
   ledgerReadiness: EncounterBillingLedgerReadinessPayload;
   facilityFeeReadiness: EncounterFacilityFeeReadinessPayload;
+  procedureBillableEvents?: EnterpriseProcedureBillableReviewEventSummary[];
   previewOnly: true;
 };
 

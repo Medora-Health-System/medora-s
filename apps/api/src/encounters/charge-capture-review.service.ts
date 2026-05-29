@@ -9,10 +9,12 @@ import {
   type BillingClassification,
   type ChargeReviewDomain,
   type ChargeReviewStatus,
+  type EnterpriseProcedureBillableReviewEventSummary,
 } from "@medora/shared";
 import { BillingSide, EncounterBillingFinalizationStatus, OrderStatus } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { resolvePrimaryCoverage } from "../billing/claim-coverage-resolution.util";
+import { listEnterpriseProcedureBillableReviewEventsForEncounter } from "../billing/enterprise-procedure-billable-review.util";
 import { facilityBillingWorkflowSelect, facilityWorkflowConfigFromRow } from "./facility-billing-workflow.util";
 
 const facilityIdentitySelect = {
@@ -215,7 +217,8 @@ export class ChargeCaptureReviewService {
 
     if (!encounter || !facility) return null;
 
-    const [diagnosisCount, billingEvents, payerResolution, pendingOrders] = await Promise.all([
+    const [diagnosisCount, billingEvents, payerResolution, pendingOrders, procedureBillableEvents] =
+      await Promise.all([
       this.prisma.diagnosis.count({
         where: { facilityId, encounterId, status: "ACTIVE" },
       }),
@@ -235,6 +238,10 @@ export class ChargeCaptureReviewService {
       }),
       this.prisma.order.count({
         where: { facilityId, encounterId, status: OrderStatus.IN_PROGRESS },
+      }),
+      listEnterpriseProcedureBillableReviewEventsForEncounter(this.prisma, {
+        facilityId,
+        encounterId,
       }),
     ]);
 
@@ -258,6 +265,7 @@ export class ChargeCaptureReviewService {
       exportReadiness: layers.exportReadiness,
       ledgerReadiness: layers.ledgerReadiness,
       facilityFeeReadiness: layers.facilityFeeReadiness,
+      procedureBillableEvents: procedureBillableEvents as EnterpriseProcedureBillableReviewEventSummary[],
       previewOnly: true as const,
     };
   }
