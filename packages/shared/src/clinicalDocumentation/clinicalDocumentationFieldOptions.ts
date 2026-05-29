@@ -467,6 +467,71 @@ export const IO_BLOOD_PRODUCT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<str
   { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
 ];
 
+export const BLOOD_PRODUCT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "PRBC", labelEn: "PRBC", labelFr: "CGR" },
+  { value: "FFP", labelEn: "FFP", labelFr: "PFC" },
+  { value: "PLATELETS", labelEn: "Platelets", labelFr: "Plaquettes" },
+  { value: "CRYOPRECIPITATE", labelEn: "Cryoprecipitate", labelFr: "Cryoprécipité" },
+  { value: "WHOLE_BLOOD", labelEn: "Whole blood", labelFr: "Sang total" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const BLOOD_PRODUCT_SPECIAL_REQUIREMENT_OPTIONS: ClinicalDocumentationFieldOption<string>[] =
+  [
+    { value: "NONE", labelEn: "None", labelFr: "Aucune" },
+    { value: "IRRADIATED", labelEn: "Irradiated", labelFr: "Irradié" },
+    { value: "CMV_NEGATIVE", labelEn: "CMV negative", labelFr: "CMV négatif" },
+    { value: "LEUKOREDUCED", labelEn: "Leukoreduced", labelFr: "Leucoréduit" },
+    { value: "WASHED", labelEn: "Washed", labelFr: "Lavé" },
+    { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+  ];
+
+export const BLOOD_REASSESSMENT_SYMPTOM_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "FEVER", labelEn: "Fever", labelFr: "Fièvre" },
+  { value: "CHILLS", labelEn: "Chills", labelFr: "Frissons" },
+  { value: "DYSPNEA", labelEn: "Dyspnea", labelFr: "Dyspnée" },
+  { value: "PRURITUS", labelEn: "Pruritus", labelFr: "Prurit" },
+  { value: "RASH", labelEn: "Rash", labelFr: "Éruption" },
+  { value: "HYPOTENSION", labelEn: "Hypotension", labelFr: "Hypotension" },
+  { value: "CHEST_PAIN", labelEn: "Chest pain", labelFr: "Douleur thoracique" },
+  { value: "BACK_PAIN", labelEn: "Back pain", labelFr: "Douleur dorsale" },
+  { value: "NAUSEA", labelEn: "Nausea", labelFr: "Nausée" },
+  { value: "HEMOGLOBINURIA", labelEn: "Hemoglobinuria", labelFr: "Hémoglobinurie" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const BLOOD_REACTION_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "FEBRILE", labelEn: "Febrile", labelFr: "Febrile" },
+  { value: "ALLERGIC", labelEn: "Allergic", labelFr: "Allergique" },
+  { value: "ANAPHYLACTIC", labelEn: "Anaphylactic", labelFr: "Anaphylactique" },
+  { value: "TRALI", labelEn: "TRALI", labelFr: "TRALI" },
+  { value: "TACO", labelEn: "TACO", labelFr: "TACO" },
+  { value: "HEMOLYTIC", labelEn: "Hemolytic", labelFr: "Hémolytique" },
+  { value: "SUSPECTED", labelEn: "Suspected", labelFr: "Suspectée" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const BLOOD_REACTION_SYMPTOM_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "FEVER", labelEn: "Fever", labelFr: "Fièvre" },
+  { value: "CHILLS", labelEn: "Chills", labelFr: "Frissons" },
+  { value: "RASH", labelEn: "Rash", labelFr: "Éruption" },
+  { value: "URTICARIA", labelEn: "Urticaria", labelFr: "Urticaire" },
+  { value: "DYSPNEA", labelEn: "Dyspnea", labelFr: "Dyspnée" },
+  { value: "WHEEZING", labelEn: "Wheezing", labelFr: "Sifflements" },
+  { value: "HYPOTENSION", labelEn: "Hypotension", labelFr: "Hypotension" },
+  { value: "CHEST_PAIN", labelEn: "Chest pain", labelFr: "Douleur thoracique" },
+  { value: "BACK_PAIN", labelEn: "Back pain", labelFr: "Douleur dorsale" },
+  { value: "HEMOGLOBINURIA", labelEn: "Hemoglobinuria", labelFr: "Hémoglobinurie" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const MTP_EVENT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "ACTIVATED", labelEn: "Activated", labelFr: "Activé" },
+  { value: "CONTINUED", labelEn: "Continued", labelFr: "Poursuivi" },
+  { value: "ESCALATED", labelEn: "Escalated", labelFr: "Escaladé" },
+  { value: "DEACTIVATED", labelEn: "Deactivated", labelFr: "Désactivé" },
+];
+
 export const RESTRAINT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
   { value: "PHYSICAL", labelEn: "Physical", labelFr: "Physique" },
   { value: "BEHAVIORAL", labelEn: "Behavioral", labelFr: "Comportementale" },

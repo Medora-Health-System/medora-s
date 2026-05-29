@@ -202,7 +202,7 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
         {
           ...SAMPLE_ENTRY,
           id: "edoc-pending",
-          cardId: "blood_transfusion",
+          cardId: "blood_product_verification",
           category: "BLOOD_PRODUCT_DOCUMENTATION",
           requiresWitnessSignature: true,
           witnessedAt: null,
@@ -210,7 +210,7 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
         {
           ...SAMPLE_ENTRY,
           id: "edoc-witnessed",
-          cardId: "blood_transfusion",
+          cardId: "blood_product_verification",
           category: "BLOOD_PRODUCT_DOCUMENTATION",
           requiresWitnessSignature: true,
           witnessedAt: new Date("2026-05-28T16:30:00.000Z"),
@@ -536,6 +536,78 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlFr = renderEncounterChartExportHtml(manifest, { locale: "fr" });
     expect(htmlFr).toContain("Comportementale");
     expect(htmlFr).toContain("Renouvellement");
+  });
+
+  it("renders blood product documentation in chart export JSON and HTML (EDOC.7)", async () => {
+    const verificationPayload = {
+      verificationTime: "2026-05-28T15:00:00.000Z",
+      productType: "PRBC",
+      unitIdentifier: "UNIT-777",
+      patientIdentityVerified: true,
+      bloodTypeVerified: true,
+      crossmatchVerified: true,
+      expirationVerified: true,
+      consentVerified: true,
+      specialRequirements: "LEUKOREDUCED",
+      verificationStatus: "PENDING_WITNESS",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-blood-verify",
+          category: "BLOOD_PRODUCT_DOCUMENTATION",
+          cardId: "blood_product_verification",
+          payloadJson: verificationPayload,
+          requiresWitnessSignature: true,
+          witnessedAt: new Date("2026-05-28T15:30:00.000Z"),
+          witnessedByUserId: "user-rn-2",
+          witnessDisplayNameSnapshot: "Paul Témoin",
+          witnessRoleSnapshot: "Infirmier(ère)",
+        },
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-blood-mtp",
+          category: "BLOOD_PRODUCT_DOCUMENTATION",
+          cardId: "massive_transfusion_protocol_event",
+          payloadJson: {
+            eventTime: "2026-05-28T14:00:00.000Z",
+            eventType: "ACTIVATED",
+            initiatedBy: "provider-1",
+            reason: "Hemorrhagic shock",
+          },
+          requiresWitnessSignature: false,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const verifyRow = manifest.encounter.clinicalDocumentationEntries.find(
+      (e) => e.cardId === "blood_product_verification"
+    )!;
+    expect(verifyRow.payloadJson).toEqual(verificationPayload);
+    expect(verifyRow.payloadSummaryEn!.some((l) => l.key === "Unit ID" && l.value === "UNIT-777")).toBe(
+      true
+    );
+    expect(verifyRow.witnessStatus).toBe("WITNESSED");
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("BLOOD_PRODUCT_DOCUMENTATION");
+    expect(htmlEn).toContain("UNIT-777");
+    expect(htmlEn).toContain("[WITNESSED]");
+    expect(htmlEn).toContain("MTP status");
+    expect(manifest.encounter.clinicalDocumentationEntries[1]?.payloadJson.eventType).toBe("ACTIVATED");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

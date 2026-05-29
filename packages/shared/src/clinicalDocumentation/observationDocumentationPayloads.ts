@@ -12,6 +12,10 @@ import {
   validateRestraintPayloadForCard,
 } from "./restraintDocumentationPayloads.js";
 import {
+  EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
+  validateBloodProductPayloadForCard,
+} from "./bloodProductDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -140,6 +144,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
   ...EDOC5_INTAKE_OUTPUT_CARD_IDS,
   ...EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS,
+  ...EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -167,6 +172,13 @@ export function validatePayloadForCard(
     (EDOC5_INTAKE_OUTPUT_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return ioResult;
+  }
+  const bloodResult = validateBloodProductPayloadForCard(cardId, payload);
+  if (
+    bloodResult.ok ||
+    (EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return bloodResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

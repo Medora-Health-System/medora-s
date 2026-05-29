@@ -3,10 +3,8 @@ import { getClinicalDocumentationCardById } from "./clinicalDocumentationRegistr
 
 /** Platform default: card IDs requiring a second signer (witness). */
 export const DEFAULT_WITNESS_REQUIRED_CARD_IDS = [
-  "blood_transfusion",
-  "blood_massive_transfusion",
+  "blood_product_verification",
   "flow_blood_product_administration",
-  "blood_transfusion_reaction",
   "safety_restraint_initial",
   "flow_restraint_monitoring",
   "safety_belongings_checklist",
