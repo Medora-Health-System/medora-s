@@ -18,6 +18,7 @@ import {
   OBS_PO_CHALLENGE_CARD_ID,
   RESTRAINT_INITIATION_CARD_ID,
   RESTRAINT_RENEWAL_CARD_ID,
+  SEDATION_TIMEOUT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -723,6 +724,64 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     expect(htmlEn).toContain("BELONGINGS_VALUABLES_DOCUMENTATION");
     expect(htmlEn).toContain("BAG-SEC-LEGAL");
     expect(htmlEn).toContain("Jean Témoin");
+  });
+
+  it("renders sedation timeout summary and witness in export (EDOC.10)", async () => {
+    const timeoutPayload = {
+      timeoutTime: "2026-05-28T20:00:00.000Z",
+      correctPatientConfirmed: true,
+      correctProcedureConfirmed: true,
+      correctSiteConfirmed: true,
+      providerPresent: true,
+      rnPresent: true,
+      monitoringEquipmentAvailable: true,
+      suctionAvailable: true,
+      oxygenAvailable: true,
+      airwayEquipmentAvailable: true,
+      reversalAgentsAvailable: true,
+      emergencyEquipmentAvailable: true,
+      consentVerified: true,
+      plannedSedationLevel: "MODERATE",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-sedation-timeout",
+          category: "PROCEDURE_MONITORING",
+          cardId: SEDATION_TIMEOUT_CARD_ID,
+          payloadJson: timeoutPayload,
+          requiresWitnessSignature: true,
+          witnessedAt: new Date("2026-05-28T20:05:00.000Z"),
+          witnessedByUserId: "user-rn-2",
+          witnessDisplayNameSnapshot: "Paul Témoin",
+          witnessRoleSnapshot: "Infirmier(ère)",
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(timeoutPayload);
+    expect(row.witnessStatus).toBe("WITNESSED");
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Timeout")).toBe(true);
+    expect(row.payloadSummaryFr!.some((l) => l.key === "Time-out")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("PROCEDURE_MONITORING");
+    expect(htmlEn).toContain("Moderate");
+    expect(htmlEn).toContain("Paul Témoin");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

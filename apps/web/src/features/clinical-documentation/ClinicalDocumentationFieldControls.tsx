@@ -61,7 +61,7 @@ export function ClinicalDocumentationSelectField<T extends string | number | boo
   );
 }
 
-export function ClinicalDocumentationScoreSelectField({
+export function ClinicalDocumentationScoreSelectField<T extends string | number>({
   label,
   value,
   options,
@@ -70,10 +70,10 @@ export function ClinicalDocumentationScoreSelectField({
   testId,
 }: {
   label: string;
-  value: number;
-  options: ReadonlyArray<ClinicalDocumentationFieldOption<number>>;
+  value: T;
+  options: ReadonlyArray<ClinicalDocumentationFieldOption<T>>;
   locale: "en" | "fr";
-  onChange: (value: number) => void;
+  onChange: (value: T) => void;
   testId?: string;
 }) {
   return (

@@ -24,6 +24,10 @@ import {
   validateBelongingsValuablesPayloadForCard,
 } from "./belongingsValuablesDocumentationPayloads.js";
 import {
+  EDOC10_PROCEDURAL_SEDATION_DOCUMENTATION_CARD_IDS,
+  validateProceduralSedationPayloadForCard,
+} from "./proceduralSedationDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -155,6 +159,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
   ...EDOC8_HIGH_ALERT_INFUSION_DOCUMENTATION_CARD_IDS,
   ...EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS,
+  ...EDOC10_PROCEDURAL_SEDATION_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -203,6 +208,13 @@ export function validatePayloadForCard(
     (EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return belongingsResult;
+  }
+  const sedationResult = validateProceduralSedationPayloadForCard(cardId, payload);
+  if (
+    sedationResult.ok ||
+    (EDOC10_PROCEDURAL_SEDATION_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return sedationResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

@@ -9,6 +9,10 @@ import {
   BLOOD_PRODUCT_VERIFICATION_CARD_ID,
   HIGH_ALERT_INFUSION_VERIFICATION_CARD_ID,
   RESTRAINT_INITIATION_CARD_ID,
+  SEDATION_MONITORING_CARD_ID,
+  SEDATION_PRE_ASSESSMENT_CARD_ID,
+  SEDATION_RECOVERY_SCORE_CARD_ID,
+  SEDATION_TIMEOUT_CARD_ID,
   VALUABLES_INVENTORY_CARD_ID,
 } from "@medora/shared";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
@@ -481,6 +485,197 @@ describe("ClinicalDocumentationService — immediate witness (EDOC.8B)", () => {
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("cashAmount");
     expect(meta).not.toHaveProperty("jewelryDescription");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  const SEDATION_TIMEOUT_PAYLOAD = {
+    timeoutTime: "2026-05-28T12:00:00.000Z",
+    correctPatientConfirmed: true,
+    correctProcedureConfirmed: true,
+    correctSiteConfirmed: true,
+    providerPresent: true,
+    rnPresent: true,
+    monitoringEquipmentAvailable: true,
+    suctionAvailable: true,
+    oxygenAvailable: true,
+    airwayEquipmentAvailable: true,
+    reversalAgentsAvailable: true,
+    emergencyEquipmentAvailable: true,
+    consentVerified: true,
+    plannedSedationLevel: "MODERATE",
+  };
+
+  const SEDATION_MONITORING_PAYLOAD = {
+    monitoringTime: "2026-05-28T12:15:00.000Z",
+    heartRate: 78,
+    respRate: 14,
+    bloodPressure: "118/76",
+    spo2: 99,
+    oxygenDeliveryMethod: "NASAL_CANNULA",
+    sedationLevel: "DROWSY_RESPONDS_TO_VOICE",
+    airwayStatus: "PATENT",
+    interventionRequired: false,
+    adverseEventObserved: false,
+    providerNotified: false,
+  };
+
+  it("create pre-sedation assessment (EDOC.10)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_PRE_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessedAt: "2026-05-28T11:00:00.000Z",
+          procedurePlanned: "Shoulder reduction",
+          providerResponsible: "Dr Smith",
+          consentVerified: true,
+          allergiesReviewed: true,
+          npoStatus: "NPO_CONFIRMED",
+          asaClass: "ASA_II",
+          mallampatiScore: "CLASS_II",
+          airwayAssessment: "NORMAL",
+          baselineHeartRate: 80,
+          baselineRespRate: 16,
+          baselineBloodPressure: "120/80",
+          baselineSpo2: 98,
+        },
+      },
+      "u1"
+    );
+    expect(saved.witnessStatus).toBe("NOT_REQUIRED");
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("create-with-witness sedation timeout (EDOC.10)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntryWithWitness(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_TIMEOUT_CARD_ID,
+        payloadJson: SEDATION_TIMEOUT_PAYLOAD,
+        witnessUserId: "u2",
+      },
+      "u1"
+    );
+    expect(saved.witnessStatus).toBe("WITNESSED");
+  });
+
+  it("timeout createEntry without witness leaves PENDING_WITNESS; with-witness finalizes (EDOC.10)", async () => {
+    const { svc, create } = buildService();
+    const pending = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_TIMEOUT_CARD_ID,
+        payloadJson: SEDATION_TIMEOUT_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(pending.witnessStatus).toBe("PENDING_WITNESS");
+    expect(create).toHaveBeenCalled();
+
+    const { svc: svc2 } = buildService();
+    const witnessed = await svc2.createEntryWithWitness(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_TIMEOUT_CARD_ID,
+        payloadJson: SEDATION_TIMEOUT_PAYLOAD,
+        witnessUserId: "u2",
+      },
+      "u1"
+    );
+    expect(witnessed.witnessStatus).toBe("WITNESSED");
+  });
+
+  it("create monitoring row without witness (EDOC.10)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_MONITORING_CARD_ID,
+        payloadJson: SEDATION_MONITORING_PAYLOAD,
+      },
+      "u1"
+    );
+    expect(saved.witnessStatus).toBe("NOT_REQUIRED");
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("create recovery score and reject invalid total (EDOC.10)", async () => {
+    const { svc, create } = buildService();
+    await expect(
+      svc.createEntry(
+        "f1",
+        "e1",
+        {
+          category: "PROCEDURE_MONITORING",
+          cardId: SEDATION_RECOVERY_SCORE_CARD_ID,
+          payloadJson: {
+            scoredAt: "2026-05-28T13:00:00.000Z",
+            activity: "MOVES_4_EXTREMITIES",
+            respiration: "DEEP_BREATH_COUGH",
+            circulation: "BP_WITHIN_20_PERCENT",
+            consciousness: "FULLY_AWAKE",
+            oxygenSaturation: "MAINTAINS_GREATER_92_ROOM_AIR",
+            totalScore: 5,
+            meetsRecoveryCriteria: true,
+          },
+        },
+        "u1"
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_RECOVERY_SCORE_CARD_ID,
+        payloadJson: {
+          scoredAt: "2026-05-28T13:00:00.000Z",
+          activity: "MOVES_4_EXTREMITIES",
+          respiration: "DEEP_BREATH_COUGH",
+          circulation: "BP_WITHIN_20_PERCENT",
+          consciousness: "FULLY_AWAKE",
+          oxygenSaturation: "MAINTAINS_GREATER_92_ROOM_AIR",
+          totalScore: 10,
+          meetsRecoveryCriteria: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.witnessStatus).toBe("NOT_REQUIRED");
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("sedation audit metadata excludes vitals and notes (EDOC.10)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: SEDATION_MONITORING_CARD_ID,
+        payloadJson: {
+          ...SEDATION_MONITORING_PAYLOAD,
+          notes: "Patient snoring briefly.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("heartRate");
+    expect(meta).not.toHaveProperty("bloodPressure");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 
