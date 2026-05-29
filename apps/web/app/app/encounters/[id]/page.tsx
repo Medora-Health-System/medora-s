@@ -21,6 +21,14 @@ import {
   resolveCareProcedureDisplayTimes,
 } from "@/features/orders/careProcedureClinicalTimeDisplay";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
+import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
+import { ProcedureOrderDocumentationLinkage } from "@/components/clinical/ProcedureOrderDocumentationLinkage";
+import {
+  documentationTemplateIdToLauncherStep,
+  resolveProcedureDocumentationLinkage,
+  type EnterpriseProcedureDocumentationTemplateId,
+} from "@medora/shared";
+import { parseEncounterDocumentedProcedureTypes } from "@/lib/procedureOrderDocumentationLinkageUi";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { printDischarge } from "@/components/encounters/DischargePrintLayout";
@@ -5983,7 +5991,10 @@ function OrdersTab({
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEkgProcedureLauncher, setShowEkgProcedureLauncher] = useState(false);
+  const [showProcedureLauncher, setShowProcedureLauncher] = useState(false);
+  const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] =
+    useState<ErProcedureLauncherStep | null>(null);
+  const [documentedProcedureTypes, setDocumentedProcedureTypes] = useState<string[]>([]);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
@@ -5991,6 +6002,8 @@ function OrdersTab({
   const canAdjustCareClinicalTime = canAdjustCareProcedureClinicalTime(roles);
   const canUseRnOrderAuthority = roles.includes("RN") && !canPrescribe;
   const canCreateOrders = canPrescribe || canUseRnOrderAuthority;
+  const canOpenProcedureDocumentation =
+    canPrescribe || roles.includes("RN") || roles.includes("ADMIN");
   const canCancelWholeOrder =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
@@ -6028,6 +6041,41 @@ function OrdersTab({
       loadOrders();
     }
   }, [encounterId, facilityId]);
+
+  useEffect(() => {
+    const hasEnterpriseCareLines = (displayOrders as Array<{
+      type?: string;
+      items?: Array<{ enterpriseProcedureId?: string | null }>;
+    }>).some(
+      (order) =>
+        order.type === "CARE" &&
+        Array.isArray(order.items) &&
+        order.items.some(
+          (it) => typeof it.enterpriseProcedureId === "string" && it.enterpriseProcedureId.trim().length > 0
+        )
+    );
+    if (!hasEnterpriseCareLines || !encounterId || !facilityId) {
+      setDocumentedProcedureTypes([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiFetch(`/encounters/${encounterId}/procedures`, { facilityId });
+        if (!cancelled) setDocumentedProcedureTypes(parseEncounterDocumentedProcedureTypes(data));
+      } catch {
+        if (!cancelled) setDocumentedProcedureTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [displayOrders, encounterId, facilityId]);
+
+  const openProcedureDocumentation = (step: ErProcedureLauncherStep) => {
+    setProcedureLauncherInitialStep(step);
+    setShowProcedureLauncher(true);
+  };
 
   const loadOrders = async (opts?: { silent?: boolean }) => {
     if (!opts?.silent) setLoading(true);
@@ -6421,6 +6469,34 @@ function OrdersTab({
                               }
                             />
                           ) : null}
+                          {order.type === "CARE" &&
+                          typeof it.enterpriseProcedureId === "string" &&
+                          it.enterpriseProcedureId.trim() ? (
+                            (() => {
+                              const linkage = resolveProcedureDocumentationLinkage({
+                                enterpriseProcedureId: it.enterpriseProcedureId,
+                                orderItemId: String(it.id ?? ""),
+                                orderStatus: String(it.status ?? ""),
+                                documentedProcedureTypes,
+                              });
+                              const launcherStep = linkage.documentationTemplateId
+                                ? documentationTemplateIdToLauncherStep(
+                                    linkage.documentationTemplateId as EnterpriseProcedureDocumentationTemplateId
+                                  )
+                                : null;
+                              return (
+                                <ProcedureOrderDocumentationLinkage
+                                  linkage={linkage}
+                                  canOpenDocumentation={canOpenProcedureDocumentation}
+                                  onOpenProcedureDocumentation={
+                                    launcherStep
+                                      ? () => openProcedureDocumentation(launcherStep as ErProcedureLauncherStep)
+                                      : undefined
+                                  }
+                                />
+                              );
+                            })()
+                          ) : null}
                         </li>
                       ))}
                     </ul>
@@ -6523,7 +6599,7 @@ function OrdersTab({
           onRefetchEncounter={onRefetchEncounter}
           onOpenEkgProcedureDocumentation={() => {
             setShowCreateModal(false);
-            setShowEkgProcedureLauncher(true);
+            openProcedureDocumentation("EKG");
           }}
           onSuccess={async () => {
             setShowCreateModal(false);
@@ -6532,15 +6608,19 @@ function OrdersTab({
           }}
         />
       )}
-      {showEkgProcedureLauncher ? (
+      {showProcedureLauncher ? (
         <EmergencyProcedureLauncherModal
-          open={showEkgProcedureLauncher}
-          onClose={() => setShowEkgProcedureLauncher(false)}
+          open={showProcedureLauncher}
+          onClose={() => {
+            setShowProcedureLauncher(false);
+            setProcedureLauncherInitialStep(null);
+          }}
           encounterId={encounterId}
           facilityId={facilityId}
-          initialNonLacerationStep="EKG"
+          initialStep={procedureLauncherInitialStep}
           onRecorded={() => {
-            setShowEkgProcedureLauncher(false);
+            setShowProcedureLauncher(false);
+            setProcedureLauncherInitialStep(null);
             void onRefetchEncounter?.();
             void loadOrders({ silent: true });
             void onOrdersUpdated?.();

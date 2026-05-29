@@ -66,5 +66,6 @@ export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";
 export * from "./procedures/enterpriseProcedureOrderValidation.js";
+export * from "./procedures/enterpriseProcedureDocumentationLinkage.js";
 export * from "./patient/patientClinicalHistoryProfile.js";
 

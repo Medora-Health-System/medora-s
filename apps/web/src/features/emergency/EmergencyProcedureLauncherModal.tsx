@@ -130,6 +130,8 @@ export function EmergencyProcedureLauncherModal({
   onRecorded,
   /** When opening, jump directly to this procedure form (e.g. EKG from order-set shortcut). */
   initialNonLacerationStep = null,
+  /** MEDPROC.3: full launcher step including laceration and nursing-assist steps. */
+  initialStep = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -137,6 +139,7 @@ export function EmergencyProcedureLauncherModal({
   facilityId: string;
   onRecorded: () => void;
   initialNonLacerationStep?: DocumentedProcedureType | null;
+  initialStep?: ErProcedureLauncherStep | null;
 }) {
   const { t } = useI18n();
   const [step, setStep] = useState<LauncherStep>("menu");
@@ -166,7 +169,7 @@ export function EmergencyProcedureLauncherModal({
 
   useEffect(() => {
     if (!open) return;
-    setStep(initialNonLacerationStep ?? "menu");
+    setStep(initialStep ?? initialNonLacerationStep ?? "menu");
     setActiveDocumentationRole("PROVIDER");
     setSubmitErr(null);
     setSaveSuccess(false);
@@ -188,7 +191,7 @@ export function EmergencyProcedureLauncherModal({
     setToleratedWell(true);
     setComplications("");
     setNotes("");
-  }, [open, initialNonLacerationStep]);
+  }, [open, initialNonLacerationStep, initialStep]);
 
   const resetLacerationForm = () => {
     setSite("");

@@ -23,6 +23,8 @@ import {
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
 import { ErIvAccessSummaryCard } from "@/components/clinical/ErIvAccessSummaryCard";
 import { ErProceduresSummaryCard } from "@/components/clinical/ErProceduresSummaryCard";
+import { ProcedureOrderDocumentationHintsCard } from "@/components/clinical/ProcedureOrderDocumentationHintsCard";
+import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
 import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMarSummaryCard";
 import { buildErClinicalTimeline } from "./erClinicalTimeline";
 import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/shared";
@@ -482,6 +484,8 @@ export function EmergencyVisitSummaryPanel({
   diagnosticsTabHref,
   ivAccessFetchEnabled = false,
   proceduresFetchEnabled = false,
+  canOpenProcedureDocumentation = false,
+  onOpenProcedureDocumentation,
 }: {
   encounterId: string;
   facilityId: string;
@@ -494,6 +498,9 @@ export function EmergencyVisitSummaryPanel({
   ivAccessFetchEnabled?: boolean;
   /** When true, loads GET /encounters/:id/procedures (same role set as IV quick actions). */
   proceduresFetchEnabled?: boolean;
+  /** MEDPROC.3 — may open existing procedure documentation launcher from order hints. */
+  canOpenProcedureDocumentation?: boolean;
+  onOpenProcedureDocumentation?: (step: ErProcedureLauncherStep) => void;
 }) {
   const { language, t } = useI18n();
   const [resultsSnap, setResultsSnap] = useState<EncounterResultsLabRadSnapshot | null>(null);
@@ -742,6 +749,15 @@ export function EmergencyVisitSummaryPanel({
         facilityId={facilityId}
         refreshToken={resultsRefresh}
         enabled={proceduresFetchEnabled}
+      />
+
+      <ProcedureOrderDocumentationHintsCard
+        encounterId={encounterId}
+        facilityId={facilityId}
+        refreshToken={resultsRefresh}
+        enabled={proceduresFetchEnabled}
+        canOpenDocumentation={canOpenProcedureDocumentation}
+        onOpenProcedureDocumentation={(step) => onOpenProcedureDocumentation?.(step)}
       />
 
       <ErMedicationMarSummaryCard

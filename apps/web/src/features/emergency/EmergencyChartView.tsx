@@ -40,7 +40,7 @@ import { EmergencyDispositionPanel } from "@/features/emergency/EmergencyDisposi
 import { EmergencyErSummaryClosureSurface } from "@/features/emergency/EmergencyErSummaryClosureSurface";
 import { EmergencyIvAccessModal } from "@/features/emergency/EmergencyIvAccessModal";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
-import type { NonLacerationProcedureType } from "@/features/emergency/ProcedureDocumentBatch2Forms";
+import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
 import { EmergencyTriagePanel } from "@/features/emergency/EmergencyTriagePanel";
 import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPanel";
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
@@ -191,7 +191,7 @@ export function EmergencyChartView() {
   const [showQuickVitals, setShowQuickVitals] = useState(false);
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
-  const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] = useState<NonLacerationProcedureType | null>(
+  const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] = useState<ErProcedureLauncherStep | null>(
     null
   );
 
@@ -736,7 +736,7 @@ export function EmergencyChartView() {
                       }}
                       encounterId={encounterId}
                       facilityId={fid}
-                      initialNonLacerationStep={procedureLauncherInitialStep}
+                      initialStep={procedureLauncherInitialStep}
                       onRecorded={() => setResultsRefresh((r) => r + 1)}
                     />
                   ) : null}
@@ -910,6 +910,11 @@ export function EmergencyChartView() {
               onReload={onEmbeddedEncounterUpdate}
               ivAccessFetchEnabled={canDocumentIvAccess}
               proceduresFetchEnabled={canDocumentIvAccess}
+              canOpenProcedureDocumentation={canDocumentIvAccess}
+              onOpenProcedureDocumentation={(step) => {
+                setProcedureLauncherInitialStep(step);
+                setShowProcedureLauncherModal(true);
+              }}
             />
           </section>
 

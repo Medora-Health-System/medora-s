@@ -29,7 +29,18 @@ import {
 import { apiFetch } from "@/lib/apiClient";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { isMedicationInfusionCandidate } from "@medora/shared";
+import {
+  documentationTemplateIdToLauncherStep,
+  isMedicationInfusionCandidate,
+  resolveProcedureDocumentationLinkage,
+  type EnterpriseProcedureDocumentationTemplateId,
+} from "@medora/shared";
+import { ProcedureOrderDocumentationLinkage } from "@/components/clinical/ProcedureOrderDocumentationLinkage";
+import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
+import {
+  parseEncounterDocumentedProcedureTypes,
+  procedureDocumentationCompletionReminderKey,
+} from "@/lib/procedureOrderDocumentationLinkageUi";
 import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "@/lib/orderAttribution";
@@ -52,6 +63,11 @@ import {
   ErOrderLineCard,
   erOrdersTouchButtonStyle,
 } from "@/features/emergency/ErOrdersPanelCards";
+
+function careItemEnterpriseProcedureId(item: Record<string, unknown>): string | null {
+  const value = item.enterpriseProcedureId;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
 
 const btn: React.CSSProperties = {
   display: "inline-flex",
@@ -418,7 +434,9 @@ export function EmergencyErOrdersPanel({
   const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEkgProcedureLauncher, setShowEkgProcedureLauncher] = useState(false);
+  const [showProcedureLauncher, setShowProcedureLauncher] = useState(false);
+  const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] =
+    useState<ErProcedureLauncherStep | null>(null);
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
   const [pendingCancel, setPendingCancel] = useState<PendingLineCancel | null>(null);
   const [scheduledSubmitFlash, setScheduledSubmitFlash] = useState<string | null>(null);
@@ -554,6 +572,44 @@ export function EmergencyErOrdersPanel({
         ),
       }));
   }, [parsedOrders]);
+
+  const careItemsWithEnterpriseProcedure = useMemo(() => {
+    const out: Array<{ id: string; enterpriseProcedureId: string }> = [];
+    for (const order of parsedOrders) {
+      if (order.type !== "CARE") continue;
+      for (const it of order.items) {
+        const row = it as Record<string, unknown>;
+        const id = String(row.id ?? "").trim();
+        const enterpriseProcedureId = careItemEnterpriseProcedureId(row);
+        if (!id || !enterpriseProcedureId) continue;
+        out.push({ id, enterpriseProcedureId });
+      }
+    }
+    return out;
+  }, [parsedOrders]);
+
+  const [documentedProcedureTypes, setDocumentedProcedureTypes] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!careItemsWithEnterpriseProcedure.length || !encounterId || !facilityId) {
+      setDocumentedProcedureTypes([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const data = await apiFetch(`/encounters/${encounterId}/procedures`, { facilityId });
+        if (!cancelled) {
+          setDocumentedProcedureTypes(parseEncounterDocumentedProcedureTypes(data));
+        }
+      } catch {
+        if (!cancelled) setDocumentedProcedureTypes([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [careItemsWithEnterpriseProcedure.length, encounterId, facilityId, ordersRefresh]);
 
 
   const completedFromEvents = useMemo(
@@ -734,6 +790,26 @@ export function EmergencyErOrdersPanel({
     const busyKey = `${itemId}:${op}`;
     setLineActionBusy(busyKey);
     setOrderInfusionError(null);
+    let postCompleteDocReminderKey: string | null = null;
+    if (op === "complete") {
+      for (const order of parsedOrders) {
+        if (order.type !== "CARE") continue;
+        const item = order.items.find(
+          (it) => String((it as Record<string, unknown>).id ?? "") === itemId
+        ) as Record<string, unknown> | undefined;
+        if (!item) continue;
+        const enterpriseProcedureId = careItemEnterpriseProcedureId(item);
+        if (!enterpriseProcedureId) continue;
+        const linkage = resolveProcedureDocumentationLinkage({
+          enterpriseProcedureId,
+          orderItemId: itemId,
+          orderStatus: "COMPLETED",
+          documentedProcedureTypes,
+        });
+        postCompleteDocReminderKey = procedureDocumentationCompletionReminderKey(linkage.recommendedAction);
+        break;
+      }
+    }
     try {
       const path =
         op === "nurse"
@@ -741,6 +817,10 @@ export function EmergencyErOrdersPanel({
           : `/orders/items/${itemId}/${op === "acknowledge" ? "acknowledge" : op}`;
       await apiFetch(path, { method: "POST", facilityId });
       setOrdersRefresh((x) => x + 1);
+      if (postCompleteDocReminderKey) {
+        setScheduledSubmitFlash(t(postCompleteDocReminderKey));
+        window.setTimeout(() => setScheduledSubmitFlash(null), 8000);
+      }
     } finally {
       setLineActionBusy(null);
     }
@@ -781,6 +861,44 @@ export function EmergencyErOrdersPanel({
 
   /** Quels rôles peuvent ouvrir une commande depuis ce panneau : prescripteurs (PROVIDER/ADMIN) + RN (ordres infirmiers / verbaux). LAB/RADIOLOGY/PHARMACY/FRONT_DESK/BILLING : non. */
   const canOpenOrderQuickActions = canPrescribe || hasAnyRole(roles, "RN");
+  const canOpenProcedureDocumentation = canPrescribe || hasAnyRole(roles, "RN", "ADMIN");
+
+  const openProcedureDocumentation = (step: ErProcedureLauncherStep) => {
+    setProcedureLauncherInitialStep(step);
+    setShowProcedureLauncher(true);
+  };
+
+  const renderCareProcedureDocumentationLinkage = (
+    item: Record<string, unknown> | undefined,
+    orderItemId: string,
+    orderStatus: string
+  ) => {
+    if (!item) return null;
+    const enterpriseProcedureId = careItemEnterpriseProcedureId(item);
+    if (!enterpriseProcedureId) return null;
+    const linkage = resolveProcedureDocumentationLinkage({
+      enterpriseProcedureId,
+      orderItemId,
+      orderStatus,
+      documentedProcedureTypes,
+    });
+    const launcherStep = linkage.documentationTemplateId
+      ? documentationTemplateIdToLauncherStep(
+          linkage.documentationTemplateId as EnterpriseProcedureDocumentationTemplateId
+        )
+      : null;
+    return (
+      <ProcedureOrderDocumentationLinkage
+        linkage={linkage}
+        canOpenDocumentation={canOpenProcedureDocumentation}
+        onOpenProcedureDocumentation={
+          launcherStep
+            ? () => openProcedureDocumentation(launcherStep as ErProcedureLauncherStep)
+            : undefined
+        }
+      />
+    );
+  };
 
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
@@ -1244,6 +1362,9 @@ export function EmergencyErOrdersPanel({
                                         {directionsLine ? (
                                           <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                         ) : null}
+                                        {o.type === "CARE"
+                                          ? renderCareProcedureDocumentationLinkage(item, itemId, st)
+                                          : null}
                                       </>
                                     }
                                     statusSection={activeStatusSection}
@@ -1673,6 +1794,12 @@ export function EmergencyErOrdersPanel({
                         ))}
                       </>
                     );
+                    const completedItemRow =
+                      itemIdEv && completedOrder
+                        ? (completedOrder.items.find(
+                            (it) => String((it as Record<string, unknown>).id ?? "") === itemIdEv
+                          ) as Record<string, unknown> | undefined)
+                        : undefined;
                     return (
                       <li key={e.id} style={{ minWidth: 0, listStyle: "none" }}>
                         <ErOrderEventCard
@@ -1682,9 +1809,18 @@ export function EmergencyErOrdersPanel({
                           timeStr={performedWhen}
                           orderTitle={primaryTitle}
                           orderSubLines={
-                            directionsLine ? (
-                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
-                            ) : null
+                            <>
+                              {directionsLine ? (
+                                <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
+                              ) : null}
+                              {typeKey === "CARE" && itemIdEv
+                                ? renderCareProcedureDocumentationLinkage(
+                                    completedItemRow,
+                                    itemIdEv,
+                                    String(completedItemRow?.status ?? "COMPLETED")
+                                  )
+                                : null}
+                            </>
                           }
                           statusSection={statusSection}
                           titleSection={titleSection}
@@ -2163,7 +2299,7 @@ export function EmergencyErOrdersPanel({
           onRefetchEncounter={onRefetchEncounter}
           onOpenEkgProcedureDocumentation={() => {
             setShowCreateModal(false);
-            setShowEkgProcedureLauncher(true);
+            openProcedureDocumentation("EKG");
           }}
           onSuccess={async () => {
             setShowCreateModal(false);
@@ -2172,15 +2308,19 @@ export function EmergencyErOrdersPanel({
           }}
         />
       ) : null}
-      {showEkgProcedureLauncher ? (
+      {showProcedureLauncher ? (
         <EmergencyProcedureLauncherModal
-          open={showEkgProcedureLauncher}
-          onClose={() => setShowEkgProcedureLauncher(false)}
+          open={showProcedureLauncher}
+          onClose={() => {
+            setShowProcedureLauncher(false);
+            setProcedureLauncherInitialStep(null);
+          }}
           encounterId={encounterId}
           facilityId={facilityId}
-          initialNonLacerationStep="EKG"
+          initialStep={procedureLauncherInitialStep}
           onRecorded={() => {
-            setShowEkgProcedureLauncher(false);
+            setShowProcedureLauncher(false);
+            setProcedureLauncherInitialStep(null);
             setOrdersRefresh((x) => x + 1);
             void onRefetchEncounter();
             void onOrdersCreated?.();

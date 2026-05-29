@@ -14758,6 +14758,20 @@ export default {
         "No structured vitals found — confirm whether a recent recording is needed before closure.",
     },
   },
+  procedureOrderDocumentationLinkage: {
+    indicatorAvailable: "Procedure note available",
+    indicatorRecommended: "Documentation recommended",
+    indicatorRequiredReview: "Requires procedure documentation review",
+    openProcedureNote: "Open procedure note",
+    documentProcedure: "Document procedure",
+    completionReminderRequired:
+      "Order completed — procedure documentation review may still be needed.",
+    completionReminderRecommended:
+      "Order completed — procedure documentation is recommended when applicable.",
+    providerHintsTitle: "Procedure orders — documentation",
+    providerHintsSubline:
+      "Active or completed procedure orders with an available documentation template. Opens the existing procedure note workflow; nothing is auto-created.",
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",

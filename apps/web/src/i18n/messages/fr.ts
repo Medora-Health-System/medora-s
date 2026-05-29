@@ -14789,6 +14789,20 @@ export default {
         "Aucun signe vital structuré retrouvé — vérifiez qu’un relevé récent n’est pas nécessaire avant la clôture.",
     },
   },
+  procedureOrderDocumentationLinkage: {
+    indicatorAvailable: "Note procédure disponible",
+    indicatorRecommended: "Documentation recommandée",
+    indicatorRequiredReview: "Revise de la documentation procédure requise",
+    openProcedureNote: "Ouvrir la note procédure",
+    documentProcedure: "Documenter la procédure",
+    completionReminderRequired:
+      "Commande terminée — une revue de la documentation procédure peut encore être nécessaire.",
+    completionReminderRecommended:
+      "Commande terminée — la documentation procédure est recommandée le cas échéant.",
+    providerHintsTitle: "Commandes procédure — documentation",
+    providerHintsSubline:
+      "Commandes procédure actives ou terminées avec modèle de documentation disponible. Ouvre le flux existant ; rien n’est créé automatiquement.",
+  },
   createOrderModal: {
     tabOrderSets: "Protocoles",
     orderSetsSectionTitle: "Protocoles d'ordres",
