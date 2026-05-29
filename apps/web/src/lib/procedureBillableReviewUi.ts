@@ -1,3 +1,5 @@
+import type { ProcedureRevenueReviewReasonCode } from "@medora/shared";
+
 export function procedureBillableReviewWarningLabelKey(warning: string): string | null {
   switch (warning) {
     case "DOCUMENTATION_REVIEW":
@@ -15,10 +17,16 @@ export function procedureBillableReviewWarningLabelKey(warning: string): string 
   }
 }
 
-export function procedureBillableReviewReadinessLabelKey(status: string): string {
-  return `chargeCaptureReview.procedureReadiness.${status}`;
+export function procedureRevenueReviewReasonLabelKey(
+  code: ProcedureRevenueReviewReasonCode
+): string {
+  return `procedureRevenueReview.reason.${code}`;
 }
 
-export function procedureBillableReviewMappingLabelKey(status: string): string {
-  return `chargeCaptureReview.procedureMapping.${status}`;
+export function procedureRevenueReviewStatusLabelKey(status: string): string {
+  return `procedureRevenueReview.status.${status}`;
+}
+
+export function procedureRevenueReviewSideLabelKey(side: string): string {
+  return `procedureRevenueReview.side.${side}`;
 }

@@ -73,5 +73,7 @@ export * from "./procedures/enterpriseProcedureBillingReadinessTypes.js";
 export * from "./procedures/resolveProcedureBillingReadiness.js";
 export * from "./procedures/enterpriseProcedureBillableReviewTypes.js";
 export * from "./procedures/enterpriseProcedureBillableReview.js";
+export * from "./procedures/enterpriseProcedureRevenueReviewTypes.js";
+export * from "./procedures/enterpriseProcedureRevenueReview.js";
 export * from "./patient/patientClinicalHistoryProfile.js";
 

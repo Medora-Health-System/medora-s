@@ -12,6 +12,7 @@ import {
   type EncounterChargeReviewPayload,
 } from "@/lib/chargeCaptureReviewApi";
 import { ProcedureBillableEventsCard } from "@/components/billing/ProcedureBillableEventsCard";
+import { ProcedureRevenueReviewPanel } from "@/components/billing/ProcedureRevenueReviewPanel";
 import {
   chargeReviewClassificationFilterOptions,
   chargeReviewDomainFilterOptions,
@@ -360,6 +361,8 @@ export default function ChargeReviewPage() {
           </div>
         </div>
       ) : null}
+
+      {facilityId ? <ProcedureRevenueReviewPanel facilityId={facilityId} /> : null}
     </div>
   );
 }

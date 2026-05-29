@@ -29,6 +29,7 @@ import { ClaimClearinghouseObservabilityService } from "../billing/claim-clearin
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
+import { ProcedureRevenueReviewService } from "../billing/procedure-revenue-review.service";
 
 @Module({
   imports: [PrismaModule],
@@ -59,6 +60,7 @@ import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-previe
     ChargeCaptureReviewService,
     CodingIntegrityReviewService,
     ClaimAssemblyPreviewService,
+    ProcedureRevenueReviewService,
   ],
   exports: [
     QueuesService,

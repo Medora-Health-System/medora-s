@@ -22,6 +22,7 @@ import { ExternalBillingExportService } from "./external-billing-export.service"
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
+import { ProcedureRevenueReviewService } from "./procedure-revenue-review.service";
 import {
   billingClassificationSchema,
   chargeReviewDomainSchema,
@@ -56,7 +57,60 @@ export class BillingController {
     private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
     private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
+    private readonly procedureRevenueReviewService: ProcedureRevenueReviewService,
   ) {}
+
+  /** MEDPROC.7 — enterprise procedure revenue review queue (preview only). */
+  @Get("billing/procedure-review")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async getProcedureRevenueReviewQueue(
+    @Req() req: any,
+    @Query("reviewStatus") reviewStatus?: string,
+    @Query("mappingStatus") mappingStatus?: string,
+    @Query("documentationMissing") documentationMissingRaw?: string,
+    @Query("billingSideReview") billingSideReview?: string,
+    @Query("enterpriseProcedureId") enterpriseProcedureId?: string,
+    @Query("dateFrom") dateFromRaw?: string,
+    @Query("dateTo") dateToRaw?: string,
+    @Query("limit") limitRaw?: string
+  ) {
+    const facilityId = req.facilityId;
+    const documentationMissing =
+      documentationMissingRaw?.trim().toLowerCase() === "true"
+        ? true
+        : documentationMissingRaw?.trim().toLowerCase() === "false"
+          ? false
+          : undefined;
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+    return this.procedureRevenueReviewService.getQueue({
+      facilityId,
+      reviewStatus: reviewStatus?.trim() as never,
+      mappingStatus: mappingStatus?.trim() || undefined,
+      documentationMissing,
+      billingSideReview: billingSideReview?.trim() as never,
+      enterpriseProcedureId: enterpriseProcedureId?.trim() || undefined,
+      dateFrom: dateFromRaw?.trim() ? new Date(dateFromRaw.trim()) : undefined,
+      dateTo: dateToRaw?.trim() ? new Date(dateToRaw.trim()) : undefined,
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
+
+  @Post("billing/procedure-review/:billingEventId/decision")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async postProcedureRevenueReviewDecision(
+    @Param("billingEventId") billingEventId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    return this.procedureRevenueReviewService.recordDecision(
+      facilityId,
+      billingEventId,
+      body != null && typeof body === "object" ? (body as Record<string, unknown>) : {},
+      userId
+    );
+  }
 
   @Get("billing/encounters/:encounterId/readiness")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
