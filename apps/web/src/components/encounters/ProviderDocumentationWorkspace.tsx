@@ -93,11 +93,19 @@ import {
 import {
   providerDocumentationStickyHeaderStyle,
   providerDocumentationSummaryAsideStyle,
+  providerDocumentationTemplateSearchBarContainerStyle,
+  providerDocumentationTemplateSearchInputWrapStyle,
   providerDocumentationTouchFriendlyButtonStyle,
   providerDocumentationWorkspaceLayoutStyle,
   resolveProviderDocumentationLayoutMode,
   type ProviderDocumentationLayoutMode,
 } from "@/lib/providerDocumentationWorkspaceLayout";
+import {
+  PROVIDER_DOCUMENTATION_TEMPLATE_SEARCH_MAX_WIDTH_PX,
+  countProviderDocumentationTemplateSearchMatches,
+  filterProviderDocumentationTemplates,
+  providerDocumentationTemplateSearchTerms,
+} from "@/lib/providerDocumentationTemplateSearch";
 
 type Chip = { labelKey: string; fragmentKey: string };
 type ChipGroup = { titleKey: string; field: keyof ProviderDocumentationWorkspaceState; chips: Chip[] };
@@ -440,6 +448,8 @@ export function ProviderDocumentationWorkspace({
   const [layoutMode, setLayoutMode] = useState<ProviderDocumentationLayoutMode>("desktopSplit");
   const [showPreview, setShowPreview] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [templateSearchQuery, setTemplateSearchQuery] = useState("");
+  const templateSearchInputRef = useRef<HTMLInputElement>(null);
   const [attestationAccepted, setAttestationAccepted] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<ProviderDocumentationAutosaveStatus>("idle");
   const [autosaveSavedAt, setAutosaveSavedAt] = useState<string | null>(null);
@@ -549,6 +559,18 @@ export function ProviderDocumentationWorkspace({
   const accordionSummaries = useMemo(() => providerDocumentationAccordionSummaries(value), [value]);
   const accordionSelectedCounts = useMemo(() => providerDocumentationAccordionSelectedCounts(value), [value]);
   const isStackedLayout = layoutMode === "stacked";
+  const templateSearchActive = providerDocumentationTemplateSearchTerms(templateSearchQuery).length > 0;
+  const templateSearchMatchCount = useMemo(
+    () => countProviderDocumentationTemplateSearchMatches(templateSearchQuery, t),
+    [templateSearchQuery, t]
+  );
+  const filteredTemplates = useMemo(
+    () => (templateSearchActive ? filterProviderDocumentationTemplates(templateSearchQuery, t) : null),
+    [templateSearchActive, templateSearchQuery, t]
+  );
+  useEffect(() => {
+    if (!showTemplates) setTemplateSearchQuery("");
+  }, [showTemplates]);
   const touchHeaderButton = (style: React.CSSProperties) =>
     isStackedLayout ? providerDocumentationTouchFriendlyButtonStyle(style) : style;
 
@@ -1525,6 +1547,91 @@ export function ProviderDocumentationWorkspace({
               background: "#f8fafc",
             }}
           >
+            <div style={providerDocumentationTemplateSearchBarContainerStyle()}>
+              <div
+                style={providerDocumentationTemplateSearchInputWrapStyle(PROVIDER_DOCUMENTATION_TEMPLATE_SEARCH_MAX_WIDTH_PX)}
+              >
+                <input
+                  ref={templateSearchInputRef}
+                  type="search"
+                  data-testid="provider-template-search"
+                  aria-label={t("providerDocumentationWorkspace.templateSearchAriaLabel")}
+                  placeholder={t("providerDocumentationWorkspace.templateSearchPlaceholder")}
+                  value={templateSearchQuery}
+                  onChange={(event) => setTemplateSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setTemplateSearchQuery("");
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                    }
+                  }}
+                  style={{
+                    ...inputBase,
+                    paddingRight: templateSearchQuery ? 36 : undefined,
+                    margin: 0,
+                  }}
+                  autoComplete="off"
+                />
+                {templateSearchQuery ? (
+                  <button
+                    type="button"
+                    data-testid="provider-template-search-clear"
+                    aria-label={t("providerDocumentationWorkspace.templateSearchClear")}
+                    onClick={() => {
+                      setTemplateSearchQuery("");
+                      templateSearchInputRef.current?.focus();
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: 6,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      padding: 0,
+                      border: "none",
+                      borderRadius: 6,
+                      background: "transparent",
+                      color: "#64748b",
+                      fontSize: 18,
+                      lineHeight: 1,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            {templateSearchActive ? (
+              <p
+                data-testid="provider-template-search-meta"
+                style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b", textAlign: "center", lineHeight: 1.35 }}
+              >
+                {templateSearchMatchCount === 0
+                  ? t("providerDocumentationWorkspace.templateSearchNoResults")
+                  : t("providerDocumentationWorkspace.templateSearchMatchCount").replace(
+                      "{count}",
+                      String(templateSearchMatchCount)
+                    )}
+              </p>
+            ) : null}
+            {templateSearchActive && templateSearchMatchCount === 0 ? (
+              <p
+                data-testid="provider-template-search-empty-hint"
+                style={{ margin: "0 0 8px", fontSize: 11, color: "#94a3b8", textAlign: "center", lineHeight: 1.35 }}
+              >
+                {t("providerDocumentationWorkspace.templateSearchNoResultsHint")}
+              </p>
+            ) : null}
             <div
               data-testid="provider-template-picker-columns"
               style={{
@@ -1535,7 +1642,9 @@ export function ProviderDocumentationWorkspace({
               }}
             >
               {PROVIDER_DOCUMENTATION_MAJOR_GROUP_KEYS.map((majorGroup) => {
-                const templates = PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup);
+                const templates = (
+                  filteredTemplates ?? PROVIDER_DOCUMENTATION_TEMPLATES.filter((template) => template.majorGroup === majorGroup)
+                ).filter((template) => template.majorGroup === majorGroup);
                 if (!templates.length) return null;
                 const accent = TEMPLATE_PICKER_COLUMN_ACCENT[majorGroup];
                 return (

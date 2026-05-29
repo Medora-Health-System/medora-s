@@ -6772,6 +6772,13 @@ export default {
     titleObservation: "Documentation médecin (observation)",
     subtitle: "Documentation médecin structurée — enregistrée dans le dossier.",
     templates: "Modèles",
+    templateSearchPlaceholder:
+      "Rechercher des modèles, ex. douleur thoracique, AVC, abdominal…",
+    templateSearchAriaLabel: "Rechercher des modèles de documentation",
+    templateSearchClear: "Effacer la recherche",
+    templateSearchMatchCount: "{count} modèles correspondants",
+    templateSearchNoResults: "Aucun modèle correspondant",
+    templateSearchNoResultsHint: "Essayez moins de mots ou un autre mot-clé.",
     templatePickerHelp:
       "Choisir un mode de plainte pour insérer des fragments ciblés et modifiables dans les champs de note.",
     templateSafetyComment:

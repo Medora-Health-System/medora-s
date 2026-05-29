@@ -93,3 +93,23 @@ export function providerDocumentationTouchFriendlyButtonStyle(base: CSSPropertie
     padding: "10px 12px",
   };
 }
+
+/** Centered template search row — capped width so picker does not widen the board (MEDUI.4). */
+export function providerDocumentationTemplateSearchBarContainerStyle(): CSSProperties {
+  return {
+    display: "flex",
+    justifyContent: "center",
+    marginBottom: 10,
+    width: "100%",
+    minWidth: 0,
+  };
+}
+
+export function providerDocumentationTemplateSearchInputWrapStyle(maxWidthPx: number): CSSProperties {
+  return {
+    position: "relative",
+    width: "100%",
+    maxWidth: maxWidthPx,
+    minWidth: 0,
+  };
+}
