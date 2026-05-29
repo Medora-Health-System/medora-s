@@ -10,7 +10,7 @@ import {
   EncounterChartExportService,
   ENCOUNTER_CHART_EXPORT_MANIFEST_VERSION,
 } from "./chart-export.service";
-import { EDOC_BASIC_STRUCTURED_CARD_ID, IO_PO_INTAKE_CARD_ID, IO_URINE_OUTPUT_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
+import { EDOC_BASIC_STRUCTURED_CARD_ID, IO_PO_INTAKE_CARD_ID, IO_URINE_OUTPUT_CARD_ID, OBS_PO_CHALLENGE_CARD_ID, RESTRAINT_INITIATION_CARD_ID, RESTRAINT_RENEWAL_CARD_ID, STROKE_NIHSS_CARD_ID } from "@medora/shared";
 
 const SAMPLE_ENTRY = {
   id: "edoc-legal-1",
@@ -438,6 +438,83 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const html = renderEncounterChartExportHtml(manifest);
     expect(html).toContain("[PENDING WITNESS]");
     expect(html).toContain("400 mL");
+  });
+
+  it("renders Restraint Initiation with billing metadata and witness in export (EDOC.6)", async () => {
+    const initiationPayload = {
+      assessmentTime: "2026-05-28T20:00:00.000Z",
+      restraintType: "BEHAVIORAL",
+      reasonForRestraint: "VIOLENT_BEHAVIOR",
+      alternativesAttempted: ["VERBAL_DEESCALATION"],
+      continuedNeed: true,
+      injuryPresent: false,
+      circulationAssessment: "NORMAL",
+      mentalStatusAssessment: "Agitated.",
+      physicianOrderVerified: true,
+      orderingProviderId: "provider-1",
+      billingReadinessMetadata: {
+        capturePhase: "EDOC.6",
+        claimsGenerationDeferred: true,
+        restraintEventCapturable: true,
+      },
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-restraint-init-1",
+          category: "RESTRAINT_DOCUMENTATION",
+          cardId: RESTRAINT_INITIATION_CARD_ID,
+          payloadJson: initiationPayload,
+          requiresWitnessSignature: true,
+          witnessedAt: new Date("2026-05-28T20:30:00.000Z"),
+          witnessedByUserId: "user-rn-2",
+          witnessDisplayNameSnapshot: "Paul Témoin",
+          witnessRoleSnapshot: "Infirmier(ère)",
+        },
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-restraint-renewal-1",
+          category: "RESTRAINT_DOCUMENTATION",
+          cardId: RESTRAINT_RENEWAL_CARD_ID,
+          payloadJson: {
+            renewalTime: "2026-05-28T21:00:00.000Z",
+            orderingProviderId: "provider-1",
+            continuedNeed: true,
+            renewalReason: "Continued danger.",
+          },
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const initiationRow = manifest.encounter.clinicalDocumentationEntries.find(
+      (e) => e.cardId === RESTRAINT_INITIATION_CARD_ID
+    )!;
+    expect(initiationRow.payloadJson).toEqual(initiationPayload);
+    expect(initiationRow.witnessStatus).toBe("WITNESSED");
+    expect(initiationRow.payloadSummary.some((l) => l.key === "Type")).toBe(true);
+    const renewalRow = manifest.encounter.clinicalDocumentationEntries.find(
+      (e) => e.cardId === RESTRAINT_RENEWAL_CARD_ID
+    )!;
+    expect(renewalRow.payloadSummary.some((l) => l.key === "Renouvellement")).toBe(true);
+    const html = renderEncounterChartExportHtml(manifest);
+    expect(html).toContain("RESTRAINT_DOCUMENTATION");
+    expect(html).toContain("Comportementale");
+    expect(html).toContain("Paul Témoin");
+    expect(html).toContain("Renouvellement");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

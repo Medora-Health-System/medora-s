@@ -7,6 +7,10 @@ import {
   EDOC5_INTAKE_OUTPUT_CARD_IDS,
   validateIntakeOutputPayloadForCard,
 } from "./intakeOutputDocumentationPayloads.js";
+import {
+  EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS,
+  validateRestraintPayloadForCard,
+} from "./restraintDocumentationPayloads.js";
 
 /** EDOC.2 — minimal foundation card (generic key/value only for this card). */
 export const EDOC_BASIC_STRUCTURED_CARD_ID = "edoc_basic_structured_v1" as const;
@@ -130,6 +134,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...Object.keys(PAYLOAD_SCHEMA_BY_CARD_ID),
   ...EDOC4_STROKE_DOCUMENTATION_CARD_IDS,
   ...EDOC5_INTAKE_OUTPUT_CARD_IDS,
+  ...EDOC6_RESTRAINT_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -151,7 +156,14 @@ export function validatePayloadForCard(
   ) {
     return strokeResult;
   }
-  return validateIntakeOutputPayloadForCard(cardId, payload);
+  const ioResult = validateIntakeOutputPayloadForCard(cardId, payload);
+  if (
+    ioResult.ok ||
+    (EDOC5_INTAKE_OUTPUT_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return ioResult;
+  }
+  return validateRestraintPayloadForCard(cardId, payload);
 }
 
 function yesNoFr(v: boolean): string {

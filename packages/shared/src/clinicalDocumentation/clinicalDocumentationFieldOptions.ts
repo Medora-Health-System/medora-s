@@ -448,3 +448,61 @@ export const IO_BLOOD_PRODUCT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<str
   { value: "WHOLE_BLOOD", labelEn: "Whole blood", labelFr: "Sang total" },
   { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
 ];
+
+export const RESTRAINT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "PHYSICAL", labelEn: "Physical", labelFr: "Physique" },
+  { value: "BEHAVIORAL", labelEn: "Behavioral", labelFr: "Comportementale" },
+  { value: "MEDICAL", labelEn: "Medical", labelFr: "Médicale" },
+  { value: "SECLUSION", labelEn: "Seclusion", labelFr: "Isolement" },
+];
+
+export const REASON_FOR_RESTRAINT_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "VIOLENT_BEHAVIOR", labelEn: "Violent behavior", labelFr: "Comportement violent" },
+  { value: "SELF_DESTRUCTIVE", labelEn: "Self-destructive", labelFr: "Autodestruction" },
+  { value: "PULLING_LINES", labelEn: "Pulling lines", labelFr: "Arrachement de lignes" },
+  { value: "PULLING_TUBES", labelEn: "Pulling tubes", labelFr: "Arrachement de tubes" },
+  { value: "FALL_RISK", labelEn: "Fall risk", labelFr: "Risque de chute" },
+  {
+    value: "INTERFERENCE_WITH_CARE",
+    labelEn: "Interference with care",
+    labelFr: "Gêne aux soins",
+  },
+  {
+    value: "ALTERED_MENTAL_STATUS",
+    labelEn: "Altered mental status",
+    labelFr: "Altération de l'état mental",
+  },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const ALTERNATIVES_ATTEMPTED_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "VERBAL_DEESCALATION", labelEn: "Verbal de-escalation", labelFr: "Désescalade verbale" },
+  { value: "REORIENTATION", labelEn: "Reorientation", labelFr: "Réorientation" },
+  { value: "FAMILY_PRESENCE", labelEn: "Family presence", labelFr: "Présence familiale" },
+  { value: "SITTER", labelEn: "Sitter", labelFr: "Surveillant" },
+  { value: "REDIRECTION", labelEn: "Redirection", labelFr: "Redirection" },
+  {
+    value: "ENVIRONMENTAL_MODIFICATION",
+    labelEn: "Environmental modification",
+    labelFr: "Modification environnement",
+  },
+  { value: "MEDICATION", labelEn: "Medication", labelFr: "Médication" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const NORMAL_ABNORMAL_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "NORMAL", labelEn: "Normal", labelFr: "Normal" },
+  { value: "ABNORMAL", labelEn: "Abnormal", labelFr: "Anormal" },
+];
+
+export const DISCONTINUATION_CRITERIA_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "CALM", labelEn: "Calm", labelFr: "Calme" },
+  { value: "FOLLOWS_COMMANDS", labelEn: "Follows commands", labelFr: "Suit les consignes" },
+  { value: "NO_LONGER_DANGER", labelEn: "No longer a danger", labelFr: "Plus de danger" },
+  {
+    value: "MEDICAL_DEVICE_SECURE",
+    labelEn: "Medical devices secure",
+    labelFr: "Dispositifs sécurisés",
+  },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];

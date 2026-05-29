@@ -8,7 +8,6 @@ export const DEFAULT_WITNESS_REQUIRED_CARD_IDS = [
   "flow_blood_product_administration",
   "blood_transfusion_reaction",
   "safety_restraint_initial",
-  "safety_restraint_reassessment",
   "flow_restraint_monitoring",
   "safety_belongings_checklist",
   "score_gcs",

@@ -10,12 +10,13 @@ import {
 } from "./clinicalDocumentationRegistry.js";
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
-  it("exports all 10 categories with metadata", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(10);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(10);
+  it("exports all 11 categories with metadata (EDOC.6 adds RESTRAINT_DOCUMENTATION)", () => {
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(11);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(11);
     for (const cat of CLINICAL_DOCUMENTATION_CATEGORIES) {
       expect(CLINICAL_DOCUMENTATION_CATEGORY_META.some((m) => m.id === cat)).toBe(true);
     }
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("RESTRAINT_DOCUMENTATION");
   });
 
   it("contains key cards with EN/FR titles", () => {
@@ -25,6 +26,7 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(getClinicalDocumentationCardById("flow_restraint_monitoring")).toBeTruthy();
     expect(getClinicalDocumentationCardById("score_nihss")).toBeTruthy();
     expect(getClinicalDocumentationCardById("io_intake_output")).toBeTruthy();
+    expect(getClinicalDocumentationCardById("safety_restraint_initial")).toBeTruthy();
     expect(getClinicalDocumentationCardById("obs_po_challenge")).toBeTruthy();
     expect(getClinicalDocumentationCardById("obs_ambulation_trial")).toBeTruthy();
   });

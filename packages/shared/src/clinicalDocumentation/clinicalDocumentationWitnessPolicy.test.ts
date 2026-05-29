@@ -6,9 +6,10 @@ import {
 } from "./clinicalDocumentationWitnessPolicy.js";
 
 describe("clinicalDocumentationWitnessPolicy", () => {
-  it("defaults witness for blood transfusion and restraints", () => {
+  it("defaults witness for blood transfusion and restraint initiation (EDOC.6)", () => {
     expect(resolveRequiresWitnessSignature("blood_transfusion")).toBe(true);
     expect(resolveRequiresWitnessSignature("safety_restraint_initial")).toBe(true);
+    expect(resolveRequiresWitnessSignature("safety_restraint_reassessment")).toBe(false);
     expect(resolveRequiresWitnessSignature("obs_po_challenge")).toBe(false);
   });
 

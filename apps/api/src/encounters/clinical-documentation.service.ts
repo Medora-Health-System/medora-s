@@ -15,6 +15,7 @@ import {
   clinicalDocumentationEntryCreateDtoSchema,
   parseFacilityClinicalDocumentationWitnessPolicy,
   resolveRequiresWitnessSignature,
+  validatePayloadForCard,
   type ClinicalDocumentationEntryCreateDto,
   type ClinicalDocumentationEntryLegalChartRow,
 } from "@medora/shared";
@@ -137,6 +138,14 @@ export class ClinicalDocumentationService {
       throw new BadRequestException(e instanceof Error ? e.message : "Invalid payload");
     }
 
+    const payloadValidation = validatePayloadForCard(
+      parsed.data.cardId,
+      parsed.data.payloadJson as Record<string, unknown>
+    );
+    if (!payloadValidation.ok) {
+      throw new BadRequestException(payloadValidation.message);
+    }
+
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
     });
@@ -153,7 +162,7 @@ export class ClinicalDocumentationService {
       facilityWitnessPolicy
     );
 
-    const payloadKeyCount = Object.keys(parsed.data.payloadJson).length;
+    const payloadKeyCount = Object.keys(payloadValidation.data).length;
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterClinicalDocumentationEntry.create({
@@ -163,7 +172,7 @@ export class ClinicalDocumentationService {
           patientId: encounter.patientId,
           category: parsed.data.category,
           cardId: parsed.data.cardId,
-          payloadJson: parsed.data.payloadJson as Prisma.InputJsonValue,
+          payloadJson: payloadValidation.data as Prisma.InputJsonValue,
           authorUserId: userId,
           authorDisplayNameSnapshot,
           authorRoleSnapshot,

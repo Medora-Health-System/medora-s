@@ -34,6 +34,10 @@ import {
   ClinicalDocumentationIntakeOutputForm,
   isEdoc5IntakeOutputFormCard,
 } from "./ClinicalDocumentationIntakeOutputForm";
+import {
+  ClinicalDocumentationRestraintForm,
+  isEdoc6RestraintFormCard,
+} from "./ClinicalDocumentationRestraintForm";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -640,6 +644,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc5IntakeOutputFormCard(c.id) ? (
                 <ClinicalDocumentationIntakeOutputForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc6RestraintFormCard(c.id) ? (
+                <ClinicalDocumentationRestraintForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => saveObservationEntry(c, payload)}
