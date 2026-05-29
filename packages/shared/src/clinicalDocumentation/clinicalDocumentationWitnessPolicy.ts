@@ -4,6 +4,7 @@ import { getClinicalDocumentationCardById } from "./clinicalDocumentationRegistr
 /** Platform default: card IDs requiring a second signer (witness). */
 export const DEFAULT_WITNESS_REQUIRED_CARD_IDS = [
   "blood_product_verification",
+  "high_alert_infusion_verification",
   "flow_blood_product_administration",
   "safety_restraint_initial",
   "flow_restraint_monitoring",
@@ -14,10 +15,9 @@ export const DEFAULT_WITNESS_REQUIRED_CARD_IDS = [
   "proc_sedation_monitoring",
 ] as const;
 
-/** Future high-alert infusion / controlled-substance cards use these tags in the registry. */
+/** Tags that imply dual-signature when present on a card (explicit per-card policy preferred for EDOC.8). */
 export const CLINICAL_DOCUMENTATION_WITNESS_POLICY_TAGS = [
   "witness_required",
-  "high_alert_infusion",
   "altered_consciousness",
   "controlled_substance_waste",
 ] as const;
@@ -26,6 +26,8 @@ export const facilityClinicalDocumentationWitnessPolicySchema = z
   .object({
     additionalCardIds: z.array(z.string().min(1).max(120)).optional(),
     disabledCardIds: z.array(z.string().min(1).max(120)).optional(),
+    /** EDOC.8 — medication types requiring witness on titration entries when listed. */
+    witnessRequiredTitrationMedicationTypes: z.array(z.string().min(1).max(80)).optional(),
   })
   .strict();
 

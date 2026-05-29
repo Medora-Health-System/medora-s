@@ -23,6 +23,7 @@ describe("clinicalDocumentationWitnessPolicy", () => {
   });
 
   it("lists expected default high-risk cards", () => {
+    expect(DEFAULT_WITNESS_REQUIRED_CARD_IDS).toContain("high_alert_infusion_verification");
     expect(DEFAULT_WITNESS_REQUIRED_CARD_IDS).toContain("blood_product_verification");
     expect(DEFAULT_WITNESS_REQUIRED_CARD_IDS).toContain("safety_belongings_checklist");
     expect(DEFAULT_WITNESS_REQUIRED_CARD_IDS).toContain("proc_sedation_monitoring");

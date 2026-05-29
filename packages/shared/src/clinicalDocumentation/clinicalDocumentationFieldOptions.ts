@@ -532,6 +532,64 @@ export const MTP_EVENT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] 
   { value: "DEACTIVATED", labelEn: "Deactivated", labelFr: "Désactivé" },
 ];
 
+export const HIGH_ALERT_MEDICATION_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "HEPARIN", labelEn: "Heparin", labelFr: "Héparine" },
+  { value: "INSULIN", labelEn: "Insulin", labelFr: "Insuline" },
+  { value: "VASOPRESSOR", labelEn: "Vasopressor", labelFr: "Vasopresseur" },
+  { value: "SEDATIVE", labelEn: "Sedative", labelFr: "Sédatif" },
+  { value: "PCA", labelEn: "PCA", labelFr: "PCA" },
+  { value: "CHEMOTHERAPY", labelEn: "Chemotherapy", labelFr: "Chimiothérapie" },
+  {
+    value: "MAGNESIUM_HIGH_DOSE",
+    labelEn: "High-dose magnesium",
+    labelFr: "Magnésium haute dose",
+  },
+  {
+    value: "POTASSIUM_HIGH_DOSE",
+    labelEn: "High-dose potassium",
+    labelFr: "Potassium haute dose",
+  },
+  { value: "ANTIARRHYTHMIC", labelEn: "Antiarrhythmic", labelFr: "Antiarythmique" },
+  { value: "OTHER_HIGH_ALERT", labelEn: "Other high-alert", labelFr: "Autre haute alerte" },
+];
+
+export const TITRATION_REASON_FOR_CHANGE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "PROTOCOL", labelEn: "Protocol", labelFr: "Protocole" },
+  { value: "PROVIDER_ORDER", labelEn: "Provider order", labelFr: "Ordre médical" },
+  { value: "CLINICAL_RESPONSE", labelEn: "Clinical response", labelFr: "Réponse clinique" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const INFUSION_HOLD_REASON_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "PROVIDER_ORDER", labelEn: "Provider order", labelFr: "Ordre médical" },
+  { value: "ADVERSE_EVENT", labelEn: "Adverse event", labelFr: "Événement indésirable" },
+  { value: "HYPOTENSION", labelEn: "Hypotension", labelFr: "Hypotension" },
+  { value: "BRADYCARDIA", labelEn: "Bradycardia", labelFr: "Bradycardie" },
+  { value: "HYPOGLYCEMIA", labelEn: "Hypoglycemia", labelFr: "Hypoglycémie" },
+  { value: "LINE_ISSUE", labelEn: "Line issue", labelFr: "Problème de ligne" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const INFUSION_ROUTE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
+  { value: "IV", labelEn: "IV", labelFr: "IV" },
+  { value: "CENTRAL_LINE", labelEn: "Central line", labelFr: "Ligne centrale" },
+  { value: "PCA", labelEn: "PCA", labelFr: "PCA" },
+  { value: "SUBCUTANEOUS", labelEn: "Subcutaneous", labelFr: "Sous-cutané" },
+  { value: "OTHER", labelEn: "Other", labelFr: "Autre" },
+];
+
+export const PAIN_SCORE_0_10_OPTIONS: ClinicalDocumentationFieldOption<number>[] = Array.from(
+  { length: 11 },
+  (_, i) => ({
+    value: i,
+    labelEn: String(i),
+    labelFr: String(i),
+  })
+);
+
+export const SEDATION_SCORE_0_10_OPTIONS: ClinicalDocumentationFieldOption<number>[] =
+  PAIN_SCORE_0_10_OPTIONS;
+
 export const RESTRAINT_TYPE_OPTIONS: ClinicalDocumentationFieldOption<string>[] = [
   { value: "PHYSICAL", labelEn: "Physical", labelFr: "Physique" },
   { value: "BEHAVIORAL", labelEn: "Behavioral", labelFr: "Comportementale" },

@@ -14,7 +14,7 @@ import {
   mapClinicalDocumentationEntryForLegalChart,
   clinicalDocumentationEntryCreateDtoSchema,
   parseFacilityClinicalDocumentationWitnessPolicy,
-  resolveRequiresWitnessSignature,
+  resolveRequiresWitnessSignatureForClinicalDocumentationEntry,
   validatePayloadForCard,
   type ClinicalDocumentationEntryCreateDto,
   type ClinicalDocumentationEntryLegalChartRow,
@@ -157,8 +157,9 @@ export class ClinicalDocumentationService {
       facilityId
     );
     const facilityWitnessPolicy = await this.loadFacilityWitnessPolicy(facilityId);
-    const requiresWitnessSignature = resolveRequiresWitnessSignature(
+    const requiresWitnessSignature = resolveRequiresWitnessSignatureForClinicalDocumentationEntry(
       parsed.data.cardId,
+      payloadValidation.data,
       facilityWitnessPolicy
     );
 

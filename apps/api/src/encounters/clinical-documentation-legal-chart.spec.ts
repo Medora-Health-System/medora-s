@@ -610,6 +610,58 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     expect(manifest.encounter.clinicalDocumentationEntries[1]?.payloadJson.eventType).toBe("ACTIVATED");
   });
 
+  it("renders high-alert infusion documentation in chart export (EDOC.8)", async () => {
+    const verificationPayload = {
+      verificationTime: "2026-05-28T16:00:00.000Z",
+      medicationType: "HEPARIN",
+      medicationName: "Heparin protocol",
+      concentration: "25k/500",
+      orderedRate: "18 u/kg/hr",
+      orderedDose: "1200 u/hr",
+      weightBasedCalculationVerified: true,
+      pumpProgrammingVerified: true,
+      lineTracingVerified: true,
+      patientVerified: true,
+      providerOrderVerified: true,
+      independentDoubleCheckPerformed: true,
+      verificationStatus: "PENDING_WITNESS",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-infusion-verify",
+          category: "HIGH_ALERT_INFUSION_DOCUMENTATION",
+          cardId: "high_alert_infusion_verification",
+          payloadJson: verificationPayload,
+          requiresWitnessSignature: true,
+          witnessedAt: null,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Medication")).toBe(true);
+    expect(row.witnessStatus).toBe("PENDING_WITNESS");
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("HIGH_ALERT_INFUSION_DOCUMENTATION");
+    expect(htmlEn).toContain("Heparin protocol");
+    expect(htmlEn).toContain("[PENDING WITNESS]");
+  });
+
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {
     const roiSource = readFileSync(join(__dirname, "../roi/chart-roi.service.ts"), "utf8");
     expect(roiSource).toContain("EncounterChartExportService");

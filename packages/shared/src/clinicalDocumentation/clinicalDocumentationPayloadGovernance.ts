@@ -10,6 +10,8 @@ import {
  * - EDOC.3+ clinical cards (NIHSS, I&O, PO Challenge, CPR, blood products, sedation, etc.)
  *   MUST register a card-specific Zod (or equivalent) validator before `AVAILABLE`.
  * - Do not save unrestricted payloads for real clinical forms.
+ * - EDOC.8A (backlog): smart infusion pump library / guardrail fields — see
+ *   `highAlertInfusionDocumentationPayloads.ts` and docs/operations/edoc-8a-smart-infusion-governance-backlog.md.
  */
 export const EDOC_GENERIC_PAYLOAD_ALLOWED_CARD_IDS = [EDOC_BASIC_STRUCTURED_CARD_ID] as const;
 

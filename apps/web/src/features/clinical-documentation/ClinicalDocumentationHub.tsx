@@ -43,6 +43,10 @@ import {
   ClinicalDocumentationBloodProductForm,
   isEdoc7BloodProductFormCard,
 } from "./ClinicalDocumentationBloodProductForm";
+import {
+  ClinicalDocumentationHighAlertInfusionForm,
+  isEdoc8HighAlertInfusionFormCard,
+} from "./ClinicalDocumentationHighAlertInfusionForm";
 
 const chipBase: React.CSSProperties = {
   padding: "6px 12px",
@@ -665,6 +669,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc7BloodProductFormCard(c.id) ? (
                 <ClinicalDocumentationBloodProductForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => saveObservationEntry(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc8HighAlertInfusionFormCard(c.id) ? (
+                <ClinicalDocumentationHighAlertInfusionForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => saveObservationEntry(c, payload)}

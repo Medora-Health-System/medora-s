@@ -11,6 +11,10 @@ import {
   EDOC_GENERIC_PAYLOAD_ALLOWED_CARD_IDS,
   listFoundationOnlyCardIds,
 } from "./clinicalDocumentationPayloadGovernance.js";
+import {
+  EDOC_8A_SMART_INFUSION_GOVERNANCE_FUTURE_FIELD_NAMES,
+  highAlertInfusionVerificationPayloadSchema,
+} from "./highAlertInfusionDocumentationPayloads.js";
 
 describe("clinicalDocumentationPayloadGovernance (EDOC.2A / EDOC.3)", () => {
   it("AVAILABLE cards have registered validators; only basic card allows generic payload", () => {
@@ -20,6 +24,14 @@ describe("clinicalDocumentationPayloadGovernance (EDOC.2A / EDOC.3)", () => {
     expect(cardHasRegisteredPayloadValidator("obs_po_challenge")).toBe(true);
     expect(cardHasRegisteredPayloadValidator("score_nihss")).toBe(false);
     expect(cardHasRegisteredPayloadValidator("io_intake_output")).toBe(true);
+  });
+
+  it("EDOC.8A smart pump governance fields are documented but not required in EDOC.8 schemas", () => {
+    const verificationKeys = Object.keys(highAlertInfusionVerificationPayloadSchema.shape);
+    for (const field of EDOC_8A_SMART_INFUSION_GOVERNANCE_FUTURE_FIELD_NAMES) {
+      expect(verificationKeys).not.toContain(field);
+    }
+    expect(verificationKeys).not.toContain("pumpIdentifier");
   });
 
   it("foundation-only cards cannot be saved", () => {
