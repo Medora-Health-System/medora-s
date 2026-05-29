@@ -14796,6 +14796,12 @@ export default {
     providerHintsSubline:
       "Active or completed procedure orders with an available documentation template. Opens the existing procedure note workflow; nothing is auto-created.",
   },
+  procedureBillingReadiness: {
+    billingReviewNeeded: "Billing review needed",
+    chargeMasterNeeded: "Charge master mapping needed",
+    readyForReview: "Ready for billing review",
+    documentationRequired: "Documentation required for billing review",
+  },
   createOrderModal: {
     tabOrderSets: "Order Sets",
     orderSetsSectionTitle: "Order sets",

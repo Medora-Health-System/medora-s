@@ -35,11 +35,13 @@ import {
   requestorMayAcknowledgeEnterpriseProcedure,
   requestorMayCompleteEnterpriseProcedure,
   resolveProcedureDocumentationLinkage,
+  resolveProcedureBillingReadiness,
   resolveProcedureExecutionProfile,
   type EnterpriseProcedureDocumentationTemplateId,
 } from "@medora/shared";
 import { ProcedureExecutionCategoryBadge } from "@/components/clinical/ProcedureExecutionCategoryBadge";
 import { ProcedureOrderDocumentationLinkage } from "@/components/clinical/ProcedureOrderDocumentationLinkage";
+import { ProcedureBillingReadinessIndicator } from "@/components/clinical/ProcedureBillingReadinessIndicator";
 import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLauncherCatalog";
 import {
   parseEncounterDocumentedProcedureTypes,
@@ -944,6 +946,22 @@ export function EmergencyErOrdersPanel({
     );
   };
 
+  const renderCareProcedureBillingReadiness = (
+    item: Record<string, unknown> | undefined,
+    orderStatus: string
+  ) => {
+    if (!item) return null;
+    const enterpriseProcedureId = careItemEnterpriseProcedureId(item);
+    if (!enterpriseProcedureId) return null;
+    const readiness = resolveProcedureBillingReadiness({
+      enterpriseProcedureId,
+      orderItemStatus: orderStatus,
+      documentedProcedureTypes,
+      facilityChargeMasterLinked: false,
+    });
+    return <ProcedureBillingReadinessIndicator readiness={readiness} />;
+  };
+
   return (
     <MedoraCard leftAccentColor="#7c3aed" variant="default">
       <MedoraCardInner>
@@ -1421,6 +1439,9 @@ export function EmergencyErOrdersPanel({
                                         {o.type === "CARE"
                                           ? renderCareProcedureDocumentationLinkage(item, itemId, st)
                                           : null}
+                                        {o.type === "CARE"
+                                          ? renderCareProcedureBillingReadiness(item, st)
+                                          : null}
                                       </>
                                     }
                                     statusSection={activeStatusSection}
@@ -1882,6 +1903,12 @@ export function EmergencyErOrdersPanel({
                                 ? renderCareProcedureDocumentationLinkage(
                                     completedItemRow,
                                     itemIdEv,
+                                    String(completedItemRow?.status ?? "COMPLETED")
+                                  )
+                                : null}
+                              {typeKey === "CARE" && completedItemRow
+                                ? renderCareProcedureBillingReadiness(
+                                    completedItemRow,
                                     String(completedItemRow?.status ?? "COMPLETED")
                                   )
                                 : null}

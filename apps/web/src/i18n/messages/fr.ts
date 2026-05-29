@@ -14827,6 +14827,12 @@ export default {
     providerHintsSubline:
       "Commandes procédure actives ou terminées avec modèle de documentation disponible. Ouvre le flux existant ; rien n’est créé automatiquement.",
   },
+  procedureBillingReadiness: {
+    billingReviewNeeded: "Revue facturation nécessaire",
+    chargeMasterNeeded: "Correspondance au référentiel tarifaire requise",
+    readyForReview: "Prêt pour revue facturation",
+    documentationRequired: "Documentation requise pour revue facturation",
+  },
   createOrderModal: {
     tabOrderSets: "Protocoles",
     orderSetsSectionTitle: "Protocoles d'ordres",

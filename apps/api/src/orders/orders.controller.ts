@@ -15,6 +15,7 @@ import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
 import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
+import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.service";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   careProcedureEffectiveClinicalTimeDtoSchema,
@@ -35,6 +36,7 @@ export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
+    private readonly procedureBillingReadiness: ProcedureBillingReadinessService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -199,6 +201,16 @@ export class OrdersController {
       req.ip,
       req.headers["user-agent"]
     );
+  }
+
+  @Get("orders/items/:id/procedure-billing-readiness")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.PROVIDER)
+  async getProcedureBillingReadiness(@Param("id") orderItemId: string, @Req() req: any) {
+    const facilityId = req.facilityId ?? req.user?.facilityId ?? req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Établissement requis");
+    }
+    return this.procedureBillingReadiness.getForOrderItem(facilityId, orderItemId);
   }
 
   @Post("orders/items/:id/acknowledge")

@@ -1,4 +1,5 @@
 import type { DocumentedProcedureType } from "../schemas/encounterProcedureTypes.js";
+import type { EnterpriseProcedureChargeMapping } from "./enterpriseProcedureBillingReadinessTypes.js";
 
 export const ENTERPRISE_PROCEDURE_CARE_SETTINGS = [
   "ED",
@@ -79,6 +80,8 @@ export type EnterpriseProcedureDefinition = {
   assistingRoleHints: EnterpriseProcedureRoleHint[];
   completionRoleHints: EnterpriseProcedureRoleHint[];
   billingMappingStatus: EnterpriseProcedureBillingMappingStatus;
+  /** MEDPROC.5 — enterprise charge-master mapping metadata (preview-only; not billing events). */
+  chargeMapping?: EnterpriseProcedureChargeMapping;
   /** MEDPROC.4 — primary execution queue category (metadata only). */
   executionRoleCategory: EnterpriseProcedureExecutionRoleCategory;
   /** MEDPROC.4 — roles allowed to acknowledge/start. */
@@ -88,6 +91,38 @@ export type EnterpriseProcedureDefinition = {
 };
 
 const ALL_SETTINGS: EnterpriseProcedureCareSetting[] = [...ENTERPRISE_PROCEDURE_CARE_SETTINGS];
+
+const CODER_REVIEW_CPT: EnterpriseProcedureChargeMapping = {
+  status: "CODER_REVIEW_REQUIRED",
+  suggestedCodeSystems: ["CPT"],
+  mappingSource: "ENTERPRISE_DEFAULT",
+};
+
+const INSTITUTION_POLICY_CPT: EnterpriseProcedureChargeMapping = {
+  status: "INSTITUTION_POLICY_REQUIRED",
+  suggestedCodeSystems: ["CPT"],
+  mappingSource: "ENTERPRISE_DEFAULT",
+};
+
+const NURSING_PROCEDURE_REVIEW: EnterpriseProcedureChargeMapping = {
+  status: "READY_FOR_REVIEW",
+  suggestedCodeSystems: ["CPT"],
+  mappingSource: "ENTERPRISE_DEFAULT",
+};
+
+const INTUBATION_CHARGE_MAPPING: EnterpriseProcedureChargeMapping = {
+  status: "READY_FOR_REVIEW",
+  suggestedCodeSystems: ["CPT"],
+  mappingSource: "ENTERPRISE_DEFAULT",
+  defaultCodeCandidates: [
+    {
+      codeSystem: "CPT",
+      code: "31500",
+      label: "Endotracheal intubation",
+      reviewRequired: true,
+    },
+  ],
+};
 
 function roleHintToExecutionRole(hint: EnterpriseProcedureRoleHint): EnterpriseProcedureExecutionRole | null {
   if (hint === "PROVIDER") return "PROVIDER";
@@ -204,6 +239,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["intub", "intubation", "ett", "airway intubation"],
     category: "AIRWAY",
     documentationTemplateId: "INTUBATION",
+    chargeMapping: INTUBATION_CHARGE_MAPPING,
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN", "RT"],
     completionRoleHints: ["PROVIDER", "RN"],
@@ -265,6 +301,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["ekg", "ecg", "electrocardiogram", "12 lead"],
     category: "CARDIAC_RESPIRATORY",
     documentationTemplateId: "EKG",
+    chargeMapping: INSTITUTION_POLICY_CPT,
     performerRoleHints: ["RN", "TECH"],
     completionRoleHints: ["RN", "TECH"],
   }),
@@ -311,6 +348,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["central", "central line", "cvc", "central venous catheter"],
     category: "VASCULAR_ACCESS",
     documentationTemplateId: "CENTRAL_LINE",
+    chargeMapping: CODER_REVIEW_CPT,
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN"],
     completionRoleHints: ["PROVIDER", "RN"],
@@ -352,6 +390,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["lac", "laceration", "suture", "wound repair"],
     category: "WOUND_CARE",
     documentationTemplateId: "LACERATION",
+    chargeMapping: CODER_REVIEW_CPT,
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN"],
     completionRoleHints: ["PROVIDER", "RN"],
@@ -427,6 +466,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["foley", "cath", "urinary catheter", "foley insertion"],
     category: "GU",
     documentationTemplateId: "FOLEY_CATHETER",
+    chargeMapping: NURSING_PROCEDURE_REVIEW,
     performerRoleHints: ["RN", "PROVIDER"],
     executionRoleCategory: "NURSING",
     acknowledgeRoles: ["RN"],
@@ -506,6 +546,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["sed", "sedation", "conscious sedation"],
     category: "SEDATION",
     documentationTemplateId: "PROCEDURAL_SEDATION",
+    chargeMapping: CODER_REVIEW_CPT,
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN"],
   }),
@@ -527,6 +568,7 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     aliases: ["chest tube", "tube thoracostomy", "thoracostomy"],
     category: "OTHER",
     documentationTemplateId: "CHEST_TUBE",
+    chargeMapping: CODER_REVIEW_CPT,
     performerRoleHints: ["PROVIDER"],
     assistingRoleHints: ["RN"],
   }),

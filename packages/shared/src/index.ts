@@ -69,5 +69,7 @@ export * from "./procedures/enterpriseProcedureOrderValidation.js";
 export * from "./procedures/enterpriseProcedureDocumentationLinkage.js";
 export * from "./procedures/enterpriseProcedureExecutionProfile.js";
 export * from "./procedures/enterpriseProcedureWorkQueue.js";
+export * from "./procedures/enterpriseProcedureBillingReadinessTypes.js";
+export * from "./procedures/resolveProcedureBillingReadiness.js";
 export * from "./patient/patientClinicalHistoryProfile.js";
 
