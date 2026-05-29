@@ -57,6 +57,8 @@ import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
 import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
+import { EncounterNotesService } from "./encounter-notes.service";
+import { encounterNoteCreateDtoSchema } from "@medora/shared";
 import type { Response } from "express";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 
@@ -77,7 +79,44 @@ export class EncountersController {
     private readonly chargeCaptureReviewService: ChargeCaptureReviewService,
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
     private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
+    private readonly encounterNotesService: EncounterNotesService,
   ) {}
+
+  /** MEDNOTE.1 — list append-only encounter notes (+ optional legacy erNotesV1 read-only). */
+  @Get("encounters/:id/notes")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async listEncounterNotes(
+    @Param("id") id: string,
+    @Query("noteType") noteTypeRaw: string | undefined,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const noteType = noteTypeRaw?.trim().toUpperCase();
+    const allowed = new Set(["PROVIDER", "NURSING", "TECHNICIAN", "OTHER"]);
+    return this.encounterNotesService.listForEncounter(facilityId, id, {
+      noteType: noteType && allowed.has(noteType) ? (noteType as never) : undefined,
+    });
+  }
+
+  @Post("encounters/:id/notes")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN, RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY)
+  async createEncounterNote(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) throw new BadRequestException("Facility ID required");
+    const parsed = encounterNoteCreateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+    return this.encounterNotesService.createNote(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
 
   @Post("patients/:patientId/encounters/outpatient")
   @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)

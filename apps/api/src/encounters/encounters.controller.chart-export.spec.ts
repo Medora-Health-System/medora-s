@@ -74,6 +74,7 @@ function fakeManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       },
       nursingDocumentation: null,
       providerAddenda: [],
+      encounterNotes: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",
         admittedAt: null,
@@ -135,6 +136,7 @@ function makeController(opts?: {
   const chargeCaptureReviewService = {} as never;
   const codingIntegrityReviewService = {} as never;
   const claimAssemblyPreviewService = {} as never;
+  const encounterNotesService = {} as never;
   const controller = new EncountersController(
     encountersService,
     diagnosesService,
@@ -149,6 +151,7 @@ function makeController(opts?: {
     chargeCaptureReviewService,
     codingIntegrityReviewService,
     claimAssemblyPreviewService,
+    encounterNotesService,
   );
   return { controller, chartExportService };
 }

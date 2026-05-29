@@ -17,6 +17,7 @@ import { FacilityFeeReadinessService } from "./facility-fee-readiness.service";
 import { ChargeCaptureReviewService } from "./charge-capture-review.service";
 import { CodingIntegrityReviewService } from "./coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
+import { EncounterNotesService } from "./encounter-notes.service";
 
 @Module({
   imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
@@ -34,6 +35,7 @@ import { ClaimAssemblyPreviewService } from "./claim-assembly-preview.service";
     ChargeCaptureReviewService,
     CodingIntegrityReviewService,
     ClaimAssemblyPreviewService,
+    EncounterNotesService,
     AuditService,
   ],
   exports: [

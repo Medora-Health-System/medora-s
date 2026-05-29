@@ -46,6 +46,7 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
       },
       nursingDocumentation: null,
       providerAddenda: [],
+      encounterNotes: [],
       observationStay: computeObservationStaySummaryForExport({
         encounterType: "EMERGENCY",
         admittedAt: null,
@@ -306,5 +307,32 @@ describe("chart-export-html.util", () => {
     );
     expect(html).toContain("Volet");
     expect(html).toContain("Réalisée le");
+  });
+
+  it("renders full encounter note body in legal export HTML (MEDNOTE.1A)", () => {
+    const fullBody =
+      "Patient reassessed. Vitals stable. Full legal narrative must appear in export without truncation.";
+    const html = renderEncounterChartExportHtml(
+      baseManifest({
+        encounter: {
+          ...baseManifest().encounter,
+          encounterNotes: [
+            {
+              id: "note-legal-1",
+              noteType: "NURSING",
+              body: fullBody,
+              authorDisplayName: "Marie Infirmière",
+              authorRoleTitle: "Infirmier(ère)",
+              createdAt: "2026-05-28T14:30:00.000Z",
+            },
+          ],
+        },
+      })
+    );
+    expect(html).toContain("Encounter notes");
+    expect(html).toContain(fullBody);
+    expect(html).toContain("Marie Infirmière");
+    expect(html).toContain("Infirmier(ère)");
+    expect(html).toContain("NURSING");
   });
 });

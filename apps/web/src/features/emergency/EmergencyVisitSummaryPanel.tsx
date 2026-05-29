@@ -12,6 +12,7 @@ import {
   MedoraCardTitle,
 } from "@/components/medora-card";
 import { useI18n } from "@/lib/i18n";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import {
   buildEmergencyVisitSummaryModel,
   type ClinicalDocumentationEventApiEntry,
@@ -692,9 +693,10 @@ export function EmergencyVisitSummaryPanel({
         model.dischargeSummaryHistory.length > 0 ||
         model.admissionSummaryHistory.length > 0 ||
         model.dispositionSupplementHistory.length > 0 ||
-        model.triageAssessmentHistory.length > 0
+        model.triageAssessmentHistory.length > 0 ||
+        (encounter.encounterNotes ?? []).length > 0
     );
-  }, [model, clinicalTimeline.all.length]);
+  }, [model, clinicalTimeline.all.length, encounter.encounterNotes]);
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -928,6 +930,41 @@ export function EmergencyVisitSummaryPanel({
           />
         ) : null}
         {model.emtala ? <SummaryBlockCard accent="#0e7490" block={model.emtala} /> : null}
+
+        {(encounter.encounterNotes ?? []).length > 0 ? (
+          <MedoraCard leftAccentColor="#475569" variant="default">
+            <MedoraCardInner>
+              <p style={sectionTitle}>{t("encounterNotes.summarySectionTitle")}</p>
+              <ul style={{ margin: "8px 0 0 0", paddingLeft: 0, listStyle: "none" }}>
+                {(encounter.encounterNotes ?? []).map((note) => (
+                  <li
+                    key={note.id ?? `${note.createdAt}-${note.noteType}`}
+                    style={{
+                      marginBottom: 10,
+                      padding: "10px 12px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      background: "#fff",
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>
+                      {t(`encounterNotes.noteType.${note.noteType ?? "OTHER"}`)} — {note.authorDisplayName ?? "—"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+                      {note.authorRoleTitle ?? "—"} —{" "}
+                      {note.createdAt
+                        ? formatEncounterChromeDateTime(note.createdAt, language)
+                        : "—"}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#475569", whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                      {note.body ?? ""}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </MedoraCardInner>
+          </MedoraCard>
+        ) : null}
 
         {clinicalTimeline.all.length > 0 ? (
           <ClinicalTimelineCard timeline={clinicalTimeline} t={t} />

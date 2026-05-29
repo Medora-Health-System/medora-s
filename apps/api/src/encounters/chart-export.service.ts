@@ -12,6 +12,7 @@ import {
 } from "@prisma/client";
 import {
   buildDocumentedProcedureSummaryMeta,
+  legacyErNotesV1DisplayEntries,
   readCanonicalProcedureTypeFromPayload,
   readLinkedProcedureEventIdFromPayload,
   readPayloadVersionFromPayload,
@@ -241,6 +242,16 @@ export type ChartExportManifest = {
       text: string;
       createdAt: string;
       createdByDisplayFr: string | null;
+    }>;
+    /** MEDNOTE.1 — append-only encounter notes (legal chart record). */
+    encounterNotes: Array<{
+      id: string;
+      noteType: string;
+      body: string;
+      authorDisplayName: string;
+      authorRoleTitle: string;
+      createdAt: string;
+      legacy?: boolean;
     }>;
     /** Phase 13C — additive operational LOS metadata for observation / short stay (INPATIENT only). Omitted on legacy stored snapshots. */
     observationStay?: ObservationStaySummaryForExport;
@@ -737,6 +748,18 @@ export class EncounterChartExportService {
             createdBy: { select: { firstName: true, lastName: true } },
           },
         },
+        encounterNotes: {
+          where: { voidedAt: null },
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            noteType: true,
+            body: true,
+            authorDisplayNameSnapshot: true,
+            authorRoleSnapshot: true,
+            createdAt: true,
+          },
+        },
       },
     });
 
@@ -1065,6 +1088,30 @@ export class EncounterChartExportService {
       createdByDisplayFr: userDisplayFr(ad.createdBy),
     }));
 
+    const relationalEncounterNotes = (encounter.encounterNotes ?? []).map((n) => ({
+      id: n.id,
+      noteType: n.noteType as string,
+      body: n.body,
+      authorDisplayName: n.authorDisplayNameSnapshot,
+      authorRoleTitle: n.authorRoleSnapshot,
+      createdAt: n.createdAt.toISOString(),
+    }));
+    const legacyEncounterNotes = legacyErNotesV1DisplayEntries(
+      encounter.nursingAssessment,
+      encounter.id
+    ).map((n) => ({
+      id: n.id,
+      noteType: n.noteType,
+      body: n.body,
+      authorDisplayName: n.authorDisplayName,
+      authorRoleTitle: n.authorRoleTitle,
+      createdAt: n.createdAt,
+      legacy: true as const,
+    }));
+    const encounterNotes = [...relationalEncounterNotes, ...legacyEncounterNotes].sort((a, b) =>
+      a.createdAt.localeCompare(b.createdAt)
+    );
+
     /* ---------- Deferred domains (Phase 5F backend manifest scope) ---------- */
     const deferredDomains: ChartExportManifest["deferredDomains"] = [
       {
@@ -1135,6 +1182,7 @@ export class EncounterChartExportService {
         },
         nursingDocumentation: initialNursingDocumentationFromAssessment(encounter.nursingAssessment),
         providerAddenda,
+        encounterNotes,
         observationStay,
       },
       patient: {

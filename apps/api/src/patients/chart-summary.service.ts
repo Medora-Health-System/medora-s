@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
   buildPatientClinicalHistorySummary,
+  legacyErNotesV1DisplayEntries,
   patientClinicalHistoryProfileFromJson,
 } from "@medora/shared";
 import { AuditService } from "../common/services/audit.service";
@@ -72,6 +73,18 @@ const encounterChartSelect = {
       text: true,
       createdAt: true,
       createdBy: { select: { firstName: true, lastName: true } },
+    },
+  },
+  encounterNotes: {
+    where: { voidedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      noteType: true,
+      body: true,
+      authorDisplayNameSnapshot: true,
+      authorRoleSnapshot: true,
+      createdAt: true,
     },
   },
   triage: {
@@ -597,6 +610,27 @@ export class ChartSummaryService {
           : null,
       }));
 
+      const relationalNotes = (e.encounterNotes ?? []).map((n) => ({
+        id: n.id,
+        noteType: n.noteType,
+        body: n.body,
+        authorDisplayName: n.authorDisplayNameSnapshot,
+        authorRoleTitle: n.authorRoleSnapshot,
+        createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : String(n.createdAt),
+      }));
+      const legacyNotes = legacyErNotesV1DisplayEntries(e.nursingAssessment, e.id).map((n) => ({
+        id: n.id,
+        noteType: n.noteType,
+        body: n.body,
+        authorDisplayName: n.authorDisplayName,
+        authorRoleTitle: n.authorRoleTitle,
+        createdAt: n.createdAt,
+        legacy: true as const,
+      }));
+      const encounterNotes = [...relationalNotes, ...legacyNotes].sort((a, b) =>
+        b.createdAt.localeCompare(a.createdAt)
+      );
+
       const observationStaySummary = computeObservationStaySummaryForExport({
         encounterType: e.type,
         admittedAt: e.admittedAt,
@@ -638,6 +672,7 @@ export class ChartSummaryService {
         providerDocumentationSignedAt: signedAtIso,
         providerDocumentationSignedByDisplayFr,
         providerAddenda,
+        encounterNotes,
         followUpDate: e.followUpDate,
         createdAt: e.createdAt,
         dischargedAt: e.dischargedAt,

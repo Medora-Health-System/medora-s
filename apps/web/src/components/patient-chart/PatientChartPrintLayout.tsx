@@ -340,6 +340,22 @@ export function getPatientChartPrintHtml(params: {
                     .join("")}`
                 : ""
             }
+            ${
+              (enc.encounterNotes ?? []).length > 0
+                ? `<p style="margin:8px 0 4px 0;font-size:12px;"><strong>${esc(pc("encounterNotes"))}</strong></p>${(enc.encounterNotes ?? [])
+                    .map(
+                      (note) =>
+                        `<div style="margin-bottom:8px;font-size:11px;"><p style="margin:0;"><strong>${esc(
+                          note.noteType ?? "—"
+                        )}</strong> — ${esc(note.authorDisplayName ?? "—")} (${esc(
+                          note.authorRoleTitle ?? "—"
+                        )}) <strong>${esc(onDateWord)}</strong> ${esc(fmtDt(note.createdAt, lang))}</p><p style="margin:4px 0 0 0;white-space:pre-wrap;">${esc(
+                          note.body ?? ""
+                        )}</p></div>`
+                    )
+                    .join("")}`
+                : ""
+            }
             <p style="margin:4px 0;"><strong>${esc(pc("clinicalImpression"))} :</strong> ${esc(enc.clinicianImpressionPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>${esc(pc("treatmentPlan"))} :</strong> ${esc(enc.treatmentPlanPreview ?? "—")}</p>
             <p style="margin:4px 0;"><strong>${esc(pc("visitDiagnoses"))} :</strong> ${esc(dxVisit || "—")}</p>

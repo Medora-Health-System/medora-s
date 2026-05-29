@@ -103,6 +103,16 @@ export type ChartSummaryEncounter = {
     createdAt: string;
     createdByDisplayFr: string | null;
   }>;
+  /** MEDNOTE.1 — append-only encounter notes registry. */
+  encounterNotes?: Array<{
+    id: string;
+    noteType: string;
+    body: string;
+    authorDisplayName: string;
+    authorRoleTitle: string;
+    createdAt: string;
+    legacy?: boolean;
+  }>;
   followUpDate: string | null;
   createdAt: string;
   dischargedAt: string | null;

@@ -1007,10 +1007,9 @@ export function EmergencyChartView() {
             <EmergencyErNotesPanel
               encounterId={encounterId}
               facilityId={fid}
-              nursingAssessment={encounter.nursingAssessment}
-              encounterNotes={encounter.notes}
               status={encounter.status}
               isLocked={isLocked}
+              roleCodes={roles}
               onSaved={onEmbeddedEncounterUpdate}
             />
           </section>

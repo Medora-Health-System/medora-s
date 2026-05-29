@@ -105,6 +105,7 @@ import {
   type ProcedureDocumentationRole,
   type ObservationReassessmentV1Body,
   dischargeSnapshotIsObservationAdmissionRoutingOnly,
+  legacyErNotesV1DisplayEntries,
 } from "@medora/shared";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
@@ -477,6 +478,10 @@ export class EncountersService {
             createdBy: { select: { firstName: true, lastName: true } },
           },
         },
+        encounterNotes: {
+          where: { voidedAt: null },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -514,7 +519,7 @@ export class EncountersService {
       }
     }
 
-    const { providerAddenda: _rawAddenda, ...encounterForClinic } = encounter;
+    const { providerAddenda: _rawAddenda, encounterNotes: _rawNotes, ...encounterForClinic } = encounter;
     const res = toEncounterClinicResponse(encounterForClinic as typeof encounter) as Record<string, unknown>;
     const signedByDisplayFr =
       encounter.providerDocumentationStatus === "SIGNED" && encounter.providerDocumentationSignedBy
@@ -526,9 +531,23 @@ export class EncountersService {
         ? { ...res, closedByDisplayFr }
         : res;
 
+    const relationalNotes = (_rawNotes ?? []).map((n) => ({
+      id: n.id,
+      noteType: n.noteType,
+      body: n.body,
+      authorDisplayName: n.authorDisplayNameSnapshot,
+      authorRoleTitle: n.authorRoleSnapshot,
+      createdAt: n.createdAt.toISOString(),
+    }));
+    const legacyNotes = legacyErNotesV1DisplayEntries(encounter.nursingAssessment, encounter.id);
+    const encounterNotes = [...relationalNotes, ...legacyNotes].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
+
     const withAddenda = {
       ...withClosed,
       providerAddenda: this.mapProviderAddendaForApi(_rawAddenda ?? []),
+      encounterNotes,
     };
 
     let withTrackboard: Record<string, unknown> = withAddenda;

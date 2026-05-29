@@ -328,6 +328,19 @@ export function renderEncounterChartExportHtml(
             )
             .join("")}</ul>`
     }
+    <h3>Encounter notes</h3>
+    ${
+      (enc.encounterNotes ?? []).length === 0
+        ? `<p class="muted">${esc(NO_DATA)}</p>`
+        : `<ul>${(enc.encounterNotes ?? [])
+            .map(
+              (n) =>
+                `<li><span class="muted">${esc(n.createdAt)}</span> — ${esc(n.noteType)} — ${esc(
+                  n.authorDisplayName
+                )} (${esc(n.authorRoleTitle)})<div class="pre-text">${esc(n.body)}</div></li>`
+            )
+            .join("")}</ul>`
+    }
   `;
 
   const triageInner =

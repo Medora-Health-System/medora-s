@@ -1,107 +1,337 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { apiFetch, parseApiResponse } from "@/lib/apiClient";
+import type { EncounterNoteType } from "@medora/shared";
+import { defaultEncounterNoteTypeForRole, encounterNotePreview } from "@medora/shared";
+import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
-import { useI18n } from "@/lib/i18n";
+import {
+  createEncounterNote,
+  fetchEncounterNotes,
+  type EncounterNoteRow,
+} from "@/lib/encounterNotesApi";
 import {
   MedoraCard,
   MedoraCardIdentity,
   MedoraCardInner,
   MedoraCardTitle,
 } from "@/components/medora-card";
-import {
-  type ErNoteCategory,
-  buildErNotesPartsForUi,
-  mergeErNotesV1IntoNursingAssessment,
-  readErNotesCategoryMetaFromNursingAssessment,
-} from "@/features/emergency/erNotesV1";
 
-const CATEGORIES: ErNoteCategory[] = ["provider", "nursing", "technician", "other"];
+const NOTE_TYPES: EncounterNoteType[] = ["PROVIDER", "NURSING", "TECHNICIAN", "OTHER"];
+const REGISTRY_FILTERS = ["ALL", ...NOTE_TYPES] as const;
+type RegistryFilter = (typeof REGISTRY_FILTERS)[number];
+
+const layoutGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(280px, 340px)",
+  gap: 16,
+  alignItems: "start",
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+};
+
+const stackedLayout: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+  width: "100%",
+  maxWidth: "100%",
+  minWidth: 0,
+};
+
+function useNarrowLayout(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return narrow;
+}
 
 export function EmergencyErNotesPanel({
   encounterId,
   facilityId,
-  nursingAssessment,
-  encounterNotes,
   status,
   isLocked,
+  roleCodes,
   onSaved,
 }: {
   encounterId: string;
   facilityId: string;
-  nursingAssessment: unknown;
-  encounterNotes: string | null | undefined;
   status: string | null | undefined;
   isLocked: boolean;
+  roleCodes?: readonly string[];
   onSaved: () => void | Promise<void>;
 }) {
   const { t, language } = useI18n();
-  const [active, setActive] = useState<ErNoteCategory>("provider");
-  const [parts, setParts] = useState<Record<ErNoteCategory, string>>(() =>
-    buildErNotesPartsForUi(nursingAssessment, encounterNotes)
-  );
-  const [saving, setSaving] = useState(false);
+  const narrow = useNarrowLayout();
   const readOnly = (status ?? "").trim() !== "OPEN" || isLocked;
 
+  const defaultNoteType = useMemo(
+    () => defaultEncounterNoteTypeForRole(roleCodes?.[0]),
+    [roleCodes]
+  );
+
+  const [noteType, setNoteType] = useState<EncounterNoteType>(defaultNoteType);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [registryFilter, setRegistryFilter] = useState<RegistryFilter>("ALL");
+  const [notes, setNotes] = useState<EncounterNoteRow[]>([]);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    setParts(buildErNotesPartsForUi(nursingAssessment, encounterNotes));
-  }, [nursingAssessment, encounterNotes]);
+    setNoteType(defaultNoteType);
+  }, [defaultNoteType]);
 
-  const categoryMeta = useMemo(
-    () => readErNotesCategoryMetaFromNursingAssessment(nursingAssessment),
-    [nursingAssessment]
-  );
-  const activeAttribution = categoryMeta[active];
+  const loadNotes = useCallback(async () => {
+    setLoadingNotes(true);
+    try {
+      const payload = await fetchEncounterNotes(encounterId, facilityId);
+      setNotes(payload.notes);
+    } catch {
+      setNotes([]);
+    } finally {
+      setLoadingNotes(false);
+    }
+  }, [encounterId, facilityId]);
 
-  const categoryLabel = useCallback(
-    (c: ErNoteCategory) => t(`emergencyWorkspace.erNotesCategory.${c}`),
-    [t]
-  );
+  useEffect(() => {
+    void loadNotes();
+  }, [loadNotes]);
 
-  const patchActive = useCallback(
-    (text: string) => {
-      setParts((prev) => ({ ...prev, [active]: text }));
-    },
-    [active]
-  );
+  const filteredNotes = useMemo(() => {
+    if (registryFilter === "ALL") return notes;
+    return notes.filter((n) => n.noteType === registryFilter);
+  }, [notes, registryFilter]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
-    if (readOnly) return;
+    if (readOnly || !draft.trim()) return;
     setSaving(true);
     try {
-      let savedByDisplayName = t("emergencyDisposition.signerFallback");
-      try {
-        const meRes = await fetch("/api/auth/me");
-        const me = await parseApiResponse(meRes);
-        if (me && typeof me === "object" && !Array.isArray(me)) {
-          const fn = (me as { fullName?: string }).fullName?.trim();
-          if (fn) savedByDisplayName = fn;
-        }
-      } catch {
-        /* repli */
-      }
-      const saveMeta = { savedAt: new Date().toISOString(), savedByDisplayName };
-      const mergedNav = mergeErNotesV1IntoNursingAssessment(nursingAssessment, parts, saveMeta);
-      const res = await apiFetch(`/encounters/${encounterId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nursingAssessment: mergedNav }),
-        facilityId,
+      await createEncounterNote(encounterId, facilityId, {
+        noteType,
+        body: draft.trim(),
       });
-      const queued =
-        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      setDraft("");
+      await loadNotes();
       await Promise.resolve(onSaved());
-      alert(queued ? t("encounterChrome.notesTab.saveQueued") : t("encounterChrome.notesTab.saveOk"));
+      alert(t("encounterNotes.saveOk"));
     } catch (e) {
       alert(
-        normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("encounterChrome.notesTab.saveFailed")
+        normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
+          t("encounterNotes.saveFailed")
       );
     } finally {
       setSaving(false);
     }
   };
+
+  const editor = (
+    <div data-testid="encounter-notes-editor">
+      <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#334155" }}>
+        {t("encounterNotes.noteTypeLabel")}
+      </label>
+      <select
+        value={noteType}
+        disabled={readOnly}
+        onChange={(e) => setNoteType(e.target.value as EncounterNoteType)}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          marginBottom: 10,
+          padding: "8px 10px",
+          borderRadius: 10,
+          border: "1px solid #e2e8f0",
+          fontSize: 14,
+        }}
+      >
+        {NOTE_TYPES.map((type) => (
+          <option key={type} value={type}>
+            {t(`encounterNotes.noteType.${type}`)}
+          </option>
+        ))}
+      </select>
+
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={10}
+        readOnly={readOnly}
+        placeholder={t("encounterNotes.placeholder")}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "12px 14px",
+          border: "1px solid #e2e8f0",
+          borderRadius: 10,
+          marginBottom: 12,
+          fontSize: 14,
+          color: "#0f172a",
+          background: readOnly ? "#f8fafc" : "#fff",
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() => void handleSave()}
+        disabled={saving || readOnly || !draft.trim()}
+        style={{
+          padding: "10px 20px",
+          backgroundColor: "#0f172a",
+          color: "white",
+          border: "none",
+          borderRadius: 10,
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: saving || readOnly || !draft.trim() ? "not-allowed" : "pointer",
+          opacity: saving || readOnly || !draft.trim() ? 0.6 : 1,
+        }}
+      >
+        {saving ? t("encounterNotes.saving") : t("encounterNotes.save")}
+      </button>
+    </div>
+  );
+
+  const registry = (
+    <div
+      data-testid="encounter-notes-registry"
+      style={{
+        border: "1px solid #e2e8f0",
+        borderRadius: 12,
+        background: "#f8fafc",
+        padding: 12,
+        minHeight: 200,
+        maxHeight: narrow ? "none" : "70vh",
+        overflowY: "auto",
+        overflowX: "hidden",
+        minWidth: 0,
+      }}
+    >
+      <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: "#0f172a" }}>
+        {t("encounterNotes.registryTitle")}
+      </p>
+      <div
+        role="tablist"
+        aria-label={t("encounterNotes.registryFilterAria")}
+        style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}
+      >
+        {REGISTRY_FILTERS.map((filter) => {
+          const active = registryFilter === filter;
+          return (
+            <button
+              key={filter}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setRegistryFilter(filter)}
+              style={{
+                padding: "6px 10px",
+                fontSize: 12,
+                fontWeight: active ? 600 : 500,
+                borderRadius: 9999,
+                border: active ? "1px solid #64748b" : "1px solid #e2e8f0",
+                background: active ? "#e2e8f0" : "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {t(`encounterNotes.registryFilter.${filter}`)}
+            </button>
+          );
+        })}
+      </div>
+
+      {loadingNotes ? (
+        <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("encounterNotes.loading")}</p>
+      ) : filteredNotes.length === 0 ? (
+        <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("encounterNotes.registryEmpty")}</p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+          {filteredNotes.map((note) => {
+            const expanded = expandedIds.has(note.id);
+            const preview = encounterNotePreview(note.body);
+            return (
+              <li
+                key={note.id}
+                data-testid="encounter-note-card"
+                data-legacy-readonly={note.legacy ? "true" : undefined}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "10px 12px",
+                }}
+              >
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "2px 8px",
+                      borderRadius: 9999,
+                      background: "#f1f5f9",
+                      color: "#475569",
+                    }}
+                  >
+                    {t(`encounterNotes.noteType.${note.noteType}`)}
+                  </span>
+                  {note.legacy ? (
+                    <span style={{ fontSize: 11, color: "#92400e" }}>{t("encounterNotes.legacyBadge")}</span>
+                  ) : null}
+                </div>
+                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+                  {note.authorDisplayName}
+                </p>
+                <p style={{ margin: "0 0 4px", fontSize: 12, color: "#64748b" }}>
+                  {note.authorRoleTitle}
+                </p>
+                <p style={{ margin: "0 0 6px", fontSize: 12, color: "#64748b" }}>
+                  {formatEncounterChromeDateTime(note.createdAt, language)}
+                </p>
+                <p
+                  data-testid={expanded ? "encounter-note-full-body" : "encounter-note-preview-body"}
+                  style={{ margin: 0, fontSize: 13, color: "#334155", lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                >
+                  {expanded ? note.body : preview}
+                </p>
+                {note.body.length > preview.length ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(note.id)}
+                    style={{
+                      marginTop: 6,
+                      padding: 0,
+                      border: "none",
+                      background: "none",
+                      color: "#2563eb",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {expanded ? t("encounterNotes.collapse") : t("encounterNotes.expand")}
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
 
   return (
     <MedoraCard leftAccentColor="#475569" variant="default">
@@ -111,7 +341,7 @@ export function EmergencyErNotesPanel({
             title={t("emergencyWorkspace.notesTitle")}
             subline={
               <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-                {t("emergencyWorkspace.erNotesSubline")}
+                {t("encounterNotes.subline")}
               </p>
             }
           />
@@ -128,100 +358,16 @@ export function EmergencyErNotesPanel({
                 border: "1px solid #fde68a",
                 fontSize: 13,
                 color: "#92400e",
-                lineHeight: 1.45,
               }}
             >
               {t("encounterChrome.notesTab.readOnlyHint")}
             </div>
           ) : null}
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              marginBottom: 10,
-              alignItems: "center",
-            }}
-            role="tablist"
-            aria-label={t("emergencyWorkspace.erNotesCategoryAria")}
-          >
-            {CATEGORIES.map((c) => {
-              const isActive = c === active;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  disabled={readOnly}
-                  onClick={() => setActive(c)}
-                  style={{
-                    padding: "8px 12px",
-                    fontSize: 13,
-                    fontWeight: isActive ? 600 : 500,
-                    borderRadius: 10,
-                    border: isActive ? "1px solid #64748b" : "1px solid #e2e8f0",
-                    background: isActive ? "#f1f5f9" : "#fff",
-                    color: readOnly ? "#94a3b8" : "#334155",
-                    cursor: readOnly ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {categoryLabel(c)}
-                </button>
-              );
-            })}
+          <div style={narrow ? stackedLayout : layoutGrid}>
+            {editor}
+            {registry}
           </div>
-
-          <textarea
-            value={parts[active]}
-            onChange={(e) => patchActive(e.target.value)}
-            rows={10}
-            readOnly={readOnly}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "12px 14px",
-              border: "1px solid #e2e8f0",
-              borderRadius: 10,
-              marginBottom: 12,
-              fontSize: 14,
-              color: "#0f172a",
-              background: readOnly ? "#f8fafc" : "#fff",
-              cursor: readOnly ? "not-allowed" : "text",
-            }}
-            placeholder={t("encounterChrome.notesTab.placeholder")}
-          />
-
-          {activeAttribution ? (
-            <p style={{ margin: "0 0 10px 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-              {t("emergencyWorkspace.erNotesAttribution")
-                .replace("{name}", activeAttribution.savedByDisplayName)
-                .replace(
-                  "{datetime}",
-                  formatEncounterChromeDateTime(activeAttribution.savedAt, language)
-                )}
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || readOnly}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#0f172a",
-              color: "white",
-              border: "none",
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: saving || readOnly ? "not-allowed" : "pointer",
-              opacity: saving || readOnly ? 0.6 : 1,
-            }}
-          >
-            {saving ? t("encounterChrome.notesTab.saving") : t("encounterChrome.notesTab.save")}
-          </button>
         </div>
       </MedoraCardInner>
     </MedoraCard>

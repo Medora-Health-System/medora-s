@@ -65,6 +65,7 @@ function makeEncounterRow(overrides: Partial<Record<string, unknown>> = {}) {
     },
     facility: { id: "facility-A", name: "Clinique A" },
     providerAddenda: [],
+    encounterNotes: [],
     ...overrides,
   };
 }
@@ -266,6 +267,7 @@ describe("EncounterChartExportService.getSnapshot", () => {
         providerNote: null,
         providerDocumentation: { status: "SIGNED", signedAt: null, signedByDisplayFr: null },
         providerAddenda: [],
+    encounterNotes: [],
       },
       patient: {
         id: "patient-1",

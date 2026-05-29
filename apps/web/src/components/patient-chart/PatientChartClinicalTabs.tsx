@@ -114,6 +114,23 @@ function EncounterBlock({
           ))}
         </div>
       ) : null}
+      {(enc.encounterNotes ?? []).length > 0 ? (
+        <div style={{ marginBottom: 12, fontSize: 13, color: "#37474f" }}>
+          <p style={{ fontWeight: 600, margin: "0 0 8px" }}>{t("encounterNotes.chartSectionTitle")}</p>
+          {(enc.encounterNotes ?? []).map((note) => (
+            <div key={note.id} style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                {t("encounterNotes.chartLine")
+                  .replace("{type}", t(`encounterNotes.noteType.${note.noteType}`))
+                  .replace("{name}", note.authorDisplayName)
+                  .replace("{role}", note.authorRoleTitle)
+                  .replace("{datetime}", formatDt(note.createdAt))}
+              </div>
+              <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.45 }}>{note.body}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {children}
     </div>
   );

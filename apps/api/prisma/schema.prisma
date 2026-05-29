@@ -548,6 +548,8 @@ model Facility {
   orderEvents                      OrderEvent[]
   billingReviewDecisions           BillingReviewDecision[]
   encounterClinicalEvents          EncounterClinicalEvent[]
+  /// MEDNOTE.1 — append-only encounter notes registry.
+  encounterNotes                   EncounterNote[]
   /// Phase 5F — immutable encounter chart export snapshots originating at this facility.
   encounterChartExports            EncounterChartExport[]
   /// Phase 5G — Release of Information (ROI) requests for this facility.
@@ -672,6 +674,9 @@ model User {
   encountersBillingClassificationChangedBy   Encounter[]                           @relation("EncounterBillingClassificationChangedBy")
   encountersBillingClassificationAckBy       Encounter[]                           @relation("EncounterBillingClassificationAckBy")
   providerAddendaCreated                     EncounterProviderAddendum[]
+  /// MEDNOTE.1 — encounter notes authored by this user.
+  encounterNotesAuthored                     EncounterNote[]                       @relation("EncounterNoteAuthor")
+  encounterNotesVoided                       EncounterNote[]                       @relation("EncounterNoteVoidedBy")
   orderItemsCompletedNurse                   OrderItem[]                           @relation("OrderItemNurseCompleted")
   ordersCancelled                            Order[]                               @relation("OrderCancelledBy")
   msppUserRoleAssignments                    MsppUserRoleAssignment[]
@@ -812,6 +817,8 @@ model Patient {
   billingEvents             BillingEvent[]
   billingReviewDecisions    BillingReviewDecision[]
   encounterClinicalEvents   EncounterClinicalEvent[]
+  /// MEDNOTE.1 — append-only encounter notes registry.
+  encounterNotes            EncounterNote[]
   /// Phase 5F — immutable encounter chart export snapshots tied to this patient.
   encounterChartExports     EncounterChartExport[]
   /// Phase 5G — Release of Information requests for this patient.
@@ -1038,6 +1045,8 @@ model Encounter {
   orderEvents               OrderEvent[]
   billingReviewDecisions    BillingReviewDecision[]
   encounterClinicalEvents   EncounterClinicalEvent[]
+  /// MEDNOTE.1 — append-only encounter notes registry.
+  encounterNotes            EncounterNote[]
   /// Phase 5F — immutable encounter chart export snapshots created from this encounter.
   chartExports              EncounterChartExport[]
   /// Phase 5G — ROI requests scoped to this encounter (optional when request is patient-wide).
@@ -1202,6 +1211,40 @@ model EncounterProviderAddendum {
   @@index([encounterId, createdAt])
   @@index([createdByUserId])
   @@index([facilityId])
+}
+
+/// MEDNOTE.1 — append-only encounter notes (legal chart visibility).
+enum EncounterNoteType {
+  PROVIDER
+  NURSING
+  TECHNICIAN
+  OTHER
+}
+
+model EncounterNote {
+  id                        String            @id @default(uuid())
+  encounterId               String
+  patientId                 String
+  facilityId                String
+  noteType                  EncounterNoteType
+  body                      String
+  authorUserId              String
+  authorDisplayNameSnapshot String
+  authorRoleSnapshot        String
+  createdAt                 DateTime          @default(now())
+  voidedAt                  DateTime?
+  voidedByUserId            String?
+
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  facility  Facility  @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  author    User      @relation("EncounterNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  voidedBy  User?     @relation("EncounterNoteVoidedBy", fields: [voidedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([encounterId, createdAt])
+  @@index([facilityId])
+  @@index([patientId])
+  @@index([authorUserId])
 }
 
 model Order {

@@ -394,6 +394,15 @@ type EncounterLike = {
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
   providerAddenda?: Array<{ text?: string; createdAt?: string; createdByDisplayFr?: string | null }> | null;
+  encounterNotes?: Array<{
+    id?: string;
+    noteType?: string;
+    body?: string;
+    authorDisplayName?: string;
+    authorRoleTitle?: string;
+    createdAt?: string;
+    legacy?: boolean;
+  }> | null;
 };
 
 function formatIsoForLocale(iso: string | null | undefined, locale: SupportedLanguage): string {
