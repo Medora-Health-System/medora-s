@@ -45,6 +45,12 @@ export type CreateOrderLineItem = {
   _bodyRegion?: string;
   /** CARE UI only: quick-pick semantics for in-modal helpers (not sent to API). */
   _careQuickKey?: "ekg_workflow" | "laceration_kit";
+  /**
+   * CARE UI only (MEDPROC.1): ephemeral enterprise catalog selection — not persisted on OrderItem yet.
+   * MEDPROC.2 must persist `enterpriseProcedureId` as the canonical procedure identity on OrderItem.
+   * `manualLabel` is localized display text only and must not become the long-term billing/reporting identity.
+   */
+  _enterpriseProcedureId?: string;
   /** Snapshot from catalog search at pick time (soft safety rules). */
   _safetyCatalog?: {
     code?: string;

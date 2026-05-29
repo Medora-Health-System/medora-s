@@ -5,7 +5,14 @@ import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
 import type { OrderCreateDto, OrderSource } from "@medora/shared";
-import { computeAdvancedMedicationSafetyWarnings, getEncounterAllergyDocumentationSummary } from "@medora/shared";
+import {
+  computeAdvancedMedicationSafetyWarnings,
+  filterEnterpriseProcedures,
+  getEncounterAllergyDocumentationSummary,
+  resolveEnterpriseProcedureDisplayName,
+  enterpriseProcedureCategoryLabel,
+  type EnterpriseProcedureDefinition,
+} from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog } from "@/lib/catalogSearchApi";
@@ -171,28 +178,6 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
     { key: "rsv", type: "LAB", catalogType: "LAB_TEST", catalogCode: "RSV", catalogCodes: ["ER_RSV"] },
   ],
 };
-
-/** Static CARE picker keys — localized under `createOrderModal.<key>` (PHI-free labels). */
-const CARE_PICKER_I18N_KEYS = [
-  "carePickerWoundCare",
-  "carePickerDressingChange",
-  "carePickerSplintApplication",
-  "carePickerFoleyCatheter",
-  "carePickerGlucoseCheck",
-  "carePickerUrineCollection",
-  "carePickerPregnancyTest",
-  "carePickerIvFluidsSetup",
-  "carePickerBloodCultureCollection",
-  "carePickerRespiratoryTreatment",
-  "carePickerPatientMonitoring",
-  "carePickerFallPrecautions",
-  "carePickerIsolationPrecautions",
-  "carePickerNpoStatus",
-  "carePickerOralChallenge",
-  "carePickerAmbulationTrial",
-  "carePickerDischargeTeaching",
-  "carePickerTransferPreparation",
-] as const;
 
 function careLabelNorm(label: string): string {
   return label.trim().toLowerCase();
@@ -675,11 +660,12 @@ export function CreateOrderModal({
   const { language, t } = useI18n();
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
-  const carePickerMatches = useMemo(() => {
-    const q = carePickerQuery.trim().toLowerCase();
-    if (q.length < 3) return [];
-    return CARE_PICKER_I18N_KEYS.filter((key) => t(`createOrderModal.${key}`).toLowerCase().includes(q));
-  }, [carePickerQuery, t]);
+  const careCatalogMatches = useMemo(() => {
+    const q = carePickerQuery.trim();
+    if (q.length < 2) return [];
+    const locale = language === "fr" ? "fr" : "en";
+    return filterEnterpriseProcedures(q, locale);
+  }, [carePickerQuery, language]);
   const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
   const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
   const firstTab: OrderModalTab =
@@ -1404,7 +1390,10 @@ export function CreateOrderModal({
     return "MEDICATION";
   };
 
-  const addCareLine = (label: string, quickKey?: "ekg_workflow" | "laceration_kit") => {
+  const addCareLine = (
+    label: string,
+    options?: { quickKey?: "ekg_workflow" | "laceration_kit"; enterpriseProcedureId?: string }
+  ) => {
     const trimmed = label.trim();
     if (!trimmed) return;
     setFormData((fd) => {
@@ -1423,17 +1412,25 @@ export function CreateOrderModal({
             catalogItemType: "CARE",
             manualLabel: trimmed,
             _label: trimmed,
-            ...(quickKey ? { _careQuickKey: quickKey } : {}),
+            ...(options?.quickKey ? { _careQuickKey: options.quickKey } : {}),
+            // MEDPROC.2: persist enterpriseProcedureId on OrderItem; manualLabel stays display-only.
+            ...(options?.enterpriseProcedureId ? { _enterpriseProcedureId: options.enterpriseProcedureId } : {}),
           },
         ],
       };
     });
   };
 
-  const addCarePickerOption = (i18nKey: (typeof CARE_PICKER_I18N_KEYS)[number]) => {
-    const picked = t(`createOrderModal.${i18nKey}`).trim();
-    if (!picked) return;
-    addCareLine(picked);
+  const addCareCatalogProcedure = (procedure: EnterpriseProcedureDefinition) => {
+    const locale = language === "fr" ? "fr" : "en";
+    const label = resolveEnterpriseProcedureDisplayName(procedure, locale);
+    const quickKey =
+      procedure.id === "ekg_ecg"
+        ? ("ekg_workflow" as const)
+        : procedure.id === "laceration_repair"
+          ? ("laceration_kit" as const)
+          : undefined;
+    addCareLine(label, { enterpriseProcedureId: procedure.id, quickKey });
     setCarePickerQuery("");
   };
 
@@ -2459,7 +2456,7 @@ export function CreateOrderModal({
                       ))}
                       <button
                         type="button"
-                        onClick={() => addCareLine(t("createOrderModal.careQuickEkgWorkflow"), "ekg_workflow")}
+                        onClick={() => addCareLine(t("createOrderModal.careQuickEkgWorkflow"), { quickKey: "ekg_workflow" })}
                         style={{
                           padding: "8px 12px",
                           fontSize: 13,
@@ -2476,7 +2473,7 @@ export function CreateOrderModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => addCareLine(t("createOrderModal.careQuickLacerationKit"), "laceration_kit")}
+                        onClick={() => addCareLine(t("createOrderModal.careQuickLacerationKit"), { quickKey: "laceration_kit" })}
                         style={{
                           padding: "8px 12px",
                           fontSize: 13,
@@ -2563,13 +2560,13 @@ export function CreateOrderModal({
                           boxSizing: "border-box",
                         }}
                       />
-                      {carePickerQuery.trim().length > 0 && carePickerQuery.trim().length < 3 ? (
+                      {carePickerQuery.trim().length > 0 && carePickerQuery.trim().length < 2 ? (
                         <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
                           {t("createOrderModal.careSearchMinCharsHint")}
                         </div>
                       ) : null}
-                      {carePickerQuery.trim().length >= 3 ? (
-                        carePickerMatches.length === 0 ? (
+                      {carePickerQuery.trim().length >= 2 ? (
+                        careCatalogMatches.length === 0 ? (
                           <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
                             {t("createOrderModal.careSearchNoResults")}
                           </div>
@@ -2586,27 +2583,36 @@ export function CreateOrderModal({
                               background: "#fff",
                             }}
                           >
-                            {carePickerMatches.map((key) => (
-                              <li key={key} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                <button
-                                  type="button"
-                                  onClick={() => addCarePickerOption(key)}
-                                  style={{
-                                    display: "block",
-                                    width: "100%",
-                                    textAlign: "left",
-                                    padding: "8px 10px",
-                                    fontSize: 13,
-                                    border: "none",
-                                    background: "transparent",
-                                    cursor: "pointer",
-                                    color: "#0f172a",
-                                  }}
-                                >
-                                  {t(`createOrderModal.${key}`)}
-                                </button>
-                              </li>
-                            ))}
+                            {careCatalogMatches.map((procedure) => {
+                              const locale = language === "fr" ? "fr" : "en";
+                              return (
+                                <li key={procedure.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => addCareCatalogProcedure(procedure)}
+                                    data-testid={`create-order-care-catalog-${procedure.id}`}
+                                    style={{
+                                      display: "block",
+                                      width: "100%",
+                                      textAlign: "left",
+                                      padding: "8px 10px",
+                                      fontSize: 13,
+                                      border: "none",
+                                      background: "transparent",
+                                      cursor: "pointer",
+                                      color: "#0f172a",
+                                    }}
+                                  >
+                                    <span style={{ fontWeight: 600 }}>
+                                      {resolveEnterpriseProcedureDisplayName(procedure, locale)}
+                                    </span>
+                                    <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                                      {enterpriseProcedureCategoryLabel(procedure.category, locale)}
+                                    </span>
+                                  </button>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )
                       ) : null}

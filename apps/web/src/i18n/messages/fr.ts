@@ -14845,7 +14845,7 @@ export default {
     careQuickEkgWorkflow: "Tâche de soins EKG / ECG",
     careQuickLacerationKit: "Trousse / matériel suture (lacération)",
     careSearchPlaceholder: "Rechercher un soin ou une procédure…",
-    careSearchMinCharsHint: "Saisissez au moins 3 caractères.",
+    careSearchMinCharsHint: "Saisissez au moins 2 caractères.",
     careSearchNoResults: "Aucun soin correspondant.",
     careEkgReportingHelper:
       "Pour le suivi « door-to-EKG/ECG », documentez l’EKG/ECG dans le flux Procédures.",

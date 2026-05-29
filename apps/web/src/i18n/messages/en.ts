@@ -14814,7 +14814,7 @@ export default {
     careQuickEkgWorkflow: "EKG / ECG workflow task",
     careQuickLacerationKit: "Laceration kit / supplies",
     careSearchPlaceholder: "Search care or procedure…",
-    careSearchMinCharsHint: "Type at least 3 characters",
+    careSearchMinCharsHint: "Type at least 2 characters",
     careSearchNoResults: "No matching care tasks",
     careEkgReportingHelper:
       "For door-to-EKG/ECG reporting, document the EKG/ECG procedure in the Procedures workflow.",
