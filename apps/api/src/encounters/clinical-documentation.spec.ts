@@ -9,6 +9,11 @@ import {
   IO_URINE_OUTPUT_CARD_ID,
   OBS_AMBULATION_TRIAL_CARD_ID,
   OBS_PO_CHALLENGE_CARD_ID,
+  GLASGOW_COMA_SCALE_CARD_ID,
+  NEURO_CHECKS_CARD_ID,
+  NEURO_ESCALATION_EVENT_CARD_ID,
+  NIHSS_REASSESSMENT_CARD_ID,
+  POST_THROMBOLYTIC_MONITORING_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -645,5 +650,150 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
         data: expect.objectContaining({ requiresWitnessSignature: true }),
       })
     );
+  });
+
+  it("POST NIHSS reassessment persists (EDOC.11)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: NIHSS_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          ...NIHSS_PAYLOAD,
+          previousScore: 3,
+          scoreChange: 2,
+          worseningDetected: true,
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "NIHSS total")).toBe(true);
+    expect(saved.witnessStatus).toBe("NOT_REQUIRED");
+  });
+
+  it("POST GCS persists with summaries (EDOC.11)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: GLASGOW_COMA_SCALE_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          eye: 4,
+          verbal: 5,
+          motor: 6,
+          totalScore: 15,
+          severityBand: "MILD",
+          providerNotified: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Total score" && l.value === "15")).toBe(true);
+  });
+
+  it("POST neuro checks persists (EDOC.11)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: NEURO_CHECKS_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          levelOfConsciousness: "ALERT",
+          orientation: "X4",
+          speech: "NORMAL",
+          sensation: "INTACT",
+          facialDroop: "NONE",
+          seizureActivityObserved: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST neuro escalation event persists (EDOC.11)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: NEURO_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:30:00.000Z",
+          reason: "NIHSS_WORSENING",
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:31:00.000Z",
+          responseReceived: true,
+          rapidResponseActivated: false,
+          strokeAlertActivated: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Reason")).toBe(true);
+  });
+
+  it("POST post-thrombolytic monitoring persists (EDOC.11)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: POST_THROMBOLYTIC_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T15:00:00.000Z",
+          therapy: "TNK",
+          bloodPressure: "130/82",
+          heartRate: 84,
+          neuroStatusStable: true,
+          bleedingObserved: false,
+          headachePresent: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Therapy")).toBe(true);
+  });
+
+  it("stroke neuro audit metadata excludes clinical findings (EDOC.11)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: NEURO_CHECKS_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          levelOfConsciousness: "LETHARGIC",
+          orientation: "X2",
+          speech: "SLURRED",
+          sensation: "DECREASED",
+          facialDroop: "LEFT",
+          seizureActivityObserved: false,
+          providerNotified: true,
+          notes: "New left facial droop noted.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("levelOfConsciousness");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 });

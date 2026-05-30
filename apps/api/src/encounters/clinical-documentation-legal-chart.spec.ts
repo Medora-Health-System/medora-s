@@ -19,6 +19,7 @@ import {
   RESTRAINT_INITIATION_CARD_ID,
   RESTRAINT_RENEWAL_CARD_ID,
   SEDATION_TIMEOUT_CARD_ID,
+  GLASGOW_COMA_SCALE_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -782,6 +783,49 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     expect(htmlEn).toContain("PROCEDURE_MONITORING");
     expect(htmlEn).toContain("Moderate");
     expect(htmlEn).toContain("Paul Témoin");
+  });
+
+  it("renders GCS summary in export (EDOC.11)", async () => {
+    const gcsPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      eye: 4,
+      verbal: 4,
+      motor: 5,
+      totalScore: 13,
+      severityBand: "MILD",
+      providerNotified: true,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-gcs-11",
+          category: "STROKE_DOCUMENTATION",
+          cardId: GLASGOW_COMA_SCALE_CARD_ID,
+          payloadJson: gcsPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(gcsPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Total score" && l.value === "13")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("STROKE_DOCUMENTATION");
+    expect(htmlEn).toContain("Mild");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {
