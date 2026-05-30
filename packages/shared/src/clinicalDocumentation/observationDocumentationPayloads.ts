@@ -76,6 +76,10 @@ import {
   validateDialysisRenalFluidManagementDocumentationPayloadForCard,
 } from "./dialysisRenalFluidManagementDocumentationPayloads.js";
 import {
+  EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS,
+  validatePatientEducationDischargeTeachingDocumentationPayloadForCard,
+} from "./patientEducationDischargeTeachingDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -220,6 +224,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
   ...EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS,
   ...EDOC21_DIALYSIS_RENAL_FLUID_MANAGEMENT_DOCUMENTATION_CARD_IDS,
+  ...EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -361,6 +366,18 @@ export function validatePayloadForCard(
     )
   ) {
     return renalResult;
+  }
+  const educationResult = validatePatientEducationDischargeTeachingDocumentationPayloadForCard(
+    cardId,
+    payload
+  );
+  if (
+    educationResult.ok ||
+    (EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(
+      cardId
+    )
+  ) {
+    return educationResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

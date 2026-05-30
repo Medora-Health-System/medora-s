@@ -108,6 +108,16 @@ import {
   URINE_OUTPUT_CONCERN_CARD_ID,
   RENAL_MEDICATION_SAFETY_REVIEW_CARD_ID,
   RENAL_ESCALATION_EVENT_CARD_ID,
+  PATIENT_EDUCATION_SESSION_CARD_ID,
+  CAREGIVER_EDUCATION_SESSION_CARD_ID,
+  MEDICATION_EDUCATION_REVIEW_CARD_ID,
+  DISCHARGE_INSTRUCTION_REVIEW_CARD_ID,
+  TEACH_BACK_VERIFICATION_CARD_ID,
+  FOLLOW_UP_REVIEW_CARD_ID,
+  EQUIPMENT_EDUCATION_CARD_ID,
+  DISEASE_SPECIFIC_EDUCATION_CARD_ID,
+  LEARNING_BARRIER_ASSESSMENT_CARD_ID,
+  EDUCATION_REFUSAL_OR_INABILITY_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -3008,6 +3018,264 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("weightKg");
     expect(meta).not.toHaveProperty("weightChangeKg");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST patient education session persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: PATIENT_EDUCATION_SESSION_CARD_ID,
+        payloadJson: {
+          educationTime: "2026-05-28T14:00:00.000Z",
+          topic: "SAFETY",
+          audience: "PATIENT",
+          interpreterUsed: "NO",
+          educationProvided: "YES",
+          understandingDemonstrated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Topic")).toBe(true);
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST caregiver education session persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: CAREGIVER_EDUCATION_SESSION_CARD_ID,
+        payloadJson: {
+          educationTime: "2026-05-28T14:00:00.000Z",
+          caregiverPresent: "YES",
+          caregiverRelationship: "SPOUSE",
+          educationTopic: "MEDICATIONS",
+          teachBackCompleted: "YES",
+          understandingDemonstrated: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST medication education review persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: MEDICATION_EDUCATION_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: "2026-05-28T14:00:00.000Z",
+          medicationsReviewed: "YES",
+          highRiskMedicationIncluded: "NO",
+          sideEffectsReviewed: "YES",
+          adherenceDiscussed: "YES",
+          teachBackCompleted: "YES",
+          understandingDemonstrated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST discharge instruction review persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: DISCHARGE_INSTRUCTION_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: "2026-05-28T14:00:00.000Z",
+          instructionsReviewed: "YES",
+          warningSignsReviewed: "YES",
+          activityRestrictionsReviewed: "YES",
+          dietInstructionsReviewed: "YES",
+          followUpReviewed: "YES",
+          teachBackCompleted: "YES",
+          understandingDemonstrated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST teach-back verification persists (EDOC.22)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: TEACH_BACK_VERIFICATION_CARD_ID,
+        payloadJson: {
+          verificationTime: "2026-05-28T14:00:00.000Z",
+          topicReviewed: "DISCHARGE",
+          teachBackSuccessful: "YES",
+          additionalEducationRequired: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Topic")).toBe(true);
+  });
+
+  it("POST follow-up review persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: FOLLOW_UP_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: "2026-05-28T14:00:00.000Z",
+          followUpDiscussed: "YES",
+          appointmentNeeded: "NO",
+          appointmentScheduled: "UNKNOWN",
+          specialistFollowUpNeeded: "NO",
+          transportationConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST equipment education persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: EQUIPMENT_EDUCATION_CARD_ID,
+        payloadJson: {
+          educationTime: "2026-05-28T14:00:00.000Z",
+          equipmentType: "OXYGEN",
+          demonstrationProvided: "YES",
+          returnDemonstrationCompleted: "YES",
+          understandingDemonstrated: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST disease-specific education persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: DISEASE_SPECIFIC_EDUCATION_CARD_ID,
+        payloadJson: {
+          educationTime: "2026-05-28T14:00:00.000Z",
+          condition: "DIABETES",
+          educationProvided: "YES",
+          teachBackCompleted: "YES",
+          understandingDemonstrated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST learning barrier assessment persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: LEARNING_BARRIER_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          barrierPresent: "NO",
+          barrierType: "NONE",
+          interpreterNeeded: "NO",
+          caregiverInvolved: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST education refusal or inability persists (EDOC.22)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: EDUCATION_REFUSAL_OR_INABILITY_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          reason: "PATIENT_REFUSED",
+          additionalAttemptsPlanned: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("education audit metadata excludes clinical details (EDOC.22)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+        cardId: PATIENT_EDUCATION_SESSION_CARD_ID,
+        payloadJson: {
+          educationTime: "2026-05-28T14:00:00.000Z",
+          topic: "OTHER",
+          audience: "PATIENT",
+          interpreterUsed: "NO",
+          educationProvided: "YES",
+          understandingDemonstrated: "PARTIAL",
+          providerNotified: "YES",
+          notes: "Patient asked repeated questions about wound care supplies.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("topic");
+    expect(meta).not.toHaveProperty("understandingDemonstrated");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+    for (const key of Object.keys(meta)) {
+      expect(ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS as readonly string[]).toContain(key);
+    }
+    for (const forbidden of FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
+      expect(meta).not.toHaveProperty(forbidden);
+    }
   });
 
   it("POST Morse fall risk assessment persists (EDOC.14 fall risk)", async () => {

@@ -90,6 +90,10 @@ import {
   summarizeDialysisRenalFluidPayload,
 } from "./dialysisRenalFluidManagementDocumentationPayloads.js";
 import {
+  EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS,
+  summarizePatientEducationDischargePayload,
+} from "./patientEducationDischargeTeachingDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -126,6 +130,7 @@ export * from "./sepsisMonitoringDocumentationPayloads.js";
 export * from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 export * from "./skinWoundPressureInjuryDocumentationPayloads.js";
 export * from "./dialysisRenalFluidManagementDocumentationPayloads.js";
+export * from "./patientEducationDischargeTeachingDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -403,6 +408,14 @@ export function summarizeClinicalDocumentationPayload(
   ) {
     const renalLines = summarizeDialysisRenalFluidPayload(cardId, payload, locale);
     if (renalLines.length > 0) return renalLines;
+  }
+  if (
+    (EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(
+      cardId
+    )
+  ) {
+    const educationLines = summarizePatientEducationDischargePayload(cardId, payload, locale);
+    if (educationLines.length > 0) return educationLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

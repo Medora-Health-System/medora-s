@@ -31,6 +31,7 @@ import {
   NURSING_ADMISSION_ASSESSMENT_CARD_ID,
   BRADEN_RISK_ASSESSMENT_CARD_ID,
   RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
+  TEACH_BACK_VERIFICATION_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1304,6 +1305,47 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("DIALYSIS_RENAL_FLUID_MANAGEMENT");
     expect(htmlEn).toContain("600 mL");
+  });
+
+  it("renders patient education teach-back summary in export (EDOC.22)", async () => {
+    const educationPayload = {
+      verificationTime: "2026-05-28T21:00:00.000Z",
+      topicReviewed: "DISCHARGE",
+      teachBackSuccessful: "YES",
+      additionalEducationRequired: "NO",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-education-22",
+          category: "PATIENT_EDUCATION_AND_DISCHARGE_TEACHING",
+          cardId: TEACH_BACK_VERIFICATION_CARD_ID,
+          payloadJson: educationPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(educationPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Topic" && l.value === "Discharge")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("PATIENT_EDUCATION_AND_DISCHARGE_TEACHING");
+    expect(htmlEn).toContain("Discharge");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {
