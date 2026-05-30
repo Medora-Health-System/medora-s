@@ -82,6 +82,10 @@ import {
   summarizeNursingAdmissionCarePlanPayload,
 } from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 import {
+  EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS,
+  summarizeSkinWoundPressureInjuryPayload,
+} from "./skinWoundPressureInjuryDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -116,6 +120,7 @@ export * from "./behavioralHealthSafetyDocumentationPayloads.js";
 export * from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
 export * from "./sepsisMonitoringDocumentationPayloads.js";
 export * from "./nursingAdmissionCarePlanDocumentationPayloads.js";
+export * from "./skinWoundPressureInjuryDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -381,6 +386,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const nursingLines = summarizeNursingAdmissionCarePlanPayload(cardId, payload, locale);
     if (nursingLines.length > 0) return nursingLines;
+  }
+  if ((EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const skinWoundLines = summarizeSkinWoundPressureInjuryPayload(cardId, payload, locale);
+    if (skinWoundLines.length > 0) return skinWoundLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

@@ -68,6 +68,10 @@ import {
   validateNursingAdmissionCarePlanDocumentationPayloadForCard,
 } from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 import {
+  EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS,
+  validateSkinWoundPressureInjuryDocumentationPayloadForCard,
+} from "./skinWoundPressureInjuryDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -210,6 +214,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
   ...EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS,
   ...EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
+  ...EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -335,6 +340,13 @@ export function validatePayloadForCard(
     (EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return nursingResult;
+  }
+  const skinWoundResult = validateSkinWoundPressureInjuryDocumentationPayloadForCard(cardId, payload);
+  if (
+    skinWoundResult.ok ||
+    (EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return skinWoundResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

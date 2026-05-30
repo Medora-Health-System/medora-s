@@ -86,6 +86,18 @@ import {
   NURSING_PROBLEM_LIST_CARD_ID,
   NURSING_HANDOFF_SHIFT_REPORT_CARD_ID,
   NURSING_DISCHARGE_READINESS_REVIEW_CARD_ID,
+  SKIN_INTEGRITY_ASSESSMENT_CARD_ID,
+  BRADEN_RISK_ASSESSMENT_CARD_ID,
+  PRESSURE_INJURY_ASSESSMENT_CARD_ID,
+  PRESSURE_INJURY_REASSESSMENT_CARD_ID,
+  SURGICAL_WOUND_ASSESSMENT_CARD_ID,
+  TRAUMATIC_WOUND_ASSESSMENT_CARD_ID,
+  SKIN_TEAR_ASSESSMENT_CARD_ID,
+  MASD_ASSESSMENT_CARD_ID,
+  OSTOMY_ASSESSMENT_CARD_ID,
+  WOUND_TREATMENT_DOCUMENTATION_CARD_ID,
+  WOUND_PHOTO_REFERENCE_CARD_ID,
+  WOUND_REASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -2430,6 +2442,298 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("admissionReason");
     expect(meta).not.toHaveProperty("goalDescription");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  const skinIntegrityPayload = {
+    assessmentTime: "2026-05-28T14:00:00.000Z",
+    skinStatus: "INTACT",
+    pressureInjuryPresent: "NO",
+    woundPresent: "NO",
+    skinTearPresent: "NO",
+    masdPresent: "NO",
+    providerNotified: "NO",
+  };
+
+  it("POST skin integrity assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: SKIN_INTEGRITY_ASSESSMENT_CARD_ID,
+        payloadJson: skinIntegrityPayload,
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST Braden risk assessment persists (EDOC.20)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: BRADEN_RISK_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          sensoryPerception: 4,
+          moisture: 4,
+          activity: 4,
+          mobility: 4,
+          nutrition: 4,
+          frictionShear: 3,
+          totalScore: 23,
+          riskLevel: "MINIMAL",
+          preventionPlanReviewed: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Score" && l.value === "23")).toBe(true);
+  });
+
+  it("POST pressure injury assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: PRESSURE_INJURY_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          location: "SACRUM",
+          stage: "STAGE_2",
+          drainagePresent: "NO",
+          infectionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST pressure injury reassessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: PRESSURE_INJURY_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          existingPressureInjuryLocation: "Sacrum",
+          status: "IMPROVED",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST surgical wound assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: SURGICAL_WOUND_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          incisionType: "SUTURES",
+          approximation: "WELL_APPROXIMATED",
+          drainage: "SEROUS",
+          infectionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST traumatic wound assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: TRAUMATIC_WOUND_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          woundType: "LACERATION",
+          drainage: "NONE",
+          infectionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST skin tear assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: SKIN_TEAR_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          tearCategory: "CATEGORY_1",
+          bleedingPresent: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST MASD assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: MASD_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          source: "INCONTINENCE",
+          severity: "MILD",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST ostomy assessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: OSTOMY_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          ostomyType: "COLOSTOMY",
+          stomaAppearance: "PINK",
+          outputPresent: "YES",
+          skinIntact: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST wound treatment documentation persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: WOUND_TREATMENT_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          treatmentTime: "2026-05-28T14:00:00.000Z",
+          treatmentType: "DRESSING_CHANGE",
+          tolerated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST wound photo reference persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: WOUND_PHOTO_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentedAt: "2026-05-28T14:00:00.000Z",
+          photoObtained: "YES",
+          photoReferenceId: "IMG-2026-001",
+          patientConsentVerified: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST wound reassessment persists (EDOC.20)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: WOUND_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          status: "IMPROVED",
+          drainageChanged: "NO",
+          infectionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("skin wound audit metadata excludes clinical details (EDOC.20)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SKIN_WOUND_PRESSURE_INJURY",
+        cardId: WOUND_PHOTO_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentedAt: "2026-05-28T14:00:00.000Z",
+          photoObtained: "YES",
+          photoReferenceId: "IMG-SECRET-REF",
+          patientConsentVerified: "YES",
+          providerNotified: "NO",
+          notes: "Detailed wound description narrative.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("photoReferenceId");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+    for (const key of Object.keys(meta)) {
+      expect(ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS as readonly string[]).toContain(key);
+    }
+    for (const forbidden of FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
+      expect(meta).not.toHaveProperty(forbidden);
+    }
   });
 
   it("POST Morse fall risk assessment persists (EDOC.14 fall risk)", async () => {
