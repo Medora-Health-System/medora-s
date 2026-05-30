@@ -1,0 +1,1037 @@
+/** Auto-generated from clinical-documentation.spec.ts — do not edit by hand */
+export const SPEC_RUNTIME_PAYLOADS = {
+  "__SYM__ADULT_NONVERBAL_PAIN_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "facialExpression": 1,
+    "activity": 1,
+    "guarding": 0,
+    "physiology": 0,
+    "respiratory": 0,
+    "totalScore": 2,
+    "providerNotified": false
+  },
+  "__SYM__ARRHYTHMIA_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "eventType": "SVT",
+    "durationMinutes": 12,
+    "patientSymptomatic": "YES",
+    "bloodPressureAffected": "NO",
+    "interventionRequired": "YES",
+    "providerNotified": "YES"
+  },
+  "__SYM__BEHAVIORAL_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "reason": "AGITATION_ESCALATED",
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z",
+    "securityNotified": false,
+    "familyNotified": false,
+    "intervention": "DE_ESCALATION",
+    "restraintDocumentationReferenced": false
+  },
+  "__SYM__BEHAVIORAL_OBSERVATION_CARD_ID": {
+    "observationTime": "2026-05-28T14:00:00.000Z",
+    "behavior": "CALM",
+    "cooperative": true,
+    "threatToSelf": false,
+    "threatToOthers": false,
+    "redirectionEffective": true,
+    "deEscalationUsed": false,
+    "providerNotified": false
+  },
+  "__SYM__BRADEN_RISK_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "sensoryPerception": 4,
+    "moisture": 4,
+    "activity": 4,
+    "mobility": 4,
+    "nutrition": 4,
+    "frictionShear": 3,
+    "totalScore": 23,
+    "riskLevel": "MINIMAL",
+    "preventionPlanReviewed": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__CARDIAC_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T15:00:00.000Z",
+    "escalationReason": "STEMI_ALERT",
+    "providerNotified": "YES",
+    "providerNotificationTime": "2026-05-28T15:00:00.000Z",
+    "responseReceived": "YES"
+  },
+  "__SYM__CAREGIVER_EDUCATION_SESSION_CARD_ID": {
+    "educationTime": "2026-05-28T14:00:00.000Z",
+    "caregiverPresent": "YES",
+    "caregiverRelationship": "SPOUSE",
+    "educationTopic": "MEDICATIONS",
+    "teachBackCompleted": "YES",
+    "understandingDemonstrated": "YES"
+  },
+  "__SYM__CENTRAL_LINE_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "lineType": "CVC",
+    "siteStatus": "NORMAL",
+    "dressingStatus": "CLEAN_DRY_INTACT",
+    "securementIntact": "YES",
+    "infectionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__CHEST_TUBE_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "tubeLocation": "LEFT",
+    "suctionActive": "YES",
+    "waterSealPresent": "YES",
+    "airLeakPresent": "NO",
+    "drainageAmount": 75,
+    "drainageAppearance": "SEROSANGUINOUS",
+    "tubeSecure": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__CHRONIC_PAIN_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "baselinePainScore": 5,
+    "currentPainScore": 6,
+    "painManagementPlanPresent": true,
+    "opioidTherapyReported": true,
+    "painInterferesWithSleep": true,
+    "painInterferesWithMobility": true,
+    "painInterferesWithADLs": false,
+    "providerManagingPainKnown": true
+  },
+  "__SYM__CONTINUOUS_CARDIAC_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "monitorType": "ICU_MONITOR",
+    "rhythm": "VTACH",
+    "heartRate": 180,
+    "ectopyPresent": "YES",
+    "alarmEventsPresent": "YES",
+    "patientSymptomatic": "YES",
+    "providerNotified": "YES",
+    "notes": "Patient diaphoretic and pale."
+  },
+  "__SYM__CPAP_BIPAP_MONITORING_CARD_ID": {
+    "monitoringTime": "2026-05-28T14:00:00.000Z",
+    "mode": "CPAP",
+    "deviceSettingSummary": "CPAP 8",
+    "respiratoryRate": 18,
+    "spo2": 96,
+    "maskFit": "GOOD",
+    "skinIntegrity": "INTACT",
+    "patientTolerance": "TOLERATING",
+    "providerNotified": false
+  },
+  "__SYM__CRRT_MONITORING_REFERENCE_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "crrtStatus": "IN_PROGRESS",
+    "accessStatus": "PATENT",
+    "filterConcern": "NO",
+    "hemodynamicInstability": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__DAILY_WEIGHT_EDEMA_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "weightKg": 85.2,
+    "previousWeightKg": 82,
+    "weightChangeKg": 3.2,
+    "edemaPresent": "YES",
+    "edemaLocation": "GENERALIZED",
+    "edemaSeverity": "THREE_PLUS",
+    "fluidOverloadConcern": "YES",
+    "providerNotified": "YES",
+    "notes": "Patient reports increased swelling over 48 hours."
+  },
+  "__SYM__DIALYSIS_ACCESS_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "accessType": "TUNNELED_CATHETER",
+    "accessLocation": "LEFT_CHEST",
+    "thrillPresent": "NOT_APPLICABLE",
+    "bruitPresent": "NOT_APPLICABLE",
+    "siteStatus": "NORMAL",
+    "dressingStatus": "CLEAN_DRY_INTACT",
+    "infectionConcern": "NO",
+    "bleedingConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__DISCHARGE_INSTRUCTION_REVIEW_CARD_ID": {
+    "reviewTime": "2026-05-28T14:00:00.000Z",
+    "instructionsReviewed": "YES",
+    "warningSignsReviewed": "YES",
+    "activityRestrictionsReviewed": "YES",
+    "dietInstructionsReviewed": "YES",
+    "followUpReviewed": "YES",
+    "teachBackCompleted": "YES",
+    "understandingDemonstrated": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__DISEASE_SPECIFIC_EDUCATION_CARD_ID": {
+    "educationTime": "2026-05-28T14:00:00.000Z",
+    "condition": "DIABETES",
+    "educationProvided": "YES",
+    "teachBackCompleted": "YES",
+    "understandingDemonstrated": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__ECG_12_LEAD_DOCUMENTATION_CARD_ID": {
+    "ecgTime": "2026-05-28T14:00:00.000Z",
+    "reason": "CHEST_PAIN",
+    "performed": "YES",
+    "transmittedToProvider": "YES",
+    "providerReviewed": "YES",
+    "criticalFindingPresent": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__EDOC_BASIC_STRUCTURED_CARD_ID": {
+    "items": [
+      {
+        "key": "Pain",
+        "value": "secret clinical text"
+      }
+    ]
+  },
+  "__SYM__EDUCATION_REFUSAL_OR_INABILITY_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "reason": "PATIENT_REFUSED",
+    "additionalAttemptsPlanned": "YES",
+    "providerNotified": "YES"
+  },
+  "__SYM__ELOPEMENT_MONITORING_CARD_ID": {
+    "monitoringTime": "2026-05-28T14:00:00.000Z",
+    "patientLocationConfirmed": true,
+    "patientInAssignedArea": true,
+    "doorExitRiskObserved": false,
+    "redirectionRequired": false,
+    "securityNotified": false,
+    "providerNotified": false
+  },
+  "__SYM__ENDOTRACHEAL_TUBE_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "tubePosition": 22,
+    "positionUnit": "CM",
+    "securementIntact": "YES",
+    "oralCareCompleted": "YES",
+    "airwayPatent": "YES",
+    "displacementConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__ENVIRONMENTAL_SAFETY_CHECK_CARD_ID": {
+    "checkTime": "2026-05-28T14:00:00.000Z",
+    "roomClearedOfHazards": true,
+    "ligatureRiskChecked": true,
+    "sharpsRemoved": true,
+    "cordsSecured": true,
+    "belongingsSecured": true,
+    "bathroomChecked": true,
+    "staffAwareOfPrecautions": true,
+    "issuesFound": false,
+    "providerNotified": false
+  },
+  "__SYM__EQUIPMENT_EDUCATION_CARD_ID": {
+    "educationTime": "2026-05-28T14:00:00.000Z",
+    "equipmentType": "OXYGEN",
+    "demonstrationProvided": "YES",
+    "returnDemonstrationCompleted": "YES",
+    "understandingDemonstrated": "YES"
+  },
+  "__SYM__FALL_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T15:00:00.000Z",
+    "reason": "RECURRENT_FALLS",
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T15:00:00.000Z",
+    "responseReceived": true,
+    "additionalInterventionsOrdered": true
+  },
+  "__SYM__FALL_EVENT_DOCUMENTATION_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "witnessed": "YES",
+    "location": "Patient room",
+    "headStrikeSuspected": true,
+    "lossOfConsciousness": false,
+    "injuryObserved": true,
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z",
+    "familyNotified": true,
+    "rapidResponseActivated": false,
+    "notes": "Patient found on floor near bed."
+  },
+  "__SYM__FALL_RISK_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "previousRiskLevel": "MODERATE",
+    "currentRiskLevel": "MODERATE",
+    "changeDetected": false,
+    "providerNotified": false
+  },
+  "__SYM__FLUID_RESTRICTION_MONITORING_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "fluidRestrictionOrdered": "YES",
+    "restrictionAmountMlPerDay": 1500,
+    "patientEducationProvided": "YES",
+    "complianceConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__FOLEY_CATHETER_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "indicationPresent": "YES",
+    "catheterSecure": "YES",
+    "urineFlowPresent": "YES",
+    "urineAppearance": "YELLOW",
+    "catheterCareCompleted": "YES",
+    "obstructionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__FOLLOW_UP_REVIEW_CARD_ID": {
+    "reviewTime": "2026-05-28T14:00:00.000Z",
+    "followUpDiscussed": "YES",
+    "appointmentNeeded": "NO",
+    "appointmentScheduled": "UNKNOWN",
+    "specialistFollowUpNeeded": "NO",
+    "transportationConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "eyeOpening": 4,
+    "verbalResponse": 5,
+    "motorResponse": 6,
+    "calculatedTotal": 15,
+    "severity": "MILD",
+    "providerNotified": false
+  },
+  "__SYM__GLASGOW_COMA_SCALE_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "eye": 4,
+    "verbal": 5,
+    "motor": 6,
+    "totalScore": 15,
+    "severityBand": "MILD",
+    "providerNotified": true
+  },
+  "__SYM__HEMODIALYSIS_MONITORING_REFERENCE_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "dialysisStatus": "COMPLETED",
+    "estimatedFluidRemovedMl": 1500,
+    "bloodPressureConcern": "NO",
+    "crampingReported": "NO",
+    "accessIssueObserved": "NO",
+    "dialysisNurseNotified": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__IO_BLOOD_PRODUCT_INTAKE_CARD_ID": {
+    "recordedAt": "2026-05-28T16:00:00.000Z",
+    "amount": 350,
+    "unit": "ML",
+    "productType": "PRBC",
+    "transfusionRecordLinked": false,
+    "reactionSuspected": false
+  },
+  "__SYM__IO_PO_INTAKE_CARD_ID": {
+    "recordedAt": "2026-05-28T14:00:00.000Z",
+    "amount": 240,
+    "unit": "ML",
+    "substance": "water",
+    "tolerated": "YES",
+    "nausea": false,
+    "vomiting": false
+  },
+  "__SYM__IO_URINE_OUTPUT_CARD_ID": {
+    "recordedAt": "2026-05-28T15:00:00.000Z",
+    "amount": 400,
+    "unit": "ML",
+    "method": "FOLEY"
+  },
+  "__SYM__LEARNING_BARRIER_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "barrierPresent": "NO",
+    "barrierType": "NONE",
+    "interpreterNeeded": "NO",
+    "caregiverInvolved": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__LUMBAR_PUNCTURE_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "postProcedurePosition": "SUPINE",
+    "neuroStatus": "BASELINE",
+    "headachePresent": "NO",
+    "backPainPresent": "NO",
+    "bleedingPresent": "NO",
+    "csfLeakConcern": "NO",
+    "nauseaVomitingPresent": "NO",
+    "vitalSignsStable": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__MASD_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "source": "INCONTINENCE",
+    "severity": "MILD",
+    "providerNotified": "NO"
+  },
+  "__SYM__MEDICATION_EDUCATION_REVIEW_CARD_ID": {
+    "reviewTime": "2026-05-28T14:00:00.000Z",
+    "medicationsReviewed": "YES",
+    "highRiskMedicationIncluded": "NO",
+    "sideEffectsReviewed": "YES",
+    "adherenceDiscussed": "YES",
+    "teachBackCompleted": "YES",
+    "understandingDemonstrated": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__MOBILITY_AMBULATION_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "mobilityLevel": "STANDBY_ASSIST",
+    "ambulationDistance": 40,
+    "distanceUnit": "FEET",
+    "assistiveDevice": "WALKER",
+    "gaitStability": "STABLE",
+    "toleratedActivity": true,
+    "providerNotified": false
+  },
+  "__SYM__MORSE_FALL_RISK_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "historyOfFalling": "NO",
+    "secondaryDiagnosis": "NO",
+    "ambulatoryAid": "NONE",
+    "ivTherapy": "NO",
+    "gait": "WEAK",
+    "mentalStatus": "ORIENTED",
+    "calculatedScore": 10,
+    "riskLevel": "LOW",
+    "providerNotified": false
+  },
+  "__SYM__NEAR_FALL_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "location": "Bathroom",
+    "assistedToSafety": true,
+    "injuryObserved": false,
+    "providerNotified": true,
+    "familyNotified": false
+  },
+  "__SYM__NEBULIZER_REASSESSMENT_CARD_ID": {
+    "reassessmentTime": "2026-05-28T14:00:00.000Z",
+    "treatmentMedicationReferenced": "ALBUTEROL",
+    "treatmentDocumentedInMar": true,
+    "respiratoryRate": 20,
+    "spo2": 95,
+    "breathSoundsAfter": "CLEAR",
+    "workOfBreathingAfter": "NORMAL",
+    "patientReportsImprovement": true,
+    "adverseEffectObserved": false,
+    "providerNotified": false
+  },
+  "__SYM__NEURO_CHECKS_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "levelOfConsciousness": "LETHARGIC",
+    "orientation": "X2",
+    "speech": "SLURRED",
+    "sensation": "DECREASED",
+    "facialDroop": "LEFT",
+    "seizureActivityObserved": false,
+    "providerNotified": true,
+    "notes": "New left facial droop noted."
+  },
+  "__SYM__NEURO_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:30:00.000Z",
+    "reason": "NIHSS_WORSENING",
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:31:00.000Z",
+    "responseReceived": true,
+    "rapidResponseActivated": false,
+    "strokeAlertActivated": true
+  },
+  "__SYM__NEUROLOGICAL_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "newDeficit": true,
+    "mentalStatusDecline": false,
+    "gcsDrop": false,
+    "pupilChange": false,
+    "strokeSymptoms": true,
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z"
+  },
+  "__SYM__NEUROLOGICAL_INITIAL_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "orientationPerson": true,
+    "orientationPlace": true,
+    "orientationTime": true,
+    "orientationSituation": true,
+    "speechStatus": "SLURRED",
+    "facialSymmetry": "DROOP_LEFT",
+    "leftArmStrength": "2/5",
+    "rightArmStrength": "5/5",
+    "leftLegStrength": "3/5",
+    "rightLegStrength": "5/5",
+    "sensationStatus": "DECREASED",
+    "leftPupilSizeMm": 4,
+    "rightPupilSizeMm": 2,
+    "leftPupilReaction": "SLUGGISH",
+    "rightPupilReaction": "BRISK",
+    "notes": "Left-sided weakness."
+  },
+  "__SYM__NEUROLOGICAL_POST_THROMBOLYTIC_MONITORING_CARD_ID": {
+    "administrationTime": "2026-05-28T14:00:00.000Z",
+    "monitoringInterval": "15_MIN",
+    "neuroStatus": "STABLE",
+    "systolicBp": 130,
+    "diastolicBp": 85,
+    "bleedingSigns": false,
+    "neurologicalWorsening": false,
+    "providerNotified": false
+  },
+  "__SYM__NEUROLOGICAL_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "mentalStatus": "ALERT",
+    "orientationChanged": false,
+    "motorChanged": false,
+    "sensoryChanged": false,
+    "speechChanged": false,
+    "priorSpeechStatus": "CLEAR",
+    "speechStatus": "CLEAR",
+    "pupilChanged": false,
+    "leftPupilSizeMm": 3,
+    "rightPupilSizeMm": 3,
+    "leftPupilReaction": "BRISK",
+    "rightPupilReaction": "BRISK",
+    "newDeficit": false,
+    "newUnilateralWeakness": false,
+    "providerNotified": false
+  },
+  "__SYM__NG_OG_TUBE_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "tubeType": "NG",
+    "placementVerified": "YES",
+    "markingAtNares": "22 cm",
+    "suctionActive": "NO",
+    "drainagePresent": "YES",
+    "drainageAppearance": "CLEAR",
+    "providerNotified": "NO"
+  },
+  "__SYM__NIHSS_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "levelOfConsciousness": 2,
+    "locQuestions": 1,
+    "locCommands": 1,
+    "bestGaze": 1,
+    "visualFields": 1,
+    "facialPalsy": 2,
+    "motorArmLeft": 3,
+    "motorArmRight": 2,
+    "motorLegLeft": 2,
+    "motorLegRight": 1,
+    "limbAtaxia": 1,
+    "sensory": 1,
+    "bestLanguage": 2,
+    "dysarthria": 1,
+    "extinctionInattention": 1,
+    "calculatedTotal": 22,
+    "severity": "SEVERE",
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z",
+    "notes": "Left-sided weakness worsening."
+  },
+  "__SYM__OBS_AMBULATION_TRIAL_CARD_ID": {
+    "assistanceLevel": "ONE_PERSON",
+    "distance": 100,
+    "distanceUnit": "FEET",
+    "gaitSteady": true,
+    "dizziness": false,
+    "shortnessOfBreath": false,
+    "pain": false,
+    "oxygenDesaturation": false,
+    "result": "PARTIAL"
+  },
+  "__SYM__OBS_PO_CHALLENGE_CARD_ID": {
+    "startTime": "2026-05-28T14:00:00.000Z",
+    "substance": "Jello",
+    "amount": "1 cup",
+    "tolerated": "YES",
+    "nausea": false,
+    "vomiting": false,
+    "abdominalPain": false,
+    "result": "PASSED",
+    "notes": "Patient tolerated well — should not appear in audit"
+  },
+  "__SYM__ONE_TO_ONE_OBSERVATION_CHECK_CARD_ID": {
+    "checkTime": "2026-05-28T14:00:00.000Z",
+    "observerRole": "SITTER",
+    "patientVisible": true,
+    "patientSafe": true,
+    "behaviorObserved": "CALM",
+    "needsAddressed": true,
+    "handoffCompleted": false,
+    "providerNotified": false
+  },
+  "__SYM__OSTOMY_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "ostomyType": "COLOSTOMY",
+    "stomaAppearance": "PINK",
+    "outputPresent": "YES",
+    "skinIntact": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__OXYGEN_THERAPY_INITIATION_CARD_ID": {
+    "startedAt": "2026-05-28T14:00:00.000Z",
+    "oxygenDevice": "NASAL_CANNULA",
+    "flowRate": 2,
+    "flowUnit": "LPM",
+    "spo2Before": 88,
+    "spo2After": 94,
+    "reason": "HYPOXIA",
+    "providerOrderVerified": true,
+    "patientTolerated": true
+  },
+  "__SYM__OXYGEN_TITRATION_CARD_ID": {
+    "titrationTime": "2026-05-28T14:00:00.000Z",
+    "previousDevice": "NASAL_CANNULA",
+    "newDevice": "SIMPLE_MASK",
+    "newFlowRate": 6,
+    "flowUnit": "LPM",
+    "spo2Before": 90,
+    "spo2After": 96,
+    "reason": "SPO2_LOW",
+    "providerNotified": false,
+    "patientTolerated": true
+  },
+  "__SYM__PAIN_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "reason": "UNCONTROLLED_PAIN",
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z",
+    "responseReceived": true,
+    "additionalInterventionOrdered": true
+  },
+  "__SYM__PAIN_INITIAL_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "painScale": "NUMERIC",
+    "painScore": 9,
+    "painLocation": "CHEST",
+    "painQuality": "PRESSURE",
+    "painDuration": "NEW",
+    "painRadiation": "PRESENT",
+    "painRadiationDescription": "Left arm",
+    "functionalImpact": "SEVERE",
+    "providerNotified": true,
+    "notes": "Patient clutching chest."
+  },
+  "__SYM__PAIN_POST_INTERVENTION_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "interventionType": "MEDICATION",
+    "painScoreBefore": 8,
+    "painScoreAfter": 4,
+    "response": "IMPROVED",
+    "providerNotified": false
+  },
+  "__SYM__PAIN_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "painScale": "NUMERIC",
+    "painScore": 3,
+    "previousPainScore": 6,
+    "painImproved": true,
+    "functionalImpact": "MILD",
+    "providerNotified": false
+  },
+  "__SYM__PATIENT_EDUCATION_SESSION_CARD_ID": {
+    "educationTime": "2026-05-28T14:00:00.000Z",
+    "topic": "OTHER",
+    "audience": "PATIENT",
+    "interpreterUsed": "NO",
+    "educationProvided": "YES",
+    "understandingDemonstrated": "PARTIAL",
+    "providerNotified": "YES",
+    "notes": "Patient asked repeated questions about wound care supplies."
+  },
+  "__SYM__PEAK_FLOW_DOCUMENTATION_CARD_ID": {
+    "measuredAt": "2026-05-28T14:00:00.000Z",
+    "preTreatmentPeakFlow": 220,
+    "postTreatmentPeakFlow": 310,
+    "personalBestKnown": false,
+    "effortQuality": "GOOD",
+    "providerNotified": false
+  },
+  "__SYM__PEDIATRIC_PAIN_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "face": 1,
+    "legs": 1,
+    "activity": 1,
+    "cry": 0,
+    "consolability": 1,
+    "totalScore": 4,
+    "providerNotified": false
+  },
+  "__SYM__PERIPHERAL_IV_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "siteLocation": "Right antecubital",
+    "gauge": "18G",
+    "status": "INFILTRATED",
+    "bloodReturnPresent": "NO",
+    "flushesWithoutResistance": "NO",
+    "dressingStatus": "SOILED",
+    "painPresent": "YES",
+    "swellingPresent": "YES",
+    "providerNotified": "YES",
+    "notes": "Significant swelling noted at insertion site."
+  },
+  "__SYM__PERITONEAL_DIALYSIS_MONITORING_REFERENCE_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "pdStatus": "COMPLETED",
+    "effluentAppearance": "CLEAR",
+    "abdominalPain": "NO",
+    "exitSiteConcern": "NO",
+    "exchangeCompleted": "YES",
+    "providerNotified": "NO"
+  },
+  "__SYM__POST_FALL_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:30:00.000Z",
+    "painPresent": true,
+    "injuryIdentified": false,
+    "neurologicStatus": "BASELINE",
+    "mobilityStatus": "BASELINE",
+    "vitalSignsObtained": true,
+    "providerEvaluated": true,
+    "imagingOrdered": false
+  },
+  "__SYM__POST_THROMBOLYTIC_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T15:00:00.000Z",
+    "therapy": "TNK",
+    "bloodPressure": "130/82",
+    "heartRate": 84,
+    "neuroStatusStable": true,
+    "bleedingObserved": false,
+    "headachePresent": false,
+    "bpWithinParameters": "YES",
+    "neuroChangePresent": "NO",
+    "bleedingConcern": "NO",
+    "providerNotified": false
+  },
+  "__SYM__PRESSURE_INJURY_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "location": "SACRUM",
+    "stage": "STAGE_2",
+    "drainagePresent": "NO",
+    "infectionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__PRESSURE_INJURY_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "existingPressureInjuryLocation": "Sacrum",
+    "status": "IMPROVED",
+    "providerNotified": "NO"
+  },
+  "__SYM__PROCEDURE_TIMEOUT_CARD_ID": {
+    "timeoutTime": "2026-05-28T14:00:00.000Z",
+    "procedureType": "CENTRAL_LINE",
+    "patientIdentityConfirmed": "YES",
+    "procedureConfirmed": "YES",
+    "siteConfirmed": "YES",
+    "consentVerified": "YES",
+    "allergiesReviewed": "YES",
+    "anticoagulationReviewed": "NOT_APPLICABLE",
+    "imagingReviewed": "NOT_APPLICABLE",
+    "labsReviewed": "NOT_APPLICABLE",
+    "equipmentAvailable": "YES",
+    "bloodProductsAvailable": "NOT_APPLICABLE",
+    "participantsPresent": "YES",
+    "providerPresent": "YES",
+    "nursePresent": "YES",
+    "timeoutCompleted": "YES",
+    "procedureHeld": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__RENAL_ESCALATION_EVENT_CARD_ID": {
+    "eventTime": "2026-05-28T14:00:00.000Z",
+    "reason": "FLUID_OVERLOAD",
+    "providerNotified": "YES",
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z",
+    "nephrologyNotified": "YES",
+    "responseReceived": "NO",
+    "rapidResponseActivated": "NO"
+  },
+  "__SYM__RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID": {
+    "reviewTime": "2026-05-28T14:00:00.000Z",
+    "reviewPeriod": "SHIFT",
+    "totalIntakeMl": 2000,
+    "totalOutputMl": 1500,
+    "netBalanceMl": 500,
+    "fluidBalanceConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__RENAL_MEDICATION_SAFETY_REVIEW_CARD_ID": {
+    "reviewTime": "2026-05-28T14:00:00.000Z",
+    "renalFunctionConcern": "NO",
+    "nephrotoxicMedicationConcern": "YES",
+    "doseAdjustmentConcern": "NO",
+    "contrastExposureConcern": "NO",
+    "pharmacyNotified": "YES",
+    "providerNotified": "YES"
+  },
+  "__SYM__RESP_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "respiratoryRate": 20,
+    "spo2": 95,
+    "oxygenDevice": "NASAL_CANNULA",
+    "oxygenFlowRate": 2,
+    "workOfBreathing": "NORMAL",
+    "breathSounds": "CLEAR",
+    "breathSoundsLocation": "BILATERAL",
+    "cough": "NONE",
+    "sputumPresent": false,
+    "accessoryMuscleUse": false,
+    "retractions": false,
+    "cyanosis": false,
+    "patientPosition": "SEMI_FOWLER",
+    "providerNotified": false
+  },
+  "__SYM__RESPIRATORY_DISTRESS_REASSESSMENT_CARD_ID": {
+    "reassessmentTime": "2026-05-28T14:00:00.000Z",
+    "respiratoryRate": 32,
+    "spo2": 86,
+    "workOfBreathing": "SEVERE_DISTRESS",
+    "oxygenDevice": "NON_REBREATHER",
+    "oxygenFlowRate": 15,
+    "accessoryMuscleUse": true,
+    "retractions": true,
+    "mentalStatus": "ANXIOUS",
+    "interventionPerformed": "OXYGEN_INCREASED",
+    "providerNotified": true,
+    "rapidResponseActivated": false
+  },
+  "__SYM__SAFETY_PRECAUTIONS_DOCUMENTATION_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "bedAlarmActive": true,
+    "chairAlarmActive": false,
+    "nonSlipFootwearApplied": true,
+    "callLightWithinReach": true,
+    "bedInLowestPosition": true,
+    "sideRailsAppropriate": true,
+    "assistiveDeviceAvailable": true,
+    "fallRiskBandApplied": true,
+    "familyEducated": true,
+    "patientEducated": true
+  },
+  "__SYM__SEIZURE_EVENT_DOCUMENTATION_CARD_ID": {
+    "witnessed": true,
+    "startTime": "2026-05-28T14:00:00.000Z",
+    "endTime": "2026-05-28T14:03:00.000Z",
+    "durationMinutes": 3,
+    "seizureType": "FOCAL",
+    "auraPresent": false,
+    "incontinence": false,
+    "injury": false,
+    "postictalState": "MILD",
+    "benzodiazepineAdministered": false,
+    "rescueMedicationGiven": false,
+    "providerNotified": true,
+    "providerNotificationTime": "2026-05-28T14:05:00.000Z"
+  },
+  "__SYM__SKIN_INTEGRITY_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "skinStatus": "INTACT",
+    "pressureInjuryPresent": "NO",
+    "woundPresent": "NO",
+    "skinTearPresent": "NO",
+    "masdPresent": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__SKIN_TEAR_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "tearCategory": "CATEGORY_1",
+    "bleedingPresent": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__STEMI_ALERT_EVENT_CARD_ID": {
+    "activationTime": "2026-05-28T14:00:00.000Z",
+    "activationReason": "STEMI",
+    "cathLabActivated": "YES",
+    "providerAtBedside": "YES",
+    "cardiologyNotified": "YES",
+    "transferRequired": "NO"
+  },
+  "__SYM__STROKE_ALERT_EVENT_CARD_ID": {
+    "lastKnownWell": "2026-05-28T12:00:00.000Z",
+    "symptomOnsetTime": "2026-05-28T13:00:00.000Z",
+    "strokeAlertActivated": true,
+    "activationTime": "2026-05-28T13:30:00.000Z",
+    "provider": "Dr Dupont",
+    "neurologyNotified": true,
+    "ctOrdered": true,
+    "thrombolyticCandidate": true
+  },
+  "__SYM__STROKE_NIHSS_CARD_ID": {
+    "assessedAt": "2026-05-28T14:00:00.000Z",
+    "levelOfConsciousness": 0,
+    "locQuestions": 1,
+    "locCommands": 0,
+    "bestGaze": 0,
+    "visualFields": 0,
+    "facialPalsy": 1,
+    "motorArmLeft": 2,
+    "motorArmRight": 0,
+    "motorLegLeft": 1,
+    "motorLegRight": 0,
+    "limbAtaxia": 0,
+    "sensory": 0,
+    "bestLanguage": 0,
+    "dysarthria": 0,
+    "extinctionInattention": 0,
+    "totalScore": 5
+  },
+  "__SYM__STROKE_SWALLOW_SCREEN_CARD_ID": {
+    "screenedAt": "2026-05-28T14:00:00.000Z",
+    "alertEnoughForScreen": true,
+    "facialDroopOrWeakness": false,
+    "speechDifficulty": false,
+    "coughOrWetVoice": false,
+    "failedWaterTrial": false,
+    "result": "PASSED",
+    "npoRecommended": false,
+    "providerNotified": true
+  },
+  "__SYM__SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID": {
+    "documentationTime": "2026-05-28T14:00:00.000Z",
+    "precautionLevel": "STANDARD",
+    "patientChangedIntoSafeAttire": true,
+    "belongingsRemovedOrSecured": true,
+    "roomSafetyCompleted": true,
+    "ligatureRiskReduced": true,
+    "sharpsRemoved": true,
+    "providerNotified": false,
+    "familyNotified": false
+  },
+  "__SYM__SUICIDE_RISK_MONITORING_CARD_ID": {
+    "monitoringTime": "2026-05-28T14:00:00.000Z",
+    "riskLevel": "HIGH",
+    "currentSuicidalIdeation": "ACTIVE",
+    "planReported": "YES",
+    "intentReported": "YES",
+    "meansAccessConcern": "YES",
+    "observationLevel": "ONE_TO_ONE",
+    "providerNotified": true,
+    "notes": "Patient expressed detailed suicidal plan."
+  },
+  "__SYM__SURGICAL_DRAIN_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "drainType": "JP",
+    "drainageAmount": 40,
+    "drainageAppearance": "SEROUS",
+    "drainCompressed": "YES",
+    "siteStatus": "NORMAL",
+    "providerNotified": "NO"
+  },
+  "__SYM__SURGICAL_WOUND_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "incisionType": "SUTURES",
+    "approximation": "WELL_APPROXIMATED",
+    "drainage": "SEROUS",
+    "infectionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__TEACH_BACK_VERIFICATION_CARD_ID": {
+    "verificationTime": "2026-05-28T14:00:00.000Z",
+    "topicReviewed": "DISCHARGE",
+    "teachBackSuccessful": "YES",
+    "additionalEducationRequired": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__TNK_ADMINISTRATION_CARD_ID": {
+    "administrationTime": "2026-05-28T14:00:00.000Z",
+    "lastKnownWellTime": "2026-05-28T12:00:00.000Z",
+    "nihssScore": 8,
+    "patientWeightKg": 70,
+    "doseMg": 50,
+    "doseVerified": "YES",
+    "ctHeadReviewed": "YES",
+    "contraindicationChecklistReviewed": "YES",
+    "providerOrderVerified": "YES",
+    "neurologyConsulted": "NOT_APPLICABLE",
+    "bloodPressureWithinParameters": "YES",
+    "anticoagulantUseReviewed": "YES",
+    "bleedingRiskReviewed": "YES",
+    "patientFamilyEducationProvided": "NOT_APPLICABLE",
+    "medicationAdministered": "YES",
+    "administrationHeld": "NO",
+    "providerNotified": "NO",
+    "notes": "Patient tolerated well.",
+    "holdReason": "BP_OUT_OF_RANGE"
+  },
+  "__SYM__TPA_ADMINISTRATION_CARD_ID": {
+    "administrationTime": "2026-05-28T14:00:00.000Z",
+    "lastKnownWellTime": "2026-05-28T12:00:00.000Z",
+    "nihssScore": 10,
+    "patientWeightKg": 80,
+    "totalDoseMg": 72,
+    "bolusDoseMg": 7.2,
+    "infusionDoseMg": 64.8,
+    "bolusTime": "2026-05-28T14:00:00.000Z",
+    "infusionStartTime": "2026-05-28T14:05:00.000Z",
+    "doseVerified": "YES",
+    "ctHeadReviewed": "YES",
+    "contraindicationChecklistReviewed": "YES",
+    "providerOrderVerified": "YES",
+    "neurologyConsulted": "NOT_APPLICABLE",
+    "bloodPressureWithinParameters": "YES",
+    "anticoagulantUseReviewed": "YES",
+    "bleedingRiskReviewed": "YES",
+    "medicationAdministered": "YES",
+    "infusionInterrupted": "NO",
+    "administrationHeld": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__TRACHEOSTOMY_MONITORING_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "trachType": "CUFFED",
+    "siteStatus": "NORMAL",
+    "innerCannulaChecked": "YES",
+    "airwayPatent": "YES",
+    "dislodgementConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__TRAUMATIC_WOUND_ASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "woundType": "LACERATION",
+    "drainage": "NONE",
+    "infectionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__URINE_OUTPUT_CONCERN_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "concernType": "OLIGURIA",
+    "urineOutputMl": 200,
+    "timePeriodHours": 8,
+    "foleyPresent": "YES",
+    "bladderScanPerformed": "NOT_APPLICABLE",
+    "providerNotified": "YES"
+  },
+  "__SYM__VENTILATOR_OBSERVATION_CARD_ID": {
+    "observationTime": "2026-05-28T14:00:00.000Z",
+    "ventilatorMode": "AC",
+    "fio2Percent": 60,
+    "peep": 8,
+    "respiratoryRateObserved": 16,
+    "spo2": 97,
+    "airwaySecured": true,
+    "alarmObserved": true,
+    "alarmDescription": "High peak pressure",
+    "rtNotified": true,
+    "providerNotified": true,
+    "notes": "RT at bedside within 5 min."
+  },
+  "__SYM__WOUND_PHOTO_REFERENCE_CARD_ID": {
+    "documentedAt": "2026-05-28T14:00:00.000Z",
+    "photoObtained": "YES",
+    "photoReferenceId": "IMG-SECRET-REF",
+    "patientConsentVerified": "YES",
+    "providerNotified": "NO",
+    "notes": "Detailed wound description narrative."
+  },
+  "__SYM__WOUND_REASSESSMENT_CARD_ID": {
+    "assessmentTime": "2026-05-28T14:00:00.000Z",
+    "status": "IMPROVED",
+    "drainageChanged": "NO",
+    "infectionConcern": "NO",
+    "providerNotified": "NO"
+  },
+  "__SYM__WOUND_TREATMENT_DOCUMENTATION_CARD_ID": {
+    "treatmentTime": "2026-05-28T14:00:00.000Z",
+    "treatmentType": "DRESSING_CHANGE",
+    "tolerated": "YES",
+    "providerNotified": "NO"
+  },
+};
+export default SPEC_RUNTIME_PAYLOADS;

@@ -1,5 +1,6 @@
 /**
  * EDOC.TEST.1 — minimal valid payloads for high-risk legal coverage suites.
+ * Universal runtime coverage (197 AVAILABLE cards): see clinical-documentation-runtime-coverage.fixtures.ts (EDOC.TEST.2).
  */
 import {
   BLOOD_PRODUCT_COMPLETION_CARD_ID,
