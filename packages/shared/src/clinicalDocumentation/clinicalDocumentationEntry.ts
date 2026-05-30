@@ -131,6 +131,7 @@ export * from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 export * from "./skinWoundPressureInjuryDocumentationPayloads.js";
 export * from "./dialysisRenalFluidManagementDocumentationPayloads.js";
 export * from "./patientEducationDischargeTeachingDocumentationPayloads.js";
+export * from "./clinicalDocumentationCatalog.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;

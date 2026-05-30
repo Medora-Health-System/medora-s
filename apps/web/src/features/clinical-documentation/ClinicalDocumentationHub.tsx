@@ -10,6 +10,7 @@ import {
   clinicalDocumentationPendingWitness,
   type ClinicalDocumentationCard,
   type ClinicalDocumentationCategory,
+  countClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
   requiresImmediateWitnessCaptureForPayload,
@@ -202,15 +203,17 @@ export function ClinicalDocumentationHub({
   }, [loadEntries]);
 
   const scopedCards = useMemo(() => {
-    const base = listClinicalDocumentationCardsForCareSetting(careSetting);
-    const searched =
-      search.trim().length > 0
-        ? searchClinicalDocumentationCards(search, locale).filter((c) =>
-            c.careSettings.includes(careSetting)
-          )
-        : base;
-    if (selectedCategory === "ALL") return searched;
-    return searched.filter((c) => c.category === selectedCategory);
+    const categoryFilter = selectedCategory === "ALL" ? "ALL" : selectedCategory;
+    if (search.trim().length > 0) {
+      return searchClinicalDocumentationCards(search, locale, {
+        careSetting,
+        category: categoryFilter,
+      });
+    }
+    if (selectedCategory === "ALL") {
+      return listClinicalDocumentationCardsForCareSetting(careSetting);
+    }
+    return listClinicalDocumentationCardsByCategory(selectedCategory, careSetting);
   }, [careSetting, locale, search, selectedCategory]);
 
   const intakeOutputTotals = useMemo(() => {
@@ -1012,7 +1015,7 @@ export function ClinicalDocumentationHub({
         <p style={{ margin: "10px 0 0", fontSize: 11, color: "#94a3b8" }}>
           {t("clinicalDocumentation.categoryCardCount").replace(
             "{count}",
-            String(listClinicalDocumentationCardsByCategory(selectedCategory).length)
+            String(countClinicalDocumentationCardsByCategory(selectedCategory, careSetting))
           )}
         </p>
       ) : null}

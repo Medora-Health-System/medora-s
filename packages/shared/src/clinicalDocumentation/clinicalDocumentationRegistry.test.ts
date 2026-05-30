@@ -11,8 +11,8 @@ import {
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
   it("exports all categories with metadata", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(22);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(22);
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(23);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(23);
     expect(CLINICAL_DOCUMENTATION_CATEGORIES.length).toBe(
       CLINICAL_DOCUMENTATION_CATEGORY_META.length
     );
@@ -31,6 +31,7 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("SKIN_WOUND_PRESSURE_INJURY");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("DIALYSIS_RENAL_FLUID_MANAGEMENT");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("PATIENT_EDUCATION_AND_DISCHARGE_TEACHING");
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("BEHAVIORAL_HEALTH_DOCUMENTATION");
     const sepsisMeta = CLINICAL_DOCUMENTATION_CATEGORY_META.find(
       (m) => m.id === "SEPSIS_MONITORING_DOCUMENTATION"
     );
@@ -60,11 +61,13 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
   it("search finds NIHSS, I&O, CPR, respiratory therapy, blood products, telemetry", () => {
     expect(searchClinicalDocumentationCards("NIHSS").some((c) => c.id.includes("nihss"))).toBe(true);
     expect(searchClinicalDocumentationCards("I&O").some((c) => c.id === "io_intake_output")).toBe(true);
-    expect(searchClinicalDocumentationCards("CPR").some((c) => c.id === "flow_cpr_record")).toBe(true);
     expect(
-      searchClinicalDocumentationCards("Respiratory Therapy").some(
-        (c) => c.id === "flow_respiratory_therapy"
+      searchClinicalDocumentationCards("CPR", "en", { category: "FLOWSHEETS" }).some(
+        (c) => c.id === "flow_cpr_record"
       )
+    ).toBe(true);
+    expect(
+      searchClinicalDocumentationCards("Respiratory Assessment").some((c) => c.id === "resp_assessment")
     ).toBe(true);
     expect(
       searchClinicalDocumentationCards("blood transfusion").some((c) => c.category === "BLOOD_PRODUCT_DOCUMENTATION")
@@ -87,13 +90,15 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(stroke.some((c) => c.id === "stroke_swallow_screen")).toBe(true);
     expect(getClinicalDocumentationCardById("stroke_nihss")?.implementationStatus).toBe("AVAILABLE");
     const cardiac = listClinicalDocumentationCardsByCategory("CARDIAC_MONITORING_DOCUMENTATION");
-    expect(cardiac.some((c) => c.id === "cardiac_ekg_12_lead")).toBe(true);
+    expect(cardiac.some((c) => c.id === "ecg_12_lead_documentation")).toBe(true);
     expect(cardiac.some((c) => c.id === "cardiac_telemetry_initiation")).toBe(true);
     expect(getClinicalDocumentationCardById("continuous_cardiac_monitoring")?.implementationStatus).toBe(
       "AVAILABLE"
     );
     const safety = listClinicalDocumentationCardsByCategory("SAFETY_DOCUMENTATION");
-    expect(safety.some((c) => c.id === "safety_suicide_precautions")).toBe(true);
+    expect(getClinicalDocumentationCardById("safety_suicide_precautions")).toBeTruthy();
+    const behavioral = listClinicalDocumentationCardsByCategory("BEHAVIORAL_HEALTH_DOCUMENTATION");
+    expect(behavioral.some((c) => c.id === "suicide_precautions_documentation")).toBe(true);
     expect(getClinicalDocumentationCardById("suicide_precautions_documentation")?.implementationStatus).toBe(
       "AVAILABLE"
     );

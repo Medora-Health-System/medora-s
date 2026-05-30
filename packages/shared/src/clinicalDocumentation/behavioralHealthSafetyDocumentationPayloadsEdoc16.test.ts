@@ -24,7 +24,7 @@ describe("behavioralHealthSafetyDocumentationPayloads (EDOC.16)", () => {
     for (const cardId of EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS) {
       const card = getClinicalDocumentationCardById(cardId);
       expect(card?.implementationStatus).toBe("AVAILABLE");
-      expect(card?.category).toBe("SAFETY_DOCUMENTATION");
+      expect(card?.category).toBe("BEHAVIORAL_HEALTH_DOCUMENTATION");
     }
   });
 

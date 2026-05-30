@@ -3,6 +3,7 @@ export const CLINICAL_DOCUMENTATION_CATEGORIES = [
   "SCORES_AND_SCREENS",
   "INTAKE_OUTPUT",
   "SAFETY_DOCUMENTATION",
+  "BEHAVIORAL_HEALTH_DOCUMENTATION",
   "RESPIRATORY_DOCUMENTATION",
   "BLOOD_PRODUCT_DOCUMENTATION",
   "HIGH_ALERT_INFUSION_DOCUMENTATION",
@@ -80,6 +81,14 @@ export type ClinicalDocumentationCard = {
   descriptionFr: string;
   /** EDOC.4 — platform default dual-signature when true (facility policy may extend). */
   requiresWitnessSignature?: boolean;
+  /** EDOC.CATALOG.1 — optional inline catalog metadata (overrides in clinicalDocumentationCatalog.ts take precedence). */
+  catalogStatus?: "ACTIVE" | "DEPRECATED" | "HIDDEN";
+  supersededBy?: string;
+  legacyOf?: string;
+  aliases?: readonly string[];
+  keywords?: readonly string[];
+  visibleInAll?: boolean;
+  categories?: readonly ClinicalDocumentationCategory[];
 };
 
 export type ClinicalDocumentationCategoryMeta = {

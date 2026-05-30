@@ -1487,7 +1487,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
         payloadJson: {
           documentationTime: "2026-05-28T14:00:00.000Z",
@@ -1512,7 +1512,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: SUICIDE_RISK_MONITORING_CARD_ID,
         payloadJson: {
           monitoringTime: "2026-05-28T14:00:00.000Z",
@@ -1536,7 +1536,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: ELOPEMENT_MONITORING_CARD_ID,
         payloadJson: {
           monitoringTime: "2026-05-28T14:00:00.000Z",
@@ -1559,7 +1559,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: BEHAVIORAL_OBSERVATION_CARD_ID,
         payloadJson: {
           observationTime: "2026-05-28T14:00:00.000Z",
@@ -1583,7 +1583,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: ONE_TO_ONE_OBSERVATION_CHECK_CARD_ID,
         payloadJson: {
           checkTime: "2026-05-28T14:00:00.000Z",
@@ -1607,7 +1607,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: ENVIRONMENTAL_SAFETY_CHECK_CARD_ID,
         payloadJson: {
           checkTime: "2026-05-28T14:00:00.000Z",
@@ -1633,7 +1633,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: BEHAVIORAL_ESCALATION_EVENT_CARD_ID,
         payloadJson: {
           eventTime: "2026-05-28T14:00:00.000Z",
@@ -1657,7 +1657,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
       "f1",
       "e1",
       {
-        category: "SAFETY_DOCUMENTATION",
+        category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
         cardId: SUICIDE_RISK_MONITORING_CARD_ID,
         payloadJson: {
           monitoringTime: "2026-05-28T14:00:00.000Z",

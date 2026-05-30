@@ -6,6 +6,11 @@ import type {
   ClinicalDocumentationImplementationStatus,
   ClinicalDocumentationRole,
 } from "./clinicalDocumentationTypes.js";
+import {
+  countVisibleClinicalDocumentationCardsByCategory,
+  listVisibleClinicalDocumentationCards,
+  searchVisibleClinicalDocumentationCards,
+} from "./clinicalDocumentationCatalog.js";
 
 export {
   CLINICAL_DOCUMENTATION_CATEGORIES,
@@ -76,8 +81,19 @@ export const CLINICAL_DOCUMENTATION_CATEGORY_META: readonly ClinicalDocumentatio
     id: "SAFETY_DOCUMENTATION",
     titleEn: "Safety Documentation",
     titleFr: "Documentation sécurité",
-    descriptionEn: "Suicide precautions, elopement monitoring, behavioral observation, and escalation.",
-    descriptionFr: "Précautions suicide, surveillance fugue, observation comportementale et escalade.",
+    descriptionEn:
+      "General safety, fall precautions, environmental checks, and non-behavioral safety workflows.",
+    descriptionFr:
+      "Sécurité générale, précautions anti-chute, contrôles environnementaux et flux hors comportement.",
+  },
+  {
+    id: "BEHAVIORAL_HEALTH_DOCUMENTATION",
+    titleEn: "Behavioral Health Documentation",
+    titleFr: "Documentation santé comportementale",
+    descriptionEn:
+      "Suicide precautions, elopement monitoring, behavioral observation, agitation, and escalation.",
+    descriptionFr:
+      "Précautions suicide, surveillance fugue, observation comportementale, agitation et escalade.",
   },
   {
     id: "RESPIRATORY_DOCUMENTATION",
@@ -1159,7 +1175,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "suicide_precautions_documentation",
     titleEn: "Suicide Precautions Documentation",
     titleFr: "Documentation précautions suicide",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.suicidePrecautionsDoc",
@@ -1175,7 +1191,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "suicide_risk_monitoring",
     titleEn: "Suicide Risk Monitoring",
     titleFr: "Surveillance risque suicidaire",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.suicideRiskMonitoring",
@@ -1191,7 +1207,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "elopement_risk_assessment",
     titleEn: "Elopement Risk Assessment",
     titleFr: "Évaluation risque de fugue",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.elopementRiskAssessment",
@@ -1207,7 +1223,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "elopement_monitoring",
     titleEn: "Elopement Monitoring",
     titleFr: "Surveillance fugue",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.elopementMonitoring",
@@ -1223,7 +1239,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "behavioral_observation",
     titleEn: "Behavioral Observation",
     titleFr: "Observation comportementale",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.behavioralObservationDoc",
@@ -1239,7 +1255,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "agitation_violence_risk_assessment",
     titleEn: "Agitation / Violence Risk Assessment",
     titleFr: "Évaluation agitation / violence",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.agitationViolence",
@@ -1255,7 +1271,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "one_to_one_observation_check",
     titleEn: "1:1 Observation / Sitter Check",
     titleFr: "Contrôle observation 1:1 / accompagnant",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.oneToOneCheck",
@@ -1271,7 +1287,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "environmental_safety_check",
     titleEn: "Environmental Safety Check",
     titleFr: "Contrôle sécurité environnement",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.environmentalCheck",
@@ -1287,7 +1303,7 @@ const EDOC16_BEHAVIORAL_SAFETY_CARDS: ClinicalDocumentationCard[] = [
     id: "behavioral_escalation_event",
     titleEn: "Behavioral Escalation Event",
     titleFr: "Événement d'escalade comportementale",
-    category: "SAFETY_DOCUMENTATION",
+    category: "BEHAVIORAL_HEALTH_DOCUMENTATION",
     careSettings: BEHAVIORAL_SAFETY_CARE_SETTINGS,
     primaryRole: "RN",
     legalChartSection: "clinicalDocumentation.safety.behavioralEscalation",
@@ -4081,29 +4097,49 @@ export function getClinicalDocumentationCardById(id: string): ClinicalDocumentat
 }
 
 export function listClinicalDocumentationCardsByCategory(
-  category: ClinicalDocumentationCategory
+  category: ClinicalDocumentationCategory,
+  careSetting?: ClinicalDocumentationCareSetting
 ): ClinicalDocumentationCard[] {
-  return CLINICAL_DOCUMENTATION_CARDS.filter((c) => c.category === category);
+  return listVisibleClinicalDocumentationCards(CLINICAL_DOCUMENTATION_CARDS, {
+    category,
+    careSetting,
+  });
 }
 
 export function listClinicalDocumentationCardsForCareSetting(
   careSetting: ClinicalDocumentationCareSetting
 ): ClinicalDocumentationCard[] {
-  return CLINICAL_DOCUMENTATION_CARDS.filter((c) => c.careSettings.includes(careSetting));
+  return listVisibleClinicalDocumentationCards(CLINICAL_DOCUMENTATION_CARDS, {
+    careSetting,
+    category: "ALL",
+  });
 }
 
 export function searchClinicalDocumentationCards(
   query: string,
-  locale: "en" | "fr" = "en"
+  locale: "en" | "fr" = "en",
+  options: {
+    careSetting?: ClinicalDocumentationCareSetting;
+    category?: ClinicalDocumentationCategory | "ALL";
+  } = {}
 ): ClinicalDocumentationCard[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [...CLINICAL_DOCUMENTATION_CARDS];
-  return CLINICAL_DOCUMENTATION_CARDS.filter((c) => {
-    const title = locale === "fr" ? c.titleFr : c.titleEn;
-    const desc = locale === "fr" ? c.descriptionFr : c.descriptionEn;
-    const haystack = [title, desc, c.id, ...c.tags, ...c.searchAliases].join(" ").toLowerCase();
-    return haystack.includes(q);
-  });
+  return searchVisibleClinicalDocumentationCards(
+    CLINICAL_DOCUMENTATION_CARDS,
+    query,
+    locale,
+    options
+  );
+}
+
+export function countClinicalDocumentationCardsByCategory(
+  category: ClinicalDocumentationCategory,
+  careSetting?: ClinicalDocumentationCareSetting
+): number {
+  return countVisibleClinicalDocumentationCardsByCategory(
+    CLINICAL_DOCUMENTATION_CARDS,
+    category,
+    careSetting
+  );
 }
 
 export function assertClinicalDocumentationRegistryIntegrity(): void {
