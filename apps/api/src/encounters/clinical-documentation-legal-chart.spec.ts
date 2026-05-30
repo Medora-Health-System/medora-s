@@ -26,6 +26,7 @@ import {
   MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
   CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
   SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+  PERIPHERAL_IV_ASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1063,6 +1064,52 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("SAFETY_DOCUMENTATION");
     expect(htmlEn).toContain("1:1");
+  });
+
+  it("renders peripheral IV summary in export (EDOC.17)", async () => {
+    const devicePayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      siteLocation: "Left hand",
+      gauge: "22G",
+      status: "PATENT",
+      bloodReturnPresent: "YES",
+      flushesWithoutResistance: "YES",
+      dressingStatus: "CLEAN_DRY_INTACT",
+      painPresent: "NO",
+      swellingPresent: "NO",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-device-17",
+          category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+          cardId: PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+          payloadJson: devicePayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(devicePayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Status" && l.value === "Patent")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("DEVICE_LINE_TUBE_DRAIN_MONITORING");
+    expect(htmlEn).toContain("Left hand");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {

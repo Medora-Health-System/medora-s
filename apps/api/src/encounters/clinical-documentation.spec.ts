@@ -57,6 +57,14 @@ import {
   ONE_TO_ONE_OBSERVATION_CHECK_CARD_ID,
   ENVIRONMENTAL_SAFETY_CHECK_CARD_ID,
   BEHAVIORAL_ESCALATION_EVENT_CARD_ID,
+  PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+  CENTRAL_LINE_ASSESSMENT_CARD_ID,
+  FOLEY_CATHETER_MONITORING_CARD_ID,
+  NG_OG_TUBE_MONITORING_CARD_ID,
+  CHEST_TUBE_MONITORING_CARD_ID,
+  SURGICAL_DRAIN_MONITORING_CARD_ID,
+  ENDOTRACHEAL_TUBE_MONITORING_CARD_ID,
+  TRACHEOSTOMY_MONITORING_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1617,6 +1625,230 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("currentSuicidalIdeation");
     expect(meta).not.toHaveProperty("riskLevel");
     expect(meta).not.toHaveProperty("planReported");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST peripheral IV assessment persists (EDOC.17)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          siteLocation: "Left forearm",
+          gauge: "20G",
+          status: "PATENT",
+          bloodReturnPresent: "YES",
+          flushesWithoutResistance: "YES",
+          dressingStatus: "CLEAN_DRY_INTACT",
+          painPresent: "NO",
+          swellingPresent: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Site")).toBe(true);
+  });
+
+  it("POST central line assessment persists (EDOC.17)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: CENTRAL_LINE_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          lineType: "CVC",
+          siteStatus: "NORMAL",
+          dressingStatus: "CLEAN_DRY_INTACT",
+          securementIntact: "YES",
+          infectionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST Foley monitoring persists (EDOC.17)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: FOLEY_CATHETER_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          indicationPresent: "YES",
+          catheterSecure: "YES",
+          urineFlowPresent: "YES",
+          urineAppearance: "YELLOW",
+          catheterCareCompleted: "YES",
+          obstructionConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Urine flow present")).toBe(true);
+  });
+
+  it("POST NG/OG tube monitoring persists (EDOC.17)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: NG_OG_TUBE_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          tubeType: "NG",
+          placementVerified: "YES",
+          markingAtNares: "22 cm",
+          suctionActive: "NO",
+          drainagePresent: "YES",
+          drainageAppearance: "GREEN",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST chest tube monitoring persists (EDOC.17)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: CHEST_TUBE_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          tubeLocation: "LEFT",
+          suctionActive: "YES",
+          waterSealPresent: "YES",
+          airLeakPresent: "NO",
+          drainageAmount: 75,
+          drainageAppearance: "SEROSANGUINOUS",
+          tubeSecure: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Air leak")).toBe(true);
+  });
+
+  it("POST surgical drain monitoring persists (EDOC.17)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: SURGICAL_DRAIN_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          drainType: "JP",
+          drainageAmount: 40,
+          drainageAppearance: "SEROUS",
+          drainCompressed: "YES",
+          siteStatus: "NORMAL",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST ETT monitoring persists (EDOC.17)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: ENDOTRACHEAL_TUBE_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          tubePosition: 22,
+          positionUnit: "CM",
+          securementIntact: "YES",
+          oralCareCompleted: "YES",
+          airwayPatent: "YES",
+          displacementConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Position")).toBe(true);
+  });
+
+  it("POST tracheostomy monitoring persists (EDOC.17)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: TRACHEOSTOMY_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          trachType: "CUFFED",
+          siteStatus: "NORMAL",
+          innerCannulaChecked: "YES",
+          airwayPatent: "YES",
+          dislodgementConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("device monitoring audit metadata excludes clinical details (EDOC.17)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          siteLocation: "Right antecubital",
+          gauge: "18G",
+          status: "INFILTRATED",
+          bloodReturnPresent: "NO",
+          flushesWithoutResistance: "NO",
+          dressingStatus: "SOILED",
+          painPresent: "YES",
+          swellingPresent: "YES",
+          providerNotified: "YES",
+          notes: "Significant swelling noted at insertion site.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("siteLocation");
+    expect(meta).not.toHaveProperty("status");
+    expect(meta).not.toHaveProperty("gauge");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 

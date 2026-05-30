@@ -70,6 +70,10 @@ import {
   summarizeBehavioralHealthSafetyDocumentationPayload,
 } from "./behavioralHealthSafetyDocumentationPayloads.js";
 import {
+  EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
+  summarizeDeviceLineTubeDrainMonitoringPayload,
+} from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -101,6 +105,7 @@ export * from "./neurologicalDocumentationPayloads.js";
 export * from "./fallRiskSafetyDocumentationPayloads.js";
 export * from "./cardiacMonitoringDocumentationPayloads.js";
 export * from "./behavioralHealthSafetyDocumentationPayloads.js";
+export * from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -354,6 +359,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const behavioralLines = summarizeBehavioralHealthSafetyDocumentationPayload(cardId, payload, locale);
     if (behavioralLines.length > 0) return behavioralLines;
+  }
+  if ((EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS as readonly string[]).includes(cardId)) {
+    const deviceLines = summarizeDeviceLineTubeDrainMonitoringPayload(cardId, payload, locale);
+    if (deviceLines.length > 0) return deviceLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

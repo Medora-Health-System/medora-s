@@ -11,8 +11,8 @@ import {
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
   it("exports all 16 categories with metadata (EDOC.14 fall risk adds FALL_RISK_AND_SAFETY)", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(16);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(16);
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(17);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(17);
     for (const cat of CLINICAL_DOCUMENTATION_CATEGORIES) {
       expect(CLINICAL_DOCUMENTATION_CATEGORY_META.some((m) => m.id === cat)).toBe(true);
     }
@@ -79,6 +79,9 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     const safety = listClinicalDocumentationCardsByCategory("SAFETY_DOCUMENTATION");
     expect(safety.some((c) => c.id === "safety_suicide_precautions")).toBe(true);
     expect(getClinicalDocumentationCardById("suicide_precautions_documentation")?.implementationStatus).toBe(
+      "AVAILABLE"
+    );
+    expect(getClinicalDocumentationCardById("peripheral_iv_assessment")?.implementationStatus).toBe(
       "AVAILABLE"
     );
   });

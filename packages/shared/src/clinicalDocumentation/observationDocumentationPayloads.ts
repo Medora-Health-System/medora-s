@@ -56,6 +56,10 @@ import {
   validateBehavioralHealthSafetyDocumentationPayloadForCard,
 } from "./behavioralHealthSafetyDocumentationPayloads.js";
 import {
+  EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
+  validateDeviceLineTubeDrainMonitoringPayloadForCard,
+} from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -195,6 +199,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC14_FALL_RISK_SAFETY_DOCUMENTATION_CARD_IDS,
   ...EDOC15_CARDIAC_MONITORING_DOCUMENTATION_CARD_IDS,
   ...EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS,
+  ...EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -299,6 +304,13 @@ export function validatePayloadForCard(
     (EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return behavioralResult;
+  }
+  const deviceResult = validateDeviceLineTubeDrainMonitoringPayloadForCard(cardId, payload);
+  if (
+    deviceResult.ok ||
+    (EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return deviceResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }
