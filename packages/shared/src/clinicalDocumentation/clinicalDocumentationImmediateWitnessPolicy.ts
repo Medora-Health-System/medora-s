@@ -1,5 +1,6 @@
 import { BLOOD_PRODUCT_INITIATION_CARD_ID, BLOOD_PRODUCT_VERIFICATION_CARD_ID } from "./bloodProductDocumentationPayloads.js";
 import { requiresImmediateWitnessCaptureForBelongingsPayload } from "./belongingsValuablesDocumentationPayloads.js";
+import { requiresImmediateWitnessCaptureForFallRiskPayload } from "./fallRiskSafetyDocumentationPayloads.js";
 import { SEDATION_TIMEOUT_CARD_ID, requiresImmediateWitnessCaptureForSedationPayload } from "./proceduralSedationDocumentationPayloads.js";
 import { HIGH_ALERT_INFUSION_VERIFICATION_CARD_ID } from "./highAlertInfusionDocumentationPayloads.js";
 import { RESTRAINT_INITIATION_CARD_ID } from "./restraintDocumentationPayloads.js";
@@ -42,7 +43,10 @@ export function requiresImmediateWitnessCaptureForPayload(
   if (requiresImmediateWitnessCaptureForSedationPayload(cardId, payload, facilityAdditionalImmediateWitnessCardIds)) {
     return true;
   }
-  return requiresImmediateWitnessCaptureForBelongingsPayload(cardId, payload);
+  if (requiresImmediateWitnessCaptureForBelongingsPayload(cardId, payload)) {
+    return true;
+  }
+  return requiresImmediateWitnessCaptureForFallRiskPayload(cardId, payload);
 }
 
 export function requiresImmediateWitnessCapture(cardId: string): boolean {

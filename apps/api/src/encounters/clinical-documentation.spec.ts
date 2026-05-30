@@ -37,6 +37,14 @@ import {
   SEIZURE_EVENT_DOCUMENTATION_CARD_ID,
   NEUROLOGICAL_POST_THROMBOLYTIC_MONITORING_CARD_ID,
   NEUROLOGICAL_ESCALATION_EVENT_CARD_ID,
+  MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
+  FALL_RISK_REASSESSMENT_CARD_ID,
+  SAFETY_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+  MOBILITY_AMBULATION_ASSESSMENT_CARD_ID,
+  NEAR_FALL_EVENT_CARD_ID,
+  FALL_EVENT_DOCUMENTATION_CARD_ID,
+  POST_FALL_ASSESSMENT_CARD_ID,
+  FALL_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1255,6 +1263,228 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("painScore");
     expect(meta).not.toHaveProperty("painLocation");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST Morse fall risk assessment persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          historyOfFalling: "NO",
+          secondaryDiagnosis: "NO",
+          ambulatoryAid: "NONE",
+          ivTherapy: "NO",
+          gait: "WEAK",
+          mentalStatus: "ORIENTED",
+          calculatedScore: 10,
+          riskLevel: "LOW",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Morse score" && l.value === "10")).toBe(true);
+  });
+
+  it("POST fall risk reassessment persists (EDOC.14 fall risk)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: FALL_RISK_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          previousRiskLevel: "MODERATE",
+          currentRiskLevel: "MODERATE",
+          changeDetected: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST safety precautions persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: SAFETY_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          bedAlarmActive: true,
+          chairAlarmActive: false,
+          nonSlipFootwearApplied: true,
+          callLightWithinReach: true,
+          bedInLowestPosition: true,
+          sideRailsAppropriate: true,
+          assistiveDeviceAvailable: true,
+          fallRiskBandApplied: true,
+          familyEducated: true,
+          patientEducated: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Bed alarm")).toBe(true);
+  });
+
+  it("POST mobility assessment persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: MOBILITY_AMBULATION_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          mobilityLevel: "STANDBY_ASSIST",
+          ambulationDistance: 40,
+          distanceUnit: "FEET",
+          assistiveDevice: "WALKER",
+          gaitStability: "STABLE",
+          toleratedActivity: true,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Mobility level")).toBe(true);
+  });
+
+  it("POST near-fall event persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: NEAR_FALL_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          location: "Bathroom",
+          assistedToSafety: true,
+          injuryObserved: false,
+          providerNotified: true,
+          familyNotified: false,
+        },
+      },
+      "u1"
+    );
+  });
+
+  it("POST fall event persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: FALL_EVENT_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          witnessed: "NO",
+          location: "Hallway",
+          headStrikeSuspected: false,
+          lossOfConsciousness: false,
+          injuryObserved: true,
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          familyNotified: false,
+          rapidResponseActivated: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Witnessed")).toBe(true);
+  });
+
+  it("POST post-fall assessment persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: POST_FALL_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:30:00.000Z",
+          painPresent: true,
+          injuryIdentified: false,
+          neurologicStatus: "BASELINE",
+          mobilityStatus: "BASELINE",
+          vitalSignsObtained: true,
+          providerEvaluated: true,
+          imagingOrdered: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider evaluated")).toBe(true);
+  });
+
+  it("POST fall escalation persists (EDOC.14 fall risk)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: FALL_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T15:00:00.000Z",
+          reason: "RECURRENT_FALLS",
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T15:00:00.000Z",
+          responseReceived: true,
+          additionalInterventionsOrdered: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notified")).toBe(true);
+  });
+
+  it("fall risk audit metadata excludes findings (EDOC.14 fall risk)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "FALL_RISK_AND_SAFETY",
+        cardId: FALL_EVENT_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          witnessed: "YES",
+          location: "Patient room",
+          headStrikeSuspected: true,
+          lossOfConsciousness: false,
+          injuryObserved: true,
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          familyNotified: true,
+          rapidResponseActivated: false,
+          notes: "Patient found on floor near bed.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("location");
+    expect(meta).not.toHaveProperty("injuryObserved");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 

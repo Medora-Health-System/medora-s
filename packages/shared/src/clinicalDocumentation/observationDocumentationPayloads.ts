@@ -44,6 +44,10 @@ import {
   validateNeurologicalDocumentationPayloadForCard,
 } from "./neurologicalDocumentationPayloads.js";
 import {
+  EDOC14_FALL_RISK_SAFETY_DOCUMENTATION_CARD_IDS,
+  validateFallRiskSafetyDocumentationPayloadForCard,
+} from "./fallRiskSafetyDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -180,6 +184,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS,
   ...EDOC13_PAIN_DOCUMENTATION_CARD_IDS,
   ...EDOC14_NEUROLOGICAL_DOCUMENTATION_CARD_IDS,
+  ...EDOC14_FALL_RISK_SAFETY_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -263,6 +268,13 @@ export function validatePayloadForCard(
     (EDOC14_NEUROLOGICAL_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return neurologicalResult;
+  }
+  const fallRiskResult = validateFallRiskSafetyDocumentationPayloadForCard(cardId, payload);
+  if (
+    fallRiskResult.ok ||
+    (EDOC14_FALL_RISK_SAFETY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return fallRiskResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

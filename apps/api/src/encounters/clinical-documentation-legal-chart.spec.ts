@@ -23,6 +23,7 @@ import {
   RESP_ASSESSMENT_CARD_ID,
   PAIN_INITIAL_ASSESSMENT_CARD_ID,
   GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
+  MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -925,6 +926,52 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("PAIN_DOCUMENTATION");
     expect(htmlEn).toContain("Severe");
+  });
+
+  it("renders Morse fall risk summary in export (EDOC.14 fall risk)", async () => {
+    const fallPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      historyOfFalling: "YES",
+      secondaryDiagnosis: "NO",
+      ambulatoryAid: "CRUTCH_CANE_WALKER",
+      ivTherapy: "NO",
+      gait: "WEAK",
+      mentalStatus: "ORIENTED",
+      calculatedScore: 50,
+      riskLevel: "HIGH",
+      providerNotified: true,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-fall-14",
+          category: "FALL_RISK_AND_SAFETY",
+          cardId: MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
+          payloadJson: fallPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(fallPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Morse score" && l.value === "50")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("FALL_RISK_AND_SAFETY");
+    expect(htmlEn).toContain("High");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {
