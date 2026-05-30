@@ -64,6 +64,10 @@ import {
   validateSepsisMonitoringDocumentationPayloadForCard,
 } from "./sepsisMonitoringDocumentationPayloads.js";
 import {
+  EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
+  validateNursingAdmissionCarePlanDocumentationPayloadForCard,
+} from "./nursingAdmissionCarePlanDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -205,6 +209,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS,
   ...EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
   ...EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS,
+  ...EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -323,6 +328,13 @@ export function validatePayloadForCard(
     (EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return sepsisResult;
+  }
+  const nursingResult = validateNursingAdmissionCarePlanDocumentationPayloadForCard(cardId, payload);
+  if (
+    nursingResult.ok ||
+    (EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return nursingResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

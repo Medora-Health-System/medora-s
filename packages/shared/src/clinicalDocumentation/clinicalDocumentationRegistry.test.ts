@@ -11,8 +11,8 @@ import {
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
   it("exports all categories with metadata", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(18);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(18);
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(19);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(19);
     expect(CLINICAL_DOCUMENTATION_CATEGORIES.length).toBe(
       CLINICAL_DOCUMENTATION_CATEGORY_META.length
     );
@@ -27,6 +27,7 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("FALL_RISK_AND_SAFETY");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("DEVICE_LINE_TUBE_DRAIN_MONITORING");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("SEPSIS_MONITORING_DOCUMENTATION");
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("NURSING_ADMISSION_AND_CARE_PLAN");
     const sepsisMeta = CLINICAL_DOCUMENTATION_CATEGORY_META.find(
       (m) => m.id === "SEPSIS_MONITORING_DOCUMENTATION"
     );
@@ -97,6 +98,9 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
       "AVAILABLE"
     );
     expect(getClinicalDocumentationCardById("sepsis_screening")?.implementationStatus).toBe(
+      "AVAILABLE"
+    );
+    expect(getClinicalDocumentationCardById("nursing_admission_assessment")?.implementationStatus).toBe(
       "AVAILABLE"
     );
   });

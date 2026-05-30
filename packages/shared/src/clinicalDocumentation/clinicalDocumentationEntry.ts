@@ -78,6 +78,10 @@ import {
   summarizeSepsisMonitoringDocumentationPayload,
 } from "./sepsisMonitoringDocumentationPayloads.js";
 import {
+  EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
+  summarizeNursingAdmissionCarePlanPayload,
+} from "./nursingAdmissionCarePlanDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -111,6 +115,7 @@ export * from "./cardiacMonitoringDocumentationPayloads.js";
 export * from "./behavioralHealthSafetyDocumentationPayloads.js";
 export * from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
 export * from "./sepsisMonitoringDocumentationPayloads.js";
+export * from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -372,6 +377,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const sepsisLines = summarizeSepsisMonitoringDocumentationPayload(cardId, payload, locale);
     if (sepsisLines.length > 0) return sepsisLines;
+  }
+  if ((EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const nursingLines = summarizeNursingAdmissionCarePlanPayload(cardId, payload, locale);
+    if (nursingLines.length > 0) return nursingLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

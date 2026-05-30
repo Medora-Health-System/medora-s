@@ -28,6 +28,7 @@ import {
   SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
   PERIPHERAL_IV_ASSESSMENT_CARD_ID,
   SEPSIS_SCREENING_CARD_ID,
+  NURSING_ADMISSION_ASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1159,6 +1160,58 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("SEPSIS_MONITORING_DOCUMENTATION");
     expect(htmlEn).toContain("Screen positive");
+  });
+
+  it("renders nursing admission summary in export (EDOC.19)", async () => {
+    const nursingPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      admissionSource: "ED",
+      admissionReason: "Observation admission",
+      baselineMentalStatus: "ALERT_ORIENTED",
+      baselineMobility: "INDEPENDENT",
+      fallRiskReviewed: "YES",
+      skinAssessmentCompleted: "YES",
+      painAssessmentCompleted: "YES",
+      belongingsReviewed: "YES",
+      homeMedicationsReviewed: "YES",
+      allergiesReviewed: "YES",
+      advanceDirectivesReviewed: "UNKNOWN",
+      infectionScreeningCompleted: "YES",
+      educationNeedsIdentified: "NO",
+      interpreterNeeded: "NO",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-nursing-19",
+          category: "NURSING_ADMISSION_AND_CARE_PLAN",
+          cardId: NURSING_ADMISSION_ASSESSMENT_CARD_ID,
+          payloadJson: nursingPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(nursingPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Reason")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("NURSING_ADMISSION_AND_CARE_PLAN");
+    expect(htmlEn).toContain("Observation admission");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {

@@ -76,6 +76,16 @@ import {
   FLUID_RESUSCITATION_MONITORING_CARD_ID,
   SEPTIC_SHOCK_REASSESSMENT_CARD_ID,
   SEPSIS_ESCALATION_EVENT_CARD_ID,
+  NURSING_ADMISSION_ASSESSMENT_CARD_ID,
+  NURSING_SHIFT_ASSESSMENT_CARD_ID,
+  HEAD_TO_TOE_ASSESSMENT_CARD_ID,
+  SYSTEMS_ASSESSMENT_CARD_ID,
+  NURSING_CARE_PLAN_INITIATION_CARD_ID,
+  NURSING_CARE_PLAN_UPDATE_CARD_ID,
+  NURSING_PATIENT_GOALS_OUTCOMES_CARD_ID,
+  NURSING_PROBLEM_LIST_CARD_ID,
+  NURSING_HANDOFF_SHIFT_REPORT_CARD_ID,
+  NURSING_DISCHARGE_READINESS_REVIEW_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -2146,6 +2156,279 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("lactateValue");
     expect(meta).not.toHaveProperty("suspectedSource");
     expect(meta).not.toHaveProperty("antibioticNameReferenced");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  const NURSING_ISO = "2026-05-28T14:00:00.000Z";
+
+  const nursingAdmissionPayload = {
+    assessmentTime: NURSING_ISO,
+    admissionSource: "ED" as const,
+    admissionReason: "Chest pain observation",
+    baselineMentalStatus: "ALERT_ORIENTED" as const,
+    baselineMobility: "INDEPENDENT" as const,
+    fallRiskReviewed: "YES" as const,
+    skinAssessmentCompleted: "YES" as const,
+    painAssessmentCompleted: "YES" as const,
+    belongingsReviewed: "YES" as const,
+    homeMedicationsReviewed: "YES" as const,
+    allergiesReviewed: "YES" as const,
+    advanceDirectivesReviewed: "UNKNOWN" as const,
+    infectionScreeningCompleted: "YES" as const,
+    educationNeedsIdentified: "NO" as const,
+    interpreterNeeded: "NO" as const,
+    providerNotified: "NO" as const,
+  };
+
+  it("POST nursing admission assessment persists (EDOC.19)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_ADMISSION_ASSESSMENT_CARD_ID,
+        payloadJson: nursingAdmissionPayload,
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Source")).toBe(true);
+  });
+
+  it("POST nursing shift assessment persists (EDOC.19)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_SHIFT_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: NURSING_ISO,
+          shift: "DAY",
+          mentalStatus: "ALERT_ORIENTED",
+          respiratoryStatus: "STABLE",
+          cardiacStatus: "STABLE",
+          giStatus: "NORMAL",
+          guStatus: "NORMAL",
+          skinStatus: "INTACT",
+          mobilityStatus: "INDEPENDENT",
+          painStatus: "NO_PAIN",
+          safetyStatus: "STANDARD",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST head-to-toe assessment persists (EDOC.19)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: HEAD_TO_TOE_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: NURSING_ISO,
+          neuro: "WDL",
+          respiratory: "WDL",
+          cardiac: "WDL",
+          gastrointestinal: "WDL",
+          genitourinary: "WDL",
+          skin: "WDL",
+          musculoskeletal: "WDL",
+          psychosocial: "WDL",
+          abnormalFindingsPresent: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Abnormal findings")).toBe(true);
+  });
+
+  it("POST systems assessment persists (EDOC.19)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: SYSTEMS_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: NURSING_ISO,
+          system: "RESPIRATORY",
+          status: "IMPROVED",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST care plan initiation persists (EDOC.19)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_CARE_PLAN_INITIATION_CARD_ID,
+        payloadJson: {
+          initiatedAt: NURSING_ISO,
+          primaryNursingProblem: "FALL_RISK",
+          goal: "NO_FALLS",
+          interventionsPlanned: ["SAFETY_PRECAUTIONS", "EDUCATION"],
+          patientParticipated: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Problem")).toBe(true);
+  });
+
+  it("POST care plan update persists (EDOC.19)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_CARE_PLAN_UPDATE_CARD_ID,
+        payloadJson: {
+          updatedAt: NURSING_ISO,
+          problemAddressed: "Fall risk",
+          goalStatus: "IN_PROGRESS",
+          interventionStatus: "CONTINUED",
+          patientProgress: "IMPROVED",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST patient goals outcomes persists (EDOC.19)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_PATIENT_GOALS_OUTCOMES_CARD_ID,
+        payloadJson: {
+          documentedAt: NURSING_ISO,
+          goalType: "MOBILITY",
+          goalDescription: "Ambulate with walker",
+          outcomeStatus: "IN_PROGRESS",
+          barrierPresent: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Goal type")).toBe(true);
+  });
+
+  it("POST nursing problem list persists (EDOC.19)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_PROBLEM_LIST_CARD_ID,
+        payloadJson: {
+          documentedAt: NURSING_ISO,
+          problem: "PAIN",
+          status: "MONITORING",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST nursing handoff shift report persists (EDOC.19)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_HANDOFF_SHIFT_REPORT_CARD_ID,
+        payloadJson: {
+          handoffTime: NURSING_ISO,
+          handoffType: "SHIFT_CHANGE",
+          receivingRole: "RN",
+          highRiskConcernsPresent: "NO",
+          openTasksReviewed: "YES",
+          medicationConcernsReviewed: "YES",
+          fallRiskReviewed: "YES",
+          linesTubesDrainsReviewed: "YES",
+          pendingLabsImagingReviewed: "YES",
+          familyCommunicationNeeds: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Handoff type")).toBe(true);
+  });
+
+  it("POST discharge readiness review persists (EDOC.19)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_DISCHARGE_READINESS_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: NURSING_ISO,
+          vitalSignsStable: "YES",
+          painControlled: "YES",
+          mobilitySafe: "YES",
+          educationCompleted: "YES",
+          medicationsReviewed: "YES",
+          followUpReviewed: "YES",
+          transportationConfirmed: "YES",
+          responsibleAdultPresent: "NOT_APPLICABLE",
+          barriersPresent: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("nursing admission care plan audit metadata excludes clinical details (EDOC.19)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NURSING_ADMISSION_AND_CARE_PLAN",
+        cardId: NURSING_ADMISSION_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          ...nursingAdmissionPayload,
+          admissionReason: "Complex social admission with detailed narrative.",
+          notes: "Patient requires extensive education.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("admissionReason");
+    expect(meta).not.toHaveProperty("goalDescription");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 
