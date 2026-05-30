@@ -73,5 +73,13 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     const cardiac = listClinicalDocumentationCardsByCategory("CARDIAC_MONITORING_DOCUMENTATION");
     expect(cardiac.some((c) => c.id === "cardiac_ekg_12_lead")).toBe(true);
     expect(cardiac.some((c) => c.id === "cardiac_telemetry_initiation")).toBe(true);
+    expect(getClinicalDocumentationCardById("continuous_cardiac_monitoring")?.implementationStatus).toBe(
+      "AVAILABLE"
+    );
+    const safety = listClinicalDocumentationCardsByCategory("SAFETY_DOCUMENTATION");
+    expect(safety.some((c) => c.id === "safety_suicide_precautions")).toBe(true);
+    expect(getClinicalDocumentationCardById("suicide_precautions_documentation")?.implementationStatus).toBe(
+      "AVAILABLE"
+    );
   });
 });

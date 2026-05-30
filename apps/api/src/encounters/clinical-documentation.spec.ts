@@ -45,6 +45,18 @@ import {
   FALL_EVENT_DOCUMENTATION_CARD_ID,
   POST_FALL_ASSESSMENT_CARD_ID,
   FALL_ESCALATION_EVENT_CARD_ID,
+  CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
+  ARRHYTHMIA_EVENT_CARD_ID,
+  ECG_12_LEAD_DOCUMENTATION_CARD_ID,
+  STEMI_ALERT_EVENT_CARD_ID,
+  CARDIAC_ESCALATION_EVENT_CARD_ID,
+  SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+  SUICIDE_RISK_MONITORING_CARD_ID,
+  ELOPEMENT_MONITORING_CARD_ID,
+  BEHAVIORAL_OBSERVATION_CARD_ID,
+  ONE_TO_ONE_OBSERVATION_CHECK_CARD_ID,
+  ENVIRONMENTAL_SAFETY_CHECK_CARD_ID,
+  BEHAVIORAL_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1263,6 +1275,348 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("painScore");
     expect(meta).not.toHaveProperty("painLocation");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST continuous cardiac monitoring persists (EDOC.15)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          monitorType: "TELEMETRY",
+          rhythm: "AFIB",
+          heartRate: 122,
+          ectopyPresent: "NO",
+          alarmEventsPresent: "YES",
+          patientSymptomatic: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Rhythm")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "HR" && l.value === "122 bpm")).toBe(true);
+  });
+
+  it("POST arrhythmia event persists (EDOC.15)", async () => {
+    const { svc } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: ARRHYTHMIA_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          eventType: "SVT",
+          durationMinutes: 12,
+          patientSymptomatic: "YES",
+          bloodPressureAffected: "NO",
+          interventionRequired: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+  });
+
+  it("POST ECG 12-lead persists (EDOC.15)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: ECG_12_LEAD_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          ecgTime: "2026-05-28T14:00:00.000Z",
+          reason: "CHEST_PAIN",
+          performed: "YES",
+          transmittedToProvider: "YES",
+          providerReviewed: "YES",
+          criticalFindingPresent: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Reason")).toBe(true);
+  });
+
+  it("POST STEMI alert persists (EDOC.15)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: STEMI_ALERT_EVENT_CARD_ID,
+        payloadJson: {
+          activationTime: "2026-05-28T14:00:00.000Z",
+          activationReason: "STEMI",
+          cathLabActivated: "YES",
+          providerAtBedside: "YES",
+          cardiologyNotified: "YES",
+          transferRequired: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Cardiology notified")).toBe(true);
+  });
+
+  it("POST cardiac escalation persists (EDOC.15)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: CARDIAC_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T15:00:00.000Z",
+          escalationReason: "STEMI_ALERT",
+          providerNotified: "YES",
+          providerNotificationTime: "2026-05-28T15:00:00.000Z",
+          responseReceived: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notified")).toBe(true);
+  });
+
+  it("cardiac audit metadata excludes findings (EDOC.15)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "CARDIAC_MONITORING_DOCUMENTATION",
+        cardId: CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          monitorType: "ICU_MONITOR",
+          rhythm: "VTACH",
+          heartRate: 180,
+          ectopyPresent: "YES",
+          alarmEventsPresent: "YES",
+          patientSymptomatic: "YES",
+          providerNotified: "YES",
+          notes: "Patient diaphoretic and pale.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("heartRate");
+    expect(meta).not.toHaveProperty("rhythm");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST suicide precautions persists (EDOC.16)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          precautionLevel: "STANDARD",
+          patientChangedIntoSafeAttire: true,
+          belongingsRemovedOrSecured: true,
+          roomSafetyCompleted: true,
+          ligatureRiskReduced: true,
+          sharpsRemoved: true,
+          providerNotified: false,
+          familyNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Precaution level")).toBe(true);
+  });
+
+  it("POST suicide risk monitoring persists (EDOC.16)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: SUICIDE_RISK_MONITORING_CARD_ID,
+        payloadJson: {
+          monitoringTime: "2026-05-28T14:00:00.000Z",
+          riskLevel: "LOW",
+          currentSuicidalIdeation: "DENIES",
+          planReported: "NO",
+          intentReported: "NO",
+          meansAccessConcern: "NO",
+          observationLevel: "STANDARD",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST elopement monitoring persists (EDOC.16)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: ELOPEMENT_MONITORING_CARD_ID,
+        payloadJson: {
+          monitoringTime: "2026-05-28T14:00:00.000Z",
+          patientLocationConfirmed: true,
+          patientInAssignedArea: true,
+          doorExitRiskObserved: false,
+          redirectionRequired: false,
+          securityNotified: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Location confirmed")).toBe(true);
+  });
+
+  it("POST behavioral observation persists (EDOC.16)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: BEHAVIORAL_OBSERVATION_CARD_ID,
+        payloadJson: {
+          observationTime: "2026-05-28T14:00:00.000Z",
+          behavior: "CALM",
+          cooperative: true,
+          threatToSelf: false,
+          threatToOthers: false,
+          redirectionEffective: true,
+          deEscalationUsed: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST 1:1 observation check persists (EDOC.16)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: ONE_TO_ONE_OBSERVATION_CHECK_CARD_ID,
+        payloadJson: {
+          checkTime: "2026-05-28T14:00:00.000Z",
+          observerRole: "SITTER",
+          patientVisible: true,
+          patientSafe: true,
+          behaviorObserved: "CALM",
+          needsAddressed: true,
+          handoffCompleted: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Patient visible")).toBe(true);
+  });
+
+  it("POST environmental safety check persists (EDOC.16)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: ENVIRONMENTAL_SAFETY_CHECK_CARD_ID,
+        payloadJson: {
+          checkTime: "2026-05-28T14:00:00.000Z",
+          roomClearedOfHazards: true,
+          ligatureRiskChecked: true,
+          sharpsRemoved: true,
+          cordsSecured: true,
+          belongingsSecured: true,
+          bathroomChecked: true,
+          staffAwareOfPrecautions: true,
+          issuesFound: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST behavioral escalation event persists (EDOC.16)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: BEHAVIORAL_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          reason: "AGITATION_ESCALATED",
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          securityNotified: false,
+          familyNotified: false,
+          intervention: "DE_ESCALATION",
+          restraintDocumentationReferenced: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Reason")).toBe(true);
+  });
+
+  it("behavioral safety audit metadata excludes clinical details (EDOC.16)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SAFETY_DOCUMENTATION",
+        cardId: SUICIDE_RISK_MONITORING_CARD_ID,
+        payloadJson: {
+          monitoringTime: "2026-05-28T14:00:00.000Z",
+          riskLevel: "HIGH",
+          currentSuicidalIdeation: "ACTIVE",
+          planReported: "YES",
+          intentReported: "YES",
+          meansAccessConcern: "YES",
+          observationLevel: "ONE_TO_ONE",
+          providerNotified: true,
+          notes: "Patient expressed detailed suicidal plan.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("currentSuicidalIdeation");
+    expect(meta).not.toHaveProperty("riskLevel");
+    expect(meta).not.toHaveProperty("planReported");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 

@@ -62,6 +62,14 @@ import {
   summarizeFallRiskSafetyDocumentationPayload,
 } from "./fallRiskSafetyDocumentationPayloads.js";
 import {
+  EDOC15_CARDIAC_MONITORING_DOCUMENTATION_CARD_IDS,
+  summarizeCardiacMonitoringDocumentationPayload,
+} from "./cardiacMonitoringDocumentationPayloads.js";
+import {
+  EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS,
+  summarizeBehavioralHealthSafetyDocumentationPayload,
+} from "./behavioralHealthSafetyDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -91,6 +99,8 @@ export * from "./respiratoryDocumentationPayloads.js";
 export * from "./painDocumentationPayloads.js";
 export * from "./neurologicalDocumentationPayloads.js";
 export * from "./fallRiskSafetyDocumentationPayloads.js";
+export * from "./cardiacMonitoringDocumentationPayloads.js";
+export * from "./behavioralHealthSafetyDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -336,6 +346,14 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC14_FALL_RISK_SAFETY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const fallLines = summarizeFallRiskSafetyDocumentationPayload(cardId, payload, locale);
     if (fallLines.length > 0) return fallLines;
+  }
+  if ((EDOC15_CARDIAC_MONITORING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const cardiacLines = summarizeCardiacMonitoringDocumentationPayload(cardId, payload, locale);
+    if (cardiacLines.length > 0) return cardiacLines;
+  }
+  if ((EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const behavioralLines = summarizeBehavioralHealthSafetyDocumentationPayload(cardId, payload, locale);
+    if (behavioralLines.length > 0) return behavioralLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

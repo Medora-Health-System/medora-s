@@ -24,6 +24,8 @@ import {
   PAIN_INITIAL_ASSESSMENT_CARD_ID,
   GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
   MORSE_FALL_RISK_ASSESSMENT_CARD_ID,
+  CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
+  SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -972,6 +974,95 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("FALL_RISK_AND_SAFETY");
     expect(htmlEn).toContain("High");
+  });
+
+  it("renders continuous cardiac monitoring summary in export (EDOC.15)", async () => {
+    const cardiacPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      monitorType: "TELEMETRY",
+      rhythm: "AFIB",
+      heartRate: 122,
+      ectopyPresent: "NO",
+      alarmEventsPresent: "NO",
+      patientSymptomatic: "YES",
+      providerNotified: "YES",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-cardiac-15",
+          category: "CARDIAC_MONITORING_DOCUMENTATION",
+          cardId: CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
+          payloadJson: cardiacPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(cardiacPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "HR" && l.value === "122 bpm")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("CARDIAC_MONITORING_DOCUMENTATION");
+    expect(htmlEn).toContain("fibrillation");
+  });
+
+  it("renders suicide precautions summary in export (EDOC.16)", async () => {
+    const behavioralPayload = {
+      documentationTime: "2026-05-28T21:00:00.000Z",
+      precautionLevel: "ONE_TO_ONE",
+      patientChangedIntoSafeAttire: true,
+      belongingsRemovedOrSecured: true,
+      roomSafetyCompleted: true,
+      ligatureRiskReduced: true,
+      sharpsRemoved: true,
+      providerNotified: true,
+      familyNotified: false,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-behavioral-16",
+          category: "SAFETY_DOCUMENTATION",
+          cardId: SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
+          payloadJson: behavioralPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(behavioralPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Precaution level")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("SAFETY_DOCUMENTATION");
+    expect(htmlEn).toContain("1:1");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {
