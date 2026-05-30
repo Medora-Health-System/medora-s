@@ -997,6 +997,7 @@ export function EmergencyChartView() {
               encounterType={encounter?.type}
               vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
               roles={roles}
+              physicianAssignedUserId={encounter?.physicianAssigned?.id ?? null}
             />
           </section>
 

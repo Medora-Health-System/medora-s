@@ -11530,6 +11530,11 @@ export default {
     pendingCancelLine: "Pending cancellation",
     cancelNow: "Cancel now",
     cancelUndoExpired: "Cancellation submitted.",
+    cancelErrorForbidden: "You do not have permission to cancel this order.",
+    cancelErrorConflict:
+      "This order can no longer be canceled because it has already been acknowledged or completed.",
+    cancelErrorReasonRequired: "Cancellation reason is required.",
+    cancelErrorGeneric: "Unable to cancel this order.",
     startInfusion: "Start infusion",
     stopInfusion: "Stop infusion",
     infusionInProgress: "Infusion in progress",

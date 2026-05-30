@@ -27,6 +27,8 @@ import {
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
 import { apiFetch } from "@/lib/apiClient";
+import { formatOrderCancelErrorMessage, canShowOrderLineCancelControl } from "@/lib/orderCancelErrors";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
@@ -443,6 +445,8 @@ export function EmergencyErOrdersPanel({
   encounterType,
   vitalsJsonForTraumaProtocol,
   roles,
+  physicianAssignedUserId,
+  nurseAssignedUserId,
   cdsIntent,
   onConsumeIntent,
 }: {
@@ -456,11 +460,23 @@ export function EmergencyErOrdersPanel({
   encounterType?: string | null;
   vitalsJsonForTraumaProtocol?: unknown | null;
   roles?: string[];
+  physicianAssignedUserId?: string | null;
+  nurseAssignedUserId?: string | null;
   /** CDS v2 — one-shot preselect intent (workspace only). */
   cdsIntent?: string | null;
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
+  const { userId: currentUserId } = useFacilityAndRoles();
+  const cancelVisibilityCtx = useMemo(
+    () => ({
+      roles: roles ?? [],
+      currentUserId,
+      physicianAssignedUserId: physicianAssignedUserId ?? null,
+      nurseAssignedUserId: nurseAssignedUserId ?? null,
+    }),
+    [roles, currentUserId, physicianAssignedUserId, nurseAssignedUserId]
+  );
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
   const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
@@ -478,6 +494,7 @@ export function EmergencyErOrdersPanel({
   const [createModalInitialTab, setCreateModalInitialTab] = useState<OrderModalTab>("LAB");
   const [pendingCancel, setPendingCancel] = useState<PendingLineCancel | null>(null);
   const [scheduledSubmitFlash, setScheduledSubmitFlash] = useState<string | null>(null);
+  const [cancelErrorFlash, setCancelErrorFlash] = useState<string | null>(null);
   const [orderInfusionError, setOrderInfusionError] = useState<string | null>(null);
   const pendingCancelRef = useRef<PendingLineCancel | null>(null);
   const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -750,8 +767,13 @@ export function EmergencyErOrdersPanel({
         }),
       });
       setOrdersRefresh((x) => x + 1);
+      setCancelErrorFlash(null);
       setScheduledSubmitFlash(t("erEmergencyOrders.cancelUndoExpired"));
       window.setTimeout(() => setScheduledSubmitFlash(null), 5000);
+    } catch (e) {
+      const msg = formatOrderCancelErrorMessage(e instanceof Error ? e.message : null, t);
+      setCancelErrorFlash(msg);
+      window.setTimeout(() => setCancelErrorFlash(null), 8000);
     } finally {
       setCancelBusyItemId(null);
       flushInProgressRef.current = false;
@@ -1111,6 +1133,23 @@ export function EmergencyErOrdersPanel({
                   {orderInfusionError}
                 </div>
               ) : null}
+              {cancelErrorFlash ? (
+                <div
+                  role="alert"
+                  style={{
+                    marginBottom: 8,
+                    padding: "6px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #fecaca",
+                    background: "#fef2f2",
+                    fontSize: 12,
+                    color: "#991b1b",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {cancelErrorFlash}
+                </div>
+              ) : null}
               {scheduledSubmitFlash ? (
                 <div
                   role="status"
@@ -1167,18 +1206,10 @@ export function EmergencyErOrdersPanel({
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                               const busy = lineActionBusy;
-                              const canAttemptLineCancel = hasAnyRole(
-                                roles,
-                                "RN",
-                                "PROVIDER",
-                                "LAB",
-                                "RADIOLOGY",
-                                "PHARMACY",
-                                "ADMIN"
-                              );
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel =
-                                canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
+                                isOrderItemCancellableLineForEr(item) &&
+                                canShowOrderLineCancelControl(o as Record<string, unknown>, item, cancelVisibilityCtx);
                               const lineCancelDisabled =
                                 cancelBusyItemId === itemId || pendingCancel !== null;
                               const routeSnapshot = medicationRouteSnapshotForInfusionCheck(item);
@@ -1542,18 +1573,10 @@ export function EmergencyErOrdersPanel({
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                               const busy = lineActionBusy;
-                              const canAttemptLineCancel = hasAnyRole(
-                                roles,
-                                "RN",
-                                "PROVIDER",
-                                "LAB",
-                                "RADIOLOGY",
-                                "PHARMACY",
-                                "ADMIN"
-                              );
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel =
-                                canAttemptLineCancel && isOrderItemCancellableLineForEr(item);
+                                isOrderItemCancellableLineForEr(item) &&
+                                canShowOrderLineCancelControl(o as Record<string, unknown>, item, cancelVisibilityCtx);
                               const lineCancelDisabled =
                                 cancelBusyItemId === itemId || pendingCancel !== null;
                               const routeSnapshot = medicationRouteSnapshotForInfusionCheck(item);

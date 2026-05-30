@@ -1354,6 +1354,7 @@ export function EmergencyActiveWorkspaceView() {
               encounterType={encounter?.type}
               vitalsJsonForTraumaProtocol={triageSnapshot?.vitalsJson}
               roles={roles}
+              physicianAssignedUserId={encounter?.physicianAssigned?.id ?? null}
               cdsIntent={cdsIntent}
               onConsumeIntent={handleConsumeIntent}
             />

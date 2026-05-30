@@ -182,7 +182,7 @@ export class OrdersController {
   }
 
   @Post("orders/:id/cancel")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN", "MEDORA_SUPER_ADMIN")
   async cancel(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
@@ -384,7 +384,7 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/cancel")
-  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
+  @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN", "MEDORA_SUPER_ADMIN")
   async cancelOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {

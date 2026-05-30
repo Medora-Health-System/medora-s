@@ -11516,6 +11516,11 @@ export default {
     pendingCancelLine: "Annulation en attente",
     cancelNow: "Annuler maintenant",
     cancelUndoExpired: "Annulation envoyée.",
+    cancelErrorForbidden: "Vous n'avez pas l'autorisation d'annuler cette commande.",
+    cancelErrorConflict:
+      "Cette commande ne peut plus être annulée car elle a déjà été reçue ou réalisée.",
+    cancelErrorReasonRequired: "Le motif d'annulation est requis.",
+    cancelErrorGeneric: "Impossible d'annuler cette commande.",
     startInfusion: "Démarrer la perfusion",
     stopInfusion: "Arrêter la perfusion",
     infusionInProgress: "Perfusion en cours",

@@ -11,7 +11,7 @@ import {
   type ObservationTemplateOrderRow,
 } from "@/lib/observationTemplateOrderRows";
 import type { ObservationTemplateLineLifecyclePhase } from "@medora/shared";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { formatOrderCancelErrorMessage } from "@/lib/orderCancelErrors";
 import { useI18n } from "@/lib/i18n";
 
 export function ObservationTemplateOrdersPanel({
@@ -71,9 +71,7 @@ export function ObservationTemplateOrdersPanel({
     } catch (e) {
       setFeedback({
         type: "err",
-        text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("encounterChrome.observationTemplateOrders.actionFailed"),
+        text: formatOrderCancelErrorMessage(e instanceof Error ? e.message : null, t),
       });
     } finally {
       setLineActionBusy(null);
@@ -122,9 +120,7 @@ export function ObservationTemplateOrdersPanel({
     } catch (e) {
       setFeedback({
         type: "err",
-        text:
-          normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||
-          t("encounterChrome.ordersTab.cancelFailed"),
+        text: formatOrderCancelErrorMessage(e instanceof Error ? e.message : null, t),
       });
     } finally {
       setCancelSubmitting(false);

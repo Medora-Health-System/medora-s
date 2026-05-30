@@ -11,6 +11,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import {
   AuditAction,
+  MedicationAdministrationInfusionPhase,
   MedicationMarAction,
   OrderItem,
   OrderItemLifecycleState,
@@ -83,10 +84,16 @@ import {
   resolvePerformedByDisplayNameFromOrderEvent,
   type InfusionPerformerIdentitySnapshot,
 } from "./infusion-performer-identity-snapshot.util";
+import {
+  resolveOrderCancelPolicyActor,
+  type CancelPolicyActor,
+} from "./order-cancel-policy.util";
+import {
+  assertOrderItemCancelAllowedByPerformedWork,
+  assertOrderItemCancelAllowedByState,
+} from "./order-cancel-state.util";
 
 const ordersLog = createStructuredLogger("OrdersService");
-
-type CancelPolicyActor = "ADMIN" | "PROVIDER" | "RN" | "LAB" | "RADIOLOGY";
 
 type OrderAuthority = {
   source: string | null;
@@ -1395,6 +1402,32 @@ export class OrdersService {
     return updated;
   }
 
+  private buildCancelAuditMetadata(input: {
+    cancelScope: "ORDER" | "ORDER_ITEM";
+    orderId: string;
+    orderItemId?: string;
+    previousStatus?: string;
+    nextStatus?: string;
+    orderType: string;
+    cancelPolicyActor: CancelPolicyActor;
+    requestorRoleCodes: RoleCode[];
+    orderSource: string | null;
+    reasonCode: string;
+  }): Record<string, unknown> {
+    return {
+      cancelScope: input.cancelScope,
+      orderId: input.orderId,
+      ...(input.orderItemId ? { orderItemId: input.orderItemId } : {}),
+      ...(input.previousStatus ? { previousStatus: input.previousStatus } : {}),
+      ...(input.nextStatus ? { nextStatus: input.nextStatus } : {}),
+      orderType: input.orderType,
+      cancelPolicyActor: input.cancelPolicyActor,
+      requestorRoles: input.requestorRoleCodes,
+      orderSource: input.orderSource,
+      reasonCode: input.reasonCode,
+    };
+  }
+
   private assertCanCancelOrder(
     order: {
       type: string;
@@ -1402,82 +1435,49 @@ export class OrdersService {
       source: string | null;
       items: Array<{ catalogItemType: string }>;
     },
+    encounter: {
+      physicianAssignedUserId: string | null;
+      nurseAssignedUserId: string | null;
+    },
     requestorRoleCodes: RoleCode[],
     userId: string
   ): CancelPolicyActor {
-    if (requestorRoleCodes.includes(RoleCode.ADMIN)) {
-      return "ADMIN";
-    }
-
-    const allItemsAre = (catalogItemType: string) =>
-      order.items.length > 0 && order.items.every((item) => item.catalogItemType === catalogItemType);
-
-    if (requestorRoleCodes.includes(RoleCode.PROVIDER)) {
-      if (order.type === "MEDICATION" || order.type === "CARE" || order.orderedBy === userId) {
-        return "PROVIDER";
-      }
-    }
-
-    if (
-      requestorRoleCodes.includes(RoleCode.RN) &&
-      order.orderedBy === userId &&
-      (order.source === "VERBAL_ORDER" || order.source === "NURSING_PROTOCOL")
-    ) {
-      return "RN";
-    }
-
-    if (requestorRoleCodes.includes(RoleCode.LAB) && allItemsAre("LAB_TEST")) {
-      return "LAB";
-    }
-
-    if (requestorRoleCodes.includes(RoleCode.RADIOLOGY) && allItemsAre("IMAGING_STUDY")) {
-      return "RADIOLOGY";
-    }
-
-    throw new ForbiddenException("Droits insuffisants pour annuler cette commande.");
+    return resolveOrderCancelPolicyActor(
+      {
+        order,
+        allItemCatalogTypes: order.items.map((item) => item.catalogItemType),
+        encounter,
+      },
+      requestorRoleCodes,
+      userId
+    );
   }
 
-  /**
-   * Single-line cancel authority: mirrors {@link assertCanCancelOrder} but LAB/RADIOLOGY apply when
-   * **this line's** catalog type matches (not “all items same type”).
-   */
+  /** Single-line cancel authority — LAB/RADIOLOGY apply when this line's catalog type matches. */
   private assertCanCancelOrderItem(
     order: {
       type: string;
       orderedBy: string | null;
       source: string | null;
     },
-    item: { catalogItemType: string },
+    item: { catalogItemType: string; lifecycleState: OrderItemLifecycleState },
+    encounter: {
+      physicianAssignedUserId: string | null;
+      nurseAssignedUserId: string | null;
+    },
     requestorRoleCodes: RoleCode[],
     userId: string
   ): CancelPolicyActor {
-    if (requestorRoleCodes.includes(RoleCode.ADMIN)) {
-      return "ADMIN";
-    }
-
-    if (requestorRoleCodes.includes(RoleCode.PROVIDER)) {
-      if (order.type === "MEDICATION" || order.type === "CARE" || order.orderedBy === userId) {
-        return "PROVIDER";
-      }
-    }
-
-    if (
-      requestorRoleCodes.includes(RoleCode.RN) &&
-      order.orderedBy === userId &&
-      (order.source === "VERBAL_ORDER" || order.source === "NURSING_PROTOCOL")
-    ) {
-      return "RN";
-    }
-
-    if (requestorRoleCodes.includes(RoleCode.LAB) && item.catalogItemType === "LAB_TEST") {
-      return "LAB";
-    }
-
-    if (requestorRoleCodes.includes(RoleCode.RADIOLOGY) && item.catalogItemType === "IMAGING_STUDY") {
-      return "RADIOLOGY";
-    }
-
-    throw new ForbiddenException("Droits insuffisants pour annuler cette ligne.");
+    return resolveOrderCancelPolicyActor(
+      {
+        order,
+        catalogItemType: item.catalogItemType,
+        lifecycleState: item.lifecycleState,
+        encounter,
+      },
+      requestorRoleCodes,
+      userId
+    );
   }
 
   async cancel(
@@ -1534,7 +1534,15 @@ export class OrdersService {
 
     assertCanTransition(order.status, "CANCELLED");
 
-    const cancelPolicyActor = this.assertCanCancelOrder(order, requestorRoleCodes, userId);
+    const cancelPolicyActor = this.assertCanCancelOrder(
+      order,
+      {
+        physicianAssignedUserId: order.encounter.physicianAssignedUserId,
+        nurseAssignedUserId: order.encounter.nurseAssignedUserId,
+      },
+      requestorRoleCodes,
+      userId
+    );
 
     const reason = dto.cancellationReason.trim();
     if (!reason) {
@@ -1620,15 +1628,17 @@ export class OrdersService {
       entityId: order.id,
       ip,
       userAgent,
-      metadata: {
-        cancellationReason: reason,
-        ...(dto.cancellationDetails?.trim()
-          ? { cancellationDetails: dto.cancellationDetails.trim() }
-          : {}),
+      metadata: this.buildCancelAuditMetadata({
+        cancelScope: "ORDER",
+        orderId: order.id,
+        previousStatus: order.status,
+        nextStatus: OrderStatus.CANCELLED,
+        orderType: order.type,
         cancelPolicyActor,
-        requestorRoles: requestorRoleCodes,
+        requestorRoleCodes,
         orderSource: order.source,
-      },
+        reasonCode: reason,
+      }),
     });
 
     const [enriched] = await this.enrichOrderItemsForDisplaySafe([updated as unknown as OrderWithItems]);
@@ -1690,16 +1700,24 @@ export class OrdersService {
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
 
-    if (orderItem.lifecycleState === OrderItemLifecycleState.REVIEWED) {
-      throw new BadRequestException("Cette ligne est closée ; l'annulation n'est pas possible.");
-    }
     if (orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED) {
-      throw new BadRequestException("Cette ligne est déjà annulée.");
+      return orderItem;
     }
+
+    assertOrderItemCancelAllowedByState(orderItem);
+
+    const encounterCtx = {
+      physicianAssignedUserId: orderItem.order.encounter.physicianAssignedUserId,
+      nurseAssignedUserId: orderItem.order.encounter.nurseAssignedUserId,
+    };
 
     const cancelPolicyActor = this.assertCanCancelOrderItem(
       orderItem.order,
-      { catalogItemType: orderItem.catalogItemType },
+      {
+        catalogItemType: orderItem.catalogItemType,
+        lifecycleState: orderItem.lifecycleState,
+      },
+      encounterCtx,
       requestorRoleCodes,
       userId
     );
@@ -1708,6 +1726,27 @@ export class OrdersService {
     if (!reason) {
       throw new BadRequestException("Le motif d'annulation est requis.");
     }
+
+    const medicationAdministrationCount =
+      orderItem.order.type === "MEDICATION" || orderItem.catalogItemType === "MEDICATION"
+        ? await this.prisma.medicationAdministration.count({
+            where: {
+              orderItemId,
+              OR: [
+                { marAction: MedicationMarAction.administered },
+                { marAction: MedicationMarAction.md_changed },
+                { infusionPhase: MedicationAdministrationInfusionPhase.INFUSION_START },
+              ],
+            },
+          })
+        : 0;
+
+    assertOrderItemCancelAllowedByPerformedWork(orderItem, {
+      orderType: orderItem.order.type,
+      medicationAdministrationCount,
+    });
+
+    const previousStatus = orderItem.status;
 
     const now = new Date();
     let statusPatch: OrderStatus | undefined;
@@ -1785,18 +1824,18 @@ export class OrdersService {
       entityId: orderItemId,
       ip,
       userAgent,
-      metadata: {
+      metadata: this.buildCancelAuditMetadata({
         cancelScope: "ORDER_ITEM",
-        parentOrderId: orderItem.orderId,
+        orderId: orderItem.orderId,
         orderItemId,
-        cancellationReason: reason,
-        ...(dto.cancellationDetails?.trim()
-          ? { cancellationDetails: dto.cancellationDetails.trim() }
-          : {}),
+        previousStatus,
+        nextStatus: OrderStatus.CANCELLED,
+        orderType: orderItem.order.type,
         cancelPolicyActor,
-        requestorRoles: requestorRoleCodes,
+        requestorRoleCodes,
         orderSource: orderItem.order.source,
-      },
+        reasonCode: reason,
+      }),
     });
 
     return this.prisma.orderItem.findFirstOrThrow({ where: { id: orderItemId } });
