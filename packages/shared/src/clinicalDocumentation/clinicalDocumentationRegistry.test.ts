@@ -10,9 +10,9 @@ import {
 } from "./clinicalDocumentationRegistry.js";
 
 describe("clinicalDocumentationRegistry (EDOC.1)", () => {
-  it("exports all 14 categories with metadata (EDOC.13 adds PAIN_DOCUMENTATION)", () => {
-    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(14);
-    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(14);
+  it("exports all 15 categories with metadata (EDOC.14 adds NEUROLOGICAL_DOCUMENTATION)", () => {
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toHaveLength(15);
+    expect(CLINICAL_DOCUMENTATION_CATEGORY_META).toHaveLength(15);
     for (const cat of CLINICAL_DOCUMENTATION_CATEGORIES) {
       expect(CLINICAL_DOCUMENTATION_CATEGORY_META.some((m) => m.id === cat)).toBe(true);
     }
@@ -20,6 +20,7 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("HIGH_ALERT_INFUSION_DOCUMENTATION");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("BELONGINGS_VALUABLES_DOCUMENTATION");
     expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("PAIN_DOCUMENTATION");
+    expect(CLINICAL_DOCUMENTATION_CATEGORIES).toContain("NEUROLOGICAL_DOCUMENTATION");
   });
 
   it("contains key cards with EN/FR titles", () => {

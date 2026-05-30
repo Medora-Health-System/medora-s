@@ -40,6 +40,10 @@ import {
   validatePainDocumentationPayloadForCard,
 } from "./painDocumentationPayloads.js";
 import {
+  EDOC14_NEUROLOGICAL_DOCUMENTATION_CARD_IDS,
+  validateNeurologicalDocumentationPayloadForCard,
+} from "./neurologicalDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -175,6 +179,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC11_STROKE_NEURO_REASSESSMENT_CARD_IDS,
   ...EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS,
   ...EDOC13_PAIN_DOCUMENTATION_CARD_IDS,
+  ...EDOC14_NEUROLOGICAL_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -251,6 +256,13 @@ export function validatePayloadForCard(
     (EDOC13_PAIN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return painResult;
+  }
+  const neurologicalResult = validateNeurologicalDocumentationPayloadForCard(cardId, payload);
+  if (
+    neurologicalResult.ok ||
+    (EDOC14_NEUROLOGICAL_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return neurologicalResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

@@ -29,6 +29,14 @@ import {
   ADULT_NONVERBAL_PAIN_ASSESSMENT_CARD_ID,
   PEDIATRIC_PAIN_ASSESSMENT_CARD_ID,
   PAIN_ESCALATION_EVENT_CARD_ID,
+  NEUROLOGICAL_INITIAL_ASSESSMENT_CARD_ID,
+  NEUROLOGICAL_REASSESSMENT_CARD_ID,
+  GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
+  STROKE_ALERT_EVENT_CARD_ID,
+  NIHSS_ASSESSMENT_CARD_ID,
+  SEIZURE_EVENT_DOCUMENTATION_CARD_ID,
+  NEUROLOGICAL_POST_THROMBOLYTIC_MONITORING_CARD_ID,
+  NEUROLOGICAL_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1247,6 +1255,312 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("painScore");
     expect(meta).not.toHaveProperty("painLocation");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST initial neurological assessment persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NEUROLOGICAL_INITIAL_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          orientationPerson: true,
+          orientationPlace: true,
+          orientationTime: true,
+          orientationSituation: true,
+          speechStatus: "CLEAR",
+          facialSymmetry: "SYMMETRIC",
+          leftArmStrength: "5/5",
+          rightArmStrength: "5/5",
+          leftLegStrength: "5/5",
+          rightLegStrength: "5/5",
+          sensationStatus: "INTACT",
+          leftPupilSizeMm: 3,
+          rightPupilSizeMm: 3,
+          leftPupilReaction: "BRISK",
+          rightPupilReaction: "BRISK",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Speech")).toBe(false);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Orientation")).toBe(true);
+  });
+
+  it("POST neurological reassessment persists (EDOC.14)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NEUROLOGICAL_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          mentalStatus: "ALERT",
+          orientationChanged: false,
+          motorChanged: false,
+          sensoryChanged: false,
+          speechChanged: false,
+        priorSpeechStatus: "CLEAR",
+        speechStatus: "CLEAR",
+        pupilChanged: false,
+        leftPupilSizeMm: 3,
+        rightPupilSizeMm: 3,
+        leftPupilReaction: "BRISK",
+        rightPupilReaction: "BRISK",
+        newDeficit: false,
+        newUnilateralWeakness: false,
+        providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST GCS assessment persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          eyeOpening: 4,
+          verbalResponse: 5,
+          motorResponse: 6,
+          calculatedTotal: 15,
+          severity: "MILD",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "GCS total" && l.value === "15")).toBe(true);
+  });
+
+  it("POST stroke alert event persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: STROKE_ALERT_EVENT_CARD_ID,
+        payloadJson: {
+          lastKnownWell: "2026-05-28T12:00:00.000Z",
+          symptomOnsetTime: "2026-05-28T13:00:00.000Z",
+          strokeAlertActivated: true,
+          activationTime: "2026-05-28T13:30:00.000Z",
+          provider: "Dr Dupont",
+          neurologyNotified: true,
+          ctOrdered: true,
+          thrombolyticCandidate: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Stroke alert activated")).toBe(true);
+  });
+
+  it("POST NIHSS assessment persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NIHSS_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          levelOfConsciousness: 0,
+          locQuestions: 0,
+          locCommands: 0,
+          bestGaze: 0,
+          visualFields: 0,
+          facialPalsy: 0,
+          motorArmLeft: 0,
+          motorArmRight: 0,
+          motorLegLeft: 0,
+          motorLegRight: 0,
+          limbAtaxia: 0,
+          sensory: 0,
+          bestLanguage: 0,
+          dysarthria: 0,
+          extinctionInattention: 0,
+          calculatedTotal: 0,
+          severity: "NO_STROKE",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "NIHSS total" && l.value === "0")).toBe(true);
+  });
+
+  it("POST seizure event persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: SEIZURE_EVENT_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          witnessed: true,
+          startTime: "2026-05-28T14:00:00.000Z",
+          endTime: "2026-05-28T14:03:00.000Z",
+          durationMinutes: 3,
+          seizureType: "FOCAL",
+          auraPresent: false,
+          incontinence: false,
+          injury: false,
+          postictalState: "MILD",
+          benzodiazepineAdministered: false,
+          rescueMedicationGiven: false,
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Seizure duration" && l.value === "3 min")).toBe(true);
+  });
+
+  it("POST post-thrombolytic monitoring persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NEUROLOGICAL_POST_THROMBOLYTIC_MONITORING_CARD_ID,
+        payloadJson: {
+          administrationTime: "2026-05-28T14:00:00.000Z",
+          monitoringInterval: "15_MIN",
+          neuroStatus: "STABLE",
+          systolicBp: 130,
+          diastolicBp: 85,
+          bleedingSigns: false,
+          neurologicalWorsening: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notification")).toBe(true);
+  });
+
+  it("POST neurological escalation persists (EDOC.14)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NEUROLOGICAL_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          newDeficit: true,
+          mentalStatusDecline: false,
+          gcsDrop: false,
+          pupilChange: false,
+          strokeSymptoms: true,
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notification")).toBe(true);
+  });
+
+  it("neurological audit metadata excludes pupil and motor detail (EDOC.14 addendum)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NEUROLOGICAL_INITIAL_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          orientationPerson: true,
+          orientationPlace: true,
+          orientationTime: true,
+          orientationSituation: true,
+          speechStatus: "SLURRED",
+          facialSymmetry: "DROOP_LEFT",
+          leftArmStrength: "2/5",
+          rightArmStrength: "5/5",
+          leftLegStrength: "3/5",
+          rightLegStrength: "5/5",
+          sensationStatus: "DECREASED",
+          leftPupilSizeMm: 4,
+          rightPupilSizeMm: 2,
+          leftPupilReaction: "SLUGGISH",
+          rightPupilReaction: "BRISK",
+          notes: "Left-sided weakness.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("leftPupilSizeMm");
+    expect(meta).not.toHaveProperty("leftPupilReaction");
+    expect(meta).not.toHaveProperty("leftArmStrength");
+    expect(meta).not.toHaveProperty("speechStatus");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("neurological audit metadata excludes NIHSS domain values (EDOC.14)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "NEUROLOGICAL_DOCUMENTATION",
+        cardId: NIHSS_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          levelOfConsciousness: 2,
+          locQuestions: 1,
+          locCommands: 1,
+          bestGaze: 1,
+          visualFields: 1,
+          facialPalsy: 2,
+          motorArmLeft: 3,
+          motorArmRight: 2,
+          motorLegLeft: 2,
+          motorLegRight: 1,
+          limbAtaxia: 1,
+          sensory: 1,
+          bestLanguage: 2,
+          dysarthria: 1,
+          extinctionInattention: 1,
+          calculatedTotal: 22,
+          severity: "SEVERE",
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          notes: "Left-sided weakness worsening.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("levelOfConsciousness");
+    expect(meta).not.toHaveProperty("motorArmLeft");
+    expect(meta).not.toHaveProperty("calculatedTotal");
+    expect(meta).not.toHaveProperty("severity");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 });

@@ -22,6 +22,7 @@ import {
   GLASGOW_COMA_SCALE_CARD_ID,
   RESP_ASSESSMENT_CARD_ID,
   PAIN_INITIAL_ASSESSMENT_CARD_ID,
+  GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -924,6 +925,49 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("PAIN_DOCUMENTATION");
     expect(htmlEn).toContain("Severe");
+  });
+
+  it("renders GCS assessment summary in export (EDOC.14)", async () => {
+    const neuroPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      eyeOpening: 4,
+      verbalResponse: 5,
+      motorResponse: 6,
+      calculatedTotal: 15,
+      severity: "MILD",
+      providerNotified: false,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-neuro-14",
+          category: "NEUROLOGICAL_DOCUMENTATION",
+          cardId: GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
+          payloadJson: neuroPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(neuroPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "GCS severity")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("NEUROLOGICAL_DOCUMENTATION");
+    expect(htmlEn).toContain("Mild");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {
