@@ -32,6 +32,10 @@ import {
   validateStrokeNeuroReassessmentPayloadForCard,
 } from "./strokeNeuroReassessmentDocumentationPayloads.js";
 import {
+  EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS,
+  validateRespiratoryDocumentationPayloadForCard,
+} from "./respiratoryDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -165,6 +169,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC9_BELONGINGS_VALUABLES_DOCUMENTATION_CARD_IDS,
   ...EDOC10_PROCEDURAL_SEDATION_DOCUMENTATION_CARD_IDS,
   ...EDOC11_STROKE_NEURO_REASSESSMENT_CARD_IDS,
+  ...EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -227,6 +232,13 @@ export function validatePayloadForCard(
     (EDOC11_STROKE_NEURO_REASSESSMENT_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return strokeNeuroResult;
+  }
+  const respiratoryResult = validateRespiratoryDocumentationPayloadForCard(cardId, payload);
+  if (
+    respiratoryResult.ok ||
+    (EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return respiratoryResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

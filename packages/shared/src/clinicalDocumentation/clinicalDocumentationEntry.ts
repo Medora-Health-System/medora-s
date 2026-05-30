@@ -46,6 +46,10 @@ import {
   summarizeStrokeNeuroReassessmentPayload,
 } from "./strokeNeuroReassessmentDocumentationPayloads.js";
 import {
+  EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS,
+  summarizeRespiratoryDocumentationPayload,
+} from "./respiratoryDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -71,6 +75,7 @@ export * from "./highAlertInfusionDocumentationPayloads.js";
 export * from "./belongingsValuablesDocumentationPayloads.js";
 export * from "./proceduralSedationDocumentationPayloads.js";
 export * from "./strokeNeuroReassessmentDocumentationPayloads.js";
+export * from "./respiratoryDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -300,6 +305,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC11_STROKE_NEURO_REASSESSMENT_CARD_IDS as readonly string[]).includes(cardId)) {
     const strokeNeuroLines = summarizeStrokeNeuroReassessmentPayload(cardId, payload, locale);
     if (strokeNeuroLines.length > 0) return strokeNeuroLines;
+  }
+  if ((EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const respiratoryLines = summarizeRespiratoryDocumentationPayload(cardId, payload, locale);
+    if (respiratoryLines.length > 0) return respiratoryLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

@@ -61,6 +61,10 @@ import {
   ClinicalDocumentationStrokeNeuroReassessmentForm,
   isEdoc11StrokeNeuroReassessmentFormCard,
 } from "./ClinicalDocumentationStrokeNeuroReassessmentForm";
+import {
+  ClinicalDocumentationRespiratoryForm,
+  isEdoc12RespiratoryDocumentationFormCard,
+} from "./ClinicalDocumentationRespiratoryForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
@@ -724,6 +728,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc11StrokeNeuroReassessmentFormCard(c.id) ? (
                 <ClinicalDocumentationStrokeNeuroReassessmentForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc12RespiratoryDocumentationFormCard(c.id) ? (
+                <ClinicalDocumentationRespiratoryForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => submitClinicalDocumentation(c, payload)}

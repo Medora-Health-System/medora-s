@@ -14,6 +14,14 @@ import {
   NEURO_ESCALATION_EVENT_CARD_ID,
   NIHSS_REASSESSMENT_CARD_ID,
   POST_THROMBOLYTIC_MONITORING_CARD_ID,
+  RESP_ASSESSMENT_CARD_ID,
+  OXYGEN_THERAPY_INITIATION_CARD_ID,
+  OXYGEN_TITRATION_CARD_ID,
+  NEBULIZER_REASSESSMENT_CARD_ID,
+  CPAP_BIPAP_MONITORING_CARD_ID,
+  RESPIRATORY_DISTRESS_REASSESSMENT_CARD_ID,
+  VENTILATOR_OBSERVATION_CARD_ID,
+  PEAK_FLOW_DOCUMENTATION_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -794,6 +802,248 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
     expect(meta).not.toHaveProperty("notes");
     expect(meta).not.toHaveProperty("levelOfConsciousness");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST respiratory assessment persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: RESP_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          respiratoryRate: 20,
+          spo2: 95,
+          oxygenDevice: "NASAL_CANNULA",
+          oxygenFlowRate: 2,
+          workOfBreathing: "NORMAL",
+          breathSounds: "CLEAR",
+          breathSoundsLocation: "BILATERAL",
+          cough: "NONE",
+          sputumPresent: false,
+          accessoryMuscleUse: false,
+          retractions: false,
+          cyanosis: false,
+          patientPosition: "SEMI_FOWLER",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Respiratory rate")).toBe(true);
+  });
+
+  it("POST oxygen initiation persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: OXYGEN_THERAPY_INITIATION_CARD_ID,
+        payloadJson: {
+          startedAt: "2026-05-28T14:00:00.000Z",
+          oxygenDevice: "NASAL_CANNULA",
+          flowRate: 2,
+          flowUnit: "LPM",
+          spo2Before: 88,
+          spo2After: 94,
+          reason: "HYPOXIA",
+          providerOrderVerified: true,
+          patientTolerated: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "SpO₂ before")).toBe(true);
+  });
+
+  it("POST oxygen titration persists (EDOC.12)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: OXYGEN_TITRATION_CARD_ID,
+        payloadJson: {
+          titrationTime: "2026-05-28T14:00:00.000Z",
+          previousDevice: "NASAL_CANNULA",
+          newDevice: "SIMPLE_MASK",
+          newFlowRate: 6,
+          flowUnit: "LPM",
+          spo2Before: 90,
+          spo2After: 96,
+          reason: "SPO2_LOW",
+          providerNotified: false,
+          patientTolerated: true,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST nebulizer reassessment persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: NEBULIZER_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          reassessmentTime: "2026-05-28T14:00:00.000Z",
+          treatmentMedicationReferenced: "ALBUTEROL",
+          treatmentDocumentedInMar: true,
+          respiratoryRate: 20,
+          spo2: 95,
+          breathSoundsAfter: "CLEAR",
+          workOfBreathingAfter: "NORMAL",
+          patientReportsImprovement: true,
+          adverseEffectObserved: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "MAR documented")).toBe(true);
+  });
+
+  it("POST CPAP/BiPAP monitoring persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: CPAP_BIPAP_MONITORING_CARD_ID,
+        payloadJson: {
+          monitoringTime: "2026-05-28T14:00:00.000Z",
+          mode: "CPAP",
+          deviceSettingSummary: "CPAP 8",
+          respiratoryRate: 18,
+          spo2: 96,
+          maskFit: "GOOD",
+          skinIntegrity: "INTACT",
+          patientTolerance: "TOLERATING",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Tolerance")).toBe(true);
+  });
+
+  it("POST respiratory distress reassessment persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: RESPIRATORY_DISTRESS_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          reassessmentTime: "2026-05-28T14:00:00.000Z",
+          respiratoryRate: 32,
+          spo2: 86,
+          workOfBreathing: "SEVERE_DISTRESS",
+          oxygenDevice: "NON_REBREATHER",
+          oxygenFlowRate: 15,
+          accessoryMuscleUse: true,
+          retractions: true,
+          mentalStatus: "ANXIOUS",
+          interventionPerformed: "OXYGEN_INCREASED",
+          providerNotified: true,
+          rapidResponseActivated: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notified")).toBe(true);
+  });
+
+  it("POST ventilator observation persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: VENTILATOR_OBSERVATION_CARD_ID,
+        payloadJson: {
+          observationTime: "2026-05-28T14:00:00.000Z",
+          ventilatorMode: "AC",
+          fio2Percent: 40,
+          peep: 5,
+          respiratoryRateObserved: 14,
+          spo2: 98,
+          airwaySecured: true,
+          alarmObserved: false,
+          rtNotified: false,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Mode")).toBe(true);
+  });
+
+  it("POST peak flow persists (EDOC.12)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: PEAK_FLOW_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          measuredAt: "2026-05-28T14:00:00.000Z",
+          preTreatmentPeakFlow: 220,
+          postTreatmentPeakFlow: 310,
+          personalBestKnown: false,
+          effortQuality: "GOOD",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Pre-treatment")).toBe(true);
+  });
+
+  it("respiratory audit metadata excludes vitals/settings/notes (EDOC.12)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "RESPIRATORY_DOCUMENTATION",
+        cardId: VENTILATOR_OBSERVATION_CARD_ID,
+        payloadJson: {
+          observationTime: "2026-05-28T14:00:00.000Z",
+          ventilatorMode: "AC",
+          fio2Percent: 60,
+          peep: 8,
+          respiratoryRateObserved: 16,
+          spo2: 97,
+          airwaySecured: true,
+          alarmObserved: true,
+          alarmDescription: "High peak pressure",
+          rtNotified: true,
+          providerNotified: true,
+          notes: "RT at bedside within 5 min.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("fio2Percent");
+    expect(meta).not.toHaveProperty("peep");
+    expect(meta).not.toHaveProperty("spo2");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 });
