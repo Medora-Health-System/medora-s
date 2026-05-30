@@ -84,6 +84,10 @@ import {
   validateProceduralSafetyThrombolyticPayloadForCard,
 } from "./proceduralSafetyThrombolyticPayloads.js";
 import {
+  EDOC23B_FOUNDATION_CATALOG_COMPLETION_CARD_IDS,
+  validateFoundationCatalogCompletionPayloadForCard,
+} from "./foundationCatalogCompletionPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -230,6 +234,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC21_DIALYSIS_RENAL_FLUID_MANAGEMENT_DOCUMENTATION_CARD_IDS,
   ...EDOC22_PATIENT_EDUCATION_DISCHARGE_TEACHING_DOCUMENTATION_CARD_IDS,
   ...EDOC23_PROCEDURAL_SAFETY_THROMBOLYTIC_CARD_IDS,
+  ...EDOC23B_FOUNDATION_CATALOG_COMPLETION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -390,6 +395,13 @@ export function validatePayloadForCard(
     (EDOC23_PROCEDURAL_SAFETY_THROMBOLYTIC_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return proceduralResult;
+  }
+  const foundationResult = validateFoundationCatalogCompletionPayloadForCard(cardId, payload);
+  if (
+    foundationResult.ok ||
+    (EDOC23B_FOUNDATION_CATALOG_COMPLETION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return foundationResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

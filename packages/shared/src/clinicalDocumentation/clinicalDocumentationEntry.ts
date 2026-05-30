@@ -98,6 +98,10 @@ import {
   summarizeProceduralSafetyThrombolyticPayload,
 } from "./proceduralSafetyThrombolyticPayloads.js";
 import {
+  EDOC23B_FOUNDATION_CATALOG_COMPLETION_CARD_IDS,
+  summarizeFoundationCatalogCompletionPayload,
+} from "./foundationCatalogCompletionPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -136,6 +140,7 @@ export * from "./skinWoundPressureInjuryDocumentationPayloads.js";
 export * from "./dialysisRenalFluidManagementDocumentationPayloads.js";
 export * from "./patientEducationDischargeTeachingDocumentationPayloads.js";
 export * from "./proceduralSafetyThrombolyticPayloads.js";
+export * from "./foundationCatalogCompletionPayloads.js";
 export * from "./clinicalDocumentationCatalog.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
@@ -429,6 +434,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC23_PROCEDURAL_SAFETY_THROMBOLYTIC_CARD_IDS as readonly string[]).includes(cardId)) {
     const proceduralLines = summarizeProceduralSafetyThrombolyticPayload(cardId, payload, locale);
     if (proceduralLines.length > 0) return proceduralLines;
+  }
+  if ((EDOC23B_FOUNDATION_CATALOG_COMPLETION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const foundationLines = summarizeFoundationCatalogCompletionPayload(cardId, payload, locale);
+    if (foundationLines.length > 0) return foundationLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

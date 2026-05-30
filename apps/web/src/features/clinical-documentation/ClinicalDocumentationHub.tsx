@@ -114,6 +114,14 @@ import {
   ClinicalDocumentationProceduralSafetyForm,
   isEdoc23ProceduralSafetyThrombolyticDocumentationFormCard,
 } from "./ClinicalDocumentationProceduralSafetyForm";
+import {
+  ClinicalDocumentationFlowsheetCompletionForm,
+  isEdoc23bFlowsheetCompletionFormCard,
+} from "./ClinicalDocumentationFlowsheetCompletionForm";
+import {
+  ClinicalDocumentationScoreScreenCompletionForm,
+  isEdoc23bScoreScreenCompletionFormCard,
+} from "./ClinicalDocumentationScoreScreenCompletionForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
@@ -885,6 +893,22 @@ export function ClinicalDocumentationHub({
               {expandedCardId === c.id &&
               isEdoc23ProceduralSafetyThrombolyticDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationProceduralSafetyForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc23bFlowsheetCompletionFormCard(c.id) ? (
+                <ClinicalDocumentationFlowsheetCompletionForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc23bScoreScreenCompletionFormCard(c.id) ? (
+                <ClinicalDocumentationScoreScreenCompletionForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => submitClinicalDocumentation(c, payload)}

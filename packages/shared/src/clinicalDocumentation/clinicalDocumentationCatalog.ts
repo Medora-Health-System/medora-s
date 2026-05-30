@@ -238,10 +238,47 @@ export const CLINICAL_DOCUMENTATION_CATALOG_GOVERNANCE: Readonly<
     categories: ["SCORES_AND_SCREENS"],
   },
   flow_cpr_record: { visibleInAll: false },
-  flow_restraint_monitoring: { visibleInAll: false },
-  flow_telemetry_monitoring: { visibleInAll: false },
-  flow_cardiac_monitoring: { visibleInAll: false },
+  flow_thrombolytic_stroke: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "stroke_tnk",
+    visibleInAll: false,
+  },
+  flow_restraint_monitoring: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "safety_restraint_reassessment",
+    visibleInAll: false,
+  },
+  flow_telemetry_monitoring: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "telemetry_reassessment",
+    visibleInAll: false,
+  },
+  flow_cardiac_monitoring: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "continuous_cardiac_monitoring",
+    visibleInAll: false,
+  },
   flow_observation_monitoring: { visibleInAll: false },
+  cardiac_telemetry_initiation: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "continuous_cardiac_monitoring",
+    visibleInAll: false,
+  },
+  cardiac_telemetry_discontinuation: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "continuous_cardiac_monitoring",
+    visibleInAll: false,
+  },
+  resp_incentive_spirometry: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "resp_peak_flow",
+    visibleInAll: false,
+  },
+  stroke_reassessment: {
+    catalogStatus: "HIDDEN",
+    supersededBy: "neurological_reassessment",
+    visibleInAll: false,
+  },
 };
 
 export function getClinicalDocumentationCatalogGovernance(

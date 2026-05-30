@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   countClinicalDocumentationCardsByCategory,
+  listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
   searchClinicalDocumentationCards,
 } from "@medora/shared";
@@ -88,5 +89,31 @@ describe("clinical documentation catalog UI (EDOC.CATALOG.1)", () => {
   it("foundation CPR flowsheet remains category-visible but not in All tab", () => {
     const allEd = listClinicalDocumentationCardsForCareSetting("ED");
     expect(allEd.some((c) => c.id === "flow_cpr_record")).toBe(false);
+    const flowsheets = listClinicalDocumentationCardsByCategory("FLOWSHEETS", "ED");
+    const cpr = flowsheets.find((c) => c.id === "flow_cpr_record");
+    expect(cpr).toBeTruthy();
+    expect(cpr?.implementationStatus).toBe("AVAILABLE");
+    expect(hub).toContain("isEdoc23bFlowsheetCompletionFormCard");
+    expect(hub).toContain("ClinicalDocumentationFlowsheetCompletionForm");
+  });
+
+  it("hidden foundation flowsheet cards not visible in FLOWSHEETS tab", () => {
+    const flowsheets = listClinicalDocumentationCardsByCategory("FLOWSHEETS", "ED");
+    expect(flowsheets.some((c) => c.id === "flow_thrombolytic_stroke")).toBe(false);
+    expect(flowsheets.some((c) => c.id === "flow_restraint_monitoring")).toBe(false);
+    expect(flowsheets.some((c) => c.id === "flow_cardiac_monitoring")).toBe(false);
+    expect(flowsheets.some((c) => c.implementationStatus === "FOUNDATION_ONLY")).toBe(false);
+  });
+
+  it("upgraded EDOC.23B score cards visible in SCORES tab", () => {
+    const scores = listClinicalDocumentationCardsByCategory("SCORES_AND_SCREENS", "ED");
+    expect(scores.some((c) => c.id === "score_ciwa_ar" && c.implementationStatus === "AVAILABLE")).toBe(
+      true
+    );
+    expect(scores.some((c) => c.id === "score_phq9" && c.implementationStatus === "AVAILABLE")).toBe(
+      true
+    );
+    expect(hub).toContain("isEdoc23bScoreScreenCompletionFormCard");
+    expect(hub).toContain("ClinicalDocumentationScoreScreenCompletionForm");
   });
 });

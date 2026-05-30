@@ -91,7 +91,8 @@ describe("clinicalDocumentationRegistry (EDOC.1)", () => {
     expect(getClinicalDocumentationCardById("stroke_nihss")?.implementationStatus).toBe("AVAILABLE");
     const cardiac = listClinicalDocumentationCardsByCategory("CARDIAC_MONITORING_DOCUMENTATION");
     expect(cardiac.some((c) => c.id === "ecg_12_lead_documentation")).toBe(true);
-    expect(cardiac.some((c) => c.id === "cardiac_telemetry_initiation")).toBe(true);
+    expect(cardiac.some((c) => c.id === "cardiac_telemetry_initiation")).toBe(false);
+    expect(cardiac.some((c) => c.id === "continuous_cardiac_monitoring")).toBe(true);
     expect(getClinicalDocumentationCardById("continuous_cardiac_monitoring")?.implementationStatus).toBe(
       "AVAILABLE"
     );
