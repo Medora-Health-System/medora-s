@@ -60,6 +60,10 @@ import {
   validateDeviceLineTubeDrainMonitoringPayloadForCard,
 } from "./deviceLineTubeDrainMonitoringDocumentationPayloads.js";
 import {
+  EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS,
+  validateSepsisMonitoringDocumentationPayloadForCard,
+} from "./sepsisMonitoringDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -200,6 +204,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC15_CARDIAC_MONITORING_DOCUMENTATION_CARD_IDS,
   ...EDOC16_BEHAVIORAL_HEALTH_SAFETY_DOCUMENTATION_CARD_IDS,
   ...EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS,
+  ...EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -311,6 +316,13 @@ export function validatePayloadForCard(
     (EDOC17_DEVICE_LINE_TUBE_DRAIN_MONITORING_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return deviceResult;
+  }
+  const sepsisResult = validateSepsisMonitoringDocumentationPayloadForCard(cardId, payload);
+  if (
+    sepsisResult.ok ||
+    (EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
+  ) {
+    return sepsisResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

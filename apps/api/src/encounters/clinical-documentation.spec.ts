@@ -65,6 +65,17 @@ import {
   SURGICAL_DRAIN_MONITORING_CARD_ID,
   ENDOTRACHEAL_TUBE_MONITORING_CARD_ID,
   TRACHEOSTOMY_MONITORING_CARD_ID,
+  SEPSIS_SCREENING_CARD_ID,
+  SIRS_ASSESSMENT_CARD_ID,
+  QSOFA_ASSESSMENT_CARD_ID,
+  SUSPECTED_INFECTION_ASSESSMENT_CARD_ID,
+  SEPSIS_BUNDLE_TRACKING_CARD_ID,
+  LACTATE_MONITORING_CARD_ID,
+  BLOOD_CULTURE_DOCUMENTATION_CARD_ID,
+  ANTIBIOTIC_TIMING_REFERENCE_CARD_ID,
+  FLUID_RESUSCITATION_MONITORING_CARD_ID,
+  SEPTIC_SHOCK_REASSESSMENT_CARD_ID,
+  SEPSIS_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1849,6 +1860,292 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("siteLocation");
     expect(meta).not.toHaveProperty("status");
     expect(meta).not.toHaveProperty("gauge");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  const SEPSIS_ISO = "2026-05-28T14:00:00.000Z";
+
+  it("POST sepsis screening persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SEPSIS_SCREENING_CARD_ID,
+        payloadJson: {
+          screeningTime: SEPSIS_ISO,
+          suspectedInfection: "YES",
+          temperatureAbnormal: "YES",
+          heartRateAbnormal: "YES",
+          respiratoryRateAbnormal: "NO",
+          wbcAbnormalOrUnknown: "NO",
+          alteredMentalStatus: "NO",
+          hypotensionPresent: "NO",
+          lactateConcern: "NO",
+          screenPositive: "YES",
+          providerNotified: "YES",
+          providerNotificationTime: SEPSIS_ISO,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Screen positive")).toBe(true);
+  });
+
+  it("POST SIRS assessment persists (EDOC.18)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SIRS_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: SEPSIS_ISO,
+          temperatureCriteriaMet: "YES",
+          heartRateCriteriaMet: "YES",
+          respiratoryCriteriaMet: "NO",
+          wbcCriteriaMet: "NO",
+          criteriaCount: 2,
+          sirsPositive: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST qSOFA assessment persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: QSOFA_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: SEPSIS_ISO,
+          respiratoryRateHigh: "YES",
+          alteredMentation: "YES",
+          systolicBpLow: "NO",
+          score: 2,
+          qsofaPositive: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "qSOFA positive")).toBe(true);
+  });
+
+  it("POST suspected infection assessment persists (EDOC.18)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SUSPECTED_INFECTION_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: SEPSIS_ISO,
+          suspectedSource: "URINARY",
+          infectionSignsPresent: "YES",
+          culturesConsidered: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST sepsis bundle tracking persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SEPSIS_BUNDLE_TRACKING_CARD_ID,
+        payloadJson: {
+          bundleStartTime: SEPSIS_ISO,
+          bundleType: "THREE_HOUR",
+          lactateOrderedOrResulted: "YES",
+          bloodCulturesBeforeAntibiotics: "YES",
+          antibioticsDocumentedInMar: "YES",
+          fluidsOrderedOrStarted: "YES",
+          vasopressorsOrderedOrStarted: "NOT_APPLICABLE",
+          providerNotified: "YES",
+          bundleVariancePresent: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Bundle type")).toBe(true);
+  });
+
+  it("POST lactate monitoring persists (EDOC.18)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: LACTATE_MONITORING_CARD_ID,
+        payloadJson: {
+          documentedAt: SEPSIS_ISO,
+          lactateValue: 2.5,
+          lactateUnit: "MMOL_L",
+          lactateResultAvailable: "YES",
+          repeatLactateNeeded: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST blood culture documentation persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: BLOOD_CULTURE_DOCUMENTATION_CARD_ID,
+        payloadJson: {
+          documentedAt: SEPSIS_ISO,
+          culturesCollected: "YES",
+          collectionTime: SEPSIS_ISO,
+          numberOfSets: 2,
+          collectedBeforeAntibiotics: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Cultures collected")).toBe(true);
+  });
+
+  it("POST antibiotic timing reference persists (EDOC.18)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: ANTIBIOTIC_TIMING_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentedAt: SEPSIS_ISO,
+          antibioticsDocumentedInMar: "YES",
+          firstAntibioticTime: SEPSIS_ISO,
+          antibioticNameReferenced: "Ceftriaxone",
+          providerNotified: "NO",
+          delayOrVariancePresent: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST fluid resuscitation monitoring persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: FLUID_RESUSCITATION_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: SEPSIS_ISO,
+          fluidBolusOrderedOrStarted: "YES",
+          fluidType: "NORMAL_SALINE",
+          volumeMl: 1000,
+          thirtyMlPerKgTargetConsidered: "YES",
+          bloodPressureResponse: "IMPROVED",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Volume")).toBe(true);
+  });
+
+  it("POST septic shock reassessment persists (EDOC.18)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SEPTIC_SHOCK_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          reassessmentTime: SEPSIS_ISO,
+          hypotensionPersistent: "YES",
+          lactateFourOrGreater: "YES",
+          vasopressorsStartedOrOrdered: "YES",
+          mentalStatusChanged: "NO",
+          urineOutputConcern: "YES",
+          providerAtBedside: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST sepsis escalation event persists (EDOC.18)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: SEPSIS_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: SEPSIS_ISO,
+          reason: "LACTATE_ELEVATED",
+          providerNotified: "YES",
+          providerNotificationTime: SEPSIS_ISO,
+          responseReceived: "YES",
+          rapidResponseActivated: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Reason")).toBe(true);
+  });
+
+  it("sepsis monitoring audit metadata excludes clinical details (EDOC.18)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "SEPSIS_MONITORING_DOCUMENTATION",
+        cardId: LACTATE_MONITORING_CARD_ID,
+        payloadJson: {
+          documentedAt: SEPSIS_ISO,
+          lactateValue: 4.5,
+          lactateUnit: "MMOL_L",
+          lactateResultAvailable: "YES",
+          repeatLactateNeeded: "YES",
+          providerNotified: "YES",
+          notes: "Repeat lactate ordered per protocol.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("lactateValue");
+    expect(meta).not.toHaveProperty("suspectedSource");
+    expect(meta).not.toHaveProperty("antibioticNameReferenced");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 

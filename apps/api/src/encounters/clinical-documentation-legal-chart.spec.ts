@@ -27,6 +27,7 @@ import {
   CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
   SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
   PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+  SEPSIS_SCREENING_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1110,6 +1111,54 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("DEVICE_LINE_TUBE_DRAIN_MONITORING");
     expect(htmlEn).toContain("Left hand");
+  });
+
+  it("renders sepsis screening summary in export (EDOC.18)", async () => {
+    const sepsisPayload = {
+      screeningTime: "2026-05-28T21:00:00.000Z",
+      suspectedInfection: "YES",
+      temperatureAbnormal: "YES",
+      heartRateAbnormal: "YES",
+      respiratoryRateAbnormal: "NO",
+      wbcAbnormalOrUnknown: "NO",
+      alteredMentalStatus: "NO",
+      hypotensionPresent: "NO",
+      lactateConcern: "NO",
+      screenPositive: "YES",
+      providerNotified: "YES",
+      providerNotificationTime: "2026-05-28T21:05:00.000Z",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-sepsis-18",
+          category: "SEPSIS_MONITORING_DOCUMENTATION",
+          cardId: SEPSIS_SCREENING_CARD_ID,
+          payloadJson: sepsisPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(sepsisPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Screen positive")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("SEPSIS_MONITORING_DOCUMENTATION");
+    expect(htmlEn).toContain("Screen positive");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {
