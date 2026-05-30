@@ -72,6 +72,10 @@ import {
   validateSkinWoundPressureInjuryDocumentationPayloadForCard,
 } from "./skinWoundPressureInjuryDocumentationPayloads.js";
 import {
+  EDOC21_DIALYSIS_RENAL_FLUID_MANAGEMENT_DOCUMENTATION_CARD_IDS,
+  validateDialysisRenalFluidManagementDocumentationPayloadForCard,
+} from "./dialysisRenalFluidManagementDocumentationPayloads.js";
+import {
   clinicalDocYesNo,
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
@@ -215,6 +219,7 @@ export const CLINICAL_DOCUMENTATION_CARDS_WITH_PAYLOAD_VALIDATORS = [
   ...EDOC18_SEPSIS_MONITORING_DOCUMENTATION_CARD_IDS,
   ...EDOC19_NURSING_ADMISSION_CARE_PLAN_DOCUMENTATION_CARD_IDS,
   ...EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS,
+  ...EDOC21_DIALYSIS_RENAL_FLUID_MANAGEMENT_DOCUMENTATION_CARD_IDS,
 ] as string[];
 
 export function validatePayloadForCard(
@@ -347,6 +352,15 @@ export function validatePayloadForCard(
     (EDOC20_SKIN_WOUND_PRESSURE_INJURY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)
   ) {
     return skinWoundResult;
+  }
+  const renalResult = validateDialysisRenalFluidManagementDocumentationPayloadForCard(cardId, payload);
+  if (
+    renalResult.ok ||
+    (EDOC21_DIALYSIS_RENAL_FLUID_MANAGEMENT_DOCUMENTATION_CARD_IDS as readonly string[]).includes(
+      cardId
+    )
+  ) {
+    return renalResult;
   }
   return validateRestraintPayloadForCard(cardId, payload);
 }

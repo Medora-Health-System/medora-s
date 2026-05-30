@@ -98,6 +98,16 @@ import {
   WOUND_TREATMENT_DOCUMENTATION_CARD_ID,
   WOUND_PHOTO_REFERENCE_CARD_ID,
   WOUND_REASSESSMENT_CARD_ID,
+  DIALYSIS_ACCESS_ASSESSMENT_CARD_ID,
+  HEMODIALYSIS_MONITORING_REFERENCE_CARD_ID,
+  PERITONEAL_DIALYSIS_MONITORING_REFERENCE_CARD_ID,
+  CRRT_MONITORING_REFERENCE_CARD_ID,
+  RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
+  FLUID_RESTRICTION_MONITORING_CARD_ID,
+  DAILY_WEIGHT_EDEMA_MONITORING_CARD_ID,
+  URINE_OUTPUT_CONCERN_CARD_ID,
+  RENAL_MEDICATION_SAFETY_REVIEW_CARD_ID,
+  RENAL_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -2734,6 +2744,270 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     for (const forbidden of FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
       expect(meta).not.toHaveProperty(forbidden);
     }
+  });
+
+  it("POST dialysis access assessment persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: DIALYSIS_ACCESS_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          accessType: "TUNNELED_CATHETER",
+          accessLocation: "LEFT_CHEST",
+          thrillPresent: "NOT_APPLICABLE",
+          bruitPresent: "NOT_APPLICABLE",
+          siteStatus: "NORMAL",
+          dressingStatus: "CLEAN_DRY_INTACT",
+          infectionConcern: "NO",
+          bleedingConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST hemodialysis monitoring reference persists (EDOC.21)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: HEMODIALYSIS_MONITORING_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          dialysisStatus: "COMPLETED",
+          estimatedFluidRemovedMl: 1500,
+          bloodPressureConcern: "NO",
+          crampingReported: "NO",
+          accessIssueObserved: "NO",
+          dialysisNurseNotified: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Status")).toBe(true);
+  });
+
+  it("POST peritoneal dialysis monitoring reference persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: PERITONEAL_DIALYSIS_MONITORING_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          pdStatus: "COMPLETED",
+          effluentAppearance: "CLEAR",
+          abdominalPain: "NO",
+          exitSiteConcern: "NO",
+          exchangeCompleted: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST CRRT monitoring reference persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: CRRT_MONITORING_REFERENCE_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          crrtStatus: "IN_PROGRESS",
+          accessStatus: "PATENT",
+          filterConcern: "NO",
+          hemodynamicInstability: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST renal intake output review persists (EDOC.21)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: "2026-05-28T14:00:00.000Z",
+          reviewPeriod: "SHIFT",
+          totalIntakeMl: 2000,
+          totalOutputMl: 1500,
+          netBalanceMl: 500,
+          fluidBalanceConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Net balance" && l.value === "500 mL")).toBe(true);
+  });
+
+  it("POST fluid restriction monitoring persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: FLUID_RESTRICTION_MONITORING_CARD_ID,
+        payloadJson: {
+          documentationTime: "2026-05-28T14:00:00.000Z",
+          fluidRestrictionOrdered: "YES",
+          restrictionAmountMlPerDay: 1500,
+          patientEducationProvided: "YES",
+          complianceConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST daily weight edema monitoring persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: DAILY_WEIGHT_EDEMA_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          weightKg: 72.5,
+          previousWeightKg: 71.0,
+          weightChangeKg: 1.5,
+          edemaPresent: "YES",
+          edemaLocation: "LOWER_EXTREMITIES",
+          edemaSeverity: "TWO_PLUS",
+          fluidOverloadConcern: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST urine output concern persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: URINE_OUTPUT_CONCERN_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          concernType: "OLIGURIA",
+          urineOutputMl: 200,
+          timePeriodHours: 8,
+          foleyPresent: "YES",
+          bladderScanPerformed: "NOT_APPLICABLE",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST renal medication safety review persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: RENAL_MEDICATION_SAFETY_REVIEW_CARD_ID,
+        payloadJson: {
+          reviewTime: "2026-05-28T14:00:00.000Z",
+          renalFunctionConcern: "NO",
+          nephrotoxicMedicationConcern: "YES",
+          doseAdjustmentConcern: "NO",
+          contrastExposureConcern: "NO",
+          pharmacyNotified: "YES",
+          providerNotified: "YES",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST renal escalation event persists (EDOC.21)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: RENAL_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          reason: "FLUID_OVERLOAD",
+          providerNotified: "YES",
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          nephrologyNotified: "YES",
+          responseReceived: "NO",
+          rapidResponseActivated: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("renal audit metadata excludes clinical details (EDOC.21)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+        cardId: DAILY_WEIGHT_EDEMA_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          weightKg: 85.2,
+          previousWeightKg: 82.0,
+          weightChangeKg: 3.2,
+          edemaPresent: "YES",
+          edemaLocation: "GENERALIZED",
+          edemaSeverity: "THREE_PLUS",
+          fluidOverloadConcern: "YES",
+          providerNotified: "YES",
+          notes: "Patient reports increased swelling over 48 hours.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("weightKg");
+    expect(meta).not.toHaveProperty("weightChangeKg");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 
   it("POST Morse fall risk assessment persists (EDOC.14 fall risk)", async () => {

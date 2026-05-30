@@ -30,6 +30,7 @@ import {
   SEPSIS_SCREENING_CARD_ID,
   NURSING_ADMISSION_ASSESSMENT_CARD_ID,
   BRADEN_RISK_ASSESSMENT_CARD_ID,
+  RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1260,6 +1261,49 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("SKIN_WOUND_PRESSURE_INJURY");
     expect(htmlEn).toContain("Minimal risk");
+  });
+
+  it("renders renal I&O summary in export (EDOC.21)", async () => {
+    const renalPayload = {
+      reviewTime: "2026-05-28T21:00:00.000Z",
+      reviewPeriod: "TWENTY_FOUR_HOUR",
+      totalIntakeMl: 2400,
+      totalOutputMl: 1800,
+      netBalanceMl: 600,
+      fluidBalanceConcern: "NO",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-renal-21",
+          category: "DIALYSIS_RENAL_FLUID_MANAGEMENT",
+          cardId: RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
+          payloadJson: renalPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(renalPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Net balance" && l.value === "600 mL")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("DIALYSIS_RENAL_FLUID_MANAGEMENT");
+    expect(htmlEn).toContain("600 mL");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {
