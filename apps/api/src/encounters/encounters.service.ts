@@ -507,6 +507,7 @@ export class EncountersService {
           select: {
             id: true,
             encounterId: true,
+            patientId: true,
             category: true,
             cardId: true,
             authorUserId: true,

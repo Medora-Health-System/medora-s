@@ -125,6 +125,7 @@ export type ChartSummaryEncounter = {
   clinicalDocumentationEntries?: Array<{
     id: string;
     encounterId: string;
+    patientId?: string;
     category: string;
     cardId: string;
     cardTitleEn: string;

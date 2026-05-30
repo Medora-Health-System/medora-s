@@ -7,6 +7,7 @@ import type {
 export type ClinicalDocumentationEntryRow = {
   id: string;
   encounterId: string;
+  patientId?: string;
   category: string;
   cardId: string;
   cardTitleEn: string;

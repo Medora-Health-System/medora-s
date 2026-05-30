@@ -267,6 +267,7 @@ export type ChartExportManifest = {
     clinicalDocumentationEntries: Array<{
       id: string;
       encounterId: string;
+      patientId?: string;
       category: string;
       cardId: string;
       cardTitleEn: string;
@@ -808,6 +809,7 @@ export class EncounterChartExportService {
           select: {
             id: true,
             encounterId: true,
+            patientId: true,
             category: true,
             cardId: true,
             authorUserId: true,

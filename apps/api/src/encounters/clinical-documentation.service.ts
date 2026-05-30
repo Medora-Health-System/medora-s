@@ -11,6 +11,7 @@ import {
   buildClinicalDocumentationAuditMetadata,
   buildClinicalDocumentationWitnessAuditMetadata,
   canActAsClinicalDocumentationWitness,
+  ensureClinicalDocumentationLegalDisplaySummary,
   finalizeClinicalDocumentationPayloadAfterWitness,
   mapClinicalDocumentationEntryForLegalChart,
   clinicalDocumentationEntryCreateDtoSchema,
@@ -30,6 +31,7 @@ import { assertEncounterOpenForClinicalMutation } from "./encounter-sign-lock.ut
 export const clinicalDocumentationEntrySelect = {
   id: true,
   encounterId: true,
+  patientId: true,
   category: true,
   cardId: true,
   authorUserId: true,
@@ -168,6 +170,11 @@ export class ClinicalDocumentationService {
     );
 
     const payloadKeyCount = Object.keys(payloadValidation.data).length;
+    const summaryLineCount = ensureClinicalDocumentationLegalDisplaySummary(
+      parsed.data.cardId,
+      payloadValidation.data,
+      "en"
+    ).length;
 
     const created = await this.prisma.$transaction(async (tx) => {
       const row = await tx.encounterClinicalDocumentationEntry.create({
@@ -195,6 +202,7 @@ export class ClinicalDocumentationService {
         authorUserId: userId,
         authorRole: authorRoleSnapshot,
         payloadKeyCount,
+        summaryLineCount,
       });
       assertClinicalDocumentationAuditMetadataSafe(auditMetadata as Record<string, unknown>);
 
@@ -324,6 +332,11 @@ export class ClinicalDocumentationService {
       payloadValidation.data
     );
     const payloadKeyCount = Object.keys(finalizedPayload).length;
+    const summaryLineCount = ensureClinicalDocumentationLegalDisplaySummary(
+      parsed.data.cardId,
+      finalizedPayload,
+      "en"
+    ).length;
     const witnessedAt = new Date();
 
     const created = await this.prisma.$transaction(async (tx) => {
@@ -356,6 +369,7 @@ export class ClinicalDocumentationService {
         authorUserId,
         authorRole: authorRoleSnapshot,
         payloadKeyCount,
+        summaryLineCount,
       });
       assertClinicalDocumentationAuditMetadataSafe(createAuditMetadata as Record<string, unknown>);
 

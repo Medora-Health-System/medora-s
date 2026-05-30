@@ -175,13 +175,29 @@ describe("EDOC.I18N.1 clinical documentation summary localization", () => {
     expect(fr.some((l) => l.key === "Score NIHSS total")).toBe(true);
   });
 
-  it("English export with legacy French-only summary and no payloadJson returns empty", () => {
-    expect(
-      selectClinicalDocumentationPayloadSummary(
-        { payloadSummary: [{ key: "Score NIHSS total", value: "5" }] },
-        "en"
-      )
-    ).toEqual([]);
+  it("English export with legacy French-only summary regenerates English from payloadJson", () => {
+    const en = selectClinicalDocumentationPayloadSummary(
+      {
+        cardId: STROKE_NIHSS_CARD_ID,
+        payloadJson: NIHSS_VALID,
+        payloadSummary: [{ key: "Score NIHSS total", value: "5" }],
+      },
+      "en"
+    );
+    expect(en.some((l) => l.key === "NIHSS total score")).toBe(true);
+    expect(en.some((l) => l.key === "Score NIHSS total")).toBe(false);
+  });
+
+  it("English export with unknown cardId uses legal fallback instead of empty", () => {
+    const en = selectClinicalDocumentationPayloadSummary(
+      {
+        cardId: "legacy_unknown_card",
+        payloadJson: { a: 1 },
+      },
+      "en"
+    );
+    expect(en.length).toBeGreaterThan(0);
+    expect(en.some((l) => l.key === "Documentation type")).toBe(true);
   });
 
   it("summarizeClinicalDocumentationPayload requires explicit locale (no implicit French)", () => {

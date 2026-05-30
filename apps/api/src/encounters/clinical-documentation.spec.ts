@@ -131,6 +131,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
   const entryRow = {
     id: "edoc1",
     encounterId: "e1",
+    patientId: "p1",
     category: "OBSERVATION_DOCUMENTATION",
     cardId: EDOC_BASIC_STRUCTURED_CARD_ID,
     authorUserId: "u1",
@@ -158,6 +159,7 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
         id: "edoc-new",
         cardId: String(data.cardId ?? entryRow.cardId),
         category: String(data.category ?? entryRow.category),
+        patientId: String(data.patientId ?? entryRow.patientId),
         payloadJson: data.payloadJson ?? entryRow.payloadJson,
         requiresWitnessSignature: Boolean(data.requiresWitnessSignature),
         authorUserId: String(data.authorUserId ?? entryRow.authorUserId),
@@ -1761,8 +1763,37 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(saved.payloadSummaryEn.some((l) => l.key === "Urine flow present")).toBe(true);
   });
 
-  it("POST NG/OG tube monitoring persists (EDOC.17)", async () => {
+  it("POST NG/OG tube monitoring persists with legal summary (EDOC.17 / EDOC.LEGAL.1)", async () => {
     const { svc, create } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+        cardId: NG_OG_TUBE_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          tubeType: "NG",
+          placementVerified: "YES",
+          markingAtNares: "22 cm",
+          suctionActive: "NO",
+          drainagePresent: "YES",
+          drainageAppearance: "CLEAR",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+    expect(saved.patientId).toBeDefined();
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Tube type" && l.value === "NG")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Suction active")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Drainage appearance")).toBe(true);
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notified")).toBe(true);
+  });
+
+  it("audit metadata includes summaryLineCount without PHI (EDOC.LEGAL.1)", async () => {
+    const { svc, audit } = buildService();
     await svc.createEntry(
       "f1",
       "e1",
@@ -1776,13 +1807,19 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
           markingAtNares: "22 cm",
           suctionActive: "NO",
           drainagePresent: "YES",
-          drainageAppearance: "GREEN",
+          drainageAppearance: "CLEAR",
           providerNotified: "NO",
         },
       },
       "u1"
     );
-    expect(create).toHaveBeenCalled();
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta.summaryLineCount).toBeGreaterThan(0);
+    expect(meta).not.toHaveProperty("payloadJson");
+    expect(meta).not.toHaveProperty("notes");
+    for (const key of Object.keys(meta)) {
+      expect(ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS as readonly string[]).toContain(key);
+    }
   });
 
   it("POST chest tube monitoring persists (EDOC.17)", async () => {

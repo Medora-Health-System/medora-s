@@ -27,6 +27,7 @@ import {
   CONTINUOUS_CARDIAC_MONITORING_CARD_ID,
   SUICIDE_PRECAUTIONS_DOCUMENTATION_CARD_ID,
   PERIPHERAL_IV_ASSESSMENT_CARD_ID,
+  NG_OG_TUBE_MONITORING_CARD_ID,
   SEPSIS_SCREENING_CARD_ID,
   NURSING_ADMISSION_ASSESSMENT_CARD_ID,
   BRADEN_RISK_ASSESSMENT_CARD_ID,
@@ -1116,6 +1117,84 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("DEVICE_LINE_TUBE_DRAIN_MONITORING");
     expect(htmlEn).toContain("Left hand");
+  });
+
+  it("renders NG/OG tube monitoring summary in export (EDOC.LEGAL.1)", async () => {
+    const ngOgPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      tubeType: "NG",
+      placementVerified: "YES",
+      markingAtNares: "22 cm",
+      suctionActive: "NO",
+      drainagePresent: "YES",
+      drainageAppearance: "CLEAR",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-ng-og-legal",
+          category: "DEVICE_LINE_TUBE_DRAIN_MONITORING",
+          cardId: NG_OG_TUBE_MONITORING_CARD_ID,
+          payloadJson: ngOgPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(ngOgPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Tube type" && l.value === "NG")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("Tube type");
+    expect(htmlEn).toContain("Suction active");
+  });
+
+  it("renders fallback summary for unknown card in export (EDOC.LEGAL.1)", async () => {
+    const legacyPayload = { customField: "legacy-value", note: "saved" };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-legacy-fallback",
+          category: "OBSERVATION_DOCUMENTATION",
+          cardId: "legacy_hidden_card_xyz",
+          payloadJson: legacyPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Structured payload saved")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("Structured payload saved");
+    expect(htmlEn).toContain("legacy_hidden_card_xyz");
   });
 
   it("renders sepsis screening summary in export (EDOC.18)", async () => {
