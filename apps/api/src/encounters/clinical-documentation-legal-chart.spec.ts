@@ -21,6 +21,7 @@ import {
   SEDATION_TIMEOUT_CARD_ID,
   GLASGOW_COMA_SCALE_CARD_ID,
   RESP_ASSESSMENT_CARD_ID,
+  PAIN_INITIAL_ASSESSMENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -878,6 +879,51 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("RESPIRATORY_DOCUMENTATION");
     expect(htmlEn).toContain("Wheezing");
+  });
+
+  it("renders initial pain summary in export (EDOC.13)", async () => {
+    const painPayload = {
+      assessmentTime: "2026-05-28T21:00:00.000Z",
+      painScale: "NUMERIC",
+      painScore: 7,
+      painLocation: "BACK",
+      painQuality: "SHARP",
+      painDuration: "ONGOING",
+      painRadiation: "NONE",
+      functionalImpact: "MODERATE",
+      providerNotified: true,
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-pain-13",
+          category: "PAIN_DOCUMENTATION",
+          cardId: PAIN_INITIAL_ASSESSMENT_CARD_ID,
+          payloadJson: painPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(painPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "Pain score" && l.value === "7")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("PAIN_DOCUMENTATION");
+    expect(htmlEn).toContain("Severe");
   });
 
   it("ROI consumes chart export snapshots — no separate ROI manifest field required in EDOC.2", () => {

@@ -50,6 +50,10 @@ import {
   summarizeRespiratoryDocumentationPayload,
 } from "./respiratoryDocumentationPayloads.js";
 import {
+  EDOC13_PAIN_DOCUMENTATION_CARD_IDS,
+  summarizePainDocumentationPayload,
+} from "./painDocumentationPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -76,6 +80,7 @@ export * from "./belongingsValuablesDocumentationPayloads.js";
 export * from "./proceduralSedationDocumentationPayloads.js";
 export * from "./strokeNeuroReassessmentDocumentationPayloads.js";
 export * from "./respiratoryDocumentationPayloads.js";
+export * from "./painDocumentationPayloads.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
 export const CLINICAL_DOCUMENTATION_PAYLOAD_MAX_BYTES = 16_384;
@@ -309,6 +314,10 @@ export function summarizeClinicalDocumentationPayload(
   if ((EDOC12_RESPIRATORY_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
     const respiratoryLines = summarizeRespiratoryDocumentationPayload(cardId, payload, locale);
     if (respiratoryLines.length > 0) return respiratoryLines;
+  }
+  if ((EDOC13_PAIN_DOCUMENTATION_CARD_IDS as readonly string[]).includes(cardId)) {
+    const painLines = summarizePainDocumentationPayload(cardId, payload, locale);
+    if (painLines.length > 0) return painLines;
   }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];

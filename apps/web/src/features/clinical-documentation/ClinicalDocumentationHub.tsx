@@ -65,6 +65,10 @@ import {
   ClinicalDocumentationRespiratoryForm,
   isEdoc12RespiratoryDocumentationFormCard,
 } from "./ClinicalDocumentationRespiratoryForm";
+import {
+  ClinicalDocumentationPainForm,
+  isEdoc13PainDocumentationFormCard,
+} from "./ClinicalDocumentationPainForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
@@ -736,6 +740,14 @@ export function ClinicalDocumentationHub({
 
               {expandedCardId === c.id && isEdoc12RespiratoryDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationRespiratoryForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id && isEdoc13PainDocumentationFormCard(c.id) ? (
+                <ClinicalDocumentationPainForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => submitClinicalDocumentation(c, payload)}

@@ -22,6 +22,13 @@ import {
   RESPIRATORY_DISTRESS_REASSESSMENT_CARD_ID,
   VENTILATOR_OBSERVATION_CARD_ID,
   PEAK_FLOW_DOCUMENTATION_CARD_ID,
+  PAIN_INITIAL_ASSESSMENT_CARD_ID,
+  PAIN_REASSESSMENT_CARD_ID,
+  PAIN_POST_INTERVENTION_REASSESSMENT_CARD_ID,
+  CHRONIC_PAIN_ASSESSMENT_CARD_ID,
+  ADULT_NONVERBAL_PAIN_ASSESSMENT_CARD_ID,
+  PEDIATRIC_PAIN_ASSESSMENT_CARD_ID,
+  PAIN_ESCALATION_EVENT_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -1044,6 +1051,202 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     expect(meta).not.toHaveProperty("fio2Percent");
     expect(meta).not.toHaveProperty("peep");
     expect(meta).not.toHaveProperty("spo2");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+  });
+
+  it("POST initial pain assessment persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PAIN_INITIAL_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          painScale: "NUMERIC",
+          painScore: 6,
+          painLocation: "ABDOMEN",
+          painQuality: "CRAMPING",
+          painDuration: "NEW",
+          painRadiation: "NONE",
+          functionalImpact: "MODERATE",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Pain score" && l.value === "6")).toBe(true);
+  });
+
+  it("POST pain reassessment persists (EDOC.13)", async () => {
+    const { svc, create } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PAIN_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          painScale: "NUMERIC",
+          painScore: 3,
+          previousPainScore: 6,
+          painImproved: true,
+          functionalImpact: "MILD",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it("POST post-intervention pain persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PAIN_POST_INTERVENTION_REASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          interventionType: "MEDICATION",
+          painScoreBefore: 8,
+          painScoreAfter: 4,
+          response: "IMPROVED",
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Before" && l.value === "8")).toBe(true);
+  });
+
+  it("POST chronic pain persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: CHRONIC_PAIN_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          baselinePainScore: 5,
+          currentPainScore: 6,
+          painManagementPlanPresent: true,
+          opioidTherapyReported: true,
+          painInterferesWithSleep: true,
+          painInterferesWithMobility: true,
+          painInterferesWithADLs: false,
+          providerManagingPainKnown: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Baseline")).toBe(true);
+  });
+
+  it("POST adult non-verbal pain persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: ADULT_NONVERBAL_PAIN_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          facialExpression: 1,
+          activity: 1,
+          guarding: 0,
+          physiology: 0,
+          respiratory: 0,
+          totalScore: 2,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Total score" && l.value === "2")).toBe(true);
+  });
+
+  it("POST pediatric FLACC persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PEDIATRIC_PAIN_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          face: 1,
+          legs: 1,
+          activity: 1,
+          cry: 0,
+          consolability: 1,
+          totalScore: 4,
+          providerNotified: false,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "FLACC total" && l.value === "4")).toBe(true);
+  });
+
+  it("POST pain escalation persists (EDOC.13)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PAIN_ESCALATION_EVENT_CARD_ID,
+        payloadJson: {
+          eventTime: "2026-05-28T14:00:00.000Z",
+          reason: "UNCONTROLLED_PAIN",
+          providerNotified: true,
+          providerNotificationTime: "2026-05-28T14:05:00.000Z",
+          responseReceived: true,
+          additionalInterventionOrdered: true,
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Provider notified")).toBe(true);
+  });
+
+  it("pain audit metadata excludes findings (EDOC.13)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PAIN_DOCUMENTATION",
+        cardId: PAIN_INITIAL_ASSESSMENT_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          painScale: "NUMERIC",
+          painScore: 9,
+          painLocation: "CHEST",
+          painQuality: "PRESSURE",
+          painDuration: "NEW",
+          painRadiation: "PRESENT",
+          painRadiationDescription: "Left arm",
+          functionalImpact: "SEVERE",
+          providerNotified: true,
+          notes: "Patient clutching chest.",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("painScore");
+    expect(meta).not.toHaveProperty("painLocation");
     expect(meta.payloadKeyCount).toBeGreaterThan(0);
   });
 });
