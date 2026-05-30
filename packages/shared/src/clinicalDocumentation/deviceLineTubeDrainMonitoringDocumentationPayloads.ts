@@ -282,6 +282,7 @@ const SITE_STATUS_MAP = labelMap(SITE_STATUS_OPTIONS);
 const DEVICE_LINE_TYPE_MAP = labelMap(DEVICE_CENTRAL_LINE_TYPE_OPTIONS);
 const DEVICE_URINE_APPEARANCE_MAP = labelMap(DEVICE_URINE_APPEARANCE_OPTIONS);
 const NG_OG_DRAINAGE_MAP = labelMap(NG_OG_DRAINAGE_APPEARANCE_OPTIONS);
+const NG_OG_TUBE_TYPE_MAP = labelMap(NG_OG_TUBE_TYPE_OPTIONS);
 const DRAIN_APPEARANCE_MAP = labelMap(DRAIN_APPEARANCE_OPTIONS);
 const SURGICAL_DRAIN_TYPE_MAP = labelMap(SURGICAL_DRAIN_TYPE_OPTIONS);
 const SURGICAL_SITE_MAP = labelMap(SURGICAL_DRAIN_SITE_STATUS_OPTIONS);
@@ -682,6 +683,15 @@ export function summarizeDeviceLineTubeDrainMonitoringPayload(
       if (!p.success) return [];
       const d = p.data;
       return [
+        {
+          key: locale === "en" ? "Tube type" : "Type de sonde",
+          value: pickLocalizedEnumLabel(
+            NG_OG_TUBE_TYPE_MAP.en,
+            NG_OG_TUBE_TYPE_MAP.fr,
+            d.tubeType,
+            locale
+          ),
+        },
         {
           key: locale === "en" ? "Placement verified" : "Position vérifiée",
           value: deviceDocYesNoLabel(d.placementVerified, locale),

@@ -118,6 +118,10 @@ import {
   DISEASE_SPECIFIC_EDUCATION_CARD_ID,
   LEARNING_BARRIER_ASSESSMENT_CARD_ID,
   EDUCATION_REFUSAL_OR_INABILITY_CARD_ID,
+  PROCEDURE_TIMEOUT_CARD_ID,
+  LUMBAR_PUNCTURE_MONITORING_CARD_ID,
+  TNK_ADMINISTRATION_CARD_ID,
+  TPA_ADMINISTRATION_CARD_ID,
   STROKE_NIHSS_CARD_ID,
   STROKE_SWALLOW_SCREEN_CARD_ID,
 } from "@medora/shared";
@@ -865,6 +869,9 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
           neuroStatusStable: true,
           bleedingObserved: false,
           headachePresent: false,
+          bpWithinParameters: "YES",
+          neuroChangePresent: "NO",
+          bleedingConcern: "NO",
           providerNotified: false,
         },
       },
@@ -3275,6 +3282,180 @@ describe("ClinicalDocumentationService (EDOC.2 / EDOC.4)", () => {
     }
     for (const forbidden of FORBIDDEN_CLINICAL_DOCUMENTATION_AUDIT_KEYS) {
       expect(meta).not.toHaveProperty(forbidden);
+    }
+  });
+
+  it("POST procedure timeout persists (EDOC.23)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: PROCEDURE_TIMEOUT_CARD_ID,
+        payloadJson: {
+          timeoutTime: "2026-05-28T14:00:00.000Z",
+          procedureType: "CENTRAL_LINE",
+          patientIdentityConfirmed: "YES",
+          procedureConfirmed: "YES",
+          siteConfirmed: "YES",
+          consentVerified: "YES",
+          allergiesReviewed: "YES",
+          anticoagulationReviewed: "NOT_APPLICABLE",
+          imagingReviewed: "NOT_APPLICABLE",
+          labsReviewed: "NOT_APPLICABLE",
+          equipmentAvailable: "YES",
+          bloodProductsAvailable: "NOT_APPLICABLE",
+          participantsPresent: "YES",
+          providerPresent: "YES",
+          nursePresent: "YES",
+          timeoutCompleted: "YES",
+          procedureHeld: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Timeout completed")).toBe(true);
+  });
+
+  it("POST lumbar puncture monitoring persists (EDOC.23)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "PROCEDURE_MONITORING",
+        cardId: LUMBAR_PUNCTURE_MONITORING_CARD_ID,
+        payloadJson: {
+          assessmentTime: "2026-05-28T14:00:00.000Z",
+          postProcedurePosition: "SUPINE",
+          neuroStatus: "BASELINE",
+          headachePresent: "NO",
+          backPainPresent: "NO",
+          bleedingPresent: "NO",
+          csfLeakConcern: "NO",
+          nauseaVomitingPresent: "NO",
+          vitalSignsStable: "YES",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "Neuro status")).toBe(true);
+  });
+
+  it("POST TNK administration persists (EDOC.23)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: TNK_ADMINISTRATION_CARD_ID,
+        payloadJson: {
+          administrationTime: "2026-05-28T14:00:00.000Z",
+          lastKnownWellTime: "2026-05-28T12:00:00.000Z",
+          nihssScore: 8,
+          patientWeightKg: 70,
+          doseMg: 50,
+          doseVerified: "YES",
+          ctHeadReviewed: "YES",
+          contraindicationChecklistReviewed: "YES",
+          providerOrderVerified: "YES",
+          neurologyConsulted: "NOT_APPLICABLE",
+          bloodPressureWithinParameters: "YES",
+          anticoagulantUseReviewed: "YES",
+          bleedingRiskReviewed: "YES",
+          patientFamilyEducationProvided: "NOT_APPLICABLE",
+          medicationAdministered: "YES",
+          administrationHeld: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "TNK administered")).toBe(true);
+  });
+
+  it("POST tPA administration persists (EDOC.23)", async () => {
+    const { svc } = buildService();
+    const saved = await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: TPA_ADMINISTRATION_CARD_ID,
+        payloadJson: {
+          administrationTime: "2026-05-28T14:00:00.000Z",
+          lastKnownWellTime: "2026-05-28T12:00:00.000Z",
+          nihssScore: 10,
+          patientWeightKg: 80,
+          totalDoseMg: 72,
+          bolusDoseMg: 7.2,
+          infusionDoseMg: 64.8,
+          bolusTime: "2026-05-28T14:00:00.000Z",
+          infusionStartTime: "2026-05-28T14:05:00.000Z",
+          doseVerified: "YES",
+          ctHeadReviewed: "YES",
+          contraindicationChecklistReviewed: "YES",
+          providerOrderVerified: "YES",
+          neurologyConsulted: "NOT_APPLICABLE",
+          bloodPressureWithinParameters: "YES",
+          anticoagulantUseReviewed: "YES",
+          bleedingRiskReviewed: "YES",
+          medicationAdministered: "YES",
+          infusionInterrupted: "NO",
+          administrationHeld: "NO",
+          providerNotified: "NO",
+        },
+      },
+      "u1"
+    );
+    expect(saved.payloadSummaryEn.some((l) => l.key === "tPA administered")).toBe(true);
+  });
+
+  it("procedural/thrombolytic audit metadata excludes dose/weight/LKW/notes (EDOC.23)", async () => {
+    const { svc, audit } = buildService();
+    await svc.createEntry(
+      "f1",
+      "e1",
+      {
+        category: "STROKE_DOCUMENTATION",
+        cardId: TNK_ADMINISTRATION_CARD_ID,
+        payloadJson: {
+          administrationTime: "2026-05-28T14:00:00.000Z",
+          lastKnownWellTime: "2026-05-28T12:00:00.000Z",
+          nihssScore: 8,
+          patientWeightKg: 70,
+          doseMg: 50,
+          doseVerified: "YES",
+          ctHeadReviewed: "YES",
+          contraindicationChecklistReviewed: "YES",
+          providerOrderVerified: "YES",
+          neurologyConsulted: "NOT_APPLICABLE",
+          bloodPressureWithinParameters: "YES",
+          anticoagulantUseReviewed: "YES",
+          bleedingRiskReviewed: "YES",
+          patientFamilyEducationProvided: "NOT_APPLICABLE",
+          medicationAdministered: "YES",
+          administrationHeld: "NO",
+          providerNotified: "NO",
+          notes: "Patient tolerated well.",
+          holdReason: "BP_OUT_OF_RANGE",
+        },
+      },
+      "u1"
+    );
+    const meta = audit.log.mock.calls[0]?.[2]?.metadata as Record<string, unknown>;
+    expect(meta).not.toHaveProperty("notes");
+    expect(meta).not.toHaveProperty("doseMg");
+    expect(meta).not.toHaveProperty("patientWeightKg");
+    expect(meta).not.toHaveProperty("lastKnownWellTime");
+    expect(meta).not.toHaveProperty("holdReason");
+    expect(meta.payloadKeyCount).toBeGreaterThan(0);
+    for (const key of Object.keys(meta)) {
+      expect(ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS as readonly string[]).toContain(key);
     }
   });
 

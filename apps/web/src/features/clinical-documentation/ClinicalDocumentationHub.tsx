@@ -110,6 +110,10 @@ import {
   ClinicalDocumentationEducationForm,
   isEdoc22PatientEducationDischargeTeachingDocumentationFormCard,
 } from "./ClinicalDocumentationEducationForm";
+import {
+  ClinicalDocumentationProceduralSafetyForm,
+  isEdoc23ProceduralSafetyThrombolyticDocumentationFormCard,
+} from "./ClinicalDocumentationProceduralSafetyForm";
 import { ClinicalDocumentationWitnessSearchModal } from "./ClinicalDocumentationWitnessSearchModal";
 
 const chipBase: React.CSSProperties = {
@@ -872,6 +876,15 @@ export function ClinicalDocumentationHub({
               {expandedCardId === c.id &&
               isEdoc22PatientEducationDischargeTeachingDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationEducationForm
+                  cardId={c.id}
+                  saving={saving}
+                  onSubmit={(payload) => submitClinicalDocumentation(c, payload)}
+                />
+              ) : null}
+
+              {expandedCardId === c.id &&
+              isEdoc23ProceduralSafetyThrombolyticDocumentationFormCard(c.id) ? (
+                <ClinicalDocumentationProceduralSafetyForm
                   cardId={c.id}
                   saving={saving}
                   onSubmit={(payload) => submitClinicalDocumentation(c, payload)}

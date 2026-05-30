@@ -174,6 +174,9 @@ describe("strokeNeuroReassessmentDocumentationPayloads (EDOC.11)", () => {
       neuroStatusStable: false,
       bleedingObserved: true,
       headachePresent: true,
+      bpWithinParameters: "NO",
+      neuroChangePresent: "YES",
+      bleedingConcern: "YES",
       providerNotified: false,
     });
     expect(bad.ok).toBe(false);
@@ -185,6 +188,9 @@ describe("strokeNeuroReassessmentDocumentationPayloads (EDOC.11)", () => {
       neuroStatusStable: true,
       bleedingObserved: false,
       headachePresent: false,
+      bpWithinParameters: "YES",
+      neuroChangePresent: "NO",
+      bleedingConcern: "NO",
       providerNotified: false,
     });
     expect(ok.ok).toBe(true);

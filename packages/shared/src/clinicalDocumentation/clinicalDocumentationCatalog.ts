@@ -106,7 +106,10 @@ export const CLINICAL_DOCUMENTATION_CATALOG_GOVERNANCE: Readonly<
     categories: ["STROKE_DOCUMENTATION", "SCORES_AND_SCREENS"],
     visibleInAll: false,
   },
-  post_thrombolytic_monitoring: {},
+  post_thrombolytic_monitoring: {
+    categories: ["NEUROLOGICAL_DOCUMENTATION"],
+    keywords: ["post thrombolytic", "post-thrombolytic monitoring"],
+  },
   neurological_post_thrombolytic_monitoring: {
     visibleInAll: false,
   },

@@ -94,6 +94,10 @@ import {
   summarizePatientEducationDischargePayload,
 } from "./patientEducationDischargeTeachingDocumentationPayloads.js";
 import {
+  EDOC23_PROCEDURAL_SAFETY_THROMBOLYTIC_CARD_IDS,
+  summarizeProceduralSafetyThrombolyticPayload,
+} from "./proceduralSafetyThrombolyticPayloads.js";
+import {
   resolveClinicalDocumentationWitnessStatus,
   type ClinicalDocumentationWitnessStatus,
 } from "./clinicalDocumentationWitnessGovernance.js";
@@ -131,6 +135,7 @@ export * from "./nursingAdmissionCarePlanDocumentationPayloads.js";
 export * from "./skinWoundPressureInjuryDocumentationPayloads.js";
 export * from "./dialysisRenalFluidManagementDocumentationPayloads.js";
 export * from "./patientEducationDischargeTeachingDocumentationPayloads.js";
+export * from "./proceduralSafetyThrombolyticPayloads.js";
 export * from "./clinicalDocumentationCatalog.js";
 
 /** Max serialized payload size (bytes, UTF-8 approximated by string length). */
@@ -158,6 +163,7 @@ export type ClinicalDocumentationEntryCreateWithWitnessDto = z.infer<
 export type ClinicalDocumentationEntryResponse = {
   id: string;
   encounterId: string;
+  patientId?: string;
   category: ClinicalDocumentationCategory;
   cardId: string;
   cardTitleEn: string;
@@ -205,6 +211,7 @@ export const ALLOWED_CLINICAL_DOCUMENTATION_AUDIT_KEYS = [
   "authorUserId",
   "authorRole",
   "payloadKeyCount",
+  "summaryLineCount",
   "witnessUserId",
   "witnessRole",
 ] as const;
@@ -218,6 +225,7 @@ export type ClinicalDocumentationAuditMetadata = {
   authorUserId: string;
   authorRole: string;
   payloadKeyCount: number;
+  summaryLineCount?: number;
 };
 
 export function buildClinicalDocumentationAuditMetadata(
@@ -418,6 +426,10 @@ export function summarizeClinicalDocumentationPayload(
     const educationLines = summarizePatientEducationDischargePayload(cardId, payload, locale);
     if (educationLines.length > 0) return educationLines;
   }
+  if ((EDOC23_PROCEDURAL_SAFETY_THROMBOLYTIC_CARD_IDS as readonly string[]).includes(cardId)) {
+    const proceduralLines = summarizeProceduralSafetyThrombolyticPayload(cardId, payload, locale);
+    if (proceduralLines.length > 0) return proceduralLines;
+  }
   if (cardId === EDOC_BASIC_STRUCTURED_CARD_ID && Array.isArray(payload.items)) {
     const lines: ClinicalDocumentationPayloadSummaryLine[] = [];
     for (const item of payload.items) {
@@ -433,6 +445,44 @@ export function summarizeClinicalDocumentationPayload(
   return [];
 }
 
+/** EDOC.LEGAL.1 — minimum legal display when card-specific summary is empty or unavailable. */
+export function buildClinicalDocumentationFallbackSummaryLines(
+  cardId: string,
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
+): ClinicalDocumentationPayloadSummaryLine[] {
+  const titles = resolveClinicalDocumentationEntryTitles(cardId);
+  const title = locale === "en" ? titles.cardTitleEn : titles.cardTitleFr;
+  const keyCount = Object.keys(payload).filter(
+    (key) => payload[key] !== undefined && payload[key] !== null && payload[key] !== ""
+  ).length;
+  if (locale === "en") {
+    return [
+      { key: "Documentation type", value: title },
+      { key: "Structured payload saved", value: "Yes" },
+      { key: "Payload fields", value: String(keyCount) },
+    ];
+  }
+  return [
+    { key: "Type de documentation", value: title },
+    { key: "Données structurées enregistrées", value: "Oui" },
+    { key: "Champs du formulaire", value: String(keyCount) },
+  ];
+}
+
+/**
+ * EDOC.LEGAL.1 — card summary when available; otherwise legal fallback (never empty for saved entries).
+ */
+export function ensureClinicalDocumentationLegalDisplaySummary(
+  cardId: string,
+  payload: Record<string, unknown>,
+  locale: ClinicalDocumentationSummaryLocale
+): ClinicalDocumentationPayloadSummaryLine[] {
+  const lines = summarizeClinicalDocumentationPayload(cardId, payload, locale);
+  if (lines.length > 0) return lines;
+  return buildClinicalDocumentationFallbackSummaryLines(cardId, payload, locale);
+}
+
 export function summarizeClinicalDocumentationPayloadBilingual(
   cardId: string,
   payload: Record<string, unknown>
@@ -441,8 +491,8 @@ export function summarizeClinicalDocumentationPayloadBilingual(
   payloadSummaryFr: ClinicalDocumentationPayloadSummaryLine[];
 } {
   return {
-    payloadSummaryEn: summarizeClinicalDocumentationPayload(cardId, payload, "en"),
-    payloadSummaryFr: summarizeClinicalDocumentationPayload(cardId, payload, "fr"),
+    payloadSummaryEn: ensureClinicalDocumentationLegalDisplaySummary(cardId, payload, "en"),
+    payloadSummaryFr: ensureClinicalDocumentationLegalDisplaySummary(cardId, payload, "fr"),
   };
 }
 
@@ -458,16 +508,24 @@ export function selectClinicalDocumentationPayloadSummary(
     if (entry.payloadSummaryEn && entry.payloadSummaryEn.length > 0) {
       return entry.payloadSummaryEn;
     }
-    if (entry.cardId && entry.payloadJson) {
-      return summarizeClinicalDocumentationPayload(entry.cardId, entry.payloadJson, "en");
+    if (entry.cardId) {
+      return ensureClinicalDocumentationLegalDisplaySummary(
+        entry.cardId,
+        entry.payloadJson ?? {},
+        "en"
+      );
     }
     return [];
   }
   if (entry.payloadSummaryFr && entry.payloadSummaryFr.length > 0) {
     return entry.payloadSummaryFr;
   }
-  if (entry.cardId && entry.payloadJson) {
-    return summarizeClinicalDocumentationPayload(entry.cardId, entry.payloadJson, "fr");
+  if (entry.cardId) {
+    return ensureClinicalDocumentationLegalDisplaySummary(
+      entry.cardId,
+      entry.payloadJson ?? {},
+      "fr"
+    );
   }
   return entry.payloadSummary ?? entry.payloadSummaryEn ?? [];
 }
@@ -475,6 +533,7 @@ export function selectClinicalDocumentationPayloadSummary(
 export function mapClinicalDocumentationEntryResponse(input: {
   id: string;
   encounterId: string;
+  patientId?: string;
   category: string;
   cardId: string;
   authorUserId: string;
@@ -508,6 +567,7 @@ export function mapClinicalDocumentationEntryResponse(input: {
   return {
     id: input.id,
     encounterId: input.encounterId,
+    patientId: input.patientId,
     category: input.category as ClinicalDocumentationCategory,
     cardId: input.cardId,
     cardTitleEn: titles.cardTitleEn,

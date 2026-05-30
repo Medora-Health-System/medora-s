@@ -32,6 +32,7 @@ import {
   BRADEN_RISK_ASSESSMENT_CARD_ID,
   RENAL_INTAKE_OUTPUT_REVIEW_CARD_ID,
   TEACH_BACK_VERIFICATION_CARD_ID,
+  TNK_ADMINISTRATION_CARD_ID,
   STROKE_NIHSS_CARD_ID,
 } from "@medora/shared";
 
@@ -1346,6 +1347,59 @@ describe("Clinical documentation legal chart + ROI export pipeline (EDOC.2A)", (
     const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
     expect(htmlEn).toContain("PATIENT_EDUCATION_AND_DISCHARGE_TEACHING");
     expect(htmlEn).toContain("Discharge");
+  });
+
+  it("renders TNK administration summary in export (EDOC.23)", async () => {
+    const tnkPayload = {
+      administrationTime: "2026-05-28T14:00:00.000Z",
+      lastKnownWellTime: "2026-05-28T12:00:00.000Z",
+      nihssScore: 8,
+      patientWeightKg: 70,
+      doseMg: 50,
+      doseVerified: "YES",
+      ctHeadReviewed: "YES",
+      contraindicationChecklistReviewed: "YES",
+      providerOrderVerified: "YES",
+      neurologyConsulted: "NOT_APPLICABLE",
+      bloodPressureWithinParameters: "YES",
+      anticoagulantUseReviewed: "YES",
+      bleedingRiskReviewed: "YES",
+      patientFamilyEducationProvided: "NOT_APPLICABLE",
+      medicationAdministered: "YES",
+      administrationHeld: "NO",
+      providerNotified: "NO",
+    };
+    const prisma = makePrismaForEdoc({
+      clinicalDocumentationEntries: [
+        {
+          ...SAMPLE_ENTRY,
+          id: "edoc-tnk-23",
+          category: "STROKE_DOCUMENTATION",
+          cardId: TNK_ADMINISTRATION_CARD_ID,
+          payloadJson: tnkPayload,
+        },
+      ],
+    });
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const unifiedTimelineService = {
+      getUnifiedTimeline: jest.fn().mockResolvedValue({
+        capped: false,
+        items: [],
+        totalBeforeDedupe: 0,
+        totalAfterDedupe: 0,
+      }),
+    };
+    const manifest = await new EncounterChartExportService(
+      prisma as never,
+      audit as never,
+      unifiedTimelineService as never
+    ).getManifest("facility-A", "enc-1");
+    const row = manifest.encounter.clinicalDocumentationEntries[0]!;
+    expect(row.payloadJson).toEqual(tnkPayload);
+    expect(row.payloadSummaryEn!.some((l) => l.key === "TNK administered")).toBe(true);
+    const htmlEn = renderEncounterChartExportHtml(manifest, { locale: "en" });
+    expect(htmlEn).toContain("STROKE_DOCUMENTATION");
+    expect(htmlEn).toContain("TNK administered");
   });
 
   it("renders GCS assessment summary in export (EDOC.14)", async () => {

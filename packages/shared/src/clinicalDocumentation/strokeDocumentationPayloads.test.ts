@@ -12,6 +12,7 @@ import {
   summarizeStrokeDocumentationPayload,
   validateStrokePayloadForCard,
 } from "./strokeDocumentationPayloads.js";
+import { validateProceduralSafetyThrombolyticPayloadForCard } from "./proceduralSafetyThrombolyticPayloads.js";
 import { summarizeClinicalDocumentationPayload } from "./clinicalDocumentationEntry.js";
 
 const NIHSS_VALID = {
@@ -44,9 +45,13 @@ describe("strokeDocumentationPayloads (EDOC.4 stroke suite)", () => {
     expect(() => assertRegistryAvailableCardsHavePayloadValidators()).not.toThrow();
   });
 
-  it("foundation-only stroke cards cannot save", () => {
-    expect(getClinicalDocumentationCardById("stroke_tnk")?.implementationStatus).toBe("FOUNDATION_ONLY");
+  it("stroke reassessment remains foundation-only; TNK/tPA use EDOC.23 validators", () => {
+    expect(getClinicalDocumentationCardById("stroke_reassessment")?.implementationStatus).toBe(
+      "FOUNDATION_ONLY"
+    );
+    expect(getClinicalDocumentationCardById("stroke_tnk")?.implementationStatus).toBe("AVAILABLE");
     expect(validateStrokePayloadForCard("stroke_tnk", { x: 1 }).ok).toBe(false);
+    expect(validateProceduralSafetyThrombolyticPayloadForCard("stroke_tnk", { x: 1 }).ok).toBe(false);
   });
 
   it("NIHSS accepts valid payload and rejects invalid ranges", () => {

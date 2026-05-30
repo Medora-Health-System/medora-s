@@ -12,6 +12,7 @@ import {
   pickLocalizedEnumLabel,
   type ClinicalDocumentationSummaryLocale,
 } from "./clinicalDocumentationSummaryLocale.js";
+import { PROC_YES_NO_VALUES } from "./proceduralSafetyThrombolyticPayloads.js";
 
 /** EDOC.11 — stroke / neuro reassessment card IDs (distinct from EDOC.4 baseline cards). */
 export const NIHSS_REASSESSMENT_CARD_ID = "nihss_reassessment" as const;
@@ -514,6 +515,9 @@ export const postThrombolyticMonitoringPayloadSchema = z
     neuroStatusStable: z.boolean(),
     bleedingObserved: z.boolean(),
     headachePresent: z.boolean(),
+    bpWithinParameters: z.enum(PROC_YES_NO_VALUES),
+    neuroChangePresent: z.enum(PROC_YES_NO_VALUES),
+    bleedingConcern: z.enum(PROC_YES_NO_VALUES),
     providerNotified: z.boolean(),
     notes: optionalNotes,
   })
@@ -522,6 +526,27 @@ export const postThrombolyticMonitoringPayloadSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Provider notification required when bleeding observed",
+        path: ["providerNotified"],
+      });
+    }
+    if (data.bleedingConcern === "YES" && !data.providerNotified) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provider notification required when bleeding concern",
+        path: ["providerNotified"],
+      });
+    }
+    if (data.neuroChangePresent === "YES" && !data.providerNotified) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provider notification required when neuro change present",
+        path: ["providerNotified"],
+      });
+    }
+    if (data.bpWithinParameters === "NO" && !data.providerNotified) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provider notification required when BP outside parameters",
         path: ["providerNotified"],
       });
     }
@@ -732,6 +757,24 @@ export function summarizeStrokeNeuroReassessmentPayload(
         {
           key: locale === "en" ? "Neuro stable" : "Neuro stable",
           value: clinicalDocYesNo(p.data.neuroStatusStable, locale),
+        },
+        {
+          key: locale === "en" ? "BP within parameters" : "TA dans les paramètres",
+          value: p.data.bpWithinParameters === "YES"
+            ? locale === "en" ? "Yes" : "Oui"
+            : locale === "en" ? "No" : "Non",
+        },
+        {
+          key: locale === "en" ? "Neuro change" : "Changement neuro",
+          value: p.data.neuroChangePresent === "YES"
+            ? locale === "en" ? "Yes" : "Oui"
+            : locale === "en" ? "No" : "Non",
+        },
+        {
+          key: locale === "en" ? "Bleeding concern" : "Préoccupation saignement",
+          value: p.data.bleedingConcern === "YES"
+            ? locale === "en" ? "Yes" : "Oui"
+            : locale === "en" ? "No" : "Non",
         },
         {
           key: locale === "en" ? "Bleeding observed" : "Saignement observé",
