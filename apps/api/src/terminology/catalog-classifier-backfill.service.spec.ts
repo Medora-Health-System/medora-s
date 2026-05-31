@@ -1,12 +1,10 @@
 import {
-  CONTRAST_MANUAL_REVIEW_IMAGING_CODES,
-  parseLabCategoryFromDescription,
-} from "../../prisma/data/catalog-classifier-backfill-map";
-import {
   BODY_REGION_LEGACY_TO_CLASSIFIER,
   CONTRAST_CATALOG_CODE_TO_CLASSIFIER,
+  CONTRAST_MANUAL_REVIEW_IMAGING_CODES,
   LAB_CATEGORY_LEGACY_TO_CLASSIFIER,
-} from "../../prisma/data/catalog-classifier-backfill-map";
+  parseLabCategoryFromDescription,
+} from "./catalog-classifier-backfill-map";
 import {
   planFieldBackfill,
   resolveClassifierId,

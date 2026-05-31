@@ -8,7 +8,7 @@ import {
   MODALITY_LEGACY_TO_CLASSIFIER,
   VIEW_COUNT_CATALOG_CODE_TO_CLASSIFIER,
   parseLabCategoryFromDescription,
-} from "../../prisma/data/catalog-classifier-backfill-map";
+} from "./catalog-classifier-backfill-map";
 import { isTerminologyBackfillEnabled } from "./terminology-flags.util";
 
 export type BackfillAuditStatus = "APPLIED" | "UNCHANGED" | "SKIPPED" | "MANUAL_REVIEW";
