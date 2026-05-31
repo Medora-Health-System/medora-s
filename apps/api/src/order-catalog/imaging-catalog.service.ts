@@ -8,6 +8,8 @@ import {
   type OrderCatalogRankableRow,
 } from "./catalog-search-rank.util";
 import { mapImagingRowToCatalogSearchItem } from "./catalog-search.mapper";
+import { isTerminologyReadClassifierEnabled, isTerminologySearchClassifierEnabled } from "../terminology/terminology-flags.util";
+import { imagingClassifierSearchOr } from "../terminology/terminology-classifier-search.util";
 
 const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
   cxr: ["XR_CHEST"],
@@ -21,6 +23,11 @@ const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
   "mri brain": ["MRI_BRAIN"],
 };
 
+const imagingClassifierInclude = {
+  modalityClassifier: { include: { labels: { select: { locale: true, displayName: true } } } },
+  bodyRegionClassifier: { include: { labels: { select: { locale: true, displayName: true } } } },
+};
+
 @Injectable()
 export class ImagingCatalogService {
   constructor(private readonly prisma: PrismaService) {}
@@ -30,19 +37,25 @@ export class ImagingCatalogService {
     const limit = Math.min(query.limit, 50);
     if (!q) return { items: [] };
 
+    const legacyOr = [
+      { code: { contains: q, mode: "insensitive" as const } },
+      { name: { contains: q, mode: "insensitive" as const } },
+      { displayNameEn: { contains: q, mode: "insensitive" as const } },
+      { displayNameFr: { contains: q, mode: "insensitive" as const } },
+      { searchText: { contains: q, mode: "insensitive" as const } },
+      { modality: { contains: q, mode: "insensitive" as const } },
+      { bodyRegion: { contains: q, mode: "insensitive" as const } },
+    ];
+
+    const includeClassifiers = isTerminologyReadClassifierEnabled();
+    const classifierSearch = isTerminologySearchClassifierEnabled();
+
     const byCatalog = await this.prisma.catalogImagingStudy.findMany({
       where: {
         isActive: true,
-        OR: [
-          { code: { contains: q, mode: "insensitive" } },
-          { name: { contains: q, mode: "insensitive" } },
-          { displayNameEn: { contains: q, mode: "insensitive" } },
-          { displayNameFr: { contains: q, mode: "insensitive" } },
-          { searchText: { contains: q, mode: "insensitive" } },
-          { modality: { contains: q, mode: "insensitive" } },
-          { bodyRegion: { contains: q, mode: "insensitive" } },
-        ],
+        OR: classifierSearch ? [...legacyOr, ...imagingClassifierSearchOr(q)] : legacyOr,
       },
+      include: includeClassifiers ? imagingClassifierInclude : undefined,
       orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
       take: limit * 3,
     });
@@ -52,6 +65,7 @@ export class ImagingCatalogService {
       aliasCodes.length > 0
         ? await this.prisma.catalogImagingStudy.findMany({
             where: { code: { in: aliasCodes }, isActive: true },
+            include: includeClassifiers ? imagingClassifierInclude : undefined,
           })
         : [];
 
@@ -64,6 +78,7 @@ export class ImagingCatalogService {
       aliasIds.length > 0
         ? await this.prisma.catalogImagingStudy.findMany({
             where: { id: { in: aliasIds }, isActive: true },
+            include: includeClassifiers ? imagingClassifierInclude : undefined,
             orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
           })
         : [];
@@ -121,6 +136,16 @@ export class ImagingCatalogService {
           modality: row.modality,
           bodyRegion: row.bodyRegion,
           searchText: row.searchText,
+          modalityClassifier:
+            includeClassifiers && "modalityClassifier" in row
+              ? (row as { modalityClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                  .modalityClassifier
+              : null,
+          bodyRegionClassifier:
+            includeClassifiers && "bodyRegionClassifier" in row
+              ? (row as { bodyRegionClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                  .bodyRegionClassifier
+              : null,
         },
         truncateSearchText(row.searchText)
       )

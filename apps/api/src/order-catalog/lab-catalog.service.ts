@@ -8,6 +8,8 @@ import {
   type OrderCatalogRankableRow,
 } from "./catalog-search-rank.util";
 import { mapLabRowToCatalogSearchItem } from "./catalog-search.mapper";
+import { isTerminologyReadClassifierEnabled, isTerminologySearchClassifierEnabled } from "../terminology/terminology-flags.util";
+import { labClassifierSearchOr } from "../terminology/terminology-classifier-search.util";
 
 const LAB_ALIAS_CODE_MAP: Record<string, string[]> = {
   cbc: ["CBC", "ER_CBC"],
@@ -16,6 +18,10 @@ const LAB_ALIAS_CODE_MAP: Record<string, string[]> = {
   trop: ["TROPONIN", "TROP", "ER_TROP"],
   hcg: ["URINE_HCG", "SERUM_HCG", "HCG_URINE", "HCG_BETA", "ER_UHCG"],
   "type screen": ["TYPE_SCREEN", "ER_BLOOD_TYPE"],
+};
+
+const labClassifierInclude = {
+  labCategoryClassifier: { include: { labels: { select: { locale: true, displayName: true } } } },
 };
 
 @Injectable()
@@ -27,17 +33,23 @@ export class LabCatalogService {
     const limit = Math.min(query.limit, 50);
     if (!q) return { items: [] };
 
+    const legacyOr = [
+      { code: { contains: q, mode: "insensitive" as const } },
+      { name: { contains: q, mode: "insensitive" as const } },
+      { displayNameEn: { contains: q, mode: "insensitive" as const } },
+      { displayNameFr: { contains: q, mode: "insensitive" as const } },
+      { searchText: { contains: q, mode: "insensitive" as const } },
+    ];
+
+    const includeClassifiers = isTerminologyReadClassifierEnabled();
+    const classifierSearch = isTerminologySearchClassifierEnabled();
+
     const byCatalog = await this.prisma.catalogLabTest.findMany({
       where: {
         isActive: true,
-        OR: [
-          { code: { contains: q, mode: "insensitive" } },
-          { name: { contains: q, mode: "insensitive" } },
-          { displayNameEn: { contains: q, mode: "insensitive" } },
-          { displayNameFr: { contains: q, mode: "insensitive" } },
-          { searchText: { contains: q, mode: "insensitive" } },
-        ],
+        OR: classifierSearch ? [...legacyOr, ...labClassifierSearchOr(q)] : legacyOr,
       },
+      include: includeClassifiers ? labClassifierInclude : undefined,
       orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
       take: limit * 3,
     });
@@ -47,6 +59,7 @@ export class LabCatalogService {
       aliasCodes.length > 0
         ? await this.prisma.catalogLabTest.findMany({
             where: { code: { in: aliasCodes }, isActive: true },
+            include: includeClassifiers ? labClassifierInclude : undefined,
           })
         : [];
 
@@ -59,6 +72,7 @@ export class LabCatalogService {
       aliasIds.length > 0
         ? await this.prisma.catalogLabTest.findMany({
             where: { id: { in: aliasIds }, isActive: true },
+            include: includeClassifiers ? labClassifierInclude : undefined,
             orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
           })
         : [];
@@ -116,6 +130,11 @@ export class LabCatalogService {
           description: row.description,
           searchText: row.searchText,
           billingCodeDefault: row.billingCodeDefault,
+          labCategoryClassifier:
+            includeClassifiers && "labCategoryClassifier" in row
+              ? (row as { labCategoryClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                  .labCategoryClassifier
+              : null,
         },
         truncateSearchText(row.searchText)
       )

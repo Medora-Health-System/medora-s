@@ -1576,27 +1576,107 @@ model Result {
   @@index([acknowledgedByUserId])
 }
 
+/// Phase 2B.2 — Medora Reference Vocabulary classifier (canonical terminology; labels in `TermClassifierLabel`).
+model TermClassifier {
+  id                    String    @id @default(uuid())
+  domain                String    @db.VarChar(32)
+  code                  String    @db.VarChar(64)
+  isActive     Boolean  @default(true)
+  sortPriority Int      @default(0)
+  searchText   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  labels              TermClassifierLabel[]
+  aliases             TermClassifierAlias[]
+
+  imagingBodyRegion   CatalogImagingStudy[] @relation("ImagingBodyRegionClassifier")
+  imagingModality     CatalogImagingStudy[] @relation("ImagingModalityClassifier")
+  imagingContrastType CatalogImagingStudy[] @relation("ImagingContrastTypeClassifier")
+  imagingViewCount    CatalogImagingStudy[] @relation("ImagingViewCountClassifier")
+  labCategory         CatalogLabTest[]      @relation("LabCategoryClassifier")
+  backfillAudits      CatalogClassifierBackfillAudit[]
+
+  @@unique([domain, code])
+  @@index([domain])
+  @@index([domain, isActive])
+}
+
+model TermClassifierLabel {
+  id           String   @id @default(uuid())
+  classifierId String
+  locale       String   @db.VarChar(8)
+  displayName  String
+  definition   String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  classifier TermClassifier @relation(fields: [classifierId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([classifierId, locale])
+  @@index([classifierId])
+}
+
+model TermClassifierAlias {
+  id           String   @id @default(uuid())
+  classifierId String
+  alias        String
+  language     String?  @db.VarChar(8)
+  createdAt    DateTime @default(now())
+
+  classifier TermClassifier @relation(fields: [classifierId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([classifierId, alias])
+  @@index([classifierId])
+  @@index([alias])
+}
+
+/// Phase 2B.2 — audit trail for catalog classifier backfill runs.
+model CatalogClassifierBackfillAudit {
+  id           String   @id @default(uuid())
+  runId        String   @db.VarChar(64)
+  catalogTable String   @db.VarChar(64)
+  catalogRowId String
+  catalogCode  String?  @db.VarChar(64)
+  fieldName    String   @db.VarChar(64)
+  legacyValue  String?  @db.Text
+  classifierId String?
+  status       String   @db.VarChar(32)
+  message      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  classifier TermClassifier? @relation(fields: [classifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([runId])
+  @@index([catalogTable, catalogRowId])
+  @@index([status])
+}
+
 /// Shared catalog row: stable `code`, human-readable labels, `searchText` for unified search, `updatedAt` for sync.
 model CatalogLabTest {
-  id                 String   @id @default(uuid())
-  code               String   @unique
+  id                      String   @id @default(uuid())
+  code                    String   @unique
   /// Legacy internal / compat field; historically French-first for Haiti seeds. Do not use as English UI — use `displayNameEn`.
-  name               String
+  name                    String
   /// English-primary display label for catalog search, orders, MAR, and billing-enrichment line text.
-  displayNameEn      String?
+  displayNameEn           String?
   /// French display label; must not be overwritten by English backfill workflows.
-  displayNameFr      String?
+  displayNameFr           String?
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
-  billingCodeDefault String?
-  description        String?
-  searchText         String?
-  sortPriority       Int      @default(0)
-  isEssential        Boolean  @default(false)
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  billingCodeDefault      String?
+  description             String?
+  searchText              String?
+  sortPriority            Int      @default(0)
+  isEssential             Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  labCategoryClassifierId String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  aliases LabTestAlias[]
+  labCategoryClassifier TermClassifier? @relation("LabCategoryClassifier", fields: [labCategoryClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  aliases               LabTestAlias[]
+
+  @@index([labCategoryClassifierId])
 }
 
 model LabTestAlias {
@@ -1626,16 +1706,29 @@ model CatalogImagingStudy {
   /// Optional U.S. CPT/HCPCS-style code suggestion for billing; not validated or auto-applied.
   billingCodeDefault String?
   description        String?
-  modality           String?
-  bodyRegion         String?
-  searchText         String?
-  sortPriority       Int      @default(0)
-  isEssential        Boolean  @default(false)
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  modality                 String?
+  bodyRegion               String?
+  searchText               String?
+  sortPriority             Int      @default(0)
+  isEssential              Boolean  @default(false)
+  isActive                 Boolean  @default(true)
+  bodyRegionClassifierId   String?
+  modalityClassifierId     String?
+  contrastTypeClassifierId String?
+  viewCountClassifierId    String?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  aliases ImagingStudyAlias[]
+  bodyRegionClassifier   TermClassifier? @relation("ImagingBodyRegionClassifier", fields: [bodyRegionClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  modalityClassifier     TermClassifier? @relation("ImagingModalityClassifier", fields: [modalityClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  contrastTypeClassifier TermClassifier? @relation("ImagingContrastTypeClassifier", fields: [contrastTypeClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  viewCountClassifier    TermClassifier? @relation("ImagingViewCountClassifier", fields: [viewCountClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  aliases                ImagingStudyAlias[]
+
+  @@index([bodyRegionClassifierId])
+  @@index([modalityClassifierId])
+  @@index([contrastTypeClassifierId])
+  @@index([viewCountClassifierId])
 }
 
 model ImagingStudyAlias {

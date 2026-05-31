@@ -1,5 +1,10 @@
 import type { CatalogSearchItemDto } from "./dto/catalog-search-item.dto";
 import type { CatalogMedication } from "@prisma/client";
+import {
+  buildImagingClassifierMetaLine,
+  resolveLabCategoryDisplay,
+  type ClassifierWithLabels,
+} from "../terminology/resolve-classifier-catalog-meta.util";
 
 type LabRow = {
   id: string;
@@ -10,6 +15,7 @@ type LabRow = {
   description: string | null;
   searchText: string | null;
   billingCodeDefault: string | null;
+  labCategoryClassifier?: ClassifierWithLabels | null;
 };
 
 type ImagingRow = {
@@ -21,6 +27,8 @@ type ImagingRow = {
   modality: string | null;
   bodyRegion: string | null;
   searchText: string | null;
+  modalityClassifier?: ClassifierWithLabels | null;
+  bodyRegionClassifier?: ClassifierWithLabels | null;
 };
 
 export function mapMedicationToCatalogSearchItem(
@@ -73,6 +81,7 @@ export function mapLabRowToCatalogSearchItem(
   if (m.description?.startsWith("Catégorie : ")) {
     category = m.description.slice("Catégorie : ".length).trim() || undefined;
   }
+  category = resolveLabCategoryDisplay(m, category, "fr");
   const secondaryText = [m.code, category].filter(Boolean).join(" · ") || undefined;
   const billing = m.billingCodeDefault?.trim() || undefined;
   const meta: { category?: string; billingCodeDefault?: string } = {
@@ -98,7 +107,7 @@ export function mapImagingRowToCatalogSearchItem(
   searchTextTruncated?: string | undefined
 ): CatalogSearchItemDto {
   const displayNameFr = (m.displayNameFr ?? m.name).trim();
-  const metaLine = [m.modality, m.bodyRegion].filter(Boolean).join(" · ");
+  const metaLine = buildImagingClassifierMetaLine(m, "fr");
   const secondaryText = [m.code, metaLine].filter(Boolean).join(" · ") || undefined;
 
   return {
