@@ -1,4 +1,5 @@
 import type { SupportedLanguage } from "@/i18n/config";
+import { isOrderLineCancelableByStateForEr } from "@/features/emergency/erOrderLifecycleUi";
 
 /** Maps cancel API failures to user-facing i18n keys (403/409/400). */
 export function resolveOrderCancelErrorKey(
@@ -52,25 +53,58 @@ function hasRole(roles: string[], code: string): boolean {
   return roles.some((r) => String(r).toUpperCase() === code);
 }
 
-/** UI hint: show cancel control when user might be authorized (backend is source of truth). */
+/** User holds a role that may attempt order-line cancel (backend enforces final RBAC). */
+export function hasOrderLineCancelAttemptRole(roles: string[] | undefined): boolean {
+  return (roles ?? []).some((r) => CANCEL_ATTEMPT_ROLES.has(String(r).toUpperCase()));
+}
+
+/**
+ * ED open-order cancel × visibility: clinical cancel role + safe lifecycle state only.
+ * Backend remains authoritative for 403/409; this avoids hiding controls when row data
+ * lacks `orderedBy` / assignment fields needed for a full RBAC mirror.
+ */
+export function shouldShowErOrderLineCancelAction(
+  roles: string[] | undefined,
+  item: Record<string, unknown>
+): boolean {
+  return hasOrderLineCancelAttemptRole(roles) && isOrderLineCancelableByStateForEr(item);
+}
+
+function resolveOrderCreatorUserId(order: Record<string, unknown>): string {
+  if (typeof order.orderedBy === "string" && order.orderedBy.trim()) {
+    return order.orderedBy.trim();
+  }
+  const createdBy = order.createdByDisplay;
+  if (createdBy && typeof createdBy === "object" && !Array.isArray(createdBy)) {
+    const userId = (createdBy as { userId?: unknown }).userId;
+    if (typeof userId === "string" && userId.trim()) return userId.trim();
+  }
+  return "";
+}
+
+function resolveOrderSource(order: Record<string, unknown>): string {
+  if (typeof order.source === "string" && order.source.trim()) return order.source.trim();
+  const authority = order.authority;
+  if (authority && typeof authority === "object" && !Array.isArray(authority)) {
+    const source = (authority as { source?: unknown }).source;
+    if (typeof source === "string" && source.trim()) return source.trim();
+  }
+  return "";
+}
+
+/** Optional strict hint when full order attribution is available (not used for ED × default). */
 export function canShowOrderLineCancelControl(
   order: Record<string, unknown>,
   item: Record<string, unknown>,
   ctx: OrderCancelVisibilityContext
 ): boolean {
-  if (!ctx.roles.some((r) => CANCEL_ATTEMPT_ROLES.has(String(r).toUpperCase()))) return false;
+  if (!hasOrderLineCancelAttemptRole(ctx.roles)) return false;
+  if (!isOrderLineCancelableByStateForEr(item)) return false;
 
   const lifecycle = String(item.lifecycleState ?? "");
-  if (lifecycle === "REVIEWED" || lifecycle === "CANCELLED") return false;
-
-  const status = String(item.status ?? "");
-  if (status === "CANCELLED" || status === "COMPLETED" || status === "RESULTED" || status === "VERIFIED") {
-    return false;
-  }
-
   const userId = ctx.currentUserId?.trim() || "";
-  const orderedBy = typeof order.orderedBy === "string" ? order.orderedBy : "";
-  const source = typeof order.source === "string" ? order.source : "";
+  const orderedBy = resolveOrderCreatorUserId(order);
+  const source = resolveOrderSource(order);
   const orderType = String(order.type ?? "");
 
   if (hasRole(ctx.roles, "ADMIN") || hasRole(ctx.roles, "MEDORA_SUPER_ADMIN")) return true;

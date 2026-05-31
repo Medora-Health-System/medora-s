@@ -28,6 +28,27 @@ export function isOrderItemCancellableLineForEr(item: Record<string, unknown>): 
   return isOrderItemActiveForErDashboard(item);
 }
 
+/**
+ * ER cancel × visibility — stricter than {@link isOrderItemCancellableLineForEr}:
+ * ORDERED / ACKNOWLEDGED / PLACED|PENDING only; excludes IN_PROGRESS and terminal states.
+ */
+export function isOrderLineCancelableByStateForEr(item: Record<string, unknown>): boolean {
+  const ls = String(item.lifecycleState ?? "").trim();
+  const st = orderItemStatus(item);
+
+  if (ls === "REVIEWED" || ls === "CANCELLED" || st === CANCELLED_STATUS) return false;
+  if (TERMINAL_DONE_STATUSES.has(st)) return false;
+  if (ls === "COMPLETED" || ls === "IN_PROGRESS") return false;
+
+  if (ls === "ORDERED" || ls === "ACKNOWLEDGED") return true;
+
+  if (!ls) {
+    return st === "PLACED" || st === "PENDING" || st === "ACKNOWLEDGED";
+  }
+
+  return false;
+}
+
 /** Line counts as clinically completed for the Completed section (not cancelled). */
 export function isOrderItemCompletedForErDashboard(item: Record<string, unknown>): boolean {
   const st = orderItemStatus(item);
