@@ -46,6 +46,7 @@ import {
   worklistItemAllowsStart,
   worklistItemNeedsAcknowledge,
 } from "@/lib/worklistLabRadUi";
+import { resolveSelectedLineId } from "@/lib/departmentOrderDetailLineSelection";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -177,6 +178,7 @@ export default function DepartmentOrderDetail({
   const [dispenseBillingQty, setDispenseBillingQty] = useState("");
   const [dispenseNdc, setDispenseNdc] = useState("");
   const [dispenseBusy, setDispenseBusy] = useState(false);
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
 
   const labels = useMemo(() => {
     if (kind === "lab") {
@@ -225,18 +227,36 @@ export default function DepartmentOrderDetail({
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (!highlightLineId || !order?.items?.length) return;
-    const el = document.getElementById(`ligne-${highlightLineId}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [highlightLineId, order]);
-
   const filterItems = (items: any[]) => {
     if (!items) return [];
     if (kind === "lab") return items.filter((i: any) => i.catalogItemType === "LAB_TEST");
     if (kind === "radiology") return items.filter((i: any) => i.catalogItemType === "IMAGING_STUDY");
     return items.filter((i: any) => i.catalogItemType === "MEDICATION");
   };
+
+  const visibleItems = useMemo(
+    () => filterItems(order?.items || []),
+    [order?.items, kind]
+  );
+
+  const effectiveSelectedLineId = useMemo(
+    () => resolveSelectedLineId(visibleItems, highlightLineId, selectedLineId),
+    [visibleItems, highlightLineId, selectedLineId]
+  );
+
+  useEffect(() => {
+    setSelectedLineId((current) => {
+      const resolved = resolveSelectedLineId(visibleItems, highlightLineId, current);
+      return resolved === current ? current : resolved;
+    });
+  }, [visibleItems, highlightLineId]);
+
+  useEffect(() => {
+    const scrollTargetId = highlightLineId || effectiveSelectedLineId;
+    if (!scrollTargetId || !order?.items?.length) return;
+    const el = document.getElementById(`ligne-${scrollTargetId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [highlightLineId, order, effectiveSelectedLineId]);
 
   const handleAck = async (itemId: string) => {
     if (!facilityId || order?.status === "CANCELLED") return;
@@ -332,7 +352,7 @@ export default function DepartmentOrderDetail({
   }
 
   const patient = order.encounter?.patient;
-  const items = filterItems(order.items || []);
+  const items = visibleItems;
   const parentOrderCancelled = order.status === "CANCELLED";
 
   const typeMismatch =
@@ -441,7 +461,8 @@ export default function DepartmentOrderDetail({
             key={item.id}
             item={item}
             kind={kind}
-            highlight={highlightLineId === item.id}
+            expanded={effectiveSelectedLineId === item.id}
+            highlight={effectiveSelectedLineId === item.id}
             labels={labels}
             facilityId={facilityId}
             order={order}
@@ -453,6 +474,7 @@ export default function DepartmentOrderDetail({
             onAck={handleAck}
             onStart={handleStart}
             onComplete={handleComplete}
+            onSelectLine={() => setSelectedLineId(item.id)}
             onOpenDispense={kind === "pharmacy" ? openDispense : undefined}
           />
         ))
@@ -605,6 +627,7 @@ export default function DepartmentOrderDetail({
 function LineCard({
   item,
   kind,
+  expanded,
   highlight,
   labels,
   facilityId,
@@ -617,10 +640,12 @@ function LineCard({
   onAck,
   onStart,
   onComplete,
+  onSelectLine,
   onOpenDispense,
 }: {
   item: any;
   kind: WorklistDeptKind;
+  expanded: boolean;
   highlight: boolean;
   labels: {
     title: string;
@@ -645,6 +670,7 @@ function LineCard({
   onAck: (id: string) => Promise<void>;
   onStart: (id: string) => Promise<void>;
   onComplete: (id: string) => Promise<void>;
+  onSelectLine: () => void;
   onOpenDispense?: (item: any) => void;
 }) {
   const { t, language } = useI18n();
@@ -1028,12 +1054,30 @@ function LineCard({
         marginBottom: 16,
       }}
     >
-      <h3 style={{ marginTop: 0, fontSize: 15 }}>
-        {getOrderItemDisplayLabelFromLocale(item, language)}{" "}
-        <span style={{ fontWeight: 400, color: "#666", fontSize: 13 }}>
-          ({tOrderItemStatusForWorklist(t, item.status)})
-        </span>
-      </h3>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={onSelectLine}
+        style={{
+          display: "block",
+          width: "100%",
+          margin: 0,
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          textAlign: "left",
+          cursor: "pointer",
+        }}
+      >
+        <h3 style={{ marginTop: 0, fontSize: 15 }}>
+          {getOrderItemDisplayLabelFromLocale(item, language)}{" "}
+          <span style={{ fontWeight: 400, color: "#666", fontSize: 13 }}>
+            ({tOrderItemStatusForWorklist(t, item.status)})
+          </span>
+        </h3>
+      </button>
+      {expanded ? (
+        <>
       {kind === "radiology" && modalityLine ? (
         <div style={{ fontSize: 13, color: "#546e7a", marginBottom: 8 }}>
           {t("orderDetail.modalityRegion")} {modalityLine}
@@ -1367,6 +1411,8 @@ function LineCard({
           onClose={() => setTimeAdjustTarget(null)}
           onSave={saveTimeAdjust}
         />
+      ) : null}
+        </>
       ) : null}
     </section>
   );
