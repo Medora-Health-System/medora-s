@@ -41,6 +41,11 @@ import {
   type ClinicalDraftScope,
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
+import {
+  worklistItemAllowsComplete,
+  worklistItemAllowsStart,
+  worklistItemNeedsAcknowledge,
+} from "@/lib/worklistLabRadUi";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
   let out = s;
@@ -237,7 +242,7 @@ export default function DepartmentOrderDetail({
     if (!facilityId || order?.status === "CANCELLED") return;
     const item = (order?.items ?? []).find((i: any) => i.id === itemId);
     if (!item) return;
-    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
+    if (!worklistItemNeedsAcknowledge(item.status)) {
       console.warn("ACK blocked: invalid state", item.status);
       return;
     }
@@ -829,23 +834,48 @@ function LineCard({
     workflowEditable: resultDraftEditable,
   });
 
+  const workflowBtnStyle: React.CSSProperties = {
+    padding: "8px 14px",
+    borderRadius: 8,
+    border: "1px solid #cbd5e1",
+    backgroundColor: "#fff",
+    cursor: "pointer",
+    fontSize: 13,
+    fontWeight: 600,
+    color: "#334155",
+  };
+
+  const workflowPrimaryBtnStyle: React.CSSProperties = {
+    ...workflowBtnStyle,
+    border: "1px solid #0f172a",
+    backgroundColor: "#0f172a",
+    color: "#fff",
+  };
+
+  const showAckButton = viewerIsDeptActor && worklistItemNeedsAcknowledge(item.status);
+  const showStartButton = viewerIsDeptActor && worklistItemAllowsStart(item.status);
+  const showCompleteButton =
+    viewerIsDeptActor &&
+    worklistItemAllowsComplete(item.status) &&
+    !(kind === "pharmacy" && !isAlreadyDispensed(item));
+
   const workflowButtons = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-      {viewerIsDeptActor && (item.status === "PLACED" || item.status === "PENDING" || item.status === "SIGNED") && (
-        <button type="button" onClick={() => onAck(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
+      {showAckButton ? (
+        <button type="button" onClick={() => onAck(item.id)} style={workflowPrimaryBtnStyle}>
           {t("orderDetail.ackReceive")}
         </button>
-      )}
-      {viewerIsDeptActor && item.status === "ACKNOWLEDGED" && (
-        <button type="button" onClick={() => onStart(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
+      ) : null}
+      {showStartButton ? (
+        <button type="button" onClick={() => onStart(item.id)} style={workflowPrimaryBtnStyle}>
           {t("orderDetail.startExam")}
         </button>
-      )}
-      {viewerIsDeptActor && item.status === "IN_PROGRESS" && !(kind === "pharmacy" && !isAlreadyDispensed(item)) && (
-        <button type="button" onClick={() => onComplete(item.id)} style={{ padding: "6px 10px", cursor: "pointer" }}>
+      ) : null}
+      {showCompleteButton ? (
+        <button type="button" onClick={() => onComplete(item.id)} style={workflowBtnStyle}>
           {t("orderDetail.completeExam")}
         </button>
-      )}
+      ) : null}
       {kind === "pharmacy" && onOpenDispense && (
         <>
           {!isAlreadyDispensed(item) ? (
@@ -1222,6 +1252,20 @@ function LineCard({
               }}
             >
               <strong>{t("orderDetail.stepRequired")}</strong> {workflowBlockMessage}
+              {showAckButton ? (
+                <div style={{ marginTop: 10 }}>
+                  <button type="button" onClick={() => onAck(item.id)} style={workflowPrimaryBtnStyle}>
+                    {t("orderDetail.ackReceive")}
+                  </button>
+                </div>
+              ) : null}
+              {showStartButton ? (
+                <div style={{ marginTop: 10 }}>
+                  <button type="button" onClick={() => onStart(item.id)} style={workflowPrimaryBtnStyle}>
+                    {t("orderDetail.startExam")}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {feedback ? (

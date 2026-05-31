@@ -3,6 +3,12 @@
  * Données brutes inchangées côté stockage ; uniquement mapping UI.
  */
 
+import {
+  extractExplicitLabResultFlag,
+  parseLabReferenceRange,
+  resolveLabParsedRowFlag,
+} from "@medora/shared";
+
 import type { SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
 import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
@@ -179,22 +185,10 @@ function isLabSectionHeader(line: string): boolean {
   return /^(résultats?|hémogramme|biochimie|ionogramme|hémostase|urines?|nfs|numération|bilan)\b/i.test(t);
 }
 
-/** Détecte H / L / critique dans la valeur. */
+/** Détecte H / L / critique dans la valeur (explicit trailing flag only — not unit suffixes). */
 function extractFlag(value: string): { clean: string; flag: LabParsedRow["flag"] } {
-  let v = value.trim();
-  let flag: LabParsedRow["flag"] = null;
-  const m = v.match(/\s*\b(HH|LL|H|L|C)\b\s*$/i);
-  if (m) {
-    const g = m[1].toUpperCase();
-    if (g === "HH") flag = "HH";
-    else if (g === "LL") flag = "LL";
-    else if (g === "H") flag = "H";
-    else if (g === "L") flag = "L";
-    else if (g === "C") flag = "C";
-    v = v.slice(0, m.index).trim();
-  }
-  if (/\bcritique\b/i.test(value)) flag = "C";
-  return { clean: v, flag };
+  const { cleanValue, flag } = extractExplicitLabResultFlag(value);
+  return { clean: cleanValue, flag: flag as LabParsedRow["flag"] };
 }
 
 function parsePipeOrTabLine(line: string): LabParsedRow | null {
@@ -262,8 +256,13 @@ export function parseLabObservationLines(raw: string): {
   const sectionNotes: string[] = [];
 
   const tryPushRow = (r: LabParsedRow) => {
-    const { clean, flag } = extractFlag(r.value);
-    rows.push({ ...r, value: clean, flag: flag ?? r.flag });
+    const { clean, flag: explicitFlag } = extractFlag(r.value);
+    const resolved = resolveLabParsedRowFlag({
+      value: clean,
+      ref: r.ref,
+      explicitFlag,
+    });
+    rows.push({ ...r, value: clean, flag: resolved });
   };
 
   for (const line of bodyLines) {
@@ -284,6 +283,16 @@ export function parseLabObservationLines(raw: string): {
     );
     if (refParen) {
       tryPushRow({ label: refParen[1].trim(), value: refParen[2].trim(), ref: refParen[3].trim() });
+      continue;
+    }
+
+    const rangeParen = line.match(/^[-•*]?\s*(.+?)\s*:\s*(.+?)\s*\(\s*([^)]+)\)\s*$/i);
+    if (rangeParen && parseLabReferenceRange(rangeParen[3].trim())) {
+      tryPushRow({
+        label: rangeParen[1].trim(),
+        value: rangeParen[2].trim(),
+        ref: rangeParen[3].trim(),
+      });
       continue;
     }
 

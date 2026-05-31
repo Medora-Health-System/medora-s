@@ -213,7 +213,7 @@ export default function LabWorklistPage() {
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("MOST_URGENT");
+  const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("OLDEST_FIRST");
   const [operationalFilters, setOperationalFilters] = useState<LabRadWorklistOperationalFilters>({
     needsReconciliation: false,
     adjustedTime: false,

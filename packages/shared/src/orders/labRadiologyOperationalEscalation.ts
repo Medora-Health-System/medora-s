@@ -299,27 +299,43 @@ export type LabRadWorklistSortMode =
   | "RECENTLY_UPDATED";
 
 export function compareLabRadWorklistPairs(
-  a: { escalation: LabRadOperationalEscalationAnalysis },
-  b: { escalation: LabRadOperationalEscalationAnalysis },
+  a: {
+    escalation: LabRadOperationalEscalationAnalysis;
+    orderCreatedMs?: number | null;
+    itemId?: string | null;
+  },
+  b: {
+    escalation: LabRadOperationalEscalationAnalysis;
+    orderCreatedMs?: number | null;
+    itemId?: string | null;
+  },
   mode: LabRadWorklistSortMode
 ): number {
+  let primary = 0;
   if (mode === "MOST_URGENT") {
-    return a.escalation.urgencyRank - b.escalation.urgencyRank;
-  }
-  if (mode === "CRITICAL_ACK_FIRST") {
+    primary = a.escalation.urgencyRank - b.escalation.urgencyRank;
+  } else if (mode === "CRITICAL_ACK_FIRST") {
     const aAck = a.escalation.awaitingCriticalAck ? 0 : 1;
     const bAck = b.escalation.awaitingCriticalAck ? 0 : 1;
-    if (aAck !== bAck) return aAck - bAck;
-    return b.escalation.phaseAgeMs - a.escalation.phaseAgeMs;
-  }
-  if (mode === "RECENTLY_UPDATED") {
+    if (aAck !== bAck) primary = aAck - bAck;
+    else primary = b.escalation.phaseAgeMs - a.escalation.phaseAgeMs;
+  } else if (mode === "RECENTLY_UPDATED") {
     const aU = a.escalation.lastUpdatedMs ?? 0;
     const bU = b.escalation.lastUpdatedMs ?? 0;
-    return bU - aU;
+    primary = bU - aU;
+  } else {
+    const aA = a.escalation.phaseAnchorMs ?? 0;
+    const bA = b.escalation.phaseAnchorMs ?? 0;
+    primary = aA - bA;
   }
-  const aA = a.escalation.phaseAnchorMs ?? 0;
-  const bA = b.escalation.phaseAnchorMs ?? 0;
-  return aA - bA;
+
+  if (primary !== 0) return primary;
+
+  const aCreated = a.orderCreatedMs ?? a.escalation.phaseAnchorMs ?? 0;
+  const bCreated = b.orderCreatedMs ?? b.escalation.phaseAnchorMs ?? 0;
+  if (aCreated !== bCreated) return aCreated - bCreated;
+
+  return String(a.itemId ?? "").localeCompare(String(b.itemId ?? ""));
 }
 
 export type LabRadEscalationFilterState = {

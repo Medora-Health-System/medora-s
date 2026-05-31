@@ -69,14 +69,21 @@ export function pairPassesLabRadOperationalFilters(
   return reconOk && escOk;
 }
 
-export function sortLabRadWorklistPairs<T extends { row: LabRadWorklistOperationalRow }>(
-  pairs: T[],
-  mode: LabRadWorklistSortMode
-): T[] {
+export function sortLabRadWorklistPairs<
+  T extends { row: LabRadWorklistOperationalRow; order?: { createdAt?: string | null }; item?: { id?: string } },
+>(pairs: T[], mode: LabRadWorklistSortMode): T[] {
   return [...pairs].sort((a, b) =>
     compareLabRadWorklistPairs(
-      { escalation: a.row.escalation },
-      { escalation: b.row.escalation },
+      {
+        escalation: a.row.escalation,
+        orderCreatedMs: a.order?.createdAt ? new Date(a.order.createdAt).getTime() : null,
+        itemId: a.item?.id ?? null,
+      },
+      {
+        escalation: b.row.escalation,
+        orderCreatedMs: b.order?.createdAt ? new Date(b.order.createdAt).getTime() : null,
+        itemId: b.item?.id ?? null,
+      },
       mode
     )
   );
