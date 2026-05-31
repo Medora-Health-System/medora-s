@@ -49,7 +49,7 @@ const CT_HEAD_WO_ROW: CatalogRow = {
 };
 
 const ALIAS_ROWS = [
-  { catalogImagingStudyId: CT_HEAD_ID, alias: "ct head" },
+  { catalogImagingStudyId: CT_HEAD_WO_ID, alias: "ct head" },
   { catalogImagingStudyId: CT_HEAD_WO_ID, alias: "head CT non contrast" },
   { catalogImagingStudyId: CT_HEAD_WO_ID, alias: "CT brain without contrast" },
   { catalogImagingStudyId: CT_HEAD_WO_ID, alias: "stroke bleed" },
@@ -168,5 +168,12 @@ describe("CT head dual search (2C.3.3B)", () => {
   it("brain ct still returns CT_HEAD_WO_CONTRAST", async () => {
     const codes = await codesForQuery("brain ct");
     expect(codes).toContain("CT_HEAD_WO_CONTRAST");
+  });
+
+  it("post alias migration: ct head DB alias is on successor only", async () => {
+    const ctHeadAliasOwners = ALIAS_ROWS.filter((row) => row.alias.toLowerCase() === "ct head").map(
+      (row) => row.catalogImagingStudyId
+    );
+    expect(ctHeadAliasOwners).toEqual([CT_HEAD_WO_ID]);
   });
 });
