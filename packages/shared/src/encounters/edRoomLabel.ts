@@ -3,14 +3,23 @@
  * Used by the ED trackboard and room assignment flows — keep logic centralized here.
  */
 
-/** Default waiting-room label (matches web `DEFAULT_ENCOUNTER_ROOM_LABEL`). */
-export const ED_DEFAULT_WAITING_ROOM_LABEL = "Salle d'attente" as const;
+/** Legacy French waiting-room label persisted in older rows. */
+export const ED_LEGACY_WAITING_ROOM_LABEL_FR = "Salle d'attente" as const;
+
+/** Canonical language-neutral storage value for waiting room (preferred for new saves). */
+export const ED_CANONICAL_WAITING_ROOM_LABEL = "WAITING_ROOM" as const;
+
+/** @deprecated Use ED_CANONICAL_WAITING_ROOM_LABEL — kept for imports/tests. */
+export const ED_DEFAULT_WAITING_ROOM_LABEL = ED_CANONICAL_WAITING_ROOM_LABEL;
 
 const WAITING_ROOM_LABELS_LOWER = new Set([
-  ED_DEFAULT_WAITING_ROOM_LABEL.toLowerCase(),
+  ED_CANONICAL_WAITING_ROOM_LABEL.toLowerCase(),
+  ED_LEGACY_WAITING_ROOM_LABEL_FR.toLowerCase(),
   "waiting room",
   "waiting",
 ]);
+
+export const ED_ROOM_OCCUPIED_CODE = "ED_ROOM_OCCUPIED" as const;
 
 export type EdRoomSortKey = {
   /** 0 = numeric (+ optional suffix), 1 = other assigned label, 2 = unassigned / waiting */
@@ -33,6 +42,139 @@ export type EdRoomOccupancyConflict = {
   requestedRoom: string;
   suggestedRoom: string;
 };
+
+export type EdRoomOccupancyOverride = {
+  requestedRoom: string;
+  acceptedRoom: string;
+};
+
+export type ResolveEdRoomAssignmentInput = {
+  facilityId: string;
+  encounterId?: string;
+  currentRoomLabel?: string | null;
+  requestedRoomRaw: string | null | undefined;
+  confirmOccupiedRoomAssignment?: boolean;
+  roomOccupancyOverride?: EdRoomOccupancyOverride | null;
+  openEncounters: EdRoomOccupancyRow[];
+};
+
+export type ResolveEdRoomAssignmentResult =
+  | { ok: true; roomLabel: string | null }
+  | { ok: false; conflict: EdRoomOccupancyConflict };
+
+/** True when label represents the ED waiting room (any supported legacy/canonical form). */
+export function isEdWaitingRoomLabel(raw: string | null | undefined): boolean {
+  const normalized = normalizeRoomLabel(raw);
+  if (!normalized) return true;
+  return WAITING_ROOM_LABELS_LOWER.has(normalized.toLowerCase());
+}
+
+/** Normalize room label for persistence (waiting room → canonical WAITING_ROOM). */
+export function normalizeEdRoomLabelForStorage(raw: string | null | undefined): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return ED_CANONICAL_WAITING_ROOM_LABEL;
+  if (isEdWaitingRoomLabel(trimmed)) return ED_CANONICAL_WAITING_ROOM_LABEL;
+  const normalized = normalizeRoomLabel(trimmed);
+  return (normalized || trimmed).slice(0, 64);
+}
+
+function storageRoomLabelsEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  return normalizeEdRoomLabelForStorage(a) === normalizeEdRoomLabelForStorage(b);
+}
+
+function sharesNumericBase(requestedRoom: string, acceptedRoom: string): boolean {
+  const req = parseRoomSortKey(requestedRoom);
+  const acc = parseRoomSortKey(acceptedRoom);
+  return req.sortRank === 0 && acc.sortRank === 0 && req.baseNumber === acc.baseNumber;
+}
+
+function validateAcceptedSharedRoom(
+  requestedRoom: string,
+  acceptedRoom: string,
+  openEncounters: EdRoomOccupancyRow[],
+  options?: { excludeEncounterId?: string; facilityId?: string }
+): { ok: true; roomLabel: string } | { ok: false; conflict: EdRoomOccupancyConflict } {
+  const requested = normalizeRoomLabel(requestedRoom);
+  const accepted = normalizeRoomLabel(acceptedRoom);
+  if (!requested || !accepted) {
+    return { ok: true, roomLabel: acceptedRoom.trim().slice(0, 64) };
+  }
+  if (accepted === requested) {
+    const conflict = findRoomOccupancyConflict(requested, openEncounters, options);
+    if (conflict) return { ok: false, conflict };
+    return { ok: true, roomLabel: accepted };
+  }
+  if (!sharesNumericBase(requested, accepted)) {
+    const conflict = findRoomOccupancyConflict(requested, openEncounters, options);
+    if (conflict) return { ok: false, conflict };
+    return { ok: true, roomLabel: accepted };
+  }
+  const occupied = findRoomOccupancyConflict(accepted, openEncounters, options);
+  if (occupied) {
+    const labels = openEncounters
+      .filter((e) => isActiveOpenEncounter(e) && rowMatchesFacility(e, options?.facilityId))
+      .map((e) => e.roomLabel);
+    const next = getNextAvailableSharedRoomLabel(requested, labels);
+    return {
+      ok: false,
+      conflict: {
+        occupyingEncounterId: occupied.occupyingEncounterId,
+        requestedRoom: requested,
+        suggestedRoom: next,
+      },
+    };
+  }
+  return { ok: true, roomLabel: accepted };
+}
+
+/**
+ * Authoritative room assignment resolver for create/update.
+ * Never allows saving an exact duplicate numbered room when another open encounter holds it.
+ */
+export function resolveEdRoomAssignmentForSave(
+  input: ResolveEdRoomAssignmentInput
+): ResolveEdRoomAssignmentResult {
+  const roomLabel = normalizeEdRoomLabelForStorage(input.requestedRoomRaw);
+  if (storageRoomLabelsEqual(roomLabel, input.currentRoomLabel)) {
+    return { ok: true, roomLabel };
+  }
+  if (isEdWaitingRoomLabel(roomLabel)) {
+    return { ok: true, roomLabel: ED_CANONICAL_WAITING_ROOM_LABEL };
+  }
+  const normalized = normalizeRoomLabel(roomLabel);
+  if (!normalized || !hasNumericEdRoom(normalized)) {
+    return { ok: true, roomLabel };
+  }
+
+  const options = {
+    excludeEncounterId: input.encounterId,
+    facilityId: input.facilityId,
+  };
+  const conflict = findRoomOccupancyConflict(normalized, input.openEncounters, options);
+  if (!conflict) {
+    return { ok: true, roomLabel: normalized };
+  }
+
+  const wantsOverride =
+    input.confirmOccupiedRoomAssignment === true || input.roomOccupancyOverride != null;
+  if (!wantsOverride) {
+    return { ok: false, conflict };
+  }
+
+  const overrideRequested = normalizeRoomLabel(input.roomOccupancyOverride?.requestedRoom ?? normalized);
+  const acceptedCandidate = normalizeRoomLabel(
+    input.roomOccupancyOverride?.acceptedRoom ?? conflict.suggestedRoom
+  );
+  if (overrideRequested && overrideRequested !== normalized) {
+    return { ok: false, conflict };
+  }
+
+  const accepted = validateAcceptedSharedRoom(normalized, acceptedCandidate, input.openEncounters, options);
+  if (!accepted.ok) {
+    return { ok: false, conflict: accepted.conflict };
+  }
+  return { ok: true, roomLabel: accepted.roomLabel };
+}
 
 /** Trim and normalize common ED room label shapes (`Room 4`, `4a` → `4A`). */
 export function normalizeRoomLabel(raw: string | null | undefined): string {

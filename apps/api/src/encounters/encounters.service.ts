@@ -108,7 +108,11 @@ import {
   legacyErNotesV1DisplayEntries,
   mapEncounterNoteForLegalChart,
   mapClinicalDocumentationEntryForLegalChart,
+  resolveEdRoomAssignmentForSave,
+  ED_CANONICAL_WAITING_ROOM_LABEL,
+  type EdRoomOccupancyRow,
 } from "@medora/shared";
+import { throwEdRoomOccupiedConflict } from "./ed-room-occupancy.util";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
@@ -314,10 +318,26 @@ export class EncountersService {
       data.chiefComplaint?.trim() ||
       undefined;
 
-    const roomLabel =
+    const roomLabelRaw =
       data.roomLabel != null && String(data.roomLabel).trim() !== ""
         ? String(data.roomLabel).trim().slice(0, 64)
-        : "Salle d'attente";
+        : ED_CANONICAL_WAITING_ROOM_LABEL;
+
+    let roomLabel = roomLabelRaw;
+    if (data.type === EncounterType.EMERGENCY) {
+      const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
+      const resolved = resolveEdRoomAssignmentForSave({
+        facilityId,
+        requestedRoomRaw: roomLabelRaw,
+        confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
+        roomOccupancyOverride: data.roomOccupancyOverride ?? null,
+        openEncounters,
+      });
+      if (!resolved.ok) {
+        throwEdRoomOccupiedConflict(resolved.conflict);
+      }
+      roomLabel = resolved.roomLabel ?? ED_CANONICAL_WAITING_ROOM_LABEL;
+    }
 
     /** Médecin attribué (FK) — canonique pour dossier / trackboard ; providerId reste trace créateur / compat. */
     let physicianAssignedUserId: string | null = null;
@@ -1701,8 +1721,25 @@ export class EncountersService {
     assertOperationalUpdateAllowedWhenSigned(encounter, data);
     const updateData: Record<string, unknown> = {};
     if (data.roomLabel !== undefined) {
-      updateData.roomLabel =
-        data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
+      if (encounter.type !== EncounterType.INPATIENT) {
+        const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
+        const resolved = resolveEdRoomAssignmentForSave({
+          facilityId,
+          encounterId: id,
+          currentRoomLabel: encounter.roomLabel,
+          requestedRoomRaw: data.roomLabel,
+          confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
+          roomOccupancyOverride: data.roomOccupancyOverride ?? null,
+          openEncounters,
+        });
+        if (!resolved.ok) {
+          throwEdRoomOccupiedConflict(resolved.conflict);
+        }
+        updateData.roomLabel = resolved.roomLabel;
+      } else {
+        updateData.roomLabel =
+          data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
+      }
     }
     let resolvedPhysicianId: string | null = encounter.physicianAssignedUserId ?? null;
     if (data.physicianAssignedUserId !== undefined) {
@@ -1808,6 +1845,23 @@ export class EncountersService {
       },
     });
     return toEncounterClinicResponse(updated);
+  }
+
+  /** Open non-inpatient encounters used for ED numbered-room occupancy checks. */
+  private async loadOpenEdRoomOccupancyRows(facilityId: string): Promise<EdRoomOccupancyRow[]> {
+    return this.prisma.encounter.findMany({
+      where: {
+        facilityId,
+        status: EncounterStatus.OPEN,
+        type: { not: EncounterType.INPATIENT },
+      },
+      select: {
+        id: true,
+        facilityId: true,
+        roomLabel: true,
+        status: true,
+      },
+    });
   }
 
   /**

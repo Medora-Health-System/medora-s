@@ -21,7 +21,13 @@ function CreateEncounterModal({
   onSuccess: () => void;
 }) {
   const { t, language } = useI18n();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    type: string;
+    visitReason: string;
+    notes: string;
+    roomLabel: string;
+    physicianAssignedUserId: string;
+  }>({
     type: "OUTPATIENT",
     visitReason: "",
     notes: "",

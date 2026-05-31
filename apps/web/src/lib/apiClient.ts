@@ -224,7 +224,17 @@ export async function apiFetchResponse(
       }
     }
     const raw = message.trim() || `Request failed (${response.status}).`;
-    throw new Error(normalizeUserFacingError(raw, loc) || raw);
+    const err = new Error(normalizeUserFacingError(raw, loc) || raw) as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = response.status;
+    try {
+      if (txt.trim()) err.body = JSON.parse(txt) as unknown;
+    } catch {
+      /* ignore non-JSON body */
+    }
+    throw err;
   }
 
   return response;
@@ -348,7 +358,17 @@ export async function apiFetch(
       }
     }
     const raw = message.trim() || `Request failed (${response.status}).`;
-    throw new Error(normalizeUserFacingError(raw, loc) || raw);
+    const err = new Error(normalizeUserFacingError(raw, loc) || raw) as Error & {
+      status?: number;
+      body?: unknown;
+    };
+    err.status = response.status;
+    try {
+      if (txt.trim()) err.body = JSON.parse(txt) as unknown;
+    } catch {
+      /* ignore non-JSON body */
+    }
+    throw err;
   }
 
   if (queueType && method !== "GET") {

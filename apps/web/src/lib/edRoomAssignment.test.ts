@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { checkEdRoomAssignmentConflict, isSameNormalizedRoom } from "@/lib/edRoomAssignment";
+import {
+  buildEdRoomOccupancyConfirmPayload,
+  checkEdRoomAssignmentConflict,
+  isSameNormalizedRoom,
+  parseEdRoomOccupiedApiError,
+} from "@/lib/edRoomAssignment";
+import { ED_ROOM_OCCUPIED_CODE } from "@medora/shared";
 
 vi.mock("@/lib/clinicalWorklistApi", () => ({
   fetchOpenEncounters: vi.fn(),
@@ -25,5 +31,32 @@ describe("edRoomAssignment — web conflict helper", () => {
     expect(isSameNormalizedRoom("4", "4")).toBe(true);
     expect(isSameNormalizedRoom("4a", "4A")).toBe(true);
     expect(isSameNormalizedRoom("4", "5")).toBe(false);
+    expect(isSameNormalizedRoom("WAITING_ROOM", "Salle d'attente")).toBe(true);
+  });
+
+  it("parses 409 ED_ROOM_OCCUPIED from api error body", () => {
+    const err = Object.assign(new Error("conflict"), {
+      status: 409,
+      body: {
+        code: ED_ROOM_OCCUPIED_CODE,
+        requestedRoom: "4",
+        suggestedRoom: "4A",
+      },
+    });
+    expect(parseEdRoomOccupiedApiError(err)).toEqual({
+      occupyingEncounterId: "",
+      requestedRoom: "4",
+      suggestedRoom: "4A",
+    });
+  });
+
+  it("buildEdRoomOccupancyConfirmPayload sends safe override fields", () => {
+    expect(
+      buildEdRoomOccupancyConfirmPayload({ occupyingEncounterId: "e1", requestedRoom: "4", suggestedRoom: "4A" })
+    ).toEqual({
+      roomLabel: "4",
+      confirmOccupiedRoomAssignment: true,
+      roomOccupancyOverride: { requestedRoom: "4", acceptedRoom: "4A" },
+    });
   });
 });

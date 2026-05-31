@@ -11,10 +11,16 @@ import {
   erHandoffV1ShouldShowReadonlyOperationalBlock,
 } from "@/components/encounters/ErHandoffV1Panel";
 import { EdRoomOccupancyConfirmModal } from "@/components/encounters/EdRoomOccupancyConfirmModal";
-import { checkEdRoomAssignmentConflict, isSameNormalizedRoom } from "@/lib/edRoomAssignment";
+import {
+  buildEdRoomOccupancyConfirmPayload,
+  checkEdRoomAssignmentConflict,
+  isSameNormalizedRoom,
+  parseEdRoomOccupiedApiError,
+} from "@/lib/edRoomAssignment";
+import { buildEncounterRoomSelectOptions, formatEncounterRoomDisplay } from "@/lib/encounterRoomOptions";
 import type { EdRoomOccupancyConflict } from "@medora/shared";
 
-const ROOM_VALUES = ["Salle d'attente", ...Array.from({ length: 30 }, (_, i) => String(i + 1))];
+type SaveOpts = { confirmInpatientTransfer?: boolean };
 
 type ProviderRow = { id: string; firstName: string; lastName: string };
 
@@ -49,9 +55,7 @@ export function EncounterOperationalPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [roomOccupancyConflict, setRoomOccupancyConflict] = useState<EdRoomOccupancyConflict | null>(null);
-  const [pendingSaveOpts, setPendingSaveOpts] = useState<{ confirmInpatientTransfer?: boolean } | undefined>(
-    undefined
-  );
+  const [pendingSaveOpts, setPendingSaveOpts] = useState<SaveOpts | undefined>(undefined);
 
   useEffect(() => {
     setRoom(roomLabel ?? "");
@@ -111,33 +115,52 @@ export function EncounterOperationalPanel({
 
   const showReadonlyHandoff = !canEdit && erHandoffV1ShouldShowReadonlyOperationalBlock(nursingAssessment);
 
-  const roomOptions = useMemo(() => {
-    const cur = room.trim();
-    if (cur && !ROOM_VALUES.includes(cur)) return [cur, ...ROOM_VALUES];
-    return ROOM_VALUES;
-  }, [room]);
+  const roomOptions = useMemo(() => buildEncounterRoomSelectOptions(room), [room]);
 
   const performSave = useCallback(
-    async (roomToSave: string, opts?: { confirmInpatientTransfer?: boolean }) => {
+    async (
+      roomToSave: string,
+      opts?: SaveOpts & {
+        occupancyConfirm?: EdRoomOccupancyConflict;
+        acceptedRoom?: string;
+      }
+    ) => {
       if (!canEdit) return;
       setSaving(true);
       setError(null);
       try {
+        const occupancyPayload = opts?.occupancyConfirm
+          ? buildEdRoomOccupancyConfirmPayload(opts.occupancyConfirm, opts.acceptedRoom)
+          : null;
         const res = await apiFetch(`/encounters/${encounterId}/operational`, {
           method: "PATCH",
           facilityId,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            roomLabel: roomToSave.trim() || null,
+            roomLabel: occupancyPayload?.roomLabel ?? (roomToSave.trim() || null),
             physicianAssignedUserId: physicianId || null,
             ...(opts?.confirmInpatientTransfer ? { confirmInpatientTransfer: true } : {}),
+            ...(occupancyPayload
+              ? {
+                  confirmOccupiedRoomAssignment: occupancyPayload.confirmOccupiedRoomAssignment,
+                  roomOccupancyOverride: occupancyPayload.roomOccupancyOverride,
+                }
+              : {}),
           }),
         });
         if (res && typeof res === "object" && !Array.isArray(res) && !(res as { queued?: boolean }).queued) {
           onSaved?.(res as Record<string, unknown>);
+          const savedRoom = (res as { roomLabel?: string | null }).roomLabel;
+          if (typeof savedRoom === "string") setRoom(savedRoom);
         }
         await Promise.resolve(onUpdated());
       } catch (e) {
+        const apiConflict = parseEdRoomOccupiedApiError(e);
+        if (apiConflict) {
+          setRoomOccupancyConflict(apiConflict);
+          setPendingSaveOpts(opts);
+          return;
+        }
         setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
       } finally {
         setSaving(false);
@@ -147,7 +170,7 @@ export function EncounterOperationalPanel({
   );
 
   const save = useCallback(
-    async (opts?: { confirmInpatientTransfer?: boolean }) => {
+    async (opts?: SaveOpts) => {
       if (!canEdit) return;
       const trimmedRoom = room.trim();
       if (isSameNormalizedRoom(roomLabel, trimmedRoom)) {
@@ -165,6 +188,12 @@ export function EncounterOperationalPanel({
         }
         await performSave(trimmedRoom, opts);
       } catch (e) {
+        const apiConflict = parseEdRoomOccupiedApiError(e);
+        if (apiConflict) {
+          setRoomOccupancyConflict(apiConflict);
+          setPendingSaveOpts(opts);
+          return;
+        }
         setError(normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("encounterOperational.saveFailed"));
       } finally {
         setSaving(false);
@@ -177,10 +206,14 @@ export function EncounterOperationalPanel({
     if (!roomOccupancyConflict) return;
     const nextRoom = roomOccupancyConflict.suggestedRoom;
     setRoom(nextRoom);
-    setRoomOccupancyConflict(null);
     const opts = pendingSaveOpts;
+    setRoomOccupancyConflict(null);
     setPendingSaveOpts(undefined);
-    await performSave(nextRoom, opts);
+    await performSave(roomOccupancyConflict.requestedRoom, {
+      ...opts,
+      occupancyConfirm: roomOccupancyConflict,
+      acceptedRoom: nextRoom,
+    });
   }, [pendingSaveOpts, performSave, roomOccupancyConflict]);
 
   const panelShell: React.CSSProperties = {
@@ -219,7 +252,7 @@ export function EncounterOperationalPanel({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 20, rowGap: 10 }}>
             <div>
               <span style={{ color: "#64748b" }}>{t("encounterOperational.roomColon")} </span>
-              <strong style={{ color: "#0f172a" }}>{roomLabel?.trim() || t("common.dash")}</strong>
+              <strong style={{ color: "#0f172a" }}>{formatEncounterRoomDisplay(roomLabel, t)}</strong>
             </div>
             <div>
               <span style={{ color: "#64748b" }}>
@@ -263,7 +296,7 @@ export function EncounterOperationalPanel({
             <option value="">{t("common.dash")}</option>
             {roomOptions.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {formatEncounterRoomDisplay(r, t, r)}
               </option>
             ))}
           </select>

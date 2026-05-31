@@ -8,8 +8,12 @@ import { formatPatientAgeSexLine } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
-import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
-import { checkEdRoomAssignmentConflict } from "@/lib/edRoomAssignment";
+import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS, formatEncounterRoomDisplay } from "@/lib/encounterRoomOptions";
+import {
+  buildEdRoomOccupancyConfirmPayload,
+  checkEdRoomAssignmentConflict,
+  parseEdRoomOccupiedApiError,
+} from "@/lib/edRoomAssignment";
 import { EdRoomOccupancyConfirmModal } from "@/components/encounters/EdRoomOccupancyConfirmModal";
 import type { EdRoomOccupancyConflict } from "@medora/shared";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
@@ -77,7 +81,7 @@ export function EmergencyTriageIntakeView() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [selected, setSelected] = useState<PatientRow | null>(null);
   const [visitReason, setVisitReason] = useState("");
-  const [roomLabel, setRoomLabel] = useState(DEFAULT_ENCOUNTER_ROOM_LABEL);
+  const [roomLabel, setRoomLabel] = useState<string>(DEFAULT_ENCOUNTER_ROOM_LABEL);
   const [physicianAssignedUserId, setPhysicianAssignedUserId] = useState("");
   const [providers, setProviders] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -143,21 +147,33 @@ export function EmergencyTriageIntakeView() {
     void runSearch();
   }, [ready, facilityId, facilityIdFromHook, runSearch]);
 
-  const createEmergencyEncounter = async (resolvedRoomLabel?: string) => {
+  const createEmergencyEncounter = async (
+    resolvedRoomLabel?: string,
+    occupancyConfirm?: EdRoomOccupancyConflict
+  ) => {
     const fid = facilityId || facilityIdFromHook;
     if (!fid || !selected) return;
     const roomToAssign = (resolvedRoomLabel ?? roomLabel).trim() || DEFAULT_ENCOUNTER_ROOM_LABEL;
     setSubmitting(true);
     setError(null);
     try {
+      const occupancyPayload = occupancyConfirm
+        ? buildEdRoomOccupancyConfirmPayload(occupancyConfirm)
+        : null;
       const res = await apiFetch(`/patients/${selected.id}/encounters`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "EMERGENCY",
           visitReason: visitReason.trim() || undefined,
-          roomLabel: roomToAssign,
+          roomLabel: occupancyPayload?.roomLabel ?? roomToAssign,
           physicianAssignedUserId: physicianAssignedUserId.trim() || undefined,
+          ...(occupancyPayload
+            ? {
+                confirmOccupiedRoomAssignment: occupancyPayload.confirmOccupiedRoomAssignment,
+                roomOccupancyOverride: occupancyPayload.roomOccupancyOverride,
+              }
+            : {}),
         }),
         facilityId: fid,
       });
@@ -172,12 +188,16 @@ export function EmergencyTriageIntakeView() {
       }
       setError(t("emergencyTriageIntake.errUnexpectedResponse"));
     } catch (e) {
+      const apiConflict = parseEdRoomOccupiedApiError(e);
+      if (apiConflict) {
+        setRoomOccupancyConflict(apiConflict);
+        return;
+      }
       setError(
         normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("emergencyTriageIntake.errCreateFailed")
       );
     } finally {
       setSubmitting(false);
-      setRoomOccupancyConflict(null);
     }
   };
 
@@ -195,6 +215,11 @@ export function EmergencyTriageIntakeView() {
       }
       await createEmergencyEncounter(trimmedRoom);
     } catch (e) {
+      const apiConflict = parseEdRoomOccupiedApiError(e);
+      if (apiConflict) {
+        setRoomOccupancyConflict(apiConflict);
+        return;
+      }
       setError(
         normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("emergencyTriageIntake.errCreateFailed")
       );
@@ -361,7 +386,10 @@ export function EmergencyTriageIntakeView() {
                   />
                 </MedoraCardIdentity>
 
-                <MedoraCardRoomBlock label={t("patientChartUi.room")} value={roomLabel} />
+                <MedoraCardRoomBlock
+                  label={t("patientChartUi.room")}
+                  value={formatEncounterRoomDisplay(roomLabel, t)}
+                />
 
                 <div style={{ marginTop: 0, flex: "1 1 280px", minWidth: 0, ...shell, padding: "14px 16px" }}>
                   <p style={{ margin: "0 0 10px 0", fontSize: 12, fontWeight: 600, color: "#64748b" }}>
@@ -377,7 +405,7 @@ export function EmergencyTriageIntakeView() {
                   >
                     {ENCOUNTER_ROOM_OPTIONS.map((r) => (
                       <option key={r} value={r}>
-                        {r}
+                        {formatEncounterRoomDisplay(r, t, r)}
                       </option>
                     ))}
                   </select>
@@ -453,8 +481,7 @@ export function EmergencyTriageIntakeView() {
             setRoomOccupancyConflict(null);
           }}
           onConfirm={() => {
-            setRoomLabel(roomOccupancyConflict.suggestedRoom);
-            void createEmergencyEncounter(roomOccupancyConflict.suggestedRoom);
+            void createEmergencyEncounter(roomOccupancyConflict.requestedRoom, roomOccupancyConflict);
           }}
         />
       ) : null}

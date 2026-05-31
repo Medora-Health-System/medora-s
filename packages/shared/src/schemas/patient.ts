@@ -189,6 +189,14 @@ export const encounterCreateDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(16000).optional()),
   /** Salle / lieu de consultation (accueil) */
   roomLabel: z.preprocess(emptyStrToUndefined, z.union([z.string().max(64), z.null()]).optional()),
+  /** Accept suggested shared-room suffix when numbered room is occupied (ED). */
+  confirmOccupiedRoomAssignment: z.boolean().optional(),
+  roomOccupancyOverride: z
+    .object({
+      requestedRoom: z.string().max(64),
+      acceptedRoom: z.string().max(64),
+    })
+    .optional(),
 });
 
 export type EncounterCreateDto = z.infer<typeof encounterCreateDtoSchema>;
@@ -312,6 +320,13 @@ export const encounterOperationalUpdateDtoSchema = z.object({
    * (hospitalization board). Does not run on the first admission save from disposition.
    */
   confirmInpatientTransfer: z.boolean().optional(),
+  confirmOccupiedRoomAssignment: z.boolean().optional(),
+  roomOccupancyOverride: z
+    .object({
+      requestedRoom: z.string().max(64),
+      acceptedRoom: z.string().max(64),
+    })
+    .optional(),
 });
 
 export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;

@@ -13144,6 +13144,9 @@ export default {
     loading: "Searching…",
     empty: "No results.",
   },
+  encounterRoom: {
+    waitingRoom: "Waiting room",
+  },
   encounterOperational: {
     PATHWAY_PLACEHOLDER: null,
     panelTitle: "Operational settings",

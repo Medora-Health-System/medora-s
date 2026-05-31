@@ -30,6 +30,7 @@ import {
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { erHandoffV1SatisfiesInpatientTransferConfirm, sortRowsByRoomLabel } from "@medora/shared";
+import { formatEncounterRoomDisplay } from "@/lib/encounterRoomOptions";
 import {
   computeLos,
   LOS_ESCALATION_SOFT,
@@ -569,7 +570,7 @@ export function EmergencyTrackboardView() {
               const dash = t("common.dash");
               const cc = encounter.triage?.chiefComplaint || encounter.chiefComplaint || dash;
               const esiLevel = esiLevelFromUnknown(encounter.triage?.esi ?? null);
-              const room = encounter.roomLabel?.trim() || dash;
+              const room = formatEncounterRoomDisplay(encounter.roomLabel, t, dash);
               const phys = physicianLabel(encounter);
               const nurse = nurseLabel(encounter);
               const physId = (encounter.physicianAssigned?.id ?? "").trim();

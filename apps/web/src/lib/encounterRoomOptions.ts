@@ -1,7 +1,9 @@
-/** Valeur par défaut alignée avec l’API (création de consultation). */
-export const DEFAULT_ENCOUNTER_ROOM_LABEL = "Salle d'attente";
-
-export const ENCOUNTER_ROOM_OPTIONS: string[] = [
+/** Re-exports canonical room constants and select helpers. */
+export {
   DEFAULT_ENCOUNTER_ROOM_LABEL,
-  ...Array.from({ length: 30 }, (_, i) => String(i + 1)),
-];
+  ENCOUNTER_ROOM_OPTIONS,
+  buildEncounterRoomSelectOptions,
+  formatEncounterRoomDisplay,
+  ED_CANONICAL_WAITING_ROOM_LABEL,
+  ED_LEGACY_WAITING_ROOM_LABEL_FR,
+} from "./encounterRoomDisplay";

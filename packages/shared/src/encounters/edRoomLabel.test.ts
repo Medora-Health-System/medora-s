@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   compareRoomLabels,
-  ED_DEFAULT_WAITING_ROOM_LABEL,
+  ED_CANONICAL_WAITING_ROOM_LABEL,
+  ED_LEGACY_WAITING_ROOM_LABEL_FR,
   findRoomOccupancyConflict,
   getNextAvailableSharedRoomLabel,
   isRoomOccupied,
@@ -25,7 +26,8 @@ describe("edRoomLabel — numeric-aware sorting", () => {
   it("places patients without room after assigned rooms", () => {
     expect(compareRoomLabels("3", null)).toBeLessThan(0);
     expect(compareRoomLabels("3", "")).toBeLessThan(0);
-    expect(compareRoomLabels("3", ED_DEFAULT_WAITING_ROOM_LABEL)).toBeLessThan(0);
+    expect(compareRoomLabels("3", ED_CANONICAL_WAITING_ROOM_LABEL)).toBeLessThan(0);
+    expect(compareRoomLabels("3", ED_LEGACY_WAITING_ROOM_LABEL_FR)).toBeLessThan(0);
     expect(compareRoomLabels("", "2")).toBeGreaterThan(0);
   });
 
@@ -37,9 +39,9 @@ describe("edRoomLabel — numeric-aware sorting", () => {
       { id: "d", roomLabel: "2" },
       { id: "e", roomLabel: "4" },
       { id: "f", roomLabel: "4A" },
-      { id: "g", roomLabel: ED_DEFAULT_WAITING_ROOM_LABEL },
+      { id: "g", roomLabel: ED_LEGACY_WAITING_ROOM_LABEL_FR },
     ]).map((r) => r.roomLabel);
-    expect(sorted).toEqual(["2", "4", "4A", "4B", "10", null, ED_DEFAULT_WAITING_ROOM_LABEL]);
+    expect(sorted).toEqual(["2", "4", "4A", "4B", "10", null, ED_LEGACY_WAITING_ROOM_LABEL_FR]);
   });
 
   it("normalizes Room prefix and lowercase suffix", () => {

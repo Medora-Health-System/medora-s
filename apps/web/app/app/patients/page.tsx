@@ -1106,7 +1106,7 @@ function CreateConsultationModal({
   const { t } = useI18n();
   const [type, setType] = useState<"OUTPATIENT" | "URGENT_CARE" | "EMERGENCY">("OUTPATIENT");
   const [visitReason, setVisitReason] = useState("");
-  const [roomLabel, setRoomLabel] = useState(DEFAULT_ENCOUNTER_ROOM_LABEL);
+  const [roomLabel, setRoomLabel] = useState<string>(DEFAULT_ENCOUNTER_ROOM_LABEL);
   const [arrivalAtLocal, setArrivalAtLocal] = useState("");
   const [modeOfArrival, setModeOfArrival] = useState("");
   const [initialAcuity, setInitialAcuity] = useState("");

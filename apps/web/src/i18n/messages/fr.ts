@@ -13150,6 +13150,9 @@ export default {
     loading: "Recherche…",
     empty: "Aucun résultat.",
   },
+  encounterRoom: {
+    waitingRoom: "Salle d'attente",
+  },
   encounterOperational: {
     panelTitle: "Paramètres opérationnels",
     room: "Salle",
