@@ -164,7 +164,13 @@ const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
   trauma: [
     { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
     { key: "typeScreen", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TYPE_SCREEN", catalogCodes: ["ER_BLOOD_TYPE"] },
-    { key: "ctHead", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_HEAD" },
+    {
+      key: "ctHead",
+      type: "IMAGING",
+      catalogType: "IMAGING_STUDY",
+      catalogCode: "CT_HEAD_WO_CONTRAST",
+      catalogCodes: ["CT_HEAD"],
+    },
     { key: "ctCervicalSpine", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_CERVICAL_SPINE" },
     { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
   ],

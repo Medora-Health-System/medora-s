@@ -12,12 +12,6 @@ export const KNOWN_ORDER_SET_IMAGING_PREDECESSOR_REFS: readonly OrderSetPredeces
     successorCode: "CT_ABDOMEN_PELVIS",
     role: "fallback",
   },
-  {
-    source: "CreateOrderModal.trauma.ctHead",
-    predecessorCode: "CT_HEAD",
-    successorCode: "CT_HEAD_WO_CONTRAST",
-    role: "primary",
-  },
 ];
 
 /**

@@ -152,15 +152,47 @@ describe("imaging-catalog-retirement scanners", () => {
 
   it("finds documented order-set predecessor references", () => {
     const refs = scanOrderSetPredecessorReferences();
-    expect(refs).toHaveLength(2);
-    expect(refs.map((r) => r.predecessorCode).sort()).toEqual(["CT_ABD", "CT_HEAD"]);
+    expect(refs).toHaveLength(1);
+    expect(refs.map((r) => r.predecessorCode)).toEqual(["CT_ABD"]);
   });
 
   it("runImagingRetirementScan aggregates scan results", () => {
     const scan = runImagingRetirementScan({ catalogRows: input.catalogRows });
     expect(scan.validationIssues.filter((i) => i.severity === "error")).toHaveLength(0);
     expect(countActiveDuplicatePairs(scan)).toBe(5);
-    expect(scan.orderSetPredecessorRefs.length).toBe(2);
+    expect(scan.orderSetPredecessorRefs.length).toBe(1);
+  });
+});
+
+describe("CT head order set migration (2C.4B)", () => {
+  it("does not treat trauma order set as blocking CT_HEAD retirement", () => {
+    const report = buildImagingRetirementReadinessReport(localDbLikeSnapshot());
+    const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
+    expect(ctHead?.orderSet.ready).toBe(true);
+    expect(ctHead?.orderSet.blockers).toHaveLength(0);
+  });
+
+  it("leaves CT_HEAD billing readiness unchanged when successor mapping exists", () => {
+    const input = localDbLikeSnapshot();
+    input.billingMappedExternalCodes = new Set([
+      "US_ABD",
+      "DOPPLER_VEIN",
+      "CT_HEAD",
+      "CT_HEAD_WO_CONTRAST",
+      "CT_ABD",
+    ]);
+    const report = buildImagingRetirementReadinessReport(input);
+    const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
+    expect(ctHead?.billing.ready).toBe(true);
+    expect(ctHead?.orderSet.ready).toBe(true);
+    expect(ctHead?.search.ready).toBe(false);
+  });
+
+  it("does not alter dual-search shortcut governance mirror", () => {
+    expect(KNOWN_IMAGING_SEARCH_ALIAS_SHORTCUTS["ct head"]).toEqual([
+      "CT_HEAD_WO_CONTRAST",
+      "CT_HEAD",
+    ]);
   });
 });
 
@@ -175,7 +207,7 @@ describe("imaging-catalog-retirement readiness report", () => {
     const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
     expect(ctHead?.manualReviewRequired).toBe(true);
     expect(ctHead?.billing.ready).toBe(false);
-    expect(ctHead?.orderSet.ready).toBe(false);
+    expect(ctHead?.orderSet.ready).toBe(true);
     expect(ctHead?.search.ready).toBe(false);
     expect(ctHead?.retirementReady).toBe(false);
   });
@@ -250,7 +282,7 @@ describe("imaging-catalog-retirement readiness report", () => {
     const input = await loadImagingRetirementReadinessInputFromPrisma(prisma as never);
     expect(input.catalogRows.length).toBeGreaterThan(0);
     expect(input.billingMappedExternalCodes.has("US_ABD")).toBe(true);
-    expect(input.orderSetPredecessorRefs.length).toBe(2);
+    expect(input.orderSetPredecessorRefs.length).toBe(1);
     expect(orderItemCount).toHaveBeenCalled();
   });
 });
