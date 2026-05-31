@@ -22,6 +22,14 @@ describe("EDOC.2 clinical documentation persistence UI", () => {
     join(webSrcRoot, "components/patient-chart/PatientChartPrintLayout.tsx"),
     "utf8"
   );
+  const erPrintSource = readFileSync(
+    join(webSrcRoot, "features/emergency/erPrintPacket.ts"),
+    "utf8"
+  );
+  const erClosureSource = readFileSync(
+    join(webSrcRoot, "features/emergency/EmergencyErSummaryClosureSurface.tsx"),
+    "utf8"
+  );
   const summarySource = readFileSync(
     join(webSrcRoot, "features/emergency/EmergencyVisitSummaryPanel.tsx"),
     "utf8"
@@ -58,6 +66,8 @@ describe("EDOC.2 clinical documentation persistence UI", () => {
     expect(chartTabsSource).toContain("clinicalDocumentationEntries");
     expect(printSource).toContain("clinicalDocumentationEntries");
     expect(summarySource).toContain("clinicalDocumentationEntries");
+    expect(erPrintSource).toContain("clinicalDocumentationEntries");
+    expect(erClosureSource).toContain("clinicalDocumentationEntries: encounter.clinicalDocumentationEntries");
   });
 
   it("MEDNOTE panel unchanged", () => {

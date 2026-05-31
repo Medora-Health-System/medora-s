@@ -46,6 +46,10 @@ import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
 import { readNursingDischargeExecutionStored } from "@/features/emergency/nursingDischargeExecutionModel";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
+import {
+  appendClinicalDocumentationEntriesBlock,
+  type ErPrintClinicalDocumentationEntry,
+} from "@/features/emergency/erClinicalDocumentationPrintSection";
 
 export type ErPrintTriageSnapshot = {
   vitalsJson?: unknown;
@@ -207,7 +211,7 @@ function h2(lang: SupportedLanguage, key: string): string {
 function erPacketH1(lang: SupportedLanguage, outcome: ErDispositionOutcomeUi): string {
   if (outcome === "ADMISSION") return printT(lang, "printOutput.erPacket.h1AdmissionSummary");
   if (outcome === "TRANSFER") return printT(lang, "printOutput.erPacket.h1TransferPacket");
-  return printT(lang, "printOutput.erPacket.h1DischargePacket");
+  return printT(lang, "printOutput.erPacket.h1ErPacket");
 }
 
 /** Central assembly for ER print HTML — used by `printErPacket` / browser print. */
@@ -238,6 +242,8 @@ export function getErPrintPacketHtml(params: {
   procedureSummaries?: string[] | null;
   providerDocumentationSection?: ErPrintProviderDocumentationSection | null;
   clinicalTimelineEntries?: EdClinicalTimelineEntry[] | null;
+  /** Persisted EDOC legal chart rows — same source as Summary dashboard `clinicalDocumentationEntries`. */
+  clinicalDocumentationEntries?: ErPrintClinicalDocumentationEntry[] | null;
 }): string {
   const {
     patient,
@@ -260,6 +266,7 @@ export function getErPrintPacketHtml(params: {
     procedureSummaries,
     providerDocumentationSection: providerDocumentationSectionParam,
     clinicalTimelineEntries,
+    clinicalDocumentationEntries,
   } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
@@ -550,6 +557,8 @@ export function getErPrintPacketHtml(params: {
     appendProviderDocumentationBlock(body, language, providerDocumentationSection);
   }
 
+  appendClinicalDocumentationEntriesBlock(body, language, loc, clinicalDocumentationEntries);
+
   if (Array.isArray(clinicalTimelineEntries) && clinicalTimelineEntries.length > 0) {
     body.push(h2(language, "printOutput.erPacket.sectionClinicalTimeline"));
     appendClinicalTimelineBlock(body, language, clinicalTimelineEntries);
@@ -567,7 +576,7 @@ export function getErPrintPacketHtml(params: {
       ? "printOutput.erPacket.htmlTitleAdmission"
       : outcome === "TRANSFER"
         ? "printOutput.erPacket.htmlTitleTransfer"
-        : "printOutput.erPacket.htmlTitleDischarge";
+        : "printOutput.erPacket.htmlTitleErPacket";
 
   return `<!DOCTYPE html>
 <html lang="${htmlLang}">

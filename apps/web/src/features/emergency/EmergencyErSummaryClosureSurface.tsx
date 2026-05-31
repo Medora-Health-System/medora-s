@@ -385,6 +385,7 @@ export function EmergencyErSummaryClosureSurface({
         ? buildProviderDocumentationPrintSection(providerDocBlock, language)
         : null,
       clinicalTimelineEntries: clinicalTimeline.all,
+      clinicalDocumentationEntries: encounter.clinicalDocumentationEntries ?? null,
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t]);
 
