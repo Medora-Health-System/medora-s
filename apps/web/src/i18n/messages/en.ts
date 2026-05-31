@@ -13179,6 +13179,11 @@ export default {
     handoffEmptyReadonly: "No handoff recorded yet.",
     handoffEditInNursingTabHint:
       "Detailed entry: Nursing Assessment section below (this page) or Nursing tile (ER workspace). Summary:",
+    roomOccupiedTitle: "Room already occupied",
+    roomOccupiedBody:
+      "Room {room} is already occupied. Continue and assign this patient to {suggestedRoom}?",
+    roomOccupiedConfirm: "Continue",
+    roomOccupiedCancel: "Cancel",
   },
   encounters: {
     assignedProvider: "Assigned provider",

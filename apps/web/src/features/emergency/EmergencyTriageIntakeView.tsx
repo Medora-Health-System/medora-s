@@ -9,6 +9,9 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import { DEFAULT_ENCOUNTER_ROOM_LABEL, ENCOUNTER_ROOM_OPTIONS } from "@/lib/encounterRoomOptions";
+import { checkEdRoomAssignmentConflict } from "@/lib/edRoomAssignment";
+import { EdRoomOccupancyConfirmModal } from "@/components/encounters/EdRoomOccupancyConfirmModal";
+import type { EdRoomOccupancyConflict } from "@medora/shared";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
   MEDORA_CARD_SHELL,
@@ -79,6 +82,7 @@ export function EmergencyTriageIntakeView() {
   const [providers, setProviders] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roomOccupancyConflict, setRoomOccupancyConflict] = useState<EdRoomOccupancyConflict | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -139,9 +143,10 @@ export function EmergencyTriageIntakeView() {
     void runSearch();
   }, [ready, facilityId, facilityIdFromHook, runSearch]);
 
-  const createEmergencyEncounter = async () => {
+  const createEmergencyEncounter = async (resolvedRoomLabel?: string) => {
     const fid = facilityId || facilityIdFromHook;
     if (!fid || !selected) return;
+    const roomToAssign = (resolvedRoomLabel ?? roomLabel).trim() || DEFAULT_ENCOUNTER_ROOM_LABEL;
     setSubmitting(true);
     setError(null);
     try {
@@ -151,7 +156,7 @@ export function EmergencyTriageIntakeView() {
         body: JSON.stringify({
           type: "EMERGENCY",
           visitReason: visitReason.trim() || undefined,
-          roomLabel: roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL,
+          roomLabel: roomToAssign,
           physicianAssignedUserId: physicianAssignedUserId.trim() || undefined,
         }),
         facilityId: fid,
@@ -166,6 +171,29 @@ export function EmergencyTriageIntakeView() {
         return;
       }
       setError(t("emergencyTriageIntake.errUnexpectedResponse"));
+    } catch (e) {
+      setError(
+        normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("emergencyTriageIntake.errCreateFailed")
+      );
+    } finally {
+      setSubmitting(false);
+      setRoomOccupancyConflict(null);
+    }
+  };
+
+  const startEmergencyEncounter = async () => {
+    const fid = facilityId || facilityIdFromHook;
+    if (!fid || !selected) return;
+    const trimmedRoom = roomLabel.trim() || DEFAULT_ENCOUNTER_ROOM_LABEL;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const conflict = await checkEdRoomAssignmentConflict(fid, trimmedRoom);
+      if (conflict) {
+        setRoomOccupancyConflict(conflict);
+        return;
+      }
+      await createEmergencyEncounter(trimmedRoom);
     } catch (e) {
       setError(
         normalizeUserFacingError(e instanceof Error ? e.message : null, "fr") || t("emergencyTriageIntake.errCreateFailed")
@@ -393,7 +421,7 @@ export function EmergencyTriageIntakeView() {
                     <button
                       type="button"
                       disabled={submitting}
-                      onClick={() => void createEmergencyEncounter()}
+                      onClick={() => void startEmergencyEncounter()}
                       style={{
                         padding: "10px 18px",
                         borderRadius: 12,
@@ -415,6 +443,21 @@ export function EmergencyTriageIntakeView() {
           )}
         </div>
       </div>
+      {roomOccupancyConflict ? (
+        <EdRoomOccupancyConfirmModal
+          requestedRoom={roomOccupancyConflict.requestedRoom}
+          suggestedRoom={roomOccupancyConflict.suggestedRoom}
+          saving={submitting}
+          onCancel={() => {
+            if (submitting) return;
+            setRoomOccupancyConflict(null);
+          }}
+          onConfirm={() => {
+            setRoomLabel(roomOccupancyConflict.suggestedRoom);
+            void createEmergencyEncounter(roomOccupancyConflict.suggestedRoom);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

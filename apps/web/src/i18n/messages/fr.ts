@@ -13185,6 +13185,11 @@ export default {
     handoffEmptyReadonly: "Aucune transmission enregistrée pour le moment.",
     handoffEditInNursingTabHint:
       "Saisie détaillée : section ci-dessous sous « Évaluation infirmière » (cette page) ou tuile « Soins infirmiers » (urgences). Synthèse :",
+    roomOccupiedTitle: "Salle déjà occupée",
+    roomOccupiedBody:
+      "La salle {room} est déjà occupée. Continuer et attribuer ce patient à la salle {suggestedRoom} ?",
+    roomOccupiedConfirm: "Continuer",
+    roomOccupiedCancel: "Annuler",
   },
   encounters: {
     assignedProvider: "Médecin attribué",

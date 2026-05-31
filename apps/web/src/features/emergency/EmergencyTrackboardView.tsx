@@ -29,7 +29,7 @@ import {
 } from "@/features/emergency/erTrackboardDispositionBadge";
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
-import { erHandoffV1SatisfiesInpatientTransferConfirm } from "@medora/shared";
+import { erHandoffV1SatisfiesInpatientTransferConfirm, sortRowsByRoomLabel } from "@medora/shared";
 import {
   computeLos,
   LOS_ESCALATION_SOFT,
@@ -334,6 +334,8 @@ export function EmergencyTrackboardView() {
     });
   }, [emergencyOnly, search, t]);
 
+  const sortedFiltered = useMemo(() => sortRowsByRoomLabel(filtered), [filtered]);
+
   const inputBase: React.CSSProperties = {
     height: 40,
     borderRadius: 12,
@@ -536,7 +538,7 @@ export function EmergencyTrackboardView() {
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : sortedFiltered.length === 0 ? (
           <div
             style={{
               borderRadius: 16,
@@ -560,7 +562,7 @@ export function EmergencyTrackboardView() {
           </div>
         ) : (
           <ul style={erTrackboardPatientListStyle(layoutMode)}>
-            {filtered.map((encounter) => {
+            {sortedFiltered.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
