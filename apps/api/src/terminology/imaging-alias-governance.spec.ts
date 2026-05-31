@@ -139,8 +139,9 @@ describe("imaging-alias-governance scanners", () => {
 
     const shortcutGaps = scanSearchShortcutOwnershipGaps(input.searchAliasShortcutMap);
     expect(shortcutGaps.some((g) => g.query === "ct head" && g.message.includes("predecessor only"))).toBe(
-      true
+      false
     );
+    expect(dual.some((c) => c.query === "ct head" && c.codes.includes("CT_HEAD_WO_CONTRAST"))).toBe(true);
   });
 
   it("lists manual_review alias plans", () => {

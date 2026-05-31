@@ -13,7 +13,7 @@ import { imagingClassifierSearchOr } from "../terminology/terminology-classifier
 
 const IMAGING_ALIAS_CODE_MAP: Record<string, string[]> = {
   cxr: ["XR_CHEST"],
-  "ct head": ["CT_HEAD"],
+  "ct head": ["CT_HEAD_WO_CONTRAST", "CT_HEAD"],
   "ct cervical": ["CT_CERVICAL_SPINE"],
   "ct abdomen": ["CT_ABDOMEN_PELVIS", "CT_ABD"],
   "cta chest": ["CTA_CHEST", "CT_CHEST_CTA"],

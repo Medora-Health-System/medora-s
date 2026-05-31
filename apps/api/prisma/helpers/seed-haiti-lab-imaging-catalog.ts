@@ -80,6 +80,7 @@ function imagingIsEssential(row: ImagingCatalogSeed): boolean {
     "US_ABD",
     "US_ABDOMEN",
     "CT_HEAD",
+    "CT_HEAD_WO_CONTRAST",
     "CT_ABD",
     "CT_ABDOMEN_PELVIS",
     "CT_CHEST",

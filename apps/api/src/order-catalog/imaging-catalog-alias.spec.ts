@@ -13,4 +13,12 @@ describe("imaging catalog alias map", () => {
     expect(src).toContain('"cta chest": ["CTA_CHEST", "CT_CHEST_CTA"]');
     expect(src).toContain("IMAGING_ALIAS_CODE_MAP");
   });
+
+  it("ct head shortcut includes CT_HEAD_WO_CONTRAST and CT_HEAD (2C.3.3B dual search)", () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, "imaging-catalog.service.ts"),
+      "utf8"
+    );
+    expect(src).toContain('"ct head": ["CT_HEAD_WO_CONTRAST", "CT_HEAD"]');
+  });
 });
