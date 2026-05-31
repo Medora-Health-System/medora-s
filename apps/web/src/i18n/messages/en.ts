@@ -4714,6 +4714,8 @@ export default {
       reassessmentDue: "Reassessment due",
       resultsPending: "Results pending ({count})",
       criticalUnack: "Critical result unacknowledged",
+      ordersPending: "Orders pending ({count})",
+      ordersPendingLinkAria: "Open encounter orders ({count})",
     },
     disposition: {
       discharged: "Discharge",

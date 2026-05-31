@@ -39,8 +39,6 @@ import {
   type LosResult,
 } from "@/features/emergency/erLengthOfStay";
 import {
-  dispositionDecisionMsFromEncounterFields,
-  formatDurationMsAsHhMm,
   parseIsoMs,
   reassessmentDue,
   type TrackboardOpsPayload,
@@ -617,51 +615,11 @@ export function EmergencyTrackboardView() {
               const ops: TrackboardOpsPayload = encounter.trackboardOps ?? {
                 resultsPendingCount: 0,
                 criticalResultUnacknowledged: false,
+                openOrderCount: 0,
                 lastNursingReassessmentAt: null,
                 firstDispositionDocAt: null,
               };
               const createdMs = parseIsoMs(encounter.createdAt);
-              const hasPhys = Boolean(
-                (encounter.physicianAssigned?.id ?? "").trim() || (encounter.physicianAssignedUserId ?? "").trim()
-              );
-              const physAtMs = parseIsoMs(encounter.physicianAssignedAt);
-              const docSignedMs = parseIsoMs(encounter.providerDocumentationSignedAt ?? null);
-              /** Prefer assignment time; fallback to signed documentation when assignment clock missing (legacy rows). */
-              const providerClockRefMs = physAtMs ?? docSignedMs;
-              let providerLine: string;
-              if (hasPhys) {
-                providerLine =
-                  providerClockRefMs != null
-                    ? t("emergencyTrackboard.ops.providerAssignedAgo").replace(
-                        "{duration}",
-                        formatDurationMsAsHhMm(nowMs - providerClockRefMs)
-                      )
-                    : t("emergencyTrackboard.ops.providerAssignedNoClock");
-              } else if (createdMs != null) {
-                providerLine = t("emergencyTrackboard.ops.providerWait").replace(
-                  "{duration}",
-                  formatDurationMsAsHhMm(nowMs - createdMs)
-                );
-              } else {
-                providerLine = t("emergencyTrackboard.ops.providerPending");
-              }
-
-              const dispositionPending = dispositionBadge == null;
-              let dispositionLine: string | null = null;
-              if (dispositionPending) {
-                dispositionLine = t("emergencyTrackboard.ops.dispositionPending");
-              } else if (createdMs != null) {
-                const decisionMs = dispositionDecisionMsFromEncounterFields({
-                  admittedAtMs: parseIsoMs(encounter.admittedAt),
-                  firstDispositionDocMs: parseIsoMs(ops.firstDispositionDocAt),
-                });
-                if (decisionMs != null && decisionMs >= createdMs) {
-                  dispositionLine = t("emergencyTrackboard.ops.decisionAt").replace(
-                    "{duration}",
-                    formatDurationMsAsHhMm(decisionMs - createdMs)
-                  );
-                }
-              }
 
               const escalationTier = los ? losEscalationTierFromMs(los.ms) : "none";
               const reassessNeeded =
@@ -674,7 +632,13 @@ export function EmergencyTrackboardView() {
                   esi: encounter.triage?.esi ?? null,
                 });
 
-              const opsChips: Array<{ key: string; text: string; soft: PriorityBadgeSoft }> = [];
+              const opsChips: Array<{
+                key: string;
+                text: string;
+                soft: PriorityBadgeSoft;
+                href?: string;
+                ariaLabel?: string;
+              }> = [];
               if (ops.criticalResultUnacknowledged) {
                 opsChips.push({
                   key: "crit",
@@ -689,12 +653,14 @@ export function EmergencyTrackboardView() {
                   soft: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
                 });
               }
-              opsChips.push({ key: "prov", text: providerLine, soft: { bg: "#f8fafc", text: "#334155", border: "#e2e8f0" } });
-              if (dispositionLine) {
+              if (ops.openOrderCount > 0) {
+                const countLabel = String(ops.openOrderCount);
                 opsChips.push({
-                  key: "disp",
-                  text: dispositionLine,
-                  soft: { bg: "#f1f5f9", text: "#475569", border: "#cbd5e1" },
+                  key: "orders",
+                  text: t("emergencyTrackboard.ops.ordersPending").replace("{count}", countLabel),
+                  soft: { bg: "#eff6ff", text: "#1d4ed8", border: "#93c5fd" },
+                  href: emergencyActiveWorkspacePath(encounter.id, { section: "orders" }),
+                  ariaLabel: t("emergencyTrackboard.ops.ordersPendingLinkAria").replace("{count}", countLabel),
                 });
               }
               if (reassessNeeded) {
@@ -1011,11 +977,24 @@ export function EmergencyTrackboardView() {
                         aria-label={t("emergencyTrackboard.ops.regionAria")}
                         style={erTrackboardOpsRegionStyle(layoutMode)}
                       >
-                        {opsChips.map((c) => (
-                          <MedoraCardBadge key={c.key} compact={usesCompactCensus} soft={c.soft}>
-                            {c.text}
-                          </MedoraCardBadge>
-                        ))}
+                        {opsChips.map((c) =>
+                          c.href ? (
+                            <Link
+                              key={c.key}
+                              href={c.href}
+                              aria-label={c.ariaLabel ?? c.text}
+                              style={{ textDecoration: "none", display: "inline-flex" }}
+                            >
+                              <MedoraCardBadge compact={usesCompactCensus} soft={c.soft}>
+                                {c.text}
+                              </MedoraCardBadge>
+                            </Link>
+                          ) : (
+                            <MedoraCardBadge key={c.key} compact={usesCompactCensus} soft={c.soft}>
+                              {c.text}
+                            </MedoraCardBadge>
+                          )
+                        )}
                       </div>
                     </div>
                   </MedoraCard>

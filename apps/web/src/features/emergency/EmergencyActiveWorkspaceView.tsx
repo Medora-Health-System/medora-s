@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { createDiagnosis } from "@/lib/chartApi";
 import { Icd10DiagnosisEntryPanel } from "@/components/diagnosis/Icd10DiagnosisEntryPanel";
@@ -61,6 +61,10 @@ import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyEr
 import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
+import {
+  parseErWorkspaceSection,
+  type ErWorkspaceSection,
+} from "@/features/emergency/erWorkspaceSections";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
@@ -190,22 +194,12 @@ const shellBox: React.CSSProperties = {
   padding: "14px 16px",
 };
 
-/** Zones du tableau de bord urgences (navigation locale + zone active). */
-export type ErWorkspaceSection =
-  | "triage"
-  | "visitSummary"
-  | "results"
-  | "mar"
-  | "orders"
-  | "diagnostics"
-  | "notes"
-  | "nursing"
-  | "providerMse"
-  | "disposition";
+export type { ErWorkspaceSection } from "@/features/emergency/erWorkspaceSections";
 
 export function EmergencyActiveWorkspaceView() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
   const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
@@ -225,7 +219,9 @@ export function EmergencyActiveWorkspaceView() {
   const [showIvAccessModal, setShowIvAccessModal] = useState(false);
   const [showProcedureLauncherModal, setShowProcedureLauncherModal] = useState(false);
 
-  const [activeSection, setActiveSection] = useState<ErWorkspaceSection>("triage");
+  const [activeSection, setActiveSection] = useState<ErWorkspaceSection>(() => {
+    return parseErWorkspaceSection(searchParams.get("section")) ?? "triage";
+  });
   const [layoutMode, setLayoutMode] = useState<EmergencyChartLayoutMode>("desktopSplit");
   const [viewportWidth, setViewportWidth] = useState(1280);
 

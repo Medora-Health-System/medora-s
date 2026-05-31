@@ -5,6 +5,7 @@
 export type TrackboardOpsPayload = {
   resultsPendingCount: number;
   criticalResultUnacknowledged: boolean;
+  openOrderCount: number;
   lastNursingReassessmentAt: string | null;
   firstDispositionDocAt: string | null;
 };

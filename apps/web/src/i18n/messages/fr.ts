@@ -4682,6 +4682,8 @@ export default {
       reassessmentDue: "Réévaluation due",
       resultsPending: "Résultats en attente ({count})",
       criticalUnack: "Résultat critique non accusé",
+      ordersPending: "Commandes à traiter ({count})",
+      ordersPendingLinkAria: "Ouvrir les commandes du dossier ({count})",
     },
     disposition: {
       discharged: "Sortie à domicile",

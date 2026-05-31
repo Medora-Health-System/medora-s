@@ -1,11 +1,21 @@
 /** Routes URGENCES — isolées du flux consultation générique. */
 
+import type { ErWorkspaceSection } from "@/features/emergency/erWorkspaceSections";
+
 export function emergencyTrackboardPath(): string {
   return "/app/emergency/trackboard";
 }
 
-export function emergencyActiveWorkspacePath(encounterId: string): string {
-  return `/app/emergency/active/${encodeURIComponent(encounterId)}`;
+export function emergencyActiveWorkspacePath(
+  encounterId: string,
+  options?: { section?: ErWorkspaceSection }
+): string {
+  const base = `/app/emergency/active/${encodeURIComponent(encounterId)}`;
+  const section = options?.section?.trim();
+  if (section) {
+    return `${base}?section=${encodeURIComponent(section)}`;
+  }
+  return base;
 }
 
 /** Dossier / charte urgence complet (toutes les zones ER). */

@@ -6,6 +6,8 @@
 export type TrackboardOperationalAggregate = {
   resultsPendingCount: number;
   criticalResultUnacknowledged: boolean;
+  /** Actionable open order lines (aggregate count only — no order detail). */
+  openOrderCount: number;
   lastNursingReassessmentAt: string | null;
   /** Phase 13G-B — last PROVIDER observation reassessment event (ISO), if any. */
   lastProviderObservationReassessmentAt: string | null;
@@ -20,6 +22,7 @@ export function emptyTrackboardOperationalAggregate(): TrackboardOperationalAggr
   return {
     resultsPendingCount: 0,
     criticalResultUnacknowledged: false,
+    openOrderCount: 0,
     lastNursingReassessmentAt: null,
     lastProviderObservationReassessmentAt: null,
     lastRnObservationReassessmentAt: null,

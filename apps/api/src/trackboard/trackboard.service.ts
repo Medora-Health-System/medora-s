@@ -108,7 +108,7 @@ export class TrackboardService {
 
     const idsSql = Prisma.join(encounterIds);
 
-    const [labRows, reassessRows, dispositionDocRows, vitalsRows] = await Promise.all([
+    const [labRows, reassessRows, dispositionDocRows, vitalsRows, openOrderRows] = await Promise.all([
       this.prisma.$queryRaw<
         Array<{
           encounterId: string;
@@ -192,6 +192,27 @@ export class TrackboardService {
           AND t."encounterId" IN (${idsSql})
         GROUP BY t."encounterId"
       `),
+      this.prisma.$queryRaw<Array<{ encounterId: string; openOrderCount: bigint }>>(Prisma.sql`
+        SELECT o."encounterId" AS "encounterId",
+          COUNT(*)::bigint AS "openOrderCount"
+        FROM "OrderItem" oi
+        INNER JOIN "Order" o ON oi."orderId" = o.id
+        WHERE o."facilityId" = ${facilityId}
+          AND o."encounterId" IN (${idsSql})
+          AND o."status" <> 'CANCELLED'::"OrderStatus"
+          AND oi."status" NOT IN (
+            'CANCELLED'::"OrderStatus",
+            'COMPLETED'::"OrderStatus",
+            'RESULTED'::"OrderStatus",
+            'VERIFIED'::"OrderStatus"
+          )
+          AND oi."lifecycleState" NOT IN (
+            'CANCELLED'::"OrderItemLifecycleState",
+            'COMPLETED'::"OrderItemLifecycleState",
+            'REVIEWED'::"OrderItemLifecycleState"
+          )
+        GROUP BY o."encounterId"
+      `),
     ]);
 
     for (const row of labRows) {
@@ -239,6 +260,15 @@ export class TrackboardService {
         ...cur,
         lastTriageVitalsRecordedAt:
           row.lastAt instanceof Date ? row.lastAt.toISOString() : new Date(row.lastAt).toISOString(),
+      });
+    }
+
+    for (const row of openOrderRows) {
+      const cur = map.get(row.encounterId) ?? emptyTrackboardOperationalAggregate();
+      const n = typeof row.openOrderCount === "bigint" ? Number(row.openOrderCount) : Number(row.openOrderCount);
+      map.set(row.encounterId, {
+        ...cur,
+        openOrderCount: Number.isFinite(n) ? n : 0,
       });
     }
 
