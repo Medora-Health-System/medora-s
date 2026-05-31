@@ -26,7 +26,7 @@ function ctHeadPostAliasMigrationSnapshot(): ImagingAliasGovernanceInput {
         isActive: true,
         aliases: ["doppler leg", "venous doppler leg", "dvt ultrasound"],
       },
-      { code: "CT_HEAD", isActive: true, aliases: [] },
+      { code: "CT_HEAD", isActive: false, aliases: [] },
       {
         code: "CT_HEAD_WO_CONTRAST",
         isActive: true,
@@ -96,15 +96,15 @@ describe("CT head alias governance post-migration (2C.3.4B)", () => {
     expect(collisions.some((collision) => collision.alias === "ct head")).toBe(false);
   });
 
-  it("keeps dual shortcut while alias ownership moves to successor", () => {
+  it("keeps successor-only shortcut while alias ownership stays on successor", () => {
     const report = buildImagingAliasGovernanceReport(input);
     const ctHead = report.pairs.find((pair) => pair.predecessorCode === "CT_HEAD");
 
-    expect(input.searchAliasShortcutMap["ct head"]).toEqual(["CT_HEAD_WO_CONTRAST", "CT_HEAD"]);
-    expect(ctHead?.searchSafe.ready).toBe(false);
-    expect(ctHead?.searchSafe.blockers.some((blocker) => blocker.includes("dual-active shortcuts"))).toBe(
-      true
-    );
+    expect(input.searchAliasShortcutMap["ct head"]).toEqual(["CT_HEAD_WO_CONTRAST"]);
+    expect(ctHead?.searchSafe.ready).toBe(true);
+    expect(
+      ctHead?.searchSafe.blockers.some((blocker) => blocker.includes("dual-active shortcuts"))
+    ).toBe(false);
     expect(
       ctHead?.dualActiveSafe.blockers.some((blocker) => blocker.includes("shared aliases during dual-active"))
     ).toBe(false);

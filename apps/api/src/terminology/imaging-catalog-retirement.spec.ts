@@ -27,6 +27,9 @@ import {
   listKnownRetirementCodes,
   validateImagingCatalogSuccessorMap,
 } from "./imaging-catalog-retirement.validation";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { IMAGING_CODE_TO_CPT } from "../../prisma/data/billing-catalog-common";
 
 function localDbLikeSnapshot(): ImagingRetirementReadinessInput {
   return {
@@ -53,8 +56,8 @@ function localDbLikeSnapshot(): ImagingRetirementReadinessInput {
       },
       {
         code: "CT_HEAD",
-        isActive: true,
-        aliases: ["ct head"],
+        isActive: false,
+        aliases: [],
       },
       {
         code: "CT_HEAD_WO_CONTRAST",
@@ -133,7 +136,8 @@ describe("imaging-catalog-retirement scanners", () => {
   it("detects five active duplicate groups in local snapshot", () => {
     const groups = scanActiveDuplicateGroups(input.catalogRows);
     expect(groups).toHaveLength(5);
-    expect(groups.every((g) => g.predecessorActive && g.successorActive)).toBe(true);
+    expect(groups.every((g) => g.successorActive)).toBe(true);
+    expect(groups.find((g) => g.predecessorCode === "CT_HEAD")?.predecessorActive).toBe(false);
   });
 
   it("detects shared alias collisions for duplicate pairs", () => {
@@ -144,9 +148,9 @@ describe("imaging-catalog-retirement scanners", () => {
     );
   });
 
-  it("detects search shortcut collisions including ct head predecessor-only", () => {
+  it("detects search shortcut collisions for remaining duplicate pairs", () => {
     const collisions = scanSearchShortcutCollisions();
-    expect(collisions.some((c) => c.query === "ct head" && c.pairPredecessor === "CT_HEAD")).toBe(true);
+    expect(collisions.some((c) => c.query === "ct head")).toBe(false);
     expect(collisions.some((c) => c.query === "cta chest")).toBe(true);
   });
 
@@ -159,7 +163,7 @@ describe("imaging-catalog-retirement scanners", () => {
   it("runImagingRetirementScan aggregates scan results", () => {
     const scan = runImagingRetirementScan({ catalogRows: input.catalogRows });
     expect(scan.validationIssues.filter((i) => i.severity === "error")).toHaveLength(0);
-    expect(countActiveDuplicatePairs(scan)).toBe(5);
+    expect(countActiveDuplicatePairs(scan)).toBe(4);
     expect(scan.orderSetPredecessorRefs.length).toBe(1);
   });
 });
@@ -185,14 +189,44 @@ describe("CT head order set migration (2C.4B)", () => {
     const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
     expect(ctHead?.billing.ready).toBe(true);
     expect(ctHead?.orderSet.ready).toBe(true);
-    expect(ctHead?.search.ready).toBe(false);
+    expect(ctHead?.search.ready).toBe(true);
   });
 
-  it("does not alter dual-search shortcut governance mirror", () => {
-    expect(KNOWN_IMAGING_SEARCH_ALIAS_SHORTCUTS["ct head"]).toEqual([
-      "CT_HEAD_WO_CONTRAST",
+  it("does not alter successor-only shortcut governance mirror after retirement", () => {
+    expect(KNOWN_IMAGING_SEARCH_ALIAS_SHORTCUTS["ct head"]).toEqual(["CT_HEAD_WO_CONTRAST"]);
+  });
+});
+
+describe("CT head catalog retirement (2C.5B)", () => {
+  it("reports search ready when predecessor inactive and shortcut is successor-only", () => {
+    const input = localDbLikeSnapshot();
+    input.billingMappedExternalCodes = new Set([
+      "US_ABD",
+      "DOPPLER_VEIN",
       "CT_HEAD",
+      "CT_HEAD_WO_CONTRAST",
+      "CT_ABD",
     ]);
+    const report = buildImagingRetirementReadinessReport(input);
+    const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
+    expect(ctHead?.orderSet.ready).toBe(true);
+    expect(ctHead?.billing.ready).toBe(true);
+    expect(ctHead?.search.ready).toBe(true);
+    expect(ctHead?.alias.ready).toBe(true);
+  });
+
+  it("documents deactivate script entrypoint", () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, "../../prisma/scripts/deactivate-ct-head-catalog.ts"),
+      "utf8"
+    );
+    expect(src).toContain("deactivateCtHeadCatalog");
+    expect(src).toContain("[deactivate-ct-head-catalog]");
+  });
+
+  it("retains CT_HEAD and CT_HEAD_WO_CONTRAST billing mappings at 70450", () => {
+    expect(IMAGING_CODE_TO_CPT.CT_HEAD?.cpt).toBe("70450");
+    expect(IMAGING_CODE_TO_CPT.CT_HEAD_WO_CONTRAST?.cpt).toBe("70450");
   });
 });
 
@@ -208,7 +242,7 @@ describe("imaging-catalog-retirement readiness report", () => {
     expect(ctHead?.manualReviewRequired).toBe(true);
     expect(ctHead?.billing.ready).toBe(false);
     expect(ctHead?.orderSet.ready).toBe(true);
-    expect(ctHead?.search.ready).toBe(false);
+    expect(ctHead?.search.ready).toBe(true);
     expect(ctHead?.retirementReady).toBe(false);
   });
 

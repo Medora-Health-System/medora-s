@@ -19,7 +19,7 @@ export const KNOWN_ORDER_SET_IMAGING_PREDECESSOR_REFS: readonly OrderSetPredeces
  * Used for readiness scans only — does not alter runtime search.
  */
 export const KNOWN_IMAGING_SEARCH_ALIAS_SHORTCUTS: Readonly<Record<string, readonly string[]>> = {
-  "ct head": ["CT_HEAD_WO_CONTRAST", "CT_HEAD"],
+  "ct head": ["CT_HEAD_WO_CONTRAST"],
   "ct abdomen": ["CT_ABDOMEN_PELVIS", "CT_ABD"],
   "cta chest": ["CTA_CHEST", "CT_CHEST_CTA"],
   "ultrasound abdomen": ["US_ABDOMEN", "US_ABD"],

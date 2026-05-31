@@ -141,7 +141,7 @@ describe("imaging-alias-governance scanners", () => {
     expect(shortcutGaps.some((g) => g.query === "ct head" && g.message.includes("predecessor only"))).toBe(
       false
     );
-    expect(dual.some((c) => c.query === "ct head" && c.codes.includes("CT_HEAD_WO_CONTRAST"))).toBe(true);
+    expect(dual.some((c) => c.query === "ct head" && c.codes.includes("CT_HEAD_WO_CONTRAST"))).toBe(false);
   });
 
   it("lists manual_review alias plans", () => {
@@ -173,7 +173,7 @@ describe("imaging-alias-governance readiness report", () => {
 
     const ctHead = report.pairs.find((p) => p.predecessorCode === "CT_HEAD");
     expect(ctHead?.manualReviewRequired).toBe(true);
-    expect(ctHead?.searchSafe.ready).toBe(false);
+    expect(ctHead?.searchSafe.ready).toBe(true);
   });
 
   it("can report ownershipDefined ready for all pairs", () => {

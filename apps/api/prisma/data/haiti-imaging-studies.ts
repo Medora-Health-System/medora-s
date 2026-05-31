@@ -87,7 +87,7 @@ export const HAITI_IMAGING_CATALOG: ImagingCatalogSeed[] = [
     bodyRegion: "CERVEAU",
     aliases: [],
     searchText: "cerveau trauma avc",
-    isActive: true,
+    isActive: false,
   },
   {
     code: "CT_ABD",

@@ -1,6 +1,7 @@
 /**
- * Phase 2C.3.3B — CT head dual-search query matrix (runtime shortcut + ranking path).
+ * Phase 2C.3.3B / 2C.5B — CT head search query matrix (post-retirement active catalog).
  */
+import { HAITI_IMAGING_CATALOG } from "../../prisma/data/haiti-imaging-studies";
 import { ImagingCatalogService } from "./imaging-catalog.service";
 
 const CT_HEAD_ID = "11111111-1111-4111-8111-111111111111";
@@ -29,7 +30,7 @@ const CT_HEAD_ROW: CatalogRow = {
   searchText: "cerveau trauma avc",
   modality: "CT",
   bodyRegion: "CERVEAU",
-  isActive: true,
+  isActive: false,
   isEssential: true,
   sortPriority: 10,
 };
@@ -110,10 +111,10 @@ function buildService(): ImagingCatalogService {
         const where = args.where;
         if (where?.code?.in) {
           const codes = new Set(where.code.in);
-          result = result.filter((r) => codes.has(r.code));
+          result = rows.filter((r) => codes.has(r.code) && r.isActive);
         } else if (where?.id?.in) {
           const ids = new Set(where.id.in);
-          result = result.filter((r) => ids.has(r.id));
+          result = rows.filter((r) => ids.has(r.id));
         } else if (where?.OR) {
           const q = where.OR[0]?.code?.contains ?? where.OR[0]?.searchText?.contains ?? "";
           if (q) {
@@ -135,7 +136,16 @@ function buildService(): ImagingCatalogService {
   return new ImagingCatalogService(prisma as never);
 }
 
-describe("CT head dual search (2C.3.3B)", () => {
+describe("CT head catalog seed retirement (2C.5B)", () => {
+  it("marks CT_HEAD inactive and keeps CT_HEAD_WO_CONTRAST active in Haiti seed", () => {
+    const ctHead = HAITI_IMAGING_CATALOG.find((row) => row.code === "CT_HEAD");
+    const ctHeadWo = HAITI_IMAGING_CATALOG.find((row) => row.code === "CT_HEAD_WO_CONTRAST");
+    expect(ctHead?.isActive).toBe(false);
+    expect(ctHeadWo?.isActive).toBe(true);
+  });
+});
+
+describe("CT head post-retirement search (2C.5B)", () => {
   const service = buildService();
 
   async function codesForQuery(q: string): Promise<string[]> {
@@ -143,21 +153,14 @@ describe("CT head dual search (2C.3.3B)", () => {
     return items.map((item) => item.code);
   }
 
-  it("ct head returns both CT_HEAD and CT_HEAD_WO_CONTRAST", async () => {
+  it("ct head returns CT_HEAD_WO_CONTRAST only", async () => {
     const codes = await codesForQuery("ct head");
-    expect(codes).toContain("CT_HEAD");
-    expect(codes).toContain("CT_HEAD_WO_CONTRAST");
-    expect(codes.indexOf("CT_HEAD")).toBeLessThan(codes.indexOf("CT_HEAD_WO_CONTRAST"));
+    expect(codes).toEqual(["CT_HEAD_WO_CONTRAST"]);
   });
 
-  it("keeps CT_HEAD discoverable via ct head shortcut", async () => {
+  it("does not return inactive CT_HEAD in active catalog search", async () => {
     const codes = await codesForQuery("ct head");
-    expect(codes).toContain("CT_HEAD");
-  });
-
-  it("makes CT_HEAD_WO_CONTRAST discoverable via ct head shortcut", async () => {
-    const codes = await codesForQuery("ct head");
-    expect(codes).toContain("CT_HEAD_WO_CONTRAST");
+    expect(codes).not.toContain("CT_HEAD");
   });
 
   it("stroke bleed still returns CT_HEAD_WO_CONTRAST", async () => {
@@ -170,7 +173,7 @@ describe("CT head dual search (2C.3.3B)", () => {
     expect(codes).toContain("CT_HEAD_WO_CONTRAST");
   });
 
-  it("post alias migration: ct head DB alias is on successor only", async () => {
+  it("keeps ct head DB alias on successor only", async () => {
     const ctHeadAliasOwners = ALIAS_ROWS.filter((row) => row.alias.toLowerCase() === "ct head").map(
       (row) => row.catalogImagingStudyId
     );
