@@ -207,6 +207,33 @@ describe("imaging-catalog-retirement readiness report", () => {
     expect(usPair?.verdict).toBe("SAFE");
   });
 
+  it("reports Tier A billing ready when successor BillingCatalog rows exist (Phase 2C.2)", () => {
+    const input = localDbLikeSnapshot();
+    input.billingMappedExternalCodes = new Set([
+      "US_ABD",
+      "US_ABDOMEN",
+      "DOPPLER_VEIN",
+      "US_VENOUS_DOPPLER_LE",
+      "CT_HEAD",
+      "CT_HEAD_WO_CONTRAST",
+      "CT_ABD",
+    ]);
+
+    const report = buildImagingRetirementReadinessReport(input);
+    expect(report.pairs.find((p) => p.successorCode === "US_ABDOMEN")?.billing.ready).toBe(true);
+    expect(report.pairs.find((p) => p.successorCode === "US_VENOUS_DOPPLER_LE")?.billing.ready).toBe(
+      true
+    );
+    expect(report.pairs.find((p) => p.successorCode === "CT_HEAD_WO_CONTRAST")?.billing.ready).toBe(
+      true
+    );
+    expect(report.pairs.find((p) => p.successorCode === "CT_ABDOMEN_PELVIS")?.billing.ready).toBe(
+      false
+    );
+    expect(report.pairs.find((p) => p.successorCode === "CTA_CHEST")?.billing.ready).toBe(false);
+    expect(report.overallVerdict).toBe("NOT_SAFE");
+  });
+
   it("loadImagingRetirementReadinessInputFromPrisma queries catalog, billing, and orders", async () => {
     const catalogFindMany = jest.fn().mockResolvedValue([
       { id: "id-us-abd", code: "US_ABD", isActive: true, aliases: [{ alias: "echo abdomen" }] },
