@@ -214,7 +214,14 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/acknowledge")
-  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PHARMACY,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN
+  )
   async acknowledgeOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
@@ -233,7 +240,14 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/start")
-  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PHARMACY,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN
+  )
   async startOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
@@ -252,7 +266,14 @@ export class OrdersController {
   }
 
   @Post("orders/items/:id/complete")
-  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  @RequireRoles(
+    RoleCode.LAB,
+    RoleCode.RADIOLOGY,
+    RoleCode.PHARMACY,
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN
+  )
   async completeOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {

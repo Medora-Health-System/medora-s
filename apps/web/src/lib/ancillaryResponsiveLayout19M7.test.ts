@@ -113,13 +113,11 @@ describe("Lab and radiology worklist responsive safety (19M.7)", () => {
   });
 
   it("preserves lab/radiology workflow action handlers", () => {
-    expect(labSource).toContain("handleAcknowledge");
-    expect(labSource).toContain("handleStart");
-    expect(labSource).toContain("handleComplete");
-    expect(radSource).toContain("handleAcknowledge");
-    expect(radSource).toContain("handleStart");
-    expect(radSource).toContain("handleComplete");
-    expect(labSource).toContain("worklistItemNeedsAcknowledge");
+    expect(labSource).toContain("handleWorkflowAction");
+    expect(labSource).toContain("postWorklistItemWorkflowAction");
+    expect(radSource).toContain("handleWorkflowAction");
+    expect(radSource).toContain("postWorklistItemWorkflowAction");
+    expect(labSource).toContain("resolveLabRadQueueWorkflowAction");
   });
 });
 

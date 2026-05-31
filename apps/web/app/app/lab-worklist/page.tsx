@@ -9,7 +9,16 @@ import { useI18n } from "@/lib/i18n";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { DISPLAY_DASH } from "@/lib/patientDisplay";
-import { worklistItemIsTerminal, worklistItemNeedsAcknowledge } from "@/lib/worklistLabRadUi";
+import {
+  worklistItemIsTerminal,
+  resolveLabRadQueueWorkflowAction,
+  isLabTestWorkflowActor,
+  shouldShowDeptWorklistReadOnlyNotice,
+  deptWorklistReadOnlyNoticeKey,
+  type WorklistItemWorkflowAction,
+} from "@/lib/worklistLabRadUi";
+import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
+import { DeptWorklistReadOnlyNotice } from "@/components/worklists/DeptWorklistReadOnlyNotice";
 import { summarizeLabRadWorklistOperational, type LabRadWorklistSortMode } from "@medora/shared";
 import {
   analyzeLabRadWorklistOperationalRow,
@@ -211,6 +220,7 @@ export default function LabWorklistPage() {
   const [loading, setLoading] = useState(true);
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
+  const [pendingWorkflowItemId, setPendingWorkflowItemId] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("OLDEST_FIRST");
@@ -227,11 +237,10 @@ export default function LabWorklistPage() {
   });
 
   /**
-   * Workflow d’équipe LAB : accusé / démarrage / clôture sont réservés aux techniciens labo.
-   * Le service `assertAckOrStartActor` rejette RN sur LAB_TEST, donc on cache les boutons
-   * pour les infirmiers qui consultent la file en lecture seule (vue partagée).
+   * LAB.ED.4 — accusé / démarrage / clôture : rôles cliniques (PROVIDER, RN, LAB, RADIOLOGY, ADMIN).
+   * Aligné sur `assertDepartmentRoleForItem` côté API ; FRONT_DESK voit l’avis lecture seule.
    */
-  const isLabTechActor = roles.includes("LAB") || roles.includes("ADMIN");
+  const isLabTechActor = isLabTestWorkflowActor(roles);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -366,64 +375,55 @@ export default function LabWorklistPage() {
     [operationalFilteredPairs]
   );
 
-  const handleAcknowledge = async (itemId: string) => {
-    if (!facilityId) return;
-    const item = (Array.isArray(queue) ? queue : [])
-      .flatMap((o: any) => (Array.isArray(o.items) ? o.items : []))
-      .find((i: any) => i.id === itemId);
-    if (!item) return;
-    if (item.status !== "PLACED" && item.status !== "PENDING" && item.status !== "SIGNED") {
-      console.warn("ACK blocked: invalid state", item.status);
-      return;
-    }
+  const handleWorkflowAction = async (
+    action: WorklistItemWorkflowAction,
+    itemId: string,
+    itemStatus: string
+  ) => {
+    if (!facilityId || pendingWorkflowItemId) return;
+    setPendingWorkflowItemId(itemId);
+    setQueuedActionNotice(null);
     try {
-      const res = await apiFetch(`/orders/items/${itemId}/acknowledge`, {
-        method: "POST",
-        facilityId,
-      });
-      const queued =
-        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
+      const { queued } = await postWorklistItemWorkflowAction(action, itemId, facilityId, itemStatus);
       setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
-      loadQueue();
+      await loadQueue();
     } catch (error) {
-      alert(t("worklistDepartments.shared.worklistActionAckFailed"));
-    }
-  };
-
-  const handleStart = async (itemId: string) => {
-    if (!facilityId) return;
-    try {
-      const res = await apiFetch(`/orders/items/${itemId}/start`, {
-        method: "POST",
-        facilityId,
-      });
-      const queued =
-        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
-      loadQueue();
-    } catch (error) {
-      alert(t("worklistDepartments.shared.worklistActionStartFailed"));
-    }
-  };
-
-  const handleComplete = async (itemId: string) => {
-    if (!facilityId) return;
-    try {
-      const res = await apiFetch(`/orders/items/${itemId}/complete`, {
-        method: "POST",
-        facilityId,
-      });
-      const queued =
-        res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
-      loadQueue();
-    } catch (error) {
-      alert(t("worklistDepartments.shared.worklistActionCompleteFailed"));
+      console.error("Lab worklist workflow action failed:", error);
+      const errKey =
+        action === "acknowledge"
+          ? "worklistDepartments.shared.worklistActionAckFailed"
+          : action === "start"
+            ? "worklistDepartments.shared.worklistActionStartFailed"
+            : "worklistDepartments.shared.worklistActionCompleteFailed";
+      alert(t(errKey));
+    } finally {
+      setPendingWorkflowItemId(null);
     }
   };
 
   const renderActions = (order: any, item: any) => {
     const encounterHref = order.encounterId ? `/app/encounters/${order.encounterId}` : null;
+    const showReadOnlyNotice = shouldShowDeptWorklistReadOnlyNotice({
+      roles,
+      kind: "lab",
+      status: item.status,
+      orderCancelled: orderIsCancelled(order),
+    });
+    const workflowAction = resolveLabRadQueueWorkflowAction({
+      status: item.status,
+      orderCancelled: orderIsCancelled(order),
+      viewerIsDeptActor: isLabTechActor,
+    });
+    const workflowBusy = pendingWorkflowItemId === item.id;
+    const workflowLabel =
+      workflowAction === "acknowledge"
+        ? t("worklistDepartments.shared.acknowledge")
+        : workflowAction === "start"
+          ? t("worklistDepartments.shared.start")
+          : workflowAction === "complete"
+            ? t("worklistDepartments.shared.complete")
+            : null;
+
     if (orderIsCancelled(order) || worklistItemIsTerminal(item.status)) {
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
@@ -440,24 +440,23 @@ export default function LabWorklistPage() {
     }
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch", width: "100%" }}>
-        {isLabTechActor ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            {worklistItemNeedsAcknowledge(item.status) && (
-              <button type="button" onClick={() => void handleAcknowledge(item.id)} style={btnGhost(layoutMode)}>
-                {t("worklistDepartments.shared.acknowledge")}
-              </button>
-            )}
-            {item.status === "ACKNOWLEDGED" && (
-              <button type="button" onClick={() => void handleStart(item.id)} style={btnGhost(layoutMode)}>
-                {t("worklistDepartments.shared.start")}
-              </button>
-            )}
-            {item.status === "IN_PROGRESS" && (
-              <button type="button" onClick={() => void handleComplete(item.id)} style={btnGhost(layoutMode)}>
-                {t("worklistDepartments.shared.complete")}
-              </button>
-            )}
-          </div>
+        {showReadOnlyNotice ? (
+          <DeptWorklistReadOnlyNotice message={t(deptWorklistReadOnlyNoticeKey("lab"))} />
+        ) : null}
+        {workflowAction && workflowLabel ? (
+          <button
+            type="button"
+            data-testid={`lab-worklist-workflow-${workflowAction}-${item.id}`}
+            disabled={workflowBusy}
+            onClick={() => void handleWorkflowAction(workflowAction, item.id, String(item.status))}
+            style={{
+              ...btnVoir(layoutMode),
+              cursor: workflowBusy ? "not-allowed" : "pointer",
+              opacity: workflowBusy ? 0.7 : 1,
+            }}
+          >
+            {workflowLabel}
+          </button>
         ) : null}
         <Link href={`/app/lab-worklist/commande/${order.id}?ligne=${item.id}`} style={btnVoir(layoutMode)}>
           {t("common.view")}

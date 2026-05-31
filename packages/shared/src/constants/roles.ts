@@ -19,3 +19,27 @@ export function isPlatformOperatorRoleCode(role: string | undefined | null): boo
   return String(role ?? "").trim() === PLATFORM_OPERATOR_ROLE_CODE;
 }
 
+/**
+ * LAB.ED.4 — acknowledge / start / complete on LAB_TEST and IMAGING_STUDY lines.
+ * Backend `assertDepartmentRoleForItem` and web worklist UI must stay aligned.
+ * Excludes non-clinical roles (e.g. FRONT_DESK, BILLING, PHARMACY-only).
+ */
+export const LAB_IMAGING_CLINICAL_WORKFLOW_ROLE_CODES = [
+  "ADMIN",
+  "PROVIDER",
+  "RN",
+  "LAB",
+  "RADIOLOGY",
+] as const;
+
+export type LabImagingClinicalWorkflowRoleCode =
+  (typeof LAB_IMAGING_CLINICAL_WORKFLOW_ROLE_CODES)[number];
+
+export function roleCodesIncludeLabImagingClinicalWorkflow(
+  roleCodes: readonly string[]
+): boolean {
+  return roleCodes.some((code) =>
+    (LAB_IMAGING_CLINICAL_WORKFLOW_ROLE_CODES as readonly string[]).includes(code)
+  );
+}
+

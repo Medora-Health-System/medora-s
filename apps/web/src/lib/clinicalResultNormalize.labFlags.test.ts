@@ -6,6 +6,7 @@ import {
   worklistItemAllowsComplete,
   worklistItemAllowsStart,
   worklistItemNeedsAcknowledge,
+  resolveWorklistItemWorkflowAction,
 } from "./worklistLabRadUi";
 
 describe("parseLabObservationLines — LAB.ED.1 flag accuracy", () => {
@@ -52,6 +53,13 @@ describe("worklistLabRadUi — acknowledge workflow visibility", () => {
     expect(worklistItemAllowsComplete("IN_PROGRESS")).toBe(true);
     expect(worklistItemAllowsComplete("ACKNOWLEDGED")).toBe(false);
   });
+
+  it("resolves next workflow action consistently", () => {
+    expect(resolveWorklistItemWorkflowAction("PLACED")).toBe("acknowledge");
+    expect(resolveWorklistItemWorkflowAction("ACKNOWLEDGED")).toBe("start");
+    expect(resolveWorklistItemWorkflowAction("IN_PROGRESS")).toBe("complete");
+    expect(resolveWorklistItemWorkflowAction("COMPLETED")).toBeNull();
+  });
 });
 
 describe("DepartmentOrderDetail — LAB.ED.1 acknowledge wiring", () => {
@@ -60,9 +68,10 @@ describe("DepartmentOrderDetail — LAB.ED.1 acknowledge wiring", () => {
     "utf8"
   );
 
-  it("calls existing POST /orders/items/:id/acknowledge", () => {
-    expect(detailSource).toContain('`/orders/items/${itemId}/acknowledge`');
-    expect(detailSource).toContain("worklistItemNeedsAcknowledge");
+  it("calls existing POST /orders/items/:id/acknowledge via shared workflow API", () => {
+    expect(detailSource).toContain("postWorklistItemWorkflowAction");
+    expect(detailSource).toContain('runWorkflowAction(itemId, "acknowledge")');
+    expect(detailSource).toContain("resolveWorklistItemWorkflowAction");
   });
 
   it("shows acknowledge CTA in workflow hint when receipt is required", () => {

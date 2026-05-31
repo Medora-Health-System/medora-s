@@ -65,6 +65,12 @@ export default {
       worklistActionCompleteFailed: "Impossible de terminer",
       visitLink: "Consultation",
       openEncounter: "Ouvrir la consultation",
+      labWorkflowReadOnlyPermission:
+        "Vous pouvez consulter les ordres de laboratoire, mais un rôle clinique (médecin, infirmier, laboratoire ou imagerie) est requis pour accuser réception, démarrer ou terminer.",
+      radWorkflowReadOnlyPermission:
+        "Vous pouvez consulter les ordres d'imagerie, mais un rôle clinique (médecin, infirmier, laboratoire ou imagerie) est requis pour accuser réception, démarrer ou terminer.",
+      pharmacyWorkflowReadOnlyPermission:
+        "Vous pouvez consulter les ordres de pharmacie, mais le rôle pharmacie (PHARMACY) est requis pour accuser réception, démarrer ou terminer.",
     },
     lab: {
       title: "File laboratoire",

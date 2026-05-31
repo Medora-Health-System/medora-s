@@ -4,23 +4,27 @@ import {
   requestorMayAcknowledgeEnterpriseProcedure,
   requestorMayCompleteEnterpriseProcedure,
   resolveProcedureExecutionProfile,
+  roleCodesIncludeLabImagingClinicalWorkflow,
 } from "@medora/shared";
+
+function assertLabImagingClinicalWorkflowRole(roleCodes: RoleCode[]) {
+  if (roleCodesIncludeLabImagingClinicalWorkflow(roleCodes)) return;
+  throw new ForbiddenException(
+    "Rôle clinique requis pour cette action laboratoire ou imagerie (médecin, infirmier, laboratoire ou imagerie)."
+  );
+}
 
 /** Shared with PATCH /orders/items/:id/status and OrdersService item actions. */
 export function assertDepartmentRoleForItem(catalogItemType: string, roleCodes: RoleCode[]) {
-  const admin = roleCodes.includes(RoleCode.ADMIN);
   if (catalogItemType === "LAB_TEST") {
-    if (!admin && !roleCodes.includes(RoleCode.LAB)) {
-      throw new ForbiddenException("Rôle laboratoire requis pour cette action.");
-    }
+    assertLabImagingClinicalWorkflowRole(roleCodes);
     return;
   }
   if (catalogItemType === "IMAGING_STUDY") {
-    if (!admin && !roleCodes.includes(RoleCode.RADIOLOGY)) {
-      throw new ForbiddenException("Rôle imagerie requis pour cette action.");
-    }
+    assertLabImagingClinicalWorkflowRole(roleCodes);
     return;
   }
+  const admin = roleCodes.includes(RoleCode.ADMIN);
   if (catalogItemType === "MEDICATION") {
     if (!admin && !roleCodes.includes(RoleCode.PHARMACY)) {
       throw new ForbiddenException("Rôle pharmacie requis pour cette action.");

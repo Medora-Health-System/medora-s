@@ -174,6 +174,12 @@ export default {
       worklistActionCompleteFailed: "Unable to complete",
       visitLink: "Encounter",
       openEncounter: "Open encounter",
+      labWorkflowReadOnlyPermission:
+        "You can view laboratory orders, but a clinical role (provider, nurse, lab, or imaging) is required to acknowledge, start, or complete.",
+      radWorkflowReadOnlyPermission:
+        "You can view imaging orders, but a clinical role (provider, nurse, lab, or imaging) is required to acknowledge, start, or complete.",
+      pharmacyWorkflowReadOnlyPermission:
+        "You can view pharmacy orders, but PHARMACY role is required to acknowledge, start, or complete.",
     },
     lab: {
       title: "Lab queue",

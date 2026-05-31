@@ -56,7 +56,7 @@ describe("DepartmentOrderDetail — line expansion wiring", () => {
   it("keeps LAB.ED.1 acknowledge workflow inside the expanded body", () => {
     expect(detailSource).toContain("orderDetail.ackReceive");
     expect(detailSource).toContain("orderDetail.stepRequired");
-    expect(detailSource).toContain("worklistItemNeedsAcknowledge");
+    expect(detailSource).toContain("resolveWorklistItemWorkflowAction");
   });
 
   it("renders workflow warning and CTAs only when the line is expanded", () => {
@@ -68,12 +68,17 @@ describe("DepartmentOrderDetail — line expansion wiring", () => {
     expect(detailSource).toContain("showAckButton");
     expect(detailSource).toContain("showStartButton");
     expect(detailSource).toContain("showCompleteButton");
-    expect(detailSource).toContain("worklistItemAllowsStart");
-    expect(detailSource).toContain("worklistItemAllowsComplete");
+    expect(detailSource).toContain("nextWorkflowAction");
   });
 
   it("keeps result entry inside the expanded workflow panel", () => {
     expect(detailSource).toContain("canResult && !parentOrderCancelled");
     expect(detailSource).toContain("orderDetail.submitAddResultLab");
+  });
+
+  it("uses shared workflow resolver and API helper for detail actions", () => {
+    expect(detailSource).toContain("resolveWorklistItemWorkflowAction");
+    expect(detailSource).toContain("postWorklistItemWorkflowAction");
+    expect(detailSource).toContain("runWorkflowAction");
   });
 });

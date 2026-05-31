@@ -11,10 +11,9 @@ export class WorklistsController {
 
   @Get("lab")
   /**
-   * RN read-only inclusion: nurses can browse the lab dept queue and acknowledge
-   * resulted reports from the encounter chart. RN cannot finalize lab results
-   * (PUT /orders/:id/result) and cannot perform LAB tech ack/start/complete
-   * (`assertAckOrStartActor` rejects RN for LAB_TEST).
+   * RN and other clinical roles may browse the lab queue. LAB_TEST workflow
+   * ack/start/complete is enforced in `assertDepartmentRoleForItem` (clinical roles).
+   * Lab result finalize remains separately gated on PUT /orders/:id/result.
    */
   @RequireRoles(RoleCode.LAB, RoleCode.RN, RoleCode.ADMIN)
   async getLabWorklist(@Req() req: any) {

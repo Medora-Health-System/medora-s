@@ -188,8 +188,8 @@ describe("19M.8 — order lifecycle handlers unchanged on worklists (layout-only
 
   it("lab worklist retains workflow handlers", () => {
     const src = readWebSource("app/app/lab-worklist/page.tsx");
-    expect(src).toContain("handleAcknowledge");
-    expect(src).toContain("worklistItemNeedsAcknowledge");
-    expect(src).toContain("isLabTechActor");
+    expect(src).toContain("handleWorkflowAction");
+    expect(src).toContain("resolveLabRadQueueWorkflowAction");
+    expect(src).toContain("isLabTestWorkflowActor");
   });
 });

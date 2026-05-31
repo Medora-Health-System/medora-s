@@ -42,10 +42,14 @@ import {
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import {
-  worklistItemAllowsComplete,
-  worklistItemAllowsStart,
-  worklistItemNeedsAcknowledge,
+  resolveWorklistItemWorkflowAction,
+  isDeptWorklistWorkflowActor,
+  shouldShowDeptWorklistReadOnlyNotice,
+  deptWorklistReadOnlyNoticeKey,
+  type WorklistItemWorkflowAction,
 } from "@/lib/worklistLabRadUi";
+import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
+import { DeptWorklistReadOnlyNotice } from "@/components/worklists/DeptWorklistReadOnlyNotice";
 import { resolveSelectedLineId } from "@/lib/departmentOrderDetailLineSelection";
 
 function fillTemplate(s: string, vars: Record<string, string | number>): string {
@@ -138,17 +142,10 @@ export default function DepartmentOrderDetail({
   const { roles, userId, allowRnLabResultSubmission } = useFacilityAndRoles();
 
   /**
-   * Acteur autorisé à exécuter les actions worklist du département (accusé / démarrage /
-   * clôture, dispense pharmacie). Inchangé — RN n'est jamais inclus ici, même sous la
-   * politique Phase 1 : `assertAckOrStartActor` rejette RN sur LAB_TEST.
+   * Acteur autorisé aux actions worklist (accusé / démarrage / clôture). Labo / imagerie :
+   * rôles cliniques LAB.ED.4 (PROVIDER, RN, LAB, RADIOLOGY, ADMIN). Pharmacie : PHARMACY/ADMIN.
    */
-  const viewerIsDeptActor = useMemo(() => {
-    if (roles.includes("ADMIN")) return true;
-    if (kind === "lab") return roles.includes("LAB");
-    if (kind === "radiology") return roles.includes("RADIOLOGY");
-    if (kind === "pharmacy") return roles.includes("PHARMACY");
-    return false;
-  }, [roles, kind]);
+  const viewerIsDeptActor = useMemo(() => isDeptWorklistWorkflowActor(roles, kind), [roles, kind]);
 
   /**
    * Phase 1 — saisie de résultat de **laboratoire** par un infirmier sous politique
@@ -179,6 +176,7 @@ export default function DepartmentOrderDetail({
   const [dispenseNdc, setDispenseNdc] = useState("");
   const [dispenseBusy, setDispenseBusy] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [pendingWorkflowItemId, setPendingWorkflowItemId] = useState<string | null>(null);
 
   const labels = useMemo(() => {
     if (kind === "lab") {
@@ -258,29 +256,22 @@ export default function DepartmentOrderDetail({
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [highlightLineId, order, effectiveSelectedLineId]);
 
-  const handleAck = async (itemId: string) => {
-    if (!facilityId || order?.status === "CANCELLED") return;
+  const runWorkflowAction = async (itemId: string, action: WorklistItemWorkflowAction) => {
+    if (!facilityId || order?.status === "CANCELLED" || pendingWorkflowItemId) return;
     const item = (order?.items ?? []).find((i: any) => i.id === itemId);
     if (!item) return;
-    if (!worklistItemNeedsAcknowledge(item.status)) {
-      console.warn("ACK blocked: invalid state", item.status);
-      return;
+    setPendingWorkflowItemId(itemId);
+    try {
+      await postWorklistItemWorkflowAction(action, itemId, facilityId, item.status);
+      await load();
+    } finally {
+      setPendingWorkflowItemId(null);
     }
-    await apiFetch(`/orders/items/${itemId}/acknowledge`, { method: "POST", facilityId });
-    await load();
   };
 
-  const handleStart = async (itemId: string) => {
-    if (!facilityId || order?.status === "CANCELLED") return;
-    await apiFetch(`/orders/items/${itemId}/start`, { method: "POST", facilityId });
-    await load();
-  };
-
-  const handleComplete = async (itemId: string) => {
-    if (!facilityId || order?.status === "CANCELLED") return;
-    await apiFetch(`/orders/items/${itemId}/complete`, { method: "POST", facilityId });
-    await load();
-  };
+  const handleAck = async (itemId: string) => runWorkflowAction(itemId, "acknowledge");
+  const handleStart = async (itemId: string) => runWorkflowAction(itemId, "start");
+  const handleComplete = async (itemId: string) => runWorkflowAction(itemId, "complete");
 
   const openDispense = (item: any) => {
     if (order?.status === "CANCELLED") return;
@@ -469,12 +460,14 @@ export default function DepartmentOrderDetail({
             parentOrderCancelled={parentOrderCancelled}
             currentUserId={userId}
             viewerIsDeptActor={viewerIsDeptActor}
+            roles={roles}
             rnCanSubmitLabResult={rnCanSubmitLabResult}
             onReload={load}
             onAck={handleAck}
             onStart={handleStart}
             onComplete={handleComplete}
             onSelectLine={() => setSelectedLineId(item.id)}
+            workflowBusy={pendingWorkflowItemId === item.id}
             onOpenDispense={kind === "pharmacy" ? openDispense : undefined}
           />
         ))
@@ -635,12 +628,14 @@ function LineCard({
   parentOrderCancelled,
   currentUserId,
   viewerIsDeptActor,
+  roles,
   rnCanSubmitLabResult,
   onReload,
   onAck,
   onStart,
   onComplete,
   onSelectLine,
+  workflowBusy,
   onOpenDispense,
 }: {
   item: any;
@@ -658,8 +653,9 @@ function LineCard({
   order: any;
   parentOrderCancelled: boolean;
   currentUserId: string | null | undefined;
-  /** false pour RN consultant la file labo (lecture seule) ; backend rejette quoi qu'il en soit. */
+  /** false pour rôles non cliniques (ex. accueil) sur labo / imagerie ; aligné backend LAB.ED.4. */
   viewerIsDeptActor: boolean;
+  roles: readonly string[];
   /**
    * Phase 1 — true uniquement quand `Facility.allowRnLabResultSubmission === true`,
    * que la file est `lab`, et que l'utilisateur est RN sans rôle technicien. Autorise
@@ -671,6 +667,7 @@ function LineCard({
   onStart: (id: string) => Promise<void>;
   onComplete: (id: string) => Promise<void>;
   onSelectLine: () => void;
+  workflowBusy?: boolean;
   onOpenDispense?: (item: any) => void;
 }) {
   const { t, language } = useI18n();
@@ -878,27 +875,55 @@ function LineCard({
     color: "#fff",
   };
 
-  const showAckButton = viewerIsDeptActor && worklistItemNeedsAcknowledge(item.status);
-  const showStartButton = viewerIsDeptActor && worklistItemAllowsStart(item.status);
+  const showReadOnlyWorkflowNotice =
+    expanded &&
+    shouldShowDeptWorklistReadOnlyNotice({
+      roles,
+      kind,
+      status: item.status,
+      orderCancelled: parentOrderCancelled,
+    });
+  const nextWorkflowAction = viewerIsDeptActor
+    ? resolveWorklistItemWorkflowAction(item.status)
+    : null;
+  const showAckButton = nextWorkflowAction === "acknowledge";
+  const showStartButton = nextWorkflowAction === "start";
   const showCompleteButton =
-    viewerIsDeptActor &&
-    worklistItemAllowsComplete(item.status) &&
-    !(kind === "pharmacy" && !isAlreadyDispensed(item));
+    nextWorkflowAction === "complete" && !(kind === "pharmacy" && !isAlreadyDispensed(item));
+  const workflowDisabled = Boolean(workflowBusy || saving);
 
   const workflowButtons = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
       {showAckButton ? (
-        <button type="button" onClick={() => onAck(item.id)} style={workflowPrimaryBtnStyle}>
+        <button
+          type="button"
+          data-testid={`order-detail-workflow-acknowledge-${item.id}`}
+          disabled={workflowDisabled}
+          onClick={() => onAck(item.id)}
+          style={workflowPrimaryBtnStyle}
+        >
           {t("orderDetail.ackReceive")}
         </button>
       ) : null}
       {showStartButton ? (
-        <button type="button" onClick={() => onStart(item.id)} style={workflowPrimaryBtnStyle}>
+        <button
+          type="button"
+          data-testid={`order-detail-workflow-start-${item.id}`}
+          disabled={workflowDisabled}
+          onClick={() => onStart(item.id)}
+          style={workflowPrimaryBtnStyle}
+        >
           {t("orderDetail.startExam")}
         </button>
       ) : null}
       {showCompleteButton ? (
-        <button type="button" onClick={() => onComplete(item.id)} style={workflowBtnStyle}>
+        <button
+          type="button"
+          data-testid={`order-detail-workflow-complete-${item.id}`}
+          disabled={workflowDisabled}
+          onClick={() => onComplete(item.id)}
+          style={workflowBtnStyle}
+        >
           {t("orderDetail.completeExam")}
         </button>
       ) : null}
@@ -1109,6 +1134,10 @@ function LineCard({
         </div>
       ) : null}
 
+      {showReadOnlyWorkflowNotice ? (
+        <DeptWorklistReadOnlyNotice message={t(deptWorklistReadOnlyNoticeKey(kind))} />
+      ) : null}
+
       {parentOrderCancelled ? null : workflowButtons}
 
       {operational &&
@@ -1298,14 +1327,24 @@ function LineCard({
               <strong>{t("orderDetail.stepRequired")}</strong> {workflowBlockMessage}
               {showAckButton ? (
                 <div style={{ marginTop: 10 }}>
-                  <button type="button" onClick={() => onAck(item.id)} style={workflowPrimaryBtnStyle}>
+                  <button
+                    type="button"
+                    disabled={workflowDisabled}
+                    onClick={() => onAck(item.id)}
+                    style={workflowPrimaryBtnStyle}
+                  >
                     {t("orderDetail.ackReceive")}
                   </button>
                 </div>
               ) : null}
               {showStartButton ? (
                 <div style={{ marginTop: 10 }}>
-                  <button type="button" onClick={() => onStart(item.id)} style={workflowPrimaryBtnStyle}>
+                  <button
+                    type="button"
+                    disabled={workflowDisabled}
+                    onClick={() => onStart(item.id)}
+                    style={workflowPrimaryBtnStyle}
+                  >
                     {t("orderDetail.startExam")}
                   </button>
                 </div>
