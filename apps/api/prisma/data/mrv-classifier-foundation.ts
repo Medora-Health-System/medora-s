@@ -349,6 +349,146 @@ export const MRV_CLASSIFIER_FOUNDATION: MrvClassifierSeedEntry[] = [
     ]
   },
   {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_BREAST",
+    "sortPriority": 380,
+    "labels": {
+      "fr": "Sein",
+      "en": "Breast"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_THYROID",
+    "sortPriority": 390,
+    "labels": {
+      "fr": "Thyroïde",
+      "en": "Thyroid"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_BLADDER",
+    "sortPriority": 400,
+    "labels": {
+      "fr": "Vessie",
+      "en": "Bladder"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_GROIN",
+    "sortPriority": 410,
+    "labels": {
+      "fr": "Aine",
+      "en": "Groin"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_AXILLA",
+    "sortPriority": 420,
+    "labels": {
+      "fr": "Aisselle",
+      "en": "Axilla"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_AORTA",
+    "sortPriority": 430,
+    "labels": {
+      "fr": "Aorte",
+      "en": "Aorta"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_UPPER_EXTREMITY",
+    "sortPriority": 440,
+    "labels": {
+      "fr": "Membre supérieur",
+      "en": "Upper extremity"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_NECK",
+    "sortPriority": 450,
+    "labels": {
+      "fr": "Cou",
+      "en": "Neck"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_FACE",
+    "sortPriority": 460,
+    "labels": {
+      "fr": "Face",
+      "en": "Face"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_SINUS",
+    "sortPriority": 470,
+    "labels": {
+      "fr": "Sinus",
+      "en": "Sinuses"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_RIBS",
+    "sortPriority": 480,
+    "labels": {
+      "fr": "Côtes",
+      "en": "Ribs"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_STERNUM",
+    "sortPriority": 490,
+    "labels": {
+      "fr": "Sternum",
+      "en": "Sternum"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_SPINE_THORACIC",
+    "sortPriority": 500,
+    "labels": {
+      "fr": "Rachis thoracique",
+      "en": "Thoracic spine"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "BODY_REGION",
+    "code": "BODY_REGION_HEPATOBILIARY",
+    "sortPriority": 510,
+    "labels": {
+      "fr": "Hépatobiliaire",
+      "en": "Hepatobiliary"
+    },
+    "aliases": []
+  },
+  {
     "domain": "MODALITY",
     "code": "MODALITY_XR",
     "sortPriority": 10,
@@ -394,6 +534,54 @@ export const MRV_CLASSIFIER_FOUNDATION: MrvClassifierSeedEntry[] = [
     },
     "aliases": [
       "MRI"
+    ]
+  },
+  {
+    "domain": "MODALITY",
+    "code": "MODALITY_CTA",
+    "sortPriority": 50,
+    "labels": {
+      "fr": "Angioscanner",
+      "en": "CT angiography"
+    },
+    "aliases": [
+      "CTA"
+    ]
+  },
+  {
+    "domain": "MODALITY",
+    "code": "MODALITY_MRA",
+    "sortPriority": 60,
+    "labels": {
+      "fr": "ARM",
+      "en": "MR angiography"
+    },
+    "aliases": [
+      "MRA"
+    ]
+  },
+  {
+    "domain": "MODALITY",
+    "code": "MODALITY_NM",
+    "sortPriority": 70,
+    "labels": {
+      "fr": "Médecine nucléaire",
+      "en": "Nuclear medicine"
+    },
+    "aliases": [
+      "NM"
+    ]
+  },
+  {
+    "domain": "MODALITY",
+    "code": "MODALITY_FL",
+    "sortPriority": 80,
+    "labels": {
+      "fr": "Fluoroscopie",
+      "en": "Fluoroscopy"
+    },
+    "aliases": [
+      "FL"
     ]
   },
   {
@@ -602,6 +790,64 @@ export const MRV_CLASSIFIER_FOUNDATION: MrvClassifierSeedEntry[] = [
     ]
   },
   {
+    "domain": "VIEW_COUNT",
+    "code": "VIEW_COUNT_ONE",
+    "sortPriority": 690,
+    "labels": {
+      "fr": "Une incidence",
+      "en": "One view"
+    },
+    "aliases": [
+      "1V"
+    ]
+  },
+  {
+    "domain": "VIEW_COUNT",
+    "code": "VIEW_COUNT_THREE",
+    "sortPriority": 710,
+    "labels": {
+      "fr": "Trois incidences",
+      "en": "Three views"
+    },
+    "aliases": [
+      "3V"
+    ]
+  },
+  {
+    "domain": "VIEW_COUNT",
+    "code": "VIEW_COUNT_FOUR",
+    "sortPriority": 720,
+    "labels": {
+      "fr": "Quatre incidences",
+      "en": "Four views"
+    },
+    "aliases": [
+      "4V"
+    ]
+  },
+  {
+    "domain": "VIEW_COUNT",
+    "code": "VIEW_COUNT_COMPLETE",
+    "sortPriority": 730,
+    "labels": {
+      "fr": "Série complète",
+      "en": "Complete series"
+    },
+    "aliases": [
+      "COMPLETE"
+    ]
+  },
+  {
+    "domain": "VIEW_COUNT",
+    "code": "VIEW_COUNT_UNSPECIFIED",
+    "sortPriority": 740,
+    "labels": {
+      "fr": "Nombre d'incidences non précisé",
+      "en": "Unspecified view count"
+    },
+    "aliases": []
+  },
+  {
     "domain": "CONTRAST_TYPE",
     "code": "CONTRAST_TYPE_WITHOUT",
     "sortPriority": 800,
@@ -620,13 +866,43 @@ export const MRV_CLASSIFIER_FOUNDATION: MrvClassifierSeedEntry[] = [
       "en": "Angiographic / CTA"
     },
     "aliases": []
+  },
+  {
+    "domain": "CONTRAST_TYPE",
+    "code": "CONTRAST_TYPE_WITH",
+    "sortPriority": 790,
+    "labels": {
+      "fr": "Avec contraste",
+      "en": "With contrast"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "CONTRAST_TYPE",
+    "code": "CONTRAST_TYPE_WITH_AND_WITHOUT",
+    "sortPriority": 805,
+    "labels": {
+      "fr": "Avec et sans contraste",
+      "en": "With and without contrast"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "CONTRAST_TYPE",
+    "code": "CONTRAST_TYPE_NONE",
+    "sortPriority": 820,
+    "labels": {
+      "fr": "Aucun",
+      "en": "None (non-contrast modality)"
+    },
+    "aliases": []
   }
 ];
 
 export const MRV_CLASSIFIER_DOMAIN_COUNTS = {
-  BODY_REGION: 28,
-  MODALITY: 4,
+  BODY_REGION: 42,
+  MODALITY: 8,
   LAB_CATEGORY: 16,
-  VIEW_COUNT: 1,
-  CONTRAST_TYPE: 2,
+  VIEW_COUNT: 6,
+  CONTRAST_TYPE: 5,
 } as const;
