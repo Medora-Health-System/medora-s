@@ -1,0 +1,296 @@
+# Legacy Imaging Inventory
+
+**Phase:** 3A (audit-only)
+**Source:** Product-owner legacy radiology order catalog (screenshot extract)
+**Capture rule:** Names reproduced exactly as shown in legacy UI — no normalization.
+
+## X-Ray
+
+- Abdomen 1V
+- Abdomen 2V
+- Abdomen 3V Acute Series
+- Abdomen KUB
+- AC Joint Bilat 2V
+- AC Joint Left 2V
+- AC Joint Right 2V
+- Ankle Left 2V
+- Ankle Left 3V
+- Ankle Right 2V
+- Ankle Right 3V
+- Babygram (Infant Whole Body)
+- Calcaneus Left 2V
+- Calcaneus Right 2V
+- Chest 1V Decub
+- Chest X-Ray 1 View (CXR)
+- Chest X-Ray 2 View (CXR)
+- Chest Post Intubation
+- Clavicle Left 2V
+- Clavicle Right 2V
+- Coccyx and Sacrum
+- Sacrum and Coccyx
+- C-Spine 1V Lateral
+- C-Spine 2-3V
+- C-Spine 3V Upright
+- C-Spine Complete
+- Elbow Left 2V
+- Elbow Left 3V
+- Elbow Left 4V
+- Elbow Right 2V
+- Elbow Right 3V
+- Elbow Right 4V
+- Facial Bones Complete
+- Facial Bones <3V
+- Femur Left 2V
+- Femur Right 2V
+- Finger Left 2V
+- Finger Left 3V
+- Finger Right 2V
+- Finger Right 3V
+- Foot Bilateral 2V
+- Foot Left 2V
+- Foot Left 3V
+- Foot Right 2V
+- Foot Right 3V
+- Forearm Left 2V
+- Forearm Right 2V
+- Hand Left 2V
+- Hand Left 3V
+- Hand Right 2V
+- Hand Right 3V
+- Hip Bilateral w Pelvis
+- Hip Left 1V
+- Hip Left 2V
+- Hip Right 1V
+- Hip Right 2V
+- Humerus Left 2V
+- Humerus Right 2V
+- Infant Foot Left 2V
+- Infant Lower Extremity Left 2V
+- Infant Lower Extremity Right 2V
+- Infant Upper Extremity Left 2V
+- Infant Upper Extremity Right 2V
+- Knee Left 1V Sunrise
+- Knee Left 2V
+- Knee Left 3V
+- Knee Left 4V
+- Knee Right 1V Sunrise
+- Knee Right 2V
+- Knee Right 3V
+- Knee Right 4V
+- L-Spine 2V
+- L-Spine 2V Upright
+- L-Spine 3V
+- L-Spine 3V Upright
+- Mandible 4V
+- Mandible Trauma
+- Nasal Bones 3V
+- Neck Soft Tissue 2V
+- Orbit Left 2V
+- Orbit Left 4V
+- Orbit Right 2V
+- Orbit Right 4V
+- Os Calcis Left 2V
+- Os Calcis Right 2V
+- Panorex Series
+- Pediagram 1V
+- Pelvis AP
+- Pelvis Complete
+- Ribs Left
+- Ribs Left with CXR
+- Ribs Right
+- Ribs Right with CXR
+- Scapula Left
+- Scapula Right
+- Shoulder Left 2V
+- Shoulder Left 3V
+- Shoulder Right 2V
+- Shoulder Right 3V
+- Sinus 2V
+- Sinus Complete
+- Skull 2V
+- Skull 4V
+- Sternum 2V
+- T-Spine 2V
+- T-Spine 3V Upright
+- Thoracolumbar Spine 2V
+- Tibia/Fibula Left 2V
+- Tibia/Fibula Right 2V
+- TMJ Bilateral
+- Toe Left 2V
+- Toe Left 3V
+- Toe Right 2V
+- Toe Right 3V
+- Wrist Left 2V
+- Wrist Left 3V
+- Wrist Right 2V
+- Wrist Right 3V
+
+## CT
+
+- CT Abdomen w IV Contrast
+- CT Abdomen wo IV Contrast
+- CT Abdomen w&wo IV Contrast
+- CT Abdomen/Pelvis w IV Contrast
+- CT Abdomen/Pelvis wo IV Contrast
+- CT Abdomen/Pelvis w&wo IV Contrast
+- CT Angiogram Abdomen
+- CT Brain Perfusion
+- CT C-Spine wo IV Contrast
+- CT Chest HR
+- CT Chest w IV Contrast
+- CT Chest wo IV Contrast
+- CT Chest w&wo IV Contrast
+- CT Facial wo IV Contrast
+- CT Foot Left wo IV Contrast
+- CT Foot Right wo IV Contrast
+- CT Head w IV Contrast
+- CT Head wo IV Contrast
+- CT Head w&wo IV Contrast
+- CT Hip Left wo IV Contrast
+- CT Hip Right wo IV Contrast
+- CT Knee Left wo IV Contrast
+- CT Knee Right wo IV Contrast
+- CT L-Spine wo IV Contrast
+- CT Lower Extremity Left w IV Contrast
+- CT Lower Extremity Left wo IV Contrast
+- CT Lower Extremity Right w IV Contrast
+- CT Lower Extremity Right wo IV Contrast
+- CT Maxillofacial w IV Contrast
+- CT Maxillofacial wo IV Contrast
+- CT Orbits wo IV Contrast
+- CT Pelvis wo IV Contrast
+- CT Pelvis w&wo IV Contrast
+- CT Sinuses wo IV Contrast
+- CT Soft Tissue Neck
+- CT STN w IV Contrast
+- CT STN wo IV Contrast
+- CT STN w&wo IV Contrast
+- CT T-Spine wo IV Contrast
+- CT Upper Extremity Left w IV Contrast
+- CT Upper Extremity Left wo IV Contrast
+- CT Upper Extremity Right w IV Contrast
+- CT Upper Extremity Right wo IV Contrast
+
+## CTA
+
+- CTA Abdominal Aorta w Reconstructions
+- CTA Abdominal Aorta w Runoff
+- CTA Chest w Reconstruction
+- CTA Chest Triple Rule Out
+- CTA COW / Carotids w Reconstructions
+- CTA Head
+- CTA Head and Neck
+- CTA Head Circle of Willis w Reconstructions
+- CTA Lower Extremity Left
+- CTA Lower Extremity Right
+- CTA Upper Extremity Left
+- CTA Upper Extremity Right
+
+## MRI
+
+- MRI C-Spine w Contrast
+- MRI C-Spine wo Contrast
+- MRI C-Spine w&wo Contrast
+- MRI Cholangiogram
+- MRI Head w Contrast
+- MRI Head wo Contrast
+- MRI Head w&wo Contrast
+- MRI Head/Brain Limited
+- MRI Hip Bilateral wo Contrast
+- MRI Hip Left wo Contrast
+- MRI Hip Right wo Contrast
+- MRI Knee Left
+- MRI Knee Right
+- MRI L-Spine w Contrast
+- MRI L-Spine wo Contrast
+- MRI L-Spine w&wo Contrast
+- MRI Lower Extremity Left w&wo Contrast
+- MRI Lower Extremity Right w&wo Contrast
+- MRI Pelvis
+- MRI Pelvis Limited
+- MRI Sella
+- MRI T-Spine w Contrast
+- MRI T-Spine wo Contrast
+- MRI T-Spine w&wo Contrast
+- MRI Upper Extremity Left wo Contrast
+- MRI Upper Extremity Right wo Contrast
+- MRI Upper Extremity Right w&wo Contrast
+
+## MRA
+
+- MRA Brain
+- MRA Carotid w Contrast
+- MRA Carotid wo Contrast
+- MRA Lower Extremity Left w Contrast
+- MRA Lower Extremity Right w Contrast
+
+## Ultrasound
+
+- US Abdomen Complete
+- US Abdomen Limited
+- US Aorta
+- US Axilla
+- US Bladder
+- US Breast Bilateral
+- US Breast Left
+- US Breast Right
+- US Buttocks
+- US Carotid Duplex
+- US Chest
+- US Duplex Limited Abdomen/Pelvis/Scrotal
+- US Gallbladder
+- US Groin
+- US Groin Left PSA
+- US Groin Right PSA
+- US Groin Bilateral PSA
+- US Liver
+- US Lower Back
+- US Lower Extremity Bilateral Arterial Doppler
+- US Lower Extremity Bilateral Venous Doppler
+- US Lower Extremity Left Arterial Doppler
+- US Lower Extremity Left Venous Doppler
+- US Lower Extremity Right Arterial Doppler
+- US Lower Extremity Right Venous Doppler
+- US Lower Extremity Unilateral Venous Doppler
+- US Neck / Head Soft Tissue
+- US OB <14 Weeks Limited
+- US OB <14 Weeks Single Gestation
+- US OB <14 Weeks Transvaginal
+- US OB >14 Weeks Limited
+- US OB >14 Weeks Limited Portable
+- US OB >14 Weeks Single Gestation
+- US OB >14 Weeks Transvaginal
+- US OB Biophysical Profile without NST
+- US Pelvic Doppler
+- US Pelvis
+- US Pelvis Limited
+- US Pelvis with Trans/Endo
+- US Renal Complete
+- US RUQ
+- US Scrotum/Contents
+- US Soft Tissue
+- US Thyroid / Neck
+- US Trans/Endo
+- US Upper Back
+- US Upper Extremity Bilateral Arterial Doppler
+- US Upper Extremity Bilateral Venous Doppler
+- US Upper Extremity Left Arterial Doppler
+- US Upper Extremity Left Venous Doppler
+- US Upper Extremity Right Arterial Doppler
+- US Upper Extremity Right Venous Doppler
+- US Upper Extremity Unilateral Venous Doppler
+
+## Nuclear Medicine
+
+- Gallbladder Emptying Study RP
+- HIDA Scan
+- Lung Scan Perfusion/Ventilation RP
+- VQ Scan Perfusion
+- VQ Scan Ventilation
+
+## Fluoroscopy
+
+- Line Placement Fluoro
+- Lumbar Puncture wo Fluoro
+- Swallow Esophagram
+- Tube Placement Fluoroscopy

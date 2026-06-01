@@ -1,10 +1,12 @@
 # Wave 2 Production Execution Report (Phase 2E.6D)
 
-**Phase:** 2E.6D — production execution  
+**Phase:** 2E.6D — production execution · finalized **2E.6D.1** (2026-06-01)  
 **Date:** 2026-06-01  
-**Environment:** Railway **production** (Postgres via `DATABASE_PUBLIC_URL`)  
+**Environment:** Railway **production** (Postgres via production `DATABASE_URL`)  
 **Authorization:** [`wave2-production-authorization-final.md`](wave2-production-authorization-final.md) — **AUTHORIZED**  
-**Minimum commit:** `52564a41` (seed) · gate docs `a0d4e6a4`
+**Seed commit:** `52564a41` · gate docs `a0d4e6a4` · **execution docs commit:** `9584c75d`
+
+**Stabilization audit:** [`wave2-production-stabilization-audit.md`](wave2-production-stabilization-audit.md) (Phase 2E.6E)
 
 ---
 
@@ -12,14 +14,13 @@
 
 | Field | Value |
 |-------|--------|
-| **Production seed executed** | **NO** (agent session — Railway CLI unauthorized) |
-| **Execution status** | **BLOCKED** |
-| **Exit code** | — |
-| **Production verdict (2E.6D)** | **NOT COMPLETE** |
+| **Production seed executed** | **YES** (operator workstation, 2026-06-01) |
+| **Execution status** | **SUCCESS** |
+| **Exit code** | **0** |
+| **Production verdict (2E.6D)** | **COMPLETE** |
+| **Production safety** | **SAFE** |
 
-**Blocker:** `railway login` required — OAuth `invalid_grant` in automated execution environment.
-
-**Operator action:** Run §4 commands from an authorized workstation, then update this report with captured output or re-run 2E.6D documentation pass.
+**Executor:** Authorized operator (not agent session). Agent environment previously blocked on Railway OAuth (`invalid_grant`); operator completed seed and validation on workstation.
 
 ---
 
@@ -46,8 +47,6 @@
 | `CT_HEAD` | inactive | inactive | **PASS** |
 | `MRI_SPINE` contrast | NULL | NULL | **PASS** |
 
-**Live pre-execution (2E.6D agent run):** *Not captured — Railway unauthorized.*
-
 ---
 
 ## 3. Execution (run 1)
@@ -58,39 +57,29 @@
 pnpm --filter @medora/api run prisma:seed-catalogs
 ```
 
-### Production wrapper
+Executed on operator workstation with production `DATABASE_URL` (Railway Postgres).
 
-```bash
-cd /path/to/medora-s
-railway run --service Postgres --environment production -- sh -c \
-  'export DATABASE_URL="$DATABASE_PUBLIC_URL" && pnpm --filter @medora/api run prisma:seed-catalogs'
-```
-
-### Expected output (run 1)
+### Actual output (run 1)
 
 ```text
+> @medora/api@0.0.0 prisma:seed-catalogs .../apps/api
+> ts-node --transpile-only prisma/seed-catalogs.ts
+
 ✅ Wave 1 imaging catalog (37 studies, 0 aliases, 0 XR_CHEST tuple aliases)
 ✅ Wave 2 imaging catalog (61 studies, 85 aliases, 15 US tuple mappings, 31 tuple aliases, 2 tuple protocol updates)
 ✅ Catalogs seeded (lab, imaging, medications)
 ```
 
-### Actual output (run 1)
+| Metric | Expected | Actual | Result |
+|--------|----------|--------|--------|
+| Exit code | **0** | **0** | **PASS** |
+| Wave 2 studies upserted | **61** | **61** | **PASS** |
+| Wave 2 aliases created | **85** | **85** | **PASS** |
+| US tuple mappings applied | **15** | **15** | **PASS** |
+| Tuple aliases created | **31** | **31** | **PASS** |
+| Tuple protocol updates | **2** | **2** | **PASS** |
 
-```text
-(not executed — Railway CLI unauthorized)
-```
-
-| Metric | Expected | Actual |
-|--------|----------|--------|
-| Exit code | **0** | — |
-| Wave 2 studies upserted | **61** | — |
-| Wave 2 aliases created | **85** | — |
-| US tuple mappings applied | **15** | — |
-| Tuple aliases created | **~31** | — |
-| Tuple protocol updates | **2** | — |
-| Duration | ~6–10 min (full seed) | — |
-
-### Batch scope (on success)
+### Batch scope
 
 | Batch | Rows |
 |-------|-----:|
@@ -99,51 +88,27 @@ railway run --service Postgres --environment production -- sh -c \
 | US-1 | **4** |
 | **Total** | **61** |
 
----
+### Post–run 1 catalog (confirmed by postflight)
 
-## 4. Operator completion checklist
-
-```bash
-railway login
-
-# 1. Pre-execution (read-only)
-railway run --service Postgres --environment production -- sh -c '
-export DATABASE_URL="$DATABASE_PUBLIC_URL"
-cd apps/api && pnpm exec ts-node --transpile-only -e "
-import { PrismaClient } from \"@prisma/client\";
-import { HAITI_IMAGING_WAVE1_CATALOG } from \"./prisma/data/haiti-imaging-wave1\";
-import { HAITI_IMAGING_WAVE2_CATALOG } from \"./prisma/data/haiti-imaging-wave2\";
-const W1=HAITI_IMAGING_WAVE1_CATALOG.map(r=>r.code);
-const W2=HAITI_IMAGING_WAVE2_CATALOG.map(r=>r.code);
-const p=new PrismaClient();
-(async()=>{
-  const active=await p.catalogImagingStudy.count({where:{isActive:true}});
-  const w1=await p.catalogImagingStudy.count({where:{code:{in:W1},isActive:true}});
-  const w2=await p.catalogImagingStudy.count({where:{code:{in:W2}}});
-  const w2a=await p.imagingStudyAlias.count({where:{catalogImagingStudy:{code:{in:W2}}}});
-  const ct=await p.catalogImagingStudy.findUnique({where:{code:\"CT_HEAD\"}});
-  const mri=await p.catalogImagingStudy.findUnique({where:{code:\"MRI_SPINE\"},select:{contrastTypeClassifierId:true}});
-  console.log(JSON.stringify({active,w1,w2,w2a,ctHead:ct?.isActive,mriContrast:mri?.contrastTypeClassifierId},null,2));
-  await p.\$disconnect();
-})();"
-
-# 2. Seed run 1
-railway run --service Postgres --environment production -- sh -c \
-  "export DATABASE_URL=\"\$DATABASE_PUBLIC_URL\" && pnpm --filter @medora/api run prisma:seed-catalogs"
-
-# 3. Postflight — see postflight report
-# 4. Seed run 2 — see idempotency report
-```
+| Metric | Value |
+|--------|------:|
+| Active imaging | **141** |
+| Wave 1 active | **37** |
+| Wave 2 active | **61** |
+| Wave 2 aliases | **85** |
+| `CT_HEAD` active | **false** |
+| `MRI_SPINE.contrastTypeClassifierId` | **NULL** |
 
 ---
 
-## 5. Execution result
+## 4. Execution result
 
 | Field | Value |
 |-------|--------|
-| **Execution status** | **BLOCKED** (pending operator) |
-| **Unexpected abort** | N/A |
+| **Execution status** | **SUCCESS** |
+| **Unexpected abort** | **No** |
+| **Production safety** | **SAFE** |
 
 ---
 
-*Companion (update after success): [`wave2-production-postflight-report.md`](wave2-production-postflight-report.md) · [`wave2-production-idempotency-report.md`](wave2-production-idempotency-report.md)*
+*Companion: [`wave2-production-postflight-report.md`](wave2-production-postflight-report.md) · [`wave2-production-idempotency-report.md`](wave2-production-idempotency-report.md)*
