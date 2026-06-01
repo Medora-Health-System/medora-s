@@ -20,6 +20,7 @@ import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-cata
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
+import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
@@ -362,6 +363,7 @@ async function main() {
   await seedMrvClassifiers(prisma);
   await seedHaitiImagingWave1(prisma);
   await seedHaitiImagingWave2(prisma);
+  await seedHaitiImagingWave3(prisma);
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
   await seedBillingCatalogCommonMappings(prisma);
   await seedUsInsurancePayers(prisma);
