@@ -11,6 +11,7 @@ import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
+import { seedHaitiImagingWave4 } from "./helpers/seed-haiti-imaging-wave4";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 
 const prisma = new PrismaClient();
@@ -32,6 +33,10 @@ async function main() {
   const wave3 = await seedHaitiImagingWave3(prisma);
   console.log(
     `✅ Wave 3 imaging catalog (${wave3.catalogUpserted} studies, ${wave3.aliasesCreated} aliases)`
+  );
+  const wave4 = await seedHaitiImagingWave4(prisma);
+  console.log(
+    `✅ Wave 4 imaging catalog (${wave4.catalogUpserted} studies, ${wave4.aliasesCreated} aliases)`
   );
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
