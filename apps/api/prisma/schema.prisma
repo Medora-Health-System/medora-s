@@ -1594,6 +1594,9 @@ model TermClassifier {
   imagingModality     CatalogImagingStudy[] @relation("ImagingModalityClassifier")
   imagingContrastType CatalogImagingStudy[] @relation("ImagingContrastTypeClassifier")
   imagingViewCount    CatalogImagingStudy[] @relation("ImagingViewCountClassifier")
+  imagingLaterality        CatalogImagingStudy[] @relation("ImagingLateralityClassifier")
+  imagingAnatomicSubregion CatalogImagingStudy[] @relation("ImagingAnatomicSubregionClassifier")
+  imagingProtocol          CatalogImagingStudy[] @relation("ImagingProtocolClassifier")
   labCategory         CatalogLabTest[]      @relation("LabCategoryClassifier")
   backfillAudits      CatalogClassifierBackfillAudit[]
 
@@ -1715,7 +1718,10 @@ model CatalogImagingStudy {
   bodyRegionClassifierId   String?
   modalityClassifierId     String?
   contrastTypeClassifierId String?
-  viewCountClassifierId    String?
+  viewCountClassifierId         String?
+  lateralityClassifierId        String?
+  anatomicSubregionClassifierId String?
+  protocolClassifierId          String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 
@@ -1723,12 +1729,18 @@ model CatalogImagingStudy {
   modalityClassifier     TermClassifier? @relation("ImagingModalityClassifier", fields: [modalityClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   contrastTypeClassifier TermClassifier? @relation("ImagingContrastTypeClassifier", fields: [contrastTypeClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   viewCountClassifier    TermClassifier? @relation("ImagingViewCountClassifier", fields: [viewCountClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  lateralityClassifier       TermClassifier? @relation("ImagingLateralityClassifier", fields: [lateralityClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  anatomicSubregionClassifier TermClassifier? @relation("ImagingAnatomicSubregionClassifier", fields: [anatomicSubregionClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  protocolClassifier         TermClassifier? @relation("ImagingProtocolClassifier", fields: [protocolClassifierId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   aliases                ImagingStudyAlias[]
 
   @@index([bodyRegionClassifierId])
   @@index([modalityClassifierId])
   @@index([contrastTypeClassifierId])
   @@index([viewCountClassifierId])
+  @@index([lateralityClassifierId])
+  @@index([anatomicSubregionClassifierId])
+  @@index([protocolClassifierId])
 }
 
 model ImagingStudyAlias {
