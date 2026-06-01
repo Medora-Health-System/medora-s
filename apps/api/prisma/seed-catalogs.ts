@@ -8,6 +8,7 @@ import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-ha
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
+import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 
 const prisma = new PrismaClient();
@@ -18,6 +19,10 @@ async function main() {
   // ER lab extension: uses existing repo billing defaults only; official LOINC/CMS import remains pending.
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
   await seedMrvClassifiers(prisma);
+  const wave1 = await seedHaitiImagingWave1(prisma);
+  console.log(
+    `✅ Wave 1 imaging catalog (${wave1.catalogUpserted} studies, ${wave1.aliasesCreated} aliases, ${wave1.xrChestTupleAliasesCreated} XR_CHEST tuple aliases)`
+  );
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
   await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);

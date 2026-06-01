@@ -18,6 +18,8 @@ import * as argon2 from "argon2";
 import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-haiti-catalog-artifacts";
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
+import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
+import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedUsInsurancePayers } from "./helpers/seed-us-insurance-payers";
@@ -356,6 +358,8 @@ async function main() {
   // Lab + imaging catalogs (French labels, searchText, aliases)
   assertNoStaleHaitiCatalogArtifacts(join(__dirname, ".."));
   await seedHaitiLabImagingCatalog(prisma, HAITI_LAB_CATALOG, HAITI_IMAGING_CATALOG);
+  await seedMrvClassifiers(prisma);
+  await seedHaitiImagingWave1(prisma);
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
   await seedBillingCatalogCommonMappings(prisma);
   await seedUsInsurancePayers(prisma);
