@@ -896,6 +896,806 @@ export const MRV_CLASSIFIER_FOUNDATION: MrvClassifierSeedEntry[] = [
       "en": "None (non-contrast modality)"
     },
     "aliases": []
+  },
+  {
+    "domain": "LATERALITY",
+    "code": "LATERALITY_LEFT",
+    "sortPriority": 900,
+    "labels": {
+      "fr": "Gauche",
+      "en": "Left"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "LATERALITY",
+    "code": "LATERALITY_RIGHT",
+    "sortPriority": 910,
+    "labels": {
+      "fr": "Droit",
+      "en": "Right"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "LATERALITY",
+    "code": "LATERALITY_BILATERAL",
+    "sortPriority": 920,
+    "labels": {
+      "fr": "Bilatéral",
+      "en": "Bilateral"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "LATERALITY",
+    "code": "LATERALITY_UNSPECIFIED",
+    "sortPriority": 930,
+    "labels": {
+      "fr": "Non précisé",
+      "en": "Unspecified"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SPINE_CERVICAL",
+    "sortPriority": 1000,
+    "labels": {
+      "fr": "Rachis cervical",
+      "en": "Cervical spine"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SPINE_THORACIC",
+    "sortPriority": 1010,
+    "labels": {
+      "fr": "Rachis thoracique",
+      "en": "Thoracic spine"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SPINE_LUMBAR",
+    "sortPriority": 1020,
+    "labels": {
+      "fr": "Rachis lombaire",
+      "en": "Lumbar spine"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SPINE_SACRUM_COCCYX",
+    "sortPriority": 1030,
+    "labels": {
+      "fr": "Sacrum / coccyx",
+      "en": "Sacrum / coccyx"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SPINE_THORACOLUMBAR",
+    "sortPriority": 1040,
+    "labels": {
+      "fr": "Rachis thoraco-lombaire",
+      "en": "Thoracolumbar spine"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_ORBIT",
+    "sortPriority": 1050,
+    "labels": {
+      "fr": "Orbite",
+      "en": "Orbit"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SINUS",
+    "sortPriority": 1060,
+    "labels": {
+      "fr": "Sinus",
+      "en": "Sinus"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SKULL",
+    "sortPriority": 1070,
+    "labels": {
+      "fr": "Crâne",
+      "en": "Skull"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_FACIAL_BONES",
+    "sortPriority": 1080,
+    "labels": {
+      "fr": "Os de la face",
+      "en": "Facial bones"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_MANDIBLE",
+    "sortPriority": 1090,
+    "labels": {
+      "fr": "Mandibule",
+      "en": "Mandible"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_NASAL_BONES",
+    "sortPriority": 1100,
+    "labels": {
+      "fr": "Os nasaux",
+      "en": "Nasal bones"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_TMJ",
+    "sortPriority": 1110,
+    "labels": {
+      "fr": "ATM",
+      "en": "TMJ"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_NECK_SOFT_TISSUE",
+    "sortPriority": 1120,
+    "labels": {
+      "fr": "Tissus mous du cou",
+      "en": "Neck soft tissue"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_RIBS",
+    "sortPriority": 1130,
+    "labels": {
+      "fr": "Côtes",
+      "en": "Ribs"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_STERNUM",
+    "sortPriority": 1140,
+    "labels": {
+      "fr": "Sternum",
+      "en": "Sternum"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_CLAVICLE",
+    "sortPriority": 1150,
+    "labels": {
+      "fr": "Clavicule",
+      "en": "Clavicle"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SCAPULA",
+    "sortPriority": 1160,
+    "labels": {
+      "fr": "Omoplate",
+      "en": "Scapula"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_AC_JOINT",
+    "sortPriority": 1170,
+    "labels": {
+      "fr": "Articulation acromio-claviculaire",
+      "en": "AC joint"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_FINGER",
+    "sortPriority": 1180,
+    "labels": {
+      "fr": "Doigt",
+      "en": "Finger"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_TOE",
+    "sortPriority": 1190,
+    "labels": {
+      "fr": "Orteil",
+      "en": "Toe"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_CALCANEUS",
+    "sortPriority": 1200,
+    "labels": {
+      "fr": "Calcanéum",
+      "en": "Calcaneus"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_PANOREX",
+    "sortPriority": 1210,
+    "labels": {
+      "fr": "Panorex",
+      "en": "Panorex"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_AORTA",
+    "sortPriority": 1220,
+    "labels": {
+      "fr": "Aorte",
+      "en": "Aorta"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_CAROTID",
+    "sortPriority": 1230,
+    "labels": {
+      "fr": "Carotide",
+      "en": "Carotid"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_CIRCLE_OF_WILLIS",
+    "sortPriority": 1240,
+    "labels": {
+      "fr": "Polygone de Willis",
+      "en": "Circle of Willis"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_SELLA",
+    "sortPriority": 1250,
+    "labels": {
+      "fr": "Selle turcique",
+      "en": "Sella"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_BILIARY",
+    "sortPriority": 1260,
+    "labels": {
+      "fr": "Voies biliaires",
+      "en": "Biliary"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_UPPER_EXTREMITY_WHOLE",
+    "sortPriority": 1270,
+    "labels": {
+      "fr": "Membre supérieur entier",
+      "en": "Whole upper extremity"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_LOWER_EXTREMITY_WHOLE",
+    "sortPriority": 1280,
+    "labels": {
+      "fr": "Membre inférieur entier",
+      "en": "Whole lower extremity"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_INFANT_WHOLE_BODY",
+    "sortPriority": 1290,
+    "labels": {
+      "fr": "Corps entier nourrisson",
+      "en": "Infant whole body"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_INFANT_EXTREMITY",
+    "sortPriority": 1300,
+    "labels": {
+      "fr": "Extrémité nourrisson",
+      "en": "Infant extremity"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_BREAST",
+    "sortPriority": 1310,
+    "labels": {
+      "fr": "Sein",
+      "en": "Breast"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_THYROID",
+    "sortPriority": 1320,
+    "labels": {
+      "fr": "Thyroïde",
+      "en": "Thyroid"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_BLADDER",
+    "sortPriority": 1330,
+    "labels": {
+      "fr": "Vessie",
+      "en": "Bladder"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_GROIN",
+    "sortPriority": 1340,
+    "labels": {
+      "fr": "Aine",
+      "en": "Groin"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "ANATOMIC_SUBREGION",
+    "code": "ANATOMIC_SUBREGION_AXILLA",
+    "sortPriority": 1350,
+    "labels": {
+      "fr": "Aisselle",
+      "en": "Axilla"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_XR_CHEST_POST_INTUBATION",
+    "sortPriority": 2000,
+    "labels": {
+      "fr": "Rx thorax post-intubation",
+      "en": "X-ray chest post-intubation"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_XR_CHEST_DECUBITUS",
+    "sortPriority": 2010,
+    "labels": {
+      "fr": "Rx thorax décubitus",
+      "en": "X-ray chest decubitus"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_XR_KNEE_SUNRISE",
+    "sortPriority": 2020,
+    "labels": {
+      "fr": "Rx genou sunrise",
+      "en": "X-ray knee sunrise"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_XR_CSPINE_UPRIGHT",
+    "sortPriority": 2030,
+    "labels": {
+      "fr": "Rx rachis cervical debout",
+      "en": "X-ray cervical spine upright"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_XR_ABDOMEN_ACUTE_SERIES",
+    "sortPriority": 2040,
+    "labels": {
+      "fr": "Rx abdomen série aiguë",
+      "en": "X-ray abdomen acute series"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CT_CAP_TRAUMA",
+    "sortPriority": 2050,
+    "labels": {
+      "fr": "TDM thorax/abdomen/pelvis traumatique",
+      "en": "CT chest abdomen pelvis trauma"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CT_CHEST_HR",
+    "sortPriority": 2060,
+    "labels": {
+      "fr": "TDM thorax haute résolution",
+      "en": "CT chest high resolution"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CT_BRAIN_PERFUSION",
+    "sortPriority": 2070,
+    "labels": {
+      "fr": "TDM perfusion cérébrale",
+      "en": "CT brain perfusion"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_CHEST_STANDARD",
+    "sortPriority": 2080,
+    "labels": {
+      "fr": "Angioscanner thorax standard",
+      "en": "CTA chest standard"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_CHEST_TRIPLE_RULE_OUT",
+    "sortPriority": 2090,
+    "labels": {
+      "fr": "Angioscanner thorax triple exclusion",
+      "en": "CTA chest triple rule out"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_CHEST_RECONSTRUCTION",
+    "sortPriority": 2100,
+    "labels": {
+      "fr": "Angioscanner thorax reconstruction",
+      "en": "CTA chest reconstruction"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_ABDOMINAL_AORTA",
+    "sortPriority": 2110,
+    "labels": {
+      "fr": "Angioscanner aorte abdominale",
+      "en": "CTA abdominal aorta"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_ABDOMINAL_AORTA_RUNOFF",
+    "sortPriority": 2120,
+    "labels": {
+      "fr": "Angioscanner aorte abdominale runoff",
+      "en": "CTA abdominal aorta runoff"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_HEAD",
+    "sortPriority": 2130,
+    "labels": {
+      "fr": "Angioscanner tête",
+      "en": "CTA head"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_COW",
+    "sortPriority": 2140,
+    "labels": {
+      "fr": "Angioscanner polygone de Willis",
+      "en": "CTA circle of Willis"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_CTA_CAROTID",
+    "sortPriority": 2150,
+    "labels": {
+      "fr": "Angioscanner carotides",
+      "en": "CTA carotid"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_FAST",
+    "sortPriority": 2160,
+    "labels": {
+      "fr": "Échographie FAST",
+      "en": "Ultrasound FAST"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_FIRST_TRIMESTER",
+    "sortPriority": 2170,
+    "labels": {
+      "fr": "Échographie obstétricale 1er trimestre",
+      "en": "Ultrasound OB first trimester"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_FIRST_TRIMESTER_LIMITED",
+    "sortPriority": 2180,
+    "labels": {
+      "fr": "Échographie obstétricale 1er trimestre limitée",
+      "en": "Ultrasound OB first trimester limited"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_FIRST_TRIMESTER_TV",
+    "sortPriority": 2190,
+    "labels": {
+      "fr": "Échographie obstétricale 1er trimestre transvaginale",
+      "en": "Ultrasound OB first trimester transvaginal"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_LATE_TRIMESTER",
+    "sortPriority": 2200,
+    "labels": {
+      "fr": "Échographie obstétricale trimestre tardif",
+      "en": "Ultrasound OB late trimester"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_LATE_TRIMESTER_LIMITED",
+    "sortPriority": 2210,
+    "labels": {
+      "fr": "Échographie obstétricale trimestre tardif limitée",
+      "en": "Ultrasound OB late trimester limited"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_LATE_TRIMESTER_PORTABLE",
+    "sortPriority": 2220,
+    "labels": {
+      "fr": "Échographie obstétricale trimestre tardif portable",
+      "en": "Ultrasound OB late trimester portable"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_OB_BPP",
+    "sortPriority": 2230,
+    "labels": {
+      "fr": "Échographie obstétricale profil biophysique",
+      "en": "Ultrasound OB biophysical profile"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_DOPPLER_VENOUS",
+    "sortPriority": 2240,
+    "labels": {
+      "fr": "Écho Doppler veineux",
+      "en": "Ultrasound venous Doppler"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_DOPPLER_ARTERIAL",
+    "sortPriority": 2250,
+    "labels": {
+      "fr": "Écho Doppler artériel",
+      "en": "Ultrasound arterial Doppler"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_PELVIS_TRANSVAGINAL",
+    "sortPriority": 2260,
+    "labels": {
+      "fr": "Échographie pelvienne transvaginale",
+      "en": "Ultrasound pelvis transvaginal"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_PELVIS_DOPPLER",
+    "sortPriority": 2270,
+    "labels": {
+      "fr": "Échographie pelvienne Doppler",
+      "en": "Ultrasound pelvis Doppler"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_ABDOMEN_LIMITED",
+    "sortPriority": 2280,
+    "labels": {
+      "fr": "Échographie abdomen limitée",
+      "en": "Ultrasound abdomen limited"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_US_NECK_THYROID",
+    "sortPriority": 2290,
+    "labels": {
+      "fr": "Échographie cou thyroïde",
+      "en": "Ultrasound neck thyroid"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_MRI_CHOLANGIOGRAM",
+    "sortPriority": 2300,
+    "labels": {
+      "fr": "IRM cholangiogramme",
+      "en": "MRI cholangiogram"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_NM_HIDA",
+    "sortPriority": 2310,
+    "labels": {
+      "fr": "Médecine nucléaire HIDA",
+      "en": "Nuclear medicine HIDA"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_NM_VQ_PERFUSION",
+    "sortPriority": 2320,
+    "labels": {
+      "fr": "Médecine nucléaire VQ perfusion",
+      "en": "Nuclear medicine VQ perfusion"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_NM_VQ_VENTILATION",
+    "sortPriority": 2330,
+    "labels": {
+      "fr": "Médecine nucléaire VQ ventilation",
+      "en": "Nuclear medicine VQ ventilation"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_NM_VQ_COMBINED",
+    "sortPriority": 2340,
+    "labels": {
+      "fr": "Médecine nucléaire VQ combiné",
+      "en": "Nuclear medicine VQ combined"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_NM_GALLBLADDER_EMPTYING",
+    "sortPriority": 2350,
+    "labels": {
+      "fr": "Médecine nucléaire vidange vésiculaire",
+      "en": "Nuclear medicine gallbladder emptying"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_FL_ESOPHAGRAM",
+    "sortPriority": 2360,
+    "labels": {
+      "fr": "Fluoroscopie œsophagogramme",
+      "en": "Fluoroscopy esophagram"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_FL_TUBE_PLACEMENT",
+    "sortPriority": 2370,
+    "labels": {
+      "fr": "Fluoroscopie placement de sonde",
+      "en": "Fluoroscopy tube placement"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_FL_LINE_PLACEMENT",
+    "sortPriority": 2380,
+    "labels": {
+      "fr": "Fluoroscopie placement de ligne",
+      "en": "Fluoroscopy line placement"
+    },
+    "aliases": []
+  },
+  {
+    "domain": "PROTOCOL",
+    "code": "PROTOCOL_FL_LUMBAR_PUNCTURE",
+    "sortPriority": 2390,
+    "labels": {
+      "fr": "Fluoroscopie ponction lombaire",
+      "en": "Fluoroscopy lumbar puncture"
+    },
+    "aliases": []
   }
 ];
 
@@ -905,4 +1705,7 @@ export const MRV_CLASSIFIER_DOMAIN_COUNTS = {
   LAB_CATEGORY: 16,
   VIEW_COUNT: 6,
   CONTRAST_TYPE: 5,
+  LATERALITY: 4,
+  ANATOMIC_SUBREGION: 36,
+  PROTOCOL: 40,
 } as const;

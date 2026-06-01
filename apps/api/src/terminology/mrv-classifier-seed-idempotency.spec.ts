@@ -117,7 +117,7 @@ function createPrismaStub(): PrismaClient {
 }
 
 describe("seedMrvClassifiers idempotency", () => {
-  it("is idempotent across two runs for S1 domains and labels", async () => {
+  it("is idempotent across two runs for S1+S2 domains and labels", async () => {
     const prisma = createPrismaStub() as PrismaClient & {
       __testStore: {
         classifiersByKey: Map<string, ClassifierRow>;
@@ -140,26 +140,37 @@ describe("seedMrvClassifiers idempotency", () => {
     expect(secondLabelCount).toBe(firstLabelCount);
     expect(secondAliasCount).toBe(firstAliasCount);
 
-    const s1Domains = new Set(["MODALITY", "BODY_REGION", "VIEW_COUNT", "CONTRAST_TYPE"]);
-    const s1Count = [...prisma.__testStore.classifiersByKey.values()].filter((row) =>
-      s1Domains.has(row.domain)
+    const imagingDomains = new Set([
+      "MODALITY",
+      "BODY_REGION",
+      "VIEW_COUNT",
+      "CONTRAST_TYPE",
+      "LATERALITY",
+      "ANATOMIC_SUBREGION",
+      "PROTOCOL",
+    ]);
+    const imagingCount = [...prisma.__testStore.classifiersByKey.values()].filter((row) =>
+      imagingDomains.has(row.domain)
     ).length;
-    expect(s1Count).toBe(61);
+    expect(imagingCount).toBe(141);
 
-    const s1LabelCount = [...prisma.__testStore.classifiersByKey.values()]
-      .filter((row) => s1Domains.has(row.domain))
+    const imagingLabelCount = [...prisma.__testStore.classifiersByKey.values()]
+      .filter((row) => imagingDomains.has(row.domain))
       .reduce((acc, row) => {
         const fr = prisma.__testStore.labelsByKey.has(`${row.id}::fr`) ? 1 : 0;
         const en = prisma.__testStore.labelsByKey.has(`${row.id}::en`) ? 1 : 0;
         return acc + fr + en;
       }, 0);
-    expect(s1LabelCount).toBe(122);
+    expect(imagingLabelCount).toBe(282);
 
     expect(MRV_CLASSIFIER_FOUNDATION).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ domain: "VIEW_COUNT", code: "VIEW_COUNT_UNSPECIFIED" }),
         expect.objectContaining({ domain: "MODALITY", code: "MODALITY_CTA" }),
         expect.objectContaining({ domain: "CONTRAST_TYPE", code: "CONTRAST_TYPE_WITH_AND_WITHOUT" }),
+        expect.objectContaining({ domain: "LATERALITY", code: "LATERALITY_BILATERAL" }),
+        expect.objectContaining({ domain: "ANATOMIC_SUBREGION", code: "ANATOMIC_SUBREGION_CIRCLE_OF_WILLIS" }),
+        expect.objectContaining({ domain: "PROTOCOL", code: "PROTOCOL_CT_CHEST_HR" }),
       ])
     );
   });
