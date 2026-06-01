@@ -9,6 +9,7 @@ import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-cata
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
+import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 
 const prisma = new PrismaClient();
@@ -22,6 +23,10 @@ async function main() {
   const wave1 = await seedHaitiImagingWave1(prisma);
   console.log(
     `✅ Wave 1 imaging catalog (${wave1.catalogUpserted} studies, ${wave1.aliasesCreated} aliases, ${wave1.xrChestTupleAliasesCreated} XR_CHEST tuple aliases)`
+  );
+  const wave2 = await seedHaitiImagingWave2(prisma);
+  console.log(
+    `✅ Wave 2 imaging catalog (${wave2.catalogUpserted} studies, ${wave2.aliasesCreated} aliases, ${wave2.usTupleMappingsApplied} US tuple mappings, ${wave2.usTupleAliasesCreated} tuple aliases, ${wave2.usTupleProtocolsUpdated} tuple protocol updates)`
   );
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
