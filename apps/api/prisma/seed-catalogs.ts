@@ -8,6 +8,7 @@ import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-ha
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
+import { seedMedicationSafetyClassifiers } from "./helpers/seed-medication-safety-classifiers";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
@@ -22,6 +23,8 @@ async function main() {
   // ER lab extension: uses existing repo billing defaults only; official LOINC/CMS import remains pending.
   await seedUsErLabCatalog(prisma, US_ER_LAB_CATALOG);
   await seedMrvClassifiers(prisma);
+  await seedMedicationSafetyClassifiers(prisma);
+  console.log("✅ Medication safety classifiers seeded (TermClassifier reference vocabulary only)");
   const wave1 = await seedHaitiImagingWave1(prisma);
   console.log(
     `✅ Wave 1 imaging catalog (${wave1.catalogUpserted} studies, ${wave1.aliasesCreated} aliases, ${wave1.xrChestTupleAliasesCreated} XR_CHEST tuple aliases)`
