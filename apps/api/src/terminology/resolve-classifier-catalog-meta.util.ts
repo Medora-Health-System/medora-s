@@ -1,3 +1,10 @@
+import {
+  classifierDomainForImagingField,
+  IMAGING_CLASSIFIER_FIELD_NAMES,
+  type ImagingCatalogLegacy,
+  type ImagingClassifierCodeTargets,
+  resolveImagingClassifierCodeForField,
+} from "./catalog-classifier-backfill-map";
 import { isTerminologyReadClassifierEnabled } from "./terminology-flags.util";
 
 export type ClassifierWithLabels = {
@@ -14,6 +21,21 @@ export function resolveClassifierDisplayName(
   const fallback = classifier.labels.find((l) => l.locale === "fr")?.displayName?.trim();
   return fallback || null;
 }
+
+export type { ImagingClassifierCodeTargets };
+
+export function resolveImagingCatalogClassifierCodes(
+  catalogCode: string,
+  legacy: ImagingCatalogLegacy
+): ImagingClassifierCodeTargets {
+  const targets = {} as ImagingClassifierCodeTargets;
+  for (const fieldName of IMAGING_CLASSIFIER_FIELD_NAMES) {
+    targets[fieldName] = resolveImagingClassifierCodeForField(catalogCode, fieldName, legacy);
+  }
+  return targets;
+}
+
+export { classifierDomainForImagingField };
 
 export function buildImagingClassifierMetaLine(
   row: {

@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import {
-  BODY_REGION_LEGACY_TO_CLASSIFIER,
-  CONTRAST_CATALOG_CODE_TO_CLASSIFIER,
-  CONTRAST_MANUAL_REVIEW_IMAGING_CODES,
+  classifierDomainForImagingField,
+  IMAGING_CLASSIFIER_FIELD_NAMES,
+  type ImagingClassifierFieldName,
   LAB_CATEGORY_LEGACY_TO_CLASSIFIER,
-  MODALITY_LEGACY_TO_CLASSIFIER,
-  VIEW_COUNT_CATALOG_CODE_TO_CLASSIFIER,
   parseLabCategoryFromDescription,
+  planImagingClassifierField,
 } from "./catalog-classifier-backfill-map";
 import { isTerminologyBackfillEnabled } from "./terminology-flags.util";
 
@@ -19,6 +18,27 @@ export type BackfillSummary = {
   unchanged: number;
   skipped: number;
   manualReview: number;
+};
+
+export type ImagingBackfillAuditLine = {
+  catalogCode: string;
+  fieldName: ImagingClassifierFieldName;
+  status: BackfillAuditStatus;
+  classifierId: string | null;
+  classifierCode: string | null;
+  legacyValue: string | null;
+  message?: string;
+};
+
+export type ImagingBackfillDryRunResult = BackfillSummary & {
+  dryRun: true;
+  imagingSlotCount: number;
+  imagingAudits: ImagingBackfillAuditLine[];
+};
+
+export type CatalogClassifierBackfillOptions = {
+  /** When true: no CatalogImagingStudy / CatalogLabTest updates and no audit table writes. */
+  dryRun?: boolean;
 };
 
 type ClassifierIndex = Map<string, string>;
@@ -66,8 +86,167 @@ export function planFieldBackfill(
   return { status: "APPLIED", classifierId: targetClassifierId };
 }
 
-export async function runCatalogClassifierBackfill(prisma: PrismaClient): Promise<BackfillSummary> {
-  if (!isTerminologyBackfillEnabled()) {
+export type ImagingRowForBackfill = {
+  id: string;
+  code: string;
+  modality: string | null;
+  bodyRegion: string | null;
+  modalityClassifierId: string | null;
+  bodyRegionClassifierId: string | null;
+  contrastTypeClassifierId: string | null;
+  viewCountClassifierId: string | null;
+  lateralityClassifierId: string | null;
+  anatomicSubregionClassifierId: string | null;
+  protocolClassifierId: string | null;
+};
+
+function currentClassifierIdForField(
+  row: Record<ImagingClassifierFieldName, string | null>,
+  fieldName: ImagingClassifierFieldName
+): string | null {
+  return row[fieldName];
+}
+
+function incrementSummary(summary: BackfillSummary, status: BackfillAuditStatus): void {
+  if (status === "APPLIED") summary.applied += 1;
+  else if (status === "UNCHANGED") summary.unchanged += 1;
+  else if (status === "SKIPPED") summary.skipped += 1;
+  else summary.manualReview += 1;
+}
+
+/** Plans imaging classifier backfill audit lines without persisting (mapping-44 / 7-field). */
+export function planImagingCatalogClassifierBackfill(
+  imagingRows: ImagingRowForBackfill[],
+  index: ClassifierIndex
+): { summary: BackfillSummary; audits: ImagingBackfillAuditLine[] } {
+  const summary: BackfillSummary = {
+    runId: "",
+    applied: 0,
+    unchanged: 0,
+    skipped: 0,
+    manualReview: 0,
+  };
+  const audits: ImagingBackfillAuditLine[] = [];
+
+  for (const row of imagingRows) {
+    const legacy = { modality: row.modality, bodyRegion: row.bodyRegion };
+    const classifierRow: Record<ImagingClassifierFieldName, string | null> = {
+      modalityClassifierId: row.modalityClassifierId,
+      bodyRegionClassifierId: row.bodyRegionClassifierId,
+      contrastTypeClassifierId: row.contrastTypeClassifierId,
+      viewCountClassifierId: row.viewCountClassifierId,
+      lateralityClassifierId: row.lateralityClassifierId,
+      anatomicSubregionClassifierId: row.anatomicSubregionClassifierId,
+      protocolClassifierId: row.protocolClassifierId,
+    };
+
+    for (const fieldName of IMAGING_CLASSIFIER_FIELD_NAMES) {
+      const fieldPlan = planImagingClassifierField(row.code, fieldName, legacy);
+
+      if (fieldPlan.disposition === "MANUAL_REVIEW") {
+        const status: BackfillAuditStatus = "MANUAL_REVIEW";
+        incrementSummary(summary, status);
+        audits.push({
+          catalogCode: row.code,
+          fieldName,
+          status,
+          classifierId: null,
+          classifierCode: null,
+          legacyValue: fieldPlan.legacyValue,
+          message: fieldPlan.message,
+        });
+        continue;
+      }
+
+      if (fieldPlan.disposition === "NOT_APPLICABLE") {
+        const status: BackfillAuditStatus = "SKIPPED";
+        incrementSummary(summary, status);
+        audits.push({
+          catalogCode: row.code,
+          fieldName,
+          status,
+          classifierId: null,
+          classifierCode: null,
+          legacyValue: fieldPlan.legacyValue,
+          message: fieldPlan.message ?? "not applicable",
+        });
+        continue;
+      }
+
+      const domain = classifierDomainForImagingField(fieldName);
+      const classifierCode = fieldPlan.classifierCode;
+      const targetId = classifierCode ? resolveClassifierId(index, domain, classifierCode) : null;
+      const currentId = currentClassifierIdForField(classifierRow, fieldName);
+      const plan = planFieldBackfill(currentId, targetId);
+
+      incrementSummary(summary, plan.status);
+      audits.push({
+        catalogCode: row.code,
+        fieldName,
+        status: plan.status,
+        classifierId: plan.classifierId,
+        classifierCode,
+        legacyValue: fieldPlan.legacyValue,
+        message: plan.message ?? fieldPlan.message,
+      });
+    }
+  }
+
+  return { summary, audits };
+}
+
+/**
+ * Read-only dry-run for imaging rows (no FK updates, no audit table writes).
+ * Does not require TERMINOLOGY_BACKFILL_ENABLED.
+ */
+export async function runImagingClassifierBackfillDryRun(
+  prisma: PrismaClient,
+  options?: { catalogCodes?: readonly string[] }
+): Promise<ImagingBackfillDryRunResult> {
+  const index = await loadClassifierIndex(prisma);
+  const codeFilter = options?.catalogCodes ? new Set(options.catalogCodes) : null;
+
+  const imagingRows = await prisma.catalogImagingStudy.findMany({
+    select: {
+      id: true,
+      code: true,
+      bodyRegion: true,
+      modality: true,
+      bodyRegionClassifierId: true,
+      modalityClassifierId: true,
+      contrastTypeClassifierId: true,
+      viewCountClassifierId: true,
+      lateralityClassifierId: true,
+      anatomicSubregionClassifierId: true,
+      protocolClassifierId: true,
+    },
+    ...(codeFilter
+      ? { where: { code: { in: [...codeFilter] } } }
+      : {}),
+  });
+
+  const filtered = codeFilter
+    ? imagingRows.filter((r) => codeFilter.has(r.code))
+    : imagingRows;
+
+  const { summary, audits } = planImagingCatalogClassifierBackfill(filtered, index);
+
+  return {
+    ...summary,
+    runId: randomUUID(),
+    dryRun: true,
+    imagingSlotCount: filtered.length * IMAGING_CLASSIFIER_FIELD_NAMES.length,
+    imagingAudits: audits,
+  };
+}
+
+export async function runCatalogClassifierBackfill(
+  prisma: PrismaClient,
+  options?: CatalogClassifierBackfillOptions
+): Promise<BackfillSummary> {
+  const dryRun = options?.dryRun === true;
+
+  if (!dryRun && !isTerminologyBackfillEnabled()) {
     return { runId: "", applied: 0, unchanged: 0, skipped: 0, manualReview: 0 };
   }
 
@@ -85,6 +264,9 @@ export async function runCatalogClassifierBackfill(prisma: PrismaClient): Promis
     status: BackfillAuditStatus;
     message?: string;
   }): Promise<void> {
+    incrementSummary(summary, input.status);
+    if (dryRun) return;
+
     await prisma.catalogClassifierBackfillAudit.create({
       data: {
         runId,
@@ -98,10 +280,6 @@ export async function runCatalogClassifierBackfill(prisma: PrismaClient): Promis
         message: input.message,
       },
     });
-    if (input.status === "APPLIED") summary.applied += 1;
-    else if (input.status === "UNCHANGED") summary.unchanged += 1;
-    else if (input.status === "SKIPPED") summary.skipped += 1;
-    else summary.manualReview += 1;
   }
 
   const imagingRows = await prisma.catalogImagingStudy.findMany({
@@ -114,106 +292,79 @@ export async function runCatalogClassifierBackfill(prisma: PrismaClient): Promis
       modalityClassifierId: true,
       contrastTypeClassifierId: true,
       viewCountClassifierId: true,
+      lateralityClassifierId: true,
+      anatomicSubregionClassifierId: true,
+      protocolClassifierId: true,
     },
   });
 
   for (const row of imagingRows) {
-    if (row.bodyRegion) {
-      const code = BODY_REGION_LEGACY_TO_CLASSIFIER[row.bodyRegion];
-      const targetId = code ? resolveClassifierId(index, "BODY_REGION", code) : null;
-      const plan = planFieldBackfill(row.bodyRegionClassifierId, targetId);
-      if (plan.status === "APPLIED") {
-        await prisma.catalogImagingStudy.update({
-          where: { id: row.id },
-          data: { bodyRegionClassifierId: plan.classifierId },
-        });
-      }
-      await audit({
-        catalogTable: "CatalogImagingStudy",
-        catalogRowId: row.id,
-        catalogCode: row.code,
-        fieldName: "bodyRegionClassifierId",
-        legacyValue: row.bodyRegion,
-        classifierId: plan.classifierId,
-        status: plan.status,
-        message: plan.message,
-      });
-    }
+    const legacy = { modality: row.modality, bodyRegion: row.bodyRegion };
+    const classifierRow = {
+      modalityClassifierId: row.modalityClassifierId,
+      bodyRegionClassifierId: row.bodyRegionClassifierId,
+      contrastTypeClassifierId: row.contrastTypeClassifierId,
+      viewCountClassifierId: row.viewCountClassifierId,
+      lateralityClassifierId: row.lateralityClassifierId,
+      anatomicSubregionClassifierId: row.anatomicSubregionClassifierId,
+      protocolClassifierId: row.protocolClassifierId,
+    };
 
-    if (row.modality) {
-      const code = MODALITY_LEGACY_TO_CLASSIFIER[row.modality];
-      const targetId = code ? resolveClassifierId(index, "MODALITY", code) : null;
-      const plan = planFieldBackfill(row.modalityClassifierId, targetId);
-      if (plan.status === "APPLIED") {
-        await prisma.catalogImagingStudy.update({
-          where: { id: row.id },
-          data: { modalityClassifierId: plan.classifierId },
-        });
-      }
-      await audit({
-        catalogTable: "CatalogImagingStudy",
-        catalogRowId: row.id,
-        catalogCode: row.code,
-        fieldName: "modalityClassifierId",
-        legacyValue: row.modality,
-        classifierId: plan.classifierId,
-        status: plan.status,
-        message: plan.message,
-      });
-    }
+    for (const fieldName of IMAGING_CLASSIFIER_FIELD_NAMES) {
+      const fieldPlan = planImagingClassifierField(row.code, fieldName, legacy);
 
-    const viewCode = VIEW_COUNT_CATALOG_CODE_TO_CLASSIFIER[row.code];
-    if (viewCode) {
-      const targetId = resolveClassifierId(index, "VIEW_COUNT", viewCode);
-      const plan = planFieldBackfill(row.viewCountClassifierId, targetId);
-      if (plan.status === "APPLIED") {
-        await prisma.catalogImagingStudy.update({
-          where: { id: row.id },
-          data: { viewCountClassifierId: plan.classifierId },
+      if (fieldPlan.disposition === "MANUAL_REVIEW") {
+        await audit({
+          catalogTable: "CatalogImagingStudy",
+          catalogRowId: row.id,
+          catalogCode: row.code,
+          fieldName,
+          legacyValue: fieldPlan.legacyValue,
+          classifierId: null,
+          status: "MANUAL_REVIEW",
+          message: fieldPlan.message,
         });
+        continue;
       }
-      await audit({
-        catalogTable: "CatalogImagingStudy",
-        catalogRowId: row.id,
-        catalogCode: row.code,
-        fieldName: "viewCountClassifierId",
-        legacyValue: row.code,
-        classifierId: plan.classifierId,
-        status: plan.status,
-        message: plan.message,
-      });
-    }
 
-    const contrastCode = CONTRAST_CATALOG_CODE_TO_CLASSIFIER[row.code];
-    if (contrastCode) {
-      const targetId = resolveClassifierId(index, "CONTRAST_TYPE", contrastCode);
-      const plan = planFieldBackfill(row.contrastTypeClassifierId, targetId);
-      if (plan.status === "APPLIED") {
+      if (fieldPlan.disposition === "NOT_APPLICABLE") {
+        await audit({
+          catalogTable: "CatalogImagingStudy",
+          catalogRowId: row.id,
+          catalogCode: row.code,
+          fieldName,
+          legacyValue: fieldPlan.legacyValue,
+          classifierId: null,
+          status: "SKIPPED",
+          message: fieldPlan.message ?? "not applicable",
+        });
+        continue;
+      }
+
+      const domain = classifierDomainForImagingField(fieldName);
+      const targetId = fieldPlan.classifierCode
+        ? resolveClassifierId(index, domain, fieldPlan.classifierCode)
+        : null;
+      const currentId = currentClassifierIdForField(classifierRow, fieldName);
+      const plan = planFieldBackfill(currentId, targetId);
+
+      if (!dryRun && plan.status === "APPLIED") {
         await prisma.catalogImagingStudy.update({
           where: { id: row.id },
-          data: { contrastTypeClassifierId: plan.classifierId },
+          data: { [fieldName]: plan.classifierId },
         });
+        classifierRow[fieldName] = plan.classifierId;
       }
+
       await audit({
         catalogTable: "CatalogImagingStudy",
         catalogRowId: row.id,
         catalogCode: row.code,
-        fieldName: "contrastTypeClassifierId",
-        legacyValue: row.code,
+        fieldName,
+        legacyValue: fieldPlan.legacyValue,
         classifierId: plan.classifierId,
         status: plan.status,
-        message: plan.message ?? (plan.status === "SKIPPED" ? "catalog row or classifier missing" : undefined),
-      });
-    } else if ((CONTRAST_MANUAL_REVIEW_IMAGING_CODES as readonly string[]).includes(row.code)) {
-      await audit({
-        catalogTable: "CatalogImagingStudy",
-        catalogRowId: row.id,
-        catalogCode: row.code,
-        fieldName: "contrastTypeClassifierId",
-        legacyValue: row.code,
-        classifierId: null,
-        status: "MANUAL_REVIEW",
-        message: "unspecified contrast — excluded from 2B.2 backfill",
+        message: plan.message ?? fieldPlan.message,
       });
     }
   }
@@ -235,7 +386,7 @@ export async function runCatalogClassifierBackfill(prisma: PrismaClient): Promis
       ? resolveClassifierId(index, "LAB_CATEGORY", classifierCode)
       : null;
     const plan = planFieldBackfill(row.labCategoryClassifierId, targetId);
-    if (plan.status === "APPLIED") {
+    if (!dryRun && plan.status === "APPLIED") {
       await prisma.catalogLabTest.update({
         where: { id: row.id },
         data: { labCategoryClassifierId: plan.classifierId },

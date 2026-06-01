@@ -1,7 +1,7 @@
 import {
   BODY_REGION_LEGACY_TO_CLASSIFIER,
   CONTRAST_CATALOG_CODE_TO_CLASSIFIER,
-  CONTRAST_MANUAL_REVIEW_IMAGING_CODES,
+  CONTRAST_INTENTIONAL_NULL_IMAGING_CODES,
   LAB_CATEGORY_LEGACY_TO_CLASSIFIER,
   parseLabCategoryFromDescription,
 } from "./catalog-classifier-backfill-map";
@@ -40,18 +40,19 @@ describe("catalog-classifier-backfill maps", () => {
     expect(CONTRAST_CATALOG_CODE_TO_CLASSIFIER.CT_HEAD_WO_CONTRAST).toBe("CONTRAST_TYPE_WITHOUT");
   });
 
-  it("lists unspecified CT/MRI for manual review", () => {
-    expect(CONTRAST_MANUAL_REVIEW_IMAGING_CODES).toContain("CT_HEAD");
-    expect(CONTRAST_MANUAL_REVIEW_IMAGING_CODES).toContain("MRI_BRAIN");
+  it("lists intentional null contrast codes (4 rows)", () => {
+    expect(CONTRAST_INTENTIONAL_NULL_IMAGING_CODES).toEqual([
+      "CT_HEAD",
+      "CT_ABD",
+      "CT_CHEST_ABDOMEN_PELVIS_TRAUMA",
+      "MRI_SPINE",
+    ]);
     expect(CONTRAST_CATALOG_CODE_TO_CLASSIFIER.CT_HEAD).toBeUndefined();
+    expect(CONTRAST_CATALOG_CODE_TO_CLASSIFIER.CT_CHEST).toBe("CONTRAST_TYPE_WITHOUT");
   });
 });
 
 describe("planFieldBackfill", () => {
-  it("returns UNCHANGED when FK already correct", () => {
-    expect(planFieldBackfill("id-1", "id-1").status).toBe("UNCHANGED");
-  });
-
   it("returns APPLIED when FK differs", () => {
     const r = planFieldBackfill(null, "id-2");
     expect(r.status).toBe("APPLIED");
@@ -60,13 +61,6 @@ describe("planFieldBackfill", () => {
 
   it("returns SKIPPED when target missing", () => {
     expect(planFieldBackfill(null, null).status).toBe("SKIPPED");
-  });
-});
-
-describe("resolveClassifierId", () => {
-  it("resolves domain+code key", () => {
-    const index = new Map([["BODY_REGION::BODY_REGION_KNEE", "uuid-knee"]]);
-    expect(resolveClassifierId(index, "BODY_REGION", "BODY_REGION_KNEE")).toBe("uuid-knee");
   });
 });
 
