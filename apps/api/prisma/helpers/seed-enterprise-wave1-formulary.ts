@@ -1,10 +1,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { MedicationMarWorkflow } from "@prisma/client";
 import type { EnterpriseWave1ReadinessReport } from "@medora/shared";
-import {
-  ENTERPRISE_M16B_WAVE1_GOVERNANCE_NOTES_PREFIX,
-  ENTERPRISE_M16B_WAVE1_LINKAGE_MARKER,
-} from "../../src/medication-master/enterprise-wave1.constants";
+import { mergeEnterpriseWave1GovernanceNotes } from "../../src/medication-master/enterprise-wave1.constants";
 import { loadEnterpriseWave1FormularySeedModules } from "./enterprise-wave1-formulary-seed-modules";
 
 export class EnterpriseWave1FormularySeedError extends Error {
@@ -35,6 +32,8 @@ export type SeedEnterpriseWave1FormularyResult = {
   billingCatalogRowsCreated: number;
   linkedCatalogMedications: number;
   alreadyLinked: number;
+  /** M1.6B.3 — ENRICH alreadyLinked rows that received Wave 1 marker on governanceNotes. */
+  wave1GovernanceNotesUpdated: number;
   skippedMissingCatalog: number;
   conflicts: Array<{ catalogCode: string; reason: string }>;
   readinessReport: EnterpriseWave1ReadinessReport;
@@ -139,6 +138,7 @@ export async function seedEnterpriseWave1Formulary(
     billingCatalogRowsCreated: 0,
     linkedCatalogMedications: 0,
     alreadyLinked: 0,
+    wave1GovernanceNotesUpdated: 0,
     skippedMissingCatalog: 0,
     conflicts: [],
   };
@@ -316,7 +316,7 @@ export async function seedEnterpriseWave1Formulary(
           isActive: false,
           governanceStatus: "REVIEW_REQUIRED",
           baselineAvailable: false,
-          governanceNotes: `${ENTERPRISE_M16B_WAVE1_GOVERNANCE_NOTES_PREFIX}\n${ENTERPRISE_M16B_WAVE1_LINKAGE_MARKER}`,
+          governanceNotes: mergeEnterpriseWave1GovernanceNotes(null),
         },
         include: {
           concept: true,
@@ -383,14 +383,28 @@ export async function seedEnterpriseWave1Formulary(
     } else if (product) {
       if (product.legacyCatalogMedicationId === catalogId) {
         result.alreadyLinked += 1;
+        if (!dryRun) {
+          const mergedNotes = mergeEnterpriseWave1GovernanceNotes(product.governanceNotes);
+          if (mergedNotes !== (product.governanceNotes ?? "")) {
+            await prisma.medicationProduct.update({
+              where: { id: product.id },
+              data: { governanceNotes: mergedNotes },
+            });
+            product.governanceNotes = mergedNotes;
+            result.wave1GovernanceNotesUpdated += 1;
+          }
+        }
       } else if (!product.legacyCatalogMedicationId && !dryRun) {
+        const mergedNotes = mergeEnterpriseWave1GovernanceNotes(product.governanceNotes);
         await prisma.medicationProduct.update({
           where: { id: product.id },
           data: {
             legacyCatalogMedicationId: catalogId,
-            governanceNotes: `${ENTERPRISE_M16B_WAVE1_GOVERNANCE_NOTES_PREFIX}\n${ENTERPRISE_M16B_WAVE1_LINKAGE_MARKER}`,
+            governanceNotes: mergedNotes,
           },
         });
+        product.governanceNotes = mergedNotes;
+        product.legacyCatalogMedicationId = catalogId;
         result.linkedCatalogMedications += 1;
       }
 

@@ -102,7 +102,7 @@ async function main() {
   if (process.env.MEDORA_ENABLE_ENTERPRISE_WAVE1_FORMULARY === "1") {
     const wave1Med = await seedEnterpriseWave1Formulary(prisma, { dryRun: false });
     console.log(
-      `✅ Enterprise Wave 1 formulary (manifest=${wave1Med.manifestEntries}, catalogCreated=${wave1Med.catalogCreated}, catalogEnriched=${wave1Med.catalogEnriched}, products=${wave1Med.productsCreated}, billingProfiles=${wave1Med.billingProfilesCreated}, wave1ReadinessPct=${wave1Med.readinessReport.wave1ReadinessPct})`
+      `✅ Enterprise Wave 1 formulary (manifest=${wave1Med.manifestEntries}, catalogCreated=${wave1Med.catalogCreated}, catalogEnriched=${wave1Med.catalogEnriched}, products=${wave1Med.productsCreated}, billingProfiles=${wave1Med.billingProfilesCreated}, wave1MarkersUpdated=${wave1Med.wave1GovernanceNotesUpdated}, wave1ReadinessPct=${wave1Med.readinessReport.wave1ReadinessPct})`
     );
   }
 

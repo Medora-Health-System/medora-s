@@ -7,10 +7,10 @@ import {
   type EnterpriseWave1BillingSnapshot,
 } from "@medora/shared";
 import type { ActivationGateBlockerCode } from "./medication-product-activation-gates.util";
-import { ENTERPRISE_M16B_WAVE1_LINKAGE_MARKER } from "./enterprise-wave1.constants";
+import { productHasEnterpriseWave1GovernanceMarker } from "./enterprise-wave1.constants";
 
 export function productHasEnterpriseWave1LinkageMarker(governanceNotes: string | null): boolean {
-  return (governanceNotes ?? "").includes(ENTERPRISE_M16B_WAVE1_LINKAGE_MARKER);
+  return productHasEnterpriseWave1GovernanceMarker(governanceNotes);
 }
 
 export function evaluateEnterpriseWave1ActivationBillingGate(params: {
