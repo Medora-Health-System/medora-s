@@ -98,6 +98,17 @@ async function main() {
     );
   }
 
+  if (process.env.MEDORA_ENABLE_HAITI_CANONICAL_STABILIZATION_REMEDIATION === "1") {
+    const { remediateHaitiCanonicalStabilization, auditHaitiCanonicalStabilization } =
+      await import("./helpers/seed-haiti-canonical-stabilization-remediation");
+    const dryRun = process.env.MEDORA_HAITI_STABILIZATION_REMEDIATION_DRY_RUN !== "0";
+    const auditBefore = await auditHaitiCanonicalStabilization(prisma);
+    const remediation = await remediateHaitiCanonicalStabilization(prisma, { dryRun });
+    console.log(
+      `✅ Haiti canonical stabilization remediation (dryRun=${remediation.dryRun}, unlinked=${remediation.unlinkedInvalidProducts}, deactivatedCatalogs=${remediation.deactivatedPollutionCatalogs}, pollutionBefore=${auditBefore.activePollutionCatalogs})`
+    );
+  }
+
   console.log("✅ Catalogs seeded (lab, imaging, medications)");
 }
 

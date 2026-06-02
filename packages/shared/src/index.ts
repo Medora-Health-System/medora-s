@@ -113,6 +113,8 @@ export * from "./medication/haitiCanonicalActivationPilotTypes.js";
 export * from "./medication/haitiCanonicalActivationPilotManifest.js";
 export * from "./medication/haitiCanonicalActivationPilotDuplicate.js";
 export * from "./medication/haitiCanonicalActivationPilotValidation.js";
+export * from "./medication/haitiCanonicalStabilizationRemediation.js";
+export * from "./medication/haitiCanonicalStabilizationRemediationValidation.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";
