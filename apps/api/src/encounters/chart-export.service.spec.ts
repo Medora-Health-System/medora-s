@@ -89,6 +89,10 @@ function makePrismaMock(opts: {
     order: { findMany: jest.fn().mockResolvedValue([]) },
     result: { findMany: jest.fn().mockResolvedValue(opts.results ?? []) },
     medicationAdministration: { findMany: jest.fn().mockResolvedValue([]) },
+    medicationAdministrationVerification: { findMany: jest.fn().mockResolvedValue([]) },
+    medicationWasteDocumentation: { findMany: jest.fn().mockResolvedValue([]) },
+    medicationAdministrationOverride: { findMany: jest.fn().mockResolvedValue([]) },
+    pharmacyVerification: { findMany: jest.fn().mockResolvedValue([]) },
     auditLog: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue({

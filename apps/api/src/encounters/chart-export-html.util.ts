@@ -524,6 +524,14 @@ export function renderEncounterChartExportHtml(
           })
           .join("");
 
+  function governanceStatusSymbol(status: string): string {
+    if (status === "completed") return "✓";
+    if (status === "overridden") return "⚠";
+    if (status === "rejected") return "✗";
+    if (status === "pending") return "…";
+    return "·";
+  }
+
   const marInner =
     manifest.medicationAdministrations.length === 0
       ? `<p class="muted">${esc(NO_DATA)}</p>`
@@ -543,6 +551,32 @@ export function renderEncounterChartExportHtml(
         .filter((m) => m.notes?.trim())
         .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.notes!)}</div>`)
         .join("")}`;
+
+  const medicationGovernanceInner =
+    manifest.medicationGovernanceSummaries.length === 0
+      ? `<p class="muted">${esc(NO_DATA)}</p>`
+      : manifest.medicationGovernanceSummaries
+          .map((s) => {
+            const header = [s.medicationLabel, s.doseDisplay, s.route].filter(Boolean).join(" · ");
+            const lines = s.lines
+              .map(
+                (l) =>
+                  `<li>${esc(governanceStatusSymbol(l.status))} ${esc(l.labelFr)}</li>`
+              )
+              .join("");
+            return `<div class="order"><p><strong>${esc(header || s.medicationAdministrationId)}</strong> <span class="muted">${esc(s.administeredAt)}</span></p><ul>${lines}</ul></div>`;
+          })
+          .join("");
+
+  const medicationGovernanceTimelineInner =
+    manifest.medicationGovernanceTimeline.items.length === 0
+      ? `<p class="muted">${esc(NO_DATA)}</p>`
+      : `<ol>${manifest.medicationGovernanceTimeline.items
+          .map(
+            (e) =>
+              `<li><strong>${esc(e.documentedAtIso)}</strong> — ${esc(e.titleFr)} <span class="muted">[${esc(e.eventKind)}]</span></li>`
+          )
+          .join("")}</ol>`;
 
   const procInner =
     manifest.procedures.entries.length === 0
@@ -681,6 +715,8 @@ export function renderEncounterChartExportHtml(
   ${section("Orders", ordersInner)}
   ${section("Results", resultsInner)}
   ${section("Medication administrations (MAR)", marInner)}
+  ${section("Medication governance summary", medicationGovernanceInner)}
+  ${section("Medication governance timeline", medicationGovernanceTimelineInner)}
   ${section("Procedures", procInner)}
   ${section("IV access", ivInner)}
   ${section("Clinical timeline", clinInner)}

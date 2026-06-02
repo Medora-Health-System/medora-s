@@ -73,6 +73,8 @@ function baseManifest(overrides: Partial<ChartExportManifest> = {}): ChartExport
     orders: [],
     results: [],
     medicationAdministrations: [],
+    medicationGovernanceSummaries: [],
+    medicationGovernanceTimeline: { items: [] },
     procedures: { entries: [] },
     ivAccess: { entries: [] },
     clinicalTimeline: { items: [], capped: false },

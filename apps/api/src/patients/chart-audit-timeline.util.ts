@@ -25,6 +25,17 @@ export const CHART_AUDIT_TIMELINE_ACTIONS: AuditAction[] = [
   AuditAction.CRITICAL_FLAG,
   AuditAction.BILLING_FINALIZED,
   AuditAction.BILLING_REOPENED,
+  AuditAction.MEDICATION_WITNESS_VERIFICATION_COMPLETED,
+  AuditAction.MEDICATION_WASTE_RECORDED,
+  AuditAction.MEDICATION_WASTE_WITNESSED,
+  AuditAction.CONTROLLED_SUBSTANCE_OVERRIDE,
+  AuditAction.HIGH_ALERT_DOUBLE_CHECK_COMPLETED,
+  AuditAction.HIGH_ALERT_OVERRIDE,
+  AuditAction.LASA_WARNING_ACKNOWLEDGED,
+  AuditAction.LASA_OVERRIDE,
+  AuditAction.PHARMACY_VERIFICATION_COMPLETED,
+  AuditAction.PHARMACY_VERIFICATION_REJECTED,
+  AuditAction.PHARMACY_VERIFICATION_OVERRIDE,
 ];
 
 /**
@@ -75,6 +86,17 @@ export function auditActionShortLabelFr(action: AuditAction): string {
     [AuditAction.BREAK_GLASS_START]: "Accès d'urgence (break-glass) démarré",
     [AuditAction.BREAK_GLASS_ACCESS]: "Accès d'urgence (break-glass) — consultation dossier",
     [AuditAction.BREAK_GLASS_END]: "Accès d'urgence (break-glass) terminé",
+    [AuditAction.MEDICATION_WITNESS_VERIFICATION_COMPLETED]: "Témoin MAR complété",
+    [AuditAction.MEDICATION_WASTE_RECORDED]: "Perte médicament documentée",
+    [AuditAction.MEDICATION_WASTE_WITNESSED]: "Perte médicament attestée",
+    [AuditAction.CONTROLLED_SUBSTANCE_OVERRIDE]: "Dérogation substance contrôlée (MAR)",
+    [AuditAction.HIGH_ALERT_DOUBLE_CHECK_COMPLETED]: "Double contrôle MAR complété",
+    [AuditAction.HIGH_ALERT_OVERRIDE]: "Dérogation médicament haut risque (MAR)",
+    [AuditAction.LASA_WARNING_ACKNOWLEDGED]: "Avertissement LASA reconnu (MAR)",
+    [AuditAction.LASA_OVERRIDE]: "Dérogation LASA (MAR)",
+    [AuditAction.PHARMACY_VERIFICATION_COMPLETED]: "Vérification pharmacie complétée",
+    [AuditAction.PHARMACY_VERIFICATION_REJECTED]: "Vérification pharmacie refusée",
+    [AuditAction.PHARMACY_VERIFICATION_OVERRIDE]: "Dérogation vérification pharmacie (MAR)",
   };
   return map[action] ?? String(action);
 }
@@ -135,6 +157,18 @@ export function buildAuditTimelineDetailFr(action: AuditAction, metadata: unknow
       if (m?.superseded === true) return "Remplacé par une nouvelle session";
       if (m?.explicit === true) return "Clôture explicite";
       return null;
+    case AuditAction.MEDICATION_WITNESS_VERIFICATION_COMPLETED:
+    case AuditAction.MEDICATION_WASTE_RECORDED:
+    case AuditAction.MEDICATION_WASTE_WITNESSED:
+    case AuditAction.CONTROLLED_SUBSTANCE_OVERRIDE:
+    case AuditAction.HIGH_ALERT_DOUBLE_CHECK_COMPLETED:
+    case AuditAction.HIGH_ALERT_OVERRIDE:
+    case AuditAction.LASA_WARNING_ACKNOWLEDGED:
+    case AuditAction.LASA_OVERRIDE:
+    case AuditAction.PHARMACY_VERIFICATION_COMPLETED:
+    case AuditAction.PHARMACY_VERIFICATION_REJECTED:
+    case AuditAction.PHARMACY_VERIFICATION_OVERRIDE:
+      return typeof m.verificationStatus === "string" ? `Statut : ${m.verificationStatus}` : null;
     default:
       return null;
   }

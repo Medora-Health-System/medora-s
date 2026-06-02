@@ -289,6 +289,8 @@ describe("EncounterChartExportService.getSnapshot", () => {
       orders: [],
       results: [],
       medicationAdministrations: [],
+      medicationGovernanceSummaries: [],
+      medicationGovernanceTimeline: { items: [] },
       procedures: { entries: [] },
       ivAccess: { entries: [] },
       clinicalTimeline: { items: [], capped: false },

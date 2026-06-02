@@ -34,6 +34,7 @@ import { hashCanonicalJson, sha256Hex, canonicalizeForHash } from "./chart-expor
 import { buildEdClinicalTimelineForChartExport } from "./ed-clinical-timeline.util";
 import { renderEncounterChartExportHtml } from "./chart-export-html.util";
 import { UnifiedEncounterTimelineService } from "./unified-encounter-timeline.service";
+import { loadMedicationGovernanceEncounterBundle } from "../medication-safety/medication-governance-chart.util";
 import {
   CHART_EXPORT_SIGNATURE_ALGORITHM,
   CHART_EXPORT_SIGNATURE_VERSION,
@@ -392,7 +393,33 @@ export type ChartExportManifest = {
     administeredByDisplayFr: string | null;
     marAction: string | null;
     notes: string | null;
+    governanceSummary: {
+      lines: Array<{ key: string; labelFr: string; status: string }>;
+      hasOverride: boolean;
+    } | null;
   }>;
+  medicationGovernanceSummaries: Array<{
+    medicationAdministrationId: string;
+    orderItemId: string | null;
+    administeredAt: string;
+    medicationLabel: string | null;
+    doseDisplay: string | null;
+    route: string | null;
+    lines: Array<{ key: string; labelFr: string; status: string }>;
+    hasOverride: boolean;
+  }>;
+  medicationGovernanceTimeline: {
+    items: Array<{
+      id: string;
+      medicationAdministrationId: string | null;
+      orderItemId: string | null;
+      eventKind: string;
+      documentedAtIso: string;
+      titleFr: string;
+      titleEn: string;
+      summaryFr: string | null;
+    }>;
+  };
   procedures: {
     entries: Array<{
       id: string;
@@ -1145,6 +1172,16 @@ export class EncounterChartExportService {
       });
     }
 
+    const medicationGovernanceBundle = await loadMedicationGovernanceEncounterBundle(
+      this.prisma,
+      facilityId,
+      encounter.id,
+      medicationAdministrations
+    );
+    const governanceSummaryByMarId = new Map(
+      medicationGovernanceBundle.summaries.map((s) => [s.medicationAdministrationId, s])
+    );
+
     /* ---------- Provider addenda ---------- */
     const providerAddenda = encounter.providerAddenda.map((ad) => ({
       id: ad.id,
@@ -1323,19 +1360,55 @@ export class EncounterChartExportService {
         })),
       })),
       results: sanitizedResults,
-      medicationAdministrations: medicationAdministrations.map((m) => ({
-        id: m.id,
-        orderItemId: m.orderItemId,
-        medicationLabelSnapshot: m.medicationLabelSnapshot,
-        route: m.route,
-        doseValue: m.doseValue ? String(m.doseValue) : null,
-        doseUnit: m.doseUnit,
-        administeredQuantity: m.administeredQuantity ? String(m.administeredQuantity) : null,
-        administeredAt: m.administeredAt.toISOString(),
-        administeredByDisplayFr: userDisplayFr(m.administeredBy),
-        marAction: (m.marAction as string | null) ?? null,
-        notes: m.notes,
+      medicationAdministrations: medicationAdministrations.map((m) => {
+        const gov = governanceSummaryByMarId.get(m.id);
+        return {
+          id: m.id,
+          orderItemId: m.orderItemId,
+          medicationLabelSnapshot: m.medicationLabelSnapshot,
+          route: m.route,
+          doseValue: m.doseValue ? String(m.doseValue) : null,
+          doseUnit: m.doseUnit,
+          administeredQuantity: m.administeredQuantity ? String(m.administeredQuantity) : null,
+          administeredAt: m.administeredAt.toISOString(),
+          administeredByDisplayFr: userDisplayFr(m.administeredBy),
+          marAction: (m.marAction as string | null) ?? null,
+          notes: m.notes,
+          governanceSummary:
+            gov && gov.lines.length > 0
+              ? {
+                  lines: gov.lines.map((l) => ({
+                    key: l.key,
+                    labelFr: l.labelFr,
+                    status: l.status,
+                  })),
+                  hasOverride: gov.hasOverride,
+                }
+              : null,
+        };
+      }),
+      medicationGovernanceSummaries: medicationGovernanceBundle.summaries.map((s) => ({
+        medicationAdministrationId: s.medicationAdministrationId,
+        orderItemId: s.orderItemId,
+        administeredAt: s.administeredAtIso,
+        medicationLabel: s.medicationLabel,
+        doseDisplay: s.doseDisplay,
+        route: s.route,
+        lines: s.lines.map((l) => ({ key: l.key, labelFr: l.labelFr, status: l.status })),
+        hasOverride: s.hasOverride,
       })),
+      medicationGovernanceTimeline: {
+        items: medicationGovernanceBundle.timelineEvents.map((e) => ({
+          id: e.id,
+          medicationAdministrationId: e.medicationAdministrationId,
+          orderItemId: e.orderItemId,
+          eventKind: e.eventKind,
+          documentedAtIso: e.documentedAtIso,
+          titleFr: e.titleFr,
+          titleEn: e.titleEn,
+          summaryFr: e.summaryFr,
+        })),
+      },
       procedures: {
         entries: procedures.map((p) => {
           const createdByDisplayFr = userDisplayFr(p.createdBy);

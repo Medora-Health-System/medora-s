@@ -90,6 +90,7 @@ export * from "./medication/controlledSubstanceMarGovernance.js";
 export * from "./medication/highAlertMarGovernance.js";
 export * from "./medication/lasaMarGovernance.js";
 export * from "./medication/pharmacyMarGovernance.js";
+export * from "./medication/medicationGovernanceChartSummary.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";

@@ -11,6 +11,7 @@ import {
   type UnifiedTimelineSourceRow,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { loadMedicationGovernanceEncounterBundle } from "../medication-safety/medication-governance-chart.util";
 
 const DEFAULT_LIMIT = 80;
 const MAX_LIMIT = 200;
@@ -201,6 +202,31 @@ export class UnifiedEncounterTimelineService {
         titleEn: buildUnifiedMarAdministrationTitle("en", label),
         summaryFr: m.notes?.trim() || null,
         dedupeKey: `mar:${m.id}`,
+        displayGroup: "MEDICATION",
+      });
+    }
+
+    const medicationGovernanceBundle = await loadMedicationGovernanceEncounterBundle(
+      this.prisma,
+      facilityId,
+      encounterId,
+      marRows
+    );
+    for (const ev of medicationGovernanceBundle.timelineEvents) {
+      sourceRows.push({
+        sourceKind: "MEDICATION_ADMINISTRATION",
+        sourceId: ev.medicationAdministrationId ?? ev.id,
+        storedEventType: ev.eventKind,
+        documentedAtIso: ev.documentedAtIso,
+        actorRole: "RN",
+        sourceDepartment: "RN",
+        orderType: "MEDICATION",
+        orderItemId: ev.orderItemId,
+        titleFr: ev.titleFr,
+        titleEn: ev.titleEn,
+        summaryFr: ev.summaryFr,
+        dedupeKey: `mar-gov:${ev.id}`,
+        displayGroup: "MEDICATION",
       });
     }
 
