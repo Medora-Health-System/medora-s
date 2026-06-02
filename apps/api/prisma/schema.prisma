@@ -154,6 +154,14 @@ enum AuditAction {
   ENCOUNTER_CLINICAL_DOCUMENTATION_CREATED
   /// EDOC.4 — second signer witnessed clinical documentation (PHI-safe metadata only).
   ENCOUNTER_CLINICAL_DOCUMENTATION_WITNESSED
+  /// M1.3F.4 — controlled-substance MAR witness verification completed (PHI-safe metadata only).
+  MEDICATION_WITNESS_VERIFICATION_COMPLETED
+  /// M1.3F.4 — controlled-substance waste documented at MAR (PHI-safe metadata only).
+  MEDICATION_WASTE_RECORDED
+  /// M1.3F.4 — controlled-substance waste witnessed (PHI-safe metadata only).
+  MEDICATION_WASTE_WITNESSED
+  /// M1.3F.4 — controlled-substance MAR governance override (PHI-safe metadata only).
+  CONTROLLED_SUBSTANCE_OVERRIDE
 }
 
 /// Phase 5G — category of external / formal record release request.

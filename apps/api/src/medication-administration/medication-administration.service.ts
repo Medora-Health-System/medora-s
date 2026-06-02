@@ -49,6 +49,11 @@ import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelle
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { logInfo } from "../common/logging/medoraLogger";
+import {
+  assertControlledSubstanceMarCreate,
+  persistControlledSubstanceMarGovernance,
+  resolveControlledSubstanceMarGovernance,
+} from "../medication-safety/controlled-substance-mar-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -333,6 +338,7 @@ export class MedicationAdministrationService {
     let linkedMedicationLine: (OrderItem & { order: { id: string; encounterId: string; type: string; status: string } }) | null =
       null;
     let catalogMedication: {
+      id: string;
       displayNameEn: string | null;
       displayNameFr: string | null;
       name: string | null;
@@ -341,6 +347,10 @@ export class MedicationAdministrationService {
       ndc11: string | null;
       ndcDisplay: string | null;
       billingUnitType: string | null;
+      isControlled: boolean;
+      controlledSchedule: string | null;
+      requiresWitness: boolean;
+      requiresDoubleSign: boolean;
     } | null = null;
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
@@ -379,6 +389,7 @@ export class MedicationAdministrationService {
         catalogMedication = await this.prisma.catalogMedication.findUnique({
           where: { id: item.catalogItemId },
           select: {
+            id: true,
             displayNameEn: true,
             displayNameFr: true,
             name: true,
@@ -387,6 +398,10 @@ export class MedicationAdministrationService {
             ndc11: true,
             ndcDisplay: true,
             billingUnitType: true,
+            isControlled: true,
+            controlledSchedule: true,
+            requiresWitness: true,
+            requiresDoubleSign: true,
           },
         });
       }
@@ -414,6 +429,35 @@ export class MedicationAdministrationService {
 
     const marActionResolved: MarClinicalAction =
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
+
+    const controlledGovernance = catalogMedication
+      ? await resolveControlledSubstanceMarGovernance(
+          this.prisma,
+          catalogMedication.id,
+          catalogMedication
+        )
+      : null;
+
+    if (
+      !serviceOptions?.allowAdministeredForInfusionTerminal &&
+      !serviceOptions?.allowAdministeredForInfusionStart
+    ) {
+      assertControlledSubstanceMarCreate({
+        marAction: marActionResolved,
+        governance: controlledGovernance,
+        witnessUserId: data.witnessUserId,
+        witnessDisplayName: data.witnessDisplayName,
+        administeredByUserId,
+        wasteAmount: data.wasteAmount ?? null,
+        wasteUnit: data.wasteUnit,
+        wasteReason: data.wasteReason,
+        wasteWitnessUserId: data.wasteWitnessUserId,
+        overrideReason: data.overrideReason,
+        controlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
+        orderedQuantity: linkedMedicationLine?.quantity ?? null,
+        administeredQuantity: data.administeredQuantity ?? null,
+      });
+    }
 
     const imSiteValidation = validateImInjectionSiteForMarCreate({
       marAction: marActionResolved,
@@ -615,6 +659,28 @@ export class MedicationAdministrationService {
         tx,
         metadata: marAuditMetadata,
       });
+
+      if (
+        controlledGovernance &&
+        !serviceOptions?.allowAdministeredForInfusionTerminal &&
+        !serviceOptions?.allowAdministeredForInfusionStart
+      ) {
+        await persistControlledSubstanceMarGovernance({
+          tx,
+          audit: this.audit,
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          orderId: orderIdForAudit,
+          medicationAdministrationId: row.id,
+          orderItemId,
+          catalogMedicationId: catalogMedication?.id ?? null,
+          administeredByUserId,
+          data,
+          governance: controlledGovernance,
+          orderedQuantity: linkedMedicationLine?.quantity ?? null,
+        });
+      }
 
       const line = linkedMedicationLine;
       if (line && line.catalogItemType === "MEDICATION") {

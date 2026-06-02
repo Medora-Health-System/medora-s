@@ -86,6 +86,7 @@ export { CONTROLLED_SUBSTANCE_GOVERNANCE_MANIFEST } from "./medication/controlle
 export { HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST } from "./medication/highAlertMedicationGovernanceManifest.js";
 export { LASA_MEDICATION_GOVERNANCE_MANIFEST } from "./medication/lasaMedicationGovernanceManifest.js";
 export * from "./medication/marMedicationSafetyGovernanceUi.js";
+export * from "./medication/controlledSubstanceMarGovernance.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";

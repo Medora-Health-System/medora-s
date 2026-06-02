@@ -16,7 +16,16 @@ import { highRiskMedicationWarning, isHighRiskMedication } from "@/lib/highRiskM
 import { MedicationMarSafetyGovernanceBadges } from "@/components/medication/MedicationMarSafetyGovernanceBadges";
 import { MedicationMarSafetySummaryPanel } from "@/components/medication/MedicationMarSafetySummaryPanel";
 import { orderItemToMedicationSafetyGovernanceDisplay } from "@/features/mar/orderItemMedicationSafetyGovernance";
-import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
+import {
+  validateControlledSubstanceMarCreate,
+  type MedicationSafetyGovernanceDisplayInput,
+} from "@medora/shared";
+import {
+  MarControlledSubstanceFields,
+  marControlledWorkflowVisible,
+  type MarControlledSubstanceFormState,
+} from "@/components/medication/MarControlledSubstanceFields";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   resolveMedicationMarActionFromStorage,
   getEncounterAllergyDocumentationSummary,
@@ -337,6 +346,7 @@ export function MedicationAdministrationTab({
   roleCodes?: string[];
 }) {
   const { t, language } = useI18n();
+  const { userId: currentUserId } = useFacilityAndRoles();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
@@ -387,6 +397,16 @@ export function MedicationAdministrationTab({
   const [marDraftRestoredAt, setMarDraftRestoredAt] = useState<string | null>(null);
   const [marDraftSavedLocallyAt, setMarDraftSavedLocallyAt] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
+  const [marControlledForm, setMarControlledForm] = useState<MarControlledSubstanceFormState>({
+    witnessUserId: null,
+    witnessDisplayName: "",
+    wasteAmount: "",
+    wasteUnit: "",
+    wasteReason: "",
+    overrideReason: "",
+    controlledOverrideAcknowledged: false,
+    useOverride: false,
+  });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
   const [adminTimeSaving, setAdminTimeSaving] = useState(false);
   const [infusionModal, setInfusionModal] = useState<{
@@ -910,6 +930,16 @@ export function MedicationAdministrationTab({
     setMarAllergySafetyAck(false);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
+    setMarControlledForm({
+      witnessUserId: null,
+      witnessDisplayName: "",
+      wasteAmount: "",
+      wasteUnit: row.billingUnitHint || "",
+      wasteReason: "",
+      overrideReason: "",
+      controlledOverrideAcknowledged: false,
+      useOverride: false,
+    });
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
     clearModalEffectiveTime();
@@ -1021,6 +1051,38 @@ export function MedicationAdministrationTab({
               toUtcIso: datetimeLocalValueToUtcIso,
             })
           : null;
+      if (
+        modalItem &&
+        marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction)
+      ) {
+        const govCtx = {
+          isControlled: true,
+          requiresWitness: modalItem.governanceDisplay.requiresWitness === true,
+          wasteDocumentationRecommended:
+            modalItem.governanceDisplay.wasteDocumentationRecommended === true,
+        };
+        const validation = validateControlledSubstanceMarCreate({
+          marAction: modalAction,
+          governance: govCtx,
+          witnessUserId: marControlledForm.witnessUserId,
+          witnessDisplayName: marControlledForm.witnessDisplayName,
+          administeredByUserId: currentUserId ?? undefined,
+          wasteAmount: marControlledForm.wasteAmount.trim()
+            ? Number(marControlledForm.wasteAmount)
+            : null,
+          wasteUnit: marControlledForm.wasteUnit.trim() || modalItem.billingUnitHint || null,
+          wasteReason: marControlledForm.wasteReason,
+          overrideReason: marControlledForm.overrideReason,
+          controlledOverrideAcknowledged: marControlledForm.controlledOverrideAcknowledged,
+          orderedQuantity: modalItem.orderedQuantity,
+          administeredQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+        });
+        if (!validation.ok) {
+          setModalSubmitError(validation.message);
+          return;
+        }
+      }
+
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
@@ -1044,6 +1106,30 @@ export function MedicationAdministrationTab({
           ? { safetyAcknowledgedMedicationAllergies: true }
           : {}),
         ...(effectiveFields ?? {}),
+        ...(modalItem &&
+        marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction)
+          ? {
+              ...(marControlledForm.witnessUserId
+                ? { witnessUserId: marControlledForm.witnessUserId }
+                : {}),
+              ...(marControlledForm.witnessDisplayName.trim() && !marControlledForm.witnessUserId
+                ? { witnessDisplayName: marControlledForm.witnessDisplayName.trim() }
+                : {}),
+              ...(marControlledForm.wasteAmount.trim()
+                ? { wasteAmount: Number(marControlledForm.wasteAmount) }
+                : {}),
+              ...(marControlledForm.wasteUnit.trim() || modalItem.billingUnitHint
+                ? { wasteUnit: (marControlledForm.wasteUnit.trim() || modalItem.billingUnitHint).trim() }
+                : {}),
+              ...(marControlledForm.wasteReason.trim() ? { wasteReason: marControlledForm.wasteReason.trim() } : {}),
+              ...(marControlledForm.overrideReason.trim()
+                ? { overrideReason: marControlledForm.overrideReason.trim() }
+                : {}),
+              ...(marControlledForm.controlledOverrideAcknowledged
+                ? { controlledOverrideAcknowledged: true }
+                : {}),
+            }
+          : {}),
       };
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
@@ -1848,6 +1934,17 @@ export function MedicationAdministrationTab({
             ) : null}
             <MedicationMarSafetyGovernanceBadges governance={modalItem.governanceDisplay} />
             <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} />
+            <MarControlledSubstanceFields
+              facilityId={facilityId}
+              currentUserId={currentUserId}
+              governance={modalItem.governanceDisplay}
+              marAction={modalAction}
+              orderedQuantity={modalItem.orderedQuantity}
+              administeredQuantity={modalAdminQty}
+              defaultWasteUnit={modalItem.billingUnitHint}
+              state={marControlledForm}
+              onChange={(patch) => setMarControlledForm((prev) => ({ ...prev, ...patch }))}
+            />
 
             {(() => {
               const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];

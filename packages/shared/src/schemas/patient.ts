@@ -690,6 +690,21 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   /** Phase 15F-B: optional clinical administration time at create (ISO-8601 UTC); `administeredAt` stays documented time. */
   effectiveAdministeredAt: z.preprocess(emptyStrToUndefined, z.string().trim().optional()),
   effectiveAdministeredAtReason: z.preprocess(emptyStrToUndefined, z.string().max(500).optional()),
+  /** M1.3F.4 — witness user id (facility staff) when controlled substance requires witness. */
+  witnessUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  /** M1.3F.4 — witness display name when staff directory id is unavailable. */
+  witnessDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  /** M1.3F.4 — controlled-substance waste amount (partial dose / discard). */
+  wasteAmount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().finite().nonnegative().optional()
+  ),
+  wasteUnit: z.preprocess(emptyStrToUndefined, z.string().trim().max(32).optional()),
+  wasteReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  wasteWitnessUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  /** M1.3F.4 — required when administering controlled med without witness. */
+  overrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  controlledOverrideAcknowledged: z.boolean().optional(),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
