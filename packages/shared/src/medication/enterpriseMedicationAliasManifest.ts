@@ -4,6 +4,7 @@
  */
 
 import { ENTERPRISE_WAVE1_FORMULARY_MANIFEST } from "./enterpriseWave1FormularyManifest.js";
+import { ENTERPRISE_WAVE2_FORMULARY_MANIFEST } from "./enterpriseWave2FormularyManifest.js";
 import type {
   EnterpriseMedicationAliasCategory,
   EnterpriseMedicationAliasKind,
@@ -22,6 +23,58 @@ export type {
   EnterpriseMedicationSearchPair,
   EnterpriseMedicationSearchTypo,
 } from "./enterpriseMedicationAliasTypes.js";
+
+function mapWave2Bucket(bucket: string): EnterpriseMedicationAliasCategory {
+  switch (bucket) {
+    case "ANTICOAGULATION":
+      return "ANTICOAG";
+    case "CARDIOLOGY":
+      return "CARDIOVASCULAR";
+    case "DIABETES":
+      return "DIABETES";
+    case "WOMENS_HEALTH":
+      return "OTHER";
+    case "PULMONOLOGY":
+      return "OTHER";
+    case "GI":
+      return "GI";
+    case "PSYCHIATRY":
+      return "OTHER";
+    case "INFECTIOUS_DISEASE":
+    case "ER_CRITICAL":
+      return "ER";
+    case "CHRONIC":
+      return "CHRONIC";
+    default:
+      return "OTHER";
+  }
+}
+
+function buildWave2ManifestEntries(): EnterpriseMedicationAliasManifestEntry[] {
+  return ENTERPRISE_WAVE2_FORMULARY_MANIFEST.map((entry) => {
+    const aliases: EnterpriseMedicationAliasLine[] = [];
+    const seen = new Set<string>();
+    const push = (text: string, kind: EnterpriseMedicationAliasKind) => {
+      const t = text.trim();
+      if (t.length < 2) return;
+      const key = t.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      aliases.push(line(t, kind));
+    };
+    push(entry.genericName, "GENERIC");
+    if (entry.displayNameFr?.trim()) push(entry.displayNameFr, "FR");
+    if (entry.displayNameEn?.trim()) push(entry.displayNameEn, "GENERIC");
+    for (const a of entry.aliases) push(a, "BRAND");
+    for (const t of entry.searchTerms) push(t, t.length <= 4 ? "ABBREV" : "GENERIC");
+    return {
+      catalogCode: entry.catalogCode,
+      genericName: entry.genericName,
+      category: mapWave2Bucket(entry.bucket),
+      aliases,
+    };
+  });
+}
 
 function mapWave1Bucket(bucket: string): EnterpriseMedicationAliasCategory {
   switch (bucket) {
@@ -224,7 +277,13 @@ function mergeManifestEntries(
 }
 
 export const ENTERPRISE_MEDICATION_ALIAS_MANIFEST: EnterpriseMedicationAliasManifestEntry[] =
-  mergeManifestEntries([...buildWave1ManifestEntries(), ...SUPPLEMENTAL_ALIAS_ENTRIES]);
+  mergeManifestEntries([
+    ...buildWave1ManifestEntries(),
+    ...buildWave2ManifestEntries(),
+    ...SUPPLEMENTAL_ALIAS_ENTRIES,
+  ]);
+
+export const ENTERPRISE_MEDICATION_ALIAS_MANIFEST_VERSION = "M1.6D" as const;
 
 /** Clinician-critical brand ↔ generic pairs (scoped validation). */
 export const ENTERPRISE_MEDICATION_REQUIRED_SEARCH_PAIRS: EnterpriseMedicationSearchPair[] = [
@@ -278,5 +337,3 @@ export const ENTERPRISE_MEDICATION_SEARCH_TYPOS: EnterpriseMedicationSearchTypo[
   { catalogCode: "PANTOPRAZOLE_40_MG_COMPRIME_ORAL", typo: "pantoprazol", canonical: "pantoprazole" },
   { catalogCode: "ATORVASTATIN_20_MG_COMPRIME_ORAL", typo: "atorvastatine", canonical: "atorvastatin" },
 ];
-
-export const ENTERPRISE_MEDICATION_ALIAS_MANIFEST_VERSION = "M1.6C" as const;

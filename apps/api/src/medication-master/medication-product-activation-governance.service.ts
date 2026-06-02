@@ -38,6 +38,7 @@ import {
 } from "./medication-product-activation-gates.util";
 import type { PriorityErGovernanceMeta } from "./priority-er-inventory-governance.util";
 import { evaluateEnterpriseWave1ActivationBillingGate } from "./enterprise-wave1-billing-gate.util";
+import { evaluateEnterpriseWave2ActivationBillingGate } from "./enterprise-wave2-billing-gate.util";
 import { parsePriorityErSourceTrace } from "./priority-er-inventory-staging-source.util";
 
 export type ActivationCandidateDto = {
@@ -305,10 +306,27 @@ export class MedicationProductActivationGovernanceService {
         hasBillingProfile: (defaultPkg?.billingProfiles.length ?? 0) > 0,
       },
     });
+    const wave2BillingGate = evaluateEnterpriseWave2ActivationBillingGate({
+      governanceNotes: ctx.product.governanceNotes,
+      snapshot: {
+        catalogCode: catalog?.code ?? ctx.product.code,
+        billingCodeDefault: catalog?.billingCodeDefault,
+        ndc11: catalog?.ndc11,
+        packageNdc11: defaultPkg?.ndc11,
+        billingProfileHcpcs: defaultPkg?.billingProfiles[0]?.hcpcsCodeSuggested,
+        hasBillingProfile: (defaultPkg?.billingProfiles.length ?? 0) > 0,
+      },
+    });
 
     this.assertGate({
-      allowed: orderSearchGate.allowed && wave1BillingGate.allowed,
-      blockers: [...new Set([...orderSearchGate.blockers, ...wave1BillingGate.blockers])],
+      allowed: orderSearchGate.allowed && wave1BillingGate.allowed && wave2BillingGate.allowed,
+      blockers: [
+        ...new Set([
+          ...orderSearchGate.blockers,
+          ...wave1BillingGate.blockers,
+          ...wave2BillingGate.blockers,
+        ]),
+      ],
     });
 
     const now = new Date().toISOString();
