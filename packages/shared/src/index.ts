@@ -109,6 +109,10 @@ export {
   HAITI_CANONICAL_LINKAGE_MANIFEST_VERSION,
   HAITI_CANONICAL_LINKAGE_MANIFEST_EXPECTED_COUNT,
 } from "./medication/haitiCanonicalMedicationLinkageManifest.js";
+export * from "./medication/haitiCanonicalActivationPilotTypes.js";
+export * from "./medication/haitiCanonicalActivationPilotManifest.js";
+export * from "./medication/haitiCanonicalActivationPilotDuplicate.js";
+export * from "./medication/haitiCanonicalActivationPilotValidation.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";

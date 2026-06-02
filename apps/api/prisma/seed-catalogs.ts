@@ -79,6 +79,25 @@ async function main() {
     );
   }
 
+  if (process.env.MEDORA_ENABLE_HAITI_CANONICAL_ACTIVATION_PILOT === "1") {
+    const facility = await prisma.facility.findFirst({ select: { id: true } });
+    if (!facility) {
+      throw new Error(
+        "[haiti-pilot] no facility found — seed facility before MEDORA_ENABLE_HAITI_CANONICAL_ACTIVATION_PILOT=1"
+      );
+    }
+    const { seedHaitiCanonicalActivationPilot } = await import(
+      "./helpers/seed-haiti-canonical-activation-pilot"
+    );
+    const pilot = await seedHaitiCanonicalActivationPilot(prisma, {
+      facilityId: facility.id,
+      dryRun: process.env.MEDORA_HAITI_CANONICAL_ACTIVATION_PILOT_DRY_RUN === "1",
+    });
+    console.log(
+      `✅ Haiti canonical activation pilot (eligible=${pilot.pilotEligible}, activated=${pilot.activatedProducts}, skippedValidation=${pilot.skippedValidationFailed}, dryRun=${pilot.dryRun})`
+    );
+  }
+
   console.log("✅ Catalogs seeded (lab, imaging, medications)");
 }
 
