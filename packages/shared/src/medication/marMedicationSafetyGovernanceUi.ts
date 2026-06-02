@@ -20,6 +20,10 @@ export type MedicationSafetyGovernanceSnapshot = {
     | "REJECTED"
     | "OVERRIDDEN"
     | null;
+  /** M1.3F.7 — pharmacy verify required before MAR (Schedule II/III, selected high-alert). */
+  requiresPharmacyVerification?: boolean | null;
+  pharmacyVerifiedAt?: string | null;
+  pharmacyVerifiedByDisplay?: string | null;
 };
 
 export type MedicationSafetyBadgeId =
@@ -29,6 +33,7 @@ export type MedicationSafetyBadgeId =
   | "WITNESS_REQUIRED"
   | "DOUBLE_SIGN_REQUIRED"
   | "PHARMACY_VERIFY"
+  | "PHARMACY_VERIFIED"
   | "WASTE_REQUIRED";
 
 export type MedicationSafetySummaryLineKind =
@@ -120,7 +125,11 @@ export function getMedicationSafetyBadges(
   if (input.requiresWitness === true) badges.push("WITNESS_REQUIRED");
   if (input.requiresDoubleSign === true) badges.push("DOUBLE_SIGN_REQUIRED");
   const pharm = input.pharmacyVerificationStatus;
-  if (pharm === "PENDING" || pharm === "REJECTED" || pharm === "OVERRIDDEN") {
+  if (input.requiresPharmacyVerification === true && pharm === "VERIFIED") {
+    badges.push("PHARMACY_VERIFIED");
+  } else if (pharm === "PENDING" || pharm === "REJECTED" || pharm === "OVERRIDDEN") {
+    badges.push("PHARMACY_VERIFY");
+  } else if (input.requiresPharmacyVerification === true) {
     badges.push("PHARMACY_VERIFY");
   }
   if (input.wasteDocumentationRecommended === true) badges.push("WASTE_REQUIRED");

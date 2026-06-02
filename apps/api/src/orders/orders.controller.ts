@@ -14,6 +14,7 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
+import { PharmacyVerificationService } from "../medication-safety/pharmacy-verification.service";
 import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
 import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.service";
 import { PrismaService } from "../prisma/prisma.service";
@@ -37,6 +38,7 @@ export class OrdersController {
     private readonly ordersService: OrdersService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
     private readonly procedureBillingReadiness: ProcedureBillingReadinessService,
+    private readonly pharmacyVerification: PharmacyVerificationService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -465,6 +467,51 @@ export class OrdersController {
       req.ip,
       req.headers["user-agent"]
     );
+  }
+
+  /** M1.3F.7 — pharmacist completes pharmacy verification for a medication order line. */
+  @Post("orders/items/:orderItemId/pharmacy-verification/complete")
+  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN)
+  async completePharmacyVerification(
+    @Param("orderItemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: { facilityId?: string; user?: { userId?: string } }
+  ) {
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    if (!facilityId || !userId) {
+      throw new BadRequestException("Établissement et authentification requis.");
+    }
+    const note =
+      body && typeof body === "object" && "verificationNote" in body
+        ? String((body as { verificationNote?: string }).verificationNote ?? "")
+        : undefined;
+    return this.pharmacyVerification.completeVerification(
+      orderItemId,
+      facilityId,
+      userId,
+      note
+    );
+  }
+
+  /** M1.3F.7 — pharmacist rejects pharmacy verification for a medication order line. */
+  @Post("orders/items/:orderItemId/pharmacy-verification/reject")
+  @RequireRoles(RoleCode.PHARMACY, RoleCode.ADMIN)
+  async rejectPharmacyVerification(
+    @Param("orderItemId") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: { facilityId?: string; user?: { userId?: string } }
+  ) {
+    const facilityId = req.facilityId;
+    const userId = req.user?.userId;
+    if (!facilityId || !userId) {
+      throw new BadRequestException("Établissement et authentification requis.");
+    }
+    const note =
+      body && typeof body === "object" && "verificationNote" in body
+        ? String((body as { verificationNote?: string }).verificationNote ?? "")
+        : undefined;
+    return this.pharmacyVerification.rejectVerification(orderItemId, facilityId, userId, note);
   }
 
   /** IVPB / infusion — Phase 1: stop (terminal MAR + billing once via MAR create). */

@@ -14508,6 +14508,21 @@ export default {
     errAckRequired: "LASA acknowledgement or override required.",
     errOverrideIncomplete: "Override reason and acknowledgment required.",
   },
+  marPharmacy: {
+    title: "Pharmacy verification",
+    description:
+      "This medication requires pharmacist verification before administration (Schedule II/III controlled or selected high-alert).",
+    warningSrOnly: "Pharmacy verification required warning",
+    verifiedBanner: "Pharmacy verification completed",
+    verifiedByPrefix: "Verified by",
+    pendingBanner: "Pending pharmacy verification — administration blocked unless override is documented.",
+    rejectedBanner: "Pharmacy verification rejected — correct the order or document an override.",
+    useOverride: "Administer without pharmacy verification (justified override)",
+    overrideReasonLabel: "Override reason (pharmacy)",
+    overrideAck:
+      "I confirm administration without documented pharmacy verification and accept responsibility for this override.",
+    backToStatus: "Return to pharmacy status",
+  },
   marGovernance: {
     badgesListAria: "Medication safety governance indicators",
     badgeAria: "{badge} — informational only, no blocking",
@@ -14520,6 +14535,7 @@ export default {
       WITNESS_REQUIRED: "Witness required",
       DOUBLE_SIGN_REQUIRED: "Double sign",
       PHARMACY_VERIFY: "Pharmacy verify",
+      PHARMACY_VERIFIED: "Pharmacy verified",
       WASTE_REQUIRED: "Waste doc.",
     },
     summary: {

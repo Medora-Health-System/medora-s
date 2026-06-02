@@ -6,6 +6,7 @@ import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.
 import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationAdministrationModule } from "../medication-administration/medication-administration.module";
+import { PharmacyVerificationService } from "../medication-safety/pharmacy-verification.service";
 
 @Module({
   imports: [PrismaModule, MedicationAdministrationModule],
@@ -14,6 +15,7 @@ import { MedicationAdministrationModule } from "../medication-administration/med
     OrdersService,
     OrdersLabRadiologyEffectiveTimeService,
     ProcedureBillingReadinessService,
+    PharmacyVerificationService,
     AuditService,
   ],
   exports: [OrdersService, OrdersLabRadiologyEffectiveTimeService, ProcedureBillingReadinessService],

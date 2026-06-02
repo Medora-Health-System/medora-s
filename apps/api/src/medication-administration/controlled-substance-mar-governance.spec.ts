@@ -6,6 +6,7 @@ import {
   MedicationVerificationStatus,
   MedicationVerificationType,
   MedicationWasteStatus,
+  PharmacyVerificationStatus,
 } from "@prisma/client";
 import { MedicationAdministrationService } from "./medication-administration.service";
 
@@ -110,6 +111,11 @@ describe("MedicationAdministrationService controlled substance MAR (M1.3F.4)", (
       orderItem: { findFirst: jest.fn().mockResolvedValue(orderItem) },
       catalogMedication: { findUnique: jest.fn().mockResolvedValue(catalog) },
       medicationProduct: { findFirst: jest.fn().mockResolvedValue(null) },
+      pharmacyVerification: {
+        findFirst: jest.fn().mockResolvedValue({
+          verificationStatus: PharmacyVerificationStatus.VERIFIED,
+        }),
+      },
       medicationAdministration: {
         findFirst: jest.fn().mockResolvedValue(null),
         aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 } }),

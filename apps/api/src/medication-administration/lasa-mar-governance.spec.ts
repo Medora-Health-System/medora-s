@@ -5,6 +5,7 @@ import {
   MedicationOverrideType,
   MedicationVerificationStatus,
   MedicationVerificationType,
+  PharmacyVerificationStatus,
 } from "@prisma/client";
 import { MedicationAdministrationService } from "./medication-administration.service";
 
@@ -130,6 +131,11 @@ describe("MedicationAdministrationService LASA MAR (M1.3F.6)", () => {
       orderItem: { findFirst: jest.fn().mockResolvedValue(makeOrderItem()) },
       catalogMedication: { findUnique: jest.fn().mockResolvedValue(catalog) },
       medicationProduct: { findFirst: jest.fn().mockResolvedValue(product) },
+      pharmacyVerification: {
+        findFirst: jest.fn().mockResolvedValue({
+          verificationStatus: PharmacyVerificationStatus.VERIFIED,
+        }),
+      },
       medicationAdministration: {
         findFirst: jest.fn().mockResolvedValue(null),
         aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 } }),

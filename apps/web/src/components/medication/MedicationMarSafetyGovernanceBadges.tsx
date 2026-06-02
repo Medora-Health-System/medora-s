@@ -18,6 +18,7 @@ const BADGE_SOFT: Record<MedicationSafetyBadgeId, PriorityBadgeSoft> = {
   WITNESS_REQUIRED: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
   DOUBLE_SIGN_REQUIRED: { bg: "#eff6ff", text: "#1e40af", border: "#93c5fd" },
   PHARMACY_VERIFY: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+  PHARMACY_VERIFIED: { bg: "#ecfdf5", text: "#166534", border: "#bbf7d0" },
   WASTE_REQUIRED: { bg: "#f8fafc", text: "#334155", border: "#cbd5e1" },
 };
 

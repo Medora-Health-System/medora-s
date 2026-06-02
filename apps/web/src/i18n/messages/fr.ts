@@ -14535,6 +14535,21 @@ export default {
     errAckRequired: "Accusé LASA ou dérogation requis.",
     errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
   },
+  marPharmacy: {
+    title: "Vérification pharmacie",
+    description:
+      "Ce médicament nécessite une vérification pharmacien avant administration (substance contrôlée II/III ou médicament à haut risque).",
+    warningSrOnly: "Avertissement vérification pharmacie requise",
+    verifiedBanner: "Vérification pharmacie complétée",
+    verifiedByPrefix: "Vérifié par",
+    pendingBanner: "En attente de vérification pharmacie — administration bloquée sans dérogation.",
+    rejectedBanner: "Vérification pharmacie refusée — corrigez l'ordonnance ou documentez une dérogation.",
+    useOverride: "Administrer sans vérification pharmacie (dérogation motivée)",
+    overrideReasonLabel: "Motif de dérogation (pharmacie)",
+    overrideAck:
+      "Je confirme l'administration sans vérification pharmacie documentée et j'assume la responsabilité de cette dérogation.",
+    backToStatus: "Revenir au statut pharmacie",
+  },
   marGovernance: {
     badgesListAria: "Indicateurs de gouvernance médicamenteuse",
     badgeAria: "{badge} — information seulement, sans blocage",
@@ -14547,6 +14562,7 @@ export default {
       WITNESS_REQUIRED: "Témoin requis",
       DOUBLE_SIGN_REQUIRED: "Double signature",
       PHARMACY_VERIFY: "Vérif. pharmacie",
+      PHARMACY_VERIFIED: "Pharmacie validée",
       WASTE_REQUIRED: "Perte à documenter",
     },
     summary: {

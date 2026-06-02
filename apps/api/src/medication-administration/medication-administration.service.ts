@@ -64,6 +64,11 @@ import {
   persistLasaMarGovernance,
   resolveLasaMarGovernance,
 } from "../medication-safety/lasa-mar-governance.util";
+import {
+  assertPharmacyMarCreate,
+  persistPharmacyMarGovernance,
+  resolvePharmacyMarGovernance,
+} from "../medication-safety/pharmacy-mar-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -456,6 +461,16 @@ export class MedicationAdministrationService {
       ? await resolveLasaMarGovernance(this.prisma, catalogMedication.id, catalogMedication)
       : null;
 
+    const pharmacyGovernance =
+      catalogMedication && orderItemId
+        ? await resolvePharmacyMarGovernance(
+            this.prisma,
+            orderItemId,
+            catalogMedication.id,
+            catalogMedication
+          )
+        : null;
+
     if (
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
@@ -500,6 +515,13 @@ export class MedicationAdministrationService {
         lasaOverrideReason: data.lasaOverrideReason,
         lasaOverrideAcknowledged: data.lasaOverrideAcknowledged,
         administeredByUserId,
+      });
+
+      assertPharmacyMarCreate({
+        marAction: marActionResolved,
+        governance: pharmacyGovernance,
+        pharmacyVerificationOverrideReason: data.pharmacyVerificationOverrideReason,
+        pharmacyVerificationOverrideAcknowledged: data.pharmacyVerificationOverrideAcknowledged,
       });
     }
 
@@ -765,6 +787,27 @@ export class MedicationAdministrationService {
           administeredByUserId,
           data,
           governance: lasaGovernance,
+        });
+      }
+
+      if (
+        pharmacyGovernance &&
+        !serviceOptions?.allowAdministeredForInfusionTerminal &&
+        !serviceOptions?.allowAdministeredForInfusionStart
+      ) {
+        await persistPharmacyMarGovernance({
+          tx,
+          audit: this.audit,
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          orderId: orderIdForAudit,
+          medicationAdministrationId: row.id,
+          orderItemId,
+          catalogMedicationId: catalogMedication?.id ?? null,
+          administeredByUserId,
+          data,
+          governance: pharmacyGovernance,
         });
       }
 

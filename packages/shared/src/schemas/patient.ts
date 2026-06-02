@@ -725,6 +725,9 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   lasaSecondReadDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
   lasaOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
   lasaOverrideAcknowledged: z.boolean().optional(),
+  /** M1.3F.7 — override when pharmacy verification not VERIFIED. */
+  pharmacyVerificationOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  pharmacyVerificationOverrideAcknowledged: z.boolean().optional(),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;

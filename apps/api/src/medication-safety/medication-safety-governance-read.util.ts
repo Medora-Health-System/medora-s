@@ -3,8 +3,17 @@ import {
   HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES,
   parseMedicationHighAlertCategoriesJson,
   parseMedicationSafetyRequirementsFromCategoriesJson,
+  parsePharmacyGovernanceFromProfile,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
+
+export type PharmacyVerificationDetailRead = {
+  verificationStatus: PharmacyVerificationStatus;
+  pharmacistUserId: string | null;
+  verifiedAt: string | null;
+  pharmacistDisplay: string | null;
+  verificationNote: string | null;
+};
 
 export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
 
@@ -60,6 +69,12 @@ export function mergeMedicationSafetyGovernanceRead(
   const wasteDocumentationRecommended =
     Boolean(profileRow?.administrationProfile?.allowsWasteDocumentation) && isControlled;
 
+  const pharmacyParsed = parsePharmacyGovernanceFromProfile({
+    controlledSchedule,
+    highAlertCategories: safety?.highAlertCategories,
+  });
+  const requiresPharmacyVerification = pharmacyParsed.requiresPharmacyVerification;
+
   const hasSignal =
     isControlled ||
     isHighAlert ||
@@ -68,6 +83,7 @@ export function mergeMedicationSafetyGovernanceRead(
     requiresWitness ||
     requiresDoubleSign ||
     wasteDocumentationRecommended ||
+    requiresPharmacyVerification ||
     (pharmacyStatus != null && pharmacyStatus !== "NOT_REQUIRED" && pharmacyStatus !== "VERIFIED");
 
   if (!hasSignal) return null;
@@ -84,7 +100,51 @@ export function mergeMedicationSafetyGovernanceRead(
     requiresDoubleSign,
     wasteDocumentationRecommended,
     pharmacyVerificationStatus: pharmacyStatus ?? null,
+    requiresPharmacyVerification,
   };
+}
+
+export async function loadPharmacyVerificationDetailsByOrderItemId(
+  prisma: Pick<PrismaClient, "pharmacyVerification">,
+  orderItemIds: string[]
+): Promise<Map<string, PharmacyVerificationDetailRead>> {
+  const uniqueIds = [...new Set(orderItemIds.filter(Boolean))];
+  const out = new Map<string, PharmacyVerificationDetailRead>();
+  if (uniqueIds.length === 0) return out;
+
+  const rows = await prisma.pharmacyVerification.findMany({
+    where: { orderItemId: { in: uniqueIds } },
+    select: {
+      orderItemId: true,
+      verificationStatus: true,
+      pharmacistUserId: true,
+      verificationNote: true,
+      updatedAt: true,
+      createdAt: true,
+      pharmacist: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  for (const row of rows) {
+    if (out.has(row.orderItemId)) continue;
+    const display = row.pharmacist
+      ? `${row.pharmacist.firstName} ${row.pharmacist.lastName}`.trim()
+      : null;
+    const verifiedAt =
+      row.verificationStatus === "VERIFIED"
+        ? row.updatedAt.toISOString()
+        : null;
+    out.set(row.orderItemId, {
+      verificationStatus: row.verificationStatus,
+      pharmacistUserId: row.pharmacistUserId,
+      verifiedAt,
+      pharmacistDisplay: display,
+      verificationNote: row.verificationNote,
+    });
+  }
+
+  return out;
 }
 
 export async function loadMedicationSafetyGovernanceByCatalogId(
@@ -180,7 +240,8 @@ export function attachMedicationSafetyGovernanceToOrderItem<
 >(
   item: T,
   governanceByCatalogId: Map<string, MedicationSafetyGovernanceRead>,
-  pharmacyByOrderItemId: Map<string, PharmacyVerificationStatus>
+  pharmacyByOrderItemId: Map<string, PharmacyVerificationStatus>,
+  pharmacyDetailsByOrderItemId?: Map<string, PharmacyVerificationDetailRead>
 ): T & { medicationSafetyGovernance?: MedicationSafetyGovernanceRead | null } {
   if (item.catalogItemType !== "MEDICATION") {
     return { ...item, medicationSafetyGovernance: null };
@@ -193,11 +254,23 @@ export function attachMedicationSafetyGovernanceToOrderItem<
     return { ...item, medicationSafetyGovernance: null };
   }
 
+  const detail = pharmacyDetailsByOrderItemId?.get(item.id);
+  const requiresPharmacy = base?.requiresPharmacyVerification === true;
+  const effectivePharmacyStatus =
+    pharmacyStatus ??
+    detail?.verificationStatus ??
+    (requiresPharmacy ? ("PENDING" as const) : null);
+
   if (!base) {
+    if (!effectivePharmacyStatus) {
+      return { ...item, medicationSafetyGovernance: null };
+    }
     return {
       ...item,
       medicationSafetyGovernance: {
-        pharmacyVerificationStatus: pharmacyStatus ?? null,
+        pharmacyVerificationStatus: effectivePharmacyStatus,
+        pharmacyVerifiedAt: detail?.verifiedAt ?? null,
+        pharmacyVerifiedByDisplay: detail?.pharmacistDisplay ?? null,
       },
     };
   }
@@ -206,7 +279,10 @@ export function attachMedicationSafetyGovernanceToOrderItem<
     ...item,
     medicationSafetyGovernance: {
       ...base,
-      pharmacyVerificationStatus: pharmacyStatus ?? base.pharmacyVerificationStatus ?? null,
+      pharmacyVerificationStatus:
+        effectivePharmacyStatus ?? base.pharmacyVerificationStatus ?? null,
+      pharmacyVerifiedAt: detail?.verifiedAt ?? null,
+      pharmacyVerifiedByDisplay: detail?.pharmacistDisplay ?? null,
     },
   };
 }

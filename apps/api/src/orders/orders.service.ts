@@ -79,6 +79,7 @@ import {
   attachMedicationSafetyGovernanceToOrderItem,
   loadLatestPharmacyVerificationByOrderItemId,
   loadMedicationSafetyGovernanceByCatalogId,
+  loadPharmacyVerificationDetailsByOrderItemId,
 } from "../medication-safety/medication-safety-governance-read.util";
 import {
   loadMedicationInfusionClassificationContext,
@@ -1289,7 +1290,8 @@ export class OrdersService {
     }
 
     const medIdList = [...medIds];
-    const [labs, imgs, meds, governanceByCatalogId, pharmacyByOrderItemId] = await Promise.all([
+    const [labs, imgs, meds, governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
+      await Promise.all([
       labIds.size
         ? this.prisma.catalogLabTest.findMany({
             where: { id: { in: [...labIds] } },
@@ -1313,6 +1315,9 @@ export class OrdersService {
         : Promise.resolve(new Map()),
       medicationOrderItemIds.length
         ? loadLatestPharmacyVerificationByOrderItemId(this.prisma, medicationOrderItemIds)
+        : Promise.resolve(new Map()),
+      medicationOrderItemIds.length
+        ? loadPharmacyVerificationDetailsByOrderItemId(this.prisma, medicationOrderItemIds)
         : Promise.resolve(new Map()),
     ]);
 
@@ -1369,7 +1374,8 @@ export class OrdersService {
         return attachMedicationSafetyGovernanceToOrderItem(
           enriched,
           governanceByCatalogId,
-          pharmacyByOrderItemId
+          pharmacyByOrderItemId,
+          pharmacyDetailsByOrderItemId
         );
       }),
     })) as OrderWithEnrichedItems[];

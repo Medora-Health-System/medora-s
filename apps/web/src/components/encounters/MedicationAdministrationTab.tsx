@@ -22,6 +22,7 @@ import {
   validateControlledSubstanceMarCreate,
   validateHighAlertMarCreate,
   validateLasaMarCreate,
+  validatePharmacyMarCreate,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import {
@@ -39,6 +40,11 @@ import {
   marLasaWorkflowVisible,
   type MarLasaFormState,
 } from "@/components/medication/MarLasaFields";
+import {
+  MarPharmacyVerificationPanel,
+  marPharmacyWorkflowVisible,
+  type MarPharmacyFormState,
+} from "@/components/medication/MarPharmacyVerificationPanel";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   resolveMedicationMarActionFromStorage,
@@ -435,6 +441,11 @@ export function MedicationAdministrationTab({
     secondReadDisplayName: "",
     lasaOverrideReason: "",
     lasaOverrideAcknowledged: false,
+    useOverride: false,
+  });
+  const [marPharmacyForm, setMarPharmacyForm] = useState<MarPharmacyFormState>({
+    pharmacyVerificationOverrideReason: "",
+    pharmacyVerificationOverrideAcknowledged: false,
     useOverride: false,
   });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
@@ -986,6 +997,11 @@ export function MedicationAdministrationTab({
       lasaOverrideAcknowledged: false,
       useOverride: false,
     });
+    setMarPharmacyForm({
+      pharmacyVerificationOverrideReason: "",
+      pharmacyVerificationOverrideAcknowledged: false,
+      useOverride: false,
+    });
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
     clearModalEffectiveTime();
@@ -1192,6 +1208,24 @@ export function MedicationAdministrationTab({
         }
       }
 
+      if (modalItem && marPharmacyWorkflowVisible(modalItem.governanceDisplay, modalAction)) {
+        const pharmStatus = modalItem.governanceDisplay.pharmacyVerificationStatus ?? "PENDING";
+        const pharmValidation = validatePharmacyMarCreate({
+          marAction: modalAction,
+          governance: {
+            requiresPharmacyVerification: true,
+            verificationStatus: pharmStatus,
+          },
+          pharmacyVerificationOverrideReason: marPharmacyForm.pharmacyVerificationOverrideReason,
+          pharmacyVerificationOverrideAcknowledged:
+            marPharmacyForm.pharmacyVerificationOverrideAcknowledged,
+        });
+        if (!pharmValidation.ok) {
+          setModalSubmitError(pharmValidation.message);
+          return;
+        }
+      }
+
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
@@ -1271,6 +1305,19 @@ export function MedicationAdministrationTab({
                 ? { lasaOverrideReason: marLasaForm.lasaOverrideReason.trim() }
                 : {}),
               ...(marLasaForm.lasaOverrideAcknowledged ? { lasaOverrideAcknowledged: true } : {}),
+            }
+          : {}),
+        ...(modalItem && marPharmacyWorkflowVisible(modalItem.governanceDisplay, modalAction)
+          ? {
+              ...(marPharmacyForm.pharmacyVerificationOverrideReason.trim()
+                ? {
+                    pharmacyVerificationOverrideReason:
+                      marPharmacyForm.pharmacyVerificationOverrideReason.trim(),
+                  }
+                : {}),
+              ...(marPharmacyForm.pharmacyVerificationOverrideAcknowledged
+                ? { pharmacyVerificationOverrideAcknowledged: true }
+                : {}),
             }
           : {}),
       };
@@ -2077,6 +2124,13 @@ export function MedicationAdministrationTab({
             ) : null}
             <MedicationMarSafetyGovernanceBadges governance={modalItem.governanceDisplay} />
             <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} />
+            <MarPharmacyVerificationPanel
+              governance={modalItem.governanceDisplay}
+              marAction={modalAction}
+              state={marPharmacyForm}
+              onChange={(patch) => setMarPharmacyForm((prev) => ({ ...prev, ...patch }))}
+              dateLocale={dateLocale}
+            />
             <MarControlledSubstanceFields
               facilityId={facilityId}
               currentUserId={currentUserId}
