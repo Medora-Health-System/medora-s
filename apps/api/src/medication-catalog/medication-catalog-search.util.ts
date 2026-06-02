@@ -3,7 +3,9 @@
  * Brand/generic aliases are search hints only; doses are never invented.
  */
 
-/** Prefix / brand → additional search terms (generic + brand spellings). */
+import { buildEnterpriseMedicationSearchQueryExpansions } from "@medora/shared";
+
+/** Legacy prefix hints (kept for backward compatibility). */
 export const MEDICATION_SEARCH_QUERY_ALIASES: Record<string, readonly string[]> = {
   jard: ["empagliflozin", "jardiance"],
   jardiance: ["empagliflozin"],
@@ -14,6 +16,14 @@ export const MEDICATION_SEARCH_QUERY_ALIASES: Record<string, readonly string[]> 
   glucophage: ["metformin"],
   zestril: ["lisinopril"],
   prinivil: ["lisinopril"],
+};
+
+/** M1.6C — enterprise manifest expansions (brand/generic/typo; no cross-drug fuzzy match). */
+const ENTERPRISE_MEDICATION_SEARCH_EXPANSIONS = buildEnterpriseMedicationSearchQueryExpansions();
+
+const MERGED_MEDICATION_SEARCH_ALIASES: Record<string, readonly string[]> = {
+  ...ENTERPRISE_MEDICATION_SEARCH_EXPANSIONS,
+  ...MEDICATION_SEARCH_QUERY_ALIASES,
 };
 
 function normalizeSearchToken(value: string): string {
@@ -27,12 +37,12 @@ export function expandMedicationSearchQuery(rawQuery: string): string[] {
 
   const terms = new Set<string>([q]);
 
-  const aliasHits = MEDICATION_SEARCH_QUERY_ALIASES[q];
+  const aliasHits = MERGED_MEDICATION_SEARCH_ALIASES[q];
   if (aliasHits) {
     for (const alias of aliasHits) terms.add(normalizeSearchToken(alias));
   }
 
-  for (const [prefix, aliases] of Object.entries(MEDICATION_SEARCH_QUERY_ALIASES)) {
+  for (const [prefix, aliases] of Object.entries(MERGED_MEDICATION_SEARCH_ALIASES)) {
     if (q.startsWith(prefix) && q.length >= 3) {
       for (const alias of aliases) terms.add(normalizeSearchToken(alias));
     }

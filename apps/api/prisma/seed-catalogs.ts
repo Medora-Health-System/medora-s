@@ -21,6 +21,7 @@ import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedHaitiCanonicalMedicationLinkage } from "./helpers/seed-haiti-canonical-medication-linkage";
 import { seedEnterpriseWave1Formulary } from "./helpers/seed-enterprise-wave1-formulary";
+import { seedEnterpriseMedicationSearchAliases } from "./helpers/seed-enterprise-medication-search-aliases";
 
 const prisma = new PrismaClient();
 
@@ -103,6 +104,13 @@ async function main() {
     const wave1Med = await seedEnterpriseWave1Formulary(prisma, { dryRun: false });
     console.log(
       `✅ Enterprise Wave 1 formulary (manifest=${wave1Med.manifestEntries}, catalogCreated=${wave1Med.catalogCreated}, catalogEnriched=${wave1Med.catalogEnriched}, products=${wave1Med.productsCreated}, billingProfiles=${wave1Med.billingProfilesCreated}, wave1MarkersUpdated=${wave1Med.wave1GovernanceNotesUpdated}, wave1ReadinessPct=${wave1Med.readinessReport.wave1ReadinessPct})`
+    );
+  }
+
+  if (process.env.MEDORA_ENABLE_ENTERPRISE_MEDICATION_SEARCH_ALIASES === "1") {
+    const searchAlias = await seedEnterpriseMedicationSearchAliases(prisma, { dryRun: false });
+    console.log(
+      `✅ Enterprise medication search aliases (manifest=${searchAlias.manifestEntries}, catalogsFound=${searchAlias.catalogsFound}, missing=${searchAlias.catalogsMissing}, aliasesAdded=${searchAlias.aliasesUpserted}, searchTextUpdated=${searchAlias.searchTextUpdated})`
     );
   }
 

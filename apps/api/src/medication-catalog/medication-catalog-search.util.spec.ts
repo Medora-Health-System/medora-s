@@ -21,8 +21,33 @@ describe("expandMedicationSearchQuery", () => {
     expect(expandMedicationSearchQuery("lipitor")).toContain("atorvastatin");
   });
 
-  it("keeps original query term", () => {
-    expect(expandMedicationSearchQuery("metformin")).toEqual(["metformin"]);
+  it("keeps original query term and adds enterprise brand expansion", () => {
+    const terms = expandMedicationSearchQuery("metformin");
+    expect(terms).toContain("metformin");
+    expect(terms).toContain("glucophage");
+  });
+
+  it("M1.6C expands cumadin to coumadin and warfarin", () => {
+    const terms = expandMedicationSearchQuery("cumadin");
+    expect(terms).toContain("cumadin");
+    expect(terms).toContain("coumadin");
+    expect(terms).toContain("warfarin");
+  });
+
+  it("M1.6C expands lovanox to lovenox and enoxaparin", () => {
+    const terms = expandMedicationSearchQuery("lovanox");
+    expect(terms).toContain("lovenox");
+    expect(terms).toContain("enoxaparin");
+  });
+
+  it("M1.6C expands coumadin to warfarin", () => {
+    expect(expandMedicationSearchQuery("coumadin")).toContain("warfarin");
+  });
+
+  it("M1.6C does not expand cumadin to unrelated drugs", () => {
+    const terms = expandMedicationSearchQuery("cumadin");
+    expect(terms).not.toContain("metformin");
+    expect(terms).not.toContain("lovenox");
   });
 });
 
