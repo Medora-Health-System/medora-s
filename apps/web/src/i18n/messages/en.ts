@@ -14466,6 +14466,25 @@ export default {
     errOverrideIncomplete: "Override reason and acknowledgment required.",
     errWasteRequired: "Waste amount and unit required for partial dose.",
   },
+  marHighAlert: {
+    title: "High-alert medication — double-check",
+    description:
+      "An independent second verifier is required before recording, unless a documented justified override is used.",
+    warningSrOnly: "High-alert medication warning",
+    verifierLabel: "Second verifier",
+    verifierAria: "Search for second verifier",
+    verifierPlaceholder: "Verifier name (min. 3 characters)",
+    verifierSelected: "Second verifier selected.",
+    useOverride: "Administer without double-check (justified override)",
+    overrideReasonLabel: "Override reason (high alert)",
+    overrideAck:
+      "I confirm administration without a documented double-check and accept responsibility for this override.",
+    backToVerifier: "Return to verifier selection",
+    sharedOverrideHint:
+      "The controlled-substance override reason above also applies to double-check. Confirm below.",
+    errVerifierRequired: "Second verifier or override required.",
+    errOverrideIncomplete: "Override reason and acknowledgment required.",
+  },
   marGovernance: {
     badgesListAria: "Medication safety governance indicators",
     badgeAria: "{badge} — informational only, no blocking",

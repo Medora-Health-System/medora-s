@@ -1,0 +1,200 @@
+"use client";
+
+import React from "react";
+import {
+  highAlertMarRequiresDoubleCheck,
+  type MedicationSafetyGovernanceDisplayInput,
+} from "@medora/shared";
+import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
+import type { ClinicalUserRoleOption } from "@/components/clinical/ClinicalUserRoleAutocomplete";
+import { useI18n } from "@/lib/i18n";
+
+export type MarHighAlertFormState = {
+  verifierUserId: string | null;
+  verifierDisplayName: string;
+  highAlertOverrideReason: string;
+  highAlertOverrideAcknowledged: boolean;
+  useOverride: boolean;
+};
+
+export function marHighAlertWorkflowVisible(
+  governance: MedicationSafetyGovernanceDisplayInput,
+  marAction: string
+): boolean {
+  return (
+    marAction === "administered" &&
+    highAlertMarRequiresDoubleCheck({
+      isHighAlert: governance.isHighAlert === true,
+      requiresDoubleSign: governance.requiresDoubleSign === true,
+      safetyRequirementCodes: [],
+    })
+  );
+}
+
+export function MarHighAlertFields({
+  facilityId,
+  governance,
+  marAction,
+  state,
+  onChange,
+  fieldErrors,
+  sharedOverrideReason,
+  sharedUseOverride,
+  onUseSharedOverride,
+}: {
+  facilityId: string;
+  governance: MedicationSafetyGovernanceDisplayInput;
+  marAction: string;
+  state: MarHighAlertFormState;
+  onChange: (patch: Partial<MarHighAlertFormState>) => void;
+  fieldErrors?: Partial<Record<keyof MarHighAlertFormState | "verifier", string>>;
+  /** When controlled-substance override is active, reuse its reason field. */
+  sharedOverrideReason?: string;
+  sharedUseOverride?: boolean;
+  onUseSharedOverride?: (use: boolean) => void;
+}) {
+  const { t } = useI18n();
+
+  if (!marHighAlertWorkflowVisible(governance, marAction)) {
+    return null;
+  }
+
+  const useSharedOverride = sharedUseOverride === true;
+  const showLocalOverride = state.useOverride && !useSharedOverride;
+  const showVerifier = !showLocalOverride && !useSharedOverride;
+
+  const verifierSelected: ClinicalUserRoleOption | null = state.verifierUserId
+    ? {
+        id: state.verifierUserId,
+        firstName: state.verifierDisplayName.split(" ")[0] ?? "",
+        lastName: state.verifierDisplayName.split(" ").slice(1).join(" ") ?? "",
+      }
+    : null;
+
+  return (
+    <section
+      role="region"
+      aria-labelledby="mar-high-alert-workflow-title"
+      style={{
+        marginBottom: 14,
+        padding: "12px 14px",
+        borderRadius: 8,
+        border: "1px solid #fdba74",
+        backgroundColor: "#fff7ed",
+      }}
+    >
+      <h4
+        id="mar-high-alert-workflow-title"
+        style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "#9a3412" }}
+      >
+        {t("marHighAlert.title")}
+      </h4>
+      <p
+        id="mar-high-alert-workflow-desc"
+        style={{ margin: "0 0 12px", fontSize: 12, color: "#7c2d12" }}
+      >
+        <span className="sr-only">{t("marHighAlert.warningSrOnly")} </span>
+        {t("marHighAlert.description")}
+      </p>
+
+      {showVerifier ? (
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="mar-high-alert-verifier" style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+            {t("marHighAlert.verifierLabel")}
+          </label>
+          <ClinicalUserRoleAutocomplete
+            facilityId={facilityId}
+            role="RN"
+            ariaLabel={t("marHighAlert.verifierAria")}
+            placeholder={t("marHighAlert.verifierPlaceholder")}
+            displayValue={state.verifierDisplayName}
+            onChangeDisplay={(v) => onChange({ verifierDisplayName: v, verifierUserId: null })}
+            selectedUserId={state.verifierUserId}
+            onSelectUser={(u) =>
+              onChange({
+                verifierUserId: u?.id ?? null,
+                verifierDisplayName: u ? `${u.firstName} ${u.lastName}`.trim() : "",
+              })
+            }
+          />
+          {verifierSelected ? (
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#166534" }}>
+              {t("marHighAlert.verifierSelected")}
+            </p>
+          ) : null}
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontSize: 12 }}>
+            <input
+              type="checkbox"
+              checked={state.useOverride}
+              onChange={(e) => {
+                onChange({ useOverride: e.target.checked });
+                onUseSharedOverride?.(false);
+              }}
+            />
+            {t("marHighAlert.useOverride")}
+          </label>
+          {fieldErrors?.verifier ? (
+            <p role="alert" style={{ margin: "6px 0 0", fontSize: 12, color: "#b91c1c" }}>
+              {fieldErrors.verifier}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showLocalOverride ? (
+        <div style={{ marginBottom: 12 }}>
+          <label htmlFor="mar-high-alert-override-reason" style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
+            {t("marHighAlert.overrideReasonLabel")}
+          </label>
+          <textarea
+            id="mar-high-alert-override-reason"
+            value={state.highAlertOverrideReason}
+            onChange={(e) => onChange({ highAlertOverrideReason: e.target.value })}
+            rows={3}
+            style={{ width: "100%", marginTop: 4, fontSize: 13, borderRadius: 8, border: "1px solid #fdba74" }}
+          />
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8, fontSize: 12 }}>
+            <input
+              type="checkbox"
+              checked={state.highAlertOverrideAcknowledged}
+              onChange={(e) => onChange({ highAlertOverrideAcknowledged: e.target.checked })}
+            />
+            {t("marHighAlert.overrideAck")}
+          </label>
+          <button
+            type="button"
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              background: "none",
+              border: "none",
+              color: "#1d4ed8",
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+            onClick={() => onChange({ useOverride: false })}
+          >
+            {t("marHighAlert.backToVerifier")}
+          </button>
+        </div>
+      ) : null}
+
+      {useSharedOverride && sharedOverrideReason !== undefined ? (
+        <p style={{ margin: 0, fontSize: 12, color: "#7c2d12" }}>
+          {t("marHighAlert.sharedOverrideHint")}
+        </p>
+      ) : null}
+
+      {useSharedOverride ? (
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", marginTop: 8, fontSize: 12 }}>
+          <input
+            type="checkbox"
+            checked={state.highAlertOverrideAcknowledged}
+            onChange={(e) => onChange({ highAlertOverrideAcknowledged: e.target.checked })}
+          />
+          {t("marHighAlert.overrideAck")}
+        </label>
+      ) : null}
+    </section>
+  );
+}

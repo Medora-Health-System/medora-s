@@ -1,6 +1,8 @@
 import type { PharmacyVerificationStatus, PrismaClient } from "@prisma/client";
 import {
+  HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES,
   parseMedicationHighAlertCategoriesJson,
+  parseMedicationSafetyRequirementsFromCategoriesJson,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
 
@@ -45,7 +47,15 @@ export function mergeMedicationSafetyGovernanceRead(
   const isControlled = safety?.isControlled ?? catalog?.isControlled ?? false;
   const controlledSchedule = safety?.controlledSchedule ?? catalog?.controlledSchedule ?? null;
   const requiresWitness = Boolean(safety?.requiresWitness || catalog?.requiresWitness);
-  const requiresDoubleSign = Boolean(safety?.requiresDoubleSign || catalog?.requiresDoubleSign);
+  const safetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
+    safety?.highAlertCategories
+  );
+  const requiresDoubleSignFromCodes = safetyRequirementCodes.some((c) =>
+    (HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES as readonly string[]).includes(c)
+  );
+  const requiresDoubleSign = Boolean(
+    safety?.requiresDoubleSign || catalog?.requiresDoubleSign || requiresDoubleSignFromCodes
+  );
   const isHighAlert = safety?.isHighAlert ?? false;
   const wasteDocumentationRecommended =
     Boolean(profileRow?.administrationProfile?.allowsWasteDocumentation) && isControlled;

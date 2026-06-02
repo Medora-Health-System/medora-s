@@ -162,6 +162,10 @@ enum AuditAction {
   MEDICATION_WASTE_WITNESSED
   /// M1.3F.4 — controlled-substance MAR governance override (PHI-safe metadata only).
   CONTROLLED_SUBSTANCE_OVERRIDE
+  /// M1.3F.5 — high-alert MAR independent double-check completed (PHI-safe metadata only).
+  HIGH_ALERT_DOUBLE_CHECK_COMPLETED
+  /// M1.3F.5 — high-alert MAR governance override (PHI-safe metadata only).
+  HIGH_ALERT_OVERRIDE
 }
 
 /// Phase 5G — category of external / formal record release request.

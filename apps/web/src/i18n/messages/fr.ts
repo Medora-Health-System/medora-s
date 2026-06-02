@@ -14493,6 +14493,25 @@ export default {
     errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
     errWasteRequired: "Quantité et unité de perte requis pour dose partielle.",
   },
+  marHighAlert: {
+    title: "Médicament à haut risque — double vérification",
+    description:
+      "Un second vérificateur indépendant est requis avant enregistrement, sauf dérogation motivée documentée.",
+    warningSrOnly: "Avertissement médicament à haut risque",
+    verifierLabel: "Second vérificateur",
+    verifierAria: "Rechercher le second vérificateur",
+    verifierPlaceholder: "Nom du vérificateur (3 caractères min.)",
+    verifierSelected: "Second vérificateur sélectionné.",
+    useOverride: "Administration sans double vérification (dérogation motivée)",
+    overrideReasonLabel: "Motif de dérogation (haut risque)",
+    overrideAck:
+      "Je confirme l'administration sans double vérification documentée et j'assume la responsabilité de cette dérogation.",
+    backToVerifier: "Revenir à la sélection du vérificateur",
+    sharedOverrideHint:
+      "Le motif de dérogation contrôlé ci-dessus s'applique aussi à la double vérification. Cochez la confirmation ci-dessous.",
+    errVerifierRequired: "Second vérificateur ou dérogation requis.",
+    errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
+  },
   marGovernance: {
     badgesListAria: "Indicateurs de gouvernance médicamenteuse",
     badgeAria: "{badge} — information seulement, sans blocage",

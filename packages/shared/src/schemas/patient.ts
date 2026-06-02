@@ -705,6 +705,18 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   /** M1.3F.4 — required when administering controlled med without witness. */
   overrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
   controlledOverrideAcknowledged: z.boolean().optional(),
+  /** M1.3F.5 — second verifier user id for high-alert double-check. */
+  highAlertVerifierUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  /** M1.3F.5 — verifier display name when staff directory id is unavailable. */
+  highAlertVerifierDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  /** M1.3F.5 — required when administering high-alert med without double-check verifier. */
+  highAlertOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  highAlertOverrideAcknowledged: z.boolean().optional(),
+  /** M1.3F.5 — optional hint: INDEPENDENT_DOUBLE_CHECK | DUAL_VERIFICATION | COSIGN */
+  highAlertVerificationType: z.preprocess(
+    emptyStrToUndefined,
+    z.enum(["INDEPENDENT_DOUBLE_CHECK", "DUAL_VERIFICATION", "COSIGN"]).optional()
+  ),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;

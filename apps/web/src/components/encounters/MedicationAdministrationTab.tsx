@@ -17,7 +17,9 @@ import { MedicationMarSafetyGovernanceBadges } from "@/components/medication/Med
 import { MedicationMarSafetySummaryPanel } from "@/components/medication/MedicationMarSafetySummaryPanel";
 import { orderItemToMedicationSafetyGovernanceDisplay } from "@/features/mar/orderItemMedicationSafetyGovernance";
 import {
+  highAlertMarRequiresDoubleCheck,
   validateControlledSubstanceMarCreate,
+  validateHighAlertMarCreate,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import {
@@ -25,6 +27,11 @@ import {
   marControlledWorkflowVisible,
   type MarControlledSubstanceFormState,
 } from "@/components/medication/MarControlledSubstanceFields";
+import {
+  MarHighAlertFields,
+  marHighAlertWorkflowVisible,
+  type MarHighAlertFormState,
+} from "@/components/medication/MarHighAlertFields";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   resolveMedicationMarActionFromStorage,
@@ -405,6 +412,13 @@ export function MedicationAdministrationTab({
     wasteReason: "",
     overrideReason: "",
     controlledOverrideAcknowledged: false,
+    useOverride: false,
+  });
+  const [marHighAlertForm, setMarHighAlertForm] = useState<MarHighAlertFormState>({
+    verifierUserId: null,
+    verifierDisplayName: "",
+    highAlertOverrideReason: "",
+    highAlertOverrideAcknowledged: false,
     useOverride: false,
   });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
@@ -940,6 +954,13 @@ export function MedicationAdministrationTab({
       controlledOverrideAcknowledged: false,
       useOverride: false,
     });
+    setMarHighAlertForm({
+      verifierUserId: null,
+      verifierDisplayName: "",
+      highAlertOverrideReason: "",
+      highAlertOverrideAcknowledged: false,
+      useOverride: false,
+    });
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
     clearModalEffectiveTime();
@@ -1083,6 +1104,41 @@ export function MedicationAdministrationTab({
         }
       }
 
+      if (modalItem && marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction)) {
+        const requiresDoubleCheck = highAlertMarRequiresDoubleCheck({
+          isHighAlert: modalItem.governanceDisplay.isHighAlert === true,
+          requiresDoubleSign: modalItem.governanceDisplay.requiresDoubleSign === true,
+          safetyRequirementCodes: [],
+        });
+        const sharedControlledOverride =
+          marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+          marControlledForm.useOverride;
+        const haValidation = validateHighAlertMarCreate({
+          marAction: modalAction,
+          governance: requiresDoubleCheck
+            ? {
+                isHighAlert: true,
+                requiresDoubleCheck: true,
+                safetyRequirementCodes: [],
+              }
+            : null,
+          highAlertVerifierUserId: marHighAlertForm.verifierUserId,
+          highAlertVerifierDisplayName: marHighAlertForm.verifierDisplayName,
+          administeredByUserId: currentUserId ?? undefined,
+          controlledWitnessUserId: marControlledForm.witnessUserId,
+          highAlertOverrideReason: marHighAlertForm.highAlertOverrideReason,
+          highAlertOverrideAcknowledged: marHighAlertForm.highAlertOverrideAcknowledged,
+          sharedOverrideReason: sharedControlledOverride ? marControlledForm.overrideReason : undefined,
+          sharedControlledOverrideAcknowledged: sharedControlledOverride
+            ? marControlledForm.controlledOverrideAcknowledged
+            : undefined,
+        });
+        if (!haValidation.ok) {
+          setModalSubmitError(haValidation.message);
+          return;
+        }
+      }
+
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
@@ -1127,6 +1183,22 @@ export function MedicationAdministrationTab({
                 : {}),
               ...(marControlledForm.controlledOverrideAcknowledged
                 ? { controlledOverrideAcknowledged: true }
+                : {}),
+            }
+          : {}),
+        ...(modalItem && marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction)
+          ? {
+              ...(marHighAlertForm.verifierUserId
+                ? { highAlertVerifierUserId: marHighAlertForm.verifierUserId }
+                : {}),
+              ...(marHighAlertForm.verifierDisplayName.trim() && !marHighAlertForm.verifierUserId
+                ? { highAlertVerifierDisplayName: marHighAlertForm.verifierDisplayName.trim() }
+                : {}),
+              ...(marHighAlertForm.highAlertOverrideReason.trim()
+                ? { highAlertOverrideReason: marHighAlertForm.highAlertOverrideReason.trim() }
+                : {}),
+              ...(marHighAlertForm.highAlertOverrideAcknowledged
+                ? { highAlertOverrideAcknowledged: true }
                 : {}),
             }
           : {}),
@@ -1944,6 +2016,27 @@ export function MedicationAdministrationTab({
               defaultWasteUnit={modalItem.billingUnitHint}
               state={marControlledForm}
               onChange={(patch) => setMarControlledForm((prev) => ({ ...prev, ...patch }))}
+            />
+            <MarHighAlertFields
+              facilityId={facilityId}
+              governance={modalItem.governanceDisplay}
+              marAction={modalAction}
+              state={marHighAlertForm}
+              onChange={(patch) => setMarHighAlertForm((prev) => ({ ...prev, ...patch }))}
+              sharedOverrideReason={
+                marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+                marControlledForm.useOverride
+                  ? marControlledForm.overrideReason
+                  : undefined
+              }
+              sharedUseOverride={
+                marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+                marControlledForm.useOverride
+              }
+              onUseSharedOverride={(use) => {
+                if (!use) return;
+                setMarHighAlertForm((prev) => ({ ...prev, useOverride: false }));
+              }}
             />
 
             {(() => {

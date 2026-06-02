@@ -54,6 +54,11 @@ import {
   persistControlledSubstanceMarGovernance,
   resolveControlledSubstanceMarGovernance,
 } from "../medication-safety/controlled-substance-mar-governance.util";
+import {
+  assertHighAlertMarCreate,
+  persistHighAlertMarGovernance,
+  resolveHighAlertMarGovernance,
+} from "../medication-safety/high-alert-mar-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -438,6 +443,10 @@ export class MedicationAdministrationService {
         )
       : null;
 
+    const highAlertGovernance = catalogMedication
+      ? await resolveHighAlertMarGovernance(this.prisma, catalogMedication.id, catalogMedication)
+      : null;
+
     if (
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
@@ -456,6 +465,20 @@ export class MedicationAdministrationService {
         controlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
         orderedQuantity: linkedMedicationLine?.quantity ?? null,
         administeredQuantity: data.administeredQuantity ?? null,
+      });
+
+      assertHighAlertMarCreate({
+        marAction: marActionResolved,
+        governance: highAlertGovernance,
+        highAlertVerifierUserId: data.highAlertVerifierUserId,
+        highAlertVerifierDisplayName: data.highAlertVerifierDisplayName,
+        administeredByUserId,
+        controlledWitnessUserId: data.witnessUserId,
+        highAlertOverrideReason: data.highAlertOverrideReason,
+        highAlertOverrideAcknowledged: data.highAlertOverrideAcknowledged,
+        sharedOverrideReason: data.overrideReason,
+        sharedControlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
+        highAlertVerificationType: data.highAlertVerificationType ?? null,
       });
     }
 
@@ -679,6 +702,27 @@ export class MedicationAdministrationService {
           data,
           governance: controlledGovernance,
           orderedQuantity: linkedMedicationLine?.quantity ?? null,
+        });
+      }
+
+      if (
+        highAlertGovernance &&
+        !serviceOptions?.allowAdministeredForInfusionTerminal &&
+        !serviceOptions?.allowAdministeredForInfusionStart
+      ) {
+        await persistHighAlertMarGovernance({
+          tx,
+          audit: this.audit,
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          orderId: orderIdForAudit,
+          medicationAdministrationId: row.id,
+          orderItemId,
+          catalogMedicationId: catalogMedication?.id ?? null,
+          administeredByUserId,
+          data,
+          governance: highAlertGovernance,
         });
       }
 
