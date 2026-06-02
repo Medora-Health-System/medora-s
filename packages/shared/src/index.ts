@@ -83,6 +83,7 @@ export * from "./medication/medicationSafetyClassifierValidation.js";
 export * from "./medication/medicationSafetyClassifierManifest.js";
 export * from "./medication/controlledSubstanceGovernanceValidation.js";
 export { CONTROLLED_SUBSTANCE_GOVERNANCE_MANIFEST } from "./medication/controlledSubstanceGovernanceManifest.js";
+export { HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST } from "./medication/highAlertMedicationGovernanceManifest.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";

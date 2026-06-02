@@ -10,6 +10,7 @@ import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-cat
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedMedicationSafetyClassifiers } from "./helpers/seed-medication-safety-classifiers";
 import { seedControlledSubstanceGovernance } from "./helpers/seed-controlled-substance-governance";
+import { seedHighAlertMedicationGovernance } from "./helpers/seed-high-alert-medication-governance";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
@@ -49,6 +50,11 @@ async function main() {
   const controlledGov = await seedControlledSubstanceGovernance(prisma);
   console.log(
     `✅ Controlled substance governance applied (matched=${controlledGov.catalogMatched}, updated=${controlledGov.catalogUpdated}, already=${controlledGov.catalogAlreadyCompliant}, notFound=${controlledGov.catalogNotFound}, manualReviewSkipped=${controlledGov.manualReviewSkipped})`
+  );
+
+  const highAlertGov = await seedHighAlertMedicationGovernance(prisma);
+  console.log(
+    `✅ High-alert medication governance applied (matched=${highAlertGov.catalogMatched}, catalogWitnessUpdated=${highAlertGov.catalogWitnessFlagsUpdated}, profileUpdated=${highAlertGov.safetyProfileUpdated}, profileSkippedNoProfile=${highAlertGov.safetyProfileSkippedNoProfile}, manualReviewSkipped=${highAlertGov.manualReviewSkipped}, safetyReqCodes=${highAlertGov.safetyRequirementMappingCount})`
   );
 
   console.log("✅ Catalogs seeded (lab, imaging, medications)");

@@ -101,3 +101,35 @@ export async function loadControlledSubstanceGovernanceSeedModules() {
     legacyControlledFlagsFromManifestEntry: validation.legacyControlledFlagsFromManifestEntry,
   };
 }
+
+export async function loadHighAlertMedicationGovernanceSeedModules() {
+  if (isJestRuntime()) {
+    const manifest = requireSharedSrcModule<typeof import("../../../../packages/shared/src/medication/highAlertMedicationGovernanceManifest")>(
+      "highAlertMedicationGovernanceManifest"
+    );
+    const validation = requireSharedSrcModule<typeof import("../../../../packages/shared/src/medication/highAlertMedicationGovernanceValidation")>(
+      "highAlertMedicationGovernanceValidation"
+    );
+    return {
+      HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST: manifest.HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST,
+      catalogRowMatchesHighAlertGovernanceEntry: validation.catalogRowMatchesHighAlertGovernanceEntry,
+      safetyProfilePayloadFromHighAlertEntry: validation.safetyProfilePayloadFromHighAlertEntry,
+      countUniqueSafetyRequirementCodesInManifest: validation.countUniqueSafetyRequirementCodesInManifest,
+    };
+  }
+
+  const [manifest, validation] = await Promise.all([
+    importSharedDistModule<typeof import("../../../../packages/shared/src/medication/highAlertMedicationGovernanceManifest")>(
+      "highAlertMedicationGovernanceManifest"
+    ),
+    importSharedDistModule<typeof import("../../../../packages/shared/src/medication/highAlertMedicationGovernanceValidation")>(
+      "highAlertMedicationGovernanceValidation"
+    ),
+  ]);
+  return {
+    HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST: manifest.HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST,
+    catalogRowMatchesHighAlertGovernanceEntry: validation.catalogRowMatchesHighAlertGovernanceEntry,
+    safetyProfilePayloadFromHighAlertEntry: validation.safetyProfilePayloadFromHighAlertEntry,
+    countUniqueSafetyRequirementCodesInManifest: validation.countUniqueSafetyRequirementCodesInManifest,
+  };
+}
