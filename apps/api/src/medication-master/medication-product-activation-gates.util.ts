@@ -183,8 +183,18 @@ export function evaluateProviderOrderSearchGate(params: {
   stagingGovernance: PriorityErGovernanceMeta | null;
   reconciliationStatus: string | null;
   reviewFlags: string[];
+  /** M1.5E Haiti backfill: inactive canonical link must not suppress legacy catalog search until M1.5F. */
+  linkageOnlyHaitiM15e?: boolean;
 }): ActivationGateEvaluation {
   const blockers: ActivationGateBlockerCode[] = [];
+
+  if (
+    params.linkageOnlyHaitiM15e === true &&
+    !params.runtime.orderSearchEnabled &&
+    !params.productIsActive
+  ) {
+    return { allowed: true, blockers: [] };
+  }
 
   if (params.formularyFacilityId && params.formularyFacilityId !== params.facilityId) {
     return { allowed: false, blockers: ["FACILITY_FORMULARY_MISSING"] };

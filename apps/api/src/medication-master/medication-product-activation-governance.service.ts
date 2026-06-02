@@ -579,6 +579,7 @@ export class MedicationProductActivationGovernanceService {
         stagingGovernance: staging?.governance ?? null,
         reconciliationStatus: staging?.reconciliationStatus ?? null,
         reviewFlags: staging?.reviewFlags ?? [],
+        linkageOnlyHaitiM15e: product.governanceNotes?.includes("HAITI_M15E_CANONICAL_LINKAGE_ONLY") ?? false,
       });
 
       if (!gate.allowed) excluded.add(catalogId);

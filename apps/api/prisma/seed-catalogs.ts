@@ -19,6 +19,7 @@ import { seedHaitiImagingWave4 } from "./helpers/seed-haiti-imaging-wave4";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
+import { seedHaitiCanonicalMedicationLinkage } from "./helpers/seed-haiti-canonical-medication-linkage";
 
 const prisma = new PrismaClient();
 
@@ -70,6 +71,13 @@ async function main() {
   console.log(
     `✅ LASA medication governance applied (groups=${lasaGov.applyGroupCount}, members=${lasaGov.applyMemberCount}, matched=${lasaGov.catalogMatched}, profileUpdated=${lasaGov.safetyProfileUpdated}, manualReviewSkipped=${lasaGov.manualReviewSkipped}, missingSkipped=${lasaGov.missingCatalogSkipped})`
   );
+
+  if (process.env.MEDORA_ENABLE_HAITI_CANONICAL_LINKAGE_BACKFILL === "1") {
+    const linkage = await seedHaitiCanonicalMedicationLinkage(prisma, { dryRun: false });
+    console.log(
+      `✅ Haiti canonical linkage backfill (concepts=${linkage.createdConcepts}, products=${linkage.createdProducts}, packages=${linkage.createdPackages}, linked=${linkage.linkedCatalogMedications}, skippedManualReview=${linkage.skippedManualReview})`
+    );
+  }
 
   console.log("✅ Catalogs seeded (lab, imaging, medications)");
 }
