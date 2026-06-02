@@ -394,6 +394,53 @@ enum MedicationMarWorkflow {
   CONTINUOUS
 }
 
+/// M1.3F.1 — MAR/eMAR witness, cosign, dual-check, LASA ack (schema only; not enforced at runtime).
+enum MedicationVerificationType {
+  WITNESS
+  COSIGN
+  DUAL_VERIFICATION
+  INDEPENDENT_DOUBLE_CHECK
+  LASA_ACKNOWLEDGMENT
+  HIGH_ALERT_CHECK
+  CONTROLLED_SUBSTANCE_CHECK
+}
+
+enum MedicationVerificationStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum MedicationWasteStatus {
+  DRAFT
+  COMPLETED
+  VOIDED
+}
+
+enum MedicationOverrideType {
+  PHARMACY_PENDING_OVERRIDE
+  HIGH_ALERT_OVERRIDE
+  CONTROLLED_SUBSTANCE_OVERRIDE
+  LASA_OVERRIDE
+  BARCODE_SCAN_OVERRIDE
+  SCHEDULE_OVERRIDE
+  OTHER
+}
+
+enum PharmacyVerificationStatus {
+  NOT_REQUIRED
+  PENDING
+  VERIFIED
+  REJECTED
+  OVERRIDDEN
+}
+
+enum MedicationCorrectionStatus {
+  RECORDED
+  VOIDED
+}
+
 enum DiagnosisStatus {
   ACTIVE
   RESOLVED
@@ -534,6 +581,11 @@ model Facility {
   diagnoses                        Diagnosis[]
   medicationDispenses              MedicationDispense[]
   medicationAdministrations        MedicationAdministration[]
+  medicationAdministrationVerifications MedicationAdministrationVerification[]
+  medicationWasteDocumentations    MedicationWasteDocumentation[]
+  medicationAdministrationOverrides MedicationAdministrationOverride[]
+  medicationAdministrationCorrections MedicationAdministrationCorrection[]
+  pharmacyVerifications            PharmacyVerification[]
   inventoryItems                   InventoryItem[]
   inventoryTransactions            InventoryTransaction[]
   facilityMedicationUsages         FacilityMedicationUsage[]
@@ -670,6 +722,13 @@ model User {
   auditLogs                 AuditLog[]
   medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
+  medicationAdministrationVerificationsAsVerifier MedicationAdministrationVerification[] @relation("MedicationAdministrationVerificationVerifier")
+  medicationAdministrationVerificationsAsWitness MedicationAdministrationVerification[] @relation("MedicationAdministrationVerificationWitness")
+  medicationWasteDocumentationsDocumented MedicationWasteDocumentation[] @relation("MedicationWasteDocumentedBy")
+  medicationWasteDocumentationsWitnessed MedicationWasteDocumentation[] @relation("MedicationWasteWitness")
+  medicationAdministrationOverridesAsActor MedicationAdministrationOverride[] @relation("MedicationAdministrationOverrideActor")
+  medicationAdministrationCorrections MedicationAdministrationCorrection[] @relation("MedicationAdministrationCorrectionBy")
+  pharmacyVerificationsAsPharmacist PharmacyVerification[] @relation("PharmacyVerificationPharmacist")
   inventoryTransactions     InventoryTransaction[]
   vaccineAdministrations    VaccineAdministration[]
   diseaseCaseReports        DiseaseCaseReport[]
@@ -1048,6 +1107,10 @@ model Encounter {
   diagnoses                 Diagnosis[]
   medicationDispenses       MedicationDispense[]
   medicationAdministrations MedicationAdministration[]
+  medicationAdministrationVerifications MedicationAdministrationVerification[]
+  medicationWasteDocumentations MedicationWasteDocumentation[]
+  medicationAdministrationOverrides MedicationAdministrationOverride[]
+  pharmacyVerifications PharmacyVerification[]
   infusionSessions          InfusionSession[]
   vaccineAdministrations    VaccineAdministration[]
   diseaseCaseReports        DiseaseCaseReport[]
@@ -1427,6 +1490,10 @@ model OrderItem {
   result                    Result?
   pharmacyDispenseRecord    MedicationDispense?
   medicationAdministrations MedicationAdministration[]
+  medicationAdministrationVerifications MedicationAdministrationVerification[]
+  medicationWasteDocumentations MedicationWasteDocumentation[]
+  medicationAdministrationOverrides MedicationAdministrationOverride[]
+  pharmacyVerifications     PharmacyVerification[]
   infusionSessions          InfusionSession[]
   medicationProduct         MedicationProduct?         @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
   medicationPackage         MedicationPackage?         @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
@@ -1798,6 +1865,9 @@ model CatalogMedication {
 
   inventoryItems           InventoryItem[]
   medicationDispenses      MedicationDispense[]
+  medicationAdministrationVerifications MedicationAdministrationVerification[]
+  medicationWasteDocumentations MedicationWasteDocumentation[]
+  pharmacyVerifications    PharmacyVerification[]
   aliases                  MedicationAlias[]
   facilityMedicationUsages FacilityMedicationUsage[]
   legacyMedicationProducts MedicationProduct[]       @relation("CatalogMedicationLegacyProduct")
@@ -2174,6 +2244,10 @@ model MedicationAdministration {
   medicationProduct MedicationProduct? @relation(fields: [medicationProductId], references: [id], onDelete: SetNull)
   medicationPackage MedicationPackage? @relation(fields: [medicationPackageId], references: [id], onDelete: SetNull)
   administeredBy    User               @relation(fields: [administeredByUserId], references: [id], onDelete: Restrict)
+  verifications     MedicationAdministrationVerification[]
+  wasteDocumentations MedicationWasteDocumentation[]
+  overrides         MedicationAdministrationOverride[]
+  corrections       MedicationAdministrationCorrection[]
 
   @@index([facilityId])
   @@index([patientId])
@@ -2185,6 +2259,160 @@ model MedicationAdministration {
   @@index([administeredAt])
   @@index([ndc11Snapshot])
   @@index([infusionSessionKey])
+}
+
+/// M1.3F.1 — witness, cosign, dual verification, high-alert / LASA checks (not enforced at runtime).
+model MedicationAdministrationVerification {
+  id                         String                       @id @default(uuid())
+  facilityId                 String
+  medicationAdministrationId String
+  encounterId                String
+  orderItemId                String?
+  catalogMedicationId        String?
+  verificationType           MedicationVerificationType
+  verificationStatus         MedicationVerificationStatus @default(PENDING)
+  verifierUserId             String
+  witnessedByUserId          String?
+  reason                     String?
+  metadata                   Json?
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  medicationAdministration MedicationAdministration @relation(fields: [medicationAdministrationId], references: [id], onDelete: Restrict)
+  encounter                Encounter                @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem                OrderItem?               @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  catalogMedication        CatalogMedication?       @relation(fields: [catalogMedicationId], references: [id], onDelete: SetNull)
+  verifier                 User                     @relation("MedicationAdministrationVerificationVerifier", fields: [verifierUserId], references: [id], onDelete: Restrict)
+  witnessedBy              User?                    @relation("MedicationAdministrationVerificationWitness", fields: [witnessedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([medicationAdministrationId])
+  @@index([catalogMedicationId])
+  @@index([verificationType])
+  @@index([verificationStatus])
+  @@index([verifierUserId])
+  @@index([witnessedByUserId])
+  @@index([createdAt])
+}
+
+/// M1.3F.1 — controlled-substance and partial-dose waste documentation (not enforced at runtime).
+model MedicationWasteDocumentation {
+  id                         String                @id @default(uuid())
+  facilityId                 String
+  medicationAdministrationId String
+  encounterId                String
+  orderItemId                String?
+  catalogMedicationId        String?
+  wastedAmount               Decimal               @db.Decimal(12, 4)
+  wastedUnit                 String                @db.VarChar(32)
+  wasteReason                String?
+  witnessUserId              String?
+  documentedByUserId         String
+  status                     MedicationWasteStatus @default(DRAFT)
+  metadata                   Json?
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  medicationAdministration MedicationAdministration @relation(fields: [medicationAdministrationId], references: [id], onDelete: Restrict)
+  encounter                Encounter                @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem                OrderItem?               @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  catalogMedication        CatalogMedication?       @relation(fields: [catalogMedicationId], references: [id], onDelete: SetNull)
+  witness                  User?                    @relation("MedicationWasteWitness", fields: [witnessUserId], references: [id], onDelete: SetNull)
+  documentedBy             User                     @relation("MedicationWasteDocumentedBy", fields: [documentedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([medicationAdministrationId])
+  @@index([catalogMedicationId])
+  @@index([status])
+  @@index([documentedByUserId])
+  @@index([witnessUserId])
+  @@index([createdAt])
+}
+
+/// M1.3F.1 — MAR/eMAR override audit trail (append-only; not enforced at runtime).
+model MedicationAdministrationOverride {
+  id                         String                 @id @default(uuid())
+  facilityId                 String
+  medicationAdministrationId String
+  encounterId                String
+  orderItemId                String?
+  overrideType               MedicationOverrideType
+  overrideReason             String?
+  actorUserId                String
+  metadata                   Json?
+  createdAt                  DateTime               @default(now())
+
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  medicationAdministration MedicationAdministration @relation(fields: [medicationAdministrationId], references: [id], onDelete: Restrict)
+  encounter                Encounter                @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  orderItem                OrderItem?               @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  actor                    User                     @relation("MedicationAdministrationOverrideActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([medicationAdministrationId])
+  @@index([overrideType])
+  @@index([actorUserId])
+  @@index([createdAt])
+}
+
+/// M1.3F.1 — legal correction trail for MAR entries (append-only; not enforced at runtime).
+model MedicationAdministrationCorrection {
+  id                         String                     @id @default(uuid())
+  facilityId                 String
+  medicationAdministrationId String
+  correctedByUserId          String
+  correctionReason           String?
+  previousValues             Json
+  correctedValues            Json
+  status                     MedicationCorrectionStatus @default(RECORDED)
+  createdAt                  DateTime                   @default(now())
+
+  facility                 Facility                 @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  medicationAdministration MedicationAdministration @relation(fields: [medicationAdministrationId], references: [id], onDelete: Restrict)
+  correctedBy              User                     @relation("MedicationAdministrationCorrectionBy", fields: [correctedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+  @@index([medicationAdministrationId])
+  @@index([correctedByUserId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// M1.3F.1 — pharmacy verification queue state per order line (not enforced at runtime).
+model PharmacyVerification {
+  id                  String                     @id @default(uuid())
+  facilityId          String
+  orderItemId         String
+  encounterId         String
+  catalogMedicationId String?
+  verificationStatus  PharmacyVerificationStatus @default(PENDING)
+  pharmacistUserId    String?
+  verificationNote    String?
+  metadata            Json?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  facility          Facility           @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  orderItem         OrderItem          @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  encounter         Encounter          @relation(fields: [encounterId], references: [id], onDelete: Restrict)
+  catalogMedication CatalogMedication? @relation(fields: [catalogMedicationId], references: [id], onDelete: SetNull)
+  pharmacist        User?              @relation("PharmacyVerificationPharmacist", fields: [pharmacistUserId], references: [id], onDelete: SetNull)
+
+  @@index([facilityId])
+  @@index([encounterId])
+  @@index([orderItemId])
+  @@index([catalogMedicationId])
+  @@index([verificationStatus])
+  @@index([pharmacistUserId])
+  @@index([createdAt])
 }
 
 // --- Phase 19B.1: Canonical medication master (additive; inert until future phases) ---
