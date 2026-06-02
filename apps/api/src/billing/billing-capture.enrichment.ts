@@ -1,5 +1,10 @@
 import type { BillingCaptureItem } from "@medora/shared";
 import type { PrismaClient } from "@prisma/client";
+import type { PrismaService } from "../prisma/prisma.service";
+import {
+  applyMedicationAdministrationBillingResolutionToCaptureItem,
+  resolveMedicationAdministrationBilling,
+} from "./medication-administration-billing-resolve.util";
 
 /** DB handle for enrichment (PrismaService or transaction client). */
 export type BillingEnrichmentDb = Pick<
@@ -113,23 +118,20 @@ export async function enrichBillingCaptureItem(db: BillingEnrichmentDb, item: Bi
       case "MEDICATION_ADMINISTRATION": {
         const sid = item.sourceId?.trim();
         if (!sid) break;
-        const adm = await db.medicationAdministration.findFirst({
-          where: { id: sid, facilityId: fid, encounterId: encId },
-          include: { orderItem: true },
+        const resolution = await resolveMedicationAdministrationBilling(db as unknown as PrismaService, {
+          facilityId: fid,
+          encounterId: encId,
+          medicationAdministrationId: sid,
         });
-        if (!adm?.orderItem?.catalogItemId || adm.orderItem.catalogItemType !== "MEDICATION") break;
-        const med = await db.catalogMedication.findUnique({ where: { id: adm.orderItem.catalogItemId } });
-        if (med?.billingCodeDefault?.trim()) {
-          next.hcpcsCode = med.billingCodeDefault.trim();
-          appliedCatalogCode = true;
+        if (!resolution) break;
+        Object.assign(
+          next,
+          applyMedicationAdministrationBillingResolutionToCaptureItem(next, resolution)
+        );
+        if (resolution.labelFallback) {
+          catalogLabel = catalogLabel ?? resolution.labelFallback;
         }
-        if (med) {
-          const medLine = med.displayNameEn?.trim() || med.code?.trim() || null;
-          if (medLine) catalogLabel = catalogLabel ?? medLine;
-        }
-        if (!next.ndc11 && med?.ndc11?.trim()) next.ndc11 = med.ndc11.trim();
-        if (!next.ndcDisplay && med?.ndcDisplay?.trim()) next.ndcDisplay = med.ndcDisplay.trim();
-        if (!next.quantityUnit && med?.billingUnitType?.trim()) next.quantityUnit = med.billingUnitType.trim();
+        if (resolution.hcpcsCode) appliedCatalogCode = true;
         break;
       }
       case "VACCINE_ADMINISTRATION": {

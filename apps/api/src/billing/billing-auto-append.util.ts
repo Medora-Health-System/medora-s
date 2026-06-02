@@ -8,14 +8,12 @@ import {
   defaultBillClassForTrigger,
   mapImagingToBillingCode,
   mapLabToBillingCode,
-  mapMedicationToBillingCode,
   mapProcedureToBillingCode,
   mapSupplyToBillingCode,
   type CatalogBillingMapping,
 } from "./billing-map-from-event.util";
-import { collectMedicationMarLookupOrder } from "./medication-code-derive.util";
-import { resolveMedicationMarActionFromStorage } from "@medora/shared";
 import { inferMedicationAdministrationCpt } from "./medication-admin-cpt.util";
+import { resolveMedicationAdministrationBilling } from "./medication-administration-billing-resolve.util";
 
 export type AppendAutoBillingParams = {
   facilityId: string;
@@ -335,117 +333,61 @@ export async function tryAutoMedicationAdministrationBilling(
   try {
     const adm = await prisma.medicationAdministration.findFirst({
       where: { id: input.medicationAdministrationId, facilityId: input.facilityId },
+      select: { encounterId: true },
+    });
+    if (!adm?.encounterId) return;
+
+    const resolution = await resolveMedicationAdministrationBilling(prisma, {
+      facilityId: input.facilityId,
+      encounterId: adm.encounterId,
+      medicationAdministrationId: input.medicationAdministrationId,
+    });
+    if (!resolution) return;
+
+    const admFull = await prisma.medicationAdministration.findFirst({
+      where: { id: input.medicationAdministrationId, facilityId: input.facilityId },
       include: { orderItem: { include: { order: true } } },
     });
-    if (!adm?.orderItem || adm.orderItem.catalogItemType !== "MEDICATION") return;
+    if (!admFull?.orderItem) return;
 
-    const marOutcome = resolveMedicationMarActionFromStorage({
-      marAction: adm.marAction ?? null,
-      notes: adm.notes,
-    });
-    if (marOutcome !== "administered") return;
+    const catRoute = admFull.orderItem.catalogItemId
+      ? (
+          await prisma.catalogMedication.findUnique({
+            where: { id: admFull.orderItem.catalogItemId },
+            select: { route: true },
+          })
+        )?.route ?? null
+      : null;
 
-    const oi = adm.orderItem;
-    let labelFallback =
-      adm.medicationLabelSnapshot?.trim() || oi.manualLabel?.trim() || "Medication";
-    let cat: {
-      code: string | null;
-      name: string;
-      displayNameFr: string | null;
-      genericName: string | null;
-      strength: string | null;
-      dosageForm: string | null;
-      route: string | null;
-    } | null = null;
-    if (oi.catalogItemId) {
-      cat = await prisma.catalogMedication.findUnique({
-        where: { id: oi.catalogItemId },
-        select: {
-          code: true,
-          name: true,
-          displayNameFr: true,
-          genericName: true,
-          strength: true,
-          dosageForm: true,
-          route: true,
-        },
-      });
-      if (cat?.code?.trim()) {
-        labelFallback = cat.name?.trim() || cat.displayNameFr?.trim() || labelFallback;
-      }
-    }
-
-    const hasMedicationLookup =
-      !!cat?.code?.trim() ||
-      !!oi.manualLabel?.trim() ||
-      !!adm.medicationLabelSnapshot?.trim() ||
-      !!(cat?.genericName?.trim() != null && cat.genericName.trim().length > 0);
-
-    if (!hasMedicationLookup) {
+    if (!resolution.catalogMapping) {
       await createFallbackBillingLine(prisma, {
         facilityId: input.facilityId,
-        encounterId: adm.encounterId,
-        patientId: adm.patientId,
+        encounterId: admFull.encounterId,
+        patientId: admFull.patientId,
         sourceModule: BillingSourceModule.MED_ADMIN,
-        sourceRecordId: adm.id,
+        sourceRecordId: admFull.id,
         captureSourceType: "MED_ADMIN",
-        description: labelFallback,
-        billClass: defaultBillClassForTrigger("MEDICATION"),
-      });
-      return;
-    }
-
-    const deriveInput =
-      cat?.genericName?.trim() != null && cat.genericName.trim().length > 0
-        ? {
-            genericName: cat.genericName,
-            strength: cat.strength ?? "",
-            dosageForm: cat.dosageForm ?? "comprimé",
-            route: cat.route ?? "orale",
-          }
-        : null;
-
-    let mapping: CatalogBillingMapping | null = null;
-    for (const key of collectMedicationMarLookupOrder({
-      catalogMedicationCode: cat?.code?.trim() ? cat.code.trim() : null,
-      orderManualLabel: oi.manualLabel?.trim() ?? null,
-      medicationLabelSnapshot: adm.medicationLabelSnapshot?.trim() ?? null,
-      deriveInput,
-    })) {
-      if (!key) continue;
-      mapping = await mapMedicationToBillingCode(prisma, key);
-      if (mapping) break;
-    }
-
-    if (!mapping) {
-      await createFallbackBillingLine(prisma, {
-        facilityId: input.facilityId,
-        encounterId: adm.encounterId,
-        patientId: adm.patientId,
-        sourceModule: BillingSourceModule.MED_ADMIN,
-        sourceRecordId: adm.id,
-        captureSourceType: "MED_ADMIN",
-        description: labelFallback,
+        description: resolution.labelFallback,
         billClass: defaultBillClassForTrigger("MEDICATION"),
       });
       return;
     }
 
     const adminCptInf = inferMedicationAdministrationCpt({
-      administrationRoute: adm.route ?? null,
-      catalogRoute: cat?.route ?? null,
+      administrationRoute: admFull.route ?? null,
+      catalogRoute: catRoute,
     });
 
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,
-      encounterId: adm.encounterId,
-      patientId: adm.patientId,
+      encounterId: admFull.encounterId,
+      patientId: admFull.patientId,
       sourceModule: BillingSourceModule.MED_ADMIN,
-      sourceRecordId: adm.id,
+      sourceRecordId: admFull.id,
       captureSourceType: "MED_ADMIN",
-      mapping,
-      descriptionFallback: labelFallback,
-      companionProcedureCpt: mapping.system === "HCPCS" ? adminCptInf?.cpt ?? null : null,
+      mapping: resolution.catalogMapping,
+      descriptionFallback: resolution.labelFallback,
+      companionProcedureCpt: resolution.catalogMapping.system === "HCPCS" ? adminCptInf?.cpt ?? null : null,
       companionDescriptionNote: adminCptInf?.description ?? null,
     });
   } catch (e) {

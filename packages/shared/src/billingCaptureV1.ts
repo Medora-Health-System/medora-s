@@ -5,6 +5,7 @@
  */
 
 import type { InfusionBillingSuggestion } from "./infusionBillingRules.js";
+import type { MedicationAdministrationBillingSourceKind } from "./medication/medicationAdministrationMarBilling.js";
 
 export const BILLING_CAPTURE_VERSION = 1 as const;
 
@@ -123,7 +124,13 @@ export type BillingCaptureItem = {
   infusionBillingSuggestion?: InfusionBillingSuggestion | null;
   /** Phase 7 — controlled approval / rejection / adjustment (never auto-submitted). */
   infusionBillingReviewDecision?: InfusionBillingReviewDecision | null;
+  /** M1.4C — MAR administration billing resolver provenance (JSON metadata). */
+  medicationBillingSource?: MedicationAdministrationBillingSourceKind | null;
+  /** M1.4C — why biller review is required when unmapped or profile-flagged. */
+  medicationBillingManualReviewReason?: string | null;
 };
+
+export type { MedicationAdministrationBillingSourceKind };
 
 export type BillingCaptureV1Stored = {
   version: typeof BILLING_CAPTURE_VERSION;
@@ -397,6 +404,20 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     if (ibs) item.infusionBillingSuggestion = ibs;
     const ibrd = readInfusionBillingReviewDecision(r.infusionBillingReviewDecision);
     if (ibrd) item.infusionBillingReviewDecision = ibrd;
+    const mbs = trimStr(r.medicationBillingSource, 64);
+    if (
+      mbs === "CATALOG_BILLING_CODE_DEFAULT" ||
+      mbs === "BILLING_CATALOG_MEDICATION" ||
+      mbs === "MEDICATION_PACKAGE_PROFILE" ||
+      mbs === "MEDICATION_PRODUCT_PROFILE" ||
+      mbs === "MANUAL_REVIEW"
+    ) {
+      item.medicationBillingSource = mbs;
+    }
+    if (typeof r.medicationBillingManualReviewReason === "string") {
+      const mrr = trimStr(r.medicationBillingManualReviewReason, MAX_NOTE);
+      item.medicationBillingManualReviewReason = mrr ?? null;
+    }
     items.push(item);
   }
   return { version: BILLING_CAPTURE_VERSION, items: items.slice(0, MAX_ITEMS) };

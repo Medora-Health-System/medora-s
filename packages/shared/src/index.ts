@@ -95,6 +95,7 @@ export * from "./medication/medicationCatalogCodeDerive.js";
 export * from "./medication/medicationBillingMappingManifest.js";
 export * from "./medication/medicationBillingNdcByCatalogCode.js";
 export * from "./medication/medicationBillingMappingValidation.js";
+export * from "./medication/medicationAdministrationMarBilling.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";
