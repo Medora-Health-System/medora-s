@@ -91,9 +91,11 @@ function buildSearchText(entry: {
   strength: string;
   dosageForm: string;
   route: string;
-  aliases: string[];
-  searchTerms: string[];
+  aliases?: string[];
+  searchTerms?: string[];
 }): string {
+  const aliases = entry.aliases ?? [];
+  const searchTerms = entry.searchTerms ?? [];
   const parts = [
     entry.genericName,
     entry.displayNameFr,
@@ -101,14 +103,25 @@ function buildSearchText(entry: {
     entry.strength,
     entry.dosageForm,
     entry.route,
-    ...entry.aliases,
-    ...entry.searchTerms,
+    ...aliases,
+    ...searchTerms,
   ].filter(Boolean);
   return parts.join(" ").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+/** Coalesce optional manifest arrays so seed never throws on `.length` / iteration. */
+export function withWave2FormularyEntryDefaults<T extends Record<string, unknown>>(
+  entry: T & { aliases?: string[]; searchTerms?: string[] }
+): T & { aliases: string[]; searchTerms: string[] } {
+  return {
+    ...entry,
+    aliases: entry.aliases ?? [],
+    searchTerms: entry.searchTerms ?? [],
+  };
+}
+
 /**
- * M1.6D — Enterprise Wave 1 formulary seed (catalog + canonical chain + billing + governance).
+ * M1.6D — Enterprise Wave 2 formulary seed (catalog + canonical chain + billing + governance).
  * Products remain inactive until explicit activation with billing gate.
  */
 export async function seedEnterpriseWave2Formulary(
@@ -119,8 +132,8 @@ export async function seedEnterpriseWave2Formulary(
   const modules = await loadEnterpriseWave2FormularySeedModules();
   modules.assertEnterpriseWave2FormularyManifest();
 
-  const manifest = modules.ENTERPRISE_WAVE1_FORMULARY_MANIFEST;
-  const billingByCode = modules.ENTERPRISE_WAVE1_BILLING_BY_CODE;
+  const manifest = modules.ENTERPRISE_WAVE2_FORMULARY_MANIFEST ?? [];
+  const billingByCode = modules.ENTERPRISE_WAVE2_BILLING_BY_CODE ?? {};
 
   const result: Omit<SeedEnterpriseWave2FormularyResult, "readinessReport"> & {
     readinessReport?: SeedEnterpriseWave2FormularyResult["readinessReport"];
@@ -149,10 +162,12 @@ export async function seedEnterpriseWave2Formulary(
     billingPass: boolean;
     governancePass: boolean;
     searchPass: boolean;
+    activationPass: boolean;
     failures: string[];
   }> = [];
 
-  for (const entry of manifest) {
+  for (const rawEntry of manifest) {
+    const entry = withWave2FormularyEntryDefaults(rawEntry);
     const billing = billingByCode[entry.catalogCode];
     if (!billing) {
       result.conflicts.push({ catalogCode: entry.catalogCode, reason: "missing billing spec" });
