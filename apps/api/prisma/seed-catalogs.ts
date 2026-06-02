@@ -17,6 +17,8 @@ import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
 import { seedHaitiImagingWave4 } from "./helpers/seed-haiti-imaging-wave4";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
+import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
+import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 
 const prisma = new PrismaClient();
 
@@ -47,6 +49,12 @@ async function main() {
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
   await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);
+
+  await seedBillingCatalogCommonMappings(prisma);
+  const medBillingRemediation = await seedMedicationBillingMappingRemediation(prisma);
+  console.log(
+    `✅ Medication billing mapping remediation (manifest=${medBillingRemediation.manifestEntries}, billingCatalogCreated=${medBillingRemediation.billingCatalogCreated}, billingDefaultCreated=${medBillingRemediation.catalogBillingDefaultCreated}, duplicateProtected=${medBillingRemediation.duplicateProtected})`
+  );
 
   const controlledGov = await seedControlledSubstanceGovernance(prisma);
   console.log(

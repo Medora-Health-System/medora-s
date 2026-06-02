@@ -25,6 +25,7 @@ import { seedHaitiImagingWave4 } from "./helpers/seed-haiti-imaging-wave4";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
+import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedUsInsurancePayers } from "./helpers/seed-us-insurance-payers";
 import { HAITI_MEDICATION_CATALOG, HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
@@ -372,6 +373,11 @@ async function main() {
 
   // Haiti medication catalog (offline-first: full catalog + aliases + searchText)
   const medCatalogIds = await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);
+
+  const medBillingRemediation = await seedMedicationBillingMappingRemediation(prisma);
+  console.log(
+    `✅ Medication billing mapping remediation (manifest=${medBillingRemediation.manifestEntries}, billingCatalogCreated=${medBillingRemediation.billingCatalogCreated}, billingDefaultCreated=${medBillingRemediation.catalogBillingDefaultCreated}, ndcCreated=${medBillingRemediation.catalogNdcCreated}, packageProfiles=${medBillingRemediation.packageBillingProfileCreated}, skippedExisting=${medBillingRemediation.duplicateProtected})`
+  );
 
   // Vaccine catalog (6–10)
   const vaccineCatalog = [
