@@ -1,5 +1,8 @@
 import type { CatalogMedication, MedicationFulfillmentIntent, Order, OrderItem, Result } from "@prisma/client";
-import type { OrderItemCreateDto, OrderCreateDto } from "@medora/shared";
+import type { MedicationSafetyGovernanceSnapshot, OrderItemCreateDto, OrderCreateDto } from "@medora/shared";
+
+/** M1.3F.3 — read-only MAR governance fields on medication order lines. */
+export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
 
 /** Catalog fields attached to MEDICATION order items after enrichment. */
 export type CatalogMedicationEnrichment = Pick<
@@ -21,6 +24,8 @@ export type CatalogMedicationEnrichment = Pick<
   | "billingUnitType"
   | "isControlled"
   | "controlledSchedule"
+  | "requiresWitness"
+  | "requiresDoubleSign"
 >;
 
 export type CatalogLabTestEnrichment = {
@@ -65,6 +70,8 @@ export type OrderItemWithCatalogMedication = OrderItem & {
   /** English-first display line (catalog `name` before `displayNameFr`) for US / English UI. */
   displayLabelEn: string;
   catalogMedication?: CatalogMedicationEnrichment | null;
+  /** M1.3F.3 — MAR safety governance snapshot (read-only; no enforcement). */
+  medicationSafetyGovernance?: MedicationSafetyGovernanceRead | null;
   catalogLabTest?: CatalogLabTestEnrichment | null;
   catalogImagingStudy?: CatalogImagingStudyEnrichment | null;
   completedByNurse?: { firstName: string; lastName: string } | null;

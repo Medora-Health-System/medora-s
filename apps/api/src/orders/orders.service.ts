@@ -76,6 +76,11 @@ import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
 import {
+  attachMedicationSafetyGovernanceToOrderItem,
+  loadLatestPharmacyVerificationByOrderItemId,
+  loadMedicationSafetyGovernanceByCatalogId,
+} from "../medication-safety/medication-safety-governance-read.util";
+import {
   loadMedicationInfusionClassificationContext,
   buildMedicationInfusionCandidateInputFromOrderItem,
 } from "../common/medication/medication-infusion-candidate-from-order-item.util";
@@ -195,6 +200,8 @@ const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
   billingUnitType: true,
   isControlled: true,
   controlledSchedule: true,
+  requiresWitness: true,
+  requiresDoubleSign: true,
 } as const;
 
 const CATALOG_LAB_SELECT = {
@@ -1265,19 +1272,24 @@ export class OrdersService {
     })) as OrderWithEnrichedItems[];
   }
 
-  enrichOrderItemsForDisplay(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
+  async enrichOrderItemsForDisplay(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
     const labIds = new Set<string>();
     const imgIds = new Set<string>();
     const medIds = new Set<string>();
+    const medicationOrderItemIds: string[] = [];
     for (const order of orders) {
       for (const it of order.items || []) {
         if (it.catalogItemType === "LAB_TEST" && it.catalogItemId) labIds.add(it.catalogItemId);
         if (it.catalogItemType === "IMAGING_STUDY" && it.catalogItemId) imgIds.add(it.catalogItemId);
-        if (it.catalogItemType === "MEDICATION" && it.catalogItemId) medIds.add(it.catalogItemId);
+        if (it.catalogItemType === "MEDICATION") {
+          if (it.catalogItemId) medIds.add(it.catalogItemId);
+          medicationOrderItemIds.push(it.id);
+        }
       }
     }
 
-    return Promise.all([
+    const medIdList = [...medIds];
+    const [labs, imgs, meds, governanceByCatalogId, pharmacyByOrderItemId] = await Promise.all([
       labIds.size
         ? this.prisma.catalogLabTest.findMany({
             where: { id: { in: [...labIds] } },
@@ -1290,66 +1302,77 @@ export class OrdersService {
             select: CATALOG_IMAGING_SELECT,
           })
         : Promise.resolve([] as CatalogImagingStudyEnrichment[]),
-      medIds.size
+      medIdList.length
         ? this.prisma.catalogMedication.findMany({
-            where: { id: { in: [...medIds] } },
+            where: { id: { in: medIdList } },
             select: CATALOG_MEDICATION_ENRICHMENT_SELECT,
           })
         : Promise.resolve([] as CatalogMedicationEnrichment[]),
-    ]).then(([labs, imgs, meds]) => {
-      const labMap = new Map(labs.map((c) => [c.id, c]));
-      const imgMap = new Map(imgs.map((c) => [c.id, c]));
-      const medMap = new Map(meds.map((c) => [c.id, c]));
+      medIdList.length
+        ? loadMedicationSafetyGovernanceByCatalogId(this.prisma, medIdList)
+        : Promise.resolve(new Map()),
+      medicationOrderItemIds.length
+        ? loadLatestPharmacyVerificationByOrderItemId(this.prisma, medicationOrderItemIds)
+        : Promise.resolve(new Map()),
+    ]);
 
-      return orders.map((order) => ({
-        ...order,
-        items: (order.items || []).map((it) => {
-          const catalogLabTest =
-            it.catalogItemType === "LAB_TEST" && it.catalogItemId
-              ? labMap.get(it.catalogItemId) ?? null
-              : it.catalogItemType === "LAB_TEST"
-                ? null
-                : undefined;
-          const catalogImagingStudy =
-            it.catalogItemType === "IMAGING_STUDY" && it.catalogItemId
-              ? imgMap.get(it.catalogItemId) ?? null
-              : it.catalogItemType === "IMAGING_STUDY"
-                ? null
-                : undefined;
-          const catalogMedication =
-            it.catalogItemType === "MEDICATION" && it.catalogItemId
-              ? medMap.get(it.catalogItemId) ?? null
-              : it.catalogItemType === "MEDICATION"
-                ? null
-                : undefined;
-          const labelIn = {
-            catalogItemType: String(it.catalogItemType),
-            manualLabel: it.manualLabel,
-            manualSecondaryText: it.manualSecondaryText,
-            strength: it.strength,
-            enterpriseProcedureId: it.enterpriseProcedureId,
-          };
-          return {
-            ...it,
+    const labMap = new Map(labs.map((c) => [c.id, c]));
+    const imgMap = new Map(imgs.map((c) => [c.id, c]));
+    const medMap = new Map(meds.map((c) => [c.id, c]));
+
+    return orders.map((order) => ({
+      ...order,
+      items: (order.items || []).map((it) => {
+        const catalogLabTest =
+          it.catalogItemType === "LAB_TEST" && it.catalogItemId
+            ? labMap.get(it.catalogItemId) ?? null
+            : it.catalogItemType === "LAB_TEST"
+              ? null
+              : undefined;
+        const catalogImagingStudy =
+          it.catalogItemType === "IMAGING_STUDY" && it.catalogItemId
+            ? imgMap.get(it.catalogItemId) ?? null
+            : it.catalogItemType === "IMAGING_STUDY"
+              ? null
+              : undefined;
+        const catalogMedication =
+          it.catalogItemType === "MEDICATION" && it.catalogItemId
+            ? medMap.get(it.catalogItemId) ?? null
+            : it.catalogItemType === "MEDICATION"
+              ? null
+              : undefined;
+        const labelIn = {
+          catalogItemType: String(it.catalogItemType),
+          manualLabel: it.manualLabel,
+          manualSecondaryText: it.manualSecondaryText,
+          strength: it.strength,
+          enterpriseProcedureId: it.enterpriseProcedureId,
+        };
+        const enriched = {
+          ...it,
+          catalogLabTest,
+          catalogImagingStudy,
+          catalogMedication,
+          displayLabelFr: buildOrderItemDisplayLabelFr(
+            labelIn,
             catalogLabTest,
             catalogImagingStudy,
-            catalogMedication,
-            displayLabelFr: buildOrderItemDisplayLabelFr(
-              labelIn,
-              catalogLabTest,
-              catalogImagingStudy,
-              catalogMedication
-            ),
-            displayLabelEn: buildOrderItemDisplayLabelEn(
-              labelIn,
-              catalogLabTest,
-              catalogImagingStudy,
-              catalogMedication
-            ),
-          };
-        }),
-      })) as OrderWithEnrichedItems[];
-    });
+            catalogMedication
+          ),
+          displayLabelEn: buildOrderItemDisplayLabelEn(
+            labelIn,
+            catalogLabTest,
+            catalogImagingStudy,
+            catalogMedication
+          ),
+        };
+        return attachMedicationSafetyGovernanceToOrderItem(
+          enriched,
+          governanceByCatalogId,
+          pharmacyByOrderItemId
+        );
+      }),
+    })) as OrderWithEnrichedItems[];
   }
 
   /** @deprecated use enrichOrderItemsForDisplay */

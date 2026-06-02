@@ -12,7 +12,11 @@ import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
-import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
+import { highRiskMedicationWarning, isHighRiskMedication } from "@/lib/highRiskMedication";
+import { MedicationMarSafetyGovernanceBadges } from "@/components/medication/MedicationMarSafetyGovernanceBadges";
+import { MedicationMarSafetySummaryPanel } from "@/components/medication/MedicationMarSafetySummaryPanel";
+import { orderItemToMedicationSafetyGovernanceDisplay } from "@/features/mar/orderItemMedicationSafetyGovernance";
+import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
 import {
   resolveMedicationMarActionFromStorage,
   getEncounterAllergyDocumentationSummary,
@@ -135,7 +139,10 @@ type OrderItemApi = {
     billingUnitType?: string | null;
     isControlled?: boolean | null;
     controlledSchedule?: string | null;
+    requiresWitness?: boolean | null;
+    requiresDoubleSign?: boolean | null;
   } | null;
+  medicationSafetyGovernance?: MedicationSafetyGovernanceDisplayInput | null;
 };
 
 function marOrderItemToSafetyCatalogInput(it: OrderItemApi, displayLabel: string): MedicationSafetyCatalogInput {
@@ -354,6 +361,7 @@ export function MedicationAdministrationTab({
     ndcHint: string;
     billingUnitHint: string;
     orderedQuantity: number | null;
+    governanceDisplay: MedicationSafetyGovernanceDisplayInput;
     /** When true, MAR modal hides one-step “administered” (perfusion uses start/stop). */
     hideAdministeredAction?: boolean;
     /** Same input as open-orders infusion classifier — blocks accidental MAR “administered” for bags/IV abx. */
@@ -630,6 +638,7 @@ export function MedicationAdministrationTab({
       highRiskWarning: string | null;
       safetyCatalogInput: MedicationSafetyCatalogInput;
       advancedSafetyLine: AdvancedMedicationSafetyLine;
+      governanceDisplay: MedicationSafetyGovernanceDisplayInput;
     };
     const drafts: RowDraft[] = [];
     for (const order of orders) {
@@ -704,6 +713,9 @@ export function MedicationAdministrationTab({
               catalogItemId: it.catalogItemId ?? null,
               displayName: label,
             } satisfies AdvancedMedicationSafetyLine),
+          governanceDisplay: orderItemToMedicationSafetyGovernanceDisplay(it, {
+            highRiskNameMatch: isHighRiskMedication({ ...it, label }),
+          }),
         });
       }
     }
@@ -883,6 +895,7 @@ export function MedicationAdministrationTab({
       orderedQuantity: row.orderedQuantity,
       hideAdministeredAction: hideAdmin,
       infusionClassifyPayload: row.infusionClassifyPayload,
+      governanceDisplay: row.governanceDisplay,
     });
     setModalSubmitError(null);
     setModalAction(hideAdmin ? "refused" : "administered");
@@ -1669,6 +1682,8 @@ export function MedicationAdministrationTab({
                           {row.highRiskWarning}
                         </div>
                       ) : null}
+                      <MedicationMarSafetyGovernanceBadges governance={row.governanceDisplay} compact />
+                      <MedicationMarSafetySummaryPanel governance={row.governanceDisplay} density="compact" />
                     </td>
                     <td style={marTableMetricCellStyle}>
                       {marLastAction}
@@ -1831,6 +1846,8 @@ export function MedicationAdministrationTab({
                 {modalItem.highRiskWarning}
               </p>
             ) : null}
+            <MedicationMarSafetyGovernanceBadges governance={modalItem.governanceDisplay} />
+            <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} />
 
             {(() => {
               const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];

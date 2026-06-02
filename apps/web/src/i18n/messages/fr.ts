@@ -14471,6 +14471,38 @@ export default {
         "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.",
     },
   },
+  marGovernance: {
+    badgesListAria: "Indicateurs de gouvernance médicamenteuse",
+    badgeAria: "{badge} — information seulement, sans blocage",
+    summaryTitle: "Résumé sécurité médicament",
+    summaryValue: "{label} : {value}",
+    badges: {
+      CONTROLLED: "Contrôlé",
+      HIGH_ALERT: "Haut risque",
+      LASA: "LASA",
+      WITNESS_REQUIRED: "Témoin requis",
+      DOUBLE_SIGN_REQUIRED: "Double signature",
+      PHARMACY_VERIFY: "Vérif. pharmacie",
+      WASTE_REQUIRED: "Perte à documenter",
+    },
+    summary: {
+      controlledSchedule: "Annexe / classe réglementaire",
+      highAlertClass: "Classe à haut risque",
+      lasaGroup: "Groupe LASA",
+      lasaSeverity: "Sévérité LASA",
+      witnessRequired: "Témoin requis avant documentation (information)",
+      doubleSignRequired: "Double signature requise (information)",
+      pharmacyVerification: "Vérification pharmacie",
+      wasteRecommended: "Documentation de perte recommandée",
+      informationalOnly:
+        "Information seulement — aucun blocage d'administration ni signature obligatoire dans cette phase.",
+    },
+    pharmacyStatus: {
+      PENDING: "En attente",
+      REJECTED: "Refusée",
+      OVERRIDDEN: "Outrepassée",
+    },
+  },
   labRadTime: {
     adjustCardTooltip: "Ajuster l'heure clinique",
     warning:

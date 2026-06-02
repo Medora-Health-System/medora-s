@@ -14444,6 +14444,38 @@ export default {
       infusionDeferred: "Time adjustment for IV infusions is not available yet.",
     },
   },
+  marGovernance: {
+    badgesListAria: "Medication safety governance indicators",
+    badgeAria: "{badge} — informational only, no blocking",
+    summaryTitle: "Medication safety summary",
+    summaryValue: "{label}: {value}",
+    badges: {
+      CONTROLLED: "Controlled",
+      HIGH_ALERT: "High alert",
+      LASA: "LASA",
+      WITNESS_REQUIRED: "Witness required",
+      DOUBLE_SIGN_REQUIRED: "Double sign",
+      PHARMACY_VERIFY: "Pharmacy verify",
+      WASTE_REQUIRED: "Waste doc.",
+    },
+    summary: {
+      controlledSchedule: "Schedule / regulatory class",
+      highAlertClass: "High-alert class",
+      lasaGroup: "LASA group",
+      lasaSeverity: "LASA severity",
+      witnessRequired: "Witness required before documentation (informational)",
+      doubleSignRequired: "Double sign required (informational)",
+      pharmacyVerification: "Pharmacy verification",
+      wasteRecommended: "Waste documentation recommended",
+      informationalOnly:
+        "Informational only — no administration blocking or required signatures in this phase.",
+    },
+    pharmacyStatus: {
+      PENDING: "Pending",
+      REJECTED: "Rejected",
+      OVERRIDDEN: "Overridden",
+    },
+  },
   labRadTime: {
     adjustCardTooltip: "Adjust clinical time",
     warning:
