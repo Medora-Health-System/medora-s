@@ -97,6 +97,18 @@ export * from "./medication/medicationBillingNdcByCatalogCode.js";
 export * from "./medication/medicationBillingMappingValidation.js";
 export * from "./medication/medicationAdministrationMarBilling.js";
 export * from "./medication/infusionBillingGovernance.js";
+export * from "./medication/haitiCanonicalMedicationLinkageTypes.js";
+export * from "./medication/haitiMedicationFormularyCatalog.js";
+export * from "./medication/haitiCanonicalMedicationLinkageBuild.js";
+export * from "./medication/haitiCanonicalMedicationQuarantine.js";
+export * from "./medication/haitiCanonicalMedicationMatching.js";
+export * from "./medication/haitiCanonicalMedicationValidation.js";
+export {
+  HAITI_CANONICAL_LINKAGE_MANIFEST,
+  HAITI_CANONICAL_LINKAGE_BY_CATALOG_CODE,
+  HAITI_CANONICAL_LINKAGE_MANIFEST_VERSION,
+  HAITI_CANONICAL_LINKAGE_MANIFEST_EXPECTED_COUNT,
+} from "./medication/haitiCanonicalMedicationLinkageManifest.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";
