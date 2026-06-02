@@ -88,6 +88,7 @@ export { LASA_MEDICATION_GOVERNANCE_MANIFEST } from "./medication/lasaMedication
 export * from "./medication/marMedicationSafetyGovernanceUi.js";
 export * from "./medication/controlledSubstanceMarGovernance.js";
 export * from "./medication/highAlertMarGovernance.js";
+export * from "./medication/lasaMarGovernance.js";
 export * from "./triage/triageCarryForward.js";
 export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/enterpriseProcedureSearch.js";

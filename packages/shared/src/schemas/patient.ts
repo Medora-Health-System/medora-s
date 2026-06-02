@@ -717,6 +717,14 @@ export const medicationAdministrationCreateDtoSchema = z.object({
     emptyStrToUndefined,
     z.enum(["INDEPENDENT_DOUBLE_CHECK", "DUAL_VERIFICATION", "COSIGN"]).optional()
   ),
+  /** M1.3F.6 — LASA warning acknowledged at MAR. */
+  lasaAcknowledged: z.boolean().optional(),
+  /** M1.3F.6 — confirms correct medication selected (LASA). */
+  lasaMedicationSelectionConfirmed: z.boolean().optional(),
+  lasaSecondReadUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  lasaSecondReadDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  lasaOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  lasaOverrideAcknowledged: z.boolean().optional(),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;

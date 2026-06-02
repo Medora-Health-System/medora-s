@@ -14485,6 +14485,29 @@ export default {
     errVerifierRequired: "Second verifier or override required.",
     errOverrideIncomplete: "Override reason and acknowledgment required.",
   },
+  marLasa: {
+    title: "LASA medication — acknowledgement required",
+    description:
+      "This medication has look-alike / sound-alike (LASA) risk. Confirm the warning and correct product selection before administration.",
+    warningSrOnly: "LASA medication warning",
+    groupLabel: "LASA group",
+    severityLabel: "Severity",
+    medicationLabel: "Ordered medication",
+    ackLabel: "I have read the LASA warning and understand similar medications in this group.",
+    selectionConfirmLabel:
+      "I confirm the medication administered matches the product listed above.",
+    secondReadLabel: "Second read (optional)",
+    secondReadAria: "Search clinician for optional LASA second read",
+    secondReadPlaceholder: "Name (optional, min. 3 characters)",
+    secondReadSelected: "Second read recorded.",
+    useOverride: "Administer without LASA acknowledgement (justified override)",
+    overrideReasonLabel: "Override reason (LASA)",
+    overrideAck:
+      "I confirm administration without documented LASA acknowledgement and accept responsibility for this override.",
+    backToAck: "Return to LASA acknowledgement",
+    errAckRequired: "LASA acknowledgement or override required.",
+    errOverrideIncomplete: "Override reason and acknowledgment required.",
+  },
   marGovernance: {
     badgesListAria: "Medication safety governance indicators",
     badgeAria: "{badge} — informational only, no blocking",

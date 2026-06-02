@@ -18,8 +18,10 @@ import { MedicationMarSafetySummaryPanel } from "@/components/medication/Medicat
 import { orderItemToMedicationSafetyGovernanceDisplay } from "@/features/mar/orderItemMedicationSafetyGovernance";
 import {
   highAlertMarRequiresDoubleCheck,
+  lasaMarRequiresAcknowledgement,
   validateControlledSubstanceMarCreate,
   validateHighAlertMarCreate,
+  validateLasaMarCreate,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import {
@@ -32,6 +34,11 @@ import {
   marHighAlertWorkflowVisible,
   type MarHighAlertFormState,
 } from "@/components/medication/MarHighAlertFields";
+import {
+  MarLasaFields,
+  marLasaWorkflowVisible,
+  type MarLasaFormState,
+} from "@/components/medication/MarLasaFields";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import {
   resolveMedicationMarActionFromStorage,
@@ -419,6 +426,15 @@ export function MedicationAdministrationTab({
     verifierDisplayName: "",
     highAlertOverrideReason: "",
     highAlertOverrideAcknowledged: false,
+    useOverride: false,
+  });
+  const [marLasaForm, setMarLasaForm] = useState<MarLasaFormState>({
+    lasaAcknowledged: false,
+    lasaMedicationSelectionConfirmed: false,
+    secondReadUserId: null,
+    secondReadDisplayName: "",
+    lasaOverrideReason: "",
+    lasaOverrideAcknowledged: false,
     useOverride: false,
   });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
@@ -961,6 +977,15 @@ export function MedicationAdministrationTab({
       highAlertOverrideAcknowledged: false,
       useOverride: false,
     });
+    setMarLasaForm({
+      lasaAcknowledged: false,
+      lasaMedicationSelectionConfirmed: false,
+      secondReadUserId: null,
+      secondReadDisplayName: "",
+      lasaOverrideReason: "",
+      lasaOverrideAcknowledged: false,
+      useOverride: false,
+    });
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
     clearModalEffectiveTime();
@@ -1139,6 +1164,34 @@ export function MedicationAdministrationTab({
         }
       }
 
+      if (modalItem && marLasaWorkflowVisible(modalItem.governanceDisplay, modalAction)) {
+        const lasaValidation = validateLasaMarCreate({
+          marAction: modalAction,
+          governance: lasaMarRequiresAcknowledgement({
+            lasaGroupId: modalItem.governanceDisplay.lasaGroupId,
+            lasaSeverity: modalItem.governanceDisplay.lasaSeverity,
+          })
+            ? {
+                lasaGroupId: modalItem.governanceDisplay.lasaGroupId ?? null,
+                lasaGroupLabel: modalItem.governanceDisplay.lasaGroupLabel ?? null,
+                lasaSeverity: modalItem.governanceDisplay.lasaSeverity ?? null,
+                requiresAcknowledgement: true,
+              }
+            : null,
+          lasaAcknowledged: marLasaForm.lasaAcknowledged,
+          lasaMedicationSelectionConfirmed: marLasaForm.lasaMedicationSelectionConfirmed,
+          lasaSecondReadUserId: marLasaForm.secondReadUserId,
+          lasaSecondReadDisplayName: marLasaForm.secondReadDisplayName,
+          lasaOverrideReason: marLasaForm.lasaOverrideReason,
+          lasaOverrideAcknowledged: marLasaForm.lasaOverrideAcknowledged,
+          administeredByUserId: currentUserId ?? undefined,
+        });
+        if (!lasaValidation.ok) {
+          setModalSubmitError(lasaValidation.message);
+          return;
+        }
+      }
+
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
@@ -1200,6 +1253,24 @@ export function MedicationAdministrationTab({
               ...(marHighAlertForm.highAlertOverrideAcknowledged
                 ? { highAlertOverrideAcknowledged: true }
                 : {}),
+            }
+          : {}),
+        ...(modalItem && marLasaWorkflowVisible(modalItem.governanceDisplay, modalAction)
+          ? {
+              ...(marLasaForm.lasaAcknowledged ? { lasaAcknowledged: true } : {}),
+              ...(marLasaForm.lasaMedicationSelectionConfirmed
+                ? { lasaMedicationSelectionConfirmed: true }
+                : {}),
+              ...(marLasaForm.secondReadUserId
+                ? { lasaSecondReadUserId: marLasaForm.secondReadUserId }
+                : {}),
+              ...(marLasaForm.secondReadDisplayName.trim() && !marLasaForm.secondReadUserId
+                ? { lasaSecondReadDisplayName: marLasaForm.secondReadDisplayName.trim() }
+                : {}),
+              ...(marLasaForm.lasaOverrideReason.trim()
+                ? { lasaOverrideReason: marLasaForm.lasaOverrideReason.trim() }
+                : {}),
+              ...(marLasaForm.lasaOverrideAcknowledged ? { lasaOverrideAcknowledged: true } : {}),
             }
           : {}),
       };
@@ -2037,6 +2108,14 @@ export function MedicationAdministrationTab({
                 if (!use) return;
                 setMarHighAlertForm((prev) => ({ ...prev, useOverride: false }));
               }}
+            />
+            <MarLasaFields
+              facilityId={facilityId}
+              governance={modalItem.governanceDisplay}
+              marAction={modalAction}
+              medicationLabel={modalItem.label}
+              state={marLasaForm}
+              onChange={(patch) => setMarLasaForm((prev) => ({ ...prev, ...patch }))}
             />
 
             {(() => {

@@ -166,6 +166,10 @@ enum AuditAction {
   HIGH_ALERT_DOUBLE_CHECK_COMPLETED
   /// M1.3F.5 — high-alert MAR governance override (PHI-safe metadata only).
   HIGH_ALERT_OVERRIDE
+  /// M1.3F.6 — LASA warning acknowledged at MAR (PHI-safe metadata only).
+  LASA_WARNING_ACKNOWLEDGED
+  /// M1.3F.6 — LASA MAR governance override (PHI-safe metadata only).
+  LASA_OVERRIDE
 }
 
 /// Phase 5G — category of external / formal record release request.

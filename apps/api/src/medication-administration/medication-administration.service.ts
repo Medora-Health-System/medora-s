@@ -59,6 +59,11 @@ import {
   persistHighAlertMarGovernance,
   resolveHighAlertMarGovernance,
 } from "../medication-safety/high-alert-mar-governance.util";
+import {
+  assertLasaMarCreate,
+  persistLasaMarGovernance,
+  resolveLasaMarGovernance,
+} from "../medication-safety/lasa-mar-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -447,6 +452,10 @@ export class MedicationAdministrationService {
       ? await resolveHighAlertMarGovernance(this.prisma, catalogMedication.id, catalogMedication)
       : null;
 
+    const lasaGovernance = catalogMedication
+      ? await resolveLasaMarGovernance(this.prisma, catalogMedication.id, catalogMedication)
+      : null;
+
     if (
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
@@ -479,6 +488,18 @@ export class MedicationAdministrationService {
         sharedOverrideReason: data.overrideReason,
         sharedControlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
         highAlertVerificationType: data.highAlertVerificationType ?? null,
+      });
+
+      assertLasaMarCreate({
+        marAction: marActionResolved,
+        governance: lasaGovernance,
+        lasaAcknowledged: data.lasaAcknowledged,
+        lasaMedicationSelectionConfirmed: data.lasaMedicationSelectionConfirmed,
+        lasaSecondReadUserId: data.lasaSecondReadUserId,
+        lasaSecondReadDisplayName: data.lasaSecondReadDisplayName,
+        lasaOverrideReason: data.lasaOverrideReason,
+        lasaOverrideAcknowledged: data.lasaOverrideAcknowledged,
+        administeredByUserId,
       });
     }
 
@@ -723,6 +744,27 @@ export class MedicationAdministrationService {
           administeredByUserId,
           data,
           governance: highAlertGovernance,
+        });
+      }
+
+      if (
+        lasaGovernance &&
+        !serviceOptions?.allowAdministeredForInfusionTerminal &&
+        !serviceOptions?.allowAdministeredForInfusionStart
+      ) {
+        await persistLasaMarGovernance({
+          tx,
+          audit: this.audit,
+          facilityId,
+          encounterId,
+          patientId: encounter.patientId,
+          orderId: orderIdForAudit,
+          medicationAdministrationId: row.id,
+          orderItemId,
+          catalogMedicationId: catalogMedication?.id ?? null,
+          administeredByUserId,
+          data,
+          governance: lasaGovernance,
         });
       }
 

@@ -14512,6 +14512,29 @@ export default {
     errVerifierRequired: "Second vérificateur ou dérogation requis.",
     errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
   },
+  marLasa: {
+    title: "Médicament LASA — accusé requis",
+    description:
+      "Ce médicament présente un risque de confusion (LASA). Confirmez l'avertissement et la sélection du bon produit avant l'administration.",
+    warningSrOnly: "Avertissement médicament LASA",
+    groupLabel: "Groupe LASA",
+    severityLabel: "Sévérité",
+    medicationLabel: "Médicament commandé",
+    ackLabel: "J'ai pris connaissance de l'avertissement LASA et des médicaments similaires du groupe.",
+    selectionConfirmLabel:
+      "Je confirme que le médicament administré correspond au produit indiqué ci-dessus.",
+    secondReadLabel: "Seconde lecture (optionnel)",
+    secondReadAria: "Rechercher un clinicien pour la seconde lecture LASA",
+    secondReadPlaceholder: "Nom (optionnel, 3 caractères min.)",
+    secondReadSelected: "Seconde lecture enregistrée.",
+    useOverride: "Administration sans accusé LASA (dérogation motivée)",
+    overrideReasonLabel: "Motif de dérogation (LASA)",
+    overrideAck:
+      "Je confirme l'administration sans accusé LASA documenté et j'assume la responsabilité de cette dérogation.",
+    backToAck: "Revenir à l'accusé LASA",
+    errAckRequired: "Accusé LASA ou dérogation requis.",
+    errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
+  },
   marGovernance: {
     badgesListAria: "Indicateurs de gouvernance médicamenteuse",
     badgeAria: "{badge} — information seulement, sans blocage",
