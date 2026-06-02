@@ -133,3 +133,39 @@ export async function loadHighAlertMedicationGovernanceSeedModules() {
     countUniqueSafetyRequirementCodesInManifest: validation.countUniqueSafetyRequirementCodesInManifest,
   };
 }
+
+export async function loadLasaMedicationGovernanceSeedModules() {
+  if (isJestRuntime()) {
+    const manifest = requireSharedSrcModule<typeof import("../../../../packages/shared/src/medication/lasaMedicationGovernanceManifest")>(
+      "lasaMedicationGovernanceManifest"
+    );
+    const validation = requireSharedSrcModule<typeof import("../../../../packages/shared/src/medication/lasaMedicationGovernanceValidation")>(
+      "lasaMedicationGovernanceValidation"
+    );
+    return {
+      LASA_MEDICATION_GOVERNANCE_MANIFEST: manifest.LASA_MEDICATION_GOVERNANCE_MANIFEST,
+      LASA_MEDICATION_GOVERNANCE_APPLY_GROUP_COUNT: manifest.LASA_MEDICATION_GOVERNANCE_APPLY_GROUP_COUNT,
+      catalogRowMatchesLasaGovernanceEntry: validation.catalogRowMatchesLasaGovernanceEntry,
+      lasaCategoriesPayloadFromEntry: validation.lasaCategoriesPayloadFromEntry,
+      mergeLasaIntoHighAlertCategories: validation.mergeLasaIntoHighAlertCategories,
+      lasaProfileCompliant: validation.lasaProfileCompliant,
+    };
+  }
+
+  const [manifest, validation] = await Promise.all([
+    importSharedDistModule<typeof import("../../../../packages/shared/src/medication/lasaMedicationGovernanceManifest")>(
+      "lasaMedicationGovernanceManifest"
+    ),
+    importSharedDistModule<typeof import("../../../../packages/shared/src/medication/lasaMedicationGovernanceValidation")>(
+      "lasaMedicationGovernanceValidation"
+    ),
+  ]);
+  return {
+    LASA_MEDICATION_GOVERNANCE_MANIFEST: manifest.LASA_MEDICATION_GOVERNANCE_MANIFEST,
+    LASA_MEDICATION_GOVERNANCE_APPLY_GROUP_COUNT: manifest.LASA_MEDICATION_GOVERNANCE_APPLY_GROUP_COUNT,
+    catalogRowMatchesLasaGovernanceEntry: validation.catalogRowMatchesLasaGovernanceEntry,
+    lasaCategoriesPayloadFromEntry: validation.lasaCategoriesPayloadFromEntry,
+    mergeLasaIntoHighAlertCategories: validation.mergeLasaIntoHighAlertCategories,
+    lasaProfileCompliant: validation.lasaProfileCompliant,
+  };
+}

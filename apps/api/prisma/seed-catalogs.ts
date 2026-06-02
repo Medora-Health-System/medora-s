@@ -11,6 +11,7 @@ import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedMedicationSafetyClassifiers } from "./helpers/seed-medication-safety-classifiers";
 import { seedControlledSubstanceGovernance } from "./helpers/seed-controlled-substance-governance";
 import { seedHighAlertMedicationGovernance } from "./helpers/seed-high-alert-medication-governance";
+import { seedLasaMedicationGovernance } from "./helpers/seed-lasa-medication-governance";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
@@ -55,6 +56,11 @@ async function main() {
   const highAlertGov = await seedHighAlertMedicationGovernance(prisma);
   console.log(
     `✅ High-alert medication governance applied (matched=${highAlertGov.catalogMatched}, catalogWitnessUpdated=${highAlertGov.catalogWitnessFlagsUpdated}, profileUpdated=${highAlertGov.safetyProfileUpdated}, profileSkippedNoProfile=${highAlertGov.safetyProfileSkippedNoProfile}, manualReviewSkipped=${highAlertGov.manualReviewSkipped}, safetyReqCodes=${highAlertGov.safetyRequirementMappingCount})`
+  );
+
+  const lasaGov = await seedLasaMedicationGovernance(prisma);
+  console.log(
+    `✅ LASA medication governance applied (groups=${lasaGov.applyGroupCount}, members=${lasaGov.applyMemberCount}, matched=${lasaGov.catalogMatched}, profileUpdated=${lasaGov.safetyProfileUpdated}, manualReviewSkipped=${lasaGov.manualReviewSkipped}, missingSkipped=${lasaGov.missingCatalogSkipped})`
   );
 
   console.log("✅ Catalogs seeded (lab, imaging, medications)");
