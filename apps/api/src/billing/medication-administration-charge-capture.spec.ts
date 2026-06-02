@@ -39,6 +39,7 @@ describe("medication administration charge capture (M1.4C)", () => {
       catalogMedicationCode: "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
       requiresManualReview: false,
       labelFallback: "Morphine",
+      infusionGovernance: null,
     });
 
     const db = {} as PrismaService;
@@ -108,6 +109,7 @@ describe("medication administration charge capture (M1.4C)", () => {
       catalogMedicationCode: "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
       requiresManualReview: false,
       labelFallback: "Morphine",
+      infusionGovernance: null,
     });
 
     const findUnique = jest.fn().mockResolvedValue(null);
@@ -145,5 +147,59 @@ describe("medication administration charge capture (M1.4C)", () => {
     });
 
     expect(findUnique).toHaveBeenCalled();
+  });
+
+  it("enriches infusion STOP metadata without duplicating HCPCS on administration slot", async () => {
+    mockedResolve.mockResolvedValue({
+      hcpcsCode: "J1644",
+      catalogMapping: {
+        code: "J1644",
+        system: "HCPCS",
+        billClass: "both",
+        description: "Heparin",
+      },
+      ndc11: null,
+      ndcDisplay: null,
+      quantityUnit: "unit",
+      revenueCode: null,
+      sourceKind: "CATALOG_BILLING_CODE_DEFAULT",
+      manualReviewReason: null,
+      catalogMedicationCode: "HEPARIN_5000_UI_PER_ML_INJECTABLE_INJECTION",
+      requiresManualReview: false,
+      labelFallback: "Heparin",
+      infusionGovernance: {
+        infusionBillingCategory: "IV_INFUSION_STOP",
+        infusionStartTime: "2026-06-02T10:00:00.000Z",
+        infusionStopTime: "2026-06-02T11:00:00.000Z",
+        infusionDurationMinutes: 60,
+        suggestedAdministrationCodes: [
+          {
+            suggestedAdministrationCode: "96365",
+            suggestedAdministrationCodeType: "CPT",
+            companionCodeSource: "THERAPEUTIC_CLASS",
+            manualReviewRequired: true,
+            rationale: "Therapeutic infusion initial hour readiness",
+          },
+        ],
+        infusionManualReviewReasons: ["PAYER_VERIFICATION_REQUIRED"],
+        infusionBillingReady: true,
+      },
+    });
+
+    const enriched = await enrichBillingCaptureItem({} as PrismaService, {
+      id: "bc-infusion",
+      encounterId: "enc-1",
+      patientId: "pat-1",
+      facilityId: "fac-1",
+      sourceType: "MEDICATION_ADMINISTRATION",
+      sourceId: "adm-stop",
+      status: "needs_review",
+      createdAt: new Date(0).toISOString(),
+    });
+
+    expect(enriched.hcpcsCode).toBe("J1644");
+    expect(enriched.procedureCode).toBe("96365");
+    expect(enriched.infusionBillingCategory).toBe("IV_INFUSION_STOP");
+    expect(enriched.infusionDurationMinutes).toBe(60);
   });
 });

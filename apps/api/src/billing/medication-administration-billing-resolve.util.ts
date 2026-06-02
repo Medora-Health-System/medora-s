@@ -1,6 +1,8 @@
 import type { MedicationAdministrationBillingSourceKind } from "@medora/shared";
+import type { InfusionBillingGovernanceSnapshot } from "@medora/shared";
 import { isMedicationAdministrationBillableMarAction } from "@medora/shared";
 import type { PrismaService } from "../prisma/prisma.service";
+import { resolveInfusionBillingGovernanceForAdministration } from "./infusion-billing-governance-resolve.util";
 import {
   mapMedicationToBillingCode,
   type CatalogBillingMapping,
@@ -21,6 +23,7 @@ export type MedicationAdministrationBillingResolution = {
   catalogMedicationCode: string | null;
   requiresManualReview: boolean;
   labelFallback: string;
+  infusionGovernance: InfusionBillingGovernanceSnapshot | null;
 };
 
 function normalizeHcpcs(code: string | null | undefined): string | null {
@@ -151,6 +154,8 @@ export async function resolveMedicationAdministrationBilling(
     ndc11: string | null;
     ndcDisplay: string | null;
     billingUnitType: string | null;
+    administrationType: string | null;
+    billingClass: string | null;
   } | null = null;
 
   if (oi.catalogItemId) {
@@ -169,6 +174,8 @@ export async function resolveMedicationAdministrationBilling(
         ndc11: true,
         ndcDisplay: true,
         billingUnitType: true,
+        administrationType: true,
+        billingClass: true,
       },
     });
     if (cat?.code?.trim()) {
@@ -196,8 +203,11 @@ export async function resolveMedicationAdministrationBilling(
     null;
 
   const catalogDefault = normalizeHcpcs(cat?.billingCodeDefault);
+
+  let base: Omit<MedicationAdministrationBillingResolution, "infusionGovernance"> | undefined;
+
   if (catalogDefault) {
-    return {
+    base = {
       hcpcsCode: catalogDefault,
       catalogMapping: {
         code: catalogDefault,
@@ -215,112 +225,145 @@ export async function resolveMedicationAdministrationBilling(
       requiresManualReview: packageProfile?.requiresManualReview ?? productProfile?.requiresManualReview ?? false,
       labelFallback,
     };
-  }
+  } else {
+    const deriveInput =
+      cat?.genericName?.trim()
+        ? {
+            genericName: cat.genericName,
+            strength: cat.strength ?? "",
+            dosageForm: cat.dosageForm ?? "comprimé",
+            route: cat.route ?? "orale",
+          }
+        : null;
 
-  const deriveInput =
-    cat?.genericName?.trim()
-      ? {
-          genericName: cat.genericName,
-          strength: cat.strength ?? "",
-          dosageForm: cat.dosageForm ?? "comprimé",
-          route: cat.route ?? "orale",
-        }
-      : null;
+    let catalogMapping: CatalogBillingMapping | null = null;
+    for (const key of collectMedicationMarLookupOrder({
+      catalogMedicationCode: cat?.code?.trim() ? cat.code.trim() : null,
+      orderManualLabel: oi.manualLabel?.trim() ?? null,
+      medicationLabelSnapshot: adm.medicationLabelSnapshot?.trim() ?? null,
+      deriveInput,
+    })) {
+      if (!key) continue;
+      catalogMapping = await mapMedicationToBillingCode(prisma, key);
+      if (catalogMapping) break;
+    }
 
-  let catalogMapping: CatalogBillingMapping | null = null;
-  for (const key of collectMedicationMarLookupOrder({
-    catalogMedicationCode: cat?.code?.trim() ? cat.code.trim() : null,
-    orderManualLabel: oi.manualLabel?.trim() ?? null,
-    medicationLabelSnapshot: adm.medicationLabelSnapshot?.trim() ?? null,
-    deriveInput,
-  })) {
-    if (!key) continue;
-    catalogMapping = await mapMedicationToBillingCode(prisma, key);
-    if (catalogMapping) break;
-  }
+    if (catalogMapping?.system === "HCPCS") {
+      const hcpcs = normalizeHcpcs(catalogMapping.code);
+      if (hcpcs) {
+        base = {
+          hcpcsCode: hcpcs,
+          catalogMapping,
+          ndc11,
+          ndcDisplay,
+          quantityUnit: cat?.billingUnitType?.trim() ?? packageProfile?.hcpcsUnitType ?? null,
+          revenueCode: packageProfile?.revenueCodeSuggested ?? productProfile?.revenueCodeSuggested ?? null,
+          sourceKind: "BILLING_CATALOG_MEDICATION",
+          manualReviewReason: null,
+          catalogMedicationCode: cat?.code?.trim() ?? null,
+          requiresManualReview: packageProfile?.requiresManualReview ?? productProfile?.requiresManualReview ?? false,
+          labelFallback,
+        };
+      }
+    }
 
-  if (catalogMapping?.system === "HCPCS") {
-    const hcpcs = normalizeHcpcs(catalogMapping.code);
-    if (hcpcs) {
-      return {
-        hcpcsCode: hcpcs,
-        catalogMapping,
-        ndc11,
-        ndcDisplay,
-        quantityUnit: cat?.billingUnitType?.trim() ?? packageProfile?.hcpcsUnitType ?? null,
-        revenueCode: packageProfile?.revenueCodeSuggested ?? productProfile?.revenueCodeSuggested ?? null,
-        sourceKind: "BILLING_CATALOG_MEDICATION",
-        manualReviewReason: null,
-        catalogMedicationCode: cat?.code?.trim() ?? null,
-        requiresManualReview: packageProfile?.requiresManualReview ?? productProfile?.requiresManualReview ?? false,
-        labelFallback,
-      };
+    if (!base) {
+      const packageHcpcs = normalizeHcpcs(packageProfile?.hcpcsCodeSuggested);
+      if (packageHcpcs) {
+        base = {
+          hcpcsCode: packageHcpcs,
+          catalogMapping: {
+            code: packageHcpcs,
+            system: "HCPCS",
+            billClass: "both",
+            description: labelFallback,
+          },
+          ndc11,
+          ndcDisplay,
+          quantityUnit: packageProfile?.hcpcsUnitType ?? cat?.billingUnitType?.trim() ?? null,
+          revenueCode: packageProfile?.revenueCodeSuggested ?? null,
+          sourceKind: "MEDICATION_PACKAGE_PROFILE",
+          manualReviewReason: packageProfile?.requiresManualReview
+            ? "Package billing profile flagged for manual review"
+            : null,
+          catalogMedicationCode: cat?.code?.trim() ?? null,
+          requiresManualReview: packageProfile?.requiresManualReview ?? true,
+          labelFallback,
+        };
+      }
+    }
+
+    if (!base) {
+      const productHcpcs = normalizeHcpcs(productProfile?.hcpcsCodeSuggested);
+      if (productHcpcs) {
+        base = {
+          hcpcsCode: productHcpcs,
+          catalogMapping: {
+            code: productHcpcs,
+            system: "HCPCS",
+            billClass: "both",
+            description: labelFallback,
+          },
+          ndc11,
+          ndcDisplay,
+          quantityUnit: productProfile?.hcpcsUnitType ?? cat?.billingUnitType?.trim() ?? null,
+          revenueCode: productProfile?.revenueCodeSuggested ?? null,
+          sourceKind: "MEDICATION_PRODUCT_PROFILE",
+          manualReviewReason: productProfile?.requiresManualReview
+            ? "Product default package profile flagged for manual review"
+            : null,
+          catalogMedicationCode: cat?.code?.trim() ?? null,
+          requiresManualReview: productProfile?.requiresManualReview ?? true,
+          labelFallback,
+        };
+      }
     }
   }
 
-  const packageHcpcs = normalizeHcpcs(packageProfile?.hcpcsCodeSuggested);
-  if (packageHcpcs) {
-    return {
-      hcpcsCode: packageHcpcs,
-      catalogMapping: {
-        code: packageHcpcs,
-        system: "HCPCS",
-        billClass: "both",
-        description: labelFallback,
-      },
+  if (!base) {
+    base = {
+      hcpcsCode: null,
+      catalogMapping: null,
       ndc11,
       ndcDisplay,
-      quantityUnit: packageProfile?.hcpcsUnitType ?? cat?.billingUnitType?.trim() ?? null,
-      revenueCode: packageProfile?.revenueCodeSuggested ?? null,
-      sourceKind: "MEDICATION_PACKAGE_PROFILE",
-      manualReviewReason: packageProfile?.requiresManualReview ? "Package billing profile flagged for manual review" : null,
+      quantityUnit: cat?.billingUnitType?.trim() ?? null,
+      revenueCode: null,
+      sourceKind: "MANUAL_REVIEW",
+      manualReviewReason: "No HCPCS/J-code mapping found for administered medication",
       catalogMedicationCode: cat?.code?.trim() ?? null,
-      requiresManualReview: packageProfile?.requiresManualReview ?? true,
+      requiresManualReview: true,
       labelFallback,
     };
   }
 
-  const productHcpcs = normalizeHcpcs(productProfile?.hcpcsCodeSuggested);
-  if (productHcpcs) {
-    return {
-      hcpcsCode: productHcpcs,
-      catalogMapping: {
-        code: productHcpcs,
-        system: "HCPCS",
-        billClass: "both",
-        description: labelFallback,
-      },
-      ndc11,
-      ndcDisplay,
-      quantityUnit: productProfile?.hcpcsUnitType ?? cat?.billingUnitType?.trim() ?? null,
-      revenueCode: productProfile?.revenueCodeSuggested ?? null,
-      sourceKind: "MEDICATION_PRODUCT_PROFILE",
-      manualReviewReason: productProfile?.requiresManualReview ? "Product default package profile flagged for manual review" : null,
-      catalogMedicationCode: cat?.code?.trim() ?? null,
-      requiresManualReview: productProfile?.requiresManualReview ?? true,
-      labelFallback,
-    };
-  }
+  const infusionGovernance = await resolveInfusionBillingGovernanceForAdministration(prisma, {
+    facilityId: input.facilityId,
+    encounterId: input.encounterId,
+    medicationAdministrationId: input.medicationAdministrationId,
+    marAction: adm.marAction,
+    notes: adm.notes,
+    infusionPhase: adm.infusionPhase,
+    infusionSessionKey: adm.infusionSessionKey,
+    route: adm.route ?? cat?.route ?? null,
+    orderItemId: adm.orderItemId,
+    catalogMedicationId: cat?.id ?? null,
+    catalogAdministrationType: cat?.administrationType ?? null,
+    catalogMedicationBillingClass: cat?.billingClass ?? null,
+    medicationLabel: labelFallback,
+    catalogCode: cat?.code ?? null,
+    genericName: cat?.genericName ?? null,
+    administeredAtIso: adm.administeredAt.toISOString(),
+    effectiveAdministeredAtIso: adm.effectiveAdministeredAt?.toISOString() ?? null,
+  });
 
-  return {
-    hcpcsCode: null,
-    catalogMapping: null,
-    ndc11,
-    ndcDisplay,
-    quantityUnit: cat?.billingUnitType?.trim() ?? null,
-    revenueCode: null,
-    sourceKind: "MANUAL_REVIEW",
-    manualReviewReason: "No HCPCS/J-code mapping found for administered medication",
-    catalogMedicationCode: cat?.code?.trim() ?? null,
-    requiresManualReview: true,
-    labelFallback,
-  };
+  return { ...base, infusionGovernance };
 }
 
 /** Apply resolver output onto a billing capture item (metadata enrichment only). */
 export function applyMedicationAdministrationBillingResolutionToCaptureItem<
   T extends {
     hcpcsCode?: string | null;
+    procedureCode?: string | null;
     ndc11?: string | null;
     ndcDisplay?: string | null;
     quantityUnit?: string | null;
@@ -330,6 +373,14 @@ export function applyMedicationAdministrationBillingResolutionToCaptureItem<
     status?: string;
     medicationBillingSource?: MedicationAdministrationBillingSourceKind | null;
     medicationBillingManualReviewReason?: string | null;
+    infusionBillingCategory?: string | null;
+    infusionBillingReady?: boolean;
+    infusionManualReviewReasons?: string[];
+    suggestedAdministrationCodes?: Array<{ suggestedAdministrationCode: string }>;
+    infusionStartedAt?: string | null;
+    infusionStoppedAt?: string | null;
+    infusionDurationMinutes?: number | null;
+    infusionDurationBillingManualReview?: boolean;
   },
 >(item: T, resolution: MedicationAdministrationBillingResolution): T {
   const next = { ...item };
@@ -351,5 +402,26 @@ export function applyMedicationAdministrationBillingResolutionToCaptureItem<
   if (!resolution.hcpcsCode) {
     next.status = "needs_review";
   }
+
+  const infusion = resolution.infusionGovernance;
+  if (infusion) {
+    next.infusionBillingCategory = infusion.infusionBillingCategory;
+    next.infusionBillingReady = infusion.infusionBillingReady;
+    next.infusionManualReviewReasons = infusion.infusionManualReviewReasons;
+    next.suggestedAdministrationCodes = infusion.suggestedAdministrationCodes;
+    if (infusion.infusionStartTime) next.infusionStartedAt = infusion.infusionStartTime;
+    if (infusion.infusionStopTime) next.infusionStoppedAt = infusion.infusionStopTime;
+    if (infusion.infusionDurationMinutes != null) {
+      next.infusionDurationMinutes = infusion.infusionDurationMinutes;
+    }
+    if (!infusion.infusionBillingReady) {
+      next.infusionDurationBillingManualReview = true;
+    }
+    const companion = infusion.suggestedAdministrationCodes[0]?.suggestedAdministrationCode;
+    if (companion && !next.procedureCode) {
+      next.procedureCode = companion;
+    }
+  }
+
   return next;
 }

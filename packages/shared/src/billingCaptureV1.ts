@@ -6,6 +6,12 @@
 
 import type { InfusionBillingSuggestion } from "./infusionBillingRules.js";
 import type { MedicationAdministrationBillingSourceKind } from "./medication/medicationAdministrationMarBilling.js";
+import {
+  INFUSION_MANUAL_REVIEW_REASONS,
+  type InfusionBillingEventCategory,
+  type InfusionManualReviewReason,
+  type SuggestedAdministrationCode,
+} from "./medication/infusionBillingGovernance.js";
 
 export const BILLING_CAPTURE_VERSION = 1 as const;
 
@@ -128,9 +134,22 @@ export type BillingCaptureItem = {
   medicationBillingSource?: MedicationAdministrationBillingSourceKind | null;
   /** M1.4C — why biller review is required when unmapped or profile-flagged. */
   medicationBillingManualReviewReason?: string | null;
+  /** M1.4D — infusion billing event category for MAR row. */
+  infusionBillingCategory?: InfusionBillingEventCategory | null;
+  /** M1.4D — true when duration/classification sufficient for biller (excludes payer verification). */
+  infusionBillingReady?: boolean;
+  /** M1.4D — structured manual review reasons for infusion billing. */
+  infusionManualReviewReasons?: InfusionManualReviewReason[];
+  /** M1.4D — administration CPT companion readiness (distinct from drug HCPCS). */
+  suggestedAdministrationCodes?: SuggestedAdministrationCode[];
 };
 
 export type { MedicationAdministrationBillingSourceKind };
+export type {
+  InfusionBillingEventCategory,
+  InfusionManualReviewReason,
+  SuggestedAdministrationCode,
+} from "./medication/infusionBillingGovernance.js";
 
 export type BillingCaptureV1Stored = {
   version: typeof BILLING_CAPTURE_VERSION;
@@ -417,6 +436,51 @@ export function readBillingCaptureV1(raw: unknown): BillingCaptureV1Stored {
     if (typeof r.medicationBillingManualReviewReason === "string") {
       const mrr = trimStr(r.medicationBillingManualReviewReason, MAX_NOTE);
       item.medicationBillingManualReviewReason = mrr ?? null;
+    }
+    const ibc = trimStr(r.infusionBillingCategory, 64);
+    if (
+      ibc === "NON_INFUSION_ADMINISTRATION" ||
+      ibc === "IV_PUSH" ||
+      ibc === "IV_INFUSION_START" ||
+      ibc === "IV_INFUSION_STOP" ||
+      ibc === "IV_INFUSION_CONTINUOUS" ||
+      ibc === "HYDRATION_START" ||
+      ibc === "HYDRATION_STOP" ||
+      ibc === "MEDICATION_INFUSION_UNKNOWN" ||
+      ibc === "MANUAL_REVIEW_REQUIRED"
+    ) {
+      item.infusionBillingCategory = ibc;
+    }
+    if (r.infusionBillingReady === true) item.infusionBillingReady = true;
+    if (r.infusionBillingReady === false) item.infusionBillingReady = false;
+    if (Array.isArray(r.infusionManualReviewReasons)) {
+      const reasons = r.infusionManualReviewReasons
+        .filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        .map((x) => x.trim())
+        .filter((x): x is InfusionManualReviewReason =>
+          (INFUSION_MANUAL_REVIEW_REASONS as readonly string[]).includes(x)
+        );
+      if (reasons.length) item.infusionManualReviewReasons = reasons;
+    }
+    if (Array.isArray(r.suggestedAdministrationCodes)) {
+      const codes: SuggestedAdministrationCode[] = [];
+      for (const row of r.suggestedAdministrationCodes) {
+        if (!row || typeof row !== "object" || Array.isArray(row)) continue;
+        const o = row as Record<string, unknown>;
+        const code = trimStr(o.suggestedAdministrationCode, 16);
+        const type = trimStr(o.suggestedAdministrationCodeType, 16);
+        const source = trimStr(o.companionCodeSource, 32);
+        const rationale = trimStr(o.rationale, MAX_NOTE);
+        if (!code || type !== "CPT" || !source || !rationale) continue;
+        codes.push({
+          suggestedAdministrationCode: code,
+          suggestedAdministrationCodeType: "CPT",
+          companionCodeSource: source as SuggestedAdministrationCode["companionCodeSource"],
+          manualReviewRequired: o.manualReviewRequired !== false,
+          rationale,
+        });
+      }
+      if (codes.length) item.suggestedAdministrationCodes = codes.slice(0, 8);
     }
     items.push(item);
   }

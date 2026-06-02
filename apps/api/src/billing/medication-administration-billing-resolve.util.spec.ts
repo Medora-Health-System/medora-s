@@ -26,6 +26,11 @@ function buildPrismaMock(overrides: {
     ndc11Snapshot: overrides.ndc11Snapshot ?? null,
     ndcDisplaySnapshot: null,
     medicationPackageId: null,
+    orderItemId: "oi-1",
+    infusionPhase: null,
+    infusionSessionKey: null,
+    administeredAt: new Date("2026-06-02T10:00:00.000Z"),
+    effectiveAdministeredAt: null,
     orderItem: {
       catalogItemType: "MEDICATION",
       catalogItemId: catalogId,
@@ -54,6 +59,7 @@ function buildPrismaMock(overrides: {
   const prisma = {
     medicationAdministration: {
       findFirst: jest.fn().mockResolvedValue(adm),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     catalogMedication: {
       findUnique: jest.fn().mockResolvedValue(catalog),
@@ -185,9 +191,28 @@ describe("resolveMedicationAdministrationBilling", () => {
         catalogMedicationCode: "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
         requiresManualReview: false,
         labelFallback: "Morphine",
+        infusionGovernance: {
+          infusionBillingCategory: "IV_PUSH",
+          infusionStartTime: null,
+          infusionStopTime: null,
+          infusionDurationMinutes: null,
+          suggestedAdministrationCodes: [
+            {
+              suggestedAdministrationCode: "96374",
+              suggestedAdministrationCodeType: "CPT",
+              companionCodeSource: "ROUTE_INFERENCE",
+              manualReviewRequired: true,
+              rationale: "IV push readiness",
+            },
+          ],
+          infusionManualReviewReasons: ["PAYER_VERIFICATION_REQUIRED"],
+          infusionBillingReady: true,
+        },
       }
     );
     expect(item.hcpcsCode).toBe("J2270");
+    expect(item.procedureCode).toBe("96374");
+    expect(item.infusionBillingCategory).toBe("IV_PUSH");
     expect(item.ndc11).toBe("06416112701");
     expect(item.medicationBillingSource).toBe("CATALOG_BILLING_CODE_DEFAULT");
   });

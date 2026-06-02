@@ -377,6 +377,9 @@ export async function tryAutoMedicationAdministrationBilling(
       administrationRoute: admFull.route ?? null,
       catalogRoute: catRoute,
     });
+    const infusionCompanion =
+      resolution.infusionGovernance?.suggestedAdministrationCodes[0]?.suggestedAdministrationCode ?? null;
+    const companionCpt = infusionCompanion ?? adminCptInf?.cpt ?? null;
 
     await appendFromMapping(prisma, {
       facilityId: input.facilityId,
@@ -387,7 +390,7 @@ export async function tryAutoMedicationAdministrationBilling(
       captureSourceType: "MED_ADMIN",
       mapping: resolution.catalogMapping,
       descriptionFallback: resolution.labelFallback,
-      companionProcedureCpt: resolution.catalogMapping.system === "HCPCS" ? adminCptInf?.cpt ?? null : null,
+      companionProcedureCpt: resolution.catalogMapping.system === "HCPCS" ? companionCpt : null,
       companionDescriptionNote: adminCptInf?.description ?? null,
     });
   } catch (e) {
