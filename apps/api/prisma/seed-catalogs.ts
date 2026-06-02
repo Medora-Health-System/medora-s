@@ -20,6 +20,7 @@ import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedHaitiCanonicalMedicationLinkage } from "./helpers/seed-haiti-canonical-medication-linkage";
+import { seedEnterpriseWave1Formulary } from "./helpers/seed-enterprise-wave1-formulary";
 
 const prisma = new PrismaClient();
 
@@ -95,6 +96,13 @@ async function main() {
     });
     console.log(
       `✅ Haiti canonical activation pilot (eligible=${pilot.pilotEligible}, activated=${pilot.activatedProducts}, skippedValidation=${pilot.skippedValidationFailed}, dryRun=${pilot.dryRun})`
+    );
+  }
+
+  if (process.env.MEDORA_ENABLE_ENTERPRISE_WAVE1_FORMULARY === "1") {
+    const wave1Med = await seedEnterpriseWave1Formulary(prisma, { dryRun: false });
+    console.log(
+      `✅ Enterprise Wave 1 formulary (manifest=${wave1Med.manifestEntries}, catalogCreated=${wave1Med.catalogCreated}, catalogEnriched=${wave1Med.catalogEnriched}, products=${wave1Med.productsCreated}, billingProfiles=${wave1Med.billingProfilesCreated}, wave1ReadinessPct=${wave1Med.readinessReport.wave1ReadinessPct})`
     );
   }
 

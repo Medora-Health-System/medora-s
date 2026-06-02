@@ -37,6 +37,7 @@ import {
   type ActivationGateBlockerCode,
 } from "./medication-product-activation-gates.util";
 import type { PriorityErGovernanceMeta } from "./priority-er-inventory-governance.util";
+import { evaluateEnterpriseWave1ActivationBillingGate } from "./enterprise-wave1-billing-gate.util";
 import { parsePriorityErSourceTrace } from "./priority-er-inventory-staging-source.util";
 
 export type ActivationCandidateDto = {
@@ -265,7 +266,7 @@ export class MedicationProductActivationGovernanceService {
   ) {
     const ctx = await this.loadActivationContext(productId, body.facilityId);
     const runtime = ctx.runtime;
-    const gate = evaluateEnableOrderSearchGate({
+    const orderSearchGate = evaluateEnableOrderSearchGate({
       governanceStatus: ctx.product.governanceStatus,
       productIsActive: ctx.product.isActive,
       conceptIsActive: ctx.product.concept.isActive,
@@ -279,7 +280,36 @@ export class MedicationProductActivationGovernanceService {
         Boolean(ctx.defaultPackage?.facilityFormulary?.isOnFormulary),
       ndcReviewRequired: ctx.ndcReviewRequired,
     });
-    this.assertGate(gate);
+
+    const defaultPkg = await this.prisma.medicationPackage.findFirst({
+      where: { productId },
+      orderBy: [{ isDefaultForProduct: "desc" }, { createdAt: "asc" }],
+      include: {
+        billingProfiles: { select: { hcpcsCodeSuggested: true } },
+      },
+    });
+    const catalog = ctx.product.legacyCatalogMedicationId
+      ? await this.prisma.catalogMedication.findUnique({
+          where: { id: ctx.product.legacyCatalogMedicationId },
+          select: { code: true, billingCodeDefault: true, ndc11: true },
+        })
+      : null;
+    const wave1BillingGate = evaluateEnterpriseWave1ActivationBillingGate({
+      governanceNotes: ctx.product.governanceNotes,
+      snapshot: {
+        catalogCode: catalog?.code ?? ctx.product.code,
+        billingCodeDefault: catalog?.billingCodeDefault,
+        ndc11: catalog?.ndc11,
+        packageNdc11: defaultPkg?.ndc11,
+        billingProfileHcpcs: defaultPkg?.billingProfiles[0]?.hcpcsCodeSuggested,
+        hasBillingProfile: (defaultPkg?.billingProfiles.length ?? 0) > 0,
+      },
+    });
+
+    this.assertGate({
+      allowed: orderSearchGate.allowed && wave1BillingGate.allowed,
+      blockers: [...new Set([...orderSearchGate.blockers, ...wave1BillingGate.blockers])],
+    });
 
     const now = new Date().toISOString();
     const notes = mergeProductRuntimeActivation(ctx.product.governanceNotes, {
