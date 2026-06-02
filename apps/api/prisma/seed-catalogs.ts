@@ -9,6 +9,7 @@ import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-cata
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedMedicationSafetyClassifiers } from "./helpers/seed-medication-safety-classifiers";
+import { seedControlledSubstanceGovernance } from "./helpers/seed-controlled-substance-governance";
 import { seedHaitiImagingWave1 } from "./helpers/seed-haiti-imaging-wave1";
 import { seedHaitiImagingWave2 } from "./helpers/seed-haiti-imaging-wave2";
 import { seedHaitiImagingWave3 } from "./helpers/seed-haiti-imaging-wave3";
@@ -44,6 +45,11 @@ async function main() {
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
   await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);
+
+  const controlledGov = await seedControlledSubstanceGovernance(prisma);
+  console.log(
+    `✅ Controlled substance governance applied (matched=${controlledGov.catalogMatched}, updated=${controlledGov.catalogUpdated}, already=${controlledGov.catalogAlreadyCompliant}, notFound=${controlledGov.catalogNotFound}, manualReviewSkipped=${controlledGov.manualReviewSkipped})`
+  );
 
   console.log("✅ Catalogs seeded (lab, imaging, medications)");
 }

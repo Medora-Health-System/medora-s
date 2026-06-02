@@ -1,12 +1,13 @@
 import type { PrismaClient } from "@prisma/client";
-import {
-  MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS,
-  MEDICATION_SAFETY_CLASSIFIER_MANIFEST,
-  type MedicationSafetyClassifierSeedEntry,
-} from "../../../../packages/shared/src/medication/medicationSafetyClassifierManifest";
-import { assertMedicationSafetyClassifierManifest } from "../../../../packages/shared/src/medication/medicationSafetyClassifierValidation";
+import type { MedicationSafetyClassifierSeedEntry } from "../../../../packages/shared/src/medication/medicationSafetyClassifierValidation";
+import { loadMedicationSafetyClassifierSeedModules } from "./medication-governance-seed-modules";
 
-const MEDICATION_SAFETY_DOMAINS = Object.keys(MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS);
+const MEDICATION_SAFETY_DOMAINS = [
+  "CONTROLLED_SUBSTANCE",
+  "HIGH_ALERT",
+  "SAFETY_REQUIREMENT",
+  "LASA",
+] as const;
 
 function normalizeSearchText(parts: string[]): string {
   return parts
@@ -66,6 +67,12 @@ async function upsertClassifier(prisma: PrismaClient, entry: MedicationSafetyCla
  * Does not read or write CatalogMedication, MedicationSafetyProfile, or orders.
  */
 export async function seedMedicationSafetyClassifiers(prisma: PrismaClient): Promise<void> {
+  const {
+    MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS,
+    MEDICATION_SAFETY_CLASSIFIER_MANIFEST,
+    assertMedicationSafetyClassifierManifest,
+  } = await loadMedicationSafetyClassifierSeedModules();
+
   assertMedicationSafetyClassifierManifest(MEDICATION_SAFETY_CLASSIFIER_MANIFEST);
 
   for (const entry of MEDICATION_SAFETY_CLASSIFIER_MANIFEST) {
@@ -74,7 +81,7 @@ export async function seedMedicationSafetyClassifiers(prisma: PrismaClient): Pro
 
   const counts = await prisma.termClassifier.groupBy({
     by: ["domain"],
-    where: { domain: { in: MEDICATION_SAFETY_DOMAINS } },
+    where: { domain: { in: [...MEDICATION_SAFETY_DOMAINS] } },
     _count: { _all: true },
   });
   const byDomain = Object.fromEntries(counts.map((c) => [c.domain, c._count._all]));
