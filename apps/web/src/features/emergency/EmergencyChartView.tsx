@@ -938,14 +938,7 @@ export function EmergencyChartView() {
               <MedoraCard leftAccentColor="#059669" variant="default">
                 <MedoraCardInner>
                   <MedoraCardIdentity initials="M">
-                    <MedoraCardTitle
-                      title={t("emergencyWorkspace.marTitle")}
-                      subline={
-                        <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
-                          {t("emergencyWorkspace.marSubline")}
-                        </p>
-                      }
-                    />
+                    <MedoraCardTitle title={t("emergencyWorkspace.marTitle")} />
                   </MedoraCardIdentity>
                   <div style={{ width: "100%", marginTop: 12 }}>
                     <MedicationAdministrationTab

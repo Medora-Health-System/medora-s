@@ -5677,7 +5677,6 @@ export default {
       visitSummary: "Synthèse et clôture",
     },
     marTitle: "Administration médicamenteuse (MAR)",
-    marSubline: "Même outil que l'onglet MAR du dossier.",
     marUnavailableTitle: "MAR",
     marUnavailableSubline: "Non disponible pour ce rôle sur cette page.",
     marTabLink: "Onglet MAR (dossier)",

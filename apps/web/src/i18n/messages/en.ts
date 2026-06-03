@@ -5709,7 +5709,6 @@ export default {
       visitSummary: "Summary and closure",
     },
     marTitle: "Medication administration (MAR)",
-    marSubline: "Same tool as the MAR tab on the encounter chart.",
     marUnavailableTitle: "MAR",
     marUnavailableSubline: "Not available for this role on this page.",
     marTabLink: "MAR tab (chart)",
