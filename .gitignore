@@ -42,3 +42,6 @@ apps/api/prisma/helpers/seed-haiti-lab-imaging-catalog.d.ts
 apps/api/prisma/helpers/seed-haiti-medication-catalog.js
 apps/api/prisma/helpers/seed-haiti-medication-catalog.js.map
 apps/api/prisma/helpers/seed-haiti-medication-catalog.d.ts
+
+# Local Prisma backups
+apps/api/prisma/backups/
