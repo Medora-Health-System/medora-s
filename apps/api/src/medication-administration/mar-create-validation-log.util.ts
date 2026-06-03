@@ -38,6 +38,20 @@ export function badRequestExceptionMessage(err: BadRequestException): string {
   return String(err.message);
 }
 
+export function badRequestExceptionCode(err: BadRequestException): string | null {
+  const response = err.getResponse();
+  if (response && typeof response === "object" && "code" in response) {
+    const code = (response as { code?: unknown }).code;
+    return typeof code === "string" && code.trim() ? code.trim() : null;
+  }
+  return governanceBlockerCodeFromMessage(badRequestExceptionMessage(err));
+}
+
+/** Structured MAR governance rejection (M1.7B.2). */
+export function marValidationBadRequest(code: string, message: string): BadRequestException {
+  return new BadRequestException({ statusCode: 400, message, code });
+}
+
 export function governanceBlockerCodeFromMessage(message: string): string | null {
   const m = message.trim();
   if (m.includes("Vérification pharmacie requise")) return "PHARMACY_VERIFICATION_REQUIRED";

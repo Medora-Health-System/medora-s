@@ -1,9 +1,10 @@
 import type { PharmacyVerificationStatus, PrismaClient } from "@prisma/client";
+export type { MedicationGovernanceResolveInput } from "@medora/shared";
 import {
-  HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES,
-  parseMedicationHighAlertCategoriesJson,
-  parseMedicationSafetyRequirementsFromCategoriesJson,
-  parsePharmacyGovernanceFromProfile,
+  mergeMedicationSafetyGovernanceRead as mergeGovernanceSnapshot,
+  resolveMedicationAdministrationRequirements,
+  type MedicationGovernanceProductInput,
+  type MedicationGovernanceResolveInput,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
 
@@ -19,6 +20,9 @@ export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
 
 type CatalogGovernanceRow = {
   id: string;
+  code?: string | null;
+  genericName?: string | null;
+  therapeuticClass?: string | null;
   isControlled: boolean;
   controlledSchedule: string | null;
   requiresWitness: boolean;
@@ -26,7 +30,9 @@ type CatalogGovernanceRow = {
 };
 
 type ProfileGovernanceRow = {
+  id?: string;
   legacyCatalogMedicationId: string | null;
+  legacyCatalogMedication?: CatalogGovernanceRow | null;
   concept: {
     safetyProfile: {
       isHighAlert: boolean;
@@ -43,65 +49,101 @@ type ProfileGovernanceRow = {
   } | null;
 };
 
+const CATALOG_GOVERNANCE_SELECT = {
+  id: true,
+  code: true,
+  genericName: true,
+  therapeuticClass: true,
+  isControlled: true,
+  controlledSchedule: true,
+  requiresWitness: true,
+  requiresDoubleSign: true,
+} as const;
+
+/** Resolve map key for governance enrichment — prefer resolved catalogMedication.id (M1.7B.2). */
+export function resolveGovernanceCatalogKeyForOrderItem(
+  item: {
+    catalogItemId?: string | null;
+    catalogMedication?: { id?: string | null } | null;
+  },
+  resolveInputByCatalogId: Map<string, MedicationGovernanceResolveInput>
+): string | null {
+  const candidates = [
+    item.catalogMedication?.id?.trim(),
+    item.catalogItemId?.trim(),
+  ].filter(Boolean) as string[];
+
+  for (const id of candidates) {
+    if (resolveInputByCatalogId.has(id)) return id;
+  }
+  return null;
+}
+
+export function profileRowToProductInput(
+  profileRow: ProfileGovernanceRow | null | undefined
+): MedicationGovernanceProductInput {
+  const safety = profileRow?.concept.safetyProfile ?? null;
+  if (!safety && !profileRow?.administrationProfile) return null;
+  if (!safety) {
+    return {
+      isHighAlert: false,
+      highAlertCategories: null,
+      lasaGroupId: null,
+      isControlled: false,
+      controlledSchedule: null,
+      requiresWitness: false,
+      requiresDoubleSign: false,
+      allowsWasteDocumentation: profileRow?.administrationProfile?.allowsWasteDocumentation ?? false,
+    };
+  }
+  return {
+    isHighAlert: safety.isHighAlert,
+    highAlertCategories: safety.highAlertCategories,
+    lasaGroupId: safety.lasaGroupId,
+    isControlled: safety.isControlled,
+    controlledSchedule: safety.controlledSchedule,
+    requiresWitness: safety.requiresWitness,
+    requiresDoubleSign: safety.requiresDoubleSign,
+    allowsWasteDocumentation: profileRow?.administrationProfile?.allowsWasteDocumentation ?? false,
+  };
+}
+
+export function catalogRowToResolveInput(
+  catalog: CatalogGovernanceRow | null | undefined,
+  profileRow: ProfileGovernanceRow | null | undefined
+): MedicationGovernanceResolveInput | null {
+  const product = profileRowToProductInput(profileRow);
+  if (!catalog && !product) return null;
+  return {
+    catalog: catalog
+      ? {
+          id: catalog.id,
+          code: catalog.code ?? null,
+          genericName: catalog.genericName ?? null,
+          therapeuticClass: catalog.therapeuticClass ?? null,
+          isControlled: catalog.isControlled,
+          controlledSchedule: catalog.controlledSchedule,
+          requiresWitness: catalog.requiresWitness,
+          requiresDoubleSign: catalog.requiresDoubleSign,
+        }
+      : null,
+    product,
+  };
+}
+
+/** @deprecated Prefer resolveMedicationAdministrationRequirements — kept for legacy call sites during migration. */
 export function mergeMedicationSafetyGovernanceRead(
   catalog: CatalogGovernanceRow | null | undefined,
   profileRow: ProfileGovernanceRow | null | undefined,
   pharmacyStatus: PharmacyVerificationStatus | null | undefined
 ): MedicationSafetyGovernanceRead | null {
-  if (!catalog && !profileRow) return null;
-
-  const safety = profileRow?.concept.safetyProfile ?? null;
-  const parsed = parseMedicationHighAlertCategoriesJson(safety?.highAlertCategories);
-
-  const isControlled = safety?.isControlled ?? catalog?.isControlled ?? false;
-  const controlledSchedule = safety?.controlledSchedule ?? catalog?.controlledSchedule ?? null;
-  const requiresWitness = Boolean(safety?.requiresWitness || catalog?.requiresWitness);
-  const safetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
-    safety?.highAlertCategories
-  );
-  const requiresDoubleSignFromCodes = safetyRequirementCodes.some((c) =>
-    (HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES as readonly string[]).includes(c)
-  );
-  const requiresDoubleSign = Boolean(
-    safety?.requiresDoubleSign || catalog?.requiresDoubleSign || requiresDoubleSignFromCodes
-  );
-  const isHighAlert = safety?.isHighAlert ?? false;
-  const wasteDocumentationRecommended =
-    Boolean(profileRow?.administrationProfile?.allowsWasteDocumentation) && isControlled;
-
-  const pharmacyParsed = parsePharmacyGovernanceFromProfile({
-    controlledSchedule,
-    highAlertCategories: safety?.highAlertCategories,
+  const resolveInput = catalogRowToResolveInput(catalog, profileRow);
+  if (!resolveInput) return null;
+  return mergeGovernanceSnapshot({
+    catalog: resolveInput.catalog,
+    product: resolveInput.product,
+    pharmacyStatus: pharmacyStatus ?? null,
   });
-  const requiresPharmacyVerification = pharmacyParsed.requiresPharmacyVerification;
-
-  const hasSignal =
-    isControlled ||
-    isHighAlert ||
-    Boolean(parsed.highAlertClass && parsed.highAlertClass !== "HIGH_ALERT_NONE") ||
-    Boolean(safety?.lasaGroupId?.trim() || parsed.lasaSeverity) ||
-    requiresWitness ||
-    requiresDoubleSign ||
-    wasteDocumentationRecommended ||
-    requiresPharmacyVerification ||
-    (pharmacyStatus != null && pharmacyStatus !== "NOT_REQUIRED" && pharmacyStatus !== "VERIFIED");
-
-  if (!hasSignal) return null;
-
-  return {
-    isControlled,
-    controlledSchedule,
-    isHighAlert,
-    highAlertClass: parsed.highAlertClass,
-    lasaGroupId: safety?.lasaGroupId ?? parsed.lasaGroupCode,
-    lasaGroupLabel: parsed.lasaGroupLabel,
-    lasaSeverity: parsed.lasaSeverity,
-    requiresWitness,
-    requiresDoubleSign,
-    wasteDocumentationRecommended,
-    pharmacyVerificationStatus: pharmacyStatus ?? null,
-    requiresPharmacyVerification,
-  };
 }
 
 export async function loadPharmacyVerificationDetailsByOrderItemId(
@@ -147,68 +189,137 @@ export async function loadPharmacyVerificationDetailsByOrderItemId(
   return out;
 }
 
-export async function loadMedicationSafetyGovernanceByCatalogId(
+export async function loadMedicationGovernanceResolveInputByCatalogId(
   prisma: Pick<PrismaClient, "catalogMedication" | "medicationProduct">,
   catalogMedicationIds: string[]
-): Promise<Map<string, MedicationSafetyGovernanceRead>> {
+): Promise<Map<string, MedicationGovernanceResolveInput>> {
   const uniqueIds = [...new Set(catalogMedicationIds.filter(Boolean))];
-  const out = new Map<string, MedicationSafetyGovernanceRead>();
+  const out = new Map<string, MedicationGovernanceResolveInput>();
   if (uniqueIds.length === 0) return out;
+
+  const productSelect = {
+    id: true,
+    legacyCatalogMedicationId: true,
+    legacyCatalogMedication: { select: CATALOG_GOVERNANCE_SELECT },
+    concept: {
+      select: {
+        safetyProfile: {
+          select: {
+            isHighAlert: true,
+            highAlertCategories: true,
+            lasaGroupId: true,
+            isControlled: true,
+            controlledSchedule: true,
+            requiresWitness: true,
+            requiresDoubleSign: true,
+          },
+        },
+      },
+    },
+    administrationProfile: {
+      select: { allowsWasteDocumentation: true },
+    },
+  } as const;
 
   const [catalogRows, productRows] = await Promise.all([
     prisma.catalogMedication.findMany({
       where: { id: { in: uniqueIds } },
-      select: {
-        id: true,
-        isControlled: true,
-        controlledSchedule: true,
-        requiresWitness: true,
-        requiresDoubleSign: true,
-      },
+      select: CATALOG_GOVERNANCE_SELECT,
     }),
     prisma.medicationProduct.findMany({
-      where: { legacyCatalogMedicationId: { in: uniqueIds }, isActive: true },
-      select: {
-        legacyCatalogMedicationId: true,
-        concept: {
-          select: {
-            safetyProfile: {
-              select: {
-                isHighAlert: true,
-                highAlertCategories: true,
-                lasaGroupId: true,
-                isControlled: true,
-                controlledSchedule: true,
-                requiresWitness: true,
-                requiresDoubleSign: true,
-              },
-            },
-          },
-        },
-        administrationProfile: {
-          select: { allowsWasteDocumentation: true },
-        },
+      where: {
+        isActive: true,
+        OR: [
+          { legacyCatalogMedicationId: { in: uniqueIds } },
+          { id: { in: uniqueIds } },
+        ],
       },
+      select: productSelect,
     }),
   ]);
 
-  const catalogById = new Map(catalogRows.map((c) => [c.id, c]));
-  const productByCatalogId = new Map<string, ProfileGovernanceRow>();
+  const catalogById = new Map<string, CatalogGovernanceRow>(
+    catalogRows.map((c) => [c.id, c as CatalogGovernanceRow])
+  );
+  const productByLegacyCatalogId = new Map<string, ProfileGovernanceRow>();
+  const productByProductId = new Map<string, ProfileGovernanceRow>();
+
   for (const p of productRows) {
-    const catalogId = p.legacyCatalogMedicationId;
-    if (!catalogId || productByCatalogId.has(catalogId)) continue;
-    productByCatalogId.set(catalogId, p);
+    const row = p as ProfileGovernanceRow;
+    const legacyCatalogId = row.legacyCatalogMedicationId?.trim();
+    if (legacyCatalogId && !productByLegacyCatalogId.has(legacyCatalogId)) {
+      productByLegacyCatalogId.set(legacyCatalogId, row);
+    }
+    if (row.id && !productByProductId.has(row.id)) {
+      productByProductId.set(row.id, row);
+    }
+    const embeddedCatalog = row.legacyCatalogMedication;
+    if (embeddedCatalog?.id && !catalogById.has(embeddedCatalog.id)) {
+      catalogById.set(embeddedCatalog.id, {
+        id: embeddedCatalog.id,
+        code: embeddedCatalog.code ?? null,
+        genericName: embeddedCatalog.genericName ?? null,
+        therapeuticClass: embeddedCatalog.therapeuticClass ?? null,
+        isControlled: embeddedCatalog.isControlled,
+        controlledSchedule: embeddedCatalog.controlledSchedule,
+        requiresWitness: embeddedCatalog.requiresWitness,
+        requiresDoubleSign: embeddedCatalog.requiresDoubleSign,
+      });
+    }
   }
+
+  const storeResolveInput = (
+    key: string,
+    catalogRow: CatalogGovernanceRow | undefined,
+    profileRow: ProfileGovernanceRow | undefined
+  ) => {
+    const resolveInput = catalogRowToResolveInput(catalogRow, profileRow);
+    if (!resolveInput) return;
+    out.set(key, resolveInput);
+    const canonicalCatalogId = catalogRow?.id?.trim();
+    if (canonicalCatalogId && canonicalCatalogId !== key) {
+      out.set(canonicalCatalogId, resolveInput);
+    }
+  };
 
   for (const id of uniqueIds) {
-    const merged = mergeMedicationSafetyGovernanceRead(
-      catalogById.get(id),
-      productByCatalogId.get(id),
-      null
-    );
-    if (merged) out.set(id, merged);
+    const catalogDirect = catalogById.get(id);
+    const profileDirect = productByLegacyCatalogId.get(id) ?? productByProductId.get(id);
+    const catalogRow =
+      catalogDirect ??
+      profileDirect?.legacyCatalogMedication ??
+      (profileDirect?.legacyCatalogMedicationId
+        ? catalogById.get(profileDirect.legacyCatalogMedicationId)
+        : undefined);
+    const profileRow =
+      (catalogRow?.id ? productByLegacyCatalogId.get(catalogRow.id) : undefined) ??
+      productByLegacyCatalogId.get(id) ??
+      productByProductId.get(id);
+
+    storeResolveInput(id, catalogRow, profileRow);
   }
 
+  return out;
+}
+
+/** @deprecated Use loadMedicationGovernanceResolveInputByCatalogId + resolver */
+export async function loadMedicationSafetyGovernanceByCatalogId(
+  prisma: Pick<PrismaClient, "catalogMedication" | "medicationProduct">,
+  catalogMedicationIds: string[]
+): Promise<Map<string, MedicationSafetyGovernanceRead>> {
+  const resolveInputs = await loadMedicationGovernanceResolveInputByCatalogId(
+    prisma,
+    catalogMedicationIds
+  );
+  const out = new Map<string, MedicationSafetyGovernanceRead>();
+  for (const [id, resolveInput] of resolveInputs) {
+    const merged = mergeGovernanceSnapshot({
+      catalog: resolveInput.catalog,
+      product: resolveInput.product,
+      pharmacyStatus: null,
+    });
+    if (merged) out.set(id, merged);
+  }
   return out;
 }
 
@@ -236,53 +347,68 @@ export async function loadLatestPharmacyVerificationByOrderItemId(
 }
 
 export function attachMedicationSafetyGovernanceToOrderItem<
-  T extends { id: string; catalogItemType: string; catalogItemId: string | null },
+  T extends {
+    id: string;
+    catalogItemType: string;
+    catalogItemId: string | null;
+    route?: string | null;
+    catalogMedication?: { id?: string | null } | null;
+  },
 >(
   item: T,
-  governanceByCatalogId: Map<string, MedicationSafetyGovernanceRead>,
+  resolveInputByCatalogId: Map<string, MedicationGovernanceResolveInput>,
   pharmacyByOrderItemId: Map<string, PharmacyVerificationStatus>,
   pharmacyDetailsByOrderItemId?: Map<string, PharmacyVerificationDetailRead>
-): T & { medicationSafetyGovernance?: MedicationSafetyGovernanceRead | null } {
+): T & {
+  medicationSafetyGovernance?: MedicationSafetyGovernanceSnapshot | null;
+  medicationGovernanceResolveInput?: MedicationGovernanceResolveInput | null;
+} {
   if (item.catalogItemType !== "MEDICATION") {
-    return { ...item, medicationSafetyGovernance: null };
+    return {
+      ...item,
+      medicationSafetyGovernance: null,
+      medicationGovernanceResolveInput: null,
+    };
   }
 
-  const base = item.catalogItemId ? governanceByCatalogId.get(item.catalogItemId) : undefined;
-  const pharmacyStatus = pharmacyByOrderItemId.get(item.id);
-
-  if (!base && !pharmacyStatus) {
-    return { ...item, medicationSafetyGovernance: null };
+  const catalogKey = resolveGovernanceCatalogKeyForOrderItem(item, resolveInputByCatalogId);
+  const resolveInput = catalogKey ? resolveInputByCatalogId.get(catalogKey) : undefined;
+  if (!resolveInput) {
+    return {
+      ...item,
+      medicationSafetyGovernance: null,
+      medicationGovernanceResolveInput: null,
+    };
   }
 
   const detail = pharmacyDetailsByOrderItemId?.get(item.id);
-  const requiresPharmacy = base?.requiresPharmacyVerification === true;
-  const effectivePharmacyStatus =
-    pharmacyStatus ??
-    detail?.verificationStatus ??
-    (requiresPharmacy ? ("PENDING" as const) : null);
+  const pharmacyStatus = pharmacyByOrderItemId.get(item.id) ?? detail?.verificationStatus ?? null;
 
-  if (!base) {
-    if (!effectivePharmacyStatus) {
-      return { ...item, medicationSafetyGovernance: null };
-    }
+  const requirements = resolveMedicationAdministrationRequirements({
+    ...resolveInput,
+    pharmacy: {
+      verificationStatus: pharmacyStatus,
+      verifiedAt: detail?.verifiedAt ?? null,
+      verifiedByDisplay: detail?.pharmacistDisplay ?? null,
+    },
+    marContext: {
+      marAction: "administered",
+      route: item.route ?? null,
+      isContinuousInfusion: false,
+    },
+  });
+
+  if (!requirements) {
     return {
       ...item,
-      medicationSafetyGovernance: {
-        pharmacyVerificationStatus: effectivePharmacyStatus,
-        pharmacyVerifiedAt: detail?.verifiedAt ?? null,
-        pharmacyVerifiedByDisplay: detail?.pharmacistDisplay ?? null,
-      },
+      medicationSafetyGovernance: null,
+      medicationGovernanceResolveInput: resolveInput,
     };
   }
 
   return {
     ...item,
-    medicationSafetyGovernance: {
-      ...base,
-      pharmacyVerificationStatus:
-        effectivePharmacyStatus ?? base.pharmacyVerificationStatus ?? null,
-      pharmacyVerifiedAt: detail?.verifiedAt ?? null,
-      pharmacyVerifiedByDisplay: detail?.pharmacistDisplay ?? null,
-    },
+    medicationSafetyGovernance: requirements.snapshot,
+    medicationGovernanceResolveInput: requirements.resolveInput,
   };
 }

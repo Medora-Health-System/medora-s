@@ -2,7 +2,6 @@ import { BadRequestException } from "@nestjs/common";
 import {
   AuditAction,
   MedicationMarAction,
-  MedicationOverrideType,
   PharmacyVerificationStatus,
 } from "@prisma/client";
 import { MedicationAdministrationService } from "./medication-administration.service";
@@ -52,7 +51,7 @@ function hydroProductProfile() {
   };
 }
 
-describe("MedicationAdministrationService Hydromorphone MAR (M1.7A.8)", () => {
+describe("MedicationAdministrationService Hydromorphone MAR (M1.7A.9)", () => {
   let auditLog: jest.Mock;
   let marCreate: jest.Mock;
   let overrideCreate: jest.Mock;
@@ -169,61 +168,56 @@ describe("MedicationAdministrationService Hydromorphone MAR (M1.7A.8)", () => {
     return { service };
   }
 
-  it("returns 400 PHARMACY_VERIFICATION_REQUIRED when Schedule II pending without override", async () => {
-    const { service } = makeService(PharmacyVerificationStatus.PENDING);
-    await expect(
-      service.create("enc-1", "fac-1", "nurse-1", {
-        orderItemId: "oi-hydro",
-        marAction: "administered",
-        administeredQuantity: 1,
-        lasaAcknowledged: true,
-        lasaMedicationSelectionConfirmed: true,
-      })
-    ).rejects.toBeInstanceOf(BadRequestException);
-    expect(marCreate).not.toHaveBeenCalled();
-  });
-
-  it("creates Hydromorphone MAR with pharmacy override and LASA acknowledgement", async () => {
+  it("creates Hydromorphone MAR without pharmacy verification or double-check (M1.7A.9)", async () => {
     const { service } = makeService(PharmacyVerificationStatus.PENDING);
     await service.create("enc-1", "fac-1", "nurse-1", {
       orderItemId: "oi-hydro",
       marAction: "administered",
       administeredQuantity: 1,
       route: "IV",
-      pharmacyVerificationOverrideAcknowledged: true,
-      pharmacyVerificationOverrideReason: "Urgence — pharmacien en route",
       lasaAcknowledged: true,
       lasaMedicationSelectionConfirmed: true,
-      highAlertVerifierDisplayName: "Dr Smith",
-      highAlertOverrideAcknowledged: true,
-      highAlertOverrideReason: "Urgence — vérificateur indisponible",
     });
 
     expect(marCreate).toHaveBeenCalled();
-    expect(overrideCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          overrideType: MedicationOverrideType.PHARMACY_PENDING_OVERRIDE,
-        }),
-      })
-    );
-    expect(auditLog).toHaveBeenCalledWith(
+    expect(overrideCreate).not.toHaveBeenCalled();
+    expect(auditLog).not.toHaveBeenCalledWith(
       AuditAction.PHARMACY_VERIFICATION_OVERRIDE,
-      "MEDICATION_ADMINISTRATION",
-      expect.objectContaining({ critical: true })
+      expect.anything(),
+      expect.anything()
     );
   });
 
-  it("creates Hydromorphone MAR when pharmacy verified", async () => {
-    const { service } = makeService(PharmacyVerificationStatus.VERIFIED);
+  it("creates Hydromorphone MAR when pharmacy still pending — no override required", async () => {
+    const { service } = makeService(PharmacyVerificationStatus.PENDING);
     await service.create("enc-1", "fac-1", "nurse-1", {
       orderItemId: "oi-hydro",
       marAction: "administered",
       administeredQuantity: 1,
       lasaAcknowledged: true,
       lasaMedicationSelectionConfirmed: true,
-      highAlertVerifierDisplayName: "Dr Smith",
     });
     expect(marCreate).toHaveBeenCalled();
+  });
+
+  it("rejects Hydromorphone MAR without LASA acknowledgement (M1.7B.2)", async () => {
+    const { service } = makeService(PharmacyVerificationStatus.PENDING);
+    let caught: BadRequestException | null = null;
+    try {
+      await service.create("enc-1", "fac-1", "nurse-1", {
+        orderItemId: "oi-hydro",
+        marAction: "administered",
+        administeredQuantity: 1,
+        route: "IV",
+      });
+    } catch (err) {
+      caught = err as BadRequestException;
+    }
+
+    expect(caught).toBeInstanceOf(BadRequestException);
+    expect(caught!.getResponse()).toMatchObject({
+      code: "LASA_ACKNOWLEDGEMENT_REQUIRED",
+    });
+    expect(marCreate).not.toHaveBeenCalled();
   });
 });

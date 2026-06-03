@@ -84,7 +84,7 @@ import { MedicationAdministrationService } from "../medication-administration/me
 import {
   attachMedicationSafetyGovernanceToOrderItem,
 } from "../medication-safety/medication-safety-governance-read.util";
-import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
+import { loadMedicationGovernanceResolveInputByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
 import {
   loadLatestPharmacyVerificationByOrderItemIdSafe,
   loadPharmacyVerificationDetailsByOrderItemIdSafe,
@@ -1327,7 +1327,20 @@ export class OrdersService {
     }
 
     const medicationMaps = await loadOrderMedicationCatalogMaps(this.prisma, medicationLines);
-    const medIdList = [...medicationMaps.byCatalogId.keys()];
+    const medIdList = [
+      ...new Set(
+        medicationLines.flatMap((it) => {
+          const ids: string[] = [];
+          const catalogRow = resolveOrderMedicationCatalogRow(it, medicationMaps);
+          if (catalogRow?.id) ids.push(catalogRow.id);
+          const catalogItemId = it.catalogItemId?.trim();
+          if (catalogItemId) ids.push(catalogItemId);
+          const productId = it.medicationProductId?.trim();
+          if (productId) ids.push(productId);
+          return ids;
+        })
+      ),
+    ];
 
     /** Required — medication / lab / imaging labels must resolve even if optional enrichment fails. */
     const [labs, imgs] = await Promise.all([
@@ -1346,10 +1359,10 @@ export class OrdersService {
     ]);
 
     /** Optional — pharmacy verification / governance must not block display labels (M1.7A.7). */
-    const [governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
+    const [resolveInputByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
       await Promise.all([
         medIdList.length
-          ? loadMedicationSafetyGovernanceByCatalogIdSafe(this.prisma, medIdList)
+          ? loadMedicationGovernanceResolveInputByCatalogIdSafe(this.prisma, medIdList)
           : Promise.resolve(new Map()),
         medicationOrderItemIds.length
           ? loadLatestPharmacyVerificationByOrderItemIdSafe(this.prisma, medicationOrderItemIds)
@@ -1408,7 +1421,7 @@ export class OrdersService {
         };
         return attachMedicationSafetyGovernanceToOrderItem(
           enriched,
-          governanceByCatalogId,
+          resolveInputByCatalogId,
           pharmacyByOrderItemId,
           pharmacyDetailsByOrderItemId
         );
