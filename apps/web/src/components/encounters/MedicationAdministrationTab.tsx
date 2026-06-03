@@ -433,6 +433,7 @@ export function MedicationAdministrationTab({
   const [marDraftRestoredAt, setMarDraftRestoredAt] = useState<string | null>(null);
   const [marDraftSavedLocallyAt, setMarDraftSavedLocallyAt] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
+  const [marGovernanceDetailsOpen, setMarGovernanceDetailsOpen] = useState(false);
   const [marControlledForm, setMarControlledForm] = useState<MarControlledSubstanceFormState>({
     witnessUserId: null,
     witnessDisplayName: "",
@@ -950,10 +951,6 @@ export function MedicationAdministrationTab({
   }, [modalItem, modalResolvedRoute]);
 
   const advancedMarWarningCount = marAdvancedMedicationSafetyWarnings.length;
-  useEffect(() => {
-    if (!modalItem) return;
-    setMarSafetyDetailsOpen(advancedMarWarningCount > 0);
-  }, [modalItem?.orderItemId, advancedMarWarningCount]);
 
   const openModal = (row: (typeof taskRows)[0], options?: { hideAdministeredAction?: boolean }) => {
     const hideAdmin = options?.hideAdministeredAction === true;
@@ -1020,6 +1017,8 @@ export function MedicationAdministrationTab({
     });
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
+    setMarSafetyDetailsOpen(false);
+    setMarGovernanceDetailsOpen(false);
     clearModalEffectiveTime();
   };
 
@@ -1037,7 +1036,7 @@ export function MedicationAdministrationTab({
     const orderItemId =
       typeof modalItem.orderItemId === "string" ? modalItem.orderItemId.trim() : "";
     if (!isOrderItemIdUuid(orderItemId)) {
-      console.warn("MAR blocked: invalid orderItemId", modalItem.orderItemId);
+      setModalSubmitError(t("marTab.errInvalidOrderItemId"));
       return;
     }
     if (
@@ -1108,6 +1107,21 @@ export function MedicationAdministrationTab({
       });
       if (clientErr) {
         setModalSubmitError(clientErr);
+        return;
+      }
+    }
+
+    if (modalDoseValue.trim()) {
+      const doseNum = Number(modalDoseValue);
+      if (!Number.isFinite(doseNum) || doseNum < 0) {
+        setModalSubmitError(t("marTab.errInvalidNumericField"));
+        return;
+      }
+    }
+    if (modalAdminQty.trim()) {
+      const adminNum = Number(modalAdminQty);
+      if (!Number.isFinite(adminNum) || adminNum < 0) {
+        setModalSubmitError(t("marTab.errInvalidNumericField"));
         return;
       }
     }
@@ -1978,7 +1992,6 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                       <MedicationMarSafetyGovernanceBadges governance={row.governanceDisplay} compact />
-                      <MedicationMarSafetySummaryPanel governance={row.governanceDisplay} density="compact" />
                     </td>
                     <td style={marTableMetricCellStyle}>
                       {marLastAction}
@@ -2129,6 +2142,25 @@ export function MedicationAdministrationTab({
             <h4 id="mar-modal-title" style={{ margin: "0 0 12px 0", fontSize: 17 }}>
               {t("marTab.modalTitle")}
             </h4>
+
+            {modalSubmitError ? (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #ef9a9a",
+                  backgroundColor: "#ffebee",
+                  fontSize: 13,
+                  color: "#b71c1c",
+                  fontWeight: 600,
+                }}
+              >
+                {modalSubmitError}
+              </div>
+            ) : null}
+
             <p style={{ margin: "0 0 12px 0", fontSize: 14, fontWeight: 600, wordBreak: "break-word" }}>{modalItem.label}</p>
             <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#64748b", ...MAR_CELL_WRAP_LONG_TEXT }}>
               {modalItem.authorityLine}
@@ -2144,7 +2176,25 @@ export function MedicationAdministrationTab({
               </p>
             ) : null}
             <MedicationMarSafetyGovernanceBadges governance={modalItem.governanceDisplay} />
-            <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} />
+            <details
+              style={{ marginBottom: 12 }}
+              open={marGovernanceDetailsOpen}
+              onToggle={(e) => setMarGovernanceDetailsOpen(e.currentTarget.open)}
+            >
+              <summary
+                style={{
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#334155",
+                  listStyle: "none",
+                  marginBottom: 8,
+                }}
+              >
+                {t("mar.viewSafetyDetails")}
+              </summary>
+              <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} density="compact" />
+            </details>
             <MarPharmacyVerificationPanel
               governance={modalItem.governanceDisplay}
               marAction={modalAction}
@@ -2287,24 +2337,6 @@ export function MedicationAdministrationTab({
                 </div>
               );
             })()}
-
-            {modalSubmitError ? (
-              <div
-                role="alert"
-                style={{
-                  marginBottom: 12,
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #ef9a9a",
-                  backgroundColor: "#ffebee",
-                  fontSize: 13,
-                  color: "#b71c1c",
-                  fontWeight: 600,
-                }}
-              >
-                {modalSubmitError}
-              </div>
-            ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.routeOptional")}

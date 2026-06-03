@@ -72,6 +72,11 @@ import {
   persistPharmacyMarGovernance,
   resolvePharmacyMarGovernance,
 } from "../medication-safety/pharmacy-mar-governance.util";
+import {
+  badRequestExceptionMessage,
+  governanceBlockerCodeFromMessage,
+  logMarCreateValidationBlocked,
+} from "./mar-create-validation-log.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -268,10 +273,6 @@ export class MedicationAdministrationService {
     return unique.join("|");
   }
 
-  /**
-   * Stable medication label for MAR / audit — Phase C strict EN-neutral: `displayNameEn` → acceptable manual → `code`
-   * → strength/notes → typed EN fallback (never legacy `name` / `displayNameFr` as clinical display).
-   */
   private medicationLabelSnapshotFromMedicationOrderItem(
     item: OrderItem,
     catalogMedication: {
@@ -293,6 +294,24 @@ export class MedicationAdministrationService {
       },
       catalogMedication
     );
+  }
+
+  private logAndThrowMarCreateBlocked(
+    context: {
+      encounterId: string;
+      orderItemId?: string | null;
+      medicationProductId?: string | null;
+      catalogMedicationId?: string | null;
+      marAction?: string | null;
+    },
+    message: string
+  ): never {
+    logMarCreateValidationBlocked({
+      ...context,
+      governanceBlockerCode: governanceBlockerCodeFromMessage(message),
+      message,
+    });
+    throw new BadRequestException(message);
   }
 
   async findByEncounter(encounterId: string, facilityId: string) {
@@ -465,58 +484,90 @@ export class MedicationAdministrationService {
           )
         : null;
 
+    const marValidationLogContext = {
+      encounterId,
+      orderItemId: data.orderItemId ?? null,
+      medicationProductId: linkedMedicationLine?.medicationProductId ?? null,
+      catalogMedicationId: catalogMedication?.id ?? null,
+      marAction: marActionResolved,
+    };
+
+    const runMarGovernanceAssert = (fn: () => void) => {
+      try {
+        fn();
+      } catch (err) {
+        if (err instanceof BadRequestException) {
+          const message = badRequestExceptionMessage(err);
+          logMarCreateValidationBlocked({
+            ...marValidationLogContext,
+            governanceBlockerCode: governanceBlockerCodeFromMessage(message),
+            message,
+          });
+        }
+        throw err;
+      }
+    };
+
     if (
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
     ) {
-      assertControlledSubstanceMarCreate({
-        marAction: marActionResolved,
-        governance: controlledGovernance,
-        witnessUserId: data.witnessUserId,
-        witnessDisplayName: data.witnessDisplayName,
-        administeredByUserId,
-        wasteAmount: data.wasteAmount ?? null,
-        wasteUnit: data.wasteUnit,
-        wasteReason: data.wasteReason,
-        wasteWitnessUserId: data.wasteWitnessUserId,
-        overrideReason: data.overrideReason,
-        controlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
-        orderedQuantity: linkedMedicationLine?.quantity ?? null,
-        administeredQuantity: data.administeredQuantity ?? null,
-      });
+      runMarGovernanceAssert(() =>
+        assertControlledSubstanceMarCreate({
+          marAction: marActionResolved,
+          governance: controlledGovernance,
+          witnessUserId: data.witnessUserId,
+          witnessDisplayName: data.witnessDisplayName,
+          administeredByUserId,
+          wasteAmount: data.wasteAmount ?? null,
+          wasteUnit: data.wasteUnit,
+          wasteReason: data.wasteReason,
+          wasteWitnessUserId: data.wasteWitnessUserId,
+          overrideReason: data.overrideReason,
+          controlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
+          orderedQuantity: linkedMedicationLine?.quantity ?? null,
+          administeredQuantity: data.administeredQuantity ?? null,
+        })
+      );
 
-      assertHighAlertMarCreate({
-        marAction: marActionResolved,
-        governance: highAlertGovernance,
-        highAlertVerifierUserId: data.highAlertVerifierUserId,
-        highAlertVerifierDisplayName: data.highAlertVerifierDisplayName,
-        administeredByUserId,
-        controlledWitnessUserId: data.witnessUserId,
-        highAlertOverrideReason: data.highAlertOverrideReason,
-        highAlertOverrideAcknowledged: data.highAlertOverrideAcknowledged,
-        sharedOverrideReason: data.overrideReason,
-        sharedControlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
-        highAlertVerificationType: data.highAlertVerificationType ?? null,
-      });
+      runMarGovernanceAssert(() =>
+        assertHighAlertMarCreate({
+          marAction: marActionResolved,
+          governance: highAlertGovernance,
+          highAlertVerifierUserId: data.highAlertVerifierUserId,
+          highAlertVerifierDisplayName: data.highAlertVerifierDisplayName,
+          administeredByUserId,
+          controlledWitnessUserId: data.witnessUserId,
+          highAlertOverrideReason: data.highAlertOverrideReason,
+          highAlertOverrideAcknowledged: data.highAlertOverrideAcknowledged,
+          sharedOverrideReason: data.overrideReason,
+          sharedControlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
+          highAlertVerificationType: data.highAlertVerificationType ?? null,
+        })
+      );
 
-      assertLasaMarCreate({
-        marAction: marActionResolved,
-        governance: lasaGovernance,
-        lasaAcknowledged: data.lasaAcknowledged,
-        lasaMedicationSelectionConfirmed: data.lasaMedicationSelectionConfirmed,
-        lasaSecondReadUserId: data.lasaSecondReadUserId,
-        lasaSecondReadDisplayName: data.lasaSecondReadDisplayName,
-        lasaOverrideReason: data.lasaOverrideReason,
-        lasaOverrideAcknowledged: data.lasaOverrideAcknowledged,
-        administeredByUserId,
-      });
+      runMarGovernanceAssert(() =>
+        assertLasaMarCreate({
+          marAction: marActionResolved,
+          governance: lasaGovernance,
+          lasaAcknowledged: data.lasaAcknowledged,
+          lasaMedicationSelectionConfirmed: data.lasaMedicationSelectionConfirmed,
+          lasaSecondReadUserId: data.lasaSecondReadUserId,
+          lasaSecondReadDisplayName: data.lasaSecondReadDisplayName,
+          lasaOverrideReason: data.lasaOverrideReason,
+          lasaOverrideAcknowledged: data.lasaOverrideAcknowledged,
+          administeredByUserId,
+        })
+      );
 
-      assertPharmacyMarCreate({
-        marAction: marActionResolved,
-        governance: pharmacyGovernance,
-        pharmacyVerificationOverrideReason: data.pharmacyVerificationOverrideReason,
-        pharmacyVerificationOverrideAcknowledged: data.pharmacyVerificationOverrideAcknowledged,
-      });
+      runMarGovernanceAssert(() =>
+        assertPharmacyMarCreate({
+          marAction: marActionResolved,
+          governance: pharmacyGovernance,
+          pharmacyVerificationOverrideReason: data.pharmacyVerificationOverrideReason,
+          pharmacyVerificationOverrideAcknowledged: data.pharmacyVerificationOverrideAcknowledged,
+        })
+      );
     }
 
     const imSiteValidation = validateImInjectionSiteForMarCreate({
@@ -526,7 +577,7 @@ export class MedicationAdministrationService {
       notes: data.notes,
     });
     if (imSiteValidation) {
-      throw new BadRequestException(imSiteValidation.message);
+      this.logAndThrowMarCreateBlocked(marValidationLogContext, imSiteValidation.message);
     }
 
     if (
@@ -541,7 +592,8 @@ export class MedicationAdministrationService {
         linkedMedicationLine
       );
       if (shouldBlockDirectMarAdministeredForInfusionLine(linkedMedicationLine, catalog, resolvedRoute)) {
-        throw new BadRequestException(
+        this.logAndThrowMarCreateBlocked(
+          marValidationLogContext,
           "This medication requires infusion start/stop documentation."
         );
       }
@@ -560,7 +612,8 @@ export class MedicationAdministrationService {
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
     ) {
-      throw new BadRequestException(
+      this.logAndThrowMarCreateBlocked(
+        marValidationLogContext,
         "Des allergies ou intolérances sont documentées pour cette visite. Confirmez avant d’enregistrer l’administration."
       );
     }

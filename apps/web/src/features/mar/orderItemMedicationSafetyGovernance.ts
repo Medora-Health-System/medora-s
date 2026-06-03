@@ -1,4 +1,8 @@
 import type { MedicationSafetyGovernanceDisplayInput, MedicationSafetyGovernanceSnapshot } from "@medora/shared";
+import {
+  controlledScheduleRequiresPharmacyVerification,
+  highAlertMarRequiresDoubleCheck,
+} from "@medora/shared";
 
 export type OrderItemMedicationGovernanceSource = {
   medicationSafetyGovernance?: MedicationSafetyGovernanceSnapshot | null;
@@ -10,6 +14,10 @@ export type OrderItemMedicationGovernanceSource = {
   } | null;
 };
 
+/**
+ * Build MAR governance display input from enriched order item (M1.7A.8).
+ * Derives blocking flags when optional enrichment omitted fields.
+ */
 export function orderItemToMedicationSafetyGovernanceDisplay(
   item: OrderItemMedicationGovernanceSource,
   options?: { highRiskNameMatch?: boolean }
@@ -17,18 +25,64 @@ export function orderItemToMedicationSafetyGovernanceDisplay(
   const gov = item.medicationSafetyGovernance;
   const cm = item.catalogMedication;
 
+  const controlledSchedule = gov?.controlledSchedule ?? cm?.controlledSchedule ?? null;
+  const isControlled = gov?.isControlled ?? cm?.isControlled ?? false;
+  const requiresWitness = gov?.requiresWitness ?? cm?.requiresWitness ?? false;
+  const requiresDoubleSign = gov?.requiresDoubleSign ?? cm?.requiresDoubleSign ?? false;
+  const highAlertClass = gov?.highAlertClass ?? null;
+  const isHighAlert =
+    gov?.isHighAlert === true ||
+    Boolean(highAlertClass && highAlertClass !== "HIGH_ALERT_NONE") ||
+    options?.highRiskNameMatch === true;
+
+  const requiresPharmacyVerification =
+    gov?.requiresPharmacyVerification === true ||
+    controlledScheduleRequiresPharmacyVerification(controlledSchedule) ||
+    (gov?.pharmacyVerificationStatus != null &&
+      gov.pharmacyVerificationStatus !== "NOT_REQUIRED");
+
+  const pharmacyVerificationStatus =
+    gov?.pharmacyVerificationStatus ??
+    (requiresPharmacyVerification ? ("PENDING" as const) : null);
+
   return {
-    isControlled: gov?.isControlled ?? cm?.isControlled ?? false,
-    controlledSchedule: gov?.controlledSchedule ?? cm?.controlledSchedule ?? null,
-    isHighAlert: gov?.isHighAlert ?? null,
-    highAlertClass: gov?.highAlertClass ?? null,
+    isControlled,
+    controlledSchedule,
+    isHighAlert,
+    highAlertClass,
     lasaGroupId: gov?.lasaGroupId ?? null,
     lasaGroupLabel: gov?.lasaGroupLabel ?? null,
     lasaSeverity: gov?.lasaSeverity ?? null,
-    requiresWitness: gov?.requiresWitness ?? cm?.requiresWitness ?? false,
-    requiresDoubleSign: gov?.requiresDoubleSign ?? cm?.requiresDoubleSign ?? false,
+    requiresWitness,
+    requiresDoubleSign,
     wasteDocumentationRecommended: gov?.wasteDocumentationRecommended ?? null,
-    pharmacyVerificationStatus: gov?.pharmacyVerificationStatus ?? null,
+    pharmacyVerificationStatus,
+    requiresPharmacyVerification,
+    pharmacyVerifiedAt: gov?.pharmacyVerifiedAt ?? null,
+    pharmacyVerifiedByDisplay: gov?.pharmacyVerifiedByDisplay ?? null,
     highRiskNameMatch: options?.highRiskNameMatch,
   };
+}
+
+/** True when MAR modal must show blocking governance workflow sections. */
+export function marBlockingGovernanceWorkflowVisible(
+  governance: MedicationSafetyGovernanceDisplayInput,
+  marAction: string
+): boolean {
+  if (marAction !== "administered") return false;
+  if (governance.requiresPharmacyVerification === true) return true;
+  if (governance.isControlled === true && governance.requiresWitness === true) return true;
+  if (
+    highAlertMarRequiresDoubleCheck({
+      isHighAlert: governance.isHighAlert === true,
+      requiresDoubleSign: governance.requiresDoubleSign === true,
+    })
+  ) {
+    return true;
+  }
+  if (governance.lasaSeverity === "LASA_HIGH" || governance.lasaSeverity === "LASA_MEDIUM") {
+    return true;
+  }
+  if (governance.lasaGroupId && !governance.lasaSeverity) return true;
+  return false;
 }

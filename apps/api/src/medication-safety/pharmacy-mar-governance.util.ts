@@ -17,6 +17,10 @@ import {
   type PharmacyVerificationStatusRead,
 } from "@medora/shared";
 import { mergeMedicationSafetyGovernanceRead } from "./medication-safety-governance-read.util";
+import { isPrismaSchemaResourceMissingError } from "./pharmacy-verification-enrichment.util";
+import { createStructuredLogger } from "../common/logging/structured-logger";
+
+const pharmacyMarLog = createStructuredLogger("PharmacyMarGovernance");
 
 export type PharmacyMarPersistInput = {
   tx: Prisma.TransactionClient;
@@ -92,11 +96,21 @@ export async function resolvePharmacyMarGovernance(
 
   if (!parsed.requiresPharmacyVerification) return null;
 
-  const latest = await prisma.pharmacyVerification.findFirst({
-    where: { orderItemId },
-    orderBy: { createdAt: "desc" },
-    select: { verificationStatus: true },
-  });
+  let latest: { verificationStatus: PharmacyVerificationStatus } | null = null;
+  try {
+    latest = await prisma.pharmacyVerification.findFirst({
+      where: { orderItemId },
+      orderBy: { createdAt: "desc" },
+      select: { verificationStatus: true },
+    });
+  } catch (err) {
+    if (!isPrismaSchemaResourceMissingError(err)) throw err;
+    pharmacyMarLog.warn("pharmacy_verification_enrichment_skipped", {
+      reason: "table_missing",
+      error: err instanceof Error ? err.message : String(err),
+      orderItemId,
+    });
+  }
 
   const verificationStatus = effectivePharmacyVerificationStatus({
     requiresPharmacyVerification: true,

@@ -14382,6 +14382,8 @@ export default {
     save: "Save",
     loadFailed: "Unable to load.",
     saveFailed: "Unable to save.",
+    errInvalidOrderItemId: "Invalid order line — reload the page or refresh orders.",
+    errInvalidNumericField: "Enter a valid numeric value for dose or quantity.",
     pendingSyncFirstName: "Pending",
     pendingSyncLastName: "sync",
     allergyDocTitle: "Documented allergies",
