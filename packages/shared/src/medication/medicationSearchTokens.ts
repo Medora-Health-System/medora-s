@@ -28,7 +28,8 @@ function normalizeSearchToken(value: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9.+/\s-]+/g, " ")
-    .replace(/\s+/g, " ");
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function pushToken(seen: Set<string>, out: string[], raw: string | undefined): void {

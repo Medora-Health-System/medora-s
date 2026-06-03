@@ -115,6 +115,14 @@ async function main() {
     );
   }
 
+  if (process.env.MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY === "1") {
+    const { seedEnterpriseWave3Formulary } = await import("./helpers/seed-enterprise-wave3-formulary");
+    const wave3Med = await seedEnterpriseWave3Formulary(prisma, { dryRun: false });
+    console.log(
+      `✅ Enterprise Wave 3 formulary (manifest=${wave3Med.manifestEntries}, catalogCreated=${wave3Med.catalogCreated}, catalogEnriched=${wave3Med.catalogEnriched}, products=${wave3Med.productsCreated}, billingProfiles=${wave3Med.billingProfilesCreated}, wave3MarkersUpdated=${wave3Med.wave3GovernanceNotesUpdated}, wave3ReadinessPct=${wave3Med.readinessReport.wave3ReadinessPct})`
+    );
+  }
+
   if (process.env.MEDORA_ENABLE_ENTERPRISE_MEDICATION_SEARCH_ALIASES === "1") {
     const searchAlias = await seedEnterpriseMedicationSearchAliases(prisma, { dryRun: false });
     console.log(
