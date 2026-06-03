@@ -122,6 +122,31 @@ async function main() {
     );
   }
 
+  if (process.env.MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION === "1") {
+    const facility = await prisma.facility.findFirst({ select: { id: true } });
+    if (!facility) {
+      throw new Error(
+        "[enterprise-pilot] no facility found — seed facility before MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION=1"
+      );
+    }
+    const catalogCodes = process.env.MEDORA_ENTERPRISE_PILOT_CATALOG_CODES?.split(",")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    const { activateEnterpriseFormularyPilotTrancheA } = await import(
+      "./helpers/seed-enterprise-formulary-pilot-activation"
+    );
+    const pilot = await activateEnterpriseFormularyPilotTrancheA(prisma, {
+      facilityId: facility.id,
+      dryRun: process.env.MEDORA_ENTERPRISE_PILOT_DRY_RUN === "1",
+      catalogCodes: catalogCodes?.length ? catalogCodes : undefined,
+      pilotNote: process.env.MEDORA_ENTERPRISE_PILOT_NOTE?.trim(),
+      activatedBy: process.env.MEDORA_ENTERPRISE_PILOT_ACTIVATED_BY?.trim(),
+    });
+    console.log(
+      `✅ Enterprise formulary pilot Tranche A (requested=${pilot.requested}, activated=${pilot.activatedProducts}, skippedValidation=${pilot.skippedValidationFailed}, pending=${pilot.dashboard.pendingReviewCount}, activationReadinessPct=${pilot.dashboard.activationReadinessPct}, dryRun=${pilot.dryRun})`
+    );
+  }
+
   if (process.env.MEDORA_ENABLE_HAITI_CANONICAL_STABILIZATION_REMEDIATION === "1") {
     const { remediateHaitiCanonicalStabilization, auditHaitiCanonicalStabilization } =
       await import("./helpers/seed-haiti-canonical-stabilization-remediation");
