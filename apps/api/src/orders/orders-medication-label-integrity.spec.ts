@@ -262,3 +262,174 @@ describe("OrdersService medication label integrity (M1.7A.4)", () => {
     expect(enriched.items[0].displayLabelEn).not.toMatch(/^2 mg\/mL$/);
   });
 });
+
+describe("OrdersService enrichment fail-closed (M1.7A.7)", () => {
+  const catalogRow = {
+    id: "cat-hydro",
+    code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+    name: "Hydromorphone",
+    displayNameEn: null,
+    displayNameFr: "Hydromorphone",
+    genericName: "Hydromorphone",
+    therapeuticClass: null,
+    administrationType: null,
+    billingClass: null,
+    strength: "2 mg/mL",
+    dosageForm: null,
+    route: null,
+    ndc11: null,
+    ndcDisplay: null,
+    billingUnitType: null,
+    isControlled: true,
+    controlledSchedule: "II",
+    requiresWitness: false,
+    requiresDoubleSign: true,
+  };
+
+  const tableMissingPharmacyError = () =>
+    Object.assign(
+      new Error(
+        "Invalid prisma.pharmacyVerification.findMany() invocation: The table `public.PharmacyVerification` does not exist in the current database."
+      ),
+      { code: "P2021" }
+    );
+
+  function hydroPrismaWithPharmacyFailure() {
+    return {
+      catalogMedication: { findMany: jest.fn().mockResolvedValue([catalogRow]) },
+      medicationProduct: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogLabTest: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogImagingStudy: { findMany: jest.fn().mockResolvedValue([]) },
+      pharmacyVerification: {
+        findMany: jest.fn().mockRejectedValue(tableMissingPharmacyError()),
+      },
+    };
+  }
+
+  it("enrichOrderItemsForDisplay returns Hydromorphone 2 mg/mL when pharmacyVerification table is missing", async () => {
+    const service = new OrdersService(
+      hydroPrismaWithPharmacyFailure() as never,
+      { log: jest.fn() } as never,
+      { create: jest.fn() } as never
+    );
+
+    const [enriched] = await service.enrichOrderItemsForDisplay([
+      {
+        id: "order-med-1",
+        items: [
+          {
+            id: "item-hydro",
+            catalogItemId: "cat-hydro",
+            catalogItemType: "MEDICATION",
+            medicationProductId: null,
+            manualLabel: null,
+            manualSecondaryText: null,
+            strength: "2 mg/mL",
+          },
+        ],
+      } as never,
+    ]);
+
+    expect(enriched.items[0].displayLabelEn).toBe("Hydromorphone 2 mg/mL");
+    expect(enriched.items[0].displayLabelEn).not.toContain("label unavailable");
+    expect(enriched.items[0].catalogMedication?.genericName).toBe("Hydromorphone");
+  });
+
+  it("enrichOrderItemsForDisplaySafe does not poison labels when pharmacyVerification table is missing", async () => {
+    const service = new OrdersService(
+      hydroPrismaWithPharmacyFailure() as never,
+      { log: jest.fn() } as never,
+      { create: jest.fn() } as never
+    );
+
+    const enriched = await service.enrichOrderItemsForDisplaySafe([
+      {
+        id: "order-med-1",
+        items: [
+          {
+            id: "item-hydro",
+            catalogItemId: "cat-hydro",
+            catalogItemType: "MEDICATION",
+            strength: "2 mg/mL",
+          },
+        ],
+      } as never,
+    ]);
+
+    expect(enriched[0].items[0].displayLabelEn).toBe("Hydromorphone 2 mg/mL");
+  });
+
+  it("true no-identity medication still falls back when pharmacy table missing", async () => {
+    const prisma = {
+      catalogMedication: { findMany: jest.fn().mockResolvedValue([]) },
+      medicationProduct: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogLabTest: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogImagingStudy: { findMany: jest.fn().mockResolvedValue([]) },
+      pharmacyVerification: {
+        findMany: jest.fn().mockRejectedValue(tableMissingPharmacyError()),
+      },
+    };
+    const service = new OrdersService(prisma as never, { log: jest.fn() } as never, { create: jest.fn() } as never);
+
+    const [enriched] = await service.enrichOrderItemsForDisplay([
+      {
+        id: "order-med-1",
+        items: [
+          {
+            id: "item-unknown",
+            catalogItemId: null,
+            catalogItemType: "MEDICATION",
+            strength: null,
+          },
+        ],
+      } as never,
+    ]);
+
+    expect(enriched.items[0].displayLabelEn).toBe("Medication (label unavailable)");
+  });
+
+  it("rejects strength-only poisoned catalog displayNameEn when pharmacy table missing", async () => {
+    const legacy = {
+      ...catalogRow,
+      displayNameEn: "2 mg/mL",
+      displayNameFr: "2 mg/mL",
+      genericName: null,
+    };
+    const prisma = {
+      catalogMedication: { findMany: jest.fn().mockResolvedValue([]) },
+      medicationProduct: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "prod-hydro",
+            code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+            strengthDisplay: "2 mg/mL",
+            legacyCatalogMedication: legacy,
+            concept: { genericName: "Hydromorphone", displayName: "Hydromorphone" },
+          },
+        ]),
+      },
+      catalogLabTest: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogImagingStudy: { findMany: jest.fn().mockResolvedValue([]) },
+      pharmacyVerification: {
+        findMany: jest.fn().mockRejectedValue(tableMissingPharmacyError()),
+      },
+    };
+    const service = new OrdersService(prisma as never, { log: jest.fn() } as never, { create: jest.fn() } as never);
+
+    const [enriched] = await service.enrichOrderItemsForDisplay([
+      {
+        id: "order-med-1",
+        items: [
+          {
+            id: "item-hydro",
+            catalogItemId: "prod-hydro",
+            catalogItemType: "MEDICATION",
+            strength: "2 mg/mL",
+          },
+        ],
+      } as never,
+    ]);
+
+    expect(enriched.items[0].displayLabelEn).toBe("Hydromorphone 2 mg/mL");
+  });
+});

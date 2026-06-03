@@ -83,10 +83,12 @@ import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
 import {
   attachMedicationSafetyGovernanceToOrderItem,
-  loadLatestPharmacyVerificationByOrderItemId,
-  loadMedicationSafetyGovernanceByCatalogId,
-  loadPharmacyVerificationDetailsByOrderItemId,
 } from "../medication-safety/medication-safety-governance-read.util";
+import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
+import {
+  loadLatestPharmacyVerificationByOrderItemIdSafe,
+  loadPharmacyVerificationDetailsByOrderItemIdSafe,
+} from "../medication-safety/pharmacy-verification-enrichment.util";
 import {
   loadMedicationInfusionClassificationContext,
   buildMedicationInfusionCandidateInputFromOrderItem,
@@ -1237,23 +1239,68 @@ export class OrdersService {
     }
   }
 
-  private enrichOrderItemsWithCatalogFallback(orders: OrderWithItems[]): OrderWithEnrichedItems[] {
+  /**
+   * Last-resort labels when required enrichment throws — still attempts catalog/product identity (M1.7A.7).
+   */
+  private async enrichOrderItemsWithCatalogFallback(
+    orders: OrderWithItems[]
+  ): Promise<OrderWithEnrichedItems[]> {
+    const medicationLines: Array<{
+      catalogItemId?: string | null;
+      medicationProductId?: string | null;
+      catalogItemType?: string;
+    }> = [];
+    for (const order of orders) {
+      for (const it of order.items || []) {
+        if (it.catalogItemType === "MEDICATION") medicationLines.push(it);
+      }
+    }
+
+    let medicationMaps: Awaited<ReturnType<typeof loadOrderMedicationCatalogMaps>> = {
+      byCatalogId: new Map(),
+      byProductId: new Map(),
+    };
+    try {
+      medicationMaps = await loadOrderMedicationCatalogMaps(this.prisma, medicationLines);
+    } catch (err) {
+      ordersLog.warn("enrich_order_items_catalog_fallback_partial", {
+        error: err instanceof Error ? err.message : String(err),
+        medicationLineCount: medicationLines.length,
+      });
+    }
+
     return orders.map((order) => ({
       ...order,
       items: (order.items || []).map((it) => {
+        const catalogMedication: OrderMedicationCatalogRow | null | undefined =
+          it.catalogItemType === "MEDICATION"
+            ? resolveOrderMedicationCatalogRow(it, medicationMaps)
+            : undefined;
         const labelIn = {
           catalogItemType: String(it.catalogItemType),
           manualLabel: it.manualLabel,
           manualSecondaryText: it.manualSecondaryText,
           strength: it.strength,
+          enterpriseProcedureId: it.enterpriseProcedureId,
         };
         return {
           ...it,
           catalogLabTest: null,
           catalogImagingStudy: null,
-          catalogMedication: null,
-          displayLabelFr: buildOrderItemDisplayLabelFr(labelIn, null, null, null),
-          displayLabelEn: buildOrderItemDisplayLabelEn(labelIn, null, null, null),
+          catalogMedication,
+          displayLabelFr: buildOrderItemDisplayLabelFr(
+            labelIn,
+            null,
+            null,
+            catalogMedication ?? null
+          ),
+          displayLabelEn: buildOrderItemDisplayLabelEn(
+            labelIn,
+            null,
+            null,
+            catalogMedication ?? null
+          ),
+          medicationSafetyGovernance: null,
         };
       }),
     })) as OrderWithEnrichedItems[];
@@ -1281,8 +1328,9 @@ export class OrdersService {
 
     const medicationMaps = await loadOrderMedicationCatalogMaps(this.prisma, medicationLines);
     const medIdList = [...medicationMaps.byCatalogId.keys()];
-    const [labs, imgs, governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
-      await Promise.all([
+
+    /** Required — medication / lab / imaging labels must resolve even if optional enrichment fails. */
+    const [labs, imgs] = await Promise.all([
       labIds.size
         ? this.prisma.catalogLabTest.findMany({
             where: { id: { in: [...labIds] } },
@@ -1295,16 +1343,21 @@ export class OrdersService {
             select: CATALOG_IMAGING_SELECT,
           })
         : Promise.resolve([] as CatalogImagingStudyEnrichment[]),
-      medIdList.length
-        ? loadMedicationSafetyGovernanceByCatalogId(this.prisma, medIdList)
-        : Promise.resolve(new Map()),
-      medicationOrderItemIds.length
-        ? loadLatestPharmacyVerificationByOrderItemId(this.prisma, medicationOrderItemIds)
-        : Promise.resolve(new Map()),
-      medicationOrderItemIds.length
-        ? loadPharmacyVerificationDetailsByOrderItemId(this.prisma, medicationOrderItemIds)
-        : Promise.resolve(new Map()),
     ]);
+
+    /** Optional — pharmacy verification / governance must not block display labels (M1.7A.7). */
+    const [governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
+      await Promise.all([
+        medIdList.length
+          ? loadMedicationSafetyGovernanceByCatalogIdSafe(this.prisma, medIdList)
+          : Promise.resolve(new Map()),
+        medicationOrderItemIds.length
+          ? loadLatestPharmacyVerificationByOrderItemIdSafe(this.prisma, medicationOrderItemIds)
+          : Promise.resolve(new Map()),
+        medicationOrderItemIds.length
+          ? loadPharmacyVerificationDetailsByOrderItemIdSafe(this.prisma, medicationOrderItemIds)
+          : Promise.resolve(new Map()),
+      ]);
 
     const labMap = new Map(labs.map((c) => [c.id, c]));
     const imgMap = new Map(imgs.map((c) => [c.id, c]));
