@@ -1487,38 +1487,6 @@ export function MedicationAdministrationTab({
         </div>
       ) : null}
 
-      {marAllergyDocSummary ? (
-        <div
-          role="status"
-          style={
-            marCompact
-              ? clinicalTabletCompactBannerStyle({
-                  marginTop: error || marQueuedOfflineNotice ? 8 : 0,
-                  border: "1px solid #fecaca",
-                  backgroundColor: "#fef2f2",
-                  color: "#7f1d1d",
-                })
-              : {
-                  marginBottom: 12,
-                  marginTop: error || marQueuedOfflineNotice ? 8 : 0,
-                  padding: "12px 14px",
-                  borderRadius: 8,
-                  border: "1px solid #fecaca",
-                  backgroundColor: "#fef2f2",
-                  fontSize: 13,
-                  color: "#7f1d1d",
-                  lineHeight: 1.45,
-                }
-          }
-        >
-          <div style={{ fontWeight: 800, marginBottom: marCompact ? 4 : 6 }}>{t("marTab.allergyDocTitle")}</div>
-          <div style={{ marginBottom: marCompact ? 4 : 8, fontWeight: 600 }}>{t("marTab.allergyTopBannerLead")}</div>
-          <div style={MAR_CELL_WRAP_LONG_TEXT}>
-            {marAllergyDocSummary.length > 320 ? `${marAllergyDocSummary.slice(0, 320)}…` : marAllergyDocSummary}
-          </div>
-        </div>
-      ) : null}
-
       <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
 
       <h3 style={{ margin: marCompact ? "0 0 6px 0" : "0 0 8px 0", fontSize: marCompact ? 15 : 16 }}>{t("marTab.title")}</h3>
@@ -2438,13 +2406,13 @@ export function MedicationAdministrationTab({
             ) : null}
 
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
-              {t("marTab.ndcLabel")}
+              {t("marTab.doseUnitPlaceholder")}
             </label>
             <input
               type="text"
-              value={modalNdc}
-              onChange={(e) => setModalNdc(e.target.value)}
-              placeholder={modalItem.ndcHint || t("marTab.ndcPlaceholder")}
+              value={modalDoseUnit}
+              onChange={(e) => setModalDoseUnit(e.target.value)}
+              placeholder={modalItem.billingUnitHint || t("marTab.doseUnitPlaceholder")}
               disabled={submitting}
               style={{
                 width: "100%",
@@ -2457,49 +2425,27 @@ export function MedicationAdministrationTab({
               }}
             />
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input
-                type="number"
-                min={0}
-                step="0.0001"
-                value={modalDoseValue}
-                onChange={(e) => setModalDoseValue(e.target.value)}
-                placeholder={t("marTab.doseValuePlaceholder")}
-                disabled={submitting}
-                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
-              />
-              <input
-                type="text"
-                value={modalDoseUnit}
-                onChange={(e) => setModalDoseUnit(e.target.value)}
-                placeholder={modalItem.billingUnitHint || t("marTab.doseUnitPlaceholder")}
-                disabled={submitting}
-                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-              <input
-                type="number"
-                min={0}
-                step="0.0001"
-                value={modalAdminQty}
-                onChange={(e) => setModalAdminQty(e.target.value)}
-                placeholder={t("marTab.adminQuantityPlaceholder")}
-                disabled={submitting}
-                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
-              />
-              <input
-                type="number"
-                min={0}
-                step="0.0001"
-                value={modalBillingQty}
-                onChange={(e) => setModalBillingQty(e.target.value)}
-                placeholder={t("marTab.billingQuantityPlaceholder")}
-                disabled={submitting}
-                style={{ flex: 1, padding: 12, borderRadius: 8, border: "1px solid #ccc", fontSize: 16 }}
-              />
-            </div>
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+              {t("marTab.adminQuantityPlaceholder")}
+            </label>
+            <input
+              type="number"
+              min={0}
+              step="0.0001"
+              value={modalAdminQty}
+              onChange={(e) => setModalAdminQty(e.target.value)}
+              placeholder={t("marTab.adminQuantityPlaceholder")}
+              disabled={submitting}
+              style={{
+                width: "100%",
+                padding: 12,
+                marginBottom: 14,
+                borderRadius: 8,
+                border: "1px solid #ccc",
+                fontSize: 16,
+                boxSizing: "border-box",
+              }}
+            />
 
             <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.actionHeading")}
@@ -2555,12 +2501,6 @@ export function MedicationAdministrationTab({
                   lineHeight: 1.45,
                 }}
               >
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>{t("marTab.allergyDocTitle")}</div>
-                <div style={{ marginBottom: 10, ...MAR_CELL_WRAP_LONG_TEXT }}>
-                  {marAllergyDocSummary.length > 220
-                    ? `${marAllergyDocSummary.slice(0, 220)}…`
-                    : marAllergyDocSummary}
-                </div>
                 <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer", fontWeight: 600 }}>
                   <input
                     type="checkbox"

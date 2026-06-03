@@ -26,6 +26,11 @@ import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationIt
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
+import {
+  applyDefaultPlannedAdministrationIfNeeded,
+  patchMedicationLineWithPlannedAdminRules,
+  stripMedicationFromOrderDraftPayload,
+} from "./createOrderModal/createOrderMedicationDraft";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
@@ -273,7 +278,7 @@ function catalogItemToOrderLine(
 
   if (item.type === "MEDICATION") {
     const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
-    return {
+    return applyDefaultPlannedAdministrationIfNeeded({
       _lineId: newOrderLineId(),
       isManual: false,
       catalogItemId: item.id,
@@ -299,7 +304,7 @@ function catalogItemToOrderLine(
         therapeuticClass: item.metadata?.therapeuticClass,
         commonAliases: item.metadata?.commonAliases,
       },
-    };
+    });
   }
 
   return null;
@@ -896,12 +901,13 @@ export function CreateOrderModal({
       hasPayloadContent: createOrderDraftHasContent,
     });
     if (canRestore && draft) {
-      setActiveTab(draft.payload.activeTab);
-      setSelectedOrderSet(draft.payload.selectedOrderSet);
-      setSelectedOrderSetItemKeys(draft.payload.selectedOrderSetItemKeys);
-      setOrderSetReviewActive(draft.payload.orderSetReviewActive);
-      setStagedItems(draft.payload.stagedItems);
-      setFormData({ ...draft.payload.formData, type: draft.payload.formData.type });
+      const restored = stripMedicationFromOrderDraftPayload(draft.payload);
+      setActiveTab(restored.activeTab);
+      setSelectedOrderSet(restored.selectedOrderSet);
+      setSelectedOrderSetItemKeys(restored.selectedOrderSetItemKeys);
+      setOrderSetReviewActive(restored.orderSetReviewActive);
+      setStagedItems(restored.stagedItems);
+      setFormData({ ...restored.formData, type: restored.formData.type });
       setDraftRestoredAt(draft.metadata.savedLocallyAt);
       setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
     } else if (draft && !canRestore) {
@@ -913,7 +919,10 @@ export function CreateOrderModal({
 
   useEffect(() => {
     if (!workflowEditable) return;
-    if (!draftDirty || !createOrderDraftHasContent(draftPayload)) {
+    const persistPayload = stripMedicationFromOrderDraftPayload(draftPayload);
+    const persistDirty =
+      createOrderDraftSignature(persistPayload) !== createOrderDraftSignature(initialDraftPayload);
+    if (!persistDirty || !createOrderDraftHasContent(persistPayload)) {
       if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
       setDraftSavedLocallyAt(null);
       return;
@@ -925,12 +934,12 @@ export function CreateOrderModal({
       draftKey,
       createClinicalDraft({
         scope: draftScope,
-        payload: draftPayload,
+        payload: persistPayload,
         savedLocallyAt,
       })
     );
     setDraftSavedLocallyAt(savedLocallyAt);
-  }, [draftDirty, draftKey, draftPayload, draftScope, workflowEditable]);
+  }, [draftDirty, draftKey, draftPayload, draftScope, initialDraftPayload, workflowEditable]);
 
   useClinicalBeforeUnloadWarning({
     dirty: draftDirty && Boolean(draftSavedLocallyAt),
@@ -1516,10 +1525,13 @@ export function CreateOrderModal({
   };
 
   const handleAddManualLine = (line: CreateOrderLineItem) => {
-    const nextLine =
+    let nextLine =
       erAdministerOnlyMedication && line.catalogItemType === "MEDICATION"
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
         : line;
+    if (nextLine.catalogItemType === "MEDICATION") {
+      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine);
+    }
     setFormData((fd) => ({ ...fd, items: [...fd.items, nextLine] }));
   };
 
@@ -1541,13 +1553,49 @@ export function CreateOrderModal({
   const patchMedItem = (idx: number, patch: Partial<CreateOrderLineItem>) => {
     setFormData((fd) => {
       const next = [...fd.items];
-      next[idx] = {
-        ...next[idx],
-        ...patch,
-        ...(erAdministerOnlyMedication ? { medicationFulfillmentIntent: "ADMINISTER_CHART" as const } : {}),
-      };
+      let patched = patchMedicationLineWithPlannedAdminRules(next[idx], patch);
+      if (erAdministerOnlyMedication) {
+        patched = { ...patched, medicationFulfillmentIntent: "ADMINISTER_CHART" as const };
+      }
+      next[idx] = patched;
       return { ...fd, items: next };
     });
+  };
+
+  const clearMedicationOrderLocalState = () => {
+    setStagedItems((current) => ({ ...current, MEDICATION: [] }));
+    setFormData((fd) =>
+      fd.type === "MEDICATION" || fd.items.some((it) => it.catalogItemType === "MEDICATION")
+        ? { ...fd, items: fd.type === "MEDICATION" ? [] : fd.items.filter((it) => it.catalogItemType !== "MEDICATION") }
+        : fd
+    );
+    setMedicationAllergySafetyAck(false);
+    setIvRouteConfirmations({});
+    setErQuantityConfirmations({});
+    if (typeof window !== "undefined") {
+      const existing = readClinicalDraft<CreateOrderDraftPayload>(window.localStorage, draftKey);
+      if (existing) {
+        const stripped = stripMedicationFromOrderDraftPayload(existing.payload);
+        if (createOrderDraftHasContent(stripped)) {
+          writeClinicalDraft(
+            window.localStorage,
+            draftKey,
+            createClinicalDraft({
+              scope: draftScope,
+              payload: stripped,
+              savedLocallyAt: existing.metadata.savedLocallyAt,
+            })
+          );
+        } else {
+          removeClinicalDraft(window.localStorage, draftKey);
+        }
+      }
+    }
+  };
+
+  const handleClose = () => {
+    clearMedicationOrderLocalState();
+    onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1624,6 +1672,10 @@ export function CreateOrderModal({
       setStagedItems(nextStagedItems);
       setSubmittedOrderType(submittedType);
       setNextStagedTabAfterSuccess(nextReviewTab);
+      if (submittedType === "MEDICATION") {
+        setFormData((fd) => (fd.type === "MEDICATION" ? { ...fd, items: [] } : fd));
+        setMedicationAllergySafetyAck(false);
+      }
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
         if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
@@ -1782,6 +1834,9 @@ export function CreateOrderModal({
         ...fd,
         items: isOrderTypeKey(activeTab) ? [...nextStagedItems[activeTab as OrderTypeKey]] : fd.items,
       }));
+      if (successfulTypes.includes("MEDICATION")) {
+        setMedicationAllergySafetyAck(false);
+      }
 
       const nextReviewTab =
         orderSetReviewActive
@@ -1867,7 +1922,7 @@ export function CreateOrderModal({
         justifyContent: "center",
         zIndex: 1000,
       }}
-      onClick={onClose}
+      onClick={handleClose}
     >
       <div
         style={{
@@ -2025,6 +2080,7 @@ export function CreateOrderModal({
                   setSubmittedOrderType(null);
                   setRxIntentDisplayItems(null);
                   setLastBatchAllStagedSuccess(false);
+                  clearMedicationOrderLocalState();
                   onSuccess();
                 }}
                 style={{
@@ -2239,14 +2295,6 @@ export function CreateOrderModal({
                       }}
                       role="status"
                     >
-                      <div style={{ fontWeight: 700, marginBottom: 6 }}>
-                        {t("createOrderModal.medicationAllergySafetyTitle")}
-                      </div>
-                      <div style={{ marginBottom: 10, overflowWrap: "anywhere" }}>
-                        {medicationAllergyDocSummary.length > 220
-                          ? `${medicationAllergyDocSummary.slice(0, 220)}…`
-                          : medicationAllergyDocSummary}
-                      </div>
                       <label
                         style={{
                           display: "flex",
@@ -2840,7 +2888,7 @@ export function CreateOrderModal({
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap", paddingTop: 4 }}>
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   style={{ padding: "10px 18px", border: "1px solid #ccc", borderRadius: 4, cursor: "pointer", fontSize: 14, background: "#fff" }}
                 >
                   {t("createOrderModal.cancel")}

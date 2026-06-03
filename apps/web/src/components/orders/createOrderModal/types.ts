@@ -34,6 +34,8 @@ export type CreateOrderLineItem = {
   medicationFulfillmentIntent?: "ADMINISTER_CHART" | "PHARMACY_DISPENSE";
   /** MEDICATION: valeur datetime-local (optionnel) → API `intendedAdministrationAt`. */
   intendedAdministrationAt?: string;
+  /** MEDICATION: user edited planned administration — do not auto-overwrite with "now". */
+  _plannedAdminAtTouched?: boolean;
   _label: string;
   _dosageForm?: string;
   _route?: string;

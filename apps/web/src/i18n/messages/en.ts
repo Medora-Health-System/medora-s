@@ -14386,8 +14386,7 @@ export default {
     pendingSyncFirstName: "Pending",
     pendingSyncLastName: "sync",
     allergyDocTitle: "Documented allergies",
-    allergyAckLabel:
-      "I confirm I reviewed documented allergies or intolerances before recording this administration.",
+    allergyAckLabel: "I confirm I reviewed documented allergies.",
     errAllergyAckRequired:
       "Confirm documented allergies before recording this administration.",
     highRiskMarAckLabel:
@@ -16708,8 +16707,7 @@ export default {
     confirmErQuantityOverride: "I confirm administering more than one unit is appropriate",
     errErQuantityConfirmationRequired: "Quantity override confirmation is required",
     medicationAllergySafetyTitle: "Documented allergies for this visit",
-    medicationAllergySafetyAckLabel:
-      "I confirm I reviewed documented allergies or intolerances before prescribing.",
+    medicationAllergySafetyAckLabel: "I confirm I reviewed documented allergies.",
     errMedicationAllergyAckRequired:
       "Confirm documented allergies before sending the medication order.",
     errImagingCatalogIdMissing:

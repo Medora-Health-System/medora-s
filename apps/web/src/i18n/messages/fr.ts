@@ -14412,8 +14412,7 @@ export default {
     pendingSyncFirstName: "En attente",
     pendingSyncLastName: "de synchronisation",
     allergyDocTitle: "Allergies documentées",
-    allergyAckLabel:
-      "Je confirme avoir revu les allergies ou intolérances documentées avant d’enregistrer l’administration.",
+    allergyAckLabel: "Je confirme avoir vérifié les allergies documentées.",
     errAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’enregistrer l’administration.",
     highRiskMarAckLabel:
@@ -16741,8 +16740,7 @@ export default {
     confirmErQuantityOverride: "Je confirme que l'administration de plus d'une unité est appropriée",
     errErQuantityConfirmationRequired: "La confirmation de dépassement de quantité est requise",
     medicationAllergySafetyTitle: "Allergies documentées pour cette visite",
-    medicationAllergySafetyAckLabel:
-      "Je confirme avoir revu les allergies ou intolérances documentées avant de prescrire.",
+    medicationAllergySafetyAckLabel: "Je confirme avoir vérifié les allergies documentées.",
     errMedicationAllergyAckRequired:
       "Cochez la confirmation concernant les allergies documentées avant d’envoyer l’ordonnance.",
     errImagingCatalogIdMissing:

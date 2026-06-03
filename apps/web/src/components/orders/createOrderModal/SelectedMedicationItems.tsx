@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useId } from "react";
 import { useI18n } from "@/lib/i18n";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
 import {
@@ -8,6 +8,7 @@ import {
   medicationSoftSafetyWarningsForOrderLine,
 } from "@/components/medication/MedicationSoftSafetyPanel";
 import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
+import { MEDICATION_DIRECTION_QUICK_PICKS } from "./createOrderMedicationDraft";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -76,6 +77,7 @@ export function SelectedMedicationItems({
   onErQuantityConfirmationChange?: (lineId: string, confirmed: boolean) => void;
 }) {
   const { t, language } = useI18n();
+  const directionsListId = useId();
   const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
 
   if (items.length === 0) return null;
@@ -230,11 +232,17 @@ export function SelectedMedicationItems({
                 <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
                 <input
                   type="text"
+                  list={directionsListId}
                   placeholder={t("createOrderModal.selectedMedSigPlaceholder")}
                   value={item.notes ?? ""}
                   onChange={(e) => onPatch(idx, { notes: e.target.value })}
                   style={inputSm}
                 />
+                <datalist id={directionsListId}>
+                  {MEDICATION_DIRECTION_QUICK_PICKS.map((option) => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
                 {missingDirections ? (
                   <p style={{ ...inlineWarningStyle, color: "#dc2626", fontWeight: 600 }}>
                     {t("orders.medicationDirectionsRequired")}
