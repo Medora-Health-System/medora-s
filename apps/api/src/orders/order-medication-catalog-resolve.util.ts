@@ -105,8 +105,10 @@ export async function loadOrderMedicationCatalogMaps(
   const productIds = new Set<string>();
   for (const it of items) {
     if (it.catalogItemType !== "MEDICATION") continue;
-    if (it.catalogItemId?.trim()) catalogIds.add(it.catalogItemId.trim());
-    if (it.medicationProductId?.trim()) productIds.add(it.medicationProductId.trim());
+    const catalogItemId = it.catalogItemId?.trim();
+    const medicationProductId = it.medicationProductId?.trim();
+    if (catalogItemId) catalogIds.add(catalogItemId);
+    if (medicationProductId) productIds.add(medicationProductId);
   }
 
   const catalogMedClient = prisma.catalogMedication as unknown as {
@@ -151,6 +153,34 @@ export async function loadOrderMedicationCatalogMaps(
   const byProductId = new Map(
     productRows.map((p) => [p.id, catalogRowFromMedicationProduct(p as MedicationProductResolveRow)])
   );
+
+  /** M1.7A.5 — Some rows store MedicationProduct.id in catalogItemId without medicationProductId. */
+  const unresolvedCatalogItemIds = [...catalogIds].filter((id) => !byCatalogId.has(id));
+  const extraProductLookupIds = [
+    ...new Set(
+      unresolvedCatalogItemIds.filter((id) => !byProductId.has(id) && !productIds.has(id))
+    ),
+  ];
+  if (extraProductLookupIds.length > 0 && typeof productClient.findMany === "function") {
+    const extraProducts = await productClient.findMany({
+      where: { id: { in: extraProductLookupIds } },
+      select: {
+        id: true,
+        code: true,
+        strengthDisplay: true,
+        legacyCatalogMedication: { select: ORDER_MEDICATION_CATALOG_SELECT },
+        concept: { select: { genericName: true, displayName: true } },
+      },
+    });
+    for (const p of extraProducts) {
+      byProductId.set(p.id, catalogRowFromMedicationProduct(p as MedicationProductResolveRow));
+      const legacyId = p.legacyCatalogMedication?.id?.trim();
+      if (legacyId && !byCatalogId.has(legacyId)) {
+        byCatalogId.set(legacyId, catalogRowFromMedicationProduct(p as MedicationProductResolveRow));
+      }
+    }
+  }
+
   return { byCatalogId, byProductId };
 }
 
@@ -166,6 +196,8 @@ export function resolveOrderMedicationCatalogRow(
   if (catalogId) {
     const row = maps.byCatalogId.get(catalogId);
     if (row) return row;
+    const asProduct = maps.byProductId.get(catalogId);
+    if (asProduct) return asProduct;
   }
   const productId = it.medicationProductId?.trim();
   if (productId) {

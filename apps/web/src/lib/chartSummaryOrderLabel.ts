@@ -1,6 +1,6 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
-import { isInvalidTechnicalOrderDisplayLabel } from "@medora/shared";
+import { isInvalidTechnicalOrderDisplayLabel, isOrderDisplayLabelUnavailable } from "@medora/shared";
 
 function chartOrderTypeFallbackEn(catalogItemType: string, t: (key: string) => string): string {
   const c = catalogItemType.trim();
@@ -25,13 +25,23 @@ export function chartSummaryOrderItemLineLabel(
   const cat = String(it.catalogItemType ?? "CARE");
   if (language === "fr") {
     const fr = (it.displayLabelFr ?? it.displayLabel)?.trim();
-    if (fr && !isInvalidTechnicalOrderDisplayLabel(fr, cat)) return fr;
+    if (fr && !isOrderDisplayLabelUnavailable(fr) && !isInvalidTechnicalOrderDisplayLabel(fr, cat)) {
+      return fr;
+    }
     const en = (it.displayLabelEn ?? "").trim();
-    if (en && !isInvalidTechnicalOrderDisplayLabel(en, cat)) return en;
+    if (en && !isOrderDisplayLabelUnavailable(en) && !isInvalidTechnicalOrderDisplayLabel(en, cat)) {
+      return en;
+    }
     return "—";
   }
   const enOnly = it.displayLabelEn?.trim();
-  if (enOnly && !isInvalidTechnicalOrderDisplayLabel(enOnly, cat)) return enOnly;
+  if (
+    enOnly &&
+    !isOrderDisplayLabelUnavailable(enOnly) &&
+    !isInvalidTechnicalOrderDisplayLabel(enOnly, cat)
+  ) {
+    return enOnly;
+  }
   if (t) return chartOrderTypeFallbackEn(cat, t);
   return "—";
 }

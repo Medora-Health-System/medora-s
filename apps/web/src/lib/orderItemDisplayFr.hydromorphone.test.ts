@@ -32,4 +32,18 @@ describe("order item display — Hydromorphone (M1.7A.4)", () => {
     expect(label).toContain("Hydromorphone");
     expect(label).not.toContain("libellé indisponible");
   });
+
+  it("recovers from poisoned API displayLabelEn when catalogMedication is present", () => {
+    const label = getOrderItemDisplayLabelForLanguage(
+      {
+        ...hydroItem,
+        displayLabelEn: "Medication (label unavailable)",
+        displayLabelFr: "Médicament (libellé indisponible)",
+      },
+      "en",
+      tEn
+    );
+    expect(label).toContain("Hydromorphone");
+    expect(label).not.toContain("label unavailable");
+  });
 });

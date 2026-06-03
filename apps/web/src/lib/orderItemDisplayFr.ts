@@ -3,6 +3,7 @@ import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
   isInvalidTechnicalOrderDisplayLabel,
+  isOrderDisplayLabelUnavailable,
   pickStrictEnCatalogPrimaryLabel,
   resolveMedicationCatalogPrimaryLabel,
 } from "@medora/shared";
@@ -47,7 +48,9 @@ function orderItemDisplayLabelFr(item: {
   const resolvedTypeFr = resolveCatalogItemType(item);
   const catGuardFr = String(item.catalogItemType ?? resolvedTypeFr ?? "CARE");
   const dlf = item.displayLabelFr?.trim();
-  if (dlf && !isInvalidTechnicalOrderDisplayLabel(dlf, catGuardFr)) return dlf;
+  if (dlf && !isOrderDisplayLabelUnavailable(dlf) && !isInvalidTechnicalOrderDisplayLabel(dlf, catGuardFr)) {
+    return dlf;
+  }
 
   const resolvedType = resolvedTypeFr;
   const fromCatalog = catalogDisplayLabelFr(item, resolvedType);
@@ -105,7 +108,9 @@ export function getOrderItemDisplayLabelForLanguage(
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
   const enApi = item.displayLabelEn?.trim();
-  if (enApi && !isInvalidTechnicalOrderDisplayLabel(enApi, catType)) return enApi;
+  if (enApi && !isOrderDisplayLabelUnavailable(enApi) && !isInvalidTechnicalOrderDisplayLabel(enApi, catType)) {
+    return enApi;
+  }
   const fromCatalog = catalogDisplayLabelEn(item, resolvedType, catType);
   if (fromCatalog) return fromCatalog;
   const man = item.manualLabel?.trim();

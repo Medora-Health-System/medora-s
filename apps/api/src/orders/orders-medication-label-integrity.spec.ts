@@ -146,4 +146,61 @@ describe("OrdersService medication label integrity (M1.7A.4)", () => {
     const [enriched] = await service.enrichOrderItemsForDisplay([order]);
     expect(enriched.items[0].displayLabelEn).toContain("Amlodipine");
   });
+
+  it("enriches when catalogItemId is MedicationProduct id (catalog miss, product hit)", async () => {
+    const legacy = {
+      id: "cat-hydro",
+      code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+      name: "Hydromorphone",
+      displayNameEn: null,
+      displayNameFr: "Hydromorphone",
+      genericName: "Hydromorphone",
+      therapeuticClass: "Antalgique opioïde",
+      administrationType: "PUSH",
+      billingClass: "UNKNOWN",
+      strength: "2 mg/mL",
+      dosageForm: "injectable",
+      route: "injectable",
+      ndc11: null,
+      ndcDisplay: null,
+      billingUnitType: null,
+      isControlled: true,
+      controlledSchedule: "II",
+      requiresWitness: false,
+      requiresDoubleSign: true,
+    };
+    const order = {
+      ...hydromorphoneOrder(),
+      items: [
+        {
+          ...hydromorphoneOrder().items[0],
+          catalogItemId: "prod-hydro",
+          medicationProductId: null,
+        },
+      ],
+    } as OrderWithItems;
+
+    const prisma = {
+      catalogMedication: { findMany: jest.fn().mockResolvedValue([]) },
+      medicationProduct: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: "prod-hydro",
+            code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+            strengthDisplay: "2 mg/mL",
+            legacyCatalogMedication: legacy,
+            concept: { genericName: "Hydromorphone", displayName: "Hydromorphone" },
+          },
+        ]),
+      },
+      catalogLabTest: { findMany: jest.fn().mockResolvedValue([]) },
+      catalogImagingStudy: { findMany: jest.fn().mockResolvedValue([]) },
+      pharmacyVerification: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new OrdersService(prisma as never, { log: jest.fn() } as never, { create: jest.fn() } as never);
+
+    const [enriched] = await service.enrichOrderItemsForDisplay([order]);
+    expect(enriched.items[0].displayLabelEn).toContain("Hydromorphone");
+    expect(enriched.items[0].displayLabelEn).not.toContain("label unavailable");
+  });
 });

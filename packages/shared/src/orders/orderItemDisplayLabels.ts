@@ -128,6 +128,36 @@ const FALLBACK_EN: Record<string, string> = {
   SUPPLY: "Supply (label unavailable)",
 };
 
+/** EN/FR typed fallbacks from {@link buildOrderItemDisplayLabelEn} / `Fr` — not valid cached display labels. */
+const UNAVAILABLE_ORDER_DISPLAY_LABELS = new Set([
+  FALLBACK_EN.MEDICATION,
+  FALLBACK_FR.MEDICATION,
+  FALLBACK_EN.CARE,
+  FALLBACK_FR.CARE,
+  FALLBACK_EN.SUPPLY,
+  FALLBACK_FR.SUPPLY,
+  FALLBACK_EN.LAB_TEST,
+  FALLBACK_FR.LAB_TEST,
+  FALLBACK_EN.IMAGING_STUDY,
+  FALLBACK_FR.IMAGING_STUDY,
+]);
+
+/**
+ * True when a label is the shared "label unavailable" sentinel (M1.7A.5).
+ * UI and chart code must ignore these and re-resolve from catalog / product linkage.
+ */
+export function isOrderDisplayLabelUnavailable(label: string | null | undefined): boolean {
+  const t = (label ?? "").trim();
+  if (!t) return false;
+  if (UNAVAILABLE_ORDER_DISPLAY_LABELS.has(t)) return true;
+  const lower = t.toLowerCase();
+  return (
+    lower.includes("label unavailable") ||
+    lower.includes("libellé indisponible") ||
+    lower.includes("label not available")
+  );
+}
+
 /** Tokens that must never be shown as a human order line title in EN (or as FR primary). */
 const TECHNICAL_DISPLAY_TOKENS = new Set([
   "LAB_TEST",

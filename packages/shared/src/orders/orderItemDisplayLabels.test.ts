@@ -7,6 +7,7 @@ import {
   medicationInnFromCatalogCode,
   pickStrictEnCatalogPrimaryLabel,
   resolveMedicationCatalogPrimaryLabel,
+  isOrderDisplayLabelUnavailable,
 } from "./orderItemDisplayLabels";
 
 describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
@@ -179,6 +180,12 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
     );
     expect(snap).toBe("Hydromorphone 2 mg/mL");
     expect(snap).not.toContain("label unavailable");
+  });
+
+  it("isOrderDisplayLabelUnavailable detects EN/FR sentinel labels", () => {
+    expect(isOrderDisplayLabelUnavailable("Medication (label unavailable)")).toBe(true);
+    expect(isOrderDisplayLabelUnavailable("Médicament (libellé indisponible)")).toBe(true);
+    expect(isOrderDisplayLabelUnavailable("Hydromorphone 2 mg/mL")).toBe(false);
   });
 
   it("fallback only when all medication identity sources are absent", () => {
