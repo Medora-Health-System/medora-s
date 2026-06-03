@@ -50,18 +50,9 @@ export type CatalogMedicationLabel = {
   strength?: string | null;
 };
 
-/**
- * Derive INN-style primary name from catalog code prefix (e.g. HYDROMORPHONE_2MG_ML_INJECTABLE → Hydromorphone).
- * Full ALL_CAPS_SNAKE codes are not shown in UI — only the first segment when no display/generic name exists.
- */
-export function medicationInnFromCatalogCode(code: string | null | undefined): string | null {
-  const trimmed = (code ?? "").trim();
-  if (!trimmed) return null;
-  const segment = trimmed.split("_")[0]?.trim() ?? "";
-  if (segment.length < 3 || !/^[A-Za-z][A-Za-z0-9]*$/.test(segment)) return null;
-  if (isInvalidTechnicalOrderDisplayLabel(segment, "MEDICATION")) return null;
-  return segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase();
-}
+export { medicationInnFromCatalogCode } from "../medication/medicationOrderIdentity.js";
+
+import { resolveMedicationOrderIdentity } from "../medication/medicationOrderIdentity.js";
 
 /**
  * Medication primary title (no strength suffix) for order/MAR display.
@@ -71,25 +62,16 @@ export function resolveMedicationCatalogPrimaryLabel(
   catalogMed: CatalogMedicationLabel | null | undefined,
   manualLineStr?: string | null
 ): string | null {
-  const manual = (manualLineStr ?? "").trim();
-  if (lang === "fr") {
-    return firstAcceptableLineLabel(
-      "MEDICATION",
-      catalogMed?.displayNameFr,
-      catalogMed?.displayNameEn,
-      catalogMed?.genericName,
-      catalogMed?.name,
-      manual || null,
-      catalogMed?.code
-    );
-  }
-  return firstAcceptableLineLabel(
-    "MEDICATION",
-    catalogMed?.displayNameEn,
-    catalogMed?.genericName,
-    manual || null,
-    medicationInnFromCatalogCode(catalogMed?.code)
-  );
+  const identity = resolveMedicationOrderIdentity({
+    catalogMedication: catalogMed,
+    orderLine: {
+      catalogItemType: "MEDICATION",
+      manualLabel: manualLineStr,
+      manualSecondaryText: null,
+      strength: null,
+    },
+  });
+  return lang === "fr" ? identity.medicationNameFr : identity.medicationNameEn;
 }
 
 /**
@@ -99,17 +81,10 @@ export function buildMedicationOrderLabelSnapshot(
   it: OrderItemLabelInput & { notes?: string | null },
   catalogMed: CatalogMedicationLabel | null | undefined
 ): string {
-  const manualLine = acceptableManualOrderLine(it);
-  const primary = resolveMedicationCatalogPrimaryLabel("en", catalogMed, manualLine);
-  if (primary) {
-    const str = (it.strength ?? catalogMed?.strength)?.trim();
-    return str ? `${primary} ${str}` : primary;
-  }
-  const fromRow = [it.strength, it.notes]
-    .map((s) => (typeof s === "string" ? s.trim() : ""))
-    .find((s) => s.length > 0);
-  if (fromRow) return fromRow;
-  return FALLBACK_EN.MEDICATION;
+  return resolveMedicationOrderIdentity({
+    catalogMedication: catalogMed,
+    orderLine: it,
+  }).displayLabelEn;
 }
 
 const FALLBACK_FR: Record<string, string> = {
@@ -271,12 +246,10 @@ export function buildOrderItemDisplayLabelFr(
     return typeFallback(it.catalogItemType, "fr");
   }
   if (it.catalogItemType === "MEDICATION") {
-    const base = resolveMedicationCatalogPrimaryLabel("fr", catalogMed, manualLineStr);
-    if (base) {
-      const str = (it.strength ?? catalogMed?.strength)?.trim();
-      return str ? `${base} ${str}` : base;
-    }
-    return typeFallback(it.catalogItemType, "fr");
+    return resolveMedicationOrderIdentity({
+      catalogMedication: catalogMed,
+      orderLine: it,
+    }).displayLabelFr;
   }
   if (it.catalogItemType === "CARE") {
     return careOrderDisplayLabel(it, "fr");
@@ -334,12 +307,10 @@ export function buildOrderItemDisplayLabelEn(
     return typeFallback(it.catalogItemType, "en");
   }
   if (it.catalogItemType === "MEDICATION") {
-    const base = resolveMedicationCatalogPrimaryLabel("en", catalogMed, manualLineStr);
-    if (base) {
-      const str = (it.strength ?? catalogMed?.strength)?.trim();
-      return str ? `${base} ${str}` : base;
-    }
-    return typeFallback(it.catalogItemType, "en");
+    return resolveMedicationOrderIdentity({
+      catalogMedication: catalogMed,
+      orderLine: it,
+    }).displayLabelEn;
   }
   if (it.catalogItemType === "CARE") {
     return careOrderDisplayLabel(it, "en");

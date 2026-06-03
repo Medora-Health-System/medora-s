@@ -2,10 +2,12 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
 import {
+  isIncompleteMedicationOrderDisplayLabel,
   isInvalidTechnicalOrderDisplayLabel,
   isOrderDisplayLabelUnavailable,
+  medicationOrderStrengthCandidates,
   pickStrictEnCatalogPrimaryLabel,
-  resolveMedicationCatalogPrimaryLabel,
+  resolveMedicationOrderIdentity,
 } from "@medora/shared";
 
 /**
@@ -47,6 +49,23 @@ function orderItemDisplayLabelFr(item: {
 }): string {
   const resolvedTypeFr = resolveCatalogItemType(item);
   const catGuardFr = String(item.catalogItemType ?? resolvedTypeFr ?? "CARE");
+  if (resolvedTypeFr === "MEDICATION") {
+    const strengthCandidates = medicationOrderStrengthCandidates(medicationIdentityInput(item));
+    const dlf = item.displayLabelFr?.trim();
+    if (
+      dlf &&
+      !isIncompleteMedicationOrderDisplayLabel(dlf, {
+        strengthCandidates,
+        catalogItemType: catGuardFr,
+      })
+    ) {
+      return dlf;
+    }
+    const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
+    if (identity.medicationNameFr || identity.medicationNameEn) return identity.displayLabelFr;
+    return typeFallbackFr(resolvedTypeFr);
+  }
+
   const dlf = item.displayLabelFr?.trim();
   if (dlf && !isOrderDisplayLabelUnavailable(dlf) && !isInvalidTechnicalOrderDisplayLabel(dlf, catGuardFr)) {
     return dlf;
@@ -107,6 +126,22 @@ export function getOrderItemDisplayLabelForLanguage(
   if (language === "fr") return orderItemDisplayLabelFr(item);
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
+  if (resolvedType === "MEDICATION") {
+    const strengthCandidates = medicationOrderStrengthCandidates(medicationIdentityInput(item));
+    const enApi = item.displayLabelEn?.trim();
+    if (
+      enApi &&
+      !isIncompleteMedicationOrderDisplayLabel(enApi, {
+        strengthCandidates,
+        catalogItemType: catType,
+      })
+    ) {
+      return enApi;
+    }
+    const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
+    if (identity.medicationNameEn || identity.medicationNameFr) return identity.displayLabelEn;
+    return typeFallbackEn(resolvedType, t);
+  }
   const enApi = item.displayLabelEn?.trim();
   if (enApi && !isOrderDisplayLabelUnavailable(enApi) && !isInvalidTechnicalOrderDisplayLabel(enApi, catType)) {
     return enApi;
@@ -175,8 +210,9 @@ function catalogDisplayLabelFr(
     return null;
   }
   if (t === "MEDICATION") {
+    const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
+    if (identity.medicationNameFr || identity.medicationNameEn) return identity.displayLabelFr;
     const c = item.catalogMedication;
-    const n = resolveMedicationCatalogPrimaryLabel("fr", c ?? null);
     const detail = formatCatalogMedicationOrderDetailLine(
       {
         strength: item.strength?.trim() || c?.strength?.trim() || null,
@@ -185,8 +221,9 @@ function catalogDisplayLabelFr(
       },
       "fr"
     );
-    const parts = [n, detail].filter(Boolean);
-    if (parts.length) return parts.join(" · ");
+    if (detail && !isIncompleteMedicationOrderDisplayLabel(detail, { strengthCandidates: [detail] })) {
+      return detail;
+    }
     return null;
   }
   return null;
@@ -247,8 +284,9 @@ function catalogDisplayLabelEn(
     return null;
   }
   if (t === "MEDICATION") {
+    const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
+    if (identity.medicationNameEn || identity.medicationNameFr) return identity.displayLabelEn;
     const c = item.catalogMedication;
-    const n = resolveMedicationCatalogPrimaryLabel("en", c ?? null);
     const detail = formatCatalogMedicationOrderDetailLine(
       {
         strength: item.strength?.trim() || c?.strength?.trim() || null,
@@ -257,11 +295,36 @@ function catalogDisplayLabelEn(
       },
       "en"
     );
-    const parts = [n, detail].filter(Boolean);
-    if (parts.length) return parts.join(" · ");
+    if (detail && !isIncompleteMedicationOrderDisplayLabel(detail, { strengthCandidates: [detail] })) {
+      return detail;
+    }
     return null;
   }
   return null;
+}
+
+function medicationIdentityInput(item: {
+  catalogMedication?: {
+    code?: string | null;
+    displayNameEn?: string | null;
+    displayNameFr?: string | null;
+    genericName?: string | null;
+    name?: string | null;
+    strength?: string | null;
+  } | null;
+  manualLabel?: string | null;
+  manualSecondaryText?: string | null;
+  strength?: string | null;
+}) {
+  return {
+    catalogMedication: item.catalogMedication ?? null,
+    orderLine: {
+      catalogItemType: "MEDICATION" as const,
+      manualLabel: item.manualLabel,
+      manualSecondaryText: item.manualSecondaryText,
+      strength: item.strength,
+    },
+  };
 }
 
 function typeFallbackFr(t: string | null): string {
@@ -294,5 +357,11 @@ export function catalogMedicationNameForLocale(
   language: SupportedLanguage
 ): string {
   if (!m) return "";
-  return resolveMedicationCatalogPrimaryLabel(language === "fr" ? "fr" : "en", m) ?? "";
+  const identity = resolveMedicationOrderIdentity({
+    catalogMedication: m,
+    orderLine: { catalogItemType: "MEDICATION" },
+  });
+  return language === "fr"
+    ? (identity.medicationNameFr ?? "")
+    : (identity.medicationNameEn ?? "");
 }

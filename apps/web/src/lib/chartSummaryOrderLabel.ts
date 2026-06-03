@@ -1,6 +1,10 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import type { ChartSummaryOrderItem } from "@/lib/chartApi";
-import { isInvalidTechnicalOrderDisplayLabel, isOrderDisplayLabelUnavailable } from "@medora/shared";
+import {
+  isIncompleteMedicationOrderDisplayLabel,
+  isInvalidTechnicalOrderDisplayLabel,
+  isOrderDisplayLabelUnavailable,
+} from "@medora/shared";
 
 function chartOrderTypeFallbackEn(catalogItemType: string, t: (key: string) => string): string {
   const c = catalogItemType.trim();
@@ -23,13 +27,32 @@ export function chartSummaryOrderItemLineLabel(
   t?: (key: string) => string
 ): string {
   const cat = String(it.catalogItemType ?? "CARE");
+  const incompleteOpts =
+    cat === "MEDICATION"
+      ? {
+          catalogItemType: cat,
+          strengthCandidates: [
+            (it.displayLabelEn ?? "").trim(),
+            (it.displayLabelFr ?? it.displayLabel ?? "").trim(),
+          ],
+        }
+      : { catalogItemType: cat };
+
   if (language === "fr") {
     const fr = (it.displayLabelFr ?? it.displayLabel)?.trim();
-    if (fr && !isOrderDisplayLabelUnavailable(fr) && !isInvalidTechnicalOrderDisplayLabel(fr, cat)) {
+    if (
+      fr &&
+      !isIncompleteMedicationOrderDisplayLabel(fr, incompleteOpts) &&
+      !isInvalidTechnicalOrderDisplayLabel(fr, cat)
+    ) {
       return fr;
     }
     const en = (it.displayLabelEn ?? "").trim();
-    if (en && !isOrderDisplayLabelUnavailable(en) && !isInvalidTechnicalOrderDisplayLabel(en, cat)) {
+    if (
+      en &&
+      !isIncompleteMedicationOrderDisplayLabel(en, incompleteOpts) &&
+      !isInvalidTechnicalOrderDisplayLabel(en, cat)
+    ) {
       return en;
     }
     return "—";
@@ -37,7 +60,7 @@ export function chartSummaryOrderItemLineLabel(
   const enOnly = it.displayLabelEn?.trim();
   if (
     enOnly &&
-    !isOrderDisplayLabelUnavailable(enOnly) &&
+    !isIncompleteMedicationOrderDisplayLabel(enOnly, incompleteOpts) &&
     !isInvalidTechnicalOrderDisplayLabel(enOnly, cat)
   ) {
     return enOnly;

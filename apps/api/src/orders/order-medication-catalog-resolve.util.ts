@@ -115,9 +115,9 @@ export async function loadOrderMedicationCatalogMaps(
     findMany?: (args: unknown) => Promise<OrderMedicationCatalogRow[]>;
     findUnique?: (args: unknown) => Promise<OrderMedicationCatalogRow | null>;
   };
-  const productClient = prisma.medicationProduct as unknown as {
-    findMany?: (args: unknown) => Promise<MedicationProductResolveRow[]>;
-  };
+  const productClient = prisma.medicationProduct as unknown as
+    | { findMany?: (args: unknown) => Promise<MedicationProductResolveRow[]> }
+    | undefined;
 
   let catalogRows: OrderMedicationCatalogRow[] = [];
   if (catalogIds.size > 0) {
@@ -136,7 +136,7 @@ export async function loadOrderMedicationCatalogMaps(
   }
 
   let productRows: MedicationProductResolveRow[] = [];
-  if (productIds.size > 0 && typeof productClient.findMany === "function") {
+  if (productIds.size > 0 && typeof productClient?.findMany === "function") {
     productRows = await productClient.findMany({
       where: { id: { in: [...productIds] } },
       select: {
@@ -161,7 +161,7 @@ export async function loadOrderMedicationCatalogMaps(
       unresolvedCatalogItemIds.filter((id) => !byProductId.has(id) && !productIds.has(id))
     ),
   ];
-  if (extraProductLookupIds.length > 0 && typeof productClient.findMany === "function") {
+  if (extraProductLookupIds.length > 0 && typeof productClient?.findMany === "function") {
     const extraProducts = await productClient.findMany({
       where: { id: { in: extraProductLookupIds } },
       select: {

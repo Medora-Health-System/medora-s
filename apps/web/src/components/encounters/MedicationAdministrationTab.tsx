@@ -23,6 +23,7 @@ import {
   validateHighAlertMarCreate,
   validateLasaMarCreate,
   validatePharmacyMarCreate,
+  isIncompleteMedicationOrderDisplayLabel,
   isOrderDisplayLabelUnavailable,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
@@ -175,14 +176,17 @@ type OrderItemApi = {
   medicationSafetyGovernance?: MedicationSafetyGovernanceDisplayInput | null;
 };
 
-/** Prefer live order-line label when MAR snapshot predates M1.7A.4 or captured fallback text. */
+/** Prefer live order-line label when MAR snapshot is incomplete (M1.7A.5 / M1.7A.6). */
 function marMedicationDisplayLabel(
   medicationLabelSnapshot: string | null | undefined,
-  orderLineLabel: string
+  orderLineLabel: string,
+  strengthCandidates: (string | null | undefined)[] = []
 ): string {
   const snap = medicationLabelSnapshot?.trim();
-  if (snap && !isOrderDisplayLabelUnavailable(snap)) return snap;
+  const incompleteOpts = { strengthCandidates, catalogItemType: "MEDICATION" as const };
+  if (snap && !isIncompleteMedicationOrderDisplayLabel(snap, incompleteOpts)) return snap;
   const live = orderLineLabel.trim();
+  if (live && !isIncompleteMedicationOrderDisplayLabel(live, incompleteOpts)) return live;
   return live || snap || orderLineLabel;
 }
 
@@ -1880,7 +1884,10 @@ export function MedicationAdministrationTab({
                 );
 
                 const displayName =
-                  marMedicationDisplayLabel(latest?.medicationLabelSnapshot, row.label);
+                  marMedicationDisplayLabel(latest?.medicationLabelSnapshot, row.label, [
+                    latest?.medicationLabelSnapshot,
+                    row.label,
+                  ]);
 
                 const intendedLine =
                   row.intendedAt != null && String(row.intendedAt).trim() !== ""
@@ -2005,7 +2012,10 @@ export function MedicationAdministrationTab({
               const orderLineLabel = oid
                 ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
                 : t("marTab.noLinkedOrder");
-              const label = marMedicationDisplayLabel(r.medicationLabelSnapshot, orderLineLabel);
+              const label = marMedicationDisplayLabel(r.medicationLabelSnapshot, orderLineLabel, [
+                r.medicationLabelSnapshot,
+                orderLineLabel,
+              ]);
               const historyClock = buildMedicationAdministrationRowClockAction({
                 administration: r,
                 encounterOpen: encounterClinicalMutationsAllowed,
@@ -2924,7 +2934,10 @@ export function MedicationAdministrationTab({
         const orderLineLabel = oid
           ? taskRows.find((tr) => tr.orderItemId === oid)?.label ?? t("common.dash")
           : t("marTab.noLinkedOrder");
-        const label = marMedicationDisplayLabel(row.medicationLabelSnapshot, orderLineLabel);
+        const label = marMedicationDisplayLabel(row.medicationLabelSnapshot, orderLineLabel, [
+          row.medicationLabelSnapshot,
+          orderLineLabel,
+        ]);
         return (
           <MedicationAdministrationEffectiveTimeModal
             open

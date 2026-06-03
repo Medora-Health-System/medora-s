@@ -74,4 +74,38 @@ describe("MedicationAdministrationService order label snapshot (M1.7A.4)", () =>
     expect(label).toBe("Hydromorphone 2 mg/mL");
     expect(label).not.toContain("label unavailable");
   });
+
+  it("MAR snapshot never returns strength-only when catalog code can derive INN (M1.7A.6)", async () => {
+    const catalogRow = {
+      id: "cat-hydro",
+      code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+      name: "Hydromorphone",
+      displayNameEn: "2 mg/mL",
+      displayNameFr: "2 mg/mL",
+      genericName: null,
+      strength: "2 mg/mL",
+    };
+
+    const prisma = {
+      encounter: { findFirst: jest.fn() },
+      orderItem: { findFirst: jest.fn() },
+      catalogMedication: { findMany: jest.fn() },
+      medicationProduct: { findMany: jest.fn() },
+    };
+    const audit = { log: jest.fn() };
+    const service = new MedicationAdministrationService(prisma as never, audit as never);
+    const label = (service as unknown as { medicationLabelSnapshotFromMedicationOrderItem: Function })
+      .medicationLabelSnapshotFromMedicationOrderItem(
+        {
+          manualLabel: null,
+          manualSecondaryText: null,
+          strength: "2 mg/mL",
+          notes: null,
+        },
+        catalogRow
+      );
+
+    expect(label).toBe("Hydromorphone 2 mg/mL");
+    expect(label).not.toMatch(/^2 mg\/mL$/);
+  });
 });

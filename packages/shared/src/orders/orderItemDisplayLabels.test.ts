@@ -168,6 +168,20 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
     ).toBe("Hydromorphone");
   });
 
+  it("MAR snapshot never returns strength-only label (M1.7A.6)", () => {
+    const snap = buildMedicationOrderLabelSnapshot(
+      { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: "2 mg/mL" },
+      {
+        code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+        displayNameEn: "2 mg/mL",
+        genericName: null,
+        strength: "2 mg/mL",
+      }
+    );
+    expect(snap).toBe("Hydromorphone 2 mg/mL");
+    expect(snap).not.toMatch(/^2 mg\/mL$/);
+  });
+
   it("MAR snapshot uses Hydromorphone not label unavailable", () => {
     const snap = buildMedicationOrderLabelSnapshot(
       { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: "2 mg/mL" },
