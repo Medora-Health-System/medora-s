@@ -24,7 +24,7 @@ function toClinicalLocale(language: SupportedLanguage): MedicationClinicalDispla
 export function normalizeMedicationDisplayForLocale(
   value: string | null | undefined,
   language: SupportedLanguage,
-  field: "dosageForm" | "route" | "therapeuticClass" | "frequency" = "dosageForm"
+  field?: "dosageForm" | "route" | "therapeuticClass" | "frequency"
 ): string {
   return resolveMedicationClinicalDisplayValue(value, toClinicalLocale(language), field);
 }

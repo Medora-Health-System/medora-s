@@ -148,29 +148,43 @@ function mapFrToEn(value: string, table: Record<string, string>): string {
   return trimmed;
 }
 
+const CLINICAL_FIELD_TABLES = {
+  dosageForm: DOSAGE_FORM_FR_TO_EN,
+  route: ROUTE_FR_TO_EN,
+  therapeuticClass: THERAPEUTIC_CLASS_FR_TO_EN,
+  frequency: FREQUENCY_FR_TO_EN,
+} as const;
+
+function mapFrToEnForClinicalField(
+  value: string,
+  field: keyof typeof CLINICAL_FIELD_TABLES
+): string {
+  return mapFrToEn(value, CLINICAL_FIELD_TABLES[field]);
+}
+
 /**
  * Resolve one persisted clinical label for UI locale.
  * French locale returns stored text; English applies formulary map then passes through ASCII clinical terms.
+ * When `field` is omitted, tries therapeuticClass → route → dosageForm → frequency (display-only auto-detect).
  */
 export function resolveMedicationClinicalDisplayValue(
   value: string | null | undefined,
   locale: MedicationClinicalDisplayLocale,
-  field: "dosageForm" | "route" | "therapeuticClass" | "frequency" = "dosageForm"
+  field?: "dosageForm" | "route" | "therapeuticClass" | "frequency"
 ): string {
   const raw = value?.trim() ?? "";
   if (!raw) return "";
   if (locale === "fr") return raw;
 
-  const table =
-    field === "route"
-      ? ROUTE_FR_TO_EN
-      : field === "therapeuticClass"
-        ? THERAPEUTIC_CLASS_FR_TO_EN
-        : field === "frequency"
-          ? FREQUENCY_FR_TO_EN
-          : DOSAGE_FORM_FR_TO_EN;
+  if (field) {
+    return mapFrToEnForClinicalField(raw, field);
+  }
 
-  return mapFrToEn(raw, table);
+  for (const candidate of ["therapeuticClass", "route", "dosageForm", "frequency"] as const) {
+    const mapped = mapFrToEnForClinicalField(raw, candidate);
+    if (normalizeLookupKey(mapped) !== normalizeLookupKey(raw)) return mapped;
+  }
+  return raw;
 }
 
 /** Structured metadata parts for medication search / order display. */

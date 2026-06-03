@@ -271,7 +271,7 @@ describe("MedicationAdministrationService LASA MAR (M1.3F.6)", () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it("combined controlled + high-alert + LASA creates all verifications", async () => {
+  it("combined controlled + high-alert + LASA creates witness and LASA verifications (M1.7A.9 — no opioid double-check)", async () => {
     const combinedCatalog = {
       ...lasaCatalog(),
       isControlled: true,
@@ -310,12 +310,12 @@ describe("MedicationAdministrationService LASA MAR (M1.3F.6)", () => {
       lasaAcknowledged: true,
       lasaMedicationSelectionConfirmed: true,
     });
-    expect(verificationCreate).toHaveBeenCalledTimes(3);
+    expect(verificationCreate).toHaveBeenCalledTimes(2);
     const types = verificationCreate.mock.calls.map(
       (c) => (c[0] as { data: { verificationType: string } }).data.verificationType
     );
     expect(types).toContain(MedicationVerificationType.WITNESS);
-    expect(types).toContain(MedicationVerificationType.INDEPENDENT_DOUBLE_CHECK);
     expect(types).toContain(MedicationVerificationType.LASA_ACKNOWLEDGMENT);
+    expect(types).not.toContain(MedicationVerificationType.INDEPENDENT_DOUBLE_CHECK);
   });
 });

@@ -6,11 +6,12 @@ import {
 import { orderItemToMedicationSafetyGovernanceDisplay } from "./orderItemMedicationSafetyGovernance";
 
 describe("medicationMarSafetyGovernance (M1.3F.3)", () => {
-  it("maps API governance snapshot for badge rendering", () => {
+  it("maps API governance snapshot for badge rendering (M1.7A.9 — no pharmacy verify badge)", () => {
     const display = orderItemToMedicationSafetyGovernanceDisplay({
       medicationSafetyGovernance: {
         isControlled: true,
         isHighAlert: true,
+        highAlertClass: "HIGH_ALERT_INSULIN",
         lasaGroupId: "GROUP_LASA_OPIOID",
         requiresWitness: true,
         requiresDoubleSign: true,
@@ -19,7 +20,8 @@ describe("medicationMarSafetyGovernance (M1.3F.3)", () => {
       catalogMedication: { isControlled: false },
     });
     expect(getMedicationSafetyBadges(display)).toContain("CONTROLLED");
-    expect(getMedicationSafetyBadges(display)).toContain("PHARMACY_VERIFY");
+    expect(getMedicationSafetyBadges(display)).toContain("DOUBLE_SIGN_REQUIRED");
+    expect(getMedicationSafetyBadges(display)).not.toContain("PHARMACY_VERIFY");
     expect(medicationSafetyGovernanceHasDisplay(display)).toBe(true);
   });
 

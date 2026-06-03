@@ -32,6 +32,13 @@ describe("M1.7A.3 medicationClinicalDisplayLocale", () => {
     expect(line).toContain("Analgésique / antipyrétique");
   });
 
+  it("auto-detects clinical field when field arg omitted (English UI)", () => {
+    expect(resolveMedicationClinicalDisplayValue("comprimé", "en")).toBe("tablet");
+    expect(resolveMedicationClinicalDisplayValue("orale", "en")).toBe("oral");
+    expect(resolveMedicationClinicalDisplayValue("intraveineuse", "en")).toBe("intravenous");
+    expect(resolveMedicationClinicalDisplayValue("Antidiabétique", "en")).toBe("Antidiabetic");
+  });
+
   it("maps suspension buvable and Antalgique for English UI", () => {
     expect(resolveMedicationClinicalDisplayValue("suspension buvable", "en", "dosageForm")).toBe(
       "oral suspension"

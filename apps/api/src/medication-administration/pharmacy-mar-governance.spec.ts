@@ -1,10 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
-import {
-  AuditAction,
-  MedicationMarAction,
-  MedicationOverrideType,
-  PharmacyVerificationStatus,
-} from "@prisma/client";
+import { MedicationMarAction, PharmacyVerificationStatus } from "@prisma/client";
 import { MedicationAdministrationService } from "./medication-administration.service";
 
 function makeEncounter() {
@@ -151,10 +146,10 @@ describe("MedicationAdministrationService pharmacy MAR (M1.3F.7)", () => {
       }),
     };
     const service = new MedicationAdministrationService(prisma as never, { log: auditLog } as never);
-    return { service, overrideCreate, auditLog };
+    return { service, overrideCreate, auditLog, marCreate };
   }
 
-  it("returns 400 when pharmacy verification pending", async () => {
+  it("blocks insulin MAR without dual nurse witness (M1.7A.9 — not pharmacy)", async () => {
     const { service } = makeService(insulinCatalog(), insulinProductProfile(), null);
     await expect(
       service.create("enc-1", "fac-1", "nurse-1", {
@@ -166,22 +161,8 @@ describe("MedicationAdministrationService pharmacy MAR (M1.3F.7)", () => {
     expect(marCreate).not.toHaveBeenCalled();
   });
 
-  it("allows administration when pharmacy verified", async () => {
+  it("allows insulin MAR with dual witness regardless of pharmacy status (M1.7A.9)", async () => {
     const { service, overrideCreate } = makeService(
-      insulinCatalog(),
-      insulinProductProfile(),
-      PharmacyVerificationStatus.VERIFIED
-    );
-    await service.create("enc-1", "fac-1", "nurse-1", {
-      orderItemId: "oi-1",
-      marAction: "administered",
-      administeredQuantity: 1,
-    });
-    expect(overrideCreate).not.toHaveBeenCalled();
-  });
-
-  it("creates pharmacy override when acknowledged", async () => {
-    const { service, overrideCreate, auditLog } = makeService(
       insulinCatalog(),
       insulinProductProfile(),
       PharmacyVerificationStatus.PENDING
@@ -190,36 +171,42 @@ describe("MedicationAdministrationService pharmacy MAR (M1.3F.7)", () => {
       orderItemId: "oi-1",
       marAction: "administered",
       administeredQuantity: 1,
+      highAlertVerifierUserId: "rn-2",
+    });
+    expect(overrideCreate).not.toHaveBeenCalled();
+    expect(marCreate).toHaveBeenCalled();
+  });
+
+  it("does not create pharmacy override when pharmacy pending (M1.7A.9 informational only)", async () => {
+    const { service, overrideCreate } = makeService(
+      insulinCatalog(),
+      insulinProductProfile(),
+      PharmacyVerificationStatus.PENDING
+    );
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      orderItemId: "oi-1",
+      marAction: "administered",
+      administeredQuantity: 1,
+      highAlertVerifierUserId: "rn-2",
       pharmacyVerificationOverrideAcknowledged: true,
       pharmacyVerificationOverrideReason: "Urgence — pharmacien en route",
     });
-    expect(overrideCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          overrideType: MedicationOverrideType.PHARMACY_PENDING_OVERRIDE,
-        }),
-      })
-    );
-    expect(auditLog).toHaveBeenCalledWith(
-      AuditAction.PHARMACY_VERIFICATION_OVERRIDE,
-      "MEDICATION_ADMINISTRATION",
-      expect.objectContaining({ critical: true })
-    );
+    expect(overrideCreate).not.toHaveBeenCalled();
   });
 
-  it("blocks rejected pharmacy verification without override", async () => {
-    const { service } = makeService(
+  it("allows insulin MAR with dual witness when pharmacy rejected (M1.7A.9)", async () => {
+    const { service, marCreate: createMock } = makeService(
       insulinCatalog(),
       insulinProductProfile(),
       PharmacyVerificationStatus.REJECTED
     );
-    await expect(
-      service.create("enc-1", "fac-1", "nurse-1", {
-        orderItemId: "oi-1",
-        marAction: "administered",
-        administeredQuantity: 1,
-      })
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      orderItemId: "oi-1",
+      marAction: "administered",
+      administeredQuantity: 1,
+      highAlertVerifierUserId: "rn-2",
+    });
+    expect(createMock).toHaveBeenCalled();
   });
 
   it("does not require pharmacy for normal medication", async () => {

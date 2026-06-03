@@ -5,8 +5,11 @@ import {
   isIncompleteMedicationOrderDisplayLabel,
   isInvalidTechnicalOrderDisplayLabel,
   isOrderDisplayLabelUnavailable,
+  looksEnglishFormText,
+  medicationEnglishDisplayContainsFrenchLeak,
   medicationOrderStrengthCandidates,
   pickStrictEnCatalogPrimaryLabel,
+  resolveMedicationClinicalDisplayValue,
   resolveMedicationOrderIdentity,
 } from "@medora/shared";
 
@@ -16,6 +19,27 @@ import {
  *
  * Priorité : displayLabelFr → catalogue (displayNameFr / name selon le type) → manualLabel (+ secondaire) → repli FR.
  */
+/** Append locale-normalized form/route when English identity label omits catalog metadata. */
+function appendEnglishMedicationCatalogFormRoute(
+  baseLabel: string,
+  catalogMedication?: { dosageForm?: string | null; route?: string | null } | null
+): string {
+  if (!catalogMedication) return baseLabel;
+  const lower = baseLabel.toLowerCase();
+  const extras: string[] = [];
+  for (const [raw, field] of [
+    [catalogMedication.dosageForm, "dosageForm"],
+    [catalogMedication.route, "route"],
+  ] as const) {
+    const trimmed = raw?.trim();
+    if (!trimmed || looksEnglishFormText(trimmed)) continue;
+    if (!medicationEnglishDisplayContainsFrenchLeak(trimmed)) continue;
+    const normalized = resolveMedicationClinicalDisplayValue(trimmed, "en", field);
+    if (normalized && !lower.includes(normalized.toLowerCase())) extras.push(normalized);
+  }
+  return extras.length ? `${baseLabel} · ${extras.join(" · ")}` : baseLabel;
+}
+
 /** French catalog resolution (used only inside {@link getOrderItemDisplayLabelForLanguage}). */
 function orderItemDisplayLabelFr(item: {
   displayLabelFr?: string | null;
@@ -139,7 +163,12 @@ export function getOrderItemDisplayLabelForLanguage(
       return enApi;
     }
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameEn || identity.medicationNameFr) return identity.displayLabelEn;
+    if (identity.medicationNameEn || identity.medicationNameFr) {
+      return appendEnglishMedicationCatalogFormRoute(
+        identity.displayLabelEn,
+        item.catalogMedication
+      );
+    }
     return typeFallbackEn(resolvedType, t);
   }
   const enApi = item.displayLabelEn?.trim();
@@ -285,7 +314,12 @@ function catalogDisplayLabelEn(
   }
   if (t === "MEDICATION") {
     const identity = resolveMedicationOrderIdentity(medicationIdentityInput(item));
-    if (identity.medicationNameEn || identity.medicationNameFr) return identity.displayLabelEn;
+    if (identity.medicationNameEn || identity.medicationNameFr) {
+      return appendEnglishMedicationCatalogFormRoute(
+        identity.displayLabelEn,
+        item.catalogMedication
+      );
+    }
     const c = item.catalogMedication;
     const detail = formatCatalogMedicationOrderDetailLine(
       {

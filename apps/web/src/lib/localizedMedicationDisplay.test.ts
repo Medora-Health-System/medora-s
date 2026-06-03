@@ -54,6 +54,13 @@ describe("normalizeMedicationDisplayForLocale", () => {
     );
   });
 
+  it("auto-detects clinical field when field arg omitted", () => {
+    expect(normalizeMedicationDisplayForLocale("comprimé", "en")).toBe("tablet");
+    expect(normalizeMedicationDisplayForLocale("orale", "en")).toBe("oral");
+    expect(normalizeMedicationDisplayForLocale("intraveineuse", "en")).toBe("intravenous");
+    expect(normalizeMedicationDisplayForLocale("Antidiabétique", "en")).toBe("Antidiabetic");
+  });
+
   it("preserves French labels in FR locale", () => {
     expect(normalizeMedicationDisplayForLocale("comprimé", "fr")).toBe("comprimé");
   });
