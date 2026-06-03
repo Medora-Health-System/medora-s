@@ -2,38 +2,19 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import type { HomeMedicationEntryForm } from "@/features/emergency/homeMedicationEntry";
+import {
+  buildMedicationCatalogClinicalParts,
+  filterMedicationAliasesForDisplayLocale,
+  formatMedicationCatalogClinicalLine,
+  medicationEnglishDisplayContainsFrenchLeak,
+  normalizeMedicationSecondaryTextBlob,
+  resolveMedicationClinicalDisplayValue,
+  type MedicationCatalogClinicalFields,
+  type MedicationClinicalDisplayLocale,
+} from "@medora/shared";
 
-const FRENCH_TO_ENGLISH_MEDICATION_LABELS: Record<string, string> = {
-  comprimé: "tablet",
-  comprime: "tablet",
-  "comprimé orale": "oral tablet",
-  orale: "oral",
-  oral: "oral",
-  intraveineuse: "intravenous",
-  intraveineux: "intravenous",
-  iv: "IV",
-  "sous-cutanée": "subcutaneous",
-  "sous-cutané": "subcutaneous",
-  intramusculaire: "intramuscular",
-  capsule: "capsule",
-  gélule: "capsule",
-  "solution injectable": "injectable solution",
-  antidiabétique: "Antidiabetic",
-  antidiabetique: "Antidiabetic",
-  "gastro-intestinal": "Gastrointestinal",
-  gastrointestinal: "Gastrointestinal",
-  quotidien: "daily",
-  "1 fois par jour": "once daily",
-  "deux fois par jour": "twice daily",
-  "trois fois par jour": "three times daily",
-  bid: "twice daily",
-  tid: "three times daily",
-  qid: "four times daily",
-  qd: "once daily",
-};
-
-function normalizeKey(value: string): string {
-  return value.trim().toLowerCase();
+function toClinicalLocale(language: SupportedLanguage): MedicationClinicalDisplayLocale {
+  return language === "fr" ? "fr" : "en";
 }
 
 /**
@@ -42,39 +23,34 @@ function normalizeKey(value: string): string {
  */
 export function normalizeMedicationDisplayForLocale(
   value: string | null | undefined,
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  field: "dosageForm" | "route" | "therapeuticClass" | "frequency" = "dosageForm"
 ): string {
-  const raw = value?.trim();
-  if (!raw) return "";
-  if (language === "fr") return raw;
-
-  const key = normalizeKey(raw);
-  if (FRENCH_TO_ENGLISH_MEDICATION_LABELS[key]) {
-    return FRENCH_TO_ENGLISH_MEDICATION_LABELS[key];
-  }
-
-  // Partial replacements for compound French phrases (longest keys first).
-  let out = raw;
-  const entries = Object.entries(FRENCH_TO_ENGLISH_MEDICATION_LABELS).sort(
-    (a, b) => b[0].length - a[0].length
-  );
-  for (const [fr, en] of entries) {
-    const re = new RegExp(fr.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
-    if (re.test(out)) out = out.replace(re, en);
-  }
-  return out.replace(/\s+/g, " ").trim();
+  return resolveMedicationClinicalDisplayValue(value, toClinicalLocale(language), field);
 }
 
-export type CatalogMedicationMetadataFields = {
-  strength?: string | null;
-  dosageForm?: string | null;
-  route?: string | null;
-  frequency?: string | null;
-  therapeuticClass?: string | null;
-};
+export type CatalogMedicationMetadataFields = MedicationCatalogClinicalFields;
 
-function normalizedField(value: string | null | undefined, language: SupportedLanguage): string {
-  return normalizeMedicationDisplayForLocale(value, language);
+function medicationFieldsFromSearchItem(
+  item: Pick<CatalogSearchItem, "metadata">
+): MedicationCatalogClinicalFields {
+  const meta = item.metadata ?? {};
+  return {
+    strength: meta.strength,
+    dosageForm: meta.dosageForm,
+    route: meta.route,
+    therapeuticClass: meta.therapeuticClass,
+  };
+}
+
+function localeSecondaryFromItem(
+  item: Pick<CatalogSearchItem, "secondaryText" | "secondaryTextEn" | "secondaryTextFr">,
+  language: SupportedLanguage
+): string | undefined {
+  const locale = toClinicalLocale(language);
+  if (locale === "en" && item.secondaryTextEn?.trim()) return item.secondaryTextEn.trim();
+  if (locale === "fr" && item.secondaryTextFr?.trim()) return item.secondaryTextFr.trim();
+  return undefined;
 }
 
 /**
@@ -85,29 +61,17 @@ export function formatCatalogMedicationMetadataParts(
   fields: CatalogMedicationMetadataFields,
   language: SupportedLanguage
 ): string[] {
-  const strength = fields.strength?.trim() ?? "";
-  const form = normalizedField(fields.dosageForm, language);
-  const route = normalizedField(fields.route, language);
-  const frequency = normalizedField(fields.frequency, language);
-  const therapeuticClass = normalizedField(fields.therapeuticClass, language);
-
-  const parts: string[] = [];
-  if (strength && form) parts.push(`${strength} ${form}`);
-  else {
-    if (strength) parts.push(strength);
-    if (form) parts.push(form);
-  }
-  if (route) parts.push(route);
-  if (frequency) parts.push(frequency);
-  if (therapeuticClass) parts.push(therapeuticClass);
-  return parts;
+  return buildMedicationCatalogClinicalParts(fields, toClinicalLocale(language));
 }
 
 /**
  * Subtitle / secondary line for medication catalog search rows (display only).
  */
 export function formatCatalogMedicationSubtitleForLocale(
-  item: Pick<CatalogSearchItem, "type" | "secondaryText" | "metadata">,
+  item: Pick<
+    CatalogSearchItem,
+    "type" | "secondaryText" | "secondaryTextEn" | "secondaryTextFr" | "metadata"
+  >,
   language: SupportedLanguage,
   separator = " · "
 ): string {
@@ -115,14 +79,11 @@ export function formatCatalogMedicationSubtitleForLocale(
     return item.secondaryText?.trim() ?? "";
   }
 
-  const meta = item.metadata ?? {};
+  const fromApi = localeSecondaryFromItem(item, language);
+  if (fromApi) return fromApi;
+
   const structuredParts = formatCatalogMedicationMetadataParts(
-    {
-      strength: meta.strength,
-      dosageForm: meta.dosageForm,
-      route: meta.route,
-      therapeuticClass: meta.therapeuticClass,
-    },
+    medicationFieldsFromSearchItem(item),
     language
   );
 
@@ -131,7 +92,7 @@ export function formatCatalogMedicationSubtitleForLocale(
   }
 
   if (item.secondaryText?.trim()) {
-    return normalizedField(item.secondaryText, language);
+    return normalizeMedicationSecondaryTextBlob(item.secondaryText, toClinicalLocale(language));
   }
 
   return "";
@@ -142,7 +103,7 @@ export function formatCatalogMedicationOrderDetailLine(
   fields: CatalogMedicationMetadataFields,
   language: SupportedLanguage
 ): string {
-  return formatCatalogMedicationMetadataParts(fields, language).join(" · ");
+  return formatMedicationCatalogClinicalLine(fields, toClinicalLocale(language));
 }
 
 export function formatMedicationOptionForLocale(
@@ -152,26 +113,24 @@ export function formatMedicationOptionForLocale(
 ): { primary: string; subtitle: string } {
   const primary = getCatalogSearchItemDisplayLabel(item, language, t);
   const meta = item.metadata ?? {};
-  const generic = normalizedField(meta.genericName, language);
+  const locale = toClinicalLocale(language);
+  const generic = normalizeMedicationDisplayForLocale(meta.genericName, language);
 
   let subtitle = formatCatalogMedicationSubtitleForLocale(item, language, " — ");
-  if (generic && !primary.toLowerCase().includes(generic.toLowerCase())) {
+  const displayAliases = filterMedicationAliasesForDisplayLocale(meta.commonAliases, locale);
+  const aliasHint = displayAliases[0];
+  if (aliasHint && !primary.toLowerCase().includes(aliasHint.toLowerCase())) {
+    subtitle = subtitle ? `${subtitle} — ${aliasHint}` : aliasHint;
+  } else if (generic && !primary.toLowerCase().includes(generic.toLowerCase())) {
     subtitle = subtitle ? `${subtitle} — ${generic}` : generic;
   }
 
   return { primary, subtitle };
 }
 
-const ENGLISH_FORBIDDEN_IN_EN_UI = [
-  "comprimé",
-  "orale",
-  "intraveineuse",
-  "antidiabétique",
-] as const;
-
+/** @deprecated Use medicationEnglishDisplayContainsFrenchLeak from shared — kept for existing tests. */
 export function englishMedicationDisplayContainsFrench(value: string): boolean {
-  const lower = value.toLowerCase();
-  return ENGLISH_FORBIDDEN_IN_EN_UI.some((word) => lower.includes(word));
+  return medicationEnglishDisplayContainsFrenchLeak(value);
 }
 
 export function formatHomeMedicationSummaryForLocale(
@@ -187,9 +146,9 @@ export function formatHomeMedicationSummaryForLocale(
       ? `${entry.doseValue.trim()} ${normalizeMedicationDisplayForLocale(entry.doseUnit, language)}`
       : normalizeMedicationDisplayForLocale(entry.strength, language);
 
-  const form = normalizeMedicationDisplayForLocale(entry.dosageForm, language);
-  const route = normalizeMedicationDisplayForLocale(entry.route, language);
-  const frequency = normalizeMedicationDisplayForLocale(entry.frequency, language);
+  const form = normalizeMedicationDisplayForLocale(entry.dosageForm, language, "dosageForm");
+  const route = normalizeMedicationDisplayForLocale(entry.route, language, "route");
+  const frequency = normalizeMedicationDisplayForLocale(entry.frequency, language, "frequency");
 
   const hasDetails = Boolean(dose || form || route || frequency);
   if (!hasDetails) {

@@ -14,6 +14,9 @@ export type CatalogSearchItemDto = {
   /** Legacy / internal catalog `name` (unchanged semantics; keep for compatibility). */
   name?: string;
   secondaryText?: string;
+  /** M1.7A.3 — locale-specific medication subtitle (additive; legacy `secondaryText` remains FR-first). */
+  secondaryTextFr?: string;
+  secondaryTextEn?: string;
   searchText?: string;
   /** MEDICATION: favoris inventaire (optionnel). */
   isFavorite?: boolean;

@@ -11,6 +11,9 @@ export type CatalogSearchItem = {
   /** API `name` (English / primary); optional for older cached payloads. */
   name?: string;
   secondaryText?: string;
+  /** API M1.7A.3 — locale-specific medication subtitle lines. */
+  secondaryTextFr?: string;
+  secondaryTextEn?: string;
   searchText?: string;
   isFavorite?: boolean;
   isEssential?: boolean;

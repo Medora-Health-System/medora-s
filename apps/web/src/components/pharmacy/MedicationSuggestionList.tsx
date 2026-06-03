@@ -39,7 +39,7 @@ export function MedicationSuggestionList({
         const sub =
           med.type === "MEDICATION"
             ? formatCatalogMedicationSubtitleForLocale(med, language)
-            : [med.secondaryText, meta?.dosageForm, meta?.route].filter(Boolean).join(" · ");
+            : med.secondaryText?.trim() ?? "";
         return (
           <button
             key={med.id}

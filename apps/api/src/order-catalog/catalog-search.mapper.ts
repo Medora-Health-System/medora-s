@@ -1,3 +1,4 @@
+import { buildMedicationCatalogSecondaryTexts } from "@medora/shared";
 import type { CatalogSearchItemDto } from "./dto/catalog-search-item.dto";
 import type { CatalogMedication } from "@prisma/client";
 import {
@@ -36,11 +37,17 @@ export function mapMedicationToCatalogSearchItem(
   searchTextTruncated?: string | undefined
 ): CatalogSearchItemDto {
   const displayNameFr = (m.displayNameFr ?? m.name ?? "").trim() || m.name;
-  const secondaryParts = [m.strength, m.dosageForm].filter(Boolean) as string[];
+  const localizedSecondary = buildMedicationCatalogSecondaryTexts({
+    strength: m.strength,
+    dosageForm: m.dosageForm,
+    route: m.route,
+    therapeuticClass: m.therapeuticClass,
+  });
   const secondaryText =
-    secondaryParts.length > 0
-      ? secondaryParts.join(" · ")
-      : m.genericName?.trim() || undefined;
+    localizedSecondary.secondaryTextFr ||
+    localizedSecondary.secondaryTextEn ||
+    m.genericName?.trim() ||
+    undefined;
 
   return {
     id: m.id,
@@ -50,6 +57,8 @@ export function mapMedicationToCatalogSearchItem(
     displayNameEn: m.displayNameEn?.trim() || null,
     name: m.name?.trim() || undefined,
     secondaryText,
+    secondaryTextFr: localizedSecondary.secondaryTextFr || undefined,
+    secondaryTextEn: localizedSecondary.secondaryTextEn || undefined,
     searchText: searchTextTruncated,
     isFavorite: m.isFavorite,
     isEssential: m.isEssential,

@@ -133,6 +133,7 @@ export * from "./medication/enterpriseWave2BillingValidation.js";
 export * from "./medication/enterpriseWave2SearchValidation.js";
 export * from "./medication/medicationLocalizationTypes.js";
 export * from "./medication/medicationSearchTokens.js";
+export * from "./medication/medicationClinicalDisplayLocale.js";
 export {
   assertEnterpriseWaveFormularyLocalizationReady,
   assertMedicationLocalization,

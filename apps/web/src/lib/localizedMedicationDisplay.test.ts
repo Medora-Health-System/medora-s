@@ -46,10 +46,12 @@ function frenchCatalogItem(): CatalogSearchItem {
 
 describe("normalizeMedicationDisplayForLocale", () => {
   it("normalizes French route/form labels to English in EN locale", () => {
-    expect(normalizeMedicationDisplayForLocale("comprimé", "en")).toBe("tablet");
-    expect(normalizeMedicationDisplayForLocale("orale", "en")).toBe("oral");
-    expect(normalizeMedicationDisplayForLocale("intraveineuse", "en")).toBe("intravenous");
-    expect(normalizeMedicationDisplayForLocale("Antidiabétique", "en")).toBe("Antidiabetic");
+    expect(normalizeMedicationDisplayForLocale("comprimé", "en", "dosageForm")).toBe("tablet");
+    expect(normalizeMedicationDisplayForLocale("orale", "en", "route")).toBe("oral");
+    expect(normalizeMedicationDisplayForLocale("intraveineuse", "en", "route")).toBe("intravenous");
+    expect(normalizeMedicationDisplayForLocale("Antidiabétique", "en", "therapeuticClass")).toBe(
+      "Antidiabetic"
+    );
   });
 
   it("preserves French labels in FR locale", () => {
@@ -64,6 +66,33 @@ describe("formatMedicationOptionForLocale", () => {
     expect(subtitle).toContain("tablet");
     expect(subtitle).toContain("oral");
     expect(subtitle).toContain("Antidiabetic");
+  });
+
+  it("English Ibuprofen API-shaped row has no French category text", () => {
+    const item: CatalogSearchItem = {
+      id: "ibu",
+      code: "IBUPROFEN_200",
+      type: "MEDICATION",
+      displayNameEn: "Ibuprofen",
+      displayNameFr: "Ibuprofène",
+      secondaryText: "200 mg · comprimé · orale · Analgésique / antipyrétique",
+      secondaryTextFr: "200 mg · comprimé · orale · Analgésique / antipyrétique",
+      secondaryTextEn: "200 mg · tablet · oral · Analgesic / antipyretic",
+      metadata: {
+        strength: "200 mg",
+        dosageForm: "comprimé",
+        route: "orale",
+        therapeuticClass: "Analgésique / antipyrétique",
+        genericName: "Ibuprofen",
+      },
+    };
+    const en = formatMedicationOptionForLocale(item, "en", t);
+    expect(en.primary).toBe("Ibuprofen");
+    expect(englishMedicationDisplayContainsFrench(en.subtitle)).toBe(false);
+    expect(en.subtitle).toContain("Analgesic / antipyretic");
+    const fr = formatMedicationOptionForLocale(item, "fr", t);
+    expect(fr.primary).toBe("Ibuprofène");
+    expect(fr.subtitle).toContain("comprimé");
   });
 });
 
