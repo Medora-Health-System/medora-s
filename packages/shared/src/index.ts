@@ -131,6 +131,20 @@ export * from "./medication/enterpriseWave2BillingManifest.js";
 export * from "./medication/enterpriseWave2FormularyValidation.js";
 export * from "./medication/enterpriseWave2BillingValidation.js";
 export * from "./medication/enterpriseWave2SearchValidation.js";
+export * from "./medication/medicationLocalizationTypes.js";
+export * from "./medication/medicationSearchTokens.js";
+export {
+  assertEnterpriseWaveFormularyLocalizationReady,
+  assertMedicationLocalization,
+  buildMedicationSearchTermsArray,
+  enterpriseFormularyEntryToLocalizationContract,
+  inferLocalizationAliasesFromStrings,
+  looksEnglishFormText,
+  looksFrenchLocalizedText,
+  validateEnterpriseFormularyLocalizationBatch,
+  validateEnterpriseWaveFormularyLocalizationReady,
+  validateMedicationLocalization,
+} from "./medication/medicationLocalizationValidation.js";
 export * from "./medication/enterpriseFormularyPilotTypes.js";
 export {
   ENTERPRISE_FORMULARY_PILOT_VERSION,

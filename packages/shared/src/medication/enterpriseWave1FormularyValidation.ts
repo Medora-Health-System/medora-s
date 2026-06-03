@@ -12,6 +12,7 @@ import {
   ENTERPRISE_WAVE1_FORMULARY_MANIFEST,
 } from "./enterpriseWave1FormularyManifest.js";
 import type { EnterpriseWave1FormularyEntry } from "./enterpriseWave1Types.js";
+import { validateEnterpriseFormularyLocalizationBatch } from "./medicationLocalizationValidation.js";
 
 export function validateEnterpriseWave1FormularyManifest(): string[] {
   const errors: string[] = [];
@@ -41,6 +42,15 @@ export function validateEnterpriseWave1FormularyManifest(): string[] {
   }
 
   errors.push(...validateWave1BillingManifest());
+
+  const localization = validateEnterpriseFormularyLocalizationBatch(
+    ENTERPRISE_WAVE1_FORMULARY_MANIFEST,
+    { requireAliasesPerLocale: false, strictSearchTerms: false, allowInnDisplayMirror: true }
+  );
+  for (const i of localization.issues.filter((x) => x.severity === "blocking")) {
+    errors.push(`${i.catalogCode}: ${i.message}`);
+  }
+
   return errors;
 }
 
