@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMedicationOrderLabelSnapshot,
   buildOrderItemDisplayLabelEn,
   buildOrderItemDisplayLabelFr,
   isInvalidTechnicalOrderDisplayLabel,
+  medicationInnFromCatalogCode,
   pickStrictEnCatalogPrimaryLabel,
+  resolveMedicationCatalogPrimaryLabel,
 } from "./orderItemDisplayLabels";
 
 describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
@@ -124,6 +127,68 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
       null
     );
     expect(s).toBe("CMP");
+  });
+
+  it("EN Hydromorphone uses genericName when displayNameEn is empty", () => {
+    const catalog = {
+      code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+      displayNameEn: null,
+      displayNameFr: "Hydromorphone",
+      name: "Hydromorphone",
+      genericName: "Hydromorphone",
+      strength: "2 mg/mL",
+    };
+    const en = buildOrderItemDisplayLabelEn(
+      { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: null },
+      null,
+      null,
+      catalog
+    );
+    expect(en).toContain("Hydromorphone");
+    expect(en).not.toContain("label unavailable");
+    expect(en).not.toContain("HYDROMORPHONE_2MG");
+    const fr = buildOrderItemDisplayLabelFr(
+      { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: null },
+      null,
+      null,
+      catalog
+    );
+    expect(fr).toContain("Hydromorphone");
+  });
+
+  it("EN Hydromorphone derives INN from catalog code when only code is populated", () => {
+    expect(medicationInnFromCatalogCode("HYDROMORPHONE_2MG_ML_INJECTABLE")).toBe("Hydromorphone");
+    expect(
+      resolveMedicationCatalogPrimaryLabel("en", {
+        code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+        displayNameEn: null,
+        genericName: null,
+      })
+    ).toBe("Hydromorphone");
+  });
+
+  it("MAR snapshot uses Hydromorphone not label unavailable", () => {
+    const snap = buildMedicationOrderLabelSnapshot(
+      { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: "2 mg/mL" },
+      {
+        code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+        displayNameEn: null,
+        genericName: "Hydromorphone",
+        strength: "2 mg/mL",
+      }
+    );
+    expect(snap).toBe("Hydromorphone 2 mg/mL");
+    expect(snap).not.toContain("label unavailable");
+  });
+
+  it("fallback only when all medication identity sources are absent", () => {
+    const en = buildOrderItemDisplayLabelEn(
+      { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null, strength: null },
+      null,
+      null,
+      null
+    );
+    expect(en).toBe("Medication (label unavailable)");
   });
 
   it("EN imaging label uses ALL_CAPS_SNAKE catalog code when displayNameEn empty", () => {

@@ -71,6 +71,12 @@ import {
   type OrderWithEnrichedItems,
   type OrderWithItems,
 } from "./orders.types";
+import {
+  loadOrderMedicationCatalogMaps,
+  ORDER_MEDICATION_CATALOG_SELECT,
+  resolveOrderMedicationCatalogRow,
+  type OrderMedicationCatalogRow,
+} from "./order-medication-catalog-resolve.util";
 import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
@@ -183,27 +189,7 @@ function applyTemporaryOrderItemManualColumnFallback(data: Prisma.OrderCreateInp
   return { ...data, items: { create: nextCreate } } as Prisma.OrderCreateInput;
 }
 
-const CATALOG_MEDICATION_ENRICHMENT_SELECT = {
-  id: true,
-  code: true,
-  name: true,
-  displayNameEn: true,
-  displayNameFr: true,
-  genericName: true,
-  therapeuticClass: true,
-  administrationType: true,
-  billingClass: true,
-  strength: true,
-  dosageForm: true,
-  route: true,
-  ndc11: true,
-  ndcDisplay: true,
-  billingUnitType: true,
-  isControlled: true,
-  controlledSchedule: true,
-  requiresWitness: true,
-  requiresDoubleSign: true,
-} as const;
+const CATALOG_MEDICATION_ENRICHMENT_SELECT = ORDER_MEDICATION_CATALOG_SELECT;
 
 const CATALOG_LAB_SELECT = {
   id: true,
@@ -1276,21 +1262,26 @@ export class OrdersService {
   async enrichOrderItemsForDisplay(orders: OrderWithItems[]): Promise<OrderWithEnrichedItems[]> {
     const labIds = new Set<string>();
     const imgIds = new Set<string>();
-    const medIds = new Set<string>();
     const medicationOrderItemIds: string[] = [];
+    const medicationLines: Array<{
+      catalogItemId?: string | null;
+      medicationProductId?: string | null;
+      catalogItemType?: string;
+    }> = [];
     for (const order of orders) {
       for (const it of order.items || []) {
         if (it.catalogItemType === "LAB_TEST" && it.catalogItemId) labIds.add(it.catalogItemId);
         if (it.catalogItemType === "IMAGING_STUDY" && it.catalogItemId) imgIds.add(it.catalogItemId);
         if (it.catalogItemType === "MEDICATION") {
-          if (it.catalogItemId) medIds.add(it.catalogItemId);
+          medicationLines.push(it);
           medicationOrderItemIds.push(it.id);
         }
       }
     }
 
-    const medIdList = [...medIds];
-    const [labs, imgs, meds, governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
+    const medicationMaps = await loadOrderMedicationCatalogMaps(this.prisma, medicationLines);
+    const medIdList = [...medicationMaps.byCatalogId.keys()];
+    const [labs, imgs, governanceByCatalogId, pharmacyByOrderItemId, pharmacyDetailsByOrderItemId] =
       await Promise.all([
       labIds.size
         ? this.prisma.catalogLabTest.findMany({
@@ -1305,12 +1296,6 @@ export class OrdersService {
           })
         : Promise.resolve([] as CatalogImagingStudyEnrichment[]),
       medIdList.length
-        ? this.prisma.catalogMedication.findMany({
-            where: { id: { in: medIdList } },
-            select: CATALOG_MEDICATION_ENRICHMENT_SELECT,
-          })
-        : Promise.resolve([] as CatalogMedicationEnrichment[]),
-      medIdList.length
         ? loadMedicationSafetyGovernanceByCatalogId(this.prisma, medIdList)
         : Promise.resolve(new Map()),
       medicationOrderItemIds.length
@@ -1323,7 +1308,6 @@ export class OrdersService {
 
     const labMap = new Map(labs.map((c) => [c.id, c]));
     const imgMap = new Map(imgs.map((c) => [c.id, c]));
-    const medMap = new Map(meds.map((c) => [c.id, c]));
 
     return orders.map((order) => ({
       ...order,
@@ -1340,12 +1324,10 @@ export class OrdersService {
             : it.catalogItemType === "IMAGING_STUDY"
               ? null
               : undefined;
-        const catalogMedication =
-          it.catalogItemType === "MEDICATION" && it.catalogItemId
-            ? medMap.get(it.catalogItemId) ?? null
-            : it.catalogItemType === "MEDICATION"
-              ? null
-              : undefined;
+        const catalogMedication: OrderMedicationCatalogRow | null | undefined =
+          it.catalogItemType === "MEDICATION"
+            ? resolveOrderMedicationCatalogRow(it, medicationMaps)
+            : undefined;
         const labelIn = {
           catalogItemType: String(it.catalogItemType),
           manualLabel: it.manualLabel,

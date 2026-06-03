@@ -1,7 +1,11 @@
 import type { SupportedLanguage } from "@/i18n/config";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import { formatCatalogMedicationOrderDetailLine } from "@/lib/localizedMedicationDisplay";
-import { isInvalidTechnicalOrderDisplayLabel, pickStrictEnCatalogPrimaryLabel } from "@medora/shared";
+import {
+  isInvalidTechnicalOrderDisplayLabel,
+  pickStrictEnCatalogPrimaryLabel,
+  resolveMedicationCatalogPrimaryLabel,
+} from "@medora/shared";
 
 /**
  * Libellé affichable pour une ligne d’ordre (priorité alignée sur l’API enrichOrderItemsForDisplay).
@@ -85,6 +89,7 @@ export function getOrderItemDisplayLabelForLanguage(
       code?: string | null;
       displayNameEn?: string | null;
       displayNameFr?: string | null;
+      genericName?: string | null;
       name?: string | null;
       strength?: string | null;
       dosageForm?: string | null;
@@ -166,13 +171,16 @@ function catalogDisplayLabelFr(
   }
   if (t === "MEDICATION") {
     const c = item.catalogMedication;
-    const n = c?.displayNameFr?.trim() || c?.name?.trim();
-    const parts = [
-      n,
-      item.strength?.trim() || c?.strength?.trim(),
-      c?.dosageForm,
-      c?.route,
-    ].filter(Boolean);
+    const n = resolveMedicationCatalogPrimaryLabel("fr", c ?? null);
+    const detail = formatCatalogMedicationOrderDetailLine(
+      {
+        strength: item.strength?.trim() || c?.strength?.trim() || null,
+        dosageForm: c?.dosageForm,
+        route: c?.route,
+      },
+      "fr"
+    );
+    const parts = [n, detail].filter(Boolean);
     if (parts.length) return parts.join(" · ");
     return null;
   }
@@ -198,6 +206,7 @@ function catalogDisplayLabelEn(
       code?: string | null;
       displayNameEn?: string | null;
       displayNameFr?: string | null;
+      genericName?: string | null;
       name?: string | null;
       strength?: string | null;
       dosageForm?: string | null;
@@ -234,7 +243,7 @@ function catalogDisplayLabelEn(
   }
   if (t === "MEDICATION") {
     const c = item.catalogMedication;
-    const n = pickStrictEnCatalogPrimaryLabel(catalogItemTypeForGuard, c?.displayNameEn, c?.code);
+    const n = resolveMedicationCatalogPrimaryLabel("en", c ?? null);
     const detail = formatCatalogMedicationOrderDetailLine(
       {
         strength: item.strength?.trim() || c?.strength?.trim() || null,
@@ -275,19 +284,10 @@ export function catalogMedicationNameForLocale(
     name?: string | null;
     displayNameEn?: string | null;
     displayNameFr?: string | null;
+    genericName?: string | null;
   } | null | undefined,
   language: SupportedLanguage
 ): string {
   if (!m) return "";
-  const catType = "MEDICATION";
-  if (language === "en") {
-    return pickStrictEnCatalogPrimaryLabel(catType, m.displayNameEn, m.code) ?? "";
-  }
-  return (
-    m.displayNameFr?.trim() ||
-    m.displayNameEn?.trim() ||
-    m.name?.trim() ||
-    m.code?.trim() ||
-    ""
-  ).trim();
+  return resolveMedicationCatalogPrimaryLabel(language === "fr" ? "fr" : "en", m) ?? "";
 }

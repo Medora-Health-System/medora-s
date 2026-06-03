@@ -18,12 +18,11 @@ import type {
   MedicationAdministrationEffectiveTimeDto,
 } from "@medora/shared";
 import {
-  acceptableManualOrderLine,
   buildMedicationAdministrationCandidate,
+  buildMedicationOrderLabelSnapshot,
   deltaMinutesBetween,
   deriveMarClinicalActionFromNotes,
   getEncounterAllergyDocumentationSummary,
-  isInvalidTechnicalOrderDisplayLabel,
   INFUSION_START_MAR_NOTE_PREFIX,
   medicationAdministrationRowIsInfusionStart,
   medicationAdministrationRowIsInfusionStop,
@@ -39,6 +38,10 @@ import {
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
+import {
+  loadOrderMedicationCatalogMaps,
+  resolveOrderMedicationCatalogRow,
+} from "../orders/order-medication-catalog-resolve.util";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import {
@@ -275,33 +278,21 @@ export class MedicationAdministrationService {
       displayNameEn: string | null;
       displayNameFr: string | null;
       name: string | null;
+      genericName?: string | null;
       strength: string | null;
       code: string | null;
     } | null
   ): string {
-    const manualLine = acceptableManualOrderLine({
-      catalogItemType: "MEDICATION",
-      manualLabel: item.manualLabel,
-      manualSecondaryText: item.manualSecondaryText,
-      strength: item.strength,
-    });
-
-    const den = catalogMedication?.displayNameEn?.trim();
-    const denOk =
-      den && !isInvalidTechnicalOrderDisplayLabel(den, "MEDICATION") ? den : null;
-    const code = catalogMedication?.code?.trim();
-    const codeOk =
-      code && !isInvalidTechnicalOrderDisplayLabel(code, "MEDICATION") ? code : null;
-    const catPrimary = denOk || manualLine || codeOk || null;
-    if (catPrimary) {
-      const str = (item.strength ?? catalogMedication?.strength)?.trim();
-      return str ? `${catPrimary} ${str}` : catPrimary;
-    }
-    const fromRow = [item.strength, item.notes]
-      .map((s) => (typeof s === "string" ? s.trim() : ""))
-      .find((s) => s.length > 0);
-    if (fromRow) return fromRow;
-    return "Medication (label unavailable)";
+    return buildMedicationOrderLabelSnapshot(
+      {
+        catalogItemType: "MEDICATION",
+        manualLabel: item.manualLabel,
+        manualSecondaryText: item.manualSecondaryText,
+        strength: item.strength,
+        notes: item.notes,
+      },
+      catalogMedication
+    );
   }
 
   async findByEncounter(encounterId: string, facilityId: string) {
@@ -357,6 +348,7 @@ export class MedicationAdministrationService {
       displayNameEn: string | null;
       displayNameFr: string | null;
       name: string | null;
+      genericName: string | null;
       code: string | null;
       strength: string | null;
       ndc11: string | null;
@@ -400,25 +392,27 @@ export class MedicationAdministrationService {
       linkedMedicationLine = item as OrderItem & {
         order: { id: string; encounterId: string; facilityId: string; type: string; status: string };
       };
-      if (item.catalogItemId) {
-        catalogMedication = await this.prisma.catalogMedication.findUnique({
-          where: { id: item.catalogItemId },
-          select: {
-            id: true,
-            displayNameEn: true,
-            displayNameFr: true,
-            name: true,
-            code: true,
-            strength: true,
-            ndc11: true,
-            ndcDisplay: true,
-            billingUnitType: true,
-            isControlled: true,
-            controlledSchedule: true,
-            requiresWitness: true,
-            requiresDoubleSign: true,
-          },
-        });
+      const resolvedCatalog = resolveOrderMedicationCatalogRow(
+        item,
+        await loadOrderMedicationCatalogMaps(this.prisma, [item])
+      );
+      if (resolvedCatalog) {
+        catalogMedication = {
+          id: resolvedCatalog.id,
+          displayNameEn: resolvedCatalog.displayNameEn,
+          displayNameFr: resolvedCatalog.displayNameFr,
+          name: resolvedCatalog.name,
+          genericName: resolvedCatalog.genericName,
+          code: resolvedCatalog.code,
+          strength: resolvedCatalog.strength,
+          ndc11: resolvedCatalog.ndc11,
+          ndcDisplay: resolvedCatalog.ndcDisplay,
+          billingUnitType: resolvedCatalog.billingUnitType,
+          isControlled: resolvedCatalog.isControlled,
+          controlledSchedule: resolvedCatalog.controlledSchedule,
+          requiresWitness: resolvedCatalog.requiresWitness,
+          requiresDoubleSign: resolvedCatalog.requiresDoubleSign,
+        };
       }
       medicationLabelSnapshot = this.medicationLabelSnapshotFromMedicationOrderItem(item, catalogMedication);
       orderIdForAudit = item.order.id;
