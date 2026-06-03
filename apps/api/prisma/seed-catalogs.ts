@@ -129,16 +129,15 @@ async function main() {
         "[enterprise-pilot] no facility found — seed facility before MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION=1"
       );
     }
-    const catalogCodes = process.env.MEDORA_ENTERPRISE_PILOT_CATALOG_CODES?.split(",")
-      .map((c) => c.trim())
-      .filter(Boolean);
-    const { activateEnterpriseFormularyPilotTrancheA } = await import(
-      "./helpers/seed-enterprise-formulary-pilot-activation"
+    const { activateEnterpriseFormularyPilotTrancheA, parseEnterprisePilotCatalogCodesFromEnv } =
+      await import("./helpers/seed-enterprise-formulary-pilot-activation");
+    const catalogCodes = parseEnterprisePilotCatalogCodesFromEnv(
+      process.env.MEDORA_ENTERPRISE_PILOT_CATALOG_CODES
     );
     const pilot = await activateEnterpriseFormularyPilotTrancheA(prisma, {
       facilityId: facility.id,
       dryRun: process.env.MEDORA_ENTERPRISE_PILOT_DRY_RUN === "1",
-      catalogCodes: catalogCodes?.length ? catalogCodes : undefined,
+      catalogCodes,
       pilotNote: process.env.MEDORA_ENTERPRISE_PILOT_NOTE?.trim(),
       activatedBy: process.env.MEDORA_ENTERPRISE_PILOT_ACTIVATED_BY?.trim(),
     });

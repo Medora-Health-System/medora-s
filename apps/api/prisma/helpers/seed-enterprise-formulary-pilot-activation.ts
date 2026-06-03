@@ -4,6 +4,7 @@ import type {
   EnterpriseFormularyPilotDashboard,
   EnterprisePilotReadinessScores,
 } from "@medora/shared";
+import { ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE } from "@medora/shared";
 import {
   mergeEnterpriseFormularyPilotGovernanceNotes,
   stripEnterpriseFormularyPilotGovernanceLines,
@@ -27,8 +28,8 @@ export class EnterpriseFormularyPilotActivationError extends Error {
 export type ActivateEnterpriseFormularyPilotOptions = {
   facilityId: string;
   dryRun?: boolean;
-  /** Explicit catalog codes to activate (must be Tranche A eligible). No bulk beyond this list. */
-  catalogCodes?: string[];
+  /** Required explicit catalog codes (Tranche A eligible). Fail-closed — no default-all behavior (M1.6G.1). */
+  catalogCodes: string[] | undefined;
   pilotNote?: string;
   activatedBy?: string;
 };
@@ -64,6 +65,93 @@ function buildPilotActivationNotes(existing: string | null, pilotNote: string): 
   return runtime;
 }
 
+export type EnterprisePilotCatalogCodeValidationContext = {
+  trancheByCode: Record<
+    string,
+    { catalogCode: string; pilotEligible: boolean; pilotRationale: string }
+  >;
+};
+
+/**
+ * M1.6G.1 — Fail-closed catalog code validation (sync, no DB).
+ * Throws EnterpriseFormularyPilotActivationError before any activation work.
+ */
+export function validateEnterprisePilotCatalogCodeRequest(
+  catalogCodes: string[] | undefined,
+  ctx: EnterprisePilotCatalogCodeValidationContext
+): string[] {
+  const failures: Array<{ catalogCode: string; reason: string }> = [];
+
+  if (catalogCodes === undefined) {
+    throw new EnterpriseFormularyPilotActivationError(
+      "[enterprise-pilot] fail-closed: explicit catalog codes required (set MEDORA_ENTERPRISE_PILOT_CATALOG_CODES)",
+      [{ catalogCode: "*", reason: "catalog codes missing" }]
+    );
+  }
+
+  if (catalogCodes.length === 0) {
+    throw new EnterpriseFormularyPilotActivationError(
+      "[enterprise-pilot] fail-closed: catalog code list is empty",
+      [{ catalogCode: "*", reason: "empty catalog code list" }]
+    );
+  }
+
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const raw of catalogCodes) {
+    const code = raw.trim();
+    if (!code) {
+      failures.push({ catalogCode: raw || "*", reason: "whitespace-only catalog code" });
+      continue;
+    }
+    if (seen.has(code)) {
+      failures.push({ catalogCode: code, reason: "duplicate catalog code" });
+      continue;
+    }
+    seen.add(code);
+    normalized.push(code);
+
+    const entry = ctx.trancheByCode[code];
+    if (!entry) {
+      failures.push({ catalogCode: code, reason: "not in Tranche A manifest" });
+    } else if (!entry.pilotEligible) {
+      failures.push({ catalogCode: code, reason: entry.pilotRationale });
+    }
+  }
+
+  if (normalized.length === 0 && failures.length > 0) {
+    throw new EnterpriseFormularyPilotActivationError(
+      "[enterprise-pilot] fail-closed: no valid catalog codes after normalization",
+      failures
+    );
+  }
+
+  if (failures.length > 0) {
+    throw new EnterpriseFormularyPilotActivationError(
+      `[enterprise-pilot] fail-closed: invalid catalog code(s): ${failures.map((f) => f.catalogCode).join(", ")}`,
+      failures
+    );
+  }
+
+  if (normalized.length > 15) {
+    throw new EnterpriseFormularyPilotActivationError(
+      "[enterprise-pilot] fail-closed: refused bulk activation (>15 catalog codes)",
+      normalized.map((catalogCode) => ({ catalogCode, reason: "bulk limit exceeded" }))
+    );
+  }
+
+  return normalized;
+}
+
+/** Parse MEDORA_ENTERPRISE_PILOT_CATALOG_CODES env (undefined when unset). */
+export function parseEnterprisePilotCatalogCodesFromEnv(
+  raw: string | undefined
+): string[] | undefined {
+  if (raw === undefined) return undefined;
+  return raw.split(",").map((c) => c.trim());
+}
+
 /**
  * M1.6F — Activate Enterprise Tranche A pilot products (per-medication, no provider search cutover).
  */
@@ -73,23 +161,15 @@ export async function activateEnterpriseFormularyPilotTrancheA(
 ): Promise<ActivateEnterpriseFormularyPilotResult> {
   const dryRun = options.dryRun === true;
   const facilityId = options.facilityId.trim();
+
+  const requestedCodes = validateEnterprisePilotCatalogCodeRequest(options.catalogCodes, {
+    trancheByCode: ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE,
+  });
+
   const modules = await loadEnterpriseFormularyPilotSeedModules();
   modules.assertEnterpriseFormularyPilotTrancheAReady();
 
   const eligibleByCode = modules.ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE;
-  const requestedCodes =
-    options.catalogCodes?.map((c) => c.trim()).filter(Boolean) ??
-    modules.getEnterpriseFormularyPilotTrancheAEligibleCodes();
-
-  if (requestedCodes.length === 0) {
-    throw new EnterpriseFormularyPilotActivationError("[enterprise-pilot] no catalog codes requested", []);
-  }
-  if (requestedCodes.length > 15) {
-    throw new EnterpriseFormularyPilotActivationError(
-      "[enterprise-pilot] refused bulk activation (>15 catalog codes)",
-      requestedCodes.map((catalogCode) => ({ catalogCode, reason: "bulk limit" }))
-    );
-  }
 
   const result: ActivateEnterpriseFormularyPilotResult = {
     dryRun,

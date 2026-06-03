@@ -1,8 +1,11 @@
 import type { PrismaClient } from "@prisma/client";
 import {
   activateEnterpriseFormularyPilotTrancheA,
+  EnterpriseFormularyPilotActivationError,
   rollbackEnterpriseFormularyPilotTrancheA,
+  validateEnterprisePilotCatalogCodeRequest,
 } from "../../prisma/helpers/seed-enterprise-formulary-pilot-activation";
+import { ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE } from "@medora/shared";
 import {
   ENTERPRISE_M16F_TRANCHE_A_PILOT_MARKER,
   mergeEnterpriseFormularyPilotGovernanceNotes,
@@ -30,6 +33,91 @@ jest.mock("../../prisma/helpers/enterprise-formulary-pilot-seed-modules", () => 
 });
 
 const PILOT_CODE = "AMLODIPINE_5_MG_COMPRIME_ORAL";
+const TRANCHE_CTX = { trancheByCode: ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE };
+
+describe("M1.6G.1 — fail-closed catalog code validation", () => {
+  it("rejects undefined catalog codes", () => {
+    expect(() => validateEnterprisePilotCatalogCodeRequest(undefined, TRANCHE_CTX)).toThrow(
+      /fail-closed.*explicit catalog codes required/
+    );
+  });
+
+  it("rejects empty catalog code array", () => {
+    expect(() => validateEnterprisePilotCatalogCodeRequest([], TRANCHE_CTX)).toThrow(
+      /catalog code list is empty/
+    );
+  });
+
+  it("rejects whitespace-only catalog codes", () => {
+    expect(() => validateEnterprisePilotCatalogCodeRequest(["   ", "\t"], TRANCHE_CTX)).toThrow(
+      /fail-closed/
+    );
+  });
+
+  it("rejects unknown catalog codes", () => {
+    expect(() =>
+      validateEnterprisePilotCatalogCodeRequest(["NOT_A_REAL_TRANCHE_A_CODE"], TRANCHE_CTX)
+    ).toThrow(/fail-closed.*NOT_A_REAL_TRANCHE_A_CODE/);
+  });
+
+  it("rejects duplicate catalog codes", () => {
+    expect(() =>
+      validateEnterprisePilotCatalogCodeRequest([PILOT_CODE, PILOT_CODE], TRANCHE_CTX)
+    ).toThrow(EnterpriseFormularyPilotActivationError);
+    try {
+      validateEnterprisePilotCatalogCodeRequest([PILOT_CODE, PILOT_CODE], TRANCHE_CTX);
+    } catch (err) {
+      expect(err).toBeInstanceOf(EnterpriseFormularyPilotActivationError);
+      expect((err as EnterpriseFormularyPilotActivationError).failures).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            catalogCode: PILOT_CODE,
+            reason: "duplicate catalog code",
+          }),
+        ])
+      );
+    }
+  });
+
+  it("rejects more than 15 catalog codes", () => {
+    const mockCtx = {
+      trancheByCode: Object.fromEntries(
+        Array.from({ length: 20 }, (_, i) => [
+          `MOCK_PILOT_CODE_${i}`,
+          {
+            catalogCode: `MOCK_PILOT_CODE_${i}`,
+            pilotEligible: true,
+            pilotRationale: "mock eligible",
+          },
+        ])
+      ),
+    };
+    const codes = Array.from({ length: 16 }, (_, i) => `MOCK_PILOT_CODE_${i}`);
+    expect(() => validateEnterprisePilotCatalogCodeRequest(codes, mockCtx)).toThrow(/bulk activation/);
+  });
+
+  it("accepts a single valid Tranche A code", () => {
+    expect(validateEnterprisePilotCatalogCodeRequest([PILOT_CODE], TRANCHE_CTX)).toEqual([
+      PILOT_CODE,
+    ]);
+  });
+
+  it("dry-run activation fails without catalog codes before any DB access pattern", async () => {
+    const prisma = {
+      medicationProduct: {
+        findUnique: jest.fn(),
+      },
+    } as unknown as PrismaClient;
+    await expect(
+      activateEnterpriseFormularyPilotTrancheA(prisma, {
+        facilityId: "fac-1",
+        dryRun: true,
+        catalogCodes: undefined,
+      })
+    ).rejects.toMatchObject({ name: "EnterpriseFormularyPilotActivationError" });
+    expect(prisma.medicationProduct.findUnique).not.toHaveBeenCalled();
+  });
+});
 
 describe("M1.6F — enterprise formulary pilot Tranche A", () => {
   it("merge helper appends pilot marker idempotently", () => {
@@ -180,10 +268,21 @@ describe("M1.6F — enterprise formulary pilot Tranche A", () => {
 
   it("refuses bulk activation over 15 catalog codes", async () => {
     const prisma = {} as PrismaClient;
+    const codes = Array.from({ length: 16 }, (_, i) => `MOCK_BULK_CODE_${i}`);
     await expect(
       activateEnterpriseFormularyPilotTrancheA(prisma, {
         facilityId: "fac-1",
-        catalogCodes: Array.from({ length: 16 }, (_, i) => `CODE_${i}`),
+        catalogCodes: codes,
+      })
+    ).rejects.toMatchObject({ name: "EnterpriseFormularyPilotActivationError" });
+  });
+
+  it("refuses activation when catalog codes omitted", async () => {
+    const prisma = {} as PrismaClient;
+    await expect(
+      activateEnterpriseFormularyPilotTrancheA(prisma, {
+        facilityId: "fac-1",
+        catalogCodes: undefined,
       })
     ).rejects.toMatchObject({ name: "EnterpriseFormularyPilotActivationError" });
   });
