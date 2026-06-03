@@ -2,7 +2,7 @@
 
 import React from "react";
 import {
-  highAlertMarRequiresDoubleCheck,
+  marAdministrationRequiresDoubleCheck,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
@@ -19,14 +19,17 @@ export type MarHighAlertFormState = {
 
 export function marHighAlertWorkflowVisible(
   governance: MedicationSafetyGovernanceDisplayInput,
-  marAction: string
+  marAction: string,
+  options?: { route?: string | null; isContinuousInfusion?: boolean }
 ): boolean {
   return (
     marAction === "administered" &&
-    highAlertMarRequiresDoubleCheck({
+    marAdministrationRequiresDoubleCheck({
       isHighAlert: governance.isHighAlert === true,
       requiresDoubleSign: governance.requiresDoubleSign === true,
-      safetyRequirementCodes: [],
+      highAlertClass: governance.highAlertClass,
+      route: options?.route ?? null,
+      isContinuousInfusion: options?.isContinuousInfusion === true,
     })
   );
 }

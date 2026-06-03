@@ -9,7 +9,7 @@ import {
 import type { AuditService } from "../common/services/audit.service";
 import {
   highAlertMarGovernanceApplies,
-  highAlertMarRequiresDoubleCheck,
+  marAdministrationRequiresDoubleCheck,
   parseMedicationHighAlertCategoriesJson,
   parseMedicationSafetyRequirementsFromCategoriesJson,
   validateHighAlertMarCreate,
@@ -53,11 +53,18 @@ export async function resolveHighAlertMarGovernance(
   catalogMedicationId: string | null,
   catalogRow: {
     id: string;
+    code?: string | null;
+    genericName?: string | null;
+    therapeuticClass?: string | null;
     isControlled: boolean;
     controlledSchedule: string | null;
     requiresWitness: boolean;
     requiresDoubleSign: boolean;
-  } | null
+  } | null,
+  marContext?: {
+    route?: string | null;
+    isContinuousInfusion?: boolean;
+  }
 ): Promise<HighAlertMarGovernanceContext | null> {
   if (!catalogMedicationId || !catalogRow) return null;
 
@@ -103,10 +110,16 @@ export async function resolveHighAlertMarGovernance(
     merged?.isHighAlert === true ||
     Boolean(parsed.highAlertClass && parsed.highAlertClass !== "HIGH_ALERT_NONE");
 
-  const requiresDoubleCheck = highAlertMarRequiresDoubleCheck({
+  const requiresDoubleCheck = marAdministrationRequiresDoubleCheck({
     isHighAlert,
     requiresDoubleSign: merged?.requiresDoubleSign ?? catalogRow.requiresDoubleSign,
     safetyRequirementCodes,
+    highAlertClass: parsed.highAlertClass,
+    catalogCode: catalogRow.code ?? null,
+    genericName: catalogRow.genericName ?? null,
+    therapeuticClass: catalogRow.therapeuticClass ?? null,
+    route: marContext?.route ?? null,
+    isContinuousInfusion: marContext?.isContinuousInfusion === true,
   });
 
   if (!requiresDoubleCheck) return null;

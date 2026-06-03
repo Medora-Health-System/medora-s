@@ -1,4 +1,5 @@
 import type { MarClinicalAction } from "../mar/marClinicalAction.js";
+import { marAdministrationRequiresDoubleCheck } from "./marAdministrationGovernancePolicy.js";
 
 export const HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES = [
   "REQUIRES_INDEPENDENT_DOUBLE_CHECK",
@@ -62,14 +63,24 @@ export function highAlertMarRequiresDoubleCheck(input: {
   isHighAlert?: boolean | null;
   requiresDoubleSign?: boolean | null;
   safetyRequirementCodes?: string[] | null;
+  highAlertClass?: string | null;
+  catalogCode?: string | null;
+  genericName?: string | null;
+  therapeuticClass?: string | null;
+  route?: string | null;
+  isContinuousInfusion?: boolean;
 }): boolean {
-  const codes = new Set((input.safetyRequirementCodes ?? []).map((c) => c.trim()));
-  const fromCodes = HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES.some((c) => codes.has(c));
-  if (fromCodes) return true;
-  if (input.requiresDoubleSign === true) {
-    return input.isHighAlert === true;
-  }
-  return false;
+  return marAdministrationRequiresDoubleCheck({
+    isHighAlert: input.isHighAlert,
+    requiresDoubleSign: input.requiresDoubleSign,
+    safetyRequirementCodes: input.safetyRequirementCodes,
+    highAlertClass: input.highAlertClass,
+    catalogCode: input.catalogCode,
+    genericName: input.genericName,
+    therapeuticClass: input.therapeuticClass,
+    route: input.route,
+    isContinuousInfusion: input.isContinuousInfusion,
+  });
 }
 
 export function resolveHighAlertMarVerificationType(input: {

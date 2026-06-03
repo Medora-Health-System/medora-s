@@ -1,5 +1,9 @@
 import type { MarClinicalAction } from "../mar/marClinicalAction.js";
 import { parseMedicationSafetyRequirementsFromCategoriesJson } from "./highAlertMarGovernance.js";
+import {
+  marPharmacyBlockingWorkflowVisible,
+  marPharmacyVerificationBlocksAdministration,
+} from "./marAdministrationGovernancePolicy.js";
 
 /** High-alert classes requiring pharmacy verification before MAR (M1.3F.7). */
 export const PHARMACY_REQUIRED_HIGH_ALERT_CLASSES = [
@@ -94,15 +98,16 @@ export function pharmacyMarGovernanceApplies(
   governance: PharmacyMarGovernanceContext | null,
   marAction: MarClinicalAction
 ): boolean {
+  if (!marPharmacyVerificationBlocksAdministration()) return false;
   return marAction === "administered" && governance?.requiresPharmacyVerification === true;
 }
 
-/** MAR UI visibility when pharmacy verification is required for administration. */
+/** MAR UI visibility when pharmacy verification blocks administration (M1.7A.9: informational only). */
 export function marPharmacyWorkflowVisible(
   governance: { requiresPharmacyVerification?: boolean | null },
   marAction: MarClinicalAction | string
 ): boolean {
-  return marAction === "administered" && governance.requiresPharmacyVerification === true;
+  return marPharmacyBlockingWorkflowVisible(governance, marAction);
 }
 
 export function pharmacyStatusAllowsAdministration(
@@ -113,6 +118,10 @@ export function pharmacyStatusAllowsAdministration(
 
 export function validatePharmacyMarCreate(input: PharmacyMarCreateInput): PharmacyMarValidationResult {
   if (!pharmacyMarGovernanceApplies(input.governance, input.marAction)) {
+    return { ok: true, overrideUsed: false };
+  }
+
+  if (!marPharmacyVerificationBlocksAdministration()) {
     return { ok: true, overrideUsed: false };
   }
 

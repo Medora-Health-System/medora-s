@@ -1,131 +1,35 @@
 import { describe, expect, it } from "vitest";
+import { marHighAlertWorkflowVisible } from "@/components/medication/MarHighAlertFields";
+import { marLasaWorkflowVisible } from "@/components/medication/MarLasaFields";
+import { marPharmacyWorkflowVisible } from "@/components/medication/MarPharmacyVerificationPanel";
 import {
-  hydrateProductFromGovernanceSnapshot,
-  marControlledWorkflowVisible,
-  marHighAlertWorkflowVisible,
   marLasaAcknowledgementComplete,
-  marLasaWorkflowVisible,
-  marPharmacyWorkflowVisible,
-  resolveOrderItemMedicationAdministrationRequirements,
+  orderItemToMedicationSafetyGovernanceDisplay,
 } from "./orderItemMedicationSafetyGovernance";
 
-describe("orderItemMedicationSafetyGovernance (M1.7B.1)", () => {
-  const hydroResolveInput = {
-    catalog: {
-      id: "cat-hydro",
-      code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
-      genericName: "Hydromorphone",
-      therapeuticClass: null,
-      isControlled: true,
-      controlledSchedule: "II",
-      requiresWitness: false,
-      requiresDoubleSign: true,
-    },
-    product: {
-      isHighAlert: true,
-      highAlertCategories: {
-        highAlertClass: "HIGH_ALERT_OPIOID",
-        safetyRequirements: ["REQUIRES_INDEPENDENT_DOUBLE_CHECK"],
-        lasa: {
-          lasaGroupCode: "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE",
-          lasaGroupLabel: "Morphine / hydromorphone",
-          lasaSeverity: "LASA_HIGH",
-        },
+describe("orderItemMedicationSafetyGovernance", () => {
+  it("derives requiresPharmacyVerification for Schedule II Hydromorphone when flag omitted", () => {
+    const display = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance: {
+        isControlled: true,
+        controlledSchedule: "II",
+        pharmacyVerificationStatus: "PENDING",
       },
-      lasaGroupId: "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE",
-      isControlled: true,
-      controlledSchedule: "II",
-      requiresWitness: false,
-      requiresDoubleSign: true,
-      allowsWasteDocumentation: true,
-    },
-    pharmacy: { verificationStatus: "PENDING" as const },
-  };
-
-  it("Hydromorphone shows warnings only — no pharmacy or double-check block", () => {
-    const requirements = resolveOrderItemMedicationAdministrationRequirements(
-      { medicationGovernanceResolveInput: hydroResolveInput },
-      { route: "IV", isContinuousInfusion: false }
-    );
-    expect(requirements).not.toBeNull();
-    expect(requirements!.snapshot.requiresDoubleSign).toBe(false);
-    expect(marPharmacyWorkflowVisible(requirements!, "administered")).toBe(false);
-    expect(marHighAlertWorkflowVisible(requirements!, "administered")).toBe(false);
-    expect(marLasaWorkflowVisible(requirements!, "administered")).toBe(true);
-    expect(marControlledWorkflowVisible(requirements!, "administered")).toBe(true);
-  });
-
-  it("insulin requires double-check workflow", () => {
-    const requirements = resolveOrderItemMedicationAdministrationRequirements({
-      medicationGovernanceResolveInput: {
-        catalog: {
-          id: "cat-insulin",
-          code: "INSULIN",
-          genericName: "Insulin",
-          therapeuticClass: null,
-          isControlled: false,
-          controlledSchedule: null,
-          requiresWitness: false,
-          requiresDoubleSign: true,
-        },
-        product: {
-          isHighAlert: true,
-          highAlertCategories: {
-            highAlertClass: "HIGH_ALERT_INSULIN",
-            safetyRequirements: ["REQUIRES_INDEPENDENT_DOUBLE_CHECK"],
-          },
-          lasaGroupId: null,
-          isControlled: false,
-          controlledSchedule: null,
-          requiresWitness: false,
-          requiresDoubleSign: true,
-          allowsWasteDocumentation: false,
-        },
-        pharmacy: null,
+      catalogMedication: {
+        isControlled: true,
+        controlledSchedule: "II",
+        requiresWitness: false,
+        requiresDoubleSign: true,
       },
     });
-    expect(requirements!.snapshot.requiresDoubleSign).toBe(true);
-    expect(marHighAlertWorkflowVisible(requirements!, "administered")).toBe(true);
+
+    expect(display.requiresPharmacyVerification).toBe(true);
+    expect(marPharmacyWorkflowVisible(display, "administered")).toBe(false);
   });
 
-  it("Hydromorphone catalog-only order hydrates LASA from governance snapshot (M1.7B.2)", () => {
-    const requirements = resolveOrderItemMedicationAdministrationRequirements(
-      {
-        catalogMedication: {
-          id: "cat-hydro",
-          code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
-          genericName: "Hydromorphone",
-          isControlled: true,
-          controlledSchedule: "II",
-          requiresWitness: false,
-          requiresDoubleSign: true,
-        },
-        medicationSafetyGovernance: {
-          isControlled: true,
-          controlledSchedule: "II",
-          isHighAlert: true,
-          highAlertClass: "HIGH_ALERT_OPIOID",
-          lasaGroupId: "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE",
-          lasaGroupLabel: "Morphine / hydromorphone",
-          lasaSeverity: "LASA_HIGH",
-          requiresWitness: false,
-          requiresDoubleSign: false,
-          wasteDocumentationRecommended: true,
-          pharmacyVerificationStatus: "PENDING",
-          requiresPharmacyVerification: true,
-        },
-      },
-      { route: "IV", isContinuousInfusion: false }
-    );
-
-    expect(requirements).not.toBeNull();
-    expect(marLasaWorkflowVisible(requirements!, "administered")).toBe(true);
-    expect(requirements!.workflows.lasa.requiresAcknowledgement).toBe(true);
-  });
-
-  it("hydrateProductFromGovernanceSnapshot rebuilds LASA product input", () => {
-    const product = hydrateProductFromGovernanceSnapshot(
-      {
+  it("Hydromorphone IV push shows LASA only — no pharmacy or double-check block (M1.7A.9)", () => {
+    const display = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance: {
         isControlled: true,
         controlledSchedule: "II",
         isHighAlert: true,
@@ -134,20 +38,28 @@ describe("orderItemMedicationSafetyGovernance (M1.7B.1)", () => {
         lasaGroupLabel: "Morphine / hydromorphone",
         lasaSeverity: "LASA_HIGH",
         requiresWitness: false,
-        requiresDoubleSign: false,
-        wasteDocumentationRecommended: true,
+        requiresDoubleSign: true,
         pharmacyVerificationStatus: "PENDING",
         requiresPharmacyVerification: true,
       },
-      {
-        id: "cat-hydro",
-        code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
-        isControlled: true,
-        controlledSchedule: "II",
-      }
-    );
-    expect(product?.lasaGroupId).toBe("GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE");
-    expect(product?.isHighAlert).toBe(true);
+    });
+
+    expect(marPharmacyWorkflowVisible(display, "administered")).toBe(false);
+    expect(
+      marHighAlertWorkflowVisible(display, "administered", { route: "IV", isContinuousInfusion: false })
+    ).toBe(false);
+    expect(marLasaWorkflowVisible(display, "administered")).toBe(true);
+  });
+
+  it("insulin requires double-check workflow", () => {
+    const display = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance: {
+        isHighAlert: true,
+        highAlertClass: "HIGH_ALERT_INSULIN",
+        requiresDoubleSign: true,
+      },
+    });
+    expect(marHighAlertWorkflowVisible(display, "administered")).toBe(true);
   });
 
   it("marLasaAcknowledgementComplete requires both ack checkboxes or override", () => {
@@ -155,18 +67,22 @@ describe("orderItemMedicationSafetyGovernance (M1.7B.1)", () => {
       marLasaAcknowledgementComplete({
         lasaAcknowledged: true,
         lasaMedicationSelectionConfirmed: false,
+        secondReadUserId: null,
+        secondReadDisplayName: "",
         useOverride: false,
-        lasaOverrideAcknowledged: false,
         lasaOverrideReason: "",
+        lasaOverrideAcknowledged: false,
       })
     ).toBe(false);
     expect(
       marLasaAcknowledgementComplete({
         lasaAcknowledged: true,
         lasaMedicationSelectionConfirmed: true,
+        secondReadUserId: null,
+        secondReadDisplayName: "",
         useOverride: false,
-        lasaOverrideAcknowledged: false,
         lasaOverrideReason: "",
+        lasaOverrideAcknowledged: false,
       })
     ).toBe(true);
   });

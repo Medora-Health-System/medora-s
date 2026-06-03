@@ -9,79 +9,34 @@ import {
   type PharmacyMarGovernanceContext,
 } from "./pharmacyMarGovernance.js";
 
-describe("pharmacyMarGovernance (M1.3F.7)", () => {
-  it("requires pharmacy for schedule II/III and listed high-alert classes", () => {
+describe("pharmacyMarGovernance (M1.7A.9)", () => {
+  it("still resolves pharmacy requirement for worklist enrichment", () => {
     expect(controlledScheduleRequiresPharmacyVerification("II")).toBe(true);
-    expect(controlledScheduleRequiresPharmacyVerification("Schedule III")).toBe(true);
-    expect(controlledScheduleRequiresPharmacyVerification("IV")).toBe(false);
     expect(highAlertClassRequiresPharmacyVerification("HIGH_ALERT_INSULIN")).toBe(true);
-    expect(highAlertClassRequiresPharmacyVerification("HIGH_ALERT_ANTICOAGULANT")).toBe(true);
-    expect(highAlertClassRequiresPharmacyVerification("HIGH_ALERT_OPIOID")).toBe(false);
-  });
-
-  it("does not apply to non-administered or non-required meds", () => {
     expect(
-      validatePharmacyMarCreate({ marAction: "refused", governance: null })
-    ).toMatchObject({ ok: true });
-    expect(
-      validatePharmacyMarCreate({
-        marAction: "administered",
-        governance: {
-          requiresPharmacyVerification: false,
-          verificationStatus: "NOT_REQUIRED",
-        },
+      resolveRequiresPharmacyVerification({
+        safetyRequirementCodes: ["REQUIRES_PHARMACY_VERIFICATION"],
       })
-    ).toMatchObject({ ok: true });
+    ).toBe(true);
   });
 
-  it("blocks unverified and allows verified", () => {
+  it("does not block MAR administration (M1.7A.9)", () => {
     const ctx: PharmacyMarGovernanceContext = {
       requiresPharmacyVerification: true,
       verificationStatus: "PENDING",
     };
+    expect(pharmacyMarGovernanceApplies(ctx, "administered")).toBe(false);
     expect(
-      validatePharmacyMarCreate({ marAction: "administered", governance: ctx }).ok
-    ).toBe(false);
-    expect(
-      validatePharmacyMarCreate({
-        marAction: "administered",
-        governance: { ...ctx, verificationStatus: "VERIFIED" },
-      }).ok
-    ).toBe(true);
+      validatePharmacyMarCreate({ marAction: "administered", governance: ctx })
+    ).toMatchObject({ ok: true });
   });
 
-  it("allows override when pending", () => {
-    const result = validatePharmacyMarCreate({
-      marAction: "administered",
-      governance: {
-        requiresPharmacyVerification: true,
-        verificationStatus: "PENDING",
-      },
-      pharmacyVerificationOverrideReason: "Urgence — pharmacien non disponible",
-      pharmacyVerificationOverrideAcknowledged: true,
-    });
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.overrideUsed).toBe(true);
-  });
-
-  it("defaults missing row to PENDING when required", () => {
+  it("defaults missing row to PENDING when required for display", () => {
     expect(
       effectivePharmacyVerificationStatus({
         requiresPharmacyVerification: true,
         rowStatus: null,
       })
     ).toBe("PENDING");
-  });
-
-  it("resolveRequiresPharmacyVerification from safety code", () => {
-    expect(
-      resolveRequiresPharmacyVerification({
-        safetyRequirementCodes: ["REQUIRES_PHARMACY_VERIFICATION"],
-      })
-    ).toBe(true);
-    expect(pharmacyMarGovernanceApplies(
-      { requiresPharmacyVerification: true, verificationStatus: "PENDING" },
-      "administered"
-    )).toBe(true);
   });
 });

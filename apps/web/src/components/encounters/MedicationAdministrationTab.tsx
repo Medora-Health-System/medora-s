@@ -15,16 +15,16 @@ import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning, isHighRiskMedication } from "@/lib/highRiskMedication";
 import { MedicationMarSafetyGovernanceBadges } from "@/components/medication/MedicationMarSafetyGovernanceBadges";
 import { MedicationMarSafetySummaryPanel } from "@/components/medication/MedicationMarSafetySummaryPanel";
+import { orderItemToMedicationSafetyGovernanceDisplay, marLasaAcknowledgementComplete } from "@/features/mar/orderItemMedicationSafetyGovernance";
 import {
-  resolveOrderItemMedicationAdministrationRequirements,
-  orderItemToMedicationSafetyGovernanceDisplay,
-  marLasaAcknowledgementComplete,
-} from "@/features/mar/orderItemMedicationSafetyGovernance";
-import {
-  validateMedicationAdministrationGovernance,
+  marAdministrationRequiresDoubleCheck,
+  lasaMarRequiresAcknowledgement,
+  validateControlledSubstanceMarCreate,
+  validateHighAlertMarCreate,
+  validateLasaMarCreate,
+  validatePharmacyMarCreate,
   isIncompleteMedicationOrderDisplayLabel,
   isOrderDisplayLabelUnavailable,
-  type MedicationAdministrationRequirements,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import {
@@ -174,7 +174,6 @@ type OrderItemApi = {
     requiresDoubleSign?: boolean | null;
   } | null;
   medicationSafetyGovernance?: MedicationSafetyGovernanceDisplayInput | null;
-  medicationGovernanceResolveInput?: import("@medora/shared").MedicationGovernanceResolveInput | null;
 };
 
 /** Prefer live order-line label when MAR snapshot is incomplete (M1.7A.5 / M1.7A.6). */
@@ -409,8 +408,6 @@ export function MedicationAdministrationTab({
     billingUnitHint: string;
     orderedQuantity: number | null;
     governanceDisplay: MedicationSafetyGovernanceDisplayInput;
-    governanceRequirements: MedicationAdministrationRequirements | null;
-    governanceSource: OrderItemApi;
     /** When true, MAR modal hides one-step “administered” (perfusion uses start/stop). */
     hideAdministeredAction?: boolean;
     /** Same input as open-orders infusion classifier — blocks accidental MAR “administered” for bags/IV abx. */
@@ -723,8 +720,6 @@ export function MedicationAdministrationTab({
       safetyCatalogInput: MedicationSafetyCatalogInput;
       advancedSafetyLine: AdvancedMedicationSafetyLine;
       governanceDisplay: MedicationSafetyGovernanceDisplayInput;
-      governanceRequirements: MedicationAdministrationRequirements | null;
-      governanceSource: OrderItemApi;
     };
     const drafts: RowDraft[] = [];
     for (const order of orders) {
@@ -778,10 +773,6 @@ export function MedicationAdministrationTab({
                   return Number.isFinite(n) ? n : null;
                 })()
               : null;
-        const governanceRequirements = resolveOrderItemMedicationAdministrationRequirements(it, {
-            highRiskNameMatch: isHighRiskMedication({ ...it, label }),
-            route: it.route?.trim() || it.catalogMedication?.route?.trim() || null,
-          });
         drafts.push({
           orderId,
           orderItemId: it.id,
@@ -803,13 +794,9 @@ export function MedicationAdministrationTab({
               catalogItemId: it.catalogItemId ?? null,
               displayName: label,
             } satisfies AdvancedMedicationSafetyLine),
-          governanceRequirements,
-          governanceSource: it,
-          governanceDisplay:
-            governanceRequirements?.display.displayInput ??
-            orderItemToMedicationSafetyGovernanceDisplay(it, {
-              highRiskNameMatch: isHighRiskMedication({ ...it, label }),
-            }),
+          governanceDisplay: orderItemToMedicationSafetyGovernanceDisplay(it, {
+            highRiskNameMatch: isHighRiskMedication({ ...it, label }),
+          }),
         });
       }
     }
@@ -954,18 +941,9 @@ export function MedicationAdministrationTab({
   }, [modalItem, modalAction, taskRows, modalDoseValue, modalRoute, modalAdminQty]);
 
   const modalResolvedRoute = modalRoute.trim() || modalItem?.routeHint || "";
-  const modalGovernanceRequirements = useMemo(() => {
-    if (!modalItem) return null;
-    const isContinuousInfusion =
-      modalItem.infusionClassifyPayload != null &&
-      isMedicationInfusionCandidate(modalItem.infusionClassifyPayload);
-    return resolveOrderItemMedicationAdministrationRequirements(modalItem.governanceSource, {
-      highRiskNameMatch: isHighRiskMedication({ ...modalItem.governanceSource, label: modalItem.label }),
-      route: modalResolvedRoute,
-      isContinuousInfusion,
-      marAction: modalAction,
-    });
-  }, [modalItem, modalResolvedRoute, modalAction]);
+  const modalIsContinuousInfusion =
+    modalItem?.infusionClassifyPayload != null &&
+    isMedicationInfusionCandidate(modalItem.infusionClassifyPayload);
   const modalRequiresInjectionSite = marModalRequiresInjectionSite({
     marAction: modalAction,
     route: modalResolvedRoute,
@@ -998,8 +976,6 @@ export function MedicationAdministrationTab({
       hideAdministeredAction: hideAdmin,
       infusionClassifyPayload: row.infusionClassifyPayload,
       governanceDisplay: row.governanceDisplay,
-      governanceRequirements: row.governanceRequirements,
-      governanceSource: row.governanceSource,
     });
     setModalSubmitError(null);
     setModalAction(hideAdmin ? "refused" : "administered");
@@ -1041,7 +1017,6 @@ export function MedicationAdministrationTab({
       useOverride: false,
     });
     setMarLasaFieldErrors({});
-    setMarGovernanceDetailsOpen(false);
     setMarPharmacyForm({
       pharmacyVerificationOverrideReason: "",
       pharmacyVerificationOverrideAcknowledged: false,
@@ -1175,12 +1150,22 @@ export function MedicationAdministrationTab({
               toUtcIso: datetimeLocalValueToUtcIso,
             })
           : null;
-      if (modalGovernanceRequirements) {
-        const govValidation = validateMedicationAdministrationGovernance(modalGovernanceRequirements, {
+      if (
+        modalItem &&
+        marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction)
+      ) {
+        const govCtx = {
+          isControlled: true,
+          requiresWitness: modalItem.governanceDisplay.requiresWitness === true,
+          wasteDocumentationRecommended:
+            modalItem.governanceDisplay.wasteDocumentationRecommended === true,
+        };
+        const validation = validateControlledSubstanceMarCreate({
           marAction: modalAction,
-          administeredByUserId: currentUserId ?? undefined,
+          governance: govCtx,
           witnessUserId: marControlledForm.witnessUserId,
           witnessDisplayName: marControlledForm.witnessDisplayName,
+          administeredByUserId: currentUserId ?? undefined,
           wasteAmount: marControlledForm.wasteAmount.trim()
             ? Number(marControlledForm.wasteAmount)
             : null,
@@ -1190,37 +1175,101 @@ export function MedicationAdministrationTab({
           controlledOverrideAcknowledged: marControlledForm.controlledOverrideAcknowledged,
           orderedQuantity: modalItem.orderedQuantity,
           administeredQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+        });
+        if (!validation.ok) {
+          setModalSubmitError(validation.message);
+          return;
+        }
+      }
+
+      if (
+        modalItem &&
+        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, {
+          route: modalResolvedRoute,
+          isContinuousInfusion: modalIsContinuousInfusion,
+        })
+      ) {
+        const requiresDoubleCheck = marAdministrationRequiresDoubleCheck({
+          isHighAlert: modalItem.governanceDisplay.isHighAlert === true,
+          requiresDoubleSign: modalItem.governanceDisplay.requiresDoubleSign === true,
+          highAlertClass: modalItem.governanceDisplay.highAlertClass,
+          route: modalResolvedRoute,
+          isContinuousInfusion: modalIsContinuousInfusion,
+        });
+        const sharedControlledOverride =
+          marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+          marControlledForm.useOverride;
+        const haValidation = validateHighAlertMarCreate({
+          marAction: modalAction,
+          governance: requiresDoubleCheck
+            ? {
+                isHighAlert: true,
+                requiresDoubleCheck: true,
+                safetyRequirementCodes: [],
+              }
+            : null,
           highAlertVerifierUserId: marHighAlertForm.verifierUserId,
           highAlertVerifierDisplayName: marHighAlertForm.verifierDisplayName,
+          administeredByUserId: currentUserId ?? undefined,
+          controlledWitnessUserId: marControlledForm.witnessUserId,
           highAlertOverrideReason: marHighAlertForm.highAlertOverrideReason,
           highAlertOverrideAcknowledged: marHighAlertForm.highAlertOverrideAcknowledged,
+          sharedOverrideReason: sharedControlledOverride ? marControlledForm.overrideReason : undefined,
+          sharedControlledOverrideAcknowledged: sharedControlledOverride
+            ? marControlledForm.controlledOverrideAcknowledged
+            : undefined,
+        });
+        if (!haValidation.ok) {
+          setModalSubmitError(haValidation.message);
+          return;
+        }
+      }
+
+      if (modalItem && marLasaWorkflowVisible(modalItem.governanceDisplay, modalAction)) {
+        const lasaValidation = validateLasaMarCreate({
+          marAction: modalAction,
+          governance: lasaMarRequiresAcknowledgement({
+            lasaGroupId: modalItem.governanceDisplay.lasaGroupId,
+            lasaSeverity: modalItem.governanceDisplay.lasaSeverity,
+          })
+            ? {
+                lasaGroupId: modalItem.governanceDisplay.lasaGroupId ?? null,
+                lasaGroupLabel: modalItem.governanceDisplay.lasaGroupLabel ?? null,
+                lasaSeverity: modalItem.governanceDisplay.lasaSeverity ?? null,
+                requiresAcknowledgement: true,
+              }
+            : null,
           lasaAcknowledged: marLasaForm.lasaAcknowledged,
           lasaMedicationSelectionConfirmed: marLasaForm.lasaMedicationSelectionConfirmed,
           lasaSecondReadUserId: marLasaForm.secondReadUserId,
           lasaSecondReadDisplayName: marLasaForm.secondReadDisplayName,
           lasaOverrideReason: marLasaForm.lasaOverrideReason,
           lasaOverrideAcknowledged: marLasaForm.lasaOverrideAcknowledged,
+          administeredByUserId: currentUserId ?? undefined,
+        });
+        if (!lasaValidation.ok) {
+          setMarLasaFieldErrors({ lasa: lasaValidation.message });
+          setModalSubmitError(lasaValidation.message);
+          return;
+        }
+      }
+
+      if (modalItem && marPharmacyWorkflowVisible(modalItem.governanceDisplay, modalAction)) {
+        const pharmStatus = modalItem.governanceDisplay.pharmacyVerificationStatus ?? "PENDING";
+        const pharmValidation = validatePharmacyMarCreate({
+          marAction: modalAction,
+          governance: {
+            requiresPharmacyVerification: true,
+            verificationStatus: pharmStatus,
+          },
           pharmacyVerificationOverrideReason: marPharmacyForm.pharmacyVerificationOverrideReason,
           pharmacyVerificationOverrideAcknowledged:
             marPharmacyForm.pharmacyVerificationOverrideAcknowledged,
         });
-        if (!govValidation.ok) {
-          if (govValidation.domain === "lasa") {
-            setMarGovernanceDetailsOpen(true);
-            setMarLasaFieldErrors({ lasa: govValidation.message });
-          }
-          setModalSubmitError(govValidation.message);
+        if (!pharmValidation.ok) {
+          setModalSubmitError(pharmValidation.message);
           return;
         }
-      } else if (
-        modalAction === "administered" &&
-        modalItem.governanceDisplay?.lasaGroupId &&
-        modalItem.governanceDisplay?.lasaSeverity
-      ) {
-        setMarGovernanceDetailsOpen(true);
-        setMarLasaFieldErrors({ lasa: t("marLasa.errAckRequired") });
-        setModalSubmitError(t("marLasa.errAckRequired"));
-        return;
       }
 
       const body: Record<string, unknown> = {
@@ -1247,8 +1296,7 @@ export function MedicationAdministrationTab({
           : {}),
         ...(effectiveFields ?? {}),
         ...(modalItem &&
-        modalGovernanceRequirements &&
-        marControlledWorkflowVisible(modalGovernanceRequirements, modalAction)
+        marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction)
           ? {
               ...(marControlledForm.witnessUserId
                 ? { witnessUserId: marControlledForm.witnessUserId }
@@ -1271,7 +1319,11 @@ export function MedicationAdministrationTab({
                 : {}),
             }
           : {}),
-        ...(modalItem && modalGovernanceRequirements && marHighAlertWorkflowVisible(modalGovernanceRequirements, modalAction)
+        ...(modalItem &&
+        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, {
+          route: modalResolvedRoute,
+          isContinuousInfusion: modalIsContinuousInfusion,
+        })
           ? {
               ...(marHighAlertForm.verifierUserId
                 ? { highAlertVerifierUserId: marHighAlertForm.verifierUserId }
@@ -1287,7 +1339,7 @@ export function MedicationAdministrationTab({
                 : {}),
             }
           : {}),
-        ...(modalItem && modalGovernanceRequirements && marLasaWorkflowVisible(modalGovernanceRequirements, modalAction)
+        ...(modalItem && marLasaWorkflowVisible(modalItem.governanceDisplay, modalAction)
           ? {
               ...(marLasaForm.lasaAcknowledged ? { lasaAcknowledged: true } : {}),
               ...(marLasaForm.lasaMedicationSelectionConfirmed
@@ -1305,7 +1357,7 @@ export function MedicationAdministrationTab({
               ...(marLasaForm.lasaOverrideAcknowledged ? { lasaOverrideAcknowledged: true } : {}),
             }
           : {}),
-        ...(modalItem && modalGovernanceRequirements && marPharmacyWorkflowVisible(modalGovernanceRequirements, modalAction)
+        ...(modalItem && marPharmacyWorkflowVisible(modalItem.governanceDisplay, modalAction)
           ? {
               ...(marPharmacyForm.pharmacyVerificationOverrideReason.trim()
                 ? {
@@ -1340,19 +1392,19 @@ export function MedicationAdministrationTab({
       setModalItem(null);
       await loadAll();
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "";
-      const errBody =
-        err && typeof err === "object" && "body" in err
-          ? (err as { body?: { code?: string; message?: string } }).body
-          : undefined;
-      const errorCode = typeof errBody?.code === "string" ? errBody.code : null;
+      const apiErr = err as Error & {
+        body?: { code?: string; message?: string | string[] };
+      };
+      const errorCode =
+        apiErr.body && typeof apiErr.body === "object" && !Array.isArray(apiErr.body)
+          ? apiErr.body.code
+          : null;
       if (errorCode === "LASA_ACKNOWLEDGEMENT_REQUIRED") {
-        setMarGovernanceDetailsOpen(true);
-        setMarLasaFieldErrors({
-          lasa:
-            normalizeUserFacingError(raw.trim() || null, language) || t("marLasa.errAckRequired"),
-        });
+        setMarLasaFieldErrors({ lasa: t("marLasa.errAckRequired") });
+        setModalSubmitError(t("marLasa.errAckRequired"));
+        return;
       }
+      const raw = err instanceof Error ? err.message : "";
       setModalSubmitError(normalizeUserFacingError(raw.trim() || null, language) || t("marTab.saveFailed"));
     } finally {
       setSubmitting(false);
@@ -2155,11 +2207,7 @@ export function MedicationAdministrationTab({
                 {modalItem.highRiskWarning}
               </p>
             ) : null}
-            <MedicationMarSafetyGovernanceBadges
-              governance={
-                modalGovernanceRequirements?.display.displayInput ?? modalItem.governanceDisplay
-              }
-            />
+            <MedicationMarSafetyGovernanceBadges governance={modalItem.governanceDisplay} />
             <details
               style={{ marginBottom: 12 }}
               open={marGovernanceDetailsOpen}
@@ -2177,17 +2225,10 @@ export function MedicationAdministrationTab({
               >
                 {t("mar.viewSafetyDetails")}
               </summary>
-              <MedicationMarSafetySummaryPanel
-                governance={
-                  modalGovernanceRequirements?.display.displayInput ?? modalItem.governanceDisplay
-                }
-                density="compact"
-              />
+              <MedicationMarSafetySummaryPanel governance={modalItem.governanceDisplay} density="compact" />
             </details>
-            {modalGovernanceRequirements ? (
-              <>
             <MarPharmacyVerificationPanel
-              requirements={modalGovernanceRequirements}
+              governance={modalItem.governanceDisplay}
               marAction={modalAction}
               state={marPharmacyForm}
               onChange={(patch) => setMarPharmacyForm((prev) => ({ ...prev, ...patch }))}
@@ -2196,7 +2237,7 @@ export function MedicationAdministrationTab({
             <MarControlledSubstanceFields
               facilityId={facilityId}
               currentUserId={currentUserId}
-              requirements={modalGovernanceRequirements}
+              governance={modalItem.governanceDisplay}
               marAction={modalAction}
               orderedQuantity={modalItem.orderedQuantity}
               administeredQuantity={modalAdminQty}
@@ -2206,18 +2247,18 @@ export function MedicationAdministrationTab({
             />
             <MarHighAlertFields
               facilityId={facilityId}
-              requirements={modalGovernanceRequirements}
+              governance={modalItem.governanceDisplay}
               marAction={modalAction}
               state={marHighAlertForm}
               onChange={(patch) => setMarHighAlertForm((prev) => ({ ...prev, ...patch }))}
               sharedOverrideReason={
-                marControlledWorkflowVisible(modalGovernanceRequirements, modalAction) &&
+                marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
                 marControlledForm.useOverride
                   ? marControlledForm.overrideReason
                   : undefined
               }
               sharedUseOverride={
-                marControlledWorkflowVisible(modalGovernanceRequirements, modalAction) &&
+                marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
                 marControlledForm.useOverride
               }
               onUseSharedOverride={(use) => {
@@ -2227,7 +2268,7 @@ export function MedicationAdministrationTab({
             />
             <MarLasaFields
               facilityId={facilityId}
-              requirements={modalGovernanceRequirements}
+              governance={modalItem.governanceDisplay}
               marAction={modalAction}
               medicationLabel={modalItem.label}
               state={marLasaForm}
@@ -2239,8 +2280,6 @@ export function MedicationAdministrationTab({
               }}
               fieldErrors={marLasaFieldErrors}
             />
-              </>
-            ) : null}
 
             {(() => {
               const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];
@@ -2788,13 +2827,6 @@ export function MedicationAdministrationTab({
                   }
                   if (marAllergyDocSummary && !marAllergySafetyAck) return true;
                   if (
-                    modalGovernanceRequirements &&
-                    marLasaWorkflowVisible(modalGovernanceRequirements, modalAction) &&
-                    !marLasaAcknowledgementComplete(marLasaForm)
-                  ) {
-                    return true;
-                  }
-                  if (
                     medicationWarningsRequireMarHighRiskAck(modalItem.softSafetyWarnings) &&
                     !marHighRiskSafetyAck
                   ) {
@@ -2807,6 +2839,12 @@ export function MedicationAdministrationTab({
                       medicationKey: modalItem.orderItemId,
                     });
                     if (te.level === "critical" && !marTimingOverrideAck) return true;
+                  }
+                  if (
+                    marLasaWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+                    !marLasaAcknowledgementComplete(marLasaForm)
+                  ) {
+                    return true;
                   }
                   return false;
                 })()}

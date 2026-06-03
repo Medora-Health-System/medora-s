@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { marPharmacyWorkflowVisible } from "@/components/medication/MarPharmacyVerificationPanel";
 import { getMedicationSafetyBadges } from "@medora/shared";
 
-describe("MAR pharmacy UI (M1.3F.7)", () => {
-  it("shows pharmacy workflow when verification required", () => {
+describe("MAR pharmacy UI (M1.7A.9)", () => {
+  it("does not show blocking pharmacy workflow when verification required (informational only)", () => {
     expect(
       marPharmacyWorkflowVisible(
         { requiresPharmacyVerification: true, pharmacyVerificationStatus: "PENDING" },
         "administered"
       )
-    ).toBe(true);
+    ).toBe(false);
     expect(
       marPharmacyWorkflowVisible(
         { requiresPharmacyVerification: true, pharmacyVerificationStatus: "PENDING" },

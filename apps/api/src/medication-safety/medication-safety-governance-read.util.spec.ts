@@ -1,15 +1,12 @@
 import {
   attachMedicationSafetyGovernanceToOrderItem,
-  loadMedicationGovernanceResolveInputByCatalogId,
+  loadMedicationSafetyGovernanceByCatalogId,
   mergeMedicationSafetyGovernanceRead,
   resolveGovernanceCatalogKeyForOrderItem,
 } from "./medication-safety-governance-read.util";
 
 const hydroCatalog = {
   id: "cat-hydro",
-  code: "HYDROMORPHONE_2MG_ML_INJECTABLE",
-  genericName: "Hydromorphone",
-  therapeuticClass: null,
   isControlled: true,
   controlledSchedule: "II",
   requiresWitness: false,
@@ -42,7 +39,7 @@ const hydroProductProfile = {
   administrationProfile: { allowsWasteDocumentation: true },
 };
 
-describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
+describe("medication-safety-governance-read (M1.7B.2)", () => {
   it("merges catalog and profile governance without mutating order fields", () => {
     const merged = mergeMedicationSafetyGovernanceRead(
       {
@@ -80,7 +77,7 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
     });
   });
 
-  it("attaches resolver output on medication order items only", () => {
+  it("attaches governance snapshot on medication order items only", () => {
     const med = attachMedicationSafetyGovernanceToOrderItem(
       {
         id: "oi-med",
@@ -92,14 +89,11 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
         [
           "cat-1",
           {
-            catalog: {
-              id: "cat-1",
-              isControlled: true,
-              controlledSchedule: "II",
-              requiresWitness: true,
-              requiresDoubleSign: false,
-            },
-            product: null,
+            isControlled: true,
+            controlledSchedule: "II",
+            requiresWitness: true,
+            requiresDoubleSign: false,
+            isHighAlert: false,
           },
         ],
       ]),
@@ -118,12 +112,11 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
     );
 
     expect(med.medicationSafetyGovernance?.isControlled).toBe(true);
-    expect(med.medicationGovernanceResolveInput?.catalog?.id).toBe("cat-1");
     expect(med.status).toBe("PENDING");
     expect(lab.medicationSafetyGovernance).toBeNull();
   });
 
-  it("does not attach pharmacy-only partial governance (M1.7B.1)", () => {
+  it("attaches pharmacy-only partial governance when catalog enrichment missing", () => {
     const row = attachMedicationSafetyGovernanceToOrderItem(
       {
         id: "oi-1",
@@ -135,25 +128,26 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
       new Map([["oi-1", "PENDING"]])
     );
     expect(row.lifecycleState).toBe("ORDERED");
-    expect(row.medicationSafetyGovernance).toBeNull();
+    expect(row.medicationSafetyGovernance).toMatchObject({
+      pharmacyVerificationStatus: "PENDING",
+    });
   });
 
   it("resolves governance by catalogMedication.id when catalogItemId is a product id (M1.7B.2)", () => {
-    const resolveMap = new Map([
+    const governanceMap = new Map([
       [
         "cat-hydro",
         {
-          catalog: hydroCatalog,
-          product: {
-            isHighAlert: true,
-            highAlertCategories: hydroProductProfile.concept.safetyProfile.highAlertCategories,
-            lasaGroupId: "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE",
-            isControlled: true,
-            controlledSchedule: "II",
-            requiresWitness: false,
-            requiresDoubleSign: true,
-            allowsWasteDocumentation: true,
-          },
+          isControlled: true,
+          controlledSchedule: "II",
+          isHighAlert: true,
+          highAlertClass: "HIGH_ALERT_OPIOID",
+          lasaGroupId: "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE",
+          lasaGroupLabel: "Morphine / hydromorphone",
+          lasaSeverity: "LASA_HIGH",
+          requiresWitness: false,
+          requiresDoubleSign: true,
+          requiresPharmacyVerification: true,
         },
       ],
     ]);
@@ -163,7 +157,7 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
         catalogItemId: "prod-hydro",
         catalogMedication: { id: "cat-hydro" },
       },
-      resolveMap
+      governanceMap
     );
     expect(key).toBe("cat-hydro");
 
@@ -173,20 +167,18 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
         catalogItemType: "MEDICATION",
         catalogItemId: "prod-hydro",
         catalogMedication: { id: "cat-hydro" },
-        route: "IV",
       },
-      resolveMap,
+      governanceMap,
       new Map()
     );
 
-    expect(enriched.medicationGovernanceResolveInput?.product).not.toBeNull();
-    expect(enriched.medicationGovernanceResolveInput?.product?.lasaGroupId).toBe(
+    expect(enriched.medicationSafetyGovernance?.lasaSeverity).toBe("LASA_HIGH");
+    expect(enriched.medicationSafetyGovernance?.lasaGroupId).toBe(
       "GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE"
     );
-    expect(enriched.medicationSafetyGovernance?.lasaSeverity).toBe("LASA_HIGH");
   });
 
-  it("loadMedicationGovernanceResolveInputByCatalogId includes product when linked (M1.7B.2)", async () => {
+  it("loadMedicationSafetyGovernanceByCatalogId includes product when linked (M1.7B.2)", async () => {
     const prisma = {
       catalogMedication: {
         findMany: jest.fn().mockResolvedValue([hydroCatalog]),
@@ -196,17 +188,14 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
       },
     };
 
-    const map = await loadMedicationGovernanceResolveInputByCatalogId(
-      prisma as never,
-      ["cat-hydro"]
-    );
+    const map = await loadMedicationSafetyGovernanceByCatalogId(prisma as never, ["cat-hydro"]);
 
-    const resolveInput = map.get("cat-hydro");
-    expect(resolveInput?.product).not.toBeNull();
-    expect(resolveInput?.product?.lasaGroupId).toBe("GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE");
+    const gov = map.get("cat-hydro");
+    expect(gov?.lasaGroupId).toBe("GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE");
+    expect(gov?.lasaSeverity).toBe("LASA_HIGH");
   });
 
-  it("loadMedicationGovernanceResolveInputByCatalogId resolves product id keys (M1.7B.2)", async () => {
+  it("loadMedicationSafetyGovernanceByCatalogId resolves product id keys (M1.7B.2)", async () => {
     const prisma = {
       catalogMedication: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -216,14 +205,10 @@ describe("medication-safety-governance-read (M1.7B.1 / M1.7B.2)", () => {
       },
     };
 
-    const map = await loadMedicationGovernanceResolveInputByCatalogId(
-      prisma as never,
-      ["prod-hydro"]
-    );
+    const map = await loadMedicationSafetyGovernanceByCatalogId(prisma as never, ["prod-hydro"]);
 
-    const resolveInput = map.get("prod-hydro");
-    expect(resolveInput?.product).not.toBeNull();
-    expect(resolveInput?.product?.lasaGroupId).toBe("GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE");
-    expect(resolveInput?.catalog?.id).toBe("cat-hydro");
+    const gov = map.get("prod-hydro");
+    expect(gov?.lasaGroupId).toBe("GROUP_LASA_OPIOID_MORPHINE_HYDROMORPHONE");
+    expect(map.get("cat-hydro")?.lasaSeverity).toBe("LASA_HIGH");
   });
 });

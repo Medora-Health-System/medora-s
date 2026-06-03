@@ -2,6 +2,11 @@
  * M1.3F.3 — read-only MAR medication safety governance display (no enforcement).
  */
 
+import {
+  marAdministrationRequiresDoubleCheck,
+  marPharmacyVerificationBlocksAdministration,
+} from "./marAdministrationGovernancePolicy.js";
+
 export type MedicationSafetyGovernanceSnapshot = {
   isControlled?: boolean | null;
   controlledSchedule?: string | null;
@@ -123,13 +128,25 @@ export function getMedicationSafetyBadges(
   if (resolvesHighAlert(input)) badges.push("HIGH_ALERT");
   if (resolvesLasa(input)) badges.push("LASA");
   if (input.requiresWitness === true) badges.push("WITNESS_REQUIRED");
-  if (input.requiresDoubleSign === true) badges.push("DOUBLE_SIGN_REQUIRED");
+  if (
+    marAdministrationRequiresDoubleCheck({
+      isHighAlert: input.isHighAlert,
+      requiresDoubleSign: input.requiresDoubleSign,
+      highAlertClass: input.highAlertClass,
+    })
+  ) {
+    badges.push("DOUBLE_SIGN_REQUIRED");
+  }
   const pharm = input.pharmacyVerificationStatus;
+  const pharmacyBlocking = marPharmacyVerificationBlocksAdministration();
   if (input.requiresPharmacyVerification === true && pharm === "VERIFIED") {
     badges.push("PHARMACY_VERIFIED");
-  } else if (pharm === "PENDING" || pharm === "REJECTED" || pharm === "OVERRIDDEN") {
+  } else if (
+    pharmacyBlocking &&
+    (pharm === "PENDING" || pharm === "REJECTED" || pharm === "OVERRIDDEN")
+  ) {
     badges.push("PHARMACY_VERIFY");
-  } else if (input.requiresPharmacyVerification === true) {
+  } else if (pharmacyBlocking && input.requiresPharmacyVerification === true) {
     badges.push("PHARMACY_VERIFY");
   }
   if (input.wasteDocumentationRecommended === true) badges.push("WASTE_REQUIRED");
@@ -170,11 +187,22 @@ export function getMedicationSafetyWarningSummary(
   if (input.requiresWitness === true) {
     lines.push({ kind: "witness_required", labelKey: "witnessRequired" });
   }
-  if (input.requiresDoubleSign === true) {
+  if (
+    marAdministrationRequiresDoubleCheck({
+      isHighAlert: input.isHighAlert,
+      requiresDoubleSign: input.requiresDoubleSign,
+      highAlertClass: input.highAlertClass,
+    })
+  ) {
     lines.push({ kind: "double_sign_required", labelKey: "doubleSignRequired" });
   }
   const pharm = input.pharmacyVerificationStatus;
-  if (pharm && pharm !== "NOT_REQUIRED" && pharm !== "VERIFIED") {
+  if (
+    marPharmacyVerificationBlocksAdministration() &&
+    pharm &&
+    pharm !== "NOT_REQUIRED" &&
+    pharm !== "VERIFIED"
+  ) {
     lines.push({
       kind: "pharmacy_verification",
       labelKey: "pharmacyVerification",

@@ -1,7 +1,10 @@
 "use client";
 
 import React from "react";
-import { type MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
+import {
+  marPharmacyBlockingWorkflowVisible,
+  type MedicationSafetyGovernanceDisplayInput,
+} from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 export type MarPharmacyFormState = {
@@ -14,9 +17,7 @@ export function marPharmacyWorkflowVisible(
   governance: MedicationSafetyGovernanceDisplayInput,
   marAction: string
 ): boolean {
-  return (
-    marAction === "administered" && governance.requiresPharmacyVerification === true
-  );
+  return marPharmacyBlockingWorkflowVisible(governance, marAction);
 }
 
 function formatVerifiedAt(iso: string | null | undefined, locale: string): string | null {

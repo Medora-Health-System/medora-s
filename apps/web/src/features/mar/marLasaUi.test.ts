@@ -30,6 +30,7 @@ describe("MAR LASA UI (M1.3F.6)", () => {
       isControlled: true,
       requiresWitness: true,
       isHighAlert: true,
+      highAlertClass: "HIGH_ALERT_INSULIN",
       requiresDoubleSign: true,
       lasaGroupId: "GROUP_LASA_OPIOID",
       lasaSeverity: "LASA_HIGH",

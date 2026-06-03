@@ -12,13 +12,16 @@ const doubleCheckGov: HighAlertMarGovernanceContext = {
   safetyRequirementCodes: ["REQUIRES_INDEPENDENT_DOUBLE_CHECK"],
 };
 
-describe("highAlertMarGovernance (M1.3F.5)", () => {
-  it("does not require double-check for informational high-alert only", () => {
+
+describe("highAlertMarGovernance (M1.7A.9)", () => {
+  it("does not require double-check for informational high-alert opioid bolus", () => {
     expect(
       highAlertMarRequiresDoubleCheck({
         isHighAlert: true,
-        requiresDoubleSign: false,
-        safetyRequirementCodes: [],
+        requiresDoubleSign: true,
+        highAlertClass: "HIGH_ALERT_OPIOID",
+        catalogCode: "HYDROMORPHONE_2MG_ML_INJECTABLE",
+        route: "IV",
       })
     ).toBe(false);
     expect(
@@ -29,7 +32,7 @@ describe("highAlertMarGovernance (M1.3F.5)", () => {
     ).toMatchObject({ ok: true, verifierProvided: false });
   });
 
-  it("requires verifier or override when double-check applies", () => {
+  it("requires verifier or override when insulin double-check applies", () => {
     const fail = validateHighAlertMarCreate({
       marAction: "administered",
       governance: doubleCheckGov,

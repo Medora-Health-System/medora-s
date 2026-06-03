@@ -1,4 +1,3 @@
-import { BadRequestException } from "@nestjs/common";
 import {
   AuditAction,
   MedicationOverrideType,
@@ -17,6 +16,7 @@ import {
   type LasaMarGovernanceContext,
   type MedicationAdministrationCreateDto,
 } from "@medora/shared";
+import { marValidationBadRequest } from "../medication-administration/mar-create-validation-log.util";
 import { mergeMedicationSafetyGovernanceRead } from "./medication-safety-governance-read.util";
 
 export type LasaMarPersistInput = {
@@ -109,7 +109,7 @@ export function assertLasaMarCreate(
 ): ReturnType<typeof validateLasaMarCreate> & { ok: true } {
   const result = validateLasaMarCreate(input);
   if (!result.ok) {
-    throw new BadRequestException(result.message);
+    throw marValidationBadRequest(result.code, result.message);
   }
   return result;
 }

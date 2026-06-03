@@ -34,25 +34,35 @@ describe("marMedicationSafetyGovernanceUi (M1.3F.3)", () => {
     expect(formatLasaSeverity("LASA_HIGH")).toBe("HIGH");
   });
 
-  it("returns expected badges for governed medication", () => {
+  it("returns warning badges without MAR blocking flags for opioid (M1.7A.9)", () => {
     const badges = getMedicationSafetyBadges({
       isControlled: true,
       isHighAlert: true,
+      highAlertClass: "HIGH_ALERT_OPIOID",
       lasaGroupId: "GROUP_LASA_OPIOID",
       requiresWitness: true,
       requiresDoubleSign: true,
       wasteDocumentationRecommended: true,
       pharmacyVerificationStatus: "PENDING",
+      requiresPharmacyVerification: true,
     });
     expect(badges).toEqual([
       "CONTROLLED",
       "HIGH_ALERT",
       "LASA",
       "WITNESS_REQUIRED",
-      "DOUBLE_SIGN_REQUIRED",
-      "PHARMACY_VERIFY",
       "WASTE_REQUIRED",
     ]);
+  });
+
+  it("shows double-check badge for insulin (M1.7A.9 allowlist)", () => {
+    expect(
+      getMedicationSafetyBadges({
+        isHighAlert: true,
+        highAlertClass: "HIGH_ALERT_INSULIN",
+        requiresDoubleSign: true,
+      })
+    ).toContain("DOUBLE_SIGN_REQUIRED");
   });
 
   it("returns no badges for non-governed medication", () => {
