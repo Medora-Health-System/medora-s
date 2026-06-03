@@ -31,6 +31,25 @@
 
 ---
 
+## Usage (seed — M1.6H wired)
+
+```bash
+# Dry-run first
+MEDORA_ENTERPRISE_PILOT_ROLLBACK=1 \
+MEDORA_ENTERPRISE_PILOT_DRY_RUN=1 \
+MEDORA_ENTERPRISE_PILOT_CATALOG_CODES="AMLODIPINE_5_MG_COMPRIME_ORAL" \
+pnpm --filter @medora/api run prisma:seed-catalogs
+
+# Live rollback
+MEDORA_ENTERPRISE_PILOT_ROLLBACK=1 \
+MEDORA_ENTERPRISE_PILOT_CATALOG_CODES="AMLODIPINE_5_MG_COMPRIME_ORAL" \
+pnpm --filter @medora/api run prisma:seed-catalogs
+```
+
+Do **not** combine with `MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION=1`.
+
+See `pilot-rollback-ops-fix-m1.6h.md` for staging repair + SQL verification.
+
 ## Usage (programmatic)
 
 ```typescript

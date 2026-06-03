@@ -122,6 +122,40 @@ async function main() {
     );
   }
 
+  if (
+    process.env.MEDORA_ENTERPRISE_PILOT_ROLLBACK === "1" &&
+    process.env.MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION === "1"
+  ) {
+    throw new Error(
+      "[enterprise-pilot] cannot set MEDORA_ENTERPRISE_PILOT_ROLLBACK=1 together with MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION=1"
+    );
+  }
+
+  if (process.env.MEDORA_ENTERPRISE_PILOT_ROLLBACK === "1") {
+    const facility = await prisma.facility.findFirst({ select: { id: true } });
+    if (!facility) {
+      throw new Error(
+        "[enterprise-pilot] no facility found — seed facility before MEDORA_ENTERPRISE_PILOT_ROLLBACK=1"
+      );
+    }
+    const { rollbackEnterpriseFormularyPilotTrancheA, parseEnterprisePilotCatalogCodesFromEnv } =
+      await import("./helpers/seed-enterprise-formulary-pilot-activation");
+    const catalogCodes = parseEnterprisePilotCatalogCodesFromEnv(
+      process.env.MEDORA_ENTERPRISE_PILOT_CATALOG_CODES
+    );
+    const rollback = await rollbackEnterpriseFormularyPilotTrancheA(prisma, {
+      facilityId: facility.id,
+      dryRun: process.env.MEDORA_ENTERPRISE_PILOT_DRY_RUN === "1",
+      catalogCodes,
+    });
+    console.log(
+      `✅ Enterprise formulary pilot rollback (rolledBack=${rollback.rolledBack}, failures=${rollback.failures.length}, dryRun=${rollback.dryRun})`
+    );
+    if (rollback.failures.length > 0) {
+      console.warn(`[enterprise-pilot] rollback warnings: ${rollback.failures.join("; ")}`);
+    }
+  }
+
   if (process.env.MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION === "1") {
     const facility = await prisma.facility.findFirst({ select: { id: true } });
     if (!facility) {
@@ -142,7 +176,7 @@ async function main() {
       activatedBy: process.env.MEDORA_ENTERPRISE_PILOT_ACTIVATED_BY?.trim(),
     });
     console.log(
-      `✅ Enterprise formulary pilot Tranche A (requested=${pilot.requested}, activated=${pilot.activatedProducts}, skippedValidation=${pilot.skippedValidationFailed}, pending=${pilot.dashboard.pendingReviewCount}, activationReadinessPct=${pilot.dashboard.activationReadinessPct}, dryRun=${pilot.dryRun})`
+      `✅ Enterprise formulary pilot Tranche A (requested=${pilot.requested}, activated=${pilot.activatedProducts}, alreadyActivated=${pilot.alreadyActivated}, skippedValidation=${pilot.skippedValidationFailed}, pending=${pilot.dashboard.pendingReviewCount}, activationReadinessPct=${pilot.dashboard.activationReadinessPct}, dryRun=${pilot.dryRun})`
     );
   }
 

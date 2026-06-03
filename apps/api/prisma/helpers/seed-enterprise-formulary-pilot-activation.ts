@@ -6,12 +6,14 @@ import type {
 } from "@medora/shared";
 import { ENTERPRISE_FORMULARY_PILOT_TRANCHE_A_BY_CODE } from "@medora/shared";
 import {
+  ENTERPRISE_M16F_TRANCHE_A_PILOT_MARKER,
   mergeEnterpriseFormularyPilotGovernanceNotes,
   stripEnterpriseFormularyPilotGovernanceLines,
 } from "../../src/medication-master/enterprise-formulary-pilot.constants";
 import {
   mergeProductRuntimeActivation,
   parseProductRuntimeActivation,
+  stripRuntimeActivationBlock,
 } from "../../src/medication-master/medication-product-runtime-activation.util";
 import { loadEnterpriseFormularyPilotSeedModules } from "./enterprise-formulary-pilot-seed-modules";
 
@@ -414,8 +416,28 @@ export async function activateEnterpriseFormularyPilotTrancheA(
 export type RollbackEnterpriseFormularyPilotOptions = {
   facilityId: string;
   dryRun?: boolean;
+  /** Optional subset; when omitted, all pilot-marked products are rolled back. */
   catalogCodes?: string[];
 };
+
+/** Build post-rollback governance notes (enterprise wave markers preserved; pilot + runtime cleared). */
+export function buildEnterpriseFormularyPilotRollbackGovernanceNotes(
+  governanceNotes: string | null
+): string {
+  const baseNotes = stripEnterpriseFormularyPilotGovernanceLines(
+    stripRuntimeActivationBlock(governanceNotes ?? "")
+  );
+  return mergeProductRuntimeActivation(baseNotes, {
+    formularyApprovedInactive: false,
+    formularyApprovedAt: null,
+    orderSearchEnabled: false,
+    orderSearchEnabledAt: null,
+    marEnabled: false,
+    marEnabledAt: null,
+    billingEnabled: false,
+    billingEnabledAt: null,
+  }).trim();
+}
 
 /**
  * M1.6F rollback — deactivate Tranche A pilot products; preserve enterprise markers + billing.
@@ -428,13 +450,15 @@ export async function rollbackEnterpriseFormularyPilotTrancheA(
   const failures: string[] = [];
   let rolledBack = 0;
 
+  const requestedCodes = options.catalogCodes?.map((c) => c.trim()).filter(Boolean) ?? [];
+
   const where =
-    options.catalogCodes?.length ?
-      {
-        code: { in: options.catalogCodes },
-        governanceNotes: { contains: "ENTERPRISE_M16F_TRANCHE_A_PILOT" },
-      }
-    : { governanceNotes: { contains: "ENTERPRISE_M16F_TRANCHE_A_PILOT" } };
+    requestedCodes.length > 0
+      ? {
+          code: { in: requestedCodes },
+          governanceNotes: { contains: ENTERPRISE_M16F_TRANCHE_A_PILOT_MARKER },
+        }
+      : { governanceNotes: { contains: ENTERPRISE_M16F_TRANCHE_A_PILOT_MARKER } };
 
   const products = await prisma.medicationProduct.findMany({
     where,
@@ -449,6 +473,15 @@ export async function rollbackEnterpriseFormularyPilotTrancheA(
     },
   });
 
+  if (requestedCodes.length > 0) {
+    const rolledCodes = new Set(products.map((p) => p.code));
+    for (const code of requestedCodes) {
+      if (!rolledCodes.has(code)) {
+        failures.push(`${code}: no pilot-marked product found for rollback`);
+      }
+    }
+  }
+
   for (const product of products) {
     if (dryRun) {
       rolledBack += 1;
@@ -456,17 +489,9 @@ export async function rollbackEnterpriseFormularyPilotTrancheA(
     }
 
     const pkg = product.packages[0];
-    const baseNotes = stripEnterpriseFormularyPilotGovernanceLines(product.governanceNotes);
-    const runtime = mergeProductRuntimeActivation(baseNotes, {
-      formularyApprovedInactive: false,
-      formularyApprovedAt: null,
-      orderSearchEnabled: false,
-      orderSearchEnabledAt: null,
-      marEnabled: false,
-      marEnabledAt: null,
-      billingEnabled: false,
-      billingEnabledAt: null,
-    });
+    const restoredNotes = buildEnterpriseFormularyPilotRollbackGovernanceNotes(
+      product.governanceNotes
+    );
 
     await prisma.$transaction(async (tx) => {
       await tx.medicationConcept.update({
@@ -478,7 +503,7 @@ export async function rollbackEnterpriseFormularyPilotTrancheA(
         data: {
           isActive: false,
           governanceStatus: "REVIEW_REQUIRED",
-          governanceNotes: runtime.trim() || baseNotes,
+          governanceNotes: restoredNotes || stripEnterpriseFormularyPilotGovernanceLines(product.governanceNotes),
         },
       });
       if (pkg) {
@@ -496,6 +521,18 @@ export async function rollbackEnterpriseFormularyPilotTrancheA(
       }
     });
     rolledBack += 1;
+  }
+
+  if (!dryRun && rolledBack === 0) {
+    const remaining = await prisma.medicationProduct.count({
+      where: { governanceNotes: { contains: ENTERPRISE_M16F_TRANCHE_A_PILOT_MARKER } },
+    });
+    if (remaining > 0) {
+      throw new EnterpriseFormularyPilotActivationError(
+        `[enterprise-pilot] rollback matched 0 products but ${remaining} pilot-marked product(s) remain — rollback did not run or catalog codes did not match`,
+        [{ catalogCode: "*", reason: "rollback no-op" }]
+      );
+    }
   }
 
   return { dryRun, rolledBack, failures };
