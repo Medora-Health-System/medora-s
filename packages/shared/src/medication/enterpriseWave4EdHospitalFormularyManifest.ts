@@ -68,7 +68,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -133,7 +133,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -199,7 +199,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -394,7 +394,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -525,7 +525,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -585,7 +585,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -656,7 +656,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -717,7 +717,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -782,7 +782,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -848,7 +848,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -914,7 +914,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -980,7 +980,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1172,7 +1172,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1237,7 +1237,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1291,7 +1291,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1423,7 +1423,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1488,7 +1488,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1620,7 +1620,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1685,7 +1685,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1750,7 +1750,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1815,7 +1815,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -1880,7 +1880,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2079,7 +2079,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2143,7 +2143,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2206,7 +2206,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2269,7 +2269,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2333,7 +2333,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2525,7 +2525,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2592,7 +2592,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2724,7 +2724,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "INFUSION",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2857,7 +2857,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2922,7 +2922,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -2976,7 +2976,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3043,7 +3043,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3110,7 +3110,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3178,7 +3178,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3246,7 +3246,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3510,7 +3510,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -3575,7 +3575,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -4301,7 +4301,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -6742,7 +6742,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -7392,7 +7392,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -7457,7 +7457,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -7855,7 +7855,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -7990,7 +7990,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -8057,7 +8057,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -8124,7 +8124,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -8655,7 +8655,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9253,7 +9253,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9318,7 +9318,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9383,7 +9383,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9448,7 +9448,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9513,7 +9513,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9775,7 +9775,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9840,7 +9840,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9905,7 +9905,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -9970,7 +9970,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -10035,7 +10035,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -10164,7 +10164,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -10424,7 +10424,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "DRUG_SUPPLY"
   },
   {
@@ -10488,7 +10488,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -10552,7 +10552,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -10950,7 +10950,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -11287,7 +11287,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -11755,7 +11755,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -11899,7 +11899,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -12570,7 +12570,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -12702,7 +12702,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -12766,7 +12766,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": true
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13026,7 +13026,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13092,7 +13092,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13158,7 +13158,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13355,7 +13355,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13489,7 +13489,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13555,7 +13555,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "IM",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -13688,7 +13688,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14021,7 +14021,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14087,7 +14087,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14154,7 +14154,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14222,7 +14222,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14290,7 +14290,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -14425,7 +14425,7 @@ export const ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: EnterpriseWave4EdH
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "INJECTION",
+    "administrationType": "PUSH",
     "billingClass": "THERAPEUTIC"
   },
   {

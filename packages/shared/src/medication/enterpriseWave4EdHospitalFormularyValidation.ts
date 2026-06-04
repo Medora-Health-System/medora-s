@@ -21,6 +21,10 @@ import {
   validateEnterpriseWaveFormularyLocalizationReady,
 } from "./medicationLocalizationValidation.js";
 import { validateWave4SearchHardening } from "./enterpriseWave4EdHospitalSearchValidation.js";
+import {
+  validateWave4ClinicalReviewQueue,
+  validateWave4MarAdministrationTypePolicy,
+} from "./wave4AdministrationTypeRemediation.js";
 
 export function wave4EdHospitalFormularyEntryToLocalizationContract(
   entry: EnterpriseWave4EdHospitalFormularyEntry
@@ -173,6 +177,8 @@ export function validateEnterpriseWave4EdHospitalFormularyManifest(): string[] {
   errors.push(...validateWave4HydromorphoneDoubleRnPolicy());
   errors.push(...validateWave4DoubleRnPolicy());
   errors.push(...validateWave4SearchHardening(ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST));
+  errors.push(...validateWave4MarAdministrationTypePolicy(ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST));
+  errors.push(...validateWave4ClinicalReviewQueue(ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST));
 
   return errors;
 }
