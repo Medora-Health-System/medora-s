@@ -123,6 +123,16 @@ async function main() {
     );
   }
 
+  if (process.env.MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY === "1") {
+    const { seedEnterpriseWave4EdHospitalFormulary } = await import(
+      "./helpers/seed-enterprise-wave4-ed-hospital-formulary"
+    );
+    const wave4Med = await seedEnterpriseWave4EdHospitalFormulary(prisma, { dryRun: false });
+    console.log(
+      `✅ Enterprise Wave 4 ED/Hospital formulary (manifest=${wave4Med.manifestEntries}, catalogCreated=${wave4Med.catalogCreated}, catalogEnriched=${wave4Med.catalogEnriched}, products=${wave4Med.productsCreated}, billingProfiles=${wave4Med.billingProfilesCreated}, wave4MarkersUpdated=${wave4Med.wave4GovernanceNotesUpdated}, wave4ReadinessPct=${wave4Med.readinessReport.wave4ReadinessPct})`
+    );
+  }
+
   if (process.env.MEDORA_ENABLE_ENTERPRISE_MEDICATION_SEARCH_ALIASES === "1") {
     const searchAlias = await seedEnterpriseMedicationSearchAliases(prisma, { dryRun: false });
     console.log(

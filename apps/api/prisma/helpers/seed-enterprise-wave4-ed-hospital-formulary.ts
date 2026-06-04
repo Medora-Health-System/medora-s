@@ -5,6 +5,10 @@ import type {
   MedicationLocalizationAlias,
 } from "@medora/shared";
 import { resolveWave4CatalogAdministrationType } from "@medora/shared";
+import {
+  resolveWave4EnrichCatalogLookupCandidates,
+  resolveWave4ProductAdministrationType,
+} from "@medora/shared";
 import { mergeEnterpriseWave4EdHospitalGovernanceNotes } from "../../src/medication-master/enterprise-wave4-ed-hospital.constants";
 import { loadEnterpriseWave4EdHospitalFormularySeedModules } from "./enterprise-wave4-ed-hospital-formulary-seed-modules";
 
@@ -42,6 +46,8 @@ export type SeedEnterpriseWave4EdHospitalFormularyResult = {
   conflicts: Array<{ catalogCode: string; reason: string }>;
   /** M1.7C.6 — non-fatal admin-type guard resolutions (existing SAFE type preserved). */
   administrationTypeGuardLogs: Array<{ catalogCode: string; reason: string }>;
+  /** M1.7C.8 — existing products synchronized to remediated catalog administrationType. */
+  productAdministrationTypeSynced: number;
   readinessReport: EnterpriseWave4EdHospitalReadinessReport;
 };
 
@@ -105,6 +111,98 @@ function buildSearchText(entry: {
   return "";
 }
 
+type CatalogLookupRow = {
+  id: string;
+  administrationType: string | null;
+};
+
+async function findCatalogByCodeCandidates(
+  prisma: PrismaClient,
+  candidates: readonly string[]
+): Promise<{ catalogCode: string; row: CatalogLookupRow } | null> {
+  for (const code of candidates) {
+    const row = await prisma.catalogMedication.findUnique({
+      where: { code },
+      select: { id: true, administrationType: true },
+    });
+    if (row) return { catalogCode: code, row };
+  }
+  return null;
+}
+
+async function findProductForWave4Entry(
+  prisma: PrismaClient,
+  candidates: readonly string[],
+  catalogId: string
+): Promise<
+  Awaited<
+    ReturnType<
+      typeof prisma.medicationProduct.findUnique<{
+        where: { code: string };
+        include: {
+          concept: true;
+          packages: { include: { billingProfiles: true } };
+        };
+      }>
+    >
+  > | null
+> {
+  const include = {
+    concept: true,
+    packages: { include: { billingProfiles: true } },
+  } as const;
+
+  for (const code of candidates) {
+    const product = await prisma.medicationProduct.findUnique({
+      where: { code },
+      include,
+    });
+    if (product) return product;
+  }
+
+  return prisma.medicationProduct.findFirst({
+    where: { legacyCatalogMedicationId: catalogId },
+    include,
+  });
+}
+
+async function syncWave4ProductAdministrationType(
+  prisma: PrismaClient,
+  product: { id: string; administrationType: string | null },
+  resolvedCatalogAdministrationType: string | null | undefined,
+  dryRun: boolean
+): Promise<boolean> {
+  const productAdminType = resolveWave4ProductAdministrationType(resolvedCatalogAdministrationType);
+  if (product.administrationType === productAdminType) return false;
+  if (dryRun) return true;
+
+  await prisma.medicationProduct.update({
+    where: { id: product.id },
+    data: { administrationType: productAdminType },
+  });
+
+  await prisma.medicationAdministrationProfile.upsert({
+    where: { productId: product.id },
+    create: {
+      productId: product.id,
+      defaultMarWorkflow:
+        productAdminType === "INFUSION"
+          ? MedicationMarWorkflow.INFUSION_SESSION
+          : MedicationMarWorkflow.SINGLE_DOSE,
+      requiresInfusionSession: productAdminType === "INFUSION",
+    },
+    update: {
+      defaultMarWorkflow:
+        productAdminType === "INFUSION"
+          ? MedicationMarWorkflow.INFUSION_SESSION
+          : MedicationMarWorkflow.SINGLE_DOSE,
+      requiresInfusionSession: productAdminType === "INFUSION",
+    },
+  });
+
+  return true;
+}
+
 /** Coalesce optional manifest arrays so seed never throws on `.length` / iteration. */
 export function withWave4FormularyEntryDefaults<T extends Record<string, unknown>>(
   entry: T & { aliases?: MedicationLocalizationAlias[]; searchTerms?: string[] }
@@ -151,6 +249,7 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
     skippedMissingCatalog: 0,
     conflicts: [],
     administrationTypeGuardLogs: [],
+    productAdministrationTypeSynced: 0,
   };
 
   const perMedication: Array<{
@@ -175,26 +274,35 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
 
     const searchText = buildSearchText(entry);
 
+    const manifestCatalogCode = entry.catalogCode;
+    const catalogLookupCandidates =
+      entry.mode === "ENRICH"
+        ? resolveWave4EnrichCatalogLookupCandidates(manifestCatalogCode)
+        : [manifestCatalogCode];
+    const catalogLookupCode = catalogLookupCandidates[0] ?? manifestCatalogCode;
+
     let resolvedAdministrationType = entry.administrationType ?? null;
-    const existingCatalog = await prisma.catalogMedication.findUnique({
-      where: { code: entry.catalogCode },
-      select: { administrationType: true },
-    });
+    const existingCatalogMatch = await findCatalogByCodeCandidates(prisma, catalogLookupCandidates);
+    const existingCatalog = existingCatalogMatch?.row ?? null;
+    const resolvedCatalogCode = existingCatalogMatch?.catalogCode ?? catalogLookupCode;
+
     const resolved = resolveWave4CatalogAdministrationType({
       existingAdministrationType: existingCatalog?.administrationType ?? null,
       incomingAdministrationType: entry.administrationType ?? null,
       mode: entry.mode,
       route: entry.route,
       dosageForm: entry.dosageForm,
-      catalogCode: entry.catalogCode,
+      catalogCode: manifestCatalogCode,
     });
     resolvedAdministrationType = resolved.value;
     if (resolved.conflict) {
       result.administrationTypeGuardLogs.push({
-        catalogCode: entry.catalogCode,
+        catalogCode: manifestCatalogCode,
         reason: resolved.conflict,
       });
     }
+
+    const productAdminType = resolveWave4ProductAdministrationType(resolvedAdministrationType);
 
     const upsertBody = {
       name: entry.displayNameFr || entry.genericName,
@@ -222,41 +330,33 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
 
     let catalogId: string;
     if (dryRun) {
-      const existing = await prisma.catalogMedication.findUnique({
-        where: { code: entry.catalogCode },
-        select: { id: true },
-      });
-      if (!existing && entry.mode === "ENRICH") {
+      if (!existingCatalog && entry.mode === "ENRICH") {
         result.skippedMissingCatalog += 1;
         result.conflicts.push({
-          catalogCode: entry.catalogCode,
+          catalogCode: manifestCatalogCode,
           reason: "ENRICH target catalog missing",
         });
         continue;
       }
-      catalogId = existing?.id ?? "dry-run";
-      if (existing) result.catalogEnriched += 1;
+      catalogId = existingCatalog?.id ?? "dry-run";
+      if (existingCatalog) result.catalogEnriched += 1;
       else result.catalogCreated += 1;
     } else {
-      const existing = await prisma.catalogMedication.findUnique({
-        where: { code: entry.catalogCode },
-        select: { id: true },
-      });
-      if (!existing && entry.mode === "ENRICH") {
+      if (!existingCatalog && entry.mode === "ENRICH") {
         result.skippedMissingCatalog += 1;
         result.conflicts.push({
-          catalogCode: entry.catalogCode,
+          catalogCode: manifestCatalogCode,
           reason: "ENRICH target catalog missing",
         });
         continue;
       }
       const row = await prisma.catalogMedication.upsert({
-        where: { code: entry.catalogCode },
+        where: { code: resolvedCatalogCode },
         update: upsertBody,
-        create: { code: entry.catalogCode, ...upsertBody },
+        create: { code: resolvedCatalogCode, ...upsertBody },
       });
       catalogId = row.id;
-      if (existing) result.catalogEnriched += 1;
+      if (existingCatalog) result.catalogEnriched += 1;
       else result.catalogCreated += 1;
 
       for (const alias of entry.aliases) {
@@ -281,7 +381,7 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
       }
 
       const billingCatalogExists = await prisma.billingCatalog.findFirst({
-        where: { triggerSource: "MEDICATION", externalCode: entry.catalogCode },
+        where: { triggerSource: "MEDICATION", externalCode: resolvedCatalogCode },
       });
       if (!billingCatalogExists) {
         await prisma.billingCatalog.create({
@@ -290,7 +390,7 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
             system: "HCPCS",
             description: billing.description.slice(0, 200),
             triggerSource: "MEDICATION",
-            externalCode: entry.catalogCode,
+            externalCode: resolvedCatalogCode,
             billClass: "both",
           },
         });
@@ -299,20 +399,17 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
     }
 
     const conceptCode = modules.wave4ConceptCodeForGeneric(entry.genericName);
-    const productCode = entry.catalogCode;
+    const productLookupCandidates =
+      entry.mode === "ENRICH"
+        ? resolveWave4EnrichCatalogLookupCandidates(manifestCatalogCode)
+        : [manifestCatalogCode];
+    const productCode = productLookupCandidates[0] ?? manifestCatalogCode;
     const packageCode = modules.wave4PackageCodeForProduct(productCode);
 
-    let product = await prisma.medicationProduct.findUnique({
-      where: { code: productCode },
-      include: {
-        concept: true,
-        packages: { include: { billingProfiles: true } },
-      },
-    });
+    let product = await findProductForWave4Entry(prisma, productLookupCandidates, catalogId);
 
     if (!product && !dryRun) {
       const routeCode = mapCatalogRouteToCode(entry.route);
-      const adminType = inferAdministrationType(routeCode, resolvedAdministrationType);
       const packageType = inferPackageType(entry.dosageForm, routeCode);
 
       await prisma.medicationRoute.upsert({
@@ -348,7 +445,7 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
           concentrationId: concentration.id,
           dosageForm: entry.dosageForm,
           defaultRouteId: route.id,
-          administrationType: adminType,
+          administrationType: productAdminType,
           billingClass: entry.billingClass ?? "DRUG_SUPPLY",
           isActive: false,
           governanceStatus: "REVIEW_REQUIRED",
@@ -410,10 +507,10 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
         create: {
           productId: product.id,
           defaultMarWorkflow:
-            adminType === "INFUSION"
+            productAdminType === "INFUSION"
               ? MedicationMarWorkflow.INFUSION_SESSION
               : MedicationMarWorkflow.SINGLE_DOSE,
-          requiresInfusionSession: adminType === "INFUSION",
+          requiresInfusionSession: productAdminType === "INFUSION",
         },
         update: {},
       });
@@ -430,6 +527,17 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
             product.governanceNotes = mergedNotes;
             result.wave4GovernanceNotesUpdated += 1;
           }
+          if (
+            await syncWave4ProductAdministrationType(
+              prisma,
+              product,
+              resolvedAdministrationType,
+              dryRun
+            )
+          ) {
+            product.administrationType = productAdminType;
+            result.productAdministrationTypeSynced += 1;
+          }
         }
       } else if (!product.legacyCatalogMedicationId && !dryRun) {
         const mergedNotes = mergeEnterpriseWave4EdHospitalGovernanceNotes(product.governanceNotes);
@@ -438,11 +546,44 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
           data: {
             legacyCatalogMedicationId: catalogId,
             governanceNotes: mergedNotes,
+            administrationType: productAdminType,
           },
         });
         product.governanceNotes = mergedNotes;
         product.legacyCatalogMedicationId = catalogId;
+        product.administrationType = productAdminType;
         result.linkedCatalogMedications += 1;
+        await prisma.medicationAdministrationProfile.upsert({
+          where: { productId: product.id },
+          create: {
+            productId: product.id,
+            defaultMarWorkflow:
+              productAdminType === "INFUSION"
+                ? MedicationMarWorkflow.INFUSION_SESSION
+                : MedicationMarWorkflow.SINGLE_DOSE,
+            requiresInfusionSession: productAdminType === "INFUSION",
+          },
+          update: {
+            defaultMarWorkflow:
+              productAdminType === "INFUSION"
+                ? MedicationMarWorkflow.INFUSION_SESSION
+                : MedicationMarWorkflow.SINGLE_DOSE,
+            requiresInfusionSession: productAdminType === "INFUSION",
+          },
+        });
+        result.productAdministrationTypeSynced += 1;
+      } else if (!dryRun) {
+        if (
+          await syncWave4ProductAdministrationType(
+            prisma,
+            product,
+            resolvedAdministrationType,
+            dryRun
+          )
+        ) {
+          product.administrationType = productAdminType;
+          result.productAdministrationTypeSynced += 1;
+        }
       }
 
       const defaultPkg =
@@ -509,7 +650,7 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
     const catalogRow = dryRun
       ? null
       : await prisma.catalogMedication.findUnique({
-          where: { code: entry.catalogCode },
+          where: { code: resolvedCatalogCode },
           select: {
             id: true,
             code: true,

@@ -3,6 +3,7 @@ import {
   WAVE4_ONDANSETRON_IV_CATALOG_CODE,
   inferWave4AdministrationType,
   resolveWave4CatalogAdministrationType,
+  resolveWave4ProductAdministrationType,
   validateWave4MarAdministrationTypePolicy,
   validateWave4OndansetronAdministrationType,
 } from "./wave4AdministrationTypeRemediation.js";
@@ -154,5 +155,13 @@ describe("wave4AdministrationTypeRemediation (M1.7C.6)", () => {
     expect(counts.SQ).toBe(7);
     expect(counts.INHALATION).toBe(11);
     expect(counts.INFUSION).toBe(114);
+  });
+
+  it("product admin type sync maps SUBCUTANEOUS catalog to SQ product", () => {
+    expect(resolveWave4ProductAdministrationType("SQ")).toBe("SQ");
+    expect(resolveWave4ProductAdministrationType("SUBCUTANEOUS")).toBe("SQ");
+    expect(resolveWave4ProductAdministrationType("INJECTION")).toBe("PUSH");
+    expect(resolveWave4ProductAdministrationType("INHALATION")).toBe("INHALATION");
+    expect(resolveWave4ProductAdministrationType("PUSH")).toBe("PUSH");
   });
 });

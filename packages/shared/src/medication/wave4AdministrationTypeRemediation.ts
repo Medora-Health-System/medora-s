@@ -275,3 +275,13 @@ export function countWave4RemediationAdministrationTypes(
   }
   return counts;
 }
+
+/** Product row admin type derived from remediated catalog value (never INJECTION/SUBCUTANEOUS). */
+export function resolveWave4ProductAdministrationType(
+  resolvedCatalogAdministrationType: string | null | undefined
+): string {
+  const admin = normalizeAdministrationType(resolvedCatalogAdministrationType);
+  if (!admin) return "OTHER";
+  if (admin === "INJECTION") return "PUSH";
+  return admin;
+}
