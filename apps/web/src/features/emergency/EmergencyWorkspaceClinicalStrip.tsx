@@ -36,6 +36,8 @@ function VitalPair({
         alignItems: "baseline",
         gap: displayMode === "tabletReadable" ? 6 : displayMode === "tabletCompactDense" ? 4 : 4,
         minWidth: 0,
+        maxWidth: "100%",
+        overflow: "hidden",
       }}
     >
       <span style={clinicalVitalsLabelStyle(displayMode)}>{label}:</span>
@@ -73,8 +75,8 @@ export function EmergencyWorkspaceVitalsCard({
           borderRadius: 10,
           border: "1px solid #e2e8f0",
           backgroundColor: "#fff",
-          minWidth: 0,
-          flex: "1 1 160px",
+          flex: "2 1 240px",
+          minWidth: 240,
           maxWidth: "100%",
           boxSizing: "border-box",
         }}
@@ -171,8 +173,8 @@ export function EmergencyWorkspaceAllergiesCard({
         border: "1px solid #fecaca",
         backgroundColor: "#fef2f2",
         minWidth: 0,
-        flex: compact ? "1 1 100%" : "1 1 140px",
-        maxWidth: "100%",
+        flex: compact ? "1 1 100%" : "0 1 160px",
+        maxWidth: compact ? "100%" : 220,
         boxSizing: "border-box",
         alignSelf: "stretch",
       }}
@@ -196,7 +198,11 @@ export function EmergencyWorkspaceAllergiesCard({
           color: "#991b1b",
           lineHeight: 1.3,
           fontWeight: 600,
-          wordBreak: "break-word",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
         }}
       >
         {loading ? "…" : allergySummary || t("emergencyWorkspaceClinicalStrip.allergiesNone")}

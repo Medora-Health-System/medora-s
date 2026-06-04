@@ -29,6 +29,7 @@ import {
   type ErTraumaLevel,
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
+import { buildEdHeaderAllergySummary } from "./edHeaderAllergySummary";
 
 function interpolatePreview(template: string, params: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, k: string) =>
@@ -642,19 +643,15 @@ export function buildVitalsStripLine(f: TriageDocPreviewFormSlice, locale: Suppo
 }
 
 /**
- * Compact allergy summary for top strip — uses existing triage + V1 fields only (no new inputs).
+ * Compact allergy summary for ED header strip — short names/status only (M1.7B.8).
  * Empty string when nothing documented.
  */
-export function buildAllergyStripSummary(f: TriageDocPreviewFormSlice, er: ErTriageV1Form): string {
-  const parts: string[] = [];
-  if (f.allergyNote.trim()) parts.push(f.allergyNote.trim());
-  if (er.medicationAllergiesDetail.trim()) parts.push(er.medicationAllergiesDetail.trim());
-  if (er.foodAllergiesDetail.trim()) parts.push(er.foodAllergiesDetail.trim());
-  if (er.additionalAllergyInfo.trim()) parts.push(er.additionalAllergyInfo.trim());
-  if (parts.length === 0) return "";
-  const joined = parts.join(" · ");
-  const max = 240;
-  return joined.length > max ? `${joined.slice(0, max)}…` : joined;
+export function buildAllergyStripSummary(
+  f: TriageDocPreviewFormSlice,
+  er: ErTriageV1Form,
+  locale: SupportedLanguage = "fr"
+): string {
+  return buildEdHeaderAllergySummary(f, er, locale);
 }
 
 export type TriagePreviewModel = {

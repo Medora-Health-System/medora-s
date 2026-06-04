@@ -59,9 +59,9 @@ describe("clinicalViewport", () => {
   it("uses readable 2-column vitals grid on tablet", () => {
     const tablet = clinicalVitalsGridStyle("tabletReadable");
     expect(tablet.display).toBe("grid");
-    expect(tablet.gridTemplateColumns).toBe("1fr 1fr");
+    expect(tablet.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
     const compactDense = clinicalVitalsGridStyle("tabletCompactDense");
-    expect(compactDense.gridTemplateColumns).toBe("1fr 1fr");
+    expect(compactDense.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
     const compact = clinicalVitalsGridStyle("compactStack");
     expect(compact.flexDirection).toBe("column");
   });

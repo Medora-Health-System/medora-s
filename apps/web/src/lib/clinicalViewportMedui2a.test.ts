@@ -54,7 +54,7 @@ describe("MEDUI.2A compact tablet clinical header", () => {
     expect(emergencyChartVitalsDisplayMode("mobileStacked", 390)).toBe("compactStack");
     const grid = clinicalVitalsGridStyle("tabletCompactDense");
     expect(grid.display).toBe("grid");
-    expect(grid.gridTemplateColumns).toBe("1fr 1fr");
+    expect(grid.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
   });
 });
 

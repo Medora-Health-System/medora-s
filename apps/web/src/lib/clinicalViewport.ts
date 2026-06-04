@@ -129,13 +129,36 @@ export function clinicalVitalsLabelStyle(mode: ClinicalVitalsDisplayMode): CSSPr
 }
 
 export function clinicalVitalsValueStyle(mode: ClinicalVitalsDisplayMode): CSSProperties {
+  const nowrap =
+    mode === "desktopDense" || mode === "tabletReadable" || mode === "tabletCompactDense";
   if (mode === "desktopDense") {
-    return { fontSize: 12, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
+    return {
+      fontSize: 12,
+      color: "#0f172a",
+      fontWeight: 700,
+      whiteSpace: nowrap ? "nowrap" : undefined,
+      overflow: nowrap ? "hidden" : undefined,
+      textOverflow: nowrap ? "ellipsis" : undefined,
+    };
   }
   if (mode === "tabletCompactDense") {
-    return { fontSize: 14, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
+    return {
+      fontSize: 14,
+      color: "#0f172a",
+      fontWeight: 700,
+      whiteSpace: nowrap ? "nowrap" : undefined,
+      overflow: nowrap ? "hidden" : undefined,
+      textOverflow: nowrap ? "ellipsis" : undefined,
+    };
   }
-  return { fontSize: 16, color: "#0f172a", fontWeight: 700, wordBreak: "break-word" };
+  return {
+    fontSize: 16,
+    color: "#0f172a",
+    fontWeight: 700,
+    whiteSpace: nowrap ? "nowrap" : undefined,
+    overflow: nowrap ? "hidden" : undefined,
+    textOverflow: nowrap ? "ellipsis" : undefined,
+  };
 }
 
 export function clinicalVitalsGridStyle(mode: ClinicalVitalsDisplayMode): CSSProperties {
@@ -154,8 +177,8 @@ export function clinicalVitalsGridStyle(mode: ClinicalVitalsDisplayMode): CSSPro
     return {
       marginTop: 4,
       display: "grid",
-      gridTemplateColumns: "1fr 1fr",
-      gap: "4px 8px",
+      gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+      gap: "6px 12px",
       alignItems: "baseline",
       minWidth: 0,
       width: "100%",
@@ -164,8 +187,8 @@ export function clinicalVitalsGridStyle(mode: ClinicalVitalsDisplayMode): CSSPro
   return {
     marginTop: 8,
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "8px 14px",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+    gap: "6px 12px",
     alignItems: "baseline",
     minWidth: 0,
     width: "100%",
@@ -186,7 +209,7 @@ export function clinicalVitalsShellStyle(mode: ClinicalVitalsDisplayMode, intera
     cursor: interactive ? "pointer" : "default",
   };
   if (mode === "desktopDense") {
-    return { ...base, flex: "1 1 160px" };
+    return { ...base, flex: "2 1 240px", minWidth: 240 };
   }
   if (mode === "tabletCompactDense") {
     return { ...base, flex: "1 1 100%", width: "100%", minHeight: 0 };

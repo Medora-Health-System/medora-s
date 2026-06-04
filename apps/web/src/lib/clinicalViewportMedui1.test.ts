@@ -184,7 +184,7 @@ describe("MEDUI.1 vitals readability", () => {
   it("defines readable tablet 2-column vitals grid without tiny fixed width", () => {
     const grid = clinicalVitalsGridStyle("tabletReadable");
     expect(grid.display).toBe("grid");
-    expect(grid.gridTemplateColumns).toBe("1fr 1fr");
+    expect(grid.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
     const strip = readWebSource("src/features/emergency/EmergencyWorkspaceClinicalStrip.tsx");
     expect(strip).toContain("clinicalVitalsGridStyle");
     expect(strip).toContain("clinicalVitalsValueStyle");

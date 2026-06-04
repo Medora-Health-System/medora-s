@@ -475,7 +475,7 @@ export function EmergencyActiveWorkspaceView() {
     }
     return {
       esi: parsed.slice.esi,
-      allergyText: buildAllergyStripSummary(parsed.slice, parsed.er),
+      allergyText: buildAllergyStripSummary(parsed.slice, parsed.er, language),
       pairs: buildErWorkspaceVitalPairs(parsed.slice, language),
     };
   }, [triageSnapshot, language]);
@@ -897,9 +897,9 @@ export function EmergencyActiveWorkspaceView() {
                   display: "flex",
                   flexDirection: "column",
                   gap: 8,
-                  flex: "1 1 260px",
+                  flex: "1 1 320px",
+                  minWidth: 280,
                   alignItems: "stretch",
-                  minWidth: 0,
                 }}
               >
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "stretch" }}>
