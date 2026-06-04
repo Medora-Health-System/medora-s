@@ -35,6 +35,8 @@ import {
   validateMedicationAdministrationEffectiveTime,
   validateImInjectionSiteForMarCreate,
   mergeInjectionSiteIntoMarNotes,
+  resolveMarAdministeredQuantityForCreate,
+  validateMarAdministeredQuantityRequired,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -453,7 +455,15 @@ export class MedicationAdministrationService {
 
     const doseValue = data.doseValue ?? null;
     const doseUnit = data.doseUnit?.trim() || null;
-    const administeredQuantity = data.administeredQuantity ?? null;
+
+    const marActionResolved: MarClinicalAction =
+      data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
+
+    let administeredQuantity = resolveMarAdministeredQuantityForCreate({
+      marAction: marActionResolved,
+      explicitQuantity: data.administeredQuantity ?? null,
+      orderedQuantity: linkedMedicationLine?.quantity ?? null,
+    });
     const billingQuantity = data.billingQuantity ?? administeredQuantity ?? null;
     const quantityUnit = data.quantityUnit?.trim() || null;
     const ndcSnapshots = await resolveMarNdcSnapshotFromOrderLine(this.prisma, {
@@ -464,9 +474,6 @@ export class MedicationAdministrationService {
     const ndc11Snapshot = ndcSnapshots.ndc11;
     const ndcDisplaySnapshot = ndcSnapshots.ndcDisplay;
     const candidateQuantityUnit = quantityUnit || catalogMedication?.billingUnitType?.trim() || null;
-
-    const marActionResolved: MarClinicalAction =
-      data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
 
     const controlledGovernance = catalogMedication
       ? await resolveControlledSubstanceMarGovernance(
@@ -530,6 +537,19 @@ export class MedicationAdministrationService {
       !serviceOptions?.allowAdministeredForInfusionTerminal &&
       !serviceOptions?.allowAdministeredForInfusionStart
     ) {
+      const qtyValidation = validateMarAdministeredQuantityRequired({
+        marAction: marActionResolved,
+        administeredQuantity,
+      });
+      if (!qtyValidation.ok) {
+        this.logAndThrowMarCreateBlocked(marValidationLogContext, qtyValidation.message);
+      }
+    }
+
+    if (
+      !serviceOptions?.allowAdministeredForInfusionTerminal &&
+      !serviceOptions?.allowAdministeredForInfusionStart
+    ) {
       runMarGovernanceAssert(() =>
         assertControlledSubstanceMarCreate({
           marAction: marActionResolved,
@@ -544,7 +564,7 @@ export class MedicationAdministrationService {
           overrideReason: data.overrideReason,
           controlledOverrideAcknowledged: data.controlledOverrideAcknowledged,
           orderedQuantity: linkedMedicationLine?.quantity ?? null,
-          administeredQuantity: data.administeredQuantity ?? null,
+          administeredQuantity,
         })
       );
 

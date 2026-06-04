@@ -14409,6 +14409,7 @@ export default {
     saveFailed: "Enregistrement impossible.",
     errInvalidOrderItemId: "Ligne d'ordonnance invalide — rechargez la page ou resynchronisez les ordres.",
     errInvalidNumericField: "Saisissez une valeur numérique valide pour la dose ou la quantité.",
+    errAdministeredQuantityRequired: "La quantité administrée est requise.",
     pendingSyncFirstName: "En attente",
     pendingSyncLastName: "de synchronisation",
     allergyDocTitle: "Allergies documentées",

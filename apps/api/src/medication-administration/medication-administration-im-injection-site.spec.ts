@@ -26,7 +26,7 @@ function makeOrderItem(route = "IM") {
     catalogItemId: "med-1",
     status: "PLACED",
     lifecycleState: "ORDERED",
-    quantity: null,
+    quantity: 1,
     route,
     strength: "1 mg",
     notes: null,
@@ -63,7 +63,7 @@ describe("MedicationAdministrationService.create IM injection site", () => {
       },
       medicationAdministration: {
         findFirst: jest.fn().mockResolvedValue(null),
-        aggregate: jest.fn(),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 }, _count: { _all: 0 } }),
         create: marCreate,
       },
       userRole: {

@@ -28,9 +28,13 @@ import {
   isOrderDisplayLabelUnavailable,
   mergeMarCreateBillingFields,
   resolveMarHiddenBillingPayload,
+  formatMarModalDefaultAdministeredQuantity,
+  resolveMarAdministeredQuantityForCreate,
+  validateMarAdministeredQuantityRequired,
   type MarHiddenBillingPayload,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
+import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 import {
   MarControlledSubstanceFields,
   marControlledWorkflowVisible,
@@ -1016,7 +1020,7 @@ export function MedicationAdministrationTab({
     setModalNotes("");
     setModalDoseValue("");
     setModalDoseUnit(row.billingUnitHint);
-    setModalAdminQty("");
+    setModalAdminQty(formatMarModalDefaultAdministeredQuantity(row.orderedQuantity));
     setModalBillingQty("");
     setModalNdc(row.ndcHint);
     setMarAllergySafetyAck(false);
@@ -1165,6 +1169,26 @@ export function MedicationAdministrationTab({
       }
     }
 
+    const resolvedAdministeredQuantity =
+      modalAction === "administered"
+        ? resolveMarAdministeredQuantityForCreate({
+            marAction: modalAction,
+            explicitQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+            orderedQuantity: modalItem.orderedQuantity,
+          })
+        : null;
+
+    if (modalAction === "administered") {
+      const qtyValidation = validateMarAdministeredQuantityRequired({
+        marAction: modalAction,
+        administeredQuantity: resolvedAdministeredQuantity,
+      });
+      if (!qtyValidation.ok) {
+        setModalSubmitError(t("marTab.errAdministeredQuantityRequired"));
+        return;
+      }
+    }
+
     setSubmitting(true);
     setModalSubmitError(null);
     setError(null);
@@ -1206,7 +1230,7 @@ export function MedicationAdministrationTab({
           overrideReason: marControlledForm.overrideReason,
           controlledOverrideAcknowledged: marControlledForm.controlledOverrideAcknowledged,
           orderedQuantity: modalItem.orderedQuantity,
-          administeredQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+          administeredQuantity: resolvedAdministeredQuantity,
         });
         if (!validation.ok) {
           setModalSubmitError(validation.message);
@@ -1310,7 +1334,7 @@ export function MedicationAdministrationTab({
         doseValue: modalDoseValue.trim() ? Number(modalDoseValue) : null,
         billingQuantity: modalBillingQty.trim() ? Number(modalBillingQty) : null,
         doseUnit: modalDoseUnit,
-        administeredQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+        administeredQuantity: resolvedAdministeredQuantity,
       });
 
       const body: Record<string, unknown> = {
@@ -1320,7 +1344,9 @@ export function MedicationAdministrationTab({
         ...(routeLine ? { route: routeLine } : {}),
         ...(hiddenBillingFields.doseValue != null ? { doseValue: hiddenBillingFields.doseValue } : {}),
         ...(hiddenBillingFields.doseUnit ? { doseUnit: hiddenBillingFields.doseUnit } : {}),
-        ...(modalAdminQty.trim() ? { administeredQuantity: Number(modalAdminQty) } : {}),
+        ...(resolvedAdministeredQuantity != null
+          ? { administeredQuantity: resolvedAdministeredQuantity }
+          : {}),
         ...(hiddenBillingFields.billingQuantity != null
           ? { billingQuantity: hiddenBillingFields.billingQuantity }
           : {}),
@@ -1447,8 +1473,9 @@ export function MedicationAdministrationTab({
         setModalSubmitError(t("marLasa.errAckRequired"));
         return;
       }
-      const raw = err instanceof Error ? err.message : "";
-      setModalSubmitError(normalizeUserFacingError(raw.trim() || null, language) || t("marTab.saveFailed"));
+      setModalSubmitError(
+        extractMarSaveErrorMessage(err, language, t("marTab.saveFailed"))
+      );
     } finally {
       setSubmitting(false);
     }

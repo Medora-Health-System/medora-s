@@ -14383,6 +14383,7 @@ export default {
     saveFailed: "Unable to save.",
     errInvalidOrderItemId: "Invalid order line — reload the page or refresh orders.",
     errInvalidNumericField: "Enter a valid numeric value for dose or quantity.",
+    errAdministeredQuantityRequired: "Administered quantity is required.",
     pendingSyncFirstName: "Pending",
     pendingSyncLastName: "sync",
     allergyDocTitle: "Documented allergies",

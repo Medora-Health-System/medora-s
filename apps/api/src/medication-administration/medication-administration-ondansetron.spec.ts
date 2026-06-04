@@ -53,6 +53,7 @@ describe("MedicationAdministrationService Ondansetron MAR (M1.7B.7)", () => {
     overrides: {
       encounter?: Record<string, unknown>;
       packageNdc?: { ndc11: string; ndcDisplay: string } | null;
+      orderItem?: Record<string, unknown>;
     } = {}
   ) {
     const encounter = {
@@ -93,6 +94,7 @@ describe("MedicationAdministrationService Ondansetron MAR (M1.7B.7)", () => {
         createdAt: new Date("2026-05-16T10:00:00Z"),
         cancelledAt: null,
       },
+      ...overrides.orderItem,
     };
 
     const prisma = {
@@ -162,6 +164,40 @@ describe("MedicationAdministrationService Ondansetron MAR (M1.7B.7)", () => {
         }),
       })
     );
+  });
+
+  it("defaults administered quantity from ordered quantity when DTO omits it (M1.7B.7E)", async () => {
+    const service = makeService();
+    await expect(
+      service.create("enc-1", "fac-1", "nurse-1", {
+        orderItemId: "oi-ondansetron",
+        marAction: "administered",
+        route: "IVP",
+        doseUnit: "mg",
+      })
+    ).resolves.toBeDefined();
+
+    expect(marCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          administeredQuantity: 1,
+          billingQuantity: 1,
+        }),
+      })
+    );
+  });
+
+  it("rejects administered MAR when quantity missing and order has no quantity (M1.7B.7E)", async () => {
+    const service = makeService({ orderItem: { quantity: null } });
+
+    await expect(
+      service.create("enc-1", "fac-1", "nurse-1", {
+        orderItemId: "oi-ondansetron",
+        marAction: "administered",
+        route: "IV",
+      })
+    ).rejects.toThrow(/quantité administrée/i);
+    expect(marCreate).not.toHaveBeenCalled();
   });
 
   it("does not fail MAR when billing capture append throws", async () => {

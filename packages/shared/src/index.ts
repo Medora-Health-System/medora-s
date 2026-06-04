@@ -62,6 +62,7 @@ export * from "./mar/medicationAdministrationEffectiveTime.js";
 export * from "./mar/medicationAdministrationInfusionMar.js";
 export * from "./mar/medicationAdministrationInjectionSite.js";
 export * from "./mar/marHiddenBillingPayload.js";
+export * from "./mar/marAdministeredQuantity.js";
 export * from "./orders/orderItemDisplayLabels.js";
 export * from "./orders/trackboardOpenOrderCount.js";
 export * from "./orders/labResultReferenceFlag.js";
