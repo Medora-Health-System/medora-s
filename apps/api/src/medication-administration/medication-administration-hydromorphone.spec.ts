@@ -220,4 +220,110 @@ describe("MedicationAdministrationService Hydromorphone MAR (M1.7A.9)", () => {
     });
     expect(marCreate).not.toHaveBeenCalled();
   });
+
+  it("enriches hidden NDC from catalog when present (M1.7B.7B)", async () => {
+    const catalogWithNdc = {
+      ...hydroCatalog(),
+      ndc11: "76045010001",
+      ndcDisplay: "76045-0100-01",
+    };
+    const encounter = {
+      id: "enc-1",
+      facilityId: "fac-1",
+      patientId: "pat-1",
+      status: "OPEN",
+      providerDocumentationStatus: "DRAFT",
+      version: 1,
+      billingCaptureJson: null,
+      createdAt: new Date("2026-05-16T08:00:00Z"),
+      admittedAt: null,
+      vitals: null,
+      nursingAssessment: null,
+      triage: { vitalsJson: null },
+    };
+    const orderItem = {
+      id: "oi-hydro",
+      orderId: "ord-1",
+      catalogItemType: "MEDICATION",
+      catalogItemId: "cat-hydro",
+      medicationProductId: null,
+      medicationPackageId: null,
+      status: "PENDING",
+      lifecycleState: "ORDERED",
+      quantity: 1,
+      route: "IV",
+      strength: "2 mg/mL",
+      notes: null,
+      createdAt: new Date("2026-05-16T10:00:00Z"),
+      order: {
+        id: "ord-1",
+        encounterId: "enc-1",
+        facilityId: "fac-1",
+        type: "MEDICATION",
+        status: "PENDING",
+        createdAt: new Date("2026-05-16T10:00:00Z"),
+        cancelledAt: null,
+      },
+    };
+    const prisma = {
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue(encounter),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      orderItem: {
+        findFirst: jest.fn().mockResolvedValue(orderItem),
+        update: jest.fn().mockResolvedValue(orderItem),
+      },
+      catalogMedication: {
+        findMany: jest.fn().mockResolvedValue([catalogWithNdc]),
+        findUnique: jest.fn().mockResolvedValue(catalogWithNdc),
+      },
+      medicationProduct: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn().mockResolvedValue(hydroProductProfile()),
+      },
+      pharmacyVerification: { findFirst: jest.fn().mockResolvedValue(null) },
+      medicationAdministration: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 }, _count: { _all: 0 } }),
+        create: marCreate,
+      },
+      medicationAdministrationOverride: { create: overrideCreate },
+      medicationVerification: { create: jest.fn().mockResolvedValue({ id: "ver-1" }) },
+      medicationWaste: { create: jest.fn().mockResolvedValue({ id: "w-1" }) },
+      orderEvent: { create: jest.fn().mockResolvedValue({ id: "ev-1" }) },
+      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          medicationAdministration: { create: marCreate },
+          medicationAdministrationVerification: { create: jest.fn() },
+          medicationWasteDocumentation: { create: jest.fn() },
+          medicationAdministrationOverride: { create: overrideCreate },
+          orderItem: { update: jest.fn().mockResolvedValue(orderItem) },
+          orderEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
+          userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+        };
+        return fn(tx);
+      }),
+    };
+    const service = new MedicationAdministrationService(prisma as never, { log: auditLog } as never);
+
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      orderItemId: "oi-hydro",
+      marAction: "administered",
+      administeredQuantity: 1,
+      route: "IV",
+      lasaAcknowledged: true,
+      lasaMedicationSelectionConfirmed: true,
+    });
+
+    expect(marCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ndc11Snapshot: "76045010001",
+          ndcDisplaySnapshot: "76045-0100-01",
+        }),
+      })
+    );
+  });
 });

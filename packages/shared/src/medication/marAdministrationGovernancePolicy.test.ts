@@ -70,4 +70,38 @@ describe("marAdministrationGovernancePolicy (M1.7A.9)", () => {
       })
     ).toBe(true);
   });
+
+  it("Fentanyl IV push does not require double-check (M1.7B.7B)", () => {
+    expect(
+      marAdministrationRequiresDoubleCheck({
+        highAlertClass: "HIGH_ALERT_OPIOID",
+        genericName: "Fentanyl",
+        route: "IV",
+        isContinuousInfusion: false,
+        requiresDoubleSign: true,
+      })
+    ).toBe(false);
+  });
+
+  it("insulin infusion requires double-check (M1.7B.7B policy lock)", () => {
+    expect(
+      marAdministrationRequiresDoubleCheck({
+        highAlertClass: "HIGH_ALERT_INSULIN",
+        genericName: "Regular insulin",
+        route: "IV",
+        isContinuousInfusion: true,
+      })
+    ).toBe(true);
+  });
+
+  it("heparin infusion requires double-check (M1.7B.7B policy lock)", () => {
+    expect(
+      marAdministrationRequiresDoubleCheck({
+        highAlertClass: "HIGH_ALERT_ANTICOAGULANT",
+        genericName: "Heparin",
+        route: "IV",
+        isContinuousInfusion: true,
+      })
+    ).toBe(true);
+  });
 });
