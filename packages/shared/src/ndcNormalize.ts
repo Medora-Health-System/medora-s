@@ -30,6 +30,7 @@ export function normalizeNdc(raw: string): NdcNormalizeResult {
     if (a.length === 4 && b.length === 4 && c.length === 2) ndc11 = `0${a}${b}${c}`;
     else if (a.length === 5 && b.length === 3 && c.length === 2) ndc11 = `${a}0${b}${c}`;
     else if (a.length === 5 && b.length === 4 && c.length === 1) ndc11 = `${a}${b}0${c}`;
+    else if (a.length === 5 && b.length === 4 && c.length === 2) ndc11 = `${a}${b}${c}`;
     else return { ok: false, reason: "INVALID_FORMAT" };
     return { ok: true, ndc11, ndcDisplay: `${ndc11.slice(0, 5)}-${ndc11.slice(5, 9)}-${ndc11.slice(9)}` };
   }

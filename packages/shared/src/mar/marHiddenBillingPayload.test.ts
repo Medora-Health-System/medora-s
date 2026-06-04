@@ -41,11 +41,29 @@ describe("marHiddenBillingPayload", () => {
     expect(
       mergeMarCreateBillingFields({
         hidden,
-        ndc: "override-ndc",
+        ndc: "11111-1111-11",
         doseValue: 2,
         billingQuantity: 3,
       })
-    ).toEqual({ ndc: "override-ndc", doseValue: 2, billingQuantity: 3 });
+    ).toEqual({ ndc: "11111-1111-11", doseValue: 2, billingQuantity: 3 });
+  });
+
+  it("ignores malformed catalog NDC and falls back to package (M1.7B.7D)", () => {
+    expect(
+      resolveMarHiddenBillingPayload({
+        catalogMedication: { ndcDisplay: "J2405", ndc11: "N/A" },
+        medicationPackage: { ndc11: "55150011801", ndcDisplay: "55150-0118-01" },
+      }).ndc
+    ).toBe("55150-0118-01");
+  });
+
+  it("mergeMarCreateBillingFields ignores malformed explicit NDC and uses hidden", () => {
+    const hidden = resolveMarHiddenBillingPayload({
+      medicationPackage: { ndc11: "55150011801", ndcDisplay: "55150-0118-01" },
+    });
+    expect(mergeMarCreateBillingFields({ hidden, ndc: "not-an-ndc" })).toEqual({
+      ndc: "55150-0118-01",
+    });
   });
 
   it("mergeMarCreateBillingFields applies hidden NDC when modal ndc empty", () => {

@@ -113,4 +113,21 @@ describe("resolveMarNdcSnapshotFromOrderLine", () => {
     });
     expect(packageOnly.ndc11).toBe("33333333301");
   });
+
+  it("ignores malformed catalog NDC and falls back to order package (M1.7B.7D)", async () => {
+    const prisma = {
+      medicationPackage: {
+        findFirst: jest.fn().mockResolvedValue({
+          ndc11: "55150011801",
+          ndcDisplay: "55150-0118-01",
+        }),
+      },
+    } as unknown as import("../prisma/prisma.service").PrismaService;
+
+    const result = await resolveMarNdcSnapshotFromOrderLine(prisma, {
+      catalogMedication: { ndcDisplay: "J2405", ndc11: null },
+      orderItem: { medicationPackageId: "pkg-ondansetron" },
+    });
+    expect(result).toEqual({ ndc11: "55150011801", ndcDisplay: "55150-0118-01" });
+  });
 });

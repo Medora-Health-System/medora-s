@@ -77,6 +77,7 @@ import {
   governanceBlockerCodeFromMessage,
   logMarCreateValidationBlocked,
 } from "./mar-create-validation-log.util";
+import { resolveMarNdcSnapshotFromOrderLine } from "./mar-administration-ndc-resolve.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -437,9 +438,17 @@ export class MedicationAdministrationService {
       orderIdForAudit = item.order.id;
     }
 
-    const normalizedInputNdc = data.ndc?.trim() ? normalizeNdc(data.ndc) : null;
-    if (normalizedInputNdc && !normalizedInputNdc.ok) {
-      throw new BadRequestException("INVALID_NDC_FORMAT");
+    let normalizedInputNdc: ReturnType<typeof normalizeNdc> | null = null;
+    if (data.ndc?.trim()) {
+      normalizedInputNdc = normalizeNdc(data.ndc);
+      if (!normalizedInputNdc.ok) {
+        logInfo("mar_ndc_input_invalid_ignored", {
+          encounterId,
+          orderItemId: data.orderItemId ?? null,
+          ndcRaw: data.ndc.trim(),
+        });
+        normalizedInputNdc = null;
+      }
     }
 
     const doseValue = data.doseValue ?? null;
@@ -447,12 +456,13 @@ export class MedicationAdministrationService {
     const administeredQuantity = data.administeredQuantity ?? null;
     const billingQuantity = data.billingQuantity ?? administeredQuantity ?? null;
     const quantityUnit = data.quantityUnit?.trim() || null;
-    const ndc11Snapshot = normalizedInputNdc?.ok
-      ? normalizedInputNdc.ndc11
-      : catalogMedication?.ndc11?.trim() || null;
-    const ndcDisplaySnapshot = normalizedInputNdc?.ok
-      ? normalizedInputNdc.ndcDisplay
-      : catalogMedication?.ndcDisplay?.trim() || null;
+    const ndcSnapshots = await resolveMarNdcSnapshotFromOrderLine(this.prisma, {
+      orderItem: linkedMedicationLine,
+      catalogMedication,
+      normalizedInputNdc,
+    });
+    const ndc11Snapshot = ndcSnapshots.ndc11;
+    const ndcDisplaySnapshot = ndcSnapshots.ndcDisplay;
     const candidateQuantityUnit = quantityUnit || catalogMedication?.billingUnitType?.trim() || null;
 
     const marActionResolved: MarClinicalAction =
@@ -977,7 +987,14 @@ export class MedicationAdministrationService {
           infusionDurationBillingManualReview: infusionManualReview ? true : undefined,
           infusionBillingSuggestion: infusionBillingSuggestion ?? undefined,
         })
-      );
+      ).catch((err) => {
+        logInfo("mar_billing_capture_append_failed", {
+          encounterId,
+          facilityId,
+          medicationAdministrationId: created.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
 
       if (!serviceOptions?.skipAutoMedicationCatalogBilling) {
         void tryAutoMedicationAdministrationBilling(this.prisma, {

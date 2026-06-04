@@ -26,6 +26,9 @@ import {
   validatePharmacyMarCreate,
   isIncompleteMedicationOrderDisplayLabel,
   isOrderDisplayLabelUnavailable,
+  mergeMarCreateBillingFields,
+  resolveMarHiddenBillingPayload,
+  type MarHiddenBillingPayload,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import {
@@ -166,6 +169,7 @@ type OrderItemApi = {
     genericName?: string | null;
     therapeuticClass?: string | null;
     route?: string | null;
+    strength?: string | null;
     ndc11?: string | null;
     ndcDisplay?: string | null;
     billingUnitType?: string | null;
@@ -173,6 +177,10 @@ type OrderItemApi = {
     controlledSchedule?: string | null;
     requiresWitness?: boolean | null;
     requiresDoubleSign?: boolean | null;
+  } | null;
+  medicationPackage?: {
+    ndc11?: string | null;
+    ndcDisplay?: string | null;
   } | null;
   medicationSafetyGovernance?: MedicationSafetyGovernanceDisplayInput | null;
 };
@@ -406,6 +414,7 @@ export function MedicationAdministrationTab({
     routeHint: string;
     therapeuticClass?: string | null;
     ndcHint: string;
+    hiddenBilling: MarHiddenBillingPayload;
     billingUnitHint: string;
     orderedQuantity: number | null;
     governanceDisplay: MedicationSafetyGovernanceDisplayInput;
@@ -725,6 +734,7 @@ export function MedicationAdministrationTab({
       label: string;
       routeHint: string;
       ndcHint: string;
+      hiddenBilling: MarHiddenBillingPayload;
       billingUnitHint: string;
       orderedQuantity: number | null;
       intendedAt?: string | null;
@@ -787,6 +797,12 @@ export function MedicationAdministrationTab({
                   return Number.isFinite(n) ? n : null;
                 })()
               : null;
+        const hiddenBilling = resolveMarHiddenBillingPayload({
+          catalogMedication: catM as OrderItemApi["catalogMedication"],
+          medicationPackage: (it as OrderItemApi).medicationPackage ?? null,
+          strength: it.strength,
+          quantity: orderedQuantity,
+        });
         drafts.push({
           orderId,
           orderItemId: it.id,
@@ -797,7 +813,8 @@ export function MedicationAdministrationTab({
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
           highRiskWarning: highRiskMedicationWarning({ ...it, label }, t),
           routeHint: it.route?.trim() || it.catalogMedication?.route?.trim() || "",
-          ndcHint: it.catalogMedication?.ndcDisplay?.trim() || it.catalogMedication?.ndc11?.trim() || "",
+          ndcHint: hiddenBilling.ndc ?? "",
+          hiddenBilling,
           billingUnitHint: it.catalogMedication?.billingUnitType?.trim() || "",
           orderedQuantity,
           intendedAt: it.intendedAdministrationAt ?? null,
@@ -985,6 +1002,7 @@ export function MedicationAdministrationTab({
       routeHint: row.routeHint,
       therapeuticClass: row.therapeuticClass,
       ndcHint: row.ndcHint,
+      hiddenBilling: row.hiddenBilling,
       billingUnitHint: row.billingUnitHint,
       orderedQuantity: row.orderedQuantity,
       hideAdministeredAction: hideAdmin,
@@ -1286,17 +1304,28 @@ export function MedicationAdministrationTab({
         }
       }
 
+      const hiddenBillingFields = mergeMarCreateBillingFields({
+        hidden: modalItem.hiddenBilling,
+        ndc: modalNdc,
+        doseValue: modalDoseValue.trim() ? Number(modalDoseValue) : null,
+        billingQuantity: modalBillingQty.trim() ? Number(modalBillingQty) : null,
+        doseUnit: modalDoseUnit,
+        administeredQuantity: modalAdminQty.trim() ? Number(modalAdminQty) : null,
+      });
+
       const body: Record<string, unknown> = {
         orderItemId,
         marAction: modalAction,
         administeredAt: documentedAt.toISOString(),
         ...(routeLine ? { route: routeLine } : {}),
-        ...(modalDoseValue.trim() ? { doseValue: Number(modalDoseValue) } : {}),
-        ...(modalDoseUnit.trim() ? { doseUnit: modalDoseUnit.trim() } : {}),
+        ...(hiddenBillingFields.doseValue != null ? { doseValue: hiddenBillingFields.doseValue } : {}),
+        ...(hiddenBillingFields.doseUnit ? { doseUnit: hiddenBillingFields.doseUnit } : {}),
         ...(modalAdminQty.trim() ? { administeredQuantity: Number(modalAdminQty) } : {}),
-        ...(modalBillingQty.trim() ? { billingQuantity: Number(modalBillingQty) } : {}),
-        ...(modalNdc.trim() ? { ndc: modalNdc.trim() } : {}),
-        ...(modalDoseUnit.trim() ? { quantityUnit: modalDoseUnit.trim() } : {}),
+        ...(hiddenBillingFields.billingQuantity != null
+          ? { billingQuantity: hiddenBillingFields.billingQuantity }
+          : {}),
+        ...(hiddenBillingFields.ndc ? { ndc: hiddenBillingFields.ndc } : {}),
+        ...(hiddenBillingFields.doseUnit ? { quantityUnit: hiddenBillingFields.doseUnit } : {}),
         notes: buildMarNotes(
           modalAction,
           routeLine,
