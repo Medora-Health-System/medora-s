@@ -49,10 +49,10 @@ describe("haitiCanonicalStabilizationRemediation (M1.5R)", () => {
     expect(result.pass).toBe(true);
   });
 
-  it("expects 192 M1.5E processable linkage targets", () => {
+  it("expects 193 M1.5E processable linkage targets", () => {
     const readiness = validateM15eBackfillReadiness([]);
-    expect(readiness.processable).toBe(192);
-    expect(readiness.manualReview).toBe(55);
+    expect(readiness.processable).toBe(193);
+    expect(readiness.manualReview).toBe(56);
     expect(readiness.score).toBeGreaterThan(70);
   });
 

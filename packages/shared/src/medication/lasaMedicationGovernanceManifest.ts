@@ -195,15 +195,17 @@ export const LASA_MEDICATION_GOVERNANCE_MANIFEST: LasaMedicationGovernanceEntry[
     sourcePhase: "M1.3E",
     manualReview: true,
   },
-  // --- MISSING_CATALOG: clonidine / clonazepam ---
+  // --- MISSING_CATALOG / MANUAL_REVIEW: clonidine / clonazepam ---
   {
     lasaGroupCode: "GROUP_LASA_CLONIDINE_CLONAZEPAM",
     lasaGroupLabel: "Clonidine / clonazepam",
     lasaSeverity: "LASA_HIGH",
+    catalogCode: "CLONIDINE_0_1_MG_COMPRIME_ORAL",
     genericName: "Clonidine",
-    governanceStatus: "MISSING_CATALOG",
-    rationale: "Clonidine not in Haiti catalog",
-    sourcePhase: "M1.3E",
+    displayNameEn: "Clonidine",
+    governanceStatus: "MANUAL_REVIEW",
+    rationale: "Clonidine in catalog; clonazepam still missing — LASA pair manual review",
+    sourcePhase: "M1.8B",
     manualReview: true,
   },
   {

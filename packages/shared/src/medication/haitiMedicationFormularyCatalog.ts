@@ -1,11 +1,11 @@
 /**
- * Haiti Phase 1 formulary source (247 unique catalog codes).
+ * Haiti Phase 1 formulary source (249 unique catalog codes).
  * Generated from apps/api/prisma/data/haiti-medications.ts — do not edit by hand.
  * Regenerate: node --experimental-strip-types scripts/generate-haiti-formulary-catalog-shared.mjs
  */
 import type { HaitiMedicationFormularyRow } from "./haitiCanonicalMedicationLinkageTypes.js";
 
-export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 247 as const;
+export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 249 as const;
 
 export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] = [
   {"code":"ACETAMINOPHEN_500","genericName":"Paracetamol","displayNameFr":"Paracétamol","strength":"500 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Analgésique / antipyrétique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Acetaminophen","Tylenol"]} as HaitiMedicationFormularyRow,
@@ -75,6 +75,8 @@ export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] =
   {"code":"CLARITHROMYCIN_500_MG_COMPRIME_ORAL","genericName":"Clarithromycin","displayNameFr":"Clarithromycine","strength":"500 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antibiotique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Klacid"]} as HaitiMedicationFormularyRow,
   {"code":"CLINDAMYCIN_300_MG_CAPSULE_ORAL","genericName":"Clindamycin","displayNameFr":"Clindamycine","strength":"300 mg","dosageForm":"gélule","route":"orale","therapeuticClass":"Antibiotique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Dalacin"]} as HaitiMedicationFormularyRow,
   {"code":"CLINDAMYCIN_600_MG_PER_4_ML_INJECTABLE_INJECTION","genericName":"Clindamycin","displayNameFr":"Clindamycine","strength":"600 mg/4 mL","dosageForm":"injectable","route":"injectable","therapeuticClass":"Antibiotique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Dalacin injectable"]} as HaitiMedicationFormularyRow,
+  {"code":"CLONIDINE_0_1_MG_COMPRIME_ORAL","genericName":"Clonidine","displayNameFr":"Clonidine","displayNameEn":"Clonidine","strength":"0.1 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antihypertenseur","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"administrationType":"ORAL","billingClass":"DRUG_SUPPLY","commonAliases":["Catapres","catapres","clonidine"]} as HaitiMedicationFormularyRow,
+  {"code":"CLONIDINE_0_2_MG_COMPRIME_ORAL","genericName":"Clonidine","displayNameFr":"Clonidine","displayNameEn":"Clonidine","strength":"0.2 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antihypertenseur","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"administrationType":"ORAL","billingClass":"DRUG_SUPPLY","commonAliases":["Catapres","catapres","clonidine"]} as HaitiMedicationFormularyRow,
   {"code":"CLOPIDOGREL_75_MG_COMPRIME_ORAL","genericName":"Clopidogrel","displayNameFr":"Clopidogrel","strength":"75 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antiplaquettaire","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Plavix"]} as HaitiMedicationFormularyRow,
   {"code":"CLOTRIMAZOLE_1_CREME_TOPICAL","genericName":"Clotrimazole","displayNameFr":"Clotrimazole","strength":"1%","dosageForm":"crème","route":"topique","therapeuticClass":"Antifongique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Canesten"]} as HaitiMedicationFormularyRow,
   {"code":"CLOTRIMAZOLE_500_MG_OVULE_VAGINAL","genericName":"Clotrimazole","displayNameFr":"Clotrimazole","strength":"500 mg","dosageForm":"ovule","route":"vaginale","therapeuticClass":"Antifongique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Canesten gynéco"]} as HaitiMedicationFormularyRow,

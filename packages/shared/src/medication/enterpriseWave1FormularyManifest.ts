@@ -165,7 +165,7 @@ export const ENTERPRISE_WAVE1_FORMULARY_MANIFEST: EnterpriseWave1FormularyEntry[
       requiresPharmacyVerification: true,
     },
     isEssential: true,
-    administrationType: "INJECTION",
+    administrationType: "SQ",
     billingClass: "DRUG_SUPPLY",
   }),
 

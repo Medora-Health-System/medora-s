@@ -151,6 +151,7 @@ export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
 export * from "./medication/wave4EnrichCatalogPreservation.js";
+export * from "./medication/edCriticalGapRemediation.js";
 export * from "./medication/medicationLocalizationTypes.js";
 export * from "./medication/medicationSearchTokens.js";
 export * from "./medication/medicationClinicalDisplayLocale.js";

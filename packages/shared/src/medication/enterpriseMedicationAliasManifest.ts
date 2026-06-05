@@ -207,6 +207,24 @@ const SUPPLEMENTAL_ALIAS_ENTRIES: EnterpriseMedicationAliasManifestEntry[] = [
     aliases: [line("Novolog", "BRAND"), line("novolog", "BRAND"), line("aspart", "SHORTHAND")],
   },
   {
+    catalogCode: "OXYTOCIN_10_UI_PER_ML_INJECTABLE_INJECTION",
+    genericName: "Oxytocin",
+    category: "ER",
+    aliases: [line("Pitocin", "BRAND"), line("pitocin", "BRAND"), line("Syntocinon", "BRAND")],
+  },
+  {
+    catalogCode: "CLONIDINE_0_1_MG_COMPRIME_ORAL",
+    genericName: "Clonidine",
+    category: "CARDIOVASCULAR",
+    aliases: [line("Catapres", "BRAND"), line("catapres", "BRAND"), line("clonidine", "GENERIC")],
+  },
+  {
+    catalogCode: "CLONIDINE_0_2_MG_COMPRIME_ORAL",
+    genericName: "Clonidine",
+    category: "CARDIOVASCULAR",
+    aliases: [line("Catapres", "BRAND"), line("catapres", "BRAND"), line("clonidine", "GENERIC")],
+  },
+  {
     catalogCode: "METFORMIN_500",
     genericName: "Metformin",
     category: "DIABETES",
@@ -344,6 +362,16 @@ export const ENTERPRISE_MEDICATION_REQUIRED_SEARCH_PAIRS: EnterpriseMedicationSe
     generic: "metoclopramide",
     brand: "reglan",
     catalogCode: "METOCLOPRAMIDE_10_MG_PER_2_ML_INJECTABLE_INJECTION",
+  },
+  {
+    generic: "oxytocin",
+    brand: "pitocin",
+    catalogCode: "OXYTOCIN_10_UI_PER_ML_INJECTABLE_INJECTION",
+  },
+  {
+    generic: "clonidine",
+    brand: "catapres",
+    catalogCode: "CLONIDINE_0_1_MG_COMPRIME_ORAL",
   },
   {
     generic: "insulin lispro",

@@ -681,7 +681,7 @@ export const ENTERPRISE_WAVE2_FORMULARY_MANIFEST: EnterpriseWave2FormularyEntry[
       "requiresPharmacyVerification": false
     },
     "isEssential": true,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -714,7 +714,7 @@ export const ENTERPRISE_WAVE2_FORMULARY_MANIFEST: EnterpriseWave2FormularyEntry[
       "requiresPharmacyVerification": false
     },
     "isEssential": true,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -747,7 +747,7 @@ export const ENTERPRISE_WAVE2_FORMULARY_MANIFEST: EnterpriseWave2FormularyEntry[
       "requiresPharmacyVerification": false
     },
     "isEssential": true,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -782,7 +782,7 @@ export const ENTERPRISE_WAVE2_FORMULARY_MANIFEST: EnterpriseWave2FormularyEntry[
       "requiresPharmacyVerification": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -815,7 +815,7 @@ export const ENTERPRISE_WAVE2_FORMULARY_MANIFEST: EnterpriseWave2FormularyEntry[
       "requiresPharmacyVerification": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {

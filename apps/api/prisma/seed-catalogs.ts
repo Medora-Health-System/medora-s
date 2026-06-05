@@ -140,6 +140,12 @@ async function main() {
     );
   }
 
+  const { seedEdCriticalGapRemediation } = await import("./helpers/seed-ed-critical-gap-remediation");
+  const edGap = await seedEdCriticalGapRemediation(prisma, { dryRun: false });
+  console.log(
+    `✅ ED critical gap remediation M1.8B (clonidineProducts=${edGap.clonidineProductsCreated}, catalogAdminSynced=${edGap.catalogAdminTypesSynced}, productAdminSynced=${edGap.productAdminTypesSynced}, criticalAliases=${edGap.criticalAliasesUpserted}, harmonizationAliases=${edGap.harmonizationAliasesUpserted}, skippedMissing=${edGap.skippedMissingCatalog})`
+  );
+
   if (
     process.env.MEDORA_ENTERPRISE_PILOT_ROLLBACK === "1" &&
     process.env.MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION === "1"

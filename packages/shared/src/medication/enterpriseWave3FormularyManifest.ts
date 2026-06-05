@@ -5601,7 +5601,7 @@ export const ENTERPRISE_WAVE3_FORMULARY_MANIFEST: EnterpriseWave3FormularyEntry[
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
@@ -5662,7 +5662,7 @@ export const ENTERPRISE_WAVE3_FORMULARY_MANIFEST: EnterpriseWave3FormularyEntry[
       "requiresSpecialtyReview": false
     },
     "isEssential": false,
-    "administrationType": "SUBCUTANEOUS",
+    "administrationType": "SQ",
     "billingClass": "THERAPEUTIC"
   },
   {
