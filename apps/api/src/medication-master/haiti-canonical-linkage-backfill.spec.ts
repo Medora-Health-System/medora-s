@@ -366,11 +366,28 @@ describe("seedHaitiCanonicalMedicationLinkage (M1.5E)", () => {
     expect(gate.allowed).toBe(true);
   });
 
-  it("still blocks inactive linked products without M1.5E marker (clone noise)", () => {
+  it("preserves provider search for inactive enterprise links without M1.5E marker (M1.7C.12B)", () => {
     const gate = evaluateProviderOrderSearchGate({
       productIsActive: false,
       conceptIsActive: false,
       governanceStatus: "REVIEW_REQUIRED",
+      formularyOnFormulary: false,
+      facilityId: "fac-1",
+      formularyFacilityId: null,
+      runtime: defaultProductRuntimeActivationMeta(),
+      stagingGovernance: null,
+      reconciliationStatus: null,
+      reviewFlags: [],
+      linkageOnlyHaitiM15e: false,
+    });
+    expect(gate.allowed).toBe(true);
+  });
+
+  it("blocks inactive linked products when governance is BLOCKED", () => {
+    const gate = evaluateProviderOrderSearchGate({
+      productIsActive: false,
+      conceptIsActive: false,
+      governanceStatus: "BLOCKED",
       formularyOnFormulary: false,
       facilityId: "fac-1",
       formularyFacilityId: null,

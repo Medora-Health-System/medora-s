@@ -186,6 +186,57 @@ describe("Wave 4 ENRICH seed sync (M1.7C.8)", () => {
     expect(products.get(code)?.administrationType).toBe("SQ");
   });
 
+  it("preserves active Haiti legacy catalog isActive on ENRICH (M1.7C.12B)", async () => {
+    const code = "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS";
+    const catalogs = new Map([
+      [
+        code,
+        {
+          id: "cat-ins",
+          administrationType: "SQ",
+          code,
+          genericName: "Regular insulin",
+          isActive: true,
+        },
+      ],
+    ]);
+    const products = new Map([
+      [
+        code,
+        {
+          id: "prod-ins",
+          code,
+          conceptId: "concept-ins",
+          legacyCatalogMedicationId: "cat-ins",
+          administrationType: "SQ",
+          isActive: false,
+          governanceStatus: "REVIEW_REQUIRED",
+          governanceNotes: "ENTERPRISE_M16D_WAVE2_FORMULARY",
+          concept: { genericName: "Insulin", isActive: false },
+          packages: [
+            {
+              id: "pkg-ins",
+              code: `${code}_PKG_DEFAULT`,
+              ndc11: "00099009901",
+              billingProfiles: [{ hcpcsCodeSuggested: "J3490" }],
+            },
+          ],
+        },
+      ],
+    ]);
+
+    const prisma = buildMockPrisma(catalogs, products);
+    const modules = await import("../../prisma/helpers/enterprise-wave4-ed-hospital-formulary-seed-modules");
+    jest.spyOn(modules, "loadEnterpriseWave4EdHospitalFormularySeedModules").mockResolvedValue({
+      ...(await modules.loadEnterpriseWave4EdHospitalFormularySeedModules()),
+      ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST: [enrichEntry(code, "SQ")],
+      ENTERPRISE_WAVE4_ED_HOSPITAL_BILLING_BY_CODE: { [code]: billingFor(code) },
+    } as never);
+
+    await seedEnterpriseWave4EdHospitalFormulary(prisma, { dryRun: false });
+    expect(catalogs.get(code)?.isActive).toBe(true);
+  });
+
   it("second seed run is idempotent (no duplicate products, no conflicts)", async () => {
     const code = "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS";
     const catalogs = new Map([
@@ -239,7 +290,13 @@ describe("Wave 4 ENRICH seed sync (M1.7C.8)", () => {
 function buildMockPrisma(
   catalogs: Map<
     string,
-    { id: string; administrationType: string; code: string; genericName: string }
+    {
+      id: string;
+      administrationType: string;
+      code: string;
+      genericName: string;
+      isActive?: boolean;
+    }
   >,
   products: Map<
     string,
@@ -267,20 +324,31 @@ function buildMockPrisma(
       findUnique: async ({ where }: { where: { code: string } }) => {
         const row = catalogs.get(where.code);
         if (!row) return null;
-        return { id: row.id, administrationType: row.administrationType };
+        return {
+          id: row.id,
+          administrationType: row.administrationType,
+          isActive: row.isActive ?? true,
+        };
       },
       upsert: async ({
         where,
         update,
       }: {
         where: { code: string };
-        update: { administrationType?: string };
+        update: { administrationType?: string; isActive?: boolean };
       }) => {
         const existing = catalogs.get(where.code);
-        if (existing && update.administrationType) {
-          existing.administrationType = update.administrationType;
+        if (existing) {
+          if (update.administrationType) existing.administrationType = update.administrationType;
+          if (typeof update.isActive === "boolean") existing.isActive = update.isActive;
         }
-        return existing ?? { id: "new-cat", administrationType: update.administrationType ?? null };
+        return (
+          existing ?? {
+            id: "new-cat",
+            administrationType: update.administrationType ?? null,
+            isActive: update.isActive ?? false,
+          }
+        );
       },
     },
     medicationAlias: {

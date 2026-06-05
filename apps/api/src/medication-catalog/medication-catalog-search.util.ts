@@ -3,7 +3,10 @@
  * Brand/generic aliases are search hints only; doses are never invented.
  */
 
-import { buildEnterpriseMedicationSearchQueryExpansions } from "@medora/shared";
+import {
+  buildEnterpriseMedicationSearchQueryExpansions,
+  getHaitiLegacyActiveCatalogCodes,
+} from "@medora/shared";
 
 /** Legacy prefix hints (kept for backward compatibility). */
 export const MEDICATION_SEARCH_QUERY_ALIASES: Record<string, readonly string[]> = {
@@ -81,4 +84,32 @@ export function buildCatalogMedicationSearchWhere(terms: string[]): { OR: Array<
     or.push(...catalogMedicationTextMatchOr(term));
   }
   return { OR: or };
+}
+
+/** M1.7C.12B — Haiti essentials wrongly deactivated by Wave 4 ENRICH remain provider-searchable. */
+export function buildLegacyPreservationCatalogWhere(
+  terms: string[]
+): { isActive: false; code: { in: string[] }; OR: Array<Record<string, unknown>> } {
+  return {
+    isActive: false,
+    code: { in: [...getHaitiLegacyActiveCatalogCodes()] },
+    ...buildCatalogMedicationSearchWhere(terms),
+  };
+}
+
+export function buildCatalogMedicationVisibilityWhere(
+  terms: string[]
+): { OR: Array<Record<string, unknown>> } {
+  return {
+    OR: [{ isActive: true, ...buildCatalogMedicationSearchWhere(terms) }, buildLegacyPreservationCatalogWhere(terms)],
+  };
+}
+
+export function buildCatalogMedicationAliasVisibilityWhere(
+  catalogIds: string[]
+): { id: { in: string[] }; OR: Array<Record<string, unknown>> } {
+  return {
+    id: { in: catalogIds },
+    OR: [{ isActive: true }, { isActive: false, code: { in: [...getHaitiLegacyActiveCatalogCodes()] } }],
+  };
 }

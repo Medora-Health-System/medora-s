@@ -188,14 +188,6 @@ export function evaluateProviderOrderSearchGate(params: {
 }): ActivationGateEvaluation {
   const blockers: ActivationGateBlockerCode[] = [];
 
-  if (
-    params.linkageOnlyHaitiM15e === true &&
-    !params.runtime.orderSearchEnabled &&
-    !params.productIsActive
-  ) {
-    return { allowed: true, blockers: [] };
-  }
-
   if (params.formularyFacilityId && params.formularyFacilityId !== params.facilityId) {
     return { allowed: false, blockers: ["FACILITY_FORMULARY_MISSING"] };
   }
@@ -206,6 +198,27 @@ export function evaluateProviderOrderSearchGate(params: {
     params.reviewFlags
   );
   blockers.push(...dup.blockers);
+
+  /**
+   * M1.7C.12B — Legacy catalog preservation: inactive enterprise product pending activation
+   * must not suppress provider search. Extends M1.5E Haiti linkage-only exception.
+   */
+  if (
+    !params.productIsActive &&
+    !params.runtime.orderSearchEnabled &&
+    params.governanceStatus !== "BLOCKED" &&
+    params.governanceStatus !== "RETIRED"
+  ) {
+    return { allowed: blockers.length === 0, blockers: [...new Set(blockers)] };
+  }
+
+  if (
+    params.linkageOnlyHaitiM15e === true &&
+    !params.runtime.orderSearchEnabled &&
+    !params.productIsActive
+  ) {
+    return { allowed: blockers.length === 0, blockers: [...new Set(blockers)] };
+  }
 
   if (!params.productIsActive) blockers.push("PRODUCT_INACTIVE");
   if (!params.conceptIsActive) blockers.push("CONCEPT_INACTIVE");

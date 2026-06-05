@@ -75,10 +75,27 @@ describe("medication-product-activation-gates.util", () => {
     );
   });
 
-  it("provider search gate excludes inactive order-search-disabled products", () => {
+  it("provider search gate preserves legacy catalog when product inactive and order search disabled", () => {
     const gate = evaluateProviderOrderSearchGate({
       productIsActive: false,
       conceptIsActive: false,
+      governanceStatus: "REVIEW_REQUIRED",
+      formularyOnFormulary: false,
+      facilityId: "fac-a",
+      formularyFacilityId: "fac-a",
+      runtime: defaultProductRuntimeActivationMeta(),
+      stagingGovernance: null,
+      reconciliationStatus: null,
+      reviewFlags: [],
+    });
+    expect(gate.allowed).toBe(true);
+    expect(gate.blockers).toEqual([]);
+  });
+
+  it("provider search gate blocks active product without order search enabled", () => {
+    const gate = evaluateProviderOrderSearchGate({
+      productIsActive: true,
+      conceptIsActive: true,
       governanceStatus: "ACTIVATION_APPROVED",
       formularyOnFormulary: true,
       facilityId: "fac-a",
@@ -89,8 +106,24 @@ describe("medication-product-activation-gates.util", () => {
       reviewFlags: [],
     });
     expect(gate.allowed).toBe(false);
-    expect(gate.blockers).toContain("PRODUCT_INACTIVE");
     expect(gate.blockers).toContain("ORDER_SEARCH_NOT_ENABLED");
+  });
+
+  it("provider search gate blocks legacy preservation when governance is BLOCKED", () => {
+    const gate = evaluateProviderOrderSearchGate({
+      productIsActive: false,
+      conceptIsActive: false,
+      governanceStatus: "BLOCKED",
+      formularyOnFormulary: false,
+      facilityId: "fac-a",
+      formularyFacilityId: "fac-a",
+      runtime: defaultProductRuntimeActivationMeta(),
+      stagingGovernance: null,
+      reconciliationStatus: null,
+      reviewFlags: [],
+    });
+    expect(gate.allowed).toBe(false);
+    expect(gate.blockers).toContain("PRODUCT_INACTIVE");
   });
 
   it("blocks unresolved duplicate governance", () => {

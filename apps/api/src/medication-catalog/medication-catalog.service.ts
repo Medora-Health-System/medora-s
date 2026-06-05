@@ -13,7 +13,8 @@ import {
 import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-search.mapper";
 import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
 import {
-  buildCatalogMedicationSearchWhere,
+  buildCatalogMedicationAliasVisibilityWhere,
+  buildCatalogMedicationVisibilityWhere,
   expandMedicationSearchQuery,
 } from "./medication-catalog-search.util";
 
@@ -58,13 +59,8 @@ export class MedicationCatalogService {
     if (!q) return { items: [] };
 
     const searchTerms = expandMedicationSearchQuery(q);
-    const textWhere = buildCatalogMedicationSearchWhere(searchTerms);
-
     const byCatalog = await this.prisma.catalogMedication.findMany({
-      where: {
-        isActive: true,
-        ...textWhere,
-      },
+      where: buildCatalogMedicationVisibilityWhere(searchTerms),
       orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
       take: limit * 3,
     });
@@ -79,7 +75,7 @@ export class MedicationCatalogService {
     const byAliasCatalog =
       aliasIds.length > 0
         ? await this.prisma.catalogMedication.findMany({
-            where: { id: { in: aliasIds }, isActive: true },
+            where: buildCatalogMedicationAliasVisibilityWhere(aliasIds),
             orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
           })
         : [];
@@ -103,7 +99,7 @@ export class MedicationCatalogService {
     const missingCanonicalIds = canonicalAliasCatalogIds.filter((id) => !directIds.has(id));
     if (missingCanonicalIds.length > 0) {
       const extraRows = await this.prisma.catalogMedication.findMany({
-        where: { id: { in: missingCanonicalIds }, isActive: true },
+        where: buildCatalogMedicationAliasVisibilityWhere(missingCanonicalIds),
       });
       for (const row of extraRows) {
         if (scored.some((s) => s.row.id === row.id)) continue;

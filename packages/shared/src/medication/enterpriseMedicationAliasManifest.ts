@@ -177,6 +177,36 @@ const SUPPLEMENTAL_ALIAS_ENTRIES: EnterpriseMedicationAliasManifestEntry[] = [
     aliases: [line("Zofran", "BRAND"), line("zofran", "BRAND"), line("antiémétique", "FR")],
   },
   {
+    catalogCode: "METOCLOPRAMIDE_10_MG_PER_2_ML_INJECTABLE_INJECTION",
+    genericName: "Metoclopramide",
+    category: "ER",
+    aliases: [line("Reglan", "BRAND"), line("reglan", "BRAND"), line("Primperan", "BRAND")],
+  },
+  {
+    catalogCode: "MIDAZOLAM_5MG_ML_INJECTABLE",
+    genericName: "Midazolam",
+    category: "ER",
+    aliases: [line("Versed", "BRAND"), line("versed", "BRAND")],
+  },
+  {
+    catalogCode: "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+    genericName: "Insulin lispro",
+    category: "DIABETES",
+    aliases: [line("Humalog", "BRAND"), line("humalog", "BRAND"), line("lispro", "SHORTHAND")],
+  },
+  {
+    catalogCode: "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+    genericName: "Insulin glargine",
+    category: "DIABETES",
+    aliases: [line("Lantus", "BRAND"), line("lantus", "BRAND"), line("glargine", "SHORTHAND")],
+  },
+  {
+    catalogCode: "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+    genericName: "Insulin aspart",
+    category: "DIABETES",
+    aliases: [line("Novolog", "BRAND"), line("novolog", "BRAND"), line("aspart", "SHORTHAND")],
+  },
+  {
     catalogCode: "METFORMIN_500",
     genericName: "Metformin",
     category: "DIABETES",
@@ -309,6 +339,28 @@ export const ENTERPRISE_MEDICATION_REQUIRED_SEARCH_PAIRS: EnterpriseMedicationSe
   { generic: "lorazepam", brand: "ativan", catalogCode: "LORAZEPAM_2MG_ML_INJECTABLE" },
   { generic: "ondansetron", brand: "zofran", catalogCode: "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION" },
   { generic: "furosemide", brand: "lasix", catalogCode: "FUROSEMIDE_40_MG_COMPRIME_ORAL" },
+  { generic: "midazolam", brand: "versed", catalogCode: "MIDAZOLAM_5MG_ML_INJECTABLE" },
+  {
+    generic: "metoclopramide",
+    brand: "reglan",
+    catalogCode: "METOCLOPRAMIDE_10_MG_PER_2_ML_INJECTABLE_INJECTION",
+  },
+  {
+    generic: "insulin lispro",
+    brand: "humalog",
+    catalogCode: "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+  },
+  {
+    generic: "insulin glargine",
+    brand: "lantus",
+    catalogCode: "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+  },
+  {
+    generic: "insulin aspart",
+    brand: "novolog",
+    catalogCode: "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+  },
+  { generic: "hydromorphone", brand: "dilaudid", catalogCode: "HYDROMORPHONE_2MG_ML_INJECTABLE" },
 ];
 
 /**

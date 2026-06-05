@@ -8,6 +8,7 @@ import { resolveWave4CatalogAdministrationType } from "@medora/shared";
 import {
   resolveWave4EnrichCatalogLookupCandidates,
   resolveWave4ProductAdministrationType,
+  resolveWave4CatalogIsActiveForSeed,
 } from "@medora/shared";
 import { mergeEnterpriseWave4EdHospitalGovernanceNotes } from "../../src/medication-master/enterprise-wave4-ed-hospital.constants";
 import { loadEnterpriseWave4EdHospitalFormularySeedModules } from "./enterprise-wave4-ed-hospital-formulary-seed-modules";
@@ -114,6 +115,7 @@ function buildSearchText(entry: {
 type CatalogLookupRow = {
   id: string;
   administrationType: string | null;
+  isActive: boolean;
 };
 
 async function findCatalogByCodeCandidates(
@@ -123,7 +125,7 @@ async function findCatalogByCodeCandidates(
   for (const code of candidates) {
     const row = await prisma.catalogMedication.findUnique({
       where: { code },
-      select: { id: true, administrationType: true },
+      select: { id: true, administrationType: true, isActive: true },
     });
     if (row) return { catalogCode: code, row };
   }
@@ -320,7 +322,11 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
       ndcDisplay: billing.ndcDisplay ?? null,
       billingUnitType: billing.billingUnitType ?? null,
       isEssential: entry.isEssential ?? false,
-      isActive: false,
+      isActive: resolveWave4CatalogIsActiveForSeed({
+        mode: entry.mode,
+        catalogCode: resolvedCatalogCode,
+        existingIsActive: existingCatalog?.isActive,
+      }),
       isControlled: entry.governance.isControlled,
       controlledSchedule: entry.governance.controlledSchedule ?? null,
       requiresWitness: entry.governance.requiresWitness,
