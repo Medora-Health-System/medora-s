@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
+import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
@@ -436,7 +437,7 @@ export type OrderPriority = z.infer<typeof orderPrioritySchema>;
 /** Single line item for POST /encounters/:id/orders — persisted fields depend on order `type` (service strips Rx-only fields for LAB/IMAGING). */
 export const medicationFulfillmentIntentSchema = z.enum(["ADMINISTER_CHART", "PHARMACY_DISPENSE"]);
 export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIntentSchema>;
-export const medicationRouteSchema = z.enum(["PO", "IM", "IVP", "IVPB"]);
+export const medicationRouteSchema = z.enum(MEDICATION_ORDER_ROUTES);
 export type MedicationRoute = z.infer<typeof medicationRouteSchema>;
 export const orderSourceSchema = z.enum(["PROVIDER_ORDER", "VERBAL_ORDER", "NURSING_PROTOCOL"]);
 export type OrderSource = z.infer<typeof orderSourceSchema>;

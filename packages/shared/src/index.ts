@@ -80,6 +80,7 @@ export * from "./advancedMedicationSafety.js";
 export * from "./medication/infusionRoute.util.js";
 export * from "./medication/medicationCatalogClassification.js";
 export * from "./medication/medicationOrderIdentity.js";
+export * from "./medication/medicationOrderRoute.js";
 export * from "./medication/catalogClassificationAuditFlags.js";
 export * from "./medication/medicationSafetyClassifiers.js";
 export * from "./medication/medicationSafetyClassifierValidation.js";

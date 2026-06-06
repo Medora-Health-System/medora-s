@@ -2,7 +2,9 @@ export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 export type CreateOrderModalTab = "ORDER_SET" | OrderModalTab;
 
 export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" | "CARE";
-export type MedicationRoute = "PO" | "IM" | "IVP" | "IVPB";
+import type { MedicationOrderRoute } from "@medora/shared";
+
+export type MedicationRoute = MedicationOrderRoute;
 
 export function newOrderLineId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {

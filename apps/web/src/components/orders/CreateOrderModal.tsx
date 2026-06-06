@@ -9,6 +9,7 @@ import {
   computeAdvancedMedicationSafetyWarnings,
   filterEnterpriseProcedures,
   getEncounterAllergyDocumentationSummary,
+  normalizeMedicationRoute,
   resolveEnterpriseProcedureDisplayName,
   enterpriseProcedureCategoryLabel,
   type EnterpriseProcedureDefinition,
@@ -238,16 +239,6 @@ function isApprovedCatalogMatch(item: CatalogSearchItem, catalogType: CatalogTyp
   return item.type === catalogType && approvedCodes.has(item.code.toUpperCase());
 }
 
-function normalizeMedicationRoute(raw: string | null | undefined): MedicationRoute | undefined {
-  const normalized = raw?.trim().toUpperCase().replace(/[._-]/g, " ").replace(/\s+/g, " ");
-  if (!normalized) return undefined;
-  if (normalized === "PO" || normalized === "ORAL" || normalized === "BY MOUTH") return "PO";
-  if (normalized === "IM" || normalized === "INTRAMUSCULAR") return "IM";
-  if (normalized === "IVP" || normalized === "IV PUSH") return "IVP";
-  if (normalized === "IVPB" || normalized === "IV PIGGYBACK" || normalized === "IV PIGGY BACK") return "IVPB";
-  return undefined;
-}
-
 function catalogItemToOrderLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,
@@ -286,7 +277,10 @@ function catalogItemToOrderLine(
       quantity: erAdministerOnly ? 1 : 30,
       notes: "",
       strength: item.metadata?.strength ?? undefined,
-      route: normalizeMedicationRoute(item.metadata?.route),
+      route: normalizeMedicationRoute({
+        route: item.metadata?.route,
+        administrationType: item.metadata?.administrationType,
+      }),
       _label: catalogLineLabel(item, language, t),
       _dosageForm: item.metadata?.dosageForm ?? undefined,
       _route: item.metadata?.route ?? undefined,
@@ -1500,7 +1494,10 @@ export function CreateOrderModal({
             quantity: erAdministerOnly ? 1 : 30,
             notes: "",
             strength: item.metadata?.strength ?? undefined,
-            route: normalizeMedicationRoute(item.metadata?.route),
+            route: normalizeMedicationRoute({
+              route: item.metadata?.route,
+              administrationType: item.metadata?.administrationType,
+            }),
             _label: catalogLineLabel(item, language, t),
             _dosageForm: item.metadata?.dosageForm ?? undefined,
             _route: item.metadata?.route ?? undefined,

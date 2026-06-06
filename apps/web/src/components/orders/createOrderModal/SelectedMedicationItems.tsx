@@ -220,6 +220,7 @@ export function SelectedMedicationItems({
                   <option value="IM">IM</option>
                   <option value="IVP">IVP</option>
                   <option value="IVPB">IVPB</option>
+                  <option value="SQ">SQ</option>
                 </select>
                 {item._route?.trim() ? (
                   <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>

@@ -7,7 +7,7 @@
  *
  * CPT selection (substring match on normalized route text):
  * - "push" or "bolus" → 96374 (IV push; not all IV — infusion / ambiguous IV omitted)
- * - "IM", "SQ", or "SC" → 96372
+ * - "IM", "SQ", "SC", or subcutaneous route text → 96372
  * - else → null (e.g. IV alone, infusion)
  */
 
@@ -41,7 +41,14 @@ export function inferMedicationAdministrationCpt(input: MedicationAdministration
     return { cpt: "96374", description: "Therapeutic injection, IV push, single drug" };
   }
 
-  if (n.includes("im") || n.includes("sq") || n.includes("sc")) {
+  if (
+    n.includes("im") ||
+    n.includes("sq") ||
+    n.includes("sc") ||
+    n.includes("subcutan") ||
+    n.includes("sous-cutan") ||
+    n.includes("sous cutan")
+  ) {
     return { cpt: "96372", description: "Therapeutic injection, SC or IM" };
   }
 

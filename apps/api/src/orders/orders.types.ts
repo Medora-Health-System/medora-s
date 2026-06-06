@@ -1,5 +1,10 @@
 import type { CatalogMedication, MedicationFulfillmentIntent, Order, OrderItem, Result } from "@prisma/client";
-import type { MedicationSafetyGovernanceSnapshot, OrderItemCreateDto, OrderCreateDto } from "@medora/shared";
+import type {
+  MedicationOrderRoute,
+  MedicationSafetyGovernanceSnapshot,
+  OrderItemCreateDto,
+  OrderCreateDto,
+} from "@medora/shared";
 
 /** M1.3F.3 — read-only MAR governance fields on medication order lines. */
 export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
@@ -104,7 +109,7 @@ export type OrderItemNestedCreate = {
   notes?: string;
   quantity?: number;
   strength?: string;
-  route?: "PO" | "IM" | "IVP" | "IVPB";
+  route?: MedicationOrderRoute;
   refillCount?: number;
   medicationFulfillmentIntent?: MedicationFulfillmentIntent;
   intendedAdministrationAt?: Date;

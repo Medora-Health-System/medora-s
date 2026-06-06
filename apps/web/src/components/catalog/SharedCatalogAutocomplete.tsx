@@ -12,6 +12,7 @@ import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { formatCatalogMedicationSubtitleForLocale } from "@/lib/localizedMedicationDisplay";
 import { MedicationCanonicalBadges } from "@/components/medication/MedicationCanonicalBadges";
+import { compactMedicationRoute } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 
 function catalogListPrimaryLine(
@@ -88,20 +89,6 @@ function typeBadgeForCatalogItem(item: CatalogSearchItem): string {
   }
 }
 
-function compactMedicationRoute(route: string | undefined): string {
-  const trimmed = route?.trim() ?? "";
-  const normalized = trimmed.toLowerCase();
-  if (!normalized) return "";
-  if (normalized === "intraveineuse" || normalized === "intravenous" || normalized === "iv") return "IV";
-  if (normalized === "injectable") return "IV";
-  if (normalized === "intramusculaire" || normalized === "intramuscular" || normalized === "im") return "IM";
-  if (normalized === "sous-cutanée" || normalized === "sous-cutanee" || normalized === "subcutaneous" || normalized === "sc") {
-    return "SC";
-  }
-  if (normalized === "orale" || normalized === "oral" || normalized === "po") return "PO";
-  return trimmed;
-}
-
 function catalogListDisplayLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,
@@ -109,7 +96,13 @@ function catalogListDisplayLine(
 ): string {
   const badge = typeBadgeForCatalogItem(item);
   const primary = catalogListPrimaryLine(item, language, t);
-  const route = item.type === "MEDICATION" ? compactMedicationRoute(item.metadata?.route) : "";
+  const route =
+    item.type === "MEDICATION"
+      ? compactMedicationRoute({
+          route: item.metadata?.route,
+          administrationType: item.metadata?.administrationType,
+        })
+      : "";
   return route ? `${badge} ${primary} — ${route}` : `${badge} ${primary}`;
 }
 
