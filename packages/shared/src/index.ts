@@ -95,6 +95,7 @@ export * from "./medication/highAlertMarGovernance.js";
 export * from "./medication/lasaMarGovernance.js";
 export * from "./medication/pharmacyMarGovernance.js";
 export * from "./medication/marMedicationRouteNormalization.js";
+export * from "./medication/marHighAlertClassResolution.js";
 export * from "./medication/marAdministrationGovernancePolicy.js";
 export * from "./medication/medicationGovernanceChartSummary.js";
 export * from "./medication/medicationCatalogCodeDerive.js";

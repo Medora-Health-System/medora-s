@@ -12,6 +12,7 @@ import {
   marAdministrationRequiresDoubleCheck,
   parseMedicationHighAlertCategoriesJson,
   parseMedicationSafetyRequirementsFromCategoriesJson,
+  resolveMarHighAlertClassification,
   validateHighAlertMarCreate,
   type HighAlertMarCreateInput,
   type HighAlertMarGovernanceContext,
@@ -55,6 +56,9 @@ export async function resolveHighAlertMarGovernance(
     id: string;
     code?: string | null;
     genericName?: string | null;
+    displayNameEn?: string | null;
+    strength?: string | null;
+    dosageForm?: string | null;
     therapeuticClass?: string | null;
     isControlled: boolean;
     controlledSchedule: string | null;
@@ -107,19 +111,35 @@ export async function resolveHighAlertMarGovernance(
   const merged = mergeMedicationSafetyGovernanceRead(catalogRow, profileRow, null);
   const safety = profileRow?.concept.safetyProfile ?? null;
   const parsed = parseMedicationHighAlertCategoriesJson(safety?.highAlertCategories);
-  const safetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
+  const profileSafetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
     safety?.highAlertCategories
   );
+  const resolvedClassification = resolveMarHighAlertClassification({
+    profileHighAlertClass: parsed.highAlertClass,
+    profileSafetyRequirementCodes,
+    catalog: {
+      code: catalogRow.code ?? null,
+      genericName: catalogRow.genericName ?? null,
+      displayNameEn: catalogRow.displayNameEn ?? null,
+      strength: catalogRow.strength ?? null,
+      dosageForm: catalogRow.dosageForm ?? null,
+    },
+  });
+  const effectiveHighAlertClass = resolvedClassification?.highAlertClass ?? parsed.highAlertClass;
+  const safetyRequirementCodes =
+    resolvedClassification?.safetyRequirementCodes.length
+      ? resolvedClassification.safetyRequirementCodes
+      : profileSafetyRequirementCodes;
 
   const isHighAlert =
     merged?.isHighAlert === true ||
-    Boolean(parsed.highAlertClass && parsed.highAlertClass !== "HIGH_ALERT_NONE");
+    Boolean(effectiveHighAlertClass && effectiveHighAlertClass !== "HIGH_ALERT_NONE");
 
   const requiresDoubleCheck = marAdministrationRequiresDoubleCheck({
     isHighAlert,
     requiresDoubleSign: merged?.requiresDoubleSign ?? catalogRow.requiresDoubleSign,
     safetyRequirementCodes,
-    highAlertClass: parsed.highAlertClass,
+    highAlertClass: effectiveHighAlertClass,
     catalogCode: catalogRow.code ?? null,
     genericName: catalogRow.genericName ?? null,
     therapeuticClass: catalogRow.therapeuticClass ?? null,

@@ -62,6 +62,21 @@ describe("orderItemMedicationSafetyGovernance", () => {
     expect(marHighAlertWorkflowVisible(display, "administered", { orderRoute: "SQ" })).toBe(true);
   });
 
+  it("insulin SQ requires double-check when safety profile missing but catalog present (M1.8B.4A.2)", () => {
+    const display = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance: null,
+      catalogMedication: {
+        code: "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        genericName: "Regular Insulin",
+        displayNameEn: "Insulin (regular)",
+        strength: "100 UI/mL",
+        dosageForm: "injectable",
+      },
+    });
+    expect(display.highAlertClass).toBe("HIGH_ALERT_INSULIN");
+    expect(marHighAlertWorkflowVisible(display, "administered", { orderRoute: "SQ" })).toBe(true);
+  });
+
   it("heparin SQ does not require double-check workflow (M1.8B.4A)", () => {
     const display = orderItemToMedicationSafetyGovernanceDisplay({
       medicationSafetyGovernance: {

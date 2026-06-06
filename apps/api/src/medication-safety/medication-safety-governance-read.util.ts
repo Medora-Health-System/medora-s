@@ -4,6 +4,7 @@ import {
   parseMedicationHighAlertCategoriesJson,
   parseMedicationSafetyRequirementsFromCategoriesJson,
   parsePharmacyGovernanceFromProfile,
+  resolveMarHighAlertClassification,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
 
@@ -19,6 +20,11 @@ export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
 
 type CatalogGovernanceRow = {
   id: string;
+  code?: string | null;
+  genericName?: string | null;
+  displayNameEn?: string | null;
+  strength?: string | null;
+  dosageForm?: string | null;
   isControlled: boolean;
   controlledSchedule: string | null;
   requiresWitness: boolean;
@@ -73,20 +79,41 @@ export function mergeMedicationSafetyGovernanceRead(
 
   const safety = profileRow?.concept.safetyProfile ?? null;
   const parsed = parseMedicationHighAlertCategoriesJson(safety?.highAlertCategories);
+  const profileSafetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
+    safety?.highAlertCategories
+  );
+  const resolvedClassification = resolveMarHighAlertClassification({
+    profileHighAlertClass: parsed.highAlertClass,
+    profileSafetyRequirementCodes,
+    catalog: catalog
+      ? {
+          code: catalog.code ?? null,
+          genericName: catalog.genericName ?? null,
+          displayNameEn: catalog.displayNameEn ?? null,
+          strength: catalog.strength ?? null,
+          dosageForm: catalog.dosageForm ?? null,
+        }
+      : null,
+  });
+  const effectiveHighAlertClass =
+    resolvedClassification?.highAlertClass ?? parsed.highAlertClass ?? null;
 
   const isControlled = safety?.isControlled ?? catalog?.isControlled ?? false;
   const controlledSchedule = safety?.controlledSchedule ?? catalog?.controlledSchedule ?? null;
   const requiresWitness = Boolean(safety?.requiresWitness || catalog?.requiresWitness);
-  const safetyRequirementCodes = parseMedicationSafetyRequirementsFromCategoriesJson(
-    safety?.highAlertCategories
-  );
+  const safetyRequirementCodes =
+    resolvedClassification?.safetyRequirementCodes.length
+      ? resolvedClassification.safetyRequirementCodes
+      : profileSafetyRequirementCodes;
   const requiresDoubleSignFromCodes = safetyRequirementCodes.some((c) =>
     (HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES as readonly string[]).includes(c)
   );
   const requiresDoubleSign = Boolean(
     safety?.requiresDoubleSign || catalog?.requiresDoubleSign || requiresDoubleSignFromCodes
   );
-  const isHighAlert = safety?.isHighAlert ?? false;
+  const isHighAlert =
+    safety?.isHighAlert === true ||
+    Boolean(effectiveHighAlertClass && effectiveHighAlertClass !== "HIGH_ALERT_NONE");
   const wasteDocumentationRecommended =
     Boolean(profileRow?.administrationProfile?.allowsWasteDocumentation) && isControlled;
 
@@ -99,7 +126,7 @@ export function mergeMedicationSafetyGovernanceRead(
   const hasSignal =
     isControlled ||
     isHighAlert ||
-    Boolean(parsed.highAlertClass && parsed.highAlertClass !== "HIGH_ALERT_NONE") ||
+    Boolean(effectiveHighAlertClass && effectiveHighAlertClass !== "HIGH_ALERT_NONE") ||
     Boolean(safety?.lasaGroupId?.trim() || parsed.lasaSeverity) ||
     requiresWitness ||
     requiresDoubleSign ||
@@ -113,7 +140,7 @@ export function mergeMedicationSafetyGovernanceRead(
     isControlled,
     controlledSchedule,
     isHighAlert,
-    highAlertClass: parsed.highAlertClass,
+    highAlertClass: effectiveHighAlertClass,
     lasaGroupId: safety?.lasaGroupId ?? parsed.lasaGroupCode,
     lasaGroupLabel: parsed.lasaGroupLabel,
     lasaSeverity: parsed.lasaSeverity,
@@ -178,6 +205,11 @@ export async function loadMedicationSafetyGovernanceByCatalogId(
 
   const catalogSelect = {
     id: true,
+    code: true,
+    genericName: true,
+    displayNameEn: true,
+    strength: true,
+    dosageForm: true,
     isControlled: true,
     controlledSchedule: true,
     requiresWitness: true,
@@ -225,7 +257,9 @@ export async function loadMedicationSafetyGovernanceByCatalogId(
     }),
   ]);
 
-  const catalogById = new Map(catalogRows.map((c) => [c.id, c]));
+  const catalogById = new Map<string, CatalogGovernanceRow>(
+    catalogRows.map((c) => [c.id, c as CatalogGovernanceRow])
+  );
   const productByLegacyCatalogId = new Map<string, ProfileGovernanceRow>();
   const productByProductId = new Map<string, ProfileGovernanceRow>();
 
@@ -240,7 +274,7 @@ export async function loadMedicationSafetyGovernanceByCatalogId(
     }
     const embeddedCatalog = row.legacyCatalogMedication;
     if (embeddedCatalog?.id && !catalogById.has(embeddedCatalog.id)) {
-      catalogById.set(embeddedCatalog.id, embeddedCatalog);
+      catalogById.set(embeddedCatalog.id, embeddedCatalog as CatalogGovernanceRow);
     }
   }
 

@@ -382,6 +382,7 @@ export class MedicationAdministrationService {
       controlledSchedule: string | null;
       requiresWitness: boolean;
       requiresDoubleSign: boolean;
+      dosageForm: string | null;
       therapeuticClass: string | null;
       route: string | null;
       administrationType: string | null;
@@ -432,6 +433,7 @@ export class MedicationAdministrationService {
           genericName: resolvedCatalog.genericName,
           code: resolvedCatalog.code,
           strength: resolvedCatalog.strength,
+          dosageForm: resolvedCatalog.dosageForm,
           ndc11: resolvedCatalog.ndc11,
           ndcDisplay: resolvedCatalog.ndcDisplay,
           billingUnitType: resolvedCatalog.billingUnitType,

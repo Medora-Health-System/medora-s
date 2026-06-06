@@ -4,12 +4,18 @@ import {
   lasaMarRequiresAcknowledgement,
   marAdministrationRequiresDoubleCheck,
   marPharmacyBlockingWorkflowVisible,
+  resolveMarHighAlertClassification,
 } from "@medora/shared";
 import type { MarLasaFormState } from "@/components/medication/MarLasaFields";
 
 export type OrderItemMedicationGovernanceSource = {
   medicationSafetyGovernance?: MedicationSafetyGovernanceSnapshot | null;
   catalogMedication?: {
+    code?: string | null;
+    genericName?: string | null;
+    displayNameEn?: string | null;
+    strength?: string | null;
+    dosageForm?: string | null;
     isControlled?: boolean | null;
     controlledSchedule?: string | null;
     requiresWitness?: boolean | null;
@@ -31,8 +37,24 @@ export function orderItemToMedicationSafetyGovernanceDisplay(
   const controlledSchedule = gov?.controlledSchedule ?? cm?.controlledSchedule ?? null;
   const isControlled = gov?.isControlled ?? cm?.isControlled ?? false;
   const requiresWitness = gov?.requiresWitness ?? cm?.requiresWitness ?? false;
-  const requiresDoubleSign = gov?.requiresDoubleSign ?? cm?.requiresDoubleSign ?? false;
-  const highAlertClass = gov?.highAlertClass ?? null;
+  const catalogFallback = resolveMarHighAlertClassification({
+    profileHighAlertClass: gov?.highAlertClass ?? null,
+    catalog: cm
+      ? {
+          code: cm.code ?? null,
+          genericName: cm.genericName ?? null,
+          displayNameEn: cm.displayNameEn ?? null,
+          strength: cm.strength ?? null,
+          dosageForm: cm.dosageForm ?? null,
+        }
+      : null,
+  });
+  const requiresDoubleSign = Boolean(
+    gov?.requiresDoubleSign ??
+      cm?.requiresDoubleSign ??
+      catalogFallback?.safetyRequirementCodes.includes("REQUIRES_INDEPENDENT_DOUBLE_CHECK")
+  );
+  const highAlertClass = gov?.highAlertClass ?? catalogFallback?.highAlertClass ?? null;
   const isHighAlert =
     gov?.isHighAlert === true ||
     Boolean(highAlertClass && highAlertClass !== "HIGH_ALERT_NONE") ||
