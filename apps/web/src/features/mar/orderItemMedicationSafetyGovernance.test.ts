@@ -59,7 +59,19 @@ describe("orderItemMedicationSafetyGovernance", () => {
         requiresDoubleSign: true,
       },
     });
-    expect(marHighAlertWorkflowVisible(display, "administered")).toBe(true);
+    expect(marHighAlertWorkflowVisible(display, "administered", { orderRoute: "SQ" })).toBe(true);
+  });
+
+  it("heparin SQ does not require double-check workflow (M1.8B.4A)", () => {
+    const display = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance: {
+        isHighAlert: true,
+        highAlertClass: "HIGH_ALERT_ANTICOAGULANT",
+        requiresDoubleSign: true,
+      },
+    });
+    expect(marHighAlertWorkflowVisible(display, "administered", { orderRoute: "SQ" })).toBe(false);
+    expect(marHighAlertWorkflowVisible(display, "administered", { orderRoute: "IVP" })).toBe(true);
   });
 
   it("marLasaAcknowledgementComplete requires both ack checkboxes or override", () => {

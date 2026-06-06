@@ -37,6 +37,7 @@ import {
   mergeInjectionSiteIntoMarNotes,
   resolveMarAdministeredQuantityForCreate,
   validateMarAdministeredQuantityRequired,
+  isMedicationInfusionCandidate,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -47,6 +48,7 @@ import {
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryAutoMedicationAdministrationBilling } from "../billing/billing-auto-append.util";
 import {
+  buildMedicationInfusionCandidateInputFromOrderItem,
   loadMedicationInfusionClassificationContext,
   shouldBlockDirectMarAdministeredForInfusionLine,
 } from "../common/medication/medication-infusion-candidate-from-order-item.util";
@@ -380,6 +382,9 @@ export class MedicationAdministrationService {
       controlledSchedule: string | null;
       requiresWitness: boolean;
       requiresDoubleSign: boolean;
+      therapeuticClass: string | null;
+      route: string | null;
+      administrationType: string | null;
     } | null = null;
     if (orderItemId) {
       const item = await this.prisma.orderItem.findFirst({
@@ -434,6 +439,9 @@ export class MedicationAdministrationService {
           controlledSchedule: resolvedCatalog.controlledSchedule,
           requiresWitness: resolvedCatalog.requiresWitness,
           requiresDoubleSign: resolvedCatalog.requiresDoubleSign,
+          therapeuticClass: resolvedCatalog.therapeuticClass,
+          route: resolvedCatalog.route,
+          administrationType: resolvedCatalog.administrationType,
         };
       }
       medicationLabelSnapshot = this.medicationLabelSnapshotFromMedicationOrderItem(item, catalogMedication);
@@ -483,15 +491,52 @@ export class MedicationAdministrationService {
         )
       : null;
 
+    let highAlertMarRouteContext: {
+      route: string | null;
+      orderRoute: string | null;
+      marRoute: string | null;
+      catalogRoute: string | null;
+      administrationType: string | null;
+      isContinuousInfusion: boolean;
+      infusionPhase: string | null;
+    } = {
+      route: data.route?.trim() || linkedMedicationLine?.route?.trim() || null,
+      orderRoute: linkedMedicationLine?.route?.trim() || null,
+      marRoute: data.route?.trim() || null,
+      catalogRoute: catalogMedication?.route?.trim() || null,
+      administrationType: catalogMedication?.administrationType?.trim() || null,
+      isContinuousInfusion: false,
+      infusionPhase: serviceOptions?.infusionMar?.infusionPhase ?? null,
+    };
+    if (linkedMedicationLine) {
+      const { resolvedRoute, catalog: infusionCatalog } =
+        await loadMedicationInfusionClassificationContext(this.prisma, linkedMedicationLine);
+      highAlertMarRouteContext = {
+        route: data.route?.trim() || resolvedRoute,
+        orderRoute: linkedMedicationLine.route?.trim() || null,
+        marRoute: data.route?.trim() || null,
+        catalogRoute: infusionCatalog?.route?.trim() || catalogMedication?.route?.trim() || null,
+        administrationType:
+          infusionCatalog?.administrationType?.trim() ||
+          catalogMedication?.administrationType?.trim() ||
+          null,
+        isContinuousInfusion: isMedicationInfusionCandidate(
+          buildMedicationInfusionCandidateInputFromOrderItem(
+            linkedMedicationLine,
+            infusionCatalog,
+            resolvedRoute
+          )
+        ),
+        infusionPhase: serviceOptions?.infusionMar?.infusionPhase ?? null,
+      };
+    }
+
     const highAlertGovernance = catalogMedication
       ? await resolveHighAlertMarGovernance(
           this.prisma,
           catalogMedication.id,
           catalogMedication,
-          {
-            route: data.route ?? linkedMedicationLine?.route ?? null,
-            isContinuousInfusion: false,
-          }
+          highAlertMarRouteContext
         )
       : null;
 

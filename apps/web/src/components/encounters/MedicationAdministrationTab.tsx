@@ -43,6 +43,7 @@ import {
 import {
   MarHighAlertFields,
   marHighAlertWorkflowVisible,
+  type MarHighAlertRouteOptions,
   type MarHighAlertFormState,
 } from "@/components/medication/MarHighAlertFields";
 import {
@@ -172,6 +173,7 @@ type OrderItemApi = {
     displayNameFr?: string | null;
     genericName?: string | null;
     therapeuticClass?: string | null;
+    administrationType?: string | null;
     route?: string | null;
     strength?: string | null;
     ndc11?: string | null;
@@ -979,6 +981,31 @@ export function MedicationAdministrationTab({
   const modalIsContinuousInfusion =
     modalItem?.infusionClassifyPayload != null &&
     isMedicationInfusionCandidate(modalItem.infusionClassifyPayload);
+  const modalHighAlertRouteOptions = useMemo((): MarHighAlertRouteOptions | undefined => {
+    if (!modalItem) return undefined;
+    const orderItem = orderItemById.get(modalItem.orderItemId);
+    const catalog = orderItem?.catalogMedication;
+    return {
+      route: modalResolvedRoute || null,
+      orderRoute: orderItem?.route?.trim() || modalItem.routeHint || null,
+      marRoute: modalRoute.trim() || null,
+      catalogRoute: catalog?.route?.trim() || null,
+      administrationType:
+        catalog?.administrationType?.trim() ||
+        modalItem.infusionClassifyPayload?.catalogAdministrationType?.trim() ||
+        null,
+      isContinuousInfusion: modalIsContinuousInfusion,
+      catalogCode: modalItem.infusionClassifyPayload?.code ?? catalog?.code ?? null,
+      genericName: modalItem.infusionClassifyPayload?.genericName ?? catalog?.genericName ?? null,
+      therapeuticClass: catalog?.therapeuticClass ?? null,
+    };
+  }, [
+    modalItem,
+    modalResolvedRoute,
+    modalRoute,
+    modalIsContinuousInfusion,
+    orderItemById,
+  ]);
   const modalRequiresInjectionSite = marModalRequiresInjectionSite({
     marAction: modalAction,
     route: modalResolvedRoute,
@@ -1240,17 +1267,13 @@ export function MedicationAdministrationTab({
 
       if (
         modalItem &&
-        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, {
-          route: modalResolvedRoute,
-          isContinuousInfusion: modalIsContinuousInfusion,
-        })
+        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, modalHighAlertRouteOptions)
       ) {
         const requiresDoubleCheck = marAdministrationRequiresDoubleCheck({
           isHighAlert: modalItem.governanceDisplay.isHighAlert === true,
           requiresDoubleSign: modalItem.governanceDisplay.requiresDoubleSign === true,
           highAlertClass: modalItem.governanceDisplay.highAlertClass,
-          route: modalResolvedRoute,
-          isContinuousInfusion: modalIsContinuousInfusion,
+          ...modalHighAlertRouteOptions,
         });
         const sharedControlledOverride =
           marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
@@ -1389,10 +1412,7 @@ export function MedicationAdministrationTab({
             }
           : {}),
         ...(modalItem &&
-        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, {
-          route: modalResolvedRoute,
-          isContinuousInfusion: modalIsContinuousInfusion,
-        })
+        marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, modalHighAlertRouteOptions)
           ? {
               ...(marHighAlertForm.verifierUserId
                 ? { highAlertVerifierUserId: marHighAlertForm.verifierUserId }
@@ -2280,6 +2300,7 @@ export function MedicationAdministrationTab({
               facilityId={facilityId}
               governance={modalItem.governanceDisplay}
               marAction={modalAction}
+              routeOptions={modalHighAlertRouteOptions}
               state={marHighAlertForm}
               onChange={(patch) => setMarHighAlertForm((prev) => ({ ...prev, ...patch }))}
               sharedOverrideReason={

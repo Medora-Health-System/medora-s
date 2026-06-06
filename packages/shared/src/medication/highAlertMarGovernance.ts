@@ -68,7 +68,12 @@ export function highAlertMarRequiresDoubleCheck(input: {
   genericName?: string | null;
   therapeuticClass?: string | null;
   route?: string | null;
+  orderRoute?: string | null;
+  marRoute?: string | null;
+  catalogRoute?: string | null;
+  administrationType?: string | null;
   isContinuousInfusion?: boolean;
+  infusionPhase?: string | null;
 }): boolean {
   return marAdministrationRequiresDoubleCheck({
     isHighAlert: input.isHighAlert,
@@ -79,7 +84,12 @@ export function highAlertMarRequiresDoubleCheck(input: {
     genericName: input.genericName,
     therapeuticClass: input.therapeuticClass,
     route: input.route,
+    orderRoute: input.orderRoute,
+    marRoute: input.marRoute,
+    catalogRoute: input.catalogRoute,
+    administrationType: input.administrationType,
     isContinuousInfusion: input.isContinuousInfusion,
+    infusionPhase: input.infusionPhase,
   });
 }
 

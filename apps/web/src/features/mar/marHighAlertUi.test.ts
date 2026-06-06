@@ -25,6 +25,30 @@ describe("MAR high-alert UI (M1.3F.5 / M1.7A.9)", () => {
     ).toBe(false);
   });
 
+  it("hides high-alert workflow for heparin SQ (M1.8B.4A)", () => {
+    expect(
+      marHighAlertWorkflowVisible(
+        { isHighAlert: true, highAlertClass: "HIGH_ALERT_ANTICOAGULANT", requiresDoubleSign: true },
+        "administered",
+        { orderRoute: "SQ" }
+      )
+    ).toBe(false);
+    expect(
+      marHighAlertWorkflowVisible(
+        { isHighAlert: true, highAlertClass: "HIGH_ALERT_ANTICOAGULANT", requiresDoubleSign: true },
+        "administered",
+        { orderRoute: "IVP" }
+      )
+    ).toBe(true);
+    expect(
+      marHighAlertWorkflowVisible(
+        { isHighAlert: true, highAlertClass: "HIGH_ALERT_INSULIN", requiresDoubleSign: true },
+        "administered",
+        { orderRoute: "SQ" }
+      )
+    ).toBe(true);
+  });
+
   it("can show controlled and high-alert workflows together", () => {
     const governance = {
       isControlled: true,

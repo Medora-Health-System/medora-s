@@ -17,10 +17,23 @@ export type MarHighAlertFormState = {
   useOverride: boolean;
 };
 
+export type MarHighAlertRouteOptions = {
+  route?: string | null;
+  orderRoute?: string | null;
+  marRoute?: string | null;
+  catalogRoute?: string | null;
+  administrationType?: string | null;
+  isContinuousInfusion?: boolean;
+  infusionPhase?: string | null;
+  catalogCode?: string | null;
+  genericName?: string | null;
+  therapeuticClass?: string | null;
+};
+
 export function marHighAlertWorkflowVisible(
   governance: MedicationSafetyGovernanceDisplayInput,
   marAction: string,
-  options?: { route?: string | null; isContinuousInfusion?: boolean }
+  options?: MarHighAlertRouteOptions
 ): boolean {
   return (
     marAction === "administered" &&
@@ -28,8 +41,16 @@ export function marHighAlertWorkflowVisible(
       isHighAlert: governance.isHighAlert === true,
       requiresDoubleSign: governance.requiresDoubleSign === true,
       highAlertClass: governance.highAlertClass,
-      route: options?.route ?? null,
+      catalogCode: options?.catalogCode ?? null,
+      genericName: options?.genericName ?? null,
+      therapeuticClass: options?.therapeuticClass ?? null,
+      route: options?.route ?? options?.marRoute ?? null,
+      orderRoute: options?.orderRoute ?? null,
+      marRoute: options?.marRoute ?? null,
+      catalogRoute: options?.catalogRoute ?? null,
+      administrationType: options?.administrationType ?? null,
       isContinuousInfusion: options?.isContinuousInfusion === true,
+      infusionPhase: options?.infusionPhase ?? null,
     })
   );
 }
@@ -41,6 +62,7 @@ export function MarHighAlertFields({
   state,
   onChange,
   fieldErrors,
+  routeOptions,
   sharedOverrideReason,
   sharedUseOverride,
   onUseSharedOverride,
@@ -51,6 +73,7 @@ export function MarHighAlertFields({
   state: MarHighAlertFormState;
   onChange: (patch: Partial<MarHighAlertFormState>) => void;
   fieldErrors?: Partial<Record<keyof MarHighAlertFormState | "verifier", string>>;
+  routeOptions?: MarHighAlertRouteOptions;
   /** When controlled-substance override is active, reuse its reason field. */
   sharedOverrideReason?: string;
   sharedUseOverride?: boolean;
@@ -58,7 +81,7 @@ export function MarHighAlertFields({
 }) {
   const { t } = useI18n();
 
-  if (!marHighAlertWorkflowVisible(governance, marAction)) {
+  if (!marHighAlertWorkflowVisible(governance, marAction, routeOptions)) {
     return null;
   }
 

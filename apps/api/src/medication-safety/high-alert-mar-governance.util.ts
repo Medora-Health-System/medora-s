@@ -63,7 +63,12 @@ export async function resolveHighAlertMarGovernance(
   } | null,
   marContext?: {
     route?: string | null;
+    orderRoute?: string | null;
+    marRoute?: string | null;
+    catalogRoute?: string | null;
+    administrationType?: string | null;
     isContinuousInfusion?: boolean;
+    infusionPhase?: string | null;
   }
 ): Promise<HighAlertMarGovernanceContext | null> {
   if (!catalogMedicationId || !catalogRow) return null;
@@ -119,7 +124,12 @@ export async function resolveHighAlertMarGovernance(
     genericName: catalogRow.genericName ?? null,
     therapeuticClass: catalogRow.therapeuticClass ?? null,
     route: marContext?.route ?? null,
+    orderRoute: marContext?.orderRoute ?? null,
+    marRoute: marContext?.marRoute ?? null,
+    catalogRoute: marContext?.catalogRoute ?? null,
+    administrationType: marContext?.administrationType ?? null,
     isContinuousInfusion: marContext?.isContinuousInfusion === true,
+    infusionPhase: marContext?.infusionPhase ?? null,
   });
 
   if (!requiresDoubleCheck) return null;

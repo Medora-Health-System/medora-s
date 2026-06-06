@@ -159,16 +159,66 @@ describe("MedicationAdministrationService high-alert MAR (M1.3F.5)", () => {
     return { service, verificationCreate, overrideCreate, auditLog };
   }
 
-  it("returns 400 when high-alert verifier is missing", async () => {
+  it("returns 400 when high-alert verifier is missing for IV heparin", async () => {
     const { service } = makeService();
     await expect(
       service.create("enc-1", "fac-1", "nurse-1", {
         orderItemId: "oi-1",
         marAction: "administered",
         administeredQuantity: 1,
+        route: "IVP",
       })
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(marCreate).not.toHaveBeenCalled();
+  });
+
+  it("allows heparin SQ administration without high-alert verifier (M1.8B.4A)", async () => {
+    const prisma = {
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue(makeEncounter()),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      orderItem: {
+        findFirst: jest.fn().mockResolvedValue({ ...makeOrderItem(), route: "SQ" }),
+      },
+      catalogMedication: { findUnique: jest.fn().mockResolvedValue(highAlertCatalog()) },
+      medicationProduct: { findFirst: jest.fn().mockResolvedValue(highAlertProductProfile()) },
+      pharmacyVerification: {
+        findFirst: jest.fn().mockResolvedValue({
+          verificationStatus: PharmacyVerificationStatus.VERIFIED,
+        }),
+      },
+      medicationAdministration: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 } }),
+        create: marCreate,
+      },
+      billingEvent: { upsert: jest.fn().mockResolvedValue({}) },
+      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          medicationAdministration: { create: marCreate },
+          medicationAdministrationVerification: { create: verificationCreate },
+          medicationWasteDocumentation: { create: jest.fn() },
+          medicationAdministrationOverride: { create: overrideCreate },
+          orderItem: { update: jest.fn() },
+          orderEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
+          userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+        };
+        return fn(tx);
+      }),
+    };
+    const service = new MedicationAdministrationService(prisma as never, { log: auditLog } as never);
+
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      orderItemId: "oi-1",
+      marAction: "administered",
+      administeredQuantity: 1,
+      route: "SQ",
+    });
+
+    expect(marCreate).toHaveBeenCalled();
+    expect(verificationCreate).not.toHaveBeenCalled();
   });
 
   it("creates double-check verification when verifier provided", async () => {
