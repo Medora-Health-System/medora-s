@@ -2,6 +2,7 @@ import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
 import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
+import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
@@ -466,6 +467,8 @@ export const orderItemCreateDtoSchema = z.object({
   medicationFulfillmentIntent: medicationFulfillmentIntentSchema.optional(),
   /** MEDICATION only: horaire d’administration prévu (optionnel). */
   intendedAdministrationAt: z.coerce.date().optional().nullable(),
+  /** MEDICATION only (M1.8B.7A.1): structured frequency; null/absent = legacy direct MAR. */
+  frequencyCode: medicationFrequencyCodeSchema.optional().nullable(),
   /**
    * CARE only (MEDPROC.2): canonical enterprise procedure catalog id.
    * manualLabel remains localized display snapshot — not billing/reporting identity.

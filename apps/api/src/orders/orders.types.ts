@@ -113,6 +113,7 @@ export type OrderItemNestedCreate = {
   refillCount?: number;
   medicationFulfillmentIntent?: MedicationFulfillmentIntent;
   intendedAdministrationAt?: Date;
+  frequencyCode?: string | null;
 };
 
 /**
@@ -191,6 +192,10 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
     medicationFulfillmentIntent: intent,
     intendedAdministrationAt:
       item.intendedAdministrationAt != null ? new Date(item.intendedAdministrationAt) : undefined,
+    frequencyCode:
+      item.frequencyCode != null && String(item.frequencyCode).trim() !== ""
+        ? String(item.frequencyCode).trim().toUpperCase()
+        : undefined,
   };
   return stripUndefinedKeys(med) as OrderItemNestedCreate;
 }

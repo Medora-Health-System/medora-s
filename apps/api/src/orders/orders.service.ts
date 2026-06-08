@@ -38,12 +38,15 @@ import {
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
 } from "../common/workflow/order-item-action-guards.util";
+import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
+import { maybeCreateMedicationOrderScheduleForOrderItem } from "../medication-scheduling/medication-order-schedule.persistence";
 import type {
   CareProcedureEffectiveClinicalTimeDto,
   MedicationInfusionStartDto,
   MedicationInfusionStopDto,
   OrderCancelDto,
   OrderCreateDto,
+  OrderItemCreateDto,
   OrderItemCompleteWithClinicalTimeDto,
   OrderUpdateDto,
 } from "@medora/shared";
@@ -792,6 +795,16 @@ export class OrdersService {
             tx,
           });
         }
+        if (data.type === "MEDICATION" && created.items.length > 0) {
+          await this.persistMedicationOrderSchedulesForCreatedOrder(tx, {
+            facilityId,
+            encounterId,
+            orderId: created.id,
+            createdItems: created.items,
+            dtoItems: data.items,
+            userId,
+          });
+        }
         return created;
       });
     } catch (err: unknown) {
@@ -829,6 +842,64 @@ export class OrdersService {
     const [withAuthority] = await this.attachAuthorityToOrders([enrichedCreated]);
     const [withAttribution] = await this.attachAttributionToOrders([withAuthority]);
     return withAttribution;
+  }
+
+  /** M1.8B.7A.1 — dormant schedule rows at order create; no-op when flags OFF or gate rejects. */
+  private async persistMedicationOrderSchedulesForCreatedOrder(
+    tx: Prisma.TransactionClient,
+    input: {
+      facilityId: string;
+      encounterId: string;
+      orderId: string;
+      createdItems: OrderItem[];
+      dtoItems: OrderItemCreateDto[];
+      userId?: string;
+    }
+  ): Promise<void> {
+    const catalogIds = input.createdItems
+      .map((item) => item.catalogItemId)
+      .filter((id): id is string => Boolean(id));
+    const catalogs =
+      catalogIds.length > 0
+        ? await tx.catalogMedication.findMany({
+            where: { id: { in: catalogIds } },
+            select: {
+              id: true,
+              code: true,
+              genericName: true,
+              therapeuticClass: true,
+              administrationType: true,
+              displayNameEn: true,
+              displayNameFr: true,
+              requiresDoubleSign: true,
+              route: true,
+              name: true,
+            },
+          })
+        : [];
+    const catalogById = new Map(catalogs.map((c) => [c.id, c]));
+    const featureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
+
+    for (let i = 0; i < input.createdItems.length; i++) {
+      const item = input.createdItems[i];
+      const dtoItem = input.dtoItems[i];
+      if (!item || !dtoItem || item.catalogItemType !== "MEDICATION") continue;
+
+      await maybeCreateMedicationOrderScheduleForOrderItem(tx, {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        orderId: input.orderId,
+        orderItemId: item.id,
+        frequencyCode: dtoItem.frequencyCode ?? item.frequencyCode ?? null,
+        route: dtoItem.route ?? item.route ?? null,
+        manualLabel: dtoItem.manualLabel ?? item.manualLabel,
+        catalogMedication: item.catalogItemId
+          ? (catalogById.get(item.catalogItemId) ?? null)
+          : null,
+        createdByUserId: input.userId,
+        featureFlags,
+      });
+    }
   }
 
   async findByEncounter(
