@@ -100,6 +100,7 @@ export * from "./medication/marAdministrationGovernancePolicy.js";
 export * from "./medication/medicationFrequencyCatalog.js";
 export * from "./medication/medicationFrequencyCatalogValidation.js";
 export * from "./medication/medicationFrequencyNormalization.js";
+export * from "./medication/medicationFrequencyEdHardening.js";
 export * from "./medication/medicationGovernanceChartSummary.js";
 export * from "./medication/medicationCatalogCodeDerive.js";
 export * from "./medication/medicationBillingMappingManifest.js";
