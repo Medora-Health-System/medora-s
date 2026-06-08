@@ -40,6 +40,7 @@ export function ClinicalUserRoleAutocomplete({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [candidates, setCandidates] = useState<ClinicalUserRoleOption[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -49,10 +50,12 @@ export function ClinicalUserRoleAutocomplete({
       const term = q.trim();
       if (term.length < MIN_CHARS) {
         setCandidates([]);
+        setSearchError(null);
         setLoading(false);
         return;
       }
       setLoading(true);
+      setSearchError(null);
       try {
         const qEnc = encodeURIComponent(term);
         const data = await apiFetch(`/roster/clinical-users?q=${qEnc}&role=${role}`, { facilityId });
@@ -69,6 +72,7 @@ export function ClinicalUserRoleAutocomplete({
         }
       } catch {
         setCandidates([]);
+        setSearchError(t("clinicalUserRoleAutocomplete.apiError"));
       } finally {
         setLoading(false);
       }
@@ -98,6 +102,7 @@ export function ClinicalUserRoleAutocomplete({
     const v = e.target.value;
     onChangeDisplay(v);
     onSelectUser(null);
+    setSearchError(null);
     setOpen(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
@@ -157,6 +162,14 @@ export function ClinicalUserRoleAutocomplete({
           ) : loading ? (
             <div style={{ padding: "10px 12px", fontSize: 13, color: "#64748b" }}>
               {t("clinicalUserRoleAutocomplete.loading")}
+            </div>
+          ) : searchError ? (
+            <div
+              role="alert"
+              data-testid="clinical-user-role-autocomplete-api-error"
+              style={{ padding: "10px 12px", fontSize: 13, color: "#b91c1c" }}
+            >
+              {searchError}
             </div>
           ) : candidates.length === 0 ? (
             <div style={{ padding: "10px 12px", fontSize: 13, color: "#64748b" }}>

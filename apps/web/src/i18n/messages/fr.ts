@@ -13156,6 +13156,10 @@ export default {
     minCharsHint: "Saisir au moins 3 caractères pour lancer la recherche.",
     loading: "Recherche…",
     empty: "Aucun résultat.",
+    apiError: "Impossible de récupérer la liste du personnel clinique.",
+  },
+  secondClinicianVerification: {
+    confirmSecondClinician: "Confirmer le second clinicien",
   },
   encounterRoom: {
     waitingRoom: "Salle d'attente",
@@ -14503,6 +14507,12 @@ export default {
     verifierAria: "Rechercher le second vérificateur",
     verifierPlaceholder: "Nom du vérificateur (3 caractères min.)",
     verifierSelected: "Second vérificateur sélectionné.",
+    verifierPendingOnSave:
+      "Un second infirmier vérificateur sera requis lors de l'enregistrement de cette administration.",
+    verifierModalTitle: "Second vérificateur requis",
+    verifierModalSubtitle:
+      "Recherchez et sélectionnez un infirmier indépendant pour témoigner de cette administration à haut risque.",
+    verifierModalConfirm: "Confirmer le vérificateur et enregistrer",
     useOverride: "Administration sans double vérification (dérogation motivée)",
     overrideReasonLabel: "Motif de dérogation (haut risque)",
     overrideAck:

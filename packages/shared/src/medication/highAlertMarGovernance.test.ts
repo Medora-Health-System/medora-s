@@ -51,6 +51,17 @@ describe("highAlertMarGovernance (M1.7A.9)", () => {
     if (pass.ok) expect(pass.verifierProvided).toBe(true);
   });
 
+  it("rejects display-name-only verifier without roster user id (M1.8B.4A.5)", () => {
+    const result = validateHighAlertMarCreate({
+      marAction: "administered",
+      governance: doubleCheckGov,
+      administeredByUserId: "nurse-1",
+      highAlertVerifierDisplayName: "Jane Doe",
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("HIGH_ALERT_VERIFIER_ID_REQUIRED");
+  });
+
   it("rejects verifier same as administrator", () => {
     const result = validateHighAlertMarCreate({
       marAction: "administered",

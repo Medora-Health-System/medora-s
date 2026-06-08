@@ -44,8 +44,8 @@ describe("clinical documentation blood product (EDOC.7A)", () => {
     expect(hub).toContain("witnessModalEntry");
     expect(modal).toContain("clinical-documentation-witness-search-modal");
     expect(hub).not.toContain("window.confirm(t(\"clinicalDocumentation.witnessConfirm\"))");
-    expect(modal).toContain("clinical-documentation-witness-modal-finalize");
-    expect(modal).toContain("ClinicalUserRoleAutocomplete");
+    expect(modal).toContain("SecondClinicianVerificationModal");
+    expect(modal).toContain("require-second-clinician");
   });
 
   it("form includes volume fields and reaction rules", () => {

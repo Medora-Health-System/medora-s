@@ -140,7 +140,8 @@ describe("MedicationAdministrationService high-alert MAR (M1.3F.5)", () => {
         create: marCreate,
       },
       billingEvent: { upsert: jest.fn().mockResolvedValue({}) },
-      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+      user: { findFirst: jest.fn().mockResolvedValue({ id: "rn-2" }) },
+      userRole: { findMany: jest.fn().mockResolvedValue([{ id: "ur-1", role: { code: "RN" } }]) },
       $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
         const tx = {
           medicationAdministration: { create: marCreate },
@@ -149,14 +150,14 @@ describe("MedicationAdministrationService high-alert MAR (M1.3F.5)", () => {
           medicationAdministrationOverride: { create: overrideCreate },
           orderItem: { update: jest.fn() },
           orderEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
-          userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+          userRole: { findMany: jest.fn().mockResolvedValue([{ id: "ur-1", role: { code: "RN" } }]) },
         };
         return fn(tx);
       }),
     };
     const audit = { log: auditLog };
     const service = new MedicationAdministrationService(prisma as never, audit as never);
-    return { service, verificationCreate, overrideCreate, auditLog };
+    return { service, verificationCreate, overrideCreate, auditLog, prisma };
   }
 
   it("returns 400 when high-alert verifier is missing for IV heparin", async () => {
@@ -287,6 +288,36 @@ describe("MedicationAdministrationService high-alert MAR (M1.3F.5)", () => {
         marAction: "administered",
         administeredQuantity: 1,
         route: "SQ",
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(marCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects display-name-only high-alert verifier without user id (M1.8B.4A.5)", async () => {
+    const { service } = makeService();
+    await expect(
+      service.create("enc-1", "fac-1", "nurse-1", {
+        orderItemId: "oi-1",
+        marAction: "administered",
+        administeredQuantity: 1,
+        route: "IVP",
+        highAlertVerifierDisplayName: "Jane Doe",
+      })
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(marCreate).not.toHaveBeenCalled();
+  });
+
+  it("rejects high-alert verifier without active RN role at facility (M1.8B.4A.5)", async () => {
+    const { service, prisma } = makeService();
+    (prisma.user.findFirst as jest.Mock).mockResolvedValue({ id: "rn-9" });
+    (prisma.userRole.findMany as jest.Mock).mockResolvedValue([]);
+    await expect(
+      service.create("enc-1", "fac-1", "nurse-1", {
+        orderItemId: "oi-1",
+        marAction: "administered",
+        administeredQuantity: 1,
+        route: "IVP",
+        highAlertVerifierUserId: "rn-9",
       })
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(marCreate).not.toHaveBeenCalled();

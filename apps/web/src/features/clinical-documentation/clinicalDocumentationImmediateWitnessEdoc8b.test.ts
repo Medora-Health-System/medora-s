@@ -24,10 +24,11 @@ describe("clinical documentation immediate witness (EDOC.8B)", () => {
   });
 
   it("witness modal supports pre-save and existing-entry modes", () => {
-    expect(modal).toContain('ClinicalDocumentationWitnessModalMode');
+    expect(modal).toContain("ClinicalDocumentationWitnessModalMode");
     expect(modal).toContain("pre-save");
     expect(modal).toContain("existing-entry");
-    expect(modal).toContain("cannotBeAuthor");
+    expect(modal).toContain("SecondClinicianVerificationModal");
+    expect(modal).toContain("require-second-clinician");
     expect(modal).toContain("immediateTitle");
   });
 

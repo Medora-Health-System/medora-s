@@ -149,10 +149,16 @@ export function validateHighAlertMarCreate(
     hint: input.highAlertVerificationType ?? null,
   });
 
-  const verifierProvided = Boolean(
-    (verifierUserId && verifierUserId !== actorId) ||
-      (verifierDisplayName && verifierDisplayName.length >= 2)
-  );
+  const verifierProvided = Boolean(verifierUserId && verifierUserId !== actorId);
+
+  if (verifierDisplayName && !verifierUserId) {
+    return {
+      ok: false,
+      code: "HIGH_ALERT_VERIFIER_ID_REQUIRED",
+      message:
+        "Un second vérificateur doit être sélectionné dans la liste du personnel (identifiant requis).",
+    };
+  }
 
   if (verifierUserId && actorId && verifierUserId === actorId) {
     return {

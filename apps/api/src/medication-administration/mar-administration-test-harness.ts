@@ -93,7 +93,10 @@ export function buildMarAdministrationTestHarness(options: MarHarnessOptions) {
     medicationWasteDocumentation: { create: wasteCreate },
     billingEvent: { upsert: jest.fn().mockResolvedValue({}) },
     orderEvent: { create: orderEventCreate },
-    userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+    user: { findFirst: jest.fn().mockResolvedValue({ id: "rn-2" }) },
+    userRole: {
+      findMany: jest.fn().mockResolvedValue([{ id: "ur-1", role: { code: "RN" } }]),
+    },
     $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
       const tx = {
         medicationAdministration: { create: marCreate },

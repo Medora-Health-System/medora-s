@@ -42,10 +42,12 @@ import {
 } from "@/components/medication/MarControlledSubstanceFields";
 import {
   MarHighAlertFields,
+  marHighAlertNeedsVerifierSelection,
   marHighAlertWorkflowVisible,
   type MarHighAlertRouteOptions,
   type MarHighAlertFormState,
 } from "@/components/medication/MarHighAlertFields";
+import { SecondClinicianVerificationModal } from "@/components/clinical/SecondClinicianVerificationModal";
 import {
   MarLasaFields,
   marLasaWorkflowVisible,
@@ -467,6 +469,7 @@ export function MedicationAdministrationTab({
     highAlertOverrideAcknowledged: false,
     useOverride: false,
   });
+  const [showHighAlertVerifierModal, setShowHighAlertVerifierModal] = useState(false);
   const [marLasaForm, setMarLasaForm] = useState<MarLasaFormState>({
     lasaAcknowledged: false,
     lasaMedicationSelectionConfirmed: false,
@@ -1096,13 +1099,26 @@ export function MedicationAdministrationTab({
     if (submitting) return;
     setModalItem(null);
     setModalSubmitError(null);
+    setShowHighAlertVerifierModal(false);
     setMarTimingOverrideAck(false);
     setMarHighRiskSafetyAck(false);
     clearModalEffectiveTime();
   };
 
-  const submitModal = async () => {
+  const submitModal = async (options?: {
+    highAlertVerifierUserId?: string | null;
+    highAlertVerifierDisplayName?: string | null;
+  }) => {
     if (!modalItem || encounterStatus !== "OPEN") return;
+    const marHighAlertFormEffective: MarHighAlertFormState =
+      options?.highAlertVerifierUserId != null
+        ? {
+            ...marHighAlertForm,
+            verifierUserId: options.highAlertVerifierUserId,
+            verifierDisplayName:
+              options.highAlertVerifierDisplayName?.trim() ?? marHighAlertForm.verifierDisplayName,
+          }
+        : marHighAlertForm;
     const orderItemId =
       typeof modalItem.orderItemId === "string" ? modalItem.orderItemId.trim() : "";
     if (!isOrderItemIdUuid(orderItemId)) {
@@ -1216,6 +1232,28 @@ export function MedicationAdministrationTab({
       }
     }
 
+    if (modalAction === "administered" && modalItem) {
+      const sharedControlledOverride =
+        marControlledWorkflowVisible(modalItem.governanceDisplay, modalAction) &&
+        marControlledForm.useOverride;
+      if (
+        marHighAlertNeedsVerifierSelection(
+          modalItem.governanceDisplay,
+          modalAction,
+          marHighAlertFormEffective,
+          modalHighAlertRouteOptions,
+          {
+            sharedOverrideReason: sharedControlledOverride ? marControlledForm.overrideReason : undefined,
+            sharedUseOverride: sharedControlledOverride,
+            sharedOverrideAcknowledged: marControlledForm.controlledOverrideAcknowledged,
+          }
+        )
+      ) {
+        setShowHighAlertVerifierModal(true);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setModalSubmitError(null);
     setError(null);
@@ -1287,12 +1325,12 @@ export function MedicationAdministrationTab({
                 safetyRequirementCodes: [],
               }
             : null,
-          highAlertVerifierUserId: marHighAlertForm.verifierUserId,
-          highAlertVerifierDisplayName: marHighAlertForm.verifierDisplayName,
+          highAlertVerifierUserId: marHighAlertFormEffective.verifierUserId,
+          highAlertVerifierDisplayName: marHighAlertFormEffective.verifierDisplayName,
           administeredByUserId: currentUserId ?? undefined,
           controlledWitnessUserId: marControlledForm.witnessUserId,
-          highAlertOverrideReason: marHighAlertForm.highAlertOverrideReason,
-          highAlertOverrideAcknowledged: marHighAlertForm.highAlertOverrideAcknowledged,
+          highAlertOverrideReason: marHighAlertFormEffective.highAlertOverrideReason,
+          highAlertOverrideAcknowledged: marHighAlertFormEffective.highAlertOverrideAcknowledged,
           sharedOverrideReason: sharedControlledOverride ? marControlledForm.overrideReason : undefined,
           sharedControlledOverrideAcknowledged: sharedControlledOverride
             ? marControlledForm.controlledOverrideAcknowledged
@@ -1414,16 +1452,21 @@ export function MedicationAdministrationTab({
         ...(modalItem &&
         marHighAlertWorkflowVisible(modalItem.governanceDisplay, modalAction, modalHighAlertRouteOptions)
           ? {
-              ...(marHighAlertForm.verifierUserId
-                ? { highAlertVerifierUserId: marHighAlertForm.verifierUserId }
+              ...(marHighAlertFormEffective.verifierUserId
+                ? {
+                    highAlertVerifierUserId: marHighAlertFormEffective.verifierUserId,
+                    ...(marHighAlertFormEffective.verifierDisplayName.trim()
+                      ? {
+                          highAlertVerifierDisplayName:
+                            marHighAlertFormEffective.verifierDisplayName.trim(),
+                        }
+                      : {}),
+                  }
                 : {}),
-              ...(marHighAlertForm.verifierDisplayName.trim() && !marHighAlertForm.verifierUserId
-                ? { highAlertVerifierDisplayName: marHighAlertForm.verifierDisplayName.trim() }
+              ...(marHighAlertFormEffective.highAlertOverrideReason.trim()
+                ? { highAlertOverrideReason: marHighAlertFormEffective.highAlertOverrideReason.trim() }
                 : {}),
-              ...(marHighAlertForm.highAlertOverrideReason.trim()
-                ? { highAlertOverrideReason: marHighAlertForm.highAlertOverrideReason.trim() }
-                : {}),
-              ...(marHighAlertForm.highAlertOverrideAcknowledged
+              ...(marHighAlertFormEffective.highAlertOverrideAcknowledged
                 ? { highAlertOverrideAcknowledged: true }
                 : {}),
             }
@@ -2297,7 +2340,6 @@ export function MedicationAdministrationTab({
               onChange={(patch) => setMarControlledForm((prev) => ({ ...prev, ...patch }))}
             />
             <MarHighAlertFields
-              facilityId={facilityId}
               governance={modalItem.governanceDisplay}
               marAction={modalAction}
               routeOptions={modalHighAlertRouteOptions}
@@ -2890,6 +2932,38 @@ export function MedicationAdministrationTab({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {showHighAlertVerifierModal && facilityId ? (
+        <SecondClinicianVerificationModal
+          facilityId={facilityId}
+          currentUserId={currentUserId ?? undefined}
+          title={t("marHighAlert.verifierModalTitle")}
+          subtitle={t("marHighAlert.verifierModalSubtitle")}
+          roleFilter="RN"
+          mode="require-second-clinician"
+          open={showHighAlertVerifierModal}
+          saving={submitting}
+          testId="mar-high-alert-verifier-modal"
+          confirmLabel={t("marHighAlert.verifierModalConfirm")}
+          searchLabel={t("marHighAlert.verifierLabel")}
+          searchAria={t("marHighAlert.verifierAria")}
+          searchPlaceholder={t("marHighAlert.verifierPlaceholder")}
+          onCancel={() => setShowHighAlertVerifierModal(false)}
+          onConfirm={async (userId, user) => {
+            const displayName = `${user.firstName} ${user.lastName}`.trim();
+            setMarHighAlertForm((prev) => ({
+              ...prev,
+              verifierUserId: userId,
+              verifierDisplayName: displayName,
+            }));
+            setShowHighAlertVerifierModal(false);
+            await submitModal({
+              highAlertVerifierUserId: userId,
+              highAlertVerifierDisplayName: displayName,
+            });
+          }}
+        />
       ) : null}
 
       {infusionModal ? (

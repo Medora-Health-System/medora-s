@@ -131,7 +131,10 @@ describe("MedicationAdministrationService pharmacy MAR (M1.3F.7)", () => {
         create: marCreate,
       },
       billingEvent: { upsert: jest.fn().mockResolvedValue({}) },
-      userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+      user: { findFirst: jest.fn().mockResolvedValue({ id: "rn-2" }) },
+      userRole: {
+        findMany: jest.fn().mockResolvedValue([{ id: "ur-1", role: { code: "RN" } }]),
+      },
       $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
         const tx = {
           medicationAdministration: { create: marCreate },
@@ -140,7 +143,9 @@ describe("MedicationAdministrationService pharmacy MAR (M1.3F.7)", () => {
           medicationAdministrationOverride: { create: overrideCreate },
           orderItem: { update: jest.fn() },
           orderEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
-          userRole: { findMany: jest.fn().mockResolvedValue([{ role: { code: "RN" } }]) },
+          userRole: {
+            findMany: jest.fn().mockResolvedValue([{ id: "ur-1", role: { code: "RN" } }]),
+          },
         };
         return fn(tx);
       }),

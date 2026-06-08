@@ -5,8 +5,6 @@ import {
   marAdministrationRequiresDoubleCheck,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
-import { ClinicalUserRoleAutocomplete } from "@/components/clinical/ClinicalUserRoleAutocomplete";
-import type { ClinicalUserRoleOption } from "@/components/clinical/ClinicalUserRoleAutocomplete";
 import { useI18n } from "@/lib/i18n";
 
 export type MarHighAlertFormState = {
@@ -55,8 +53,49 @@ export function marHighAlertWorkflowVisible(
   );
 }
 
+export function marHighAlertOverrideComplete(
+  state: MarHighAlertFormState,
+  options?: {
+    sharedOverrideReason?: string;
+    sharedUseOverride?: boolean;
+    sharedOverrideAcknowledged?: boolean;
+  }
+): boolean {
+  const sharedUseOverride = options?.sharedUseOverride === true;
+  const overrideReason =
+    state.highAlertOverrideReason.trim() ||
+    (sharedUseOverride ? options?.sharedOverrideReason?.trim() ?? "" : "");
+  const overrideAck =
+    state.highAlertOverrideAcknowledged === true ||
+    (sharedUseOverride && options?.sharedOverrideAcknowledged === true);
+  return overrideAck && overrideReason.length >= 8;
+}
+
+/** True when save must open the second-clinician verification modal before proceeding. */
+export function marHighAlertNeedsVerifierSelection(
+  governance: MedicationSafetyGovernanceDisplayInput,
+  marAction: string,
+  state: MarHighAlertFormState,
+  routeOptions?: MarHighAlertRouteOptions,
+  options?: {
+    sharedOverrideReason?: string;
+    sharedUseOverride?: boolean;
+    sharedOverrideAcknowledged?: boolean;
+  }
+): boolean {
+  if (!marHighAlertWorkflowVisible(governance, marAction, routeOptions)) {
+    return false;
+  }
+  if (state.verifierUserId?.trim()) {
+    return false;
+  }
+  if (marHighAlertOverrideComplete(state, options)) {
+    return false;
+  }
+  return true;
+}
+
 export function MarHighAlertFields({
-  facilityId,
   governance,
   marAction,
   state,
@@ -67,7 +106,6 @@ export function MarHighAlertFields({
   sharedUseOverride,
   onUseSharedOverride,
 }: {
-  facilityId: string;
   governance: MedicationSafetyGovernanceDisplayInput;
   marAction: string;
   state: MarHighAlertFormState;
@@ -87,15 +125,8 @@ export function MarHighAlertFields({
 
   const useSharedOverride = sharedUseOverride === true;
   const showLocalOverride = state.useOverride && !useSharedOverride;
-  const showVerifier = !showLocalOverride && !useSharedOverride;
-
-  const verifierSelected: ClinicalUserRoleOption | null = state.verifierUserId
-    ? {
-        id: state.verifierUserId,
-        firstName: state.verifierDisplayName.split(" ")[0] ?? "",
-        lastName: state.verifierDisplayName.split(" ").slice(1).join(" ") ?? "",
-      }
-    : null;
+  const showVerifierStatus = !showLocalOverride && !useSharedOverride;
+  const verifierSelected = Boolean(state.verifierUserId?.trim());
 
   return (
     <section
@@ -123,31 +154,23 @@ export function MarHighAlertFields({
         {t("marHighAlert.description")}
       </p>
 
-      {showVerifier ? (
+      {showVerifierStatus ? (
         <div style={{ marginBottom: 12 }}>
-          <label htmlFor="mar-high-alert-verifier" style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
-            {t("marHighAlert.verifierLabel")}
-          </label>
-          <ClinicalUserRoleAutocomplete
-            facilityId={facilityId}
-            role="RN"
-            ariaLabel={t("marHighAlert.verifierAria")}
-            placeholder={t("marHighAlert.verifierPlaceholder")}
-            displayValue={state.verifierDisplayName}
-            onChangeDisplay={(v) => onChange({ verifierDisplayName: v, verifierUserId: null })}
-            selectedUserId={state.verifierUserId}
-            onSelectUser={(u) =>
-              onChange({
-                verifierUserId: u?.id ?? null,
-                verifierDisplayName: u ? `${u.firstName} ${u.lastName}`.trim() : "",
-              })
-            }
-          />
           {verifierSelected ? (
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#166534" }}>
-              {t("marHighAlert.verifierSelected")}
+            <p
+              data-testid="mar-high-alert-verifier-selected"
+              style={{ margin: "0 0 8px", fontSize: 12, color: "#166534", fontWeight: 600 }}
+            >
+              {t("marHighAlert.verifierSelected")}: {state.verifierDisplayName.trim() || state.verifierUserId}
             </p>
-          ) : null}
+          ) : (
+            <p
+              data-testid="mar-high-alert-verifier-pending"
+              style={{ margin: "0 0 8px", fontSize: 12, color: "#9a3412", fontWeight: 600 }}
+            >
+              {t("marHighAlert.verifierPendingOnSave")}
+            </p>
+          )}
           <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10, fontSize: 12 }}>
             <input
               type="checkbox"

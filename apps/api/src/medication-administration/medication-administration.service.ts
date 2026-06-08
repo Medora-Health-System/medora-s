@@ -264,6 +264,41 @@ export class MedicationAdministrationService {
     }
   }
 
+  private async assertHighAlertVerifierUserAtFacility(
+    facilityId: string,
+    administeredByUserId: string,
+    verifierUserId: string | null | undefined
+  ): Promise<void> {
+    const id = verifierUserId?.trim();
+    if (!id) return;
+    if (id === administeredByUserId) {
+      throw new BadRequestException(
+        "Le second vérificateur ne peut pas être la même personne que l'administrateur."
+      );
+    }
+    const user = await this.prisma.user.findFirst({
+      where: { id, isActive: true },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new BadRequestException("High-alert verifier not found or inactive.");
+    }
+    const rnRoles = await this.prisma.userRole.findMany({
+      where: {
+        userId: id,
+        facilityId,
+        isActive: true,
+        role: { code: RoleCode.RN },
+      },
+      select: { id: true },
+    });
+    if (rnRoles.length === 0) {
+      throw new BadRequestException(
+        "High-alert verifier must be an active RN at this facility."
+      );
+    }
+  }
+
   private async buildRoleSnapshotTx(
     tx: Prisma.TransactionClient,
     facilityId: string,
@@ -614,6 +649,14 @@ export class MedicationAdministrationService {
           administeredQuantity,
         })
       );
+
+      if (highAlertGovernance?.requiresDoubleCheck && data.highAlertVerifierUserId?.trim()) {
+        await this.assertHighAlertVerifierUserAtFacility(
+          facilityId,
+          administeredByUserId,
+          data.highAlertVerifierUserId
+        );
+      }
 
       runMarGovernanceAssert(() =>
         assertHighAlertMarCreate({

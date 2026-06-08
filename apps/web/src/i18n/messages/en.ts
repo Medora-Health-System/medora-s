@@ -13150,6 +13150,10 @@ export default {
     minCharsHint: "Type at least 3 characters to search.",
     loading: "Searching…",
     empty: "No results.",
+    apiError: "Unable to retrieve clinician roster.",
+  },
+  secondClinicianVerification: {
+    confirmSecondClinician: "Confirm second clinician",
   },
   encounterRoom: {
     waitingRoom: "Waiting room",
@@ -14476,6 +14480,11 @@ export default {
     verifierAria: "Search for second verifier",
     verifierPlaceholder: "Verifier name (min. 3 characters)",
     verifierSelected: "Second verifier selected.",
+    verifierPendingOnSave: "A second RN verifier will be required when you save this administration.",
+    verifierModalTitle: "Second verifier required",
+    verifierModalSubtitle:
+      "Search for and select an independent RN to witness this high-alert medication administration.",
+    verifierModalConfirm: "Confirm verifier and save",
     useOverride: "Administer without double-check (justified override)",
     overrideReasonLabel: "Override reason (high alert)",
     overrideAck:
