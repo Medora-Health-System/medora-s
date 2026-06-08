@@ -7,6 +7,13 @@ export const MEDICATION_ORDER_ROUTES = ["PO", "IM", "IVP", "IVPB", "SQ"] as cons
 
 export type MedicationOrderRoute = (typeof MEDICATION_ORDER_ROUTES)[number];
 
+/** M1.8B.7B — structured order route IVPB (canonical L1 enum value only). */
+export function isStructuredMedicationOrderRouteIvpb(
+  route: string | null | undefined
+): route is "IVPB" {
+  return route?.trim().toUpperCase() === "IVPB";
+}
+
 function stripRouteDiacritics(raw: string): string {
   return raw
     .normalize("NFD")

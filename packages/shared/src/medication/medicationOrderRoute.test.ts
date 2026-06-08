@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { medicationRouteSchema } from "../schemas/patient.js";
 import {
   compactMedicationRoute,
+  isStructuredMedicationOrderRouteIvpb,
   MEDICATION_ORDER_ROUTES,
   normalizeMedicationRoute,
 } from "./medicationOrderRoute.js";
@@ -10,6 +11,11 @@ describe("medicationOrderRoute (M1.8B.3)", () => {
   it("exposes SQ in canonical order routes", () => {
     expect(MEDICATION_ORDER_ROUTES).toContain("SQ");
     expect(MEDICATION_ORDER_ROUTES).toEqual(["PO", "IM", "IVP", "IVPB", "SQ"]);
+  });
+
+  it("isStructuredMedicationOrderRouteIvpb detects canonical IVPB only", () => {
+    expect(isStructuredMedicationOrderRouteIvpb("IVPB")).toBe(true);
+    expect(isStructuredMedicationOrderRouteIvpb("IVP")).toBe(false);
   });
 
   describe("normalizeMedicationRoute", () => {

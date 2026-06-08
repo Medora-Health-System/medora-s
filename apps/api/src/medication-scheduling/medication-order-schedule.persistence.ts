@@ -71,6 +71,7 @@ export async function maybeCreateMedicationOrderScheduleForOrderItem(
     frequencyCode: input.frequencyCode,
     featureFlags: input.featureFlags ?? null,
     catalog: catalogSnapshotInput,
+    orderRoute: input.route ?? null,
   });
 
   if (!gate.shouldCreate || !gate.frequencyCode) {

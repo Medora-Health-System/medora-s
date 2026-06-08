@@ -104,6 +104,17 @@ describe("isMedicationInfusionCandidate", () => {
     ).toBe(true);
   });
 
+  it("M1.8B.7B: structured IVPB route is authoritative even without catalog hints", () => {
+    expect(
+      isMedicationInfusionCandidate({
+        route: "IVPB",
+        medicationLabel: "Unknown drug",
+        code: null,
+        genericName: null,
+      })
+    ).toBe(true);
+  });
+
   it("catalog ORAL rejects even when label looks like antibiotic", () => {
     expect(
       isMedicationInfusionCandidate({

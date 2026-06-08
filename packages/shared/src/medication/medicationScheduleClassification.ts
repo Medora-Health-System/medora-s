@@ -4,6 +4,7 @@ import {
   type MedicationFrequencyCode,
 } from "./medicationFrequencyCatalog.js";
 import { isMedicationInfusionCandidate } from "./infusionRoute.util.js";
+import { isStructuredMedicationOrderRouteIvpb } from "./medicationOrderRoute.js";
 import { isBloodProductMedicationCatalog } from "./marAdministrationGovernancePolicy.js";
 import {
   isDirectMarFrequency,
@@ -81,8 +82,14 @@ function isInfusionCandidateCatalog(input: MedicationCatalogSnapshotInput): bool
 export function resolveScheduleClassification(input: {
   frequencyCode: MedicationFrequencyCode | string | null | undefined;
   catalog?: MedicationCatalogSnapshotInput | null;
+  /** Structured L1 order route when present (M1.8B.7B). */
+  orderRoute?: string | null;
 }): MedicationScheduleClassification {
   const catalog = input.catalog ?? null;
+
+  if (isStructuredMedicationOrderRouteIvpb(input.orderRoute)) {
+    return "INFUSION_LIFECYCLE";
+  }
 
   if (catalog && isBloodProductCatalog(catalog)) {
     return "INFUSION_LIFECYCLE";
@@ -127,12 +134,26 @@ export function evaluateMedicationOrderScheduleCreateGate(input: {
   frequencyCode: string | null | undefined;
   featureFlags: Partial<MedicationSchedulingFeatureFlags> | null | undefined;
   catalog?: MedicationCatalogSnapshotInput | null;
+  orderRoute?: string | null;
 }): MedicationOrderScheduleCreateGateResult {
   const catalog = input.catalog ?? null;
   const classification = resolveScheduleClassification({
     frequencyCode: input.frequencyCode,
     catalog,
+    orderRoute: input.orderRoute,
   });
+
+  if (isStructuredMedicationOrderRouteIvpb(input.orderRoute)) {
+    const parsedForIvpb = parseMedicationFrequencyCode(
+      input.frequencyCode == null ? null : String(input.frequencyCode)
+    );
+    return {
+      shouldCreate: false,
+      reason: "IVPB_ROUTE_NEVER_SCHEDULES",
+      classification: "INFUSION_LIFECYCLE",
+      frequencyCode: parsedForIvpb,
+    };
+  }
 
   if (input.frequencyCode == null || String(input.frequencyCode).trim() === "") {
     return {

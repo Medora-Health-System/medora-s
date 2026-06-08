@@ -77,6 +77,20 @@ describe("resolveScheduleClassification", () => {
       })
     ).toBe("RECURRING");
   });
+
+  it("structured IVPB route => INFUSION_LIFECYCLE regardless of PUSH catalog", () => {
+    expect(
+      resolveScheduleClassification({
+        frequencyCode: "NOW",
+        orderRoute: "IVPB",
+        catalog: {
+          catalogCode: "HEPARIN",
+          administrationType: "PUSH",
+          route: "IVP",
+        },
+      })
+    ).toBe("INFUSION_LIFECYCLE");
+  });
 });
 
 describe("evaluateMedicationOrderScheduleCreateGate", () => {

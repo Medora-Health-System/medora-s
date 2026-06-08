@@ -4,6 +4,7 @@
  */
 
 import { parseMedicationAdministrationType } from "./medicationCatalogClassification.js";
+import { isStructuredMedicationOrderRouteIvpb } from "./medicationOrderRoute.js";
 
 export type MedicationInfusionCandidateInput = {
   route?: string | null;
@@ -226,13 +227,16 @@ function buildClassificationHaystack(input: MedicationInfusionCandidateInput): s
 
 /**
  * True when bedside medication should use infusion start/stop (vs one-step nurse complete / MAR push).
- * Priority: metadata.administrationType INFUSION → catalog administrationType → legacy route/label heuristics.
+ * M1.8B.7B: structured `OrderItem.route === "IVPB"` is route-authoritative — always infusion lifecycle.
+ * Otherwise: metadata.administrationType INFUSION → catalog administrationType → legacy route/label heuristics.
  */
 export function isMedicationInfusionCandidate(input: MedicationInfusionCandidateInput): boolean {
   const routeRaw = typeof input.route === "string" ? input.route.trim() : "";
   const catalogAdmin = parseMedicationAdministrationType(input.catalogAdministrationType ?? undefined);
   const metaAdminRaw = parseAdministrationTypeUpper(input.metadata);
   const metaAdmin = parseMedicationAdministrationType(metaAdminRaw);
+
+  if (isStructuredMedicationOrderRouteIvpb(routeRaw)) return true;
 
   if (routeRaw && isRouteExcludedPoImSqSc(routeRaw)) return false;
 
