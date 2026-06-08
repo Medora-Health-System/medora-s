@@ -49,6 +49,31 @@ describe("medicationOrderRoute (M1.8B.3)", () => {
       ).toBe("SQ");
     });
 
+    it("maps injectable + INFUSION administrationType to IVPB", () => {
+      expect(
+        normalizeMedicationRoute({ route: "injectable", administrationType: "INFUSION" })
+      ).toBe("IVPB");
+    });
+
+    it("maps intraveineuse + INFUSION administrationType to IVPB (M1.8B.7C.1)", () => {
+      expect(
+        normalizeMedicationRoute({ route: "intraveineuse", administrationType: "INFUSION" })
+      ).toBe("IVPB");
+      expect(
+        normalizeMedicationRoute({ route: "intravenous", administrationType: "INFUSION" })
+      ).toBe("IVPB");
+      expect(normalizeMedicationRoute({ route: "IV", administrationType: "INFUSION" })).toBe(
+        "IVPB"
+      );
+    });
+
+    it("does not map intraveineuse without INFUSION to structured route", () => {
+      expect(normalizeMedicationRoute("intraveineuse")).toBeUndefined();
+      expect(
+        normalizeMedicationRoute({ route: "intraveineuse", administrationType: "PUSH" })
+      ).toBeUndefined();
+    });
+
     it("returns undefined for unsupported routes", () => {
       expect(normalizeMedicationRoute("INH")).toBeUndefined();
       expect(normalizeMedicationRoute("")).toBeUndefined();

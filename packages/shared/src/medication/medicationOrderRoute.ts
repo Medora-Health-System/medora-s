@@ -88,6 +88,15 @@ export function normalizeMedicationRoute(
     return "SQ";
   }
 
+  if (
+    normalized === "INTRAVEINEUSE" ||
+    normalized === "INTRAVENOUS" ||
+    normalized === "IV"
+  ) {
+    const admin = administrationType?.trim().toUpperCase();
+    if (admin === "INFUSION") return "IVPB";
+  }
+
   if (normalized === "INJECTABLE") {
     const admin = administrationType?.trim().toUpperCase();
     if (admin === "SQ") return "SQ";
