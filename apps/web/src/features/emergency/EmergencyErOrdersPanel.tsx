@@ -5,6 +5,7 @@ import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/cli
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
@@ -468,6 +469,7 @@ export function EmergencyErOrdersPanel({
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
+  const { userId: currentUserId } = useFacilityAndRoles();
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
   const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
@@ -2460,6 +2462,7 @@ export function EmergencyErOrdersPanel({
       {erInfusionStartWitnessItemId ? (
         <SecondClinicianVerificationModal
           facilityId={facilityId}
+          currentUserId={currentUserId ?? undefined}
           title={t("marHighAlert.verifierModalTitle")}
           subtitle={t("marHighAlert.verifierModalSubtitle")}
           roleFilter="RN"
