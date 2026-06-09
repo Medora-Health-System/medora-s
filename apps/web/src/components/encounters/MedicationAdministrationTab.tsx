@@ -44,6 +44,7 @@ import {
   MarHighAlertFields,
   marHighAlertNeedsVerifierSelection,
   marHighAlertWorkflowVisible,
+  marInfusionStartWitnessRequired,
   type MarHighAlertRouteOptions,
   type MarHighAlertFormState,
 } from "@/components/medication/MarHighAlertFields";
@@ -495,6 +496,15 @@ export function MedicationAdministrationTab({
     op: "start" | "stop";
     label: string;
   } | null>(null);
+  const [infusionStartWitnessModal, setInfusionStartWitnessModal] = useState<{
+    orderItemId: string;
+    orderId: string;
+    label: string;
+  } | null>(null);
+  const [pendingInfusionStartVerifier, setPendingInfusionStartVerifier] = useState<{
+    userId: string;
+    displayName: string;
+  } | null>(null);
   const [infusionModalNote, setInfusionModalNote] = useState("");
   const [infusionDraftRestoredAt, setInfusionDraftRestoredAt] = useState<string | null>(null);
   const [infusionDraftSavedLocallyAt, setInfusionDraftSavedLocallyAt] = useState<string | null>(null);
@@ -693,18 +703,34 @@ export function MedicationAdministrationTab({
   const marOrderEventRows = useMemo(() => parseOrderEventsForMar(orderEventsRaw), [orderEventsRaw]);
 
   const runMarInfusion = useCallback(
-    async (orderItemId: string, orderId: string, op: "start" | "stop", note?: string) => {
+    async (
+      orderItemId: string,
+      orderId: string,
+      op: "start" | "stop",
+      note?: string,
+      startVerifier?: { userId: string; displayName: string } | null
+    ) => {
       const busyKey = `${orderId}:${orderItemId}:${op}`;
       setInfusionBusy(busyKey);
       setError(null);
       try {
-        if (op === "start") await startMedicationInfusion(orderItemId, facilityId, note);
-        else await stopMedicationInfusion(orderItemId, facilityId, note);
+        if (op === "start") {
+          await startMedicationInfusion(orderItemId, facilityId, {
+            ...(note?.trim() ? { notes: note.trim() } : {}),
+            ...(startVerifier?.userId
+              ? {
+                  highAlertVerifierUserId: startVerifier.userId,
+                  highAlertVerifierDisplayName: startVerifier.displayName,
+                }
+              : {}),
+          });
+        } else await stopMedicationInfusion(orderItemId, facilityId, note);
         if (infusionDraftKey && typeof window !== "undefined") {
           removeClinicalDraft(window.localStorage, infusionDraftKey);
         }
         setInfusionModal(null);
         setInfusionModalNote("");
+        setPendingInfusionStartVerifier(null);
         setInfusionDraftRestoredAt(null);
         setInfusionDraftSavedLocallyAt(null);
         await loadAll();
@@ -984,6 +1010,23 @@ export function MedicationAdministrationTab({
   const modalIsContinuousInfusion =
     modalItem?.infusionClassifyPayload != null &&
     isMedicationInfusionCandidate(modalItem.infusionClassifyPayload);
+  const marInfusionStartRouteOptionsFromRow = useCallback(
+    (row: (typeof taskRows)[0]): MarHighAlertRouteOptions => {
+      const payload = row.infusionClassifyPayload;
+      return {
+        orderRoute: row.routeHint || payload?.route || null,
+        marRoute: row.routeHint || payload?.route || null,
+        route: row.routeHint || payload?.route || null,
+        catalogCode: payload?.code ?? null,
+        genericName: payload?.genericName ?? null,
+        therapeuticClass: row.therapeuticClass ?? null,
+        administrationType: payload?.catalogAdministrationType ?? null,
+        isContinuousInfusion: true,
+      };
+    },
+    []
+  );
+
   const modalHighAlertRouteOptions = useMemo((): MarHighAlertRouteOptions | undefined => {
     if (!modalItem) return undefined;
     const orderItem = orderItemById.get(modalItem.orderItemId);
@@ -1729,12 +1772,22 @@ export function MedicationAdministrationTab({
                         type="button"
                         disabled={primaryInfusionDisabled}
                         onClick={() => {
-                          setInfusionModal({
+                          const startTarget = {
                             orderItemId: row.orderItemId,
                             orderId: resolvedOrderIdForInfusion || row.orderItemId,
-                            op: "start",
                             label: row.label,
-                          });
+                          };
+                          if (
+                            marInfusionStartWitnessRequired(
+                              row.governanceDisplay,
+                              marInfusionStartRouteOptionsFromRow(row)
+                            )
+                          ) {
+                            setPendingInfusionStartVerifier(null);
+                            setInfusionStartWitnessModal(startTarget);
+                            return;
+                          }
+                          setInfusionModal({ ...startTarget, op: "start" });
                           setInfusionModalNote("");
                         }}
                         style={{
@@ -1999,9 +2052,7 @@ export function MedicationAdministrationTab({
                           <MedicationAdministrationDocumentButton
                             title={t("marTab.adminTime.documentNoteTooltip")}
                             onClick={() => {
-                              if (row.isInfusionLifecycleMed && activeMarInfusion) {
-                                openModal(row, { hideAdministeredAction: true });
-                              } else if (marSaysAdministered) {
+                              if (row.isInfusionLifecycleMed || marSaysAdministered) {
                                 openModal(row, { hideAdministeredAction: true });
                               } else {
                                 openModal(row);
@@ -2934,6 +2985,40 @@ export function MedicationAdministrationTab({
         </div>
       ) : null}
 
+      {infusionStartWitnessModal && facilityId ? (
+        <SecondClinicianVerificationModal
+          facilityId={facilityId}
+          currentUserId={currentUserId ?? undefined}
+          title={t("marHighAlert.verifierModalTitle")}
+          subtitle={t("marHighAlert.verifierModalSubtitle")}
+          roleFilter="RN"
+          mode="require-second-clinician"
+          open={Boolean(infusionStartWitnessModal)}
+          saving={Boolean(infusionBusy)}
+          testId="mar-infusion-start-verifier-modal"
+          confirmLabel={t("marHighAlert.verifierModalConfirm")}
+          searchLabel={t("marHighAlert.verifierLabel")}
+          searchAria={t("marHighAlert.verifierAria")}
+          searchPlaceholder={t("marHighAlert.verifierPlaceholder")}
+          onCancel={() => setInfusionStartWitnessModal(null)}
+          onConfirm={(userId, user) => {
+            const displayName = `${user.firstName} ${user.lastName}`.trim();
+            const target = infusionStartWitnessModal;
+            setPendingInfusionStartVerifier({ userId, displayName });
+            setInfusionStartWitnessModal(null);
+            if (target) {
+              setInfusionModal({
+                orderItemId: target.orderItemId,
+                orderId: target.orderId,
+                op: "start",
+                label: target.label,
+              });
+              setInfusionModalNote("");
+            }
+          }}
+        />
+      ) : null}
+
       {showHighAlertVerifierModal && facilityId ? (
         <SecondClinicianVerificationModal
           facilityId={facilityId}
@@ -3039,7 +3124,10 @@ export function MedicationAdministrationTab({
               <button
                 type="button"
                 disabled={Boolean(infusionBusy)}
-                onClick={() => setInfusionModal(null)}
+                onClick={() => {
+                  setInfusionModal(null);
+                  setPendingInfusionStartVerifier(null);
+                }}
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,
@@ -3058,7 +3146,8 @@ export function MedicationAdministrationTab({
                     infusionModal.orderItemId,
                     infusionModal.orderId,
                     infusionModal.op,
-                    infusionModalNote
+                    infusionModalNote,
+                    infusionModal.op === "start" ? pendingInfusionStartVerifier : null
                   )
                 }
                 style={{

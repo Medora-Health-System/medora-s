@@ -31,6 +31,7 @@ const HIGH_ALERT_LABELS: Record<(typeof HIGH_ALERT_CLASSES)[number], LabelPair> 
   HIGH_ALERT_NONE: { fr: "Sans alerte majeure", en: "Not high-alert" },
   HIGH_ALERT_INSULIN: { fr: "Insuline (alerte majeure)", en: "Insulin (high-alert)" },
   HIGH_ALERT_ANTICOAGULANT: { fr: "Anticoagulant (alerte majeure)", en: "Anticoagulant (high-alert)" },
+  HIGH_ALERT_ELECTROLYTE: { fr: "Électrolyte (alerte majeure)", en: "Electrolyte (high-alert)" },
   HIGH_ALERT_OPIOID: { fr: "Opioïde (alerte majeure)", en: "Opioid (high-alert)" },
   HIGH_ALERT_BENZODIAZEPINE: { fr: "Benzodiazépine (alerte majeure)", en: "Benzodiazepine (high-alert)" },
   HIGH_ALERT_SEDATIVE: { fr: "Sédatif (alerte majeure)", en: "Sedative (high-alert)" },

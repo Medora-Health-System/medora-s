@@ -25,6 +25,7 @@ import {
   validateWave4ClinicalReviewQueue,
   validateWave4MarAdministrationTypePolicy,
 } from "./wave4AdministrationTypeRemediation.js";
+import { isApprovedElectrolyteIvpbMedication } from "./electrolyteIvpbGovernance.js";
 
 export function wave4EdHospitalFormularyEntryToLocalizationContract(
   entry: EnterpriseWave4EdHospitalFormularyEntry
@@ -76,7 +77,7 @@ export function validateWave4HydromorphoneDoubleRnPolicy(): string[] {
   return errors;
 }
 
-/** Double RN only for insulin, heparin infusion, blood products, PCA/continuous opioid infusion. */
+/** Double RN for insulin, heparin infusion, blood products, PCA/continuous opioid, approved electrolyte IVPB. */
 export function validateWave4DoubleRnPolicy(): string[] {
   const errors: string[] = [];
   for (const entry of ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST) {
@@ -89,7 +90,13 @@ export function validateWave4DoubleRnPolicy(): string[] {
       (g.isAnticoagulantInfusion === true &&
         entry.genericName.toLowerCase() === "heparin" &&
         (entry.dosageForm.toLowerCase().includes("perfusion") ||
-          entry.administrationType === "INFUSION"));
+          entry.administrationType === "INFUSION")) ||
+      isApprovedElectrolyteIvpbMedication({
+        catalogCode: entry.catalogCode,
+        genericName: entry.genericName,
+        administrationType: entry.administrationType,
+        dosageForm: entry.dosageForm,
+      });
     if (!allowed) {
       errors.push(
         `${entry.catalogCode}: requiresDoubleSign set but not in approved double-RN category`

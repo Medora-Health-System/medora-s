@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   highAlertMarGovernanceApplies,
   highAlertMarRequiresDoubleCheck,
+  validateHighAlertIvpbInfusionStartWitness,
   validateHighAlertMarCreate,
   type HighAlertMarGovernanceContext,
 } from "./highAlertMarGovernance.js";
@@ -99,5 +100,101 @@ describe("highAlertMarGovernance (M1.7A.9)", () => {
 
   it("does not apply to non-administered actions", () => {
     expect(highAlertMarGovernanceApplies(doubleCheckGov, "refused")).toBe(false);
+  });
+
+  it("validateHighAlertIvpbInfusionStartWitness requires verifier for heparin IVPB START", () => {
+    const fail = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        highAlertClass: "HIGH_ALERT_ANTICOAGULANT",
+        genericName: "Heparin",
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+    });
+    expect(fail.ok).toBe(false);
+    if (!fail.ok) {
+      expect(fail.applies).toBe(true);
+      expect(fail.code).toBe("HIGH_ALERT_IVPB_WITNESS_REQUIRED");
+    }
+
+    const pass = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        highAlertClass: "HIGH_ALERT_ANTICOAGULANT",
+        genericName: "Heparin",
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+      highAlertVerifierUserId: "rn-2",
+    });
+    expect(pass.ok).toBe(true);
+    if (pass.ok) expect(pass.applies).toBe(true);
+  });
+
+  it("validateHighAlertIvpbInfusionStartWitness does not apply to vancomycin IVPB", () => {
+    const result = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        genericName: "Vancomycin",
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.applies).toBe(false);
+  });
+
+  it("validateHighAlertIvpbInfusionStartWitness requires verifier for KCl IVPB START (M1.8B.7E.2B)", () => {
+    const fail = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        requiresDoubleSign: true,
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+    });
+    expect(fail.ok).toBe(false);
+    if (!fail.ok) {
+      expect(fail.applies).toBe(true);
+      expect(fail.code).toBe("HIGH_ALERT_IVPB_WITNESS_REQUIRED");
+    }
+
+    const pass = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        requiresDoubleSign: true,
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+      highAlertVerifierUserId: "rn-2",
+    });
+    expect(pass.ok).toBe(true);
+    if (pass.ok) expect(pass.applies).toBe(true);
+  });
+
+  it("validateHighAlertIvpbInfusionStartWitness requires verifier for Mg IVPB START (M1.8B.7E.2B)", () => {
+    const fail = validateHighAlertIvpbInfusionStartWitness({
+      witnessRouteContext: {
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Magnesium sulfate",
+        catalogCode: "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        requiresDoubleSign: true,
+        isContinuousInfusion: true,
+      },
+      administeredByUserId: "nurse-1",
+    });
+    expect(fail.ok).toBe(false);
+    if (!fail.ok) expect(fail.code).toBe("HIGH_ALERT_IVPB_WITNESS_REQUIRED");
   });
 });

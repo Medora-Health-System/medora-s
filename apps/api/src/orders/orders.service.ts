@@ -63,7 +63,12 @@ import {
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryEnterpriseProcedureBillableReviewEvent } from "../billing/enterprise-procedure-billable-review.util";
-import { buildOrderItemDisplayLabelEn, buildOrderItemDisplayLabelFr, isMedicationInfusionCandidate } from "@medora/shared";
+import {
+  buildOrderItemDisplayLabelEn,
+  buildOrderItemDisplayLabelFr,
+  isMedicationInfusionCandidate,
+  validateHighAlertIvpbInfusionStartWitness,
+} from "@medora/shared";
 import {
   buildOrderItemCreateInput,
   stripUndefinedDeep,
@@ -84,6 +89,8 @@ import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
+import { marValidationBadRequest } from "../medication-administration/mar-create-validation-log.util";
+import { resolveHighAlertMarGovernance } from "../medication-safety/high-alert-mar-governance.util";
 import {
   attachMedicationSafetyGovernanceToOrderItem,
 } from "../medication-safety/medication-safety-governance-read.util";
@@ -2826,6 +2833,55 @@ export class OrdersService {
     }
     const routeResolved = (resolvedRoute ?? "").trim() || (candidateInput.route ?? "").trim() || "IV";
 
+    const catalogMedicationRow = orderItem.catalogItemId
+      ? await this.prisma.catalogMedication.findUnique({
+          where: { id: orderItem.catalogItemId },
+          select: ORDER_MEDICATION_CATALOG_SELECT,
+        })
+      : null;
+    if (catalogMedicationRow) {
+      const highAlertMarRouteContext = {
+        route: routeResolved,
+        orderRoute: orderItem.route?.trim() || null,
+        marRoute: routeResolved,
+        catalogRoute: catalogMedicationRow.route?.trim() || null,
+        administrationType: catalogMedicationRow.administrationType?.trim() || null,
+        isContinuousInfusion: true,
+        infusionPhase: "INFUSION_START" as const,
+      };
+      const highAlertGovernance = await resolveHighAlertMarGovernance(
+        this.prisma,
+        catalogMedicationRow.id,
+        catalogMedicationRow,
+        highAlertMarRouteContext
+      );
+      const witnessValidation = validateHighAlertIvpbInfusionStartWitness({
+        witnessRouteContext: {
+          isHighAlert: highAlertGovernance?.isHighAlert === true,
+          requiresDoubleSign: catalogMedicationRow.requiresDoubleSign,
+          highAlertClass: highAlertGovernance?.highAlertClass ?? null,
+          catalogCode: catalogMedicationRow.code ?? null,
+          genericName: catalogMedicationRow.genericName ?? null,
+          dosageForm: catalogMedicationRow.dosageForm ?? null,
+          therapeuticClass: catalogMedicationRow.therapeuticClass ?? null,
+          route: highAlertMarRouteContext.route,
+          orderRoute: highAlertMarRouteContext.orderRoute,
+          marRoute: highAlertMarRouteContext.marRoute,
+          catalogRoute: highAlertMarRouteContext.catalogRoute,
+          administrationType: highAlertMarRouteContext.administrationType,
+          isContinuousInfusion: highAlertMarRouteContext.isContinuousInfusion,
+        },
+        highAlertVerifierUserId: dto.highAlertVerifierUserId,
+        highAlertVerifierDisplayName: dto.highAlertVerifierDisplayName,
+        highAlertOverrideReason: dto.highAlertOverrideReason,
+        highAlertOverrideAcknowledged: dto.highAlertOverrideAcknowledged,
+        administeredByUserId: userId,
+      });
+      if (!witnessValidation.ok) {
+        throw marValidationBadRequest(witnessValidation.code, witnessValidation.message);
+      }
+    }
+
     const infusionEvents = await this.prisma.orderEvent.findMany({
       where: { orderId: orderItem.orderId },
       orderBy: { performedAt: "asc" },
@@ -2889,6 +2945,10 @@ export class OrdersService {
         startedAt: infusionStartedAt,
         route: routeResolved,
         notes: dto.notes,
+        highAlertVerifierUserId: dto.highAlertVerifierUserId,
+        highAlertVerifierDisplayName: dto.highAlertVerifierDisplayName,
+        highAlertOverrideReason: dto.highAlertOverrideReason,
+        highAlertOverrideAcknowledged: dto.highAlertOverrideAcknowledged,
       }
     );
 

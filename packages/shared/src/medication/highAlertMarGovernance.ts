@@ -1,5 +1,9 @@
 import type { MarClinicalAction } from "../mar/marClinicalAction.js";
-import { marAdministrationRequiresDoubleCheck } from "./marAdministrationGovernancePolicy.js";
+import {
+  marAdministrationRequiresDoubleCheck,
+  marInfusionStartRequiresHighAlertIvpbWitness,
+  type MarDoubleCheckInput,
+} from "./marAdministrationGovernancePolicy.js";
 
 export const HIGH_ALERT_DOUBLE_CHECK_SAFETY_CODES = [
   "REQUIRES_INDEPENDENT_DOUBLE_CHECK",
@@ -19,6 +23,7 @@ export type HighAlertMarGovernanceContext = {
   requiresDoubleCheck: boolean;
   safetyRequirementCodes: string[];
   catalogMedicationId?: string | null;
+  highAlertClass?: string | null;
 };
 
 export type HighAlertMarCreateInput = {
@@ -116,6 +121,51 @@ export function highAlertMarGovernanceApplies(
   marAction: MarClinicalAction
 ): boolean {
   return marAction === "administered" && governance?.requiresDoubleCheck === true;
+}
+
+/** M1.8B.7E.1 / M1.8B.7E.2B — witness validation for high-alert IVPB infusion START. */
+export function validateHighAlertIvpbInfusionStartWitness(input: {
+  witnessRouteContext: MarDoubleCheckInput;
+  highAlertVerifierUserId?: string | null;
+  highAlertVerifierDisplayName?: string | null;
+  highAlertOverrideReason?: string | null;
+  highAlertOverrideAcknowledged?: boolean;
+  administeredByUserId?: string | null;
+}):
+  | { ok: true; applies: false }
+  | (Extract<HighAlertMarValidationResult, { ok: true }> & { applies: true })
+  | (Extract<HighAlertMarValidationResult, { ok: false }> & { applies: true }) {
+  const requires = marInfusionStartRequiresHighAlertIvpbWitness({
+    ...input.witnessRouteContext,
+    infusionPhase: "INFUSION_START",
+  });
+  if (!requires) {
+    return { ok: true, applies: false };
+  }
+
+  const result = validateHighAlertMarCreate({
+    marAction: "administered",
+    governance: {
+      isHighAlert: true,
+      requiresDoubleCheck: true,
+      safetyRequirementCodes: ["REQUIRES_INDEPENDENT_DOUBLE_CHECK"],
+    },
+    highAlertVerifierUserId: input.highAlertVerifierUserId,
+    highAlertVerifierDisplayName: input.highAlertVerifierDisplayName,
+    highAlertOverrideReason: input.highAlertOverrideReason,
+    highAlertOverrideAcknowledged: input.highAlertOverrideAcknowledged,
+    administeredByUserId: input.administeredByUserId,
+  });
+
+  if (!result.ok) {
+    const code =
+      result.code === "HIGH_ALERT_DOUBLE_CHECK_REQUIRED"
+        ? "HIGH_ALERT_IVPB_WITNESS_REQUIRED"
+        : result.code;
+    return { ...result, code, applies: true };
+  }
+
+  return { ...result, applies: true };
 }
 
 export function validateHighAlertMarCreate(

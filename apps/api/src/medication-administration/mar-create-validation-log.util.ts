@@ -57,6 +57,7 @@ export function governanceBlockerCodeFromMessage(message: string): string | null
   if (m.includes("Vérification pharmacie requise")) return "PHARMACY_VERIFICATION_REQUIRED";
   if (m.includes("Vérification pharmacie refusée")) return "PHARMACY_VERIFICATION_REJECTED";
   if (m.includes("Témoin requis")) return "CONTROLLED_WITNESS_REQUIRED";
+  if (m.includes("HIGH_ALERT_IVPB_WITNESS_REQUIRED")) return "HIGH_ALERT_IVPB_WITNESS_REQUIRED";
   if (m.includes("double")) return "HIGH_ALERT_VERIFIER_REQUIRED";
   if (m.includes("LASA")) return "LASA_ACKNOWLEDGEMENT_REQUIRED";
   if (m.includes("allergies") || m.includes("allergies ou intolérances")) {

@@ -159,6 +159,7 @@ export async function resolveHighAlertMarGovernance(
     requiresDoubleCheck: true,
     safetyRequirementCodes,
     catalogMedicationId,
+    highAlertClass: effectiveHighAlertClass ?? null,
   };
 }
 

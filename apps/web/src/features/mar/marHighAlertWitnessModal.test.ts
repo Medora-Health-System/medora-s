@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   marHighAlertNeedsVerifierSelection,
   marHighAlertWorkflowVisible,
+  marInfusionStartWitnessRequired,
 } from "@/components/medication/MarHighAlertFields";
 
 const webSrcRoot = join(import.meta.dirname, "..", "..");
@@ -98,6 +99,79 @@ describe("MAR high-alert witness modal (M1.8B.4A.5)", () => {
           useOverride: false,
         },
         { orderRoute: "SQ" }
+      )
+    ).toBe(false);
+  });
+
+  it("wires infusion START witness modal before note modal (M1.8B.7E.1)", () => {
+    expect(marTab).toContain("mar-infusion-start-verifier-modal");
+    expect(marTab).toContain("marInfusionStartWitnessRequired");
+    expect(marTab).toContain("setInfusionStartWitnessModal");
+  });
+
+  it("heparin IVPB infusion START requires witness before note modal", () => {
+    const governance = {
+      isHighAlert: true,
+      highAlertClass: "HIGH_ALERT_ANTICOAGULANT",
+      requiresDoubleSign: true,
+    };
+    expect(
+      marInfusionStartWitnessRequired(governance, {
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+      })
+    ).toBe(true);
+    expect(
+      marInfusionStartWitnessRequired(
+        { isHighAlert: false, highAlertClass: null, requiresDoubleSign: false },
+        { orderRoute: "IVPB", isContinuousInfusion: true, genericName: "Vancomycin" }
+      )
+    ).toBe(false);
+  });
+
+  it("KCl IVPB infusion START requires witness before note modal (M1.8B.7E.2B)", () => {
+    const governance = {
+      isHighAlert: true,
+      highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+      requiresDoubleSign: true,
+    };
+    expect(
+      marInfusionStartWitnessRequired(governance, {
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+      })
+    ).toBe(true);
+  });
+
+  it("Mg IVPB infusion START requires witness before note modal (M1.8B.7E.2B)", () => {
+    const governance = {
+      isHighAlert: true,
+      highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+      requiresDoubleSign: true,
+    };
+    expect(
+      marInfusionStartWitnessRequired(governance, {
+        orderRoute: "IVPB",
+        isContinuousInfusion: true,
+        genericName: "Magnesium sulfate",
+        catalogCode: "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+      })
+    ).toBe(true);
+  });
+
+  it("vancomycin IVPB infusion START opens note modal directly (M1.8B.7E.2B)", () => {
+    expect(
+      marInfusionStartWitnessRequired(
+        { isHighAlert: false, highAlertClass: null, requiresDoubleSign: false },
+        {
+          orderRoute: "IVPB",
+          isContinuousInfusion: true,
+          genericName: "Vancomycin",
+        }
       )
     ).toBe(false);
   });

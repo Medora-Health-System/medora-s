@@ -3,6 +3,7 @@
 import React from "react";
 import {
   marAdministrationRequiresDoubleCheck,
+  marInfusionStartRequiresHighAlertIvpbWitness,
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
@@ -69,6 +70,28 @@ export function marHighAlertOverrideComplete(
     state.highAlertOverrideAcknowledged === true ||
     (sharedUseOverride && options?.sharedOverrideAcknowledged === true);
   return overrideAck && overrideReason.length >= 8;
+}
+
+/** M1.8B.7E.1 / M1.8B.7E.2B — high-alert IVPB infusion START requires witness before note modal. */
+export function marInfusionStartWitnessRequired(
+  governance: MedicationSafetyGovernanceDisplayInput,
+  routeOptions?: MarHighAlertRouteOptions
+): boolean {
+  return marInfusionStartRequiresHighAlertIvpbWitness({
+    isHighAlert: governance.isHighAlert === true,
+    requiresDoubleSign: governance.requiresDoubleSign === true,
+    highAlertClass: governance.highAlertClass,
+    catalogCode: routeOptions?.catalogCode ?? null,
+    genericName: routeOptions?.genericName ?? null,
+    therapeuticClass: routeOptions?.therapeuticClass ?? null,
+    route: routeOptions?.route ?? routeOptions?.marRoute ?? null,
+    orderRoute: routeOptions?.orderRoute ?? null,
+    marRoute: routeOptions?.marRoute ?? null,
+    catalogRoute: routeOptions?.catalogRoute ?? null,
+    administrationType: routeOptions?.administrationType ?? null,
+    isContinuousInfusion: routeOptions?.isContinuousInfusion === true,
+    infusionPhase: "INFUSION_START",
+  });
 }
 
 /** True when save must open the second-clinician verification modal before proceeding. */

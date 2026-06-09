@@ -1,4 +1,5 @@
 import type { MarClinicalAction } from "../mar/marClinicalAction.js";
+import { isApprovedElectrolyteIvpbMedication } from "./electrolyteIvpbGovernance.js";
 import {
   resolveMarMedicationRouteCategory,
   type MarMedicationRouteCategory,
@@ -22,6 +23,7 @@ export type MarDoubleCheckInput = {
   administrationType?: string | null;
   catalogCode?: string | null;
   genericName?: string | null;
+  dosageForm?: string | null;
   therapeuticClass?: string | null;
   /** True when order line uses continuous infusion lifecycle (not IV push/bolus). */
   isContinuousInfusion?: boolean;
@@ -147,6 +149,67 @@ function anticoagulantRequiresDoubleCheck(
   return false;
 }
 
+function electrolyteIvpbStartRequiresWitness(
+  routeCategory: MarMedicationRouteCategory,
+  input: ResolveMarDoubleCheckRequirementInput
+): boolean {
+  if (routeCategory !== "IVPB") {
+    return false;
+  }
+  if (
+    !isApprovedElectrolyteIvpbMedication({
+      catalogCode: input.catalogCode,
+      genericName: input.genericName,
+      medicationName: input.medicationName,
+      administrationType: input.administrationType,
+      dosageForm: input.dosageForm,
+    })
+  ) {
+    return false;
+  }
+
+  const cls = trimOrNull(input.highAlertClass);
+  if (cls === "HIGH_ALERT_ELECTROLYTE" || input.requiresDoubleSign === true) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * M1.8B.7E.1 / M1.8B.7E.2B — high-alert insulin/heparin/electrolyte IVPB infusion START requires
+ * second-clinician verification. Blood products remain exempt at START (witness at STOP per API-07).
+ */
+export function marInfusionStartRequiresHighAlertIvpbWitness(
+  input: ResolveMarDoubleCheckRequirementInput
+): boolean {
+  if (
+    isBloodProductMedicationCatalog({
+      catalogCode: input.catalogCode,
+      therapeuticClass: input.therapeuticClass,
+      genericName: input.medicationName ?? input.genericName,
+    })
+  ) {
+    return false;
+  }
+
+  const cls = trimOrNull(input.highAlertClass);
+  const routeCategory = resolveRouteCategoryForPolicy(input);
+
+  if (cls === "HIGH_ALERT_INSULIN" && routeCategory === "IVPB") {
+    return insulinRequiresDoubleCheck(routeCategory, input);
+  }
+
+  if (cls === "HIGH_ALERT_ANTICOAGULANT" && routeCategory === "IVPB") {
+    return anticoagulantRequiresDoubleCheck(routeCategory, input);
+  }
+
+  if (electrolyteIvpbStartRequiresWitness(routeCategory, input)) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * M1.8B.4A — route-aware MAR independent double-check requirement.
  * Insulin: SQ / IVP / IVPB require verifier. Heparin SQ exempt; IVP / IVPB require verifier.
@@ -166,7 +229,7 @@ export function resolveMarDoubleCheckRequirement(
   }
 
   if (trimOrNull(input.infusionPhase) === "INFUSION_START") {
-    return false;
+    return marInfusionStartRequiresHighAlertIvpbWitness(input);
   }
 
   const cls = trimOrNull(input.highAlertClass);

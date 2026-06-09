@@ -38,6 +38,8 @@ import {
   resolveMarAdministeredQuantityForCreate,
   validateMarAdministeredQuantityRequired,
   isMedicationInfusionCandidate,
+  marInfusionStartRequiresHighAlertIvpbWitness,
+  validateHighAlertIvpbInfusionStartWitness,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -80,6 +82,7 @@ import {
   badRequestExceptionMessage,
   governanceBlockerCodeFromMessage,
   logMarCreateValidationBlocked,
+  marValidationBadRequest,
 } from "./mar-create-validation-log.util";
 import { resolveMarNdcSnapshotFromOrderLine } from "./mar-administration-ndc-resolve.util";
 
@@ -577,6 +580,26 @@ export class MedicationAdministrationService {
         )
       : null;
 
+    const enforceHighAlertIvpbInfusionStartWitness =
+      serviceOptions?.allowAdministeredForInfusionStart === true &&
+      catalogMedication != null &&
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        isHighAlert: highAlertGovernance?.isHighAlert === true,
+        requiresDoubleSign: catalogMedication.requiresDoubleSign,
+        highAlertClass: highAlertGovernance?.highAlertClass ?? null,
+        catalogCode: catalogMedication.code ?? null,
+        genericName: catalogMedication.genericName ?? null,
+        dosageForm: catalogMedication.dosageForm ?? null,
+        therapeuticClass: catalogMedication.therapeuticClass ?? null,
+        route: highAlertMarRouteContext.route,
+        orderRoute: highAlertMarRouteContext.orderRoute,
+        marRoute: highAlertMarRouteContext.marRoute,
+        catalogRoute: highAlertMarRouteContext.catalogRoute,
+        administrationType: highAlertMarRouteContext.administrationType,
+        isContinuousInfusion: highAlertMarRouteContext.isContinuousInfusion,
+        infusionPhase: "INFUSION_START",
+      });
+
     const lasaGovernance = catalogMedication
       ? await resolveLasaMarGovernance(this.prisma, catalogMedication.id, catalogMedication)
       : null;
@@ -694,6 +717,57 @@ export class MedicationAdministrationService {
           governance: pharmacyGovernance,
           pharmacyVerificationOverrideReason: data.pharmacyVerificationOverrideReason,
           pharmacyVerificationOverrideAcknowledged: data.pharmacyVerificationOverrideAcknowledged,
+        })
+      );
+    }
+
+    if (enforceHighAlertIvpbInfusionStartWitness) {
+      const witnessValidation = validateHighAlertIvpbInfusionStartWitness({
+        witnessRouteContext: {
+          isHighAlert: highAlertGovernance?.isHighAlert === true,
+          requiresDoubleSign: catalogMedication?.requiresDoubleSign,
+          highAlertClass: highAlertGovernance?.highAlertClass ?? null,
+          catalogCode: catalogMedication?.code ?? null,
+          genericName: catalogMedication?.genericName ?? null,
+          therapeuticClass: catalogMedication?.therapeuticClass ?? null,
+          route: highAlertMarRouteContext.route,
+          orderRoute: highAlertMarRouteContext.orderRoute,
+          marRoute: highAlertMarRouteContext.marRoute,
+          catalogRoute: highAlertMarRouteContext.catalogRoute,
+          administrationType: highAlertMarRouteContext.administrationType,
+          isContinuousInfusion: highAlertMarRouteContext.isContinuousInfusion,
+        },
+        highAlertVerifierUserId: data.highAlertVerifierUserId,
+        highAlertVerifierDisplayName: data.highAlertVerifierDisplayName,
+        highAlertOverrideReason: data.highAlertOverrideReason,
+        highAlertOverrideAcknowledged: data.highAlertOverrideAcknowledged,
+        administeredByUserId,
+      });
+      if (!witnessValidation.ok) {
+        logMarCreateValidationBlocked({
+          ...marValidationLogContext,
+          governanceBlockerCode: witnessValidation.code,
+          message: witnessValidation.message,
+        });
+        throw marValidationBadRequest(witnessValidation.code, witnessValidation.message);
+      }
+      if (highAlertGovernance?.requiresDoubleCheck && data.highAlertVerifierUserId?.trim()) {
+        await this.assertHighAlertVerifierUserAtFacility(
+          facilityId,
+          administeredByUserId,
+          data.highAlertVerifierUserId
+        );
+      }
+      runMarGovernanceAssert(() =>
+        assertHighAlertMarCreate({
+          marAction: marActionResolved,
+          governance: highAlertGovernance,
+          highAlertVerifierUserId: data.highAlertVerifierUserId,
+          highAlertVerifierDisplayName: data.highAlertVerifierDisplayName,
+          administeredByUserId,
+          highAlertOverrideReason: data.highAlertOverrideReason,
+          highAlertOverrideAcknowledged: data.highAlertOverrideAcknowledged,
+          highAlertVerificationType: data.highAlertVerificationType ?? null,
         })
       );
     }
@@ -925,8 +999,9 @@ export class MedicationAdministrationService {
 
       if (
         highAlertGovernance &&
-        !serviceOptions?.allowAdministeredForInfusionTerminal &&
-        !serviceOptions?.allowAdministeredForInfusionStart
+        ((!serviceOptions?.allowAdministeredForInfusionTerminal &&
+          !serviceOptions?.allowAdministeredForInfusionStart) ||
+          enforceHighAlertIvpbInfusionStartWitness)
       ) {
         await persistHighAlertMarGovernance({
           tx,
@@ -1131,6 +1206,10 @@ export class MedicationAdministrationService {
       startedAt: Date;
       route?: string;
       notes?: string;
+      highAlertVerifierUserId?: string;
+      highAlertVerifierDisplayName?: string;
+      highAlertOverrideReason?: string;
+      highAlertOverrideAcknowledged?: boolean;
     }
   ) {
     const sessionKey = input.infusionSessionKey.trim();
@@ -1168,6 +1247,18 @@ export class MedicationAdministrationService {
         administeredAt: input.startedAt,
         ...(input.route?.trim() ? { route: input.route.trim() } : {}),
         notes: notesCombined,
+        ...(input.highAlertVerifierUserId?.trim()
+          ? { highAlertVerifierUserId: input.highAlertVerifierUserId.trim() }
+          : {}),
+        ...(input.highAlertVerifierDisplayName?.trim()
+          ? { highAlertVerifierDisplayName: input.highAlertVerifierDisplayName.trim() }
+          : {}),
+        ...(input.highAlertOverrideReason?.trim()
+          ? { highAlertOverrideReason: input.highAlertOverrideReason.trim() }
+          : {}),
+        ...(input.highAlertOverrideAcknowledged === true
+          ? { highAlertOverrideAcknowledged: true }
+          : {}),
       },
       {
         allowAdministeredForInfusionStart: true,

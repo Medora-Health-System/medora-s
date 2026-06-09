@@ -27,7 +27,14 @@ import {
 } from "@/features/emergency/erOrderLifecycleUi";
 import { apiFetch } from "@/lib/apiClient";
 import { formatOrderCancelErrorMessage, shouldShowErOrderLineCancelAction } from "@/lib/orderCancelErrors";
-import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
+import {
+  startMedicationInfusion,
+  stopMedicationInfusion,
+  type MedicationInfusionStartPayload,
+} from "@/lib/medicationInfusionApi";
+import { SecondClinicianVerificationModal } from "@/components/clinical/SecondClinicianVerificationModal";
+import { marInfusionStartWitnessRequired } from "@/components/medication/MarHighAlertFields";
+import { orderItemToMedicationSafetyGovernanceDisplay } from "@/features/mar/orderItemMedicationSafetyGovernance";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
   documentationTemplateIdToLauncherStep,
@@ -480,6 +487,7 @@ export function EmergencyErOrdersPanel({
   const [scheduledSubmitFlash, setScheduledSubmitFlash] = useState<string | null>(null);
   const [cancelErrorFlash, setCancelErrorFlash] = useState<string | null>(null);
   const [orderInfusionError, setOrderInfusionError] = useState<string | null>(null);
+  const [erInfusionStartWitnessItemId, setErInfusionStartWitnessItemId] = useState<string | null>(null);
   const pendingCancelRef = useRef<PendingLineCancel | null>(null);
   const scheduleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const flushInProgressRef = useRef(false);
@@ -872,12 +880,16 @@ export function EmergencyErOrdersPanel({
     }
   };
 
-  const runInfusionAction = async (itemId: string, op: "start" | "stop") => {
+  const runInfusionAction = async (
+    itemId: string,
+    op: "start" | "stop",
+    startPayload?: MedicationInfusionStartPayload
+  ) => {
     const busyKey = `${itemId}:infusion-${op}`;
     setLineActionBusy(busyKey);
     setOrderInfusionError(null);
     try {
-      if (op === "start") await startMedicationInfusion(itemId, facilityId);
+      if (op === "start") await startMedicationInfusion(itemId, facilityId, startPayload);
       else await stopMedicationInfusion(itemId, facilityId);
       setOrdersRefresh((x) => x + 1);
       setScheduledSubmitFlash(
@@ -892,6 +904,42 @@ export function EmergencyErOrdersPanel({
     } finally {
       setLineActionBusy(null);
     }
+  };
+
+  const requestErInfusionStart = (
+    itemId: string,
+    item: Record<string, unknown>,
+    routeSnapshot: string,
+    catRow: Record<string, unknown> | null
+  ) => {
+    const governance = orderItemToMedicationSafetyGovernanceDisplay({
+      medicationSafetyGovernance:
+        item.medicationSafetyGovernance && typeof item.medicationSafetyGovernance === "object"
+          ? (item.medicationSafetyGovernance as Parameters<
+              typeof orderItemToMedicationSafetyGovernanceDisplay
+            >[0]["medicationSafetyGovernance"])
+          : null,
+      catalogMedication: catRow as Parameters<
+        typeof orderItemToMedicationSafetyGovernanceDisplay
+      >[0]["catalogMedication"],
+    });
+    if (
+      marInfusionStartWitnessRequired(governance, {
+        orderRoute: routeSnapshot.trim() || null,
+        marRoute: routeSnapshot.trim() || null,
+        route: routeSnapshot.trim() || null,
+        catalogCode: typeof catRow?.code === "string" ? catRow.code : null,
+        genericName: typeof catRow?.genericName === "string" ? catRow.genericName : null,
+        therapeuticClass: typeof catRow?.therapeuticClass === "string" ? catRow.therapeuticClass : null,
+        administrationType:
+          typeof catRow?.administrationType === "string" ? catRow.administrationType : null,
+        isContinuousInfusion: true,
+      })
+    ) {
+      setErInfusionStartWitnessItemId(itemId);
+      return;
+    }
+    void runInfusionAction(itemId, "start");
   };
 
   const nowMs = Date.now();
@@ -1228,7 +1276,9 @@ export function EmergencyErOrdersPanel({
                                       type="button"
                                       style={touchBtn()}
                                       disabled={busy === `${itemId}:infusion-start`}
-                                      onClick={() => void runInfusionAction(itemId, "start")}
+                                      onClick={() =>
+                                        requestErInfusionStart(itemId, item, routeSnapshot, catRow)
+                                      }
                                     >
                                       {busy === `${itemId}:infusion-start`
                                         ? t("erEmergencyOrders.infusionStarting")
@@ -1593,7 +1643,9 @@ export function EmergencyErOrdersPanel({
                                       type="button"
                                       style={touchBtn()}
                                       disabled={busy === `${itemId}:infusion-start`}
-                                      onClick={() => void runInfusionAction(itemId, "start")}
+                                      onClick={() =>
+                                        requestErInfusionStart(itemId, item, routeSnapshot, catRow)
+                                      }
                                     >
                                       {busy === `${itemId}:infusion-start`
                                         ? t("erEmergencyOrders.infusionStarting")
@@ -2402,6 +2454,32 @@ export function EmergencyErOrdersPanel({
             setShowCreateModal(false);
             setOrdersRefresh((x) => x + 1);
             await onOrdersCreated?.();
+          }}
+        />
+      ) : null}
+      {erInfusionStartWitnessItemId ? (
+        <SecondClinicianVerificationModal
+          facilityId={facilityId}
+          title={t("marHighAlert.verifierModalTitle")}
+          subtitle={t("marHighAlert.verifierModalSubtitle")}
+          roleFilter="RN"
+          mode="require-second-clinician"
+          open={Boolean(erInfusionStartWitnessItemId)}
+          saving={lineActionBusy === `${erInfusionStartWitnessItemId}:infusion-start`}
+          testId="er-infusion-start-verifier-modal"
+          confirmLabel={t("marHighAlert.verifierModalConfirm")}
+          searchLabel={t("marHighAlert.verifierLabel")}
+          searchAria={t("marHighAlert.verifierAria")}
+          searchPlaceholder={t("marHighAlert.verifierPlaceholder")}
+          onCancel={() => setErInfusionStartWitnessItemId(null)}
+          onConfirm={(userId, user) => {
+            const itemId = erInfusionStartWitnessItemId;
+            setErInfusionStartWitnessItemId(null);
+            if (!itemId) return;
+            void runInfusionAction(itemId, "start", {
+              highAlertVerifierUserId: userId,
+              highAlertVerifierDisplayName: `${user.firstName} ${user.lastName}`.trim(),
+            });
           }}
         />
       ) : null}

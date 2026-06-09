@@ -3,6 +3,7 @@ import {
   isBloodProductMedicationCatalog,
   isPcaOrPcpOpioidPumpRoute,
   marAdministrationRequiresDoubleCheck,
+  marInfusionStartRequiresHighAlertIvpbWitness,
   marPharmacyBlockingWorkflowVisible,
   marPharmacyVerificationBlocksAdministration,
   resolveMarDoubleCheckRequirement,
@@ -128,17 +129,118 @@ describe("marAdministrationGovernancePolicy (M1.7A.9 / M1.8B.4A)", () => {
     ).toBe(true);
   });
 
-  it("skips double-check at INFUSION_START for insulin/heparin", () => {
+  it("requires double-check at INFUSION_START for insulin/heparin IVPB (M1.8B.7E.1)", () => {
     expect(
       resolveMarDoubleCheckRequirement({
         ...insulinGov,
         orderRoute: "IVPB",
         infusionPhase: "INFUSION_START",
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       resolveMarDoubleCheckRequirement({
         ...heparinGov,
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+      })
+    ).toBe(true);
+  });
+
+  it("skips double-check at INFUSION_START for non-high-alert IVPB", () => {
+    expect(
+      resolveMarDoubleCheckRequirement({
+        highAlertClass: null,
+        isHighAlert: false,
+        genericName: "Vancomycin",
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+      })
+    ).toBe(false);
+  });
+
+  it("requires double-check at INFUSION_START for KCl and Mg IVPB (M1.8B.7E.2B)", () => {
+    expect(
+      resolveMarDoubleCheckRequirement({
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: true,
+      })
+    ).toBe(true);
+    expect(
+      resolveMarDoubleCheckRequirement({
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Magnesium sulfate",
+        catalogCode: "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not require START witness for KCl/Mg non-IVPB routes (M1.8B.7E.2B)", () => {
+    expect(
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS",
+        administrationType: "INFUSION",
+        orderRoute: "IVP",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: true,
+      })
+    ).toBe(false);
+    expect(
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        highAlertClass: "HIGH_ALERT_ELECTROLYTE",
+        genericName: "Magnesium sulfate",
+        catalogCode: "MAGNESIUM_SULFATE_500_MG_PER_ML_INJECTABLE_INJECTION",
+        orderRoute: "IVP",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: true,
+      })
+    ).toBe(false);
+  });
+
+  it("does not require START witness from bare isHighAlert without electrolyte class (M1.8B.7E.2B)", () => {
+    expect(
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        highAlertClass: null,
+        isHighAlert: true,
+        genericName: "Potassium chloride",
+        catalogCode: "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: false,
+      })
+    ).toBe(false);
+  });
+
+  it("does not require START witness for vasopressor IVPB in this phase (M1.8B.7E.2B)", () => {
+    expect(
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        highAlertClass: "HIGH_ALERT_VASOPRESSOR",
+        genericName: "Dopamine",
+        catalogCode: "DOPAMINE_400MG_250ML_IV",
+        administrationType: "INFUSION",
+        orderRoute: "IVPB",
+        infusionPhase: "INFUSION_START",
+        requiresDoubleSign: true,
+      })
+    ).toBe(false);
+  });
+
+  it("skips high-alert IVPB witness at INFUSION_START for blood (START contract unchanged)", () => {
+    expect(
+      marInfusionStartRequiresHighAlertIvpbWitness({
+        catalogCode: "PRBC_TRANSFUSION",
+        therapeuticClass: "BLOOD_PRODUCT",
         orderRoute: "IVPB",
         infusionPhase: "INFUSION_START",
       })
