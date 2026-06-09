@@ -739,6 +739,11 @@ export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdminis
 /** POST /orders/items/:id/infusion/start — IVPB infusion start note (manual action only). */
 export const medicationInfusionStartDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** M1.8B.7E.1 — second verifier for high-alert insulin/heparin IVPB START. */
+  highAlertVerifierUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  highAlertVerifierDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  highAlertOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  highAlertOverrideAcknowledged: z.boolean().optional(),
 });
 
 export type MedicationInfusionStartDto = z.infer<typeof medicationInfusionStartDtoSchema>;
