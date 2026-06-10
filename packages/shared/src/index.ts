@@ -112,6 +112,7 @@ export * from "./medication/medicationDosePassWindowDefaults.js";
 export * from "./medication/medicationDoseExpansionPlanner.js";
 export * from "./medication/medicationOrderedDoseSnapshot.js";
 export * from "./medication/medicationDoseHorizonMaintenance.js";
+export * from "./medication/medicationDoseStatusPromotion.js";
 export * from "./medication/medicationDoseMarFeatureFlags.js";
 export * from "./medication/medicationDoseMarEligibility.js";
 export * from "./medication/medicationDoseMarStatusTransitions.js";
