@@ -26,6 +26,7 @@ import { DiagnosesModule } from "./diagnoses/diagnoses.module";
 import { FollowUpsModule } from "./follow-ups/follow-ups.module";
 import { AdminModule } from "./admin/admin.module";
 import { MedicationAdministrationModule } from "./medication-administration/medication-administration.module";
+import { MedicationDoseModule } from "./medication-dose/medication-dose.module";
 import { MsppModule } from "./mspp/mspp.module";
 import { FhirModule } from "./fhir/fhir.module";
 import { InsuranceModule } from "./insurance/insurance.module";
@@ -72,6 +73,7 @@ const imports = [
   FollowUpsModule,
   AdminModule,
   MedicationAdministrationModule,
+  MedicationDoseModule,
   MsppModule,
   FhirModule,
   InsuranceModule,
