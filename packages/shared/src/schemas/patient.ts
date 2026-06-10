@@ -732,6 +732,8 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   /** M1.3F.7 — override when pharmacy verification not VERIFIED. */
   pharmacyVerificationOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
   pharmacyVerificationOverrideAcknowledged: z.boolean().optional(),
+  /** M1.8B.7I.2 — optional dose instance gate for recurring scheduled MAR. */
+  medicationDoseInstanceId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;

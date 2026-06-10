@@ -9,6 +9,8 @@ import {
   RoleCode,
   type OrderItem,
   type Prisma,
+  type MedicationDoseInstance,
+  type MedicationOrderSchedule,
 } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
@@ -40,6 +42,7 @@ import {
   isMedicationInfusionCandidate,
   marInfusionStartRequiresHighAlertIvpbWitness,
   validateHighAlertIvpbInfusionStartWitness,
+  medicationDoseGatedMarEnabled,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -85,6 +88,11 @@ import {
   marValidationBadRequest,
 } from "./mar-create-validation-log.util";
 import { resolveMarNdcSnapshotFromOrderLine } from "./mar-administration-ndc-resolve.util";
+import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
+import {
+  resolveLoadedDoseGatedMarContext,
+  type LoadedDoseGatedMarContext,
+} from "./medication-dose-gated-mar.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -400,7 +408,27 @@ export class MedicationAdministrationService {
       throw new BadRequestException("La consultation doit être ouverte pour enregistrer une administration.");
     }
 
-    let orderItemId: string | null = data.orderItemId ?? null;
+    const schedulingFeatureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
+    const requestedDoseInstanceId = data.medicationDoseInstanceId?.trim() || null;
+    const doseGatedMarFlagsOn = medicationDoseGatedMarEnabled(schedulingFeatureFlags);
+
+    let preloadedDoseForGatedMar:
+      | (MedicationDoseInstance & { medicationOrderSchedule: MedicationOrderSchedule })
+      | null = null;
+
+    if (requestedDoseInstanceId && doseGatedMarFlagsOn) {
+      const doseRow = await this.prisma.medicationDoseInstance.findFirst({
+        where: { id: requestedDoseInstanceId, facilityId },
+        include: { medicationOrderSchedule: true },
+      });
+      if (!doseRow) {
+        throw new BadRequestException("Dose planifiée introuvable.");
+      }
+      preloadedDoseForGatedMar = doseRow;
+    }
+
+    let orderItemId: string | null =
+      preloadedDoseForGatedMar?.orderItemId ?? data.orderItemId ?? null;
     let medicationLabelSnapshot: string | null = null;
     let orderIdForAudit: string | undefined;
     let linkedMedicationLine: (OrderItem & { order: { id: string; encounterId: string; type: string; status: string } }) | null =
@@ -506,6 +534,23 @@ export class MedicationAdministrationService {
 
     const marActionResolved: MarClinicalAction =
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
+
+    let doseGatedMarContext: LoadedDoseGatedMarContext | null = null;
+    if (preloadedDoseForGatedMar && doseGatedMarFlagsOn) {
+      doseGatedMarContext = resolveLoadedDoseGatedMarContext({
+        doseInstance: preloadedDoseForGatedMar,
+        featureFlags: schedulingFeatureFlags,
+        requestOrderItemId: data.orderItemId ?? preloadedDoseForGatedMar.orderItemId,
+        requestEncounterId: encounterId,
+        requestFacilityId: facilityId,
+        orderRoute: linkedMedicationLine?.route ?? null,
+        marAction: marActionResolved,
+      });
+    }
+
+    const effectiveSkipMedicationLineCompletion =
+      serviceOptions?.skipMedicationLineCompletion === true ||
+      doseGatedMarContext?.skipOrderLineCompletion === true;
 
     let administeredQuantity = resolveMarAdministeredQuantityForCreate({
       marAction: marActionResolved,
@@ -823,7 +868,8 @@ export class MedicationAdministrationService {
     if (
       orderItemId &&
       marActionResolved === "administered" &&
-      !serviceOptions?.skipDuplicateAdministeredWindowCheck
+      !serviceOptions?.skipDuplicateAdministeredWindowCheck &&
+      !doseGatedMarContext
     ) {
       const winStart = new Date(Date.now() - MAR_REPEAT_ADMINISTER_WINDOW_MS);
       const dup = await this.prisma.medicationAdministration.findFirst({
@@ -850,7 +896,7 @@ export class MedicationAdministrationService {
       linkedMedicationLine &&
       linkedMedicationLine.quantity != null &&
       linkedMedicationLine.quantity >= 1 &&
-      !serviceOptions?.skipMedicationLineCompletion
+      !effectiveSkipMedicationLineCompletion
     ) {
       const prescribed = Number(linkedMedicationLine.quantity);
       const increment =
@@ -938,6 +984,7 @@ export class MedicationAdministrationService {
           patientId: encounter.patientId,
           encounterId,
           orderItemId,
+          medicationDoseInstanceId: doseGatedMarContext?.doseInstance.id ?? null,
           medicationLabelSnapshot,
           route: data.route?.trim() ? data.route.trim() : null,
           doseValue,
@@ -1070,7 +1117,7 @@ export class MedicationAdministrationService {
           marActionResolved === "md_changed";
         if (
           isTerminalMarAction &&
-          !serviceOptions?.skipMedicationLineCompletion &&
+          !effectiveSkipMedicationLineCompletion &&
           line.status !== OrderStatus.COMPLETED &&
           line.status !== OrderStatus.CANCELLED
         ) {
@@ -1098,6 +1145,16 @@ export class MedicationAdministrationService {
             performedByUserId: administeredByUserId,
           });
         }
+      }
+
+      if (doseGatedMarContext) {
+        await tx.medicationDoseInstance.update({
+          where: { id: doseGatedMarContext.doseInstance.id },
+          data: {
+            doseStatus: doseGatedMarContext.nextDoseStatus,
+            terminalMedicationAdministrationId: row.id,
+          },
+        });
       }
 
       return row;
