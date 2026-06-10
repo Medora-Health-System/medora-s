@@ -1,5 +1,6 @@
 import {
   getMedicationFrequencyDefinition,
+  parseMedicationFrequencyCode,
   type MedicationFrequencyCode,
 } from "./medicationFrequencyCatalog.js";
 
@@ -19,10 +20,7 @@ type AliasRule = {
   confidence: MedicationFrequencyNormalizationConfidence;
 };
 
-/**
- * Advisory sig → frequency mapping for future order-entry assist (M1.8B.6).
- * Never auto-persists — provider must confirm structured frequency on write.
- */
+/** Advisory sig → frequency mapping for order-entry assist (M1.8B.6). */
 const MEDICATION_FREQUENCY_ALIAS_RULES: readonly AliasRule[] = [
   { frequencyCode: "ONCE", aliases: ["once", "one time", "x1", "dose unique"], confidence: "HIGH" },
   { frequencyCode: "NOW", aliases: ["now", "give now", "immediately"], confidence: "HIGH" },
@@ -161,4 +159,30 @@ export function normalizeMedicationFrequencyFromSig(
     ambiguousMatches: [],
     sourceText,
   };
+}
+
+export type ResolveMedicationOrderItemFrequencyInput = {
+  /** Structured frequency from order DTO when explicitly selected. */
+  frequencyCode?: string | null;
+  /** Free-text directions / sig (`OrderItem.notes`). */
+  directionsSig?: string | null;
+};
+
+/**
+ * Resolve structured frequency for OrderItem persistence (M1.8B.7I.6A).
+ * Prefers explicit `frequencyCode`; otherwise parses directions with HIGH confidence only.
+ */
+export function resolveMedicationOrderItemFrequencyCode(
+  input: ResolveMedicationOrderItemFrequencyInput
+): MedicationFrequencyCode | null {
+  const explicit = typeof input.frequencyCode === "string" ? input.frequencyCode.trim() : "";
+  if (explicit !== "") {
+    return parseMedicationFrequencyCode(explicit.toUpperCase());
+  }
+
+  const fromSig = normalizeMedicationFrequencyFromSig(input.directionsSig);
+  if (fromSig.confidence === "HIGH" && fromSig.frequencyCode) {
+    return fromSig.frequencyCode;
+  }
+  return null;
 }

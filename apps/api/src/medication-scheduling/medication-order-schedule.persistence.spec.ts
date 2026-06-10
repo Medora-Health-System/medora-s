@@ -161,6 +161,7 @@ describe("MedicationOrderSchedule persistence (M1.8B.7A.1)", () => {
     catalogItemId: string;
     frequencyCode?: MedicationFrequencyCode | null;
     route?: MedicationRoute;
+    notes?: string;
   }) {
     const encounter = await createOpenEncounter();
     const payload: OrderCreateDto = {
@@ -172,6 +173,7 @@ describe("MedicationOrderSchedule persistence (M1.8B.7A.1)", () => {
           medicationFulfillmentIntent: "ADMINISTER_CHART",
           route: input.route ?? "IVP",
           frequencyCode: input.frequencyCode ?? null,
+          ...(input.notes ? { notes: input.notes } : {}),
         },
       ],
     };
@@ -291,6 +293,43 @@ describe("MedicationOrderSchedule persistence (M1.8B.7A.1)", () => {
     const schedules = await schedulesForOrder(order.id);
     expect(schedules).toHaveLength(1);
     expect(schedules[0]!.scheduleClassification).toBe("RECURRING");
+  });
+
+  it("flags ON + sig-only BID in notes → persists frequencyCode and RECURRING schedule", async () => {
+    setSchedulingFlags(true);
+    const order = await createMedicationOrder({
+      catalogItemId: genericCatalogId,
+      route: "PO",
+      notes: "1 tab PO BID",
+    });
+    const persisted = await prisma.orderItem.findUnique({ where: { id: order.items[0]!.id } });
+    expect(persisted?.frequencyCode).toBe("BID");
+    const schedules = await schedulesForOrder(order.id);
+    expect(schedules).toHaveLength(1);
+    expect(schedules[0]!.scheduleClassification).toBe("RECURRING");
+  });
+
+  it("flags ON + sig-only Q12H in notes → persists frequencyCode", async () => {
+    setSchedulingFlags(true);
+    const order = await createMedicationOrder({
+      catalogItemId: genericCatalogId,
+      route: "IVP",
+      notes: "500 mg IV q12h",
+    });
+    const persisted = await prisma.orderItem.findUnique({ where: { id: order.items[0]!.id } });
+    expect(persisted?.frequencyCode).toBe("Q12H");
+  });
+
+  it("flags ON + ambiguous directions → no frequencyCode and no schedule", async () => {
+    setSchedulingFlags(true);
+    const order = await createMedicationOrder({
+      catalogItemId: genericCatalogId,
+      route: "PO",
+      notes: "take as directed",
+    });
+    const persisted = await prisma.orderItem.findUnique({ where: { id: order.items[0]!.id } });
+    expect(persisted?.frequencyCode).toBeNull();
+    expect(await schedulesForOrder(order.id)).toHaveLength(0);
   });
 
   it("enforces one ACTIVE schedule per OrderItem", async () => {

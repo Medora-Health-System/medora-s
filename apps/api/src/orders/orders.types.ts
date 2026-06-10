@@ -5,6 +5,7 @@ import type {
   OrderItemCreateDto,
   OrderCreateDto,
 } from "@medora/shared";
+import { resolveMedicationOrderItemFrequencyCode } from "@medora/shared";
 
 /** M1.3F.3 — read-only MAR governance fields on medication order lines. */
 export type MedicationSafetyGovernanceRead = MedicationSafetyGovernanceSnapshot;
@@ -184,6 +185,10 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
     item.medicationFulfillmentIntent === "ADMINISTER_CHART" ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE";
   const refill =
     item.refillCount !== undefined && item.refillCount !== null ? item.refillCount : undefined;
+  const resolvedFrequencyCode = resolveMedicationOrderItemFrequencyCode({
+    frequencyCode: item.frequencyCode,
+    directionsSig: item.notes,
+  });
   const med: Record<string, unknown> = {
     ...base,
     strength: optionalTrimmedString(item.strength ?? undefined),
@@ -192,10 +197,7 @@ export function buildOrderItemCreateInput(item: OrderItemCreateDto, orderType: O
     medicationFulfillmentIntent: intent,
     intendedAdministrationAt:
       item.intendedAdministrationAt != null ? new Date(item.intendedAdministrationAt) : undefined,
-    frequencyCode:
-      item.frequencyCode != null && String(item.frequencyCode).trim() !== ""
-        ? String(item.frequencyCode).trim().toUpperCase()
-        : undefined,
+    ...(resolvedFrequencyCode ? { frequencyCode: resolvedFrequencyCode } : {}),
   };
   return stripUndefinedKeys(med) as OrderItemNestedCreate;
 }

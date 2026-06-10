@@ -11,6 +11,7 @@ import {
   getEncounterAllergyDocumentationSummary,
   normalizeMedicationRoute,
   resolveEnterpriseProcedureDisplayName,
+  resolveMedicationOrderItemFrequencyCode,
   enterpriseProcedureCategoryLabel,
   type EnterpriseProcedureDefinition,
 } from "@medora/shared";
@@ -597,6 +598,11 @@ function buildPayload(
     items: items.map((it) => {
       const raw = it.intendedAdministrationAt?.trim();
       const intendedDate = raw ? new Date(raw) : undefined;
+      const resolvedFrequencyCode = resolveMedicationOrderItemFrequencyCode({
+        directionsSig: it.notes?.trim(),
+      });
+      const frequencyField =
+        resolvedFrequencyCode != null ? { frequencyCode: resolvedFrequencyCode } : {};
       const baseManual = {
         catalogItemId: null,
         catalogItemType: "MEDICATION" as const,
@@ -608,6 +614,7 @@ function buildPayload(
         refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
         medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
         ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+        ...frequencyField,
       };
       const baseCatalog = {
         catalogItemId: it.catalogItemId!,
@@ -619,6 +626,7 @@ function buildPayload(
         refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
         medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
         ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
+        ...frequencyField,
       };
       return it.isManual || !it.catalogItemId ? baseManual : baseCatalog;
     }),

@@ -10,7 +10,7 @@ import {
   parseMedicationFrequencyCode,
 } from "./medicationFrequencyCatalog.js";
 import { assertMedicationFrequencyCatalog } from "./medicationFrequencyCatalogValidation.js";
-import { normalizeMedicationFrequencyFromSig } from "./medicationFrequencyNormalization.js";
+import { normalizeMedicationFrequencyFromSig, resolveMedicationOrderItemFrequencyCode } from "./medicationFrequencyNormalization.js";
 
 describe("medicationFrequencyCatalog (M1.8B.6)", () => {
   it("has exactly one entry per canonical code", () => {
@@ -83,5 +83,29 @@ describe("medicationFrequencyNormalization (M1.8B.6)", () => {
 
   it("returns NONE for unrecognized sig", () => {
     expect(normalizeMedicationFrequencyFromSig("take as directed").confidence).toBe("NONE");
+  });
+});
+
+describe("resolveMedicationOrderItemFrequencyCode (M1.8B.7I.6A)", () => {
+  it("resolves HIGH-confidence sig strings when frequencyCode omitted", () => {
+    expect(
+      resolveMedicationOrderItemFrequencyCode({ directionsSig: "1 tab PO BID" })
+    ).toBe("BID");
+    expect(resolveMedicationOrderItemFrequencyCode({ directionsSig: "q12h" })).toBe("Q12H");
+    expect(resolveMedicationOrderItemFrequencyCode({ directionsSig: "q6h" })).toBe("Q6H");
+  });
+
+  it("prefers explicit frequencyCode", () => {
+    expect(
+      resolveMedicationOrderItemFrequencyCode({
+        frequencyCode: "TID",
+        directionsSig: "1 tab PO BID",
+      })
+    ).toBe("TID");
+  });
+
+  it("returns null for ambiguous or unrecognized directions", () => {
+    expect(resolveMedicationOrderItemFrequencyCode({ directionsSig: "take as directed" })).toBeNull();
+    expect(resolveMedicationOrderItemFrequencyCode({ directionsSig: "daily q24h" })).toBeNull();
   });
 });

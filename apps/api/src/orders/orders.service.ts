@@ -59,6 +59,7 @@ import {
   medicationSchedulingFeatureFlagsEnabled,
   orderItemStatusEligibleForBillingCapture,
   parseCareProcedureEffectiveClinicalTimeIso,
+  resolveMedicationOrderItemFrequencyCode,
   toCareProcedureEffectiveClinicalTimeIsoUtc,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
@@ -899,7 +900,11 @@ export class OrdersService {
         encounterId: input.encounterId,
         orderId: input.orderId,
         orderItemId: item.id,
-        frequencyCode: dtoItem.frequencyCode ?? item.frequencyCode ?? null,
+        frequencyCode:
+          resolveMedicationOrderItemFrequencyCode({
+            frequencyCode: dtoItem.frequencyCode ?? item.frequencyCode,
+            directionsSig: dtoItem.notes ?? item.notes,
+          }) ?? null,
         route: dtoItem.route ?? item.route ?? null,
         manualLabel: dtoItem.manualLabel ?? item.manualLabel,
         catalogMedication: item.catalogItemId

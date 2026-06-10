@@ -156,6 +156,7 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
     catalogItemId: string;
     frequencyCode?: MedicationFrequencyCode | null;
     route?: MedicationRoute;
+    notes?: string;
   }) {
     const encounter = await createOpenEncounter();
     const payload: OrderCreateDto = {
@@ -167,6 +168,7 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
           medicationFulfillmentIntent: "ADMINISTER_CHART",
           route: input.route ?? "IVP",
           frequencyCode: input.frequencyCode ?? null,
+          ...(input.notes ? { notes: input.notes } : {}),
         },
       ],
     };
@@ -233,6 +235,18 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
     });
     expect(result.createdCount).toBe(6);
     expect(await dosesForOrder(order.id)).toHaveLength(6);
+  });
+
+  it("sig-only BID order creates schedule and dose instances at order create", async () => {
+    const order = await createMedicationOrder({
+      catalogItemId: genericCatalogId,
+      route: "PO",
+      notes: "1 tab PO BID",
+    });
+    const orderItem = await prisma.orderItem.findUnique({ where: { id: order.items[0]!.id } });
+    expect(orderItem?.frequencyCode).toBe("BID");
+    expect(await prisma.medicationOrderSchedule.count({ where: { orderId: order.id } })).toBe(1);
+    expect((await dosesForOrder(order.id)).length).toBeGreaterThan(0);
   });
 
   it("TID expansion creates 9 doses in 72h", async () => {
