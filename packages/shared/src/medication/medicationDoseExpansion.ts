@@ -10,6 +10,7 @@ import {
  */
 export const MEDICATION_DOSE_EXPANSION_REASONS = [
   "RECURRING_MEDICATION_ELIGIBLE",
+  "RECURRING_IVPB_EXPANSION_NOT_WIRED",
   "DIRECT_MAR_NEVER_EXPANDS",
   "INFUSION_LIFECYCLE_NEVER_EXPANDS",
   "ON_DEMAND_PRN_DOES_NOT_PREGENERATE",
@@ -58,6 +59,12 @@ export function evaluateMedicationDoseExpansionForClassification(
       return {
         shouldExpand: true,
         reason: "RECURRING_MEDICATION_ELIGIBLE",
+        classification,
+      };
+    case "RECURRING_IVPB":
+      return {
+        shouldExpand: false,
+        reason: "RECURRING_IVPB_EXPANSION_NOT_WIRED",
         classification,
       };
     case "DIRECT_MAR":

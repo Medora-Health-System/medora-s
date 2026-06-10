@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MEDICATION_DOSE_KINDS,
+  isIvpbSessionDoseKind,
   isMedicationDoseKind,
   parseMedicationDoseKind,
 } from "./medicationDoseKind.js";
@@ -22,5 +23,10 @@ describe("medicationDoseKind (M1.8B.7F.1)", () => {
   it("parses known kinds case-insensitively", () => {
     expect(parseMedicationDoseKind("ivpb_session")).toBe("IVPB_SESSION");
     expect(parseMedicationDoseKind("PRN_EVENT")).toBe("PRN_EVENT");
+  });
+
+  it("isIvpbSessionDoseKind identifies IVPB_SESSION only", () => {
+    expect(isIvpbSessionDoseKind("IVPB_SESSION")).toBe(true);
+    expect(isIvpbSessionDoseKind("FIXED_ADMINISTRATION")).toBe(false);
   });
 });

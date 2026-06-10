@@ -41,6 +41,15 @@ describe("medicationDoseExpansion (M1.8B.7F.1)", () => {
     });
   });
 
+  it("RECURRING_IVPB does not expand until M1.8B.7J.2 wiring", () => {
+    const result = evaluateMedicationDoseExpansionForClassification("RECURRING_IVPB");
+    expect(result).toEqual({
+      shouldExpand: false,
+      reason: "RECURRING_IVPB_EXPANSION_NOT_WIRED",
+      classification: "RECURRING_IVPB",
+    });
+  });
+
   it("NOW / STAT / ONCE classifications do not expand", () => {
     for (const frequencyCode of ["NOW", "STAT", "ONCE"] as const) {
       const result = evaluateMedicationDoseExpansionEligibility({ frequencyCode });

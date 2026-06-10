@@ -13,16 +13,29 @@ import {
   type MedicationSchedulingFeatureFlags,
 } from "./medicationFrequencyEdHardening.js";
 
-/** Immutable schedule routing classes (M1.8B.7A.1). Stored as strings in DB for enum-evolution safety. */
+/**
+ * Immutable schedule routing classes (M1.8B.7A.1). Stored as strings in DB for enum-evolution safety.
+ *
+ * RECURRING_IVPB (M1.8B.7J.1): recurring interval IVPB antibiotics — Vancomycin q12h, Cefepime q8h,
+ * Ceftriaxone q24h, Piperacillin-Tazobactam q6h, etc. Dose kind IVPB_SESSION; START → session → STOP.
+ * Not wired at order-create until M1.8B.7J.2+.
+ */
 export const MEDICATION_SCHEDULE_CLASSIFICATIONS = [
   "DIRECT_MAR",
   "RECURRING",
+  "RECURRING_IVPB",
   "ON_DEMAND",
   "INFUSION_LIFECYCLE",
 ] as const;
 
 export type MedicationScheduleClassification =
   (typeof MEDICATION_SCHEDULE_CLASSIFICATIONS)[number];
+
+export function isRecurringIvpbScheduleClassification(
+  value: MedicationScheduleClassification | string | null | undefined
+): boolean {
+  return value === "RECURRING_IVPB";
+}
 
 export type MedicationCatalogSnapshotInput = {
   catalogItemId?: string | null;
