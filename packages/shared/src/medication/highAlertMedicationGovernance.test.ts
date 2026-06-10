@@ -17,10 +17,10 @@ import { highAlertClassSchema, safetyRequirementCodeSchema } from "./medicationS
 
 describe("highAlertMedicationGovernanceManifest", () => {
   it("has expected manifest counts", () => {
-    expect(HIGH_ALERT_MEDICATION_GOVERNANCE_APPLY_COUNT).toBe(31);
+    expect(HIGH_ALERT_MEDICATION_GOVERNANCE_APPLY_COUNT).toBe(48);
     expect(HIGH_ALERT_MEDICATION_GOVERNANCE_MANUAL_REVIEW_COUNT).toBe(2);
     expect(HIGH_ALERT_MEDICATION_GOVERNANCE_MISSING_CATALOG_COUNT).toBe(8);
-    expect(HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST).toHaveLength(41);
+    expect(HIGH_ALERT_MEDICATION_GOVERNANCE_MANIFEST).toHaveLength(58);
     expect(HIGH_ALERT_MEDICATION_GOVERNANCE_SAFETY_REQUIREMENT_CODE_COUNT).toBeGreaterThanOrEqual(5);
   });
 
