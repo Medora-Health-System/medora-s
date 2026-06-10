@@ -70,6 +70,7 @@ model Facility {
   inventoryItems                         InventoryItem[]
   inventoryTransactions                  InventoryTransaction[]
   medicationOrderSchedules               MedicationOrderSchedule[]
+  medicationDoseInstances                MedicationDoseInstance[]
   medicationAdministrations              MedicationAdministration[]
   medicationAdministrationCorrections    MedicationAdministrationCorrection[]
   medicationAdministrationOverrides      MedicationAdministrationOverride[]
@@ -568,6 +569,7 @@ model Encounter {
   medicationAdministrationVerifications     MedicationAdministrationVerification[]
   medicationDispenses                       MedicationDispense[]
   medicationOrderSchedules                  MedicationOrderSchedule[]
+  medicationDoseInstances                   MedicationDoseInstance[]
   medicationWasteDocumentations             MedicationWasteDocumentation[]
   orders                                    Order[]
   orderEvents                               OrderEvent[]
@@ -808,34 +810,35 @@ model EncounterClinicalDocumentationEntry {
 }
 
 model Order {
-  id                 String          @id @default(uuid())
-  encounterId        String
-  facilityId         String
-  type               String
-  status             OrderStatus     @default(PENDING)
-  priority           OrderPriority   @default(ROUTINE)
-  notes              String?
-  orderedBy          String?
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
-  patientId          String
-  pathwaySessionId   String?
-  source             String?
-  prescriberContact  String?
-  prescriberLicense  String?
-  prescriberName     String?
-  cancelledAt        DateTime?
-  cancelledByUserId  String?
-  cancellationReason String?
-  auditLogs          AuditLog[]      @relation("OrderAuditLogs")
-  cancelledBy        User?           @relation("OrderCancelledBy", fields: [cancelledByUserId], references: [id])
-  encounter          Encounter       @relation(fields: [encounterId], references: [id])
-  facility           Facility        @relation(fields: [facilityId], references: [id])
-  pathwaySession     PathwaySession? @relation(fields: [pathwaySessionId], references: [id])
-  patient            Patient         @relation(fields: [patientId], references: [id])
+  id                       String                    @id @default(uuid())
+  encounterId              String
+  facilityId               String
+  type                     String
+  status                   OrderStatus               @default(PENDING)
+  priority                 OrderPriority             @default(ROUTINE)
+  notes                    String?
+  orderedBy                String?
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  patientId                String
+  pathwaySessionId         String?
+  source                   String?
+  prescriberContact        String?
+  prescriberLicense        String?
+  prescriberName           String?
+  cancelledAt              DateTime?
+  cancelledByUserId        String?
+  cancellationReason       String?
+  auditLogs                AuditLog[]                @relation("OrderAuditLogs")
+  cancelledBy              User?                     @relation("OrderCancelledBy", fields: [cancelledByUserId], references: [id])
+  encounter                Encounter                 @relation(fields: [encounterId], references: [id])
+  facility                 Facility                  @relation(fields: [facilityId], references: [id])
+  pathwaySession           PathwaySession?           @relation(fields: [pathwaySessionId], references: [id])
+  patient                  Patient                   @relation(fields: [patientId], references: [id])
   orderEvents              OrderEvent[]
   items                    OrderItem[]
   medicationOrderSchedules MedicationOrderSchedule[]
+  medicationDoseInstances  MedicationDoseInstance[]
 
   @@index([encounterId])
   @@index([facilityId])
@@ -914,6 +917,7 @@ model OrderItem {
   medicationAdministrationOverrides     MedicationAdministrationOverride[]
   medicationAdministrationVerifications MedicationAdministrationVerification[]
   medicationOrderSchedules              MedicationOrderSchedule[]
+  medicationDoseInstances               MedicationDoseInstance[]
   pharmacyDispenseRecord                MedicationDispense?
   medicationWasteDocumentations         MedicationWasteDocumentation[]
   completedByNurse                      User?                                  @relation("OrderItemNurseCompleted", fields: [completedByUserId], references: [id])
@@ -938,11 +942,11 @@ model OrderItem {
 
 /// M1.8B.7A.1 — dormant scheduling intent (no dose instances, no MAR reads in this phase).
 model MedicationOrderSchedule {
-  id                            String    @id @default(uuid())
-  facilityId                    String
-  encounterId                   String
-  orderId                       String
-  orderItemId                   String
+  id          String @id @default(uuid())
+  facilityId  String
+  encounterId String
+  orderId     String
+  orderItemId String
 
   frequencyCode                 String
   catalogVersion                Int
@@ -950,30 +954,31 @@ model MedicationOrderSchedule {
   medicationCatalogSnapshotJson Json
   scheduleClassification        String
 
-  scheduleStatus                String    @default("ACTIVE")
-  version                       Int       @default(1)
+  scheduleStatus String @default("ACTIVE")
+  version        Int    @default(1)
 
-  supersededByScheduleId          String?
-  supersededAt                  DateTime?
+  supersededByScheduleId String?
+  supersededAt           DateTime?
 
-  cancelledAt                   DateTime?
-  cancelledByUserId             String?
-  cancelReason                  String?
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelReason      String?
 
-  createdByUserId               String?
-  updatedByUserId               String?
-  createdAt                     DateTime  @default(now())
-  updatedAt                     DateTime  @updatedAt
+  createdByUserId String?
+  updatedByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  cancelledBy                   User?                     @relation("MedicationOrderScheduleCancelledBy", fields: [cancelledByUserId], references: [id])
-  createdBy                     User?                     @relation("MedicationOrderScheduleCreatedBy", fields: [createdByUserId], references: [id])
-  encounter                     Encounter                 @relation(fields: [encounterId], references: [id])
-  facility                      Facility                  @relation(fields: [facilityId], references: [id])
-  order                         Order                     @relation(fields: [orderId], references: [id])
-  orderItem                     OrderItem                 @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
-  supersededBy                  MedicationOrderSchedule?  @relation("MedicationOrderScheduleSupersession", fields: [supersededByScheduleId], references: [id], onDelete: Restrict)
-  supersededSchedules           MedicationOrderSchedule[] @relation("MedicationOrderScheduleSupersession")
-  updatedBy                     User?                     @relation("MedicationOrderScheduleUpdatedBy", fields: [updatedByUserId], references: [id])
+  cancelledBy             User?                     @relation("MedicationOrderScheduleCancelledBy", fields: [cancelledByUserId], references: [id])
+  createdBy               User?                     @relation("MedicationOrderScheduleCreatedBy", fields: [createdByUserId], references: [id])
+  encounter               Encounter                 @relation(fields: [encounterId], references: [id])
+  facility                Facility                  @relation(fields: [facilityId], references: [id])
+  order                   Order                     @relation(fields: [orderId], references: [id])
+  orderItem               OrderItem                 @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  supersededBy            MedicationOrderSchedule?  @relation("MedicationOrderScheduleSupersession", fields: [supersededByScheduleId], references: [id], onDelete: Restrict)
+  supersededSchedules     MedicationOrderSchedule[] @relation("MedicationOrderScheduleSupersession")
+  updatedBy               User?                     @relation("MedicationOrderScheduleUpdatedBy", fields: [updatedByUserId], references: [id])
+  medicationDoseInstances MedicationDoseInstance[]
 
   @@index([facilityId])
   @@index([encounterId])
@@ -981,6 +986,55 @@ model MedicationOrderSchedule {
   @@index([orderItemId])
   @@index([scheduleStatus])
   @@index([scheduleClassification])
+}
+
+/// M1.8B.7G — dormant dose-instance persistence (no expansion, no MAR reads in this phase).
+model MedicationDoseInstance {
+  id                        String @id @default(uuid())
+  facilityId                String
+  encounterId               String
+  orderId                   String
+  orderItemId               String
+  medicationOrderScheduleId String
+
+  doseSequenceNumber Int
+  doseKind           String
+  scheduledAt        DateTime
+  dueWindowStartAt   DateTime
+  dueWindowEndAt     DateTime
+  overdueAt          DateTime?
+  doseStatus         String
+
+  scheduleClassificationSnapshot String
+  frequencySnapshotJson          Json
+  medicationCatalogSnapshotJson  Json
+  orderedDoseSnapshotJson        Json
+
+  infusionSessionId                  String?
+  responseDueAt                      DateTime?
+  terminalMedicationAdministrationId String?   @unique
+
+  missedReason String?
+  cancelledAt  DateTime?
+  cancelReason String?
+  supersededAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  encounter                        Encounter                  @relation(fields: [encounterId], references: [id])
+  facility                         Facility                   @relation(fields: [facilityId], references: [id])
+  infusionSession                  InfusionSession?           @relation(fields: [infusionSessionId], references: [id], onDelete: SetNull)
+  medicationOrderSchedule          MedicationOrderSchedule    @relation(fields: [medicationOrderScheduleId], references: [id], onDelete: Restrict)
+  order                            Order                      @relation(fields: [orderId], references: [id])
+  orderItem                        OrderItem                  @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  terminalMedicationAdministration MedicationAdministration?  @relation("MedicationDoseInstanceTerminalMar", fields: [terminalMedicationAdministrationId], references: [id], onDelete: SetNull)
+  medicationAdministrations        MedicationAdministration[] @relation("MedicationDoseInstanceMar")
+
+  @@unique([medicationOrderScheduleId, doseSequenceNumber])
+  @@index([facilityId, encounterId, doseStatus, scheduledAt])
+  @@index([orderItemId])
+  @@index([infusionSessionId])
 }
 
 /// ER-ORDER-LIFECYCLE: immutable audit events for all order domains.
@@ -1687,14 +1741,18 @@ model MedicationAdministration {
   medicationPackageId                String?
   /// Phase 19B.1 — future dual-write to canonical product (nullable; not populated in this phase).
   medicationProductId                String?
+  /// M1.8B.7G — future dose-gated MAR linkage (nullable; not read or written at runtime in this phase).
+  medicationDoseInstanceId           String?
   administeredBy                     User                                   @relation(fields: [administeredByUserId], references: [id])
   encounter                          Encounter                              @relation(fields: [encounterId], references: [id])
   facility                           Facility                               @relation(fields: [facilityId], references: [id])
   infusionSession                    InfusionSession?                       @relation(fields: [infusionSessionId], references: [id])
   medicationPackage                  MedicationPackage?                     @relation(fields: [medicationPackageId], references: [id])
   medicationProduct                  MedicationProduct?                     @relation(fields: [medicationProductId], references: [id])
+  medicationDoseInstance             MedicationDoseInstance?                @relation("MedicationDoseInstanceMar", fields: [medicationDoseInstanceId], references: [id], onDelete: Restrict)
   orderItem                          OrderItem?                             @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
   patient                            Patient                                @relation(fields: [patientId], references: [id])
+  terminalForDoseInstances           MedicationDoseInstance[]               @relation("MedicationDoseInstanceTerminalMar")
   corrections                        MedicationAdministrationCorrection[]
   overrides                          MedicationAdministrationOverride[]
   verifications                      MedicationAdministrationVerification[]
@@ -1705,6 +1763,7 @@ model MedicationAdministration {
   @@index([encounterId])
   @@index([orderItemId])
   @@index([infusionSessionId])
+  @@index([medicationDoseInstanceId])
   @@index([medicationProductId])
   @@index([medicationPackageId])
   @@index([administeredAt])
@@ -2237,6 +2296,7 @@ model InfusionSession {
   medicationProduct         MedicationProduct?         @relation(fields: [medicationProductId], references: [id])
   orderItem                 OrderItem                  @relation(fields: [orderItemId], references: [id])
   medicationAdministrations MedicationAdministration[]
+  medicationDoseInstances   MedicationDoseInstance[]
 
   @@index([encounterId])
   @@index([facilityId])
