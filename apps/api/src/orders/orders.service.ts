@@ -40,6 +40,7 @@ import {
 } from "../common/workflow/order-item-action-guards.util";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { maybeCreateMedicationOrderScheduleForOrderItem } from "../medication-scheduling/medication-order-schedule.persistence";
+import { expandMedicationDosesForScheduleInTransaction } from "../medication-dose/medication-dose-expansion.service";
 import type {
   CareProcedureEffectiveClinicalTimeDto,
   MedicationInfusionStartDto,
@@ -55,6 +56,7 @@ import {
   buildOrderItemCandidate,
   deltaMinutesBetween,
   isCareProcedureOrderItem,
+  medicationSchedulingFeatureFlagsEnabled,
   orderItemStatusEligibleForBillingCapture,
   parseCareProcedureEffectiveClinicalTimeIso,
   toCareProcedureEffectiveClinicalTimeIsoUtc,
@@ -892,7 +894,7 @@ export class OrdersService {
       const dtoItem = input.dtoItems[i];
       if (!item || !dtoItem || item.catalogItemType !== "MEDICATION") continue;
 
-      await maybeCreateMedicationOrderScheduleForOrderItem(tx, {
+      const scheduleResult = await maybeCreateMedicationOrderScheduleForOrderItem(tx, {
         facilityId: input.facilityId,
         encounterId: input.encounterId,
         orderId: input.orderId,
@@ -906,6 +908,23 @@ export class OrdersService {
         createdByUserId: input.userId,
         featureFlags,
       });
+
+      if (
+        scheduleResult.created &&
+        scheduleResult.scheduleId &&
+        medicationSchedulingFeatureFlagsEnabled(featureFlags)
+      ) {
+        const schedule = await tx.medicationOrderSchedule.findUnique({
+          where: { id: scheduleResult.scheduleId },
+          select: { scheduleClassification: true },
+        });
+        if (schedule?.scheduleClassification === "RECURRING") {
+          await expandMedicationDosesForScheduleInTransaction(tx, {
+            medicationOrderScheduleId: scheduleResult.scheduleId,
+            featureFlags,
+          });
+        }
+      }
     }
   }
 
