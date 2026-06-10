@@ -14523,6 +14523,27 @@ export default {
     errVerifierRequired: "Second vérificateur ou dérogation requis.",
     errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
   },
+  marPassQueue: {
+    title: "Pass médicaments planifiés",
+    empty: "Aucune dose planifiée à administrer pour cette consultation.",
+    unknownMedication: "Médicament",
+    bucketCount: "{count} dose(s)",
+    doseLine: "Dose : {dose}",
+    routeLine: "Voie : {route}",
+    scheduledLine: "Prévu : {at}",
+    windowLine: "Fenêtre : {start} → {end}",
+    highAlertBadge: "Haut risque",
+    controlledBadge: "Contrôlé",
+    errOrderLineNotFound:
+      "Ligne d'ordonnance introuvable pour cette dose — utilisez le tableau MAR ci-dessous.",
+    bucket: {
+      OVERDUE: "En retard",
+      DUE: "À administrer",
+      IN_PROGRESS: "En cours",
+      HELD: "Suspendu",
+      UPCOMING: "À venir",
+    },
+  },
   marLasa: {
     title: "Médicament LASA — accusé requis",
     description:

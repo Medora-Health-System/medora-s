@@ -82,6 +82,13 @@ import {
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import {
+  fetchMedicationPassQueue,
+  type MedicationPassQueueItem,
+  type MedicationPassQueueResponse,
+} from "@/lib/medicationPassQueueApi";
+import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
+import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
+import {
   findMedicationInfusionTimelineFromOrderEvents,
   formatInfusionDurationForI18n,
   formatInfusionElapsedInnerOnly,
@@ -431,6 +438,8 @@ export function MedicationAdministrationTab({
     hideAdministeredAction?: boolean;
     /** Same input as open-orders infusion classifier — blocks accidental MAR “administered” for bags/IV abx. */
     infusionClassifyPayload?: MedicationInfusionCandidateInput;
+    /** M1.8B.7I.5 — dose-gated MAR instance when opened from pass queue. */
+    medicationDoseInstanceId?: string | null;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
@@ -508,6 +517,12 @@ export function MedicationAdministrationTab({
   const [infusionModalNote, setInfusionModalNote] = useState("");
   const [infusionDraftRestoredAt, setInfusionDraftRestoredAt] = useState<string | null>(null);
   const [infusionDraftSavedLocallyAt, setInfusionDraftSavedLocallyAt] = useState<string | null>(null);
+  const [passQueue, setPassQueue] = useState<MedicationPassQueueResponse>({
+    enabled: false,
+    at: "",
+    count: 0,
+    items: [],
+  });
   const marRestoringDraftRef = useRef(false);
   const infusionRestoringDraftRef = useRef(false);
   /** Re-render periodically so infusion elapsed time updates on the MAR grid. */
@@ -639,10 +654,11 @@ export function MedicationAdministrationTab({
     ]);
 
     try {
-      const [o, a, encRaw] = await Promise.all([
+      const [o, a, encRaw, passQueueRes] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
         apiFetch(`/encounters/${encounterId}`, { facilityId }),
+        fetchMedicationPassQueue(facilityId, { encounterId, includeUpcoming: true }),
       ]);
       let eventsRaw: unknown[] = [];
       try {
@@ -670,12 +686,14 @@ export function MedicationAdministrationTab({
       setOrders(mergeOrders(serverOrders, pendingOrders));
       setAdmins([...serverAdmins, ...pendingAdmins]);
       setOrderEventsRaw(eventsRaw);
+      setPassQueue(passQueueRes);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("marTab.loadFailed"));
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
       setOrderEventsRaw([]);
       setMarAllergyDocSummary(null);
+      setPassQueue({ enabled: false, at: new Date().toISOString(), count: 0, items: [] });
     } finally {
       setLoading(false);
     }
@@ -1066,7 +1084,10 @@ export function MedicationAdministrationTab({
 
   const advancedMarWarningCount = marAdvancedMedicationSafetyWarnings.length;
 
-  const openModal = (row: (typeof taskRows)[0], options?: { hideAdministeredAction?: boolean }) => {
+  const openModal = (
+    row: (typeof taskRows)[0],
+    options?: { hideAdministeredAction?: boolean; medicationDoseInstanceId?: string | null }
+  ) => {
     const hideAdmin = options?.hideAdministeredAction === true;
     setModalItem({
       orderItemId: row.orderItemId,
@@ -1085,6 +1106,7 @@ export function MedicationAdministrationTab({
       hideAdministeredAction: hideAdmin,
       infusionClassifyPayload: row.infusionClassifyPayload,
       governanceDisplay: row.governanceDisplay,
+      medicationDoseInstanceId: options?.medicationDoseInstanceId?.trim() || null,
     });
     setModalSubmitError(null);
     setModalAction(hideAdmin ? "refused" : "administered");
@@ -1137,6 +1159,22 @@ export function MedicationAdministrationTab({
     setMarGovernanceDetailsOpen(false);
     clearModalEffectiveTime();
   };
+
+  const openModalFromPassQueueItem = useCallback(
+    (item: MedicationPassQueueItem) => {
+      const row = taskRows.find((r) => r.orderItemId === item.orderItemId);
+      if (!row) {
+        setError(t("marPassQueue.errOrderLineNotFound"));
+        return;
+      }
+      if (row.isInfusionLifecycleMed) {
+        setError(t("marTab.errInfusionUseStartStop"));
+        return;
+      }
+      openModal(row, { medicationDoseInstanceId: item.medicationDoseInstanceId });
+    },
+    [taskRows, t]
+  );
 
   const closeModal = () => {
     if (submitting) return;
@@ -1441,7 +1479,8 @@ export function MedicationAdministrationTab({
         administeredQuantity: resolvedAdministeredQuantity,
       });
 
-      const body: Record<string, unknown> = {
+      const body = appendMedicationDoseInstanceIdToMarCreateBody(
+        {
         orderItemId,
         marAction: modalAction,
         administeredAt: documentedAt.toISOString(),
@@ -1545,7 +1584,9 @@ export function MedicationAdministrationTab({
                 : {}),
             }
           : {}),
-      };
+        },
+        modalItem.medicationDoseInstanceId
+      );
       const res = await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
         method: "POST",
         facilityId,
@@ -1650,6 +1691,14 @@ export function MedicationAdministrationTab({
       ) : null}
 
       <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
+
+      <MedicationPassQueuePanel
+        enabled={passQueue.enabled}
+        items={passQueue.items}
+        onSelectItem={openModalFromPassQueueItem}
+        actionsDisabled={!isOpen}
+        compact={marCompact}
+      />
 
       <h3 style={{ margin: marCompact ? "0 0 6px 0" : "0 0 8px 0", fontSize: marCompact ? 15 : 16 }}>{t("marTab.title")}</h3>
       {!isOpen ? <p style={{ margin: "0 0 12px 0", fontSize: 13, color: "#616161" }}>{t("marTab.closedHint")}</p> : null}

@@ -14495,6 +14495,27 @@ export default {
     errVerifierRequired: "Second verifier or override required.",
     errOverrideIncomplete: "Override reason and acknowledgment required.",
   },
+  marPassQueue: {
+    title: "Scheduled medication pass",
+    empty: "No scheduled doses to administer for this encounter.",
+    unknownMedication: "Medication",
+    bucketCount: "{count} dose(s)",
+    doseLine: "Dose: {dose}",
+    routeLine: "Route: {route}",
+    scheduledLine: "Scheduled: {at}",
+    windowLine: "Window: {start} → {end}",
+    highAlertBadge: "High alert",
+    controlledBadge: "Controlled",
+    errOrderLineNotFound:
+      "Order line not found for this dose — use the MAR table below.",
+    bucket: {
+      OVERDUE: "Overdue",
+      DUE: "Due",
+      IN_PROGRESS: "In progress",
+      HELD: "Held",
+      UPCOMING: "Upcoming",
+    },
+  },
   marLasa: {
     title: "LASA medication — acknowledgement required",
     description:
