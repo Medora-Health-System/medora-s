@@ -8,7 +8,7 @@ import {
   medicationSoftSafetyWarningsForOrderLine,
 } from "@/components/medication/MedicationSoftSafetyPanel";
 import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
-import { MEDICATION_DIRECTION_QUICK_PICKS } from "./createOrderMedicationDraft";
+import { medicationDirectionQuickPicksForRoute } from "./createOrderMedicationDraft";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -77,7 +77,7 @@ export function SelectedMedicationItems({
   onErQuantityConfirmationChange?: (lineId: string, confirmed: boolean) => void;
 }) {
   const { t, language } = useI18n();
-  const directionsListId = useId();
+  const directionsListIdPrefix = useId();
   const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
 
   if (items.length === 0) return null;
@@ -92,6 +92,8 @@ export function SelectedMedicationItems({
           const missingDirections = !item.notes?.trim();
           const needsIvConfirmation = item.route === "IVP" || item.route === "IVPB";
           const needsErQuantityConfirmation = erAdministerOnly && (item.quantity ?? 0) > 1;
+          const lineDirectionsListId = `${directionsListIdPrefix}-${item._lineId}`;
+          const directionQuickPicks = medicationDirectionQuickPicksForRoute(item.route);
           const highRiskWarning = highRiskMedicationWarning(item, t);
           const scheduleLabel = item._controlledSchedule?.trim()
             ? `${t("createOrderModal.controlledScheduleBadge")} ${item._controlledSchedule.trim()}`
@@ -233,14 +235,14 @@ export function SelectedMedicationItems({
                 <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
                 <input
                   type="text"
-                  list={directionsListId}
+                  list={lineDirectionsListId}
                   placeholder={t("createOrderModal.selectedMedSigPlaceholder")}
                   value={item.notes ?? ""}
                   onChange={(e) => onPatch(idx, { notes: e.target.value })}
                   style={inputSm}
                 />
-                <datalist id={directionsListId}>
-                  {MEDICATION_DIRECTION_QUICK_PICKS.map((option) => (
+                <datalist id={lineDirectionsListId}>
+                  {directionQuickPicks.map((option) => (
                     <option key={option} value={option} />
                   ))}
                 </datalist>

@@ -1,10 +1,16 @@
-import type { CreateOrderLineItem } from "./types";
+import type { CreateOrderLineItem, MedicationRoute } from "./types";
 
 export type OrderDraftTypeKey = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 
-export const MEDICATION_DIRECTION_QUICK_PICKS = [
+/** Fallback when route is unset or unrecognized (M1.8B.7J.6). */
+export const MEDICATION_DIRECTION_QUICK_PICKS_GENERIC = [
   "now",
   "once",
+  "give now",
+  "take as directed",
+] as const;
+
+export const MEDICATION_DIRECTION_QUICK_PICKS_PO = [
   "1 tablet now",
   "1 tab PO now",
   "1 tab PO daily",
@@ -13,10 +19,69 @@ export const MEDICATION_DIRECTION_QUICK_PICKS = [
   "1 tab PO QID",
   "1 tab PO q6h PRN",
   "1 tab PO q8h PRN",
-  "1 mL IVP now",
-  "give now",
   "take as directed",
 ] as const;
+
+export const MEDICATION_DIRECTION_QUICK_PICKS_IVPB = [
+  "1 g IVPB q24h",
+  "1 g IVPB q12h",
+  "1 g IVPB q8h",
+  "1 g IVPB q6h",
+  "500 mg IVPB q12h",
+  "500 mg IVPB q8h",
+  "Vancomycin 1 g IVPB q12h",
+  "Cefepime 2 g IVPB q8h",
+  "Ceftriaxone 1 g IVPB q24h",
+  "Piperacillin-tazobactam 4.5 g IVPB q6h",
+  "take as directed",
+] as const;
+
+export const MEDICATION_DIRECTION_QUICK_PICKS_IVP = [
+  "1 mL IVP now",
+  "give IVP now",
+  "IVP once",
+  "take as directed",
+] as const;
+
+export const MEDICATION_DIRECTION_QUICK_PICKS_IM = [
+  "IM now",
+  "IM once",
+  "take as directed",
+] as const;
+
+export const MEDICATION_DIRECTION_QUICK_PICKS_SQ = [
+  "SQ now",
+  "SQ daily",
+  "SQ BID",
+  "take as directed",
+] as const;
+
+/** @deprecated Use {@link medicationDirectionQuickPicksForRoute} — generic fallback only. */
+export const MEDICATION_DIRECTION_QUICK_PICKS = MEDICATION_DIRECTION_QUICK_PICKS_GENERIC;
+
+/**
+ * Route-aware direction datalist suggestions for medication order entry (M1.8B.7J.6).
+ * Does not mutate user-entered directions; suggestions only.
+ */
+export function medicationDirectionQuickPicksForRoute(
+  route?: MedicationRoute | string | null
+): readonly string[] {
+  const normalized = typeof route === "string" ? route.trim().toUpperCase() : "";
+  switch (normalized) {
+    case "PO":
+      return MEDICATION_DIRECTION_QUICK_PICKS_PO;
+    case "IVPB":
+      return MEDICATION_DIRECTION_QUICK_PICKS_IVPB;
+    case "IVP":
+      return MEDICATION_DIRECTION_QUICK_PICKS_IVP;
+    case "IM":
+      return MEDICATION_DIRECTION_QUICK_PICKS_IM;
+    case "SQ":
+      return MEDICATION_DIRECTION_QUICK_PICKS_SQ;
+    default:
+      return MEDICATION_DIRECTION_QUICK_PICKS_GENERIC;
+  }
+}
 
 export function isAdministerToPatientIntent(
   intent: CreateOrderLineItem["medicationFulfillmentIntent"] | undefined
