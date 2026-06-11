@@ -1,3 +1,4 @@
+import { normalizeMedicationRoute, type MedicationOrderRoute } from "@medora/shared";
 import type { CreateOrderLineItem, MedicationRoute } from "./types";
 
 export type OrderDraftTypeKey = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
@@ -23,6 +24,10 @@ export const MEDICATION_DIRECTION_QUICK_PICKS_PO = [
 ] as const;
 
 export const MEDICATION_DIRECTION_QUICK_PICKS_IVPB = [
+  "now",
+  "once",
+  "give IVPB now",
+  "IVPB once",
   "1 g IVPB q24h",
   "1 g IVPB q12h",
   "1 g IVPB q8h",
@@ -59,6 +64,49 @@ export const MEDICATION_DIRECTION_QUICK_PICKS_SQ = [
 /** @deprecated Use {@link medicationDirectionQuickPicksForRoute} — generic fallback only. */
 export const MEDICATION_DIRECTION_QUICK_PICKS = MEDICATION_DIRECTION_QUICK_PICKS_GENERIC;
 
+function normalizeDirectionQuickPickRouteToken(raw: string): string {
+  return raw
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/[._-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Resolve structured route for direction quick-picks (M1.8B.7J.6A).
+ * Uses shared catalog normalization first, then IVPB display-label aliases.
+ * Plain IV / intravenous without piggyback semantics stays unresolved (generic quick-picks).
+ */
+export function resolveMedicationDirectionQuickPickRoute(
+  route?: MedicationRoute | string | null
+): MedicationOrderRoute | null {
+  if (route == null) return null;
+  const raw = String(route).trim();
+  if (!raw) return null;
+
+  const structured = normalizeMedicationRoute(raw);
+  if (structured) return structured;
+
+  const token = normalizeDirectionQuickPickRouteToken(raw);
+  if (!token) return null;
+
+  if (
+    token === "IVPB" ||
+    token === "IV PIGGYBACK" ||
+    token === "IV PIGGY BACK" ||
+    token === "PIGGYBACK" ||
+    token === "INTRAVENOUS PIGGYBACK" ||
+    token.includes("PIGGYBACK")
+  ) {
+    return "IVPB";
+  }
+
+  return null;
+}
+
 /**
  * Route-aware direction datalist suggestions for medication order entry (M1.8B.7J.6).
  * Does not mutate user-entered directions; suggestions only.
@@ -66,8 +114,7 @@ export const MEDICATION_DIRECTION_QUICK_PICKS = MEDICATION_DIRECTION_QUICK_PICKS
 export function medicationDirectionQuickPicksForRoute(
   route?: MedicationRoute | string | null
 ): readonly string[] {
-  const normalized = typeof route === "string" ? route.trim().toUpperCase() : "";
-  switch (normalized) {
+  switch (resolveMedicationDirectionQuickPickRoute(route)) {
     case "PO":
       return MEDICATION_DIRECTION_QUICK_PICKS_PO;
     case "IVPB":

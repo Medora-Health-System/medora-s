@@ -115,16 +115,13 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
 
 });
 
-describe("medicationDirectionQuickPicksForRoute (M1.8B.7J.6)", () => {
-  it('medicationDirectionQuickPicksForRoute("PO") includes PO options', () => {
-    const picks = medicationDirectionQuickPicksForRoute("PO");
-    expect(picks).toContain("1 tab PO BID");
-    expect(picks).toContain("1 tab PO daily");
-    expect(picks).not.toContain("1 mL IVP now");
-  });
-
-  it('medicationDirectionQuickPicksForRoute("IVPB") includes q12h/q8h/q6h/q24h IVPB options', () => {
+describe("medicationDirectionQuickPicksForRoute (M1.8B.7J.6 / 7J.6A)", () => {
+  it('medicationDirectionQuickPicksForRoute("IVPB") includes one-time and recurring IVPB options', () => {
     const picks = medicationDirectionQuickPicksForRoute("IVPB");
+    expect(picks).toContain("now");
+    expect(picks).toContain("once");
+    expect(picks).toContain("give IVPB now");
+    expect(picks).toContain("IVPB once");
     expect(picks).toContain("1 g IVPB q12h");
     expect(picks).toContain("1 g IVPB q8h");
     expect(picks).toContain("1 g IVPB q6h");
@@ -133,10 +130,40 @@ describe("medicationDirectionQuickPicksForRoute (M1.8B.7J.6)", () => {
     expect(picks).toContain("Cefepime 2 g IVPB q8h");
   });
 
-  it('IVPB quick-picks do not include "1 tab PO BID"', () => {
+  it('medicationDirectionQuickPicksForRoute("ivpb") returns IVPB set', () => {
+    expect(medicationDirectionQuickPicksForRoute("ivpb")).toEqual([
+      ...medicationDirectionQuickPicksForRoute("IVPB"),
+    ]);
+  });
+
+  it('medicationDirectionQuickPicksForRoute("IV Piggyback") returns IVPB set', () => {
+    const picks = medicationDirectionQuickPicksForRoute("IV Piggyback");
+    expect(picks).toContain("1 g IVPB q12h");
+    expect(picks).toContain("give IVPB now");
+    expect(picks).not.toContain("1 tab PO BID");
+  });
+
+  it('medicationDirectionQuickPicksForRoute("PIGGYBACK") and INTRAVENOUS_PIGGYBACK return IVPB set', () => {
+    for (const route of ["PIGGYBACK", "INTRAVENOUS_PIGGYBACK"] as const) {
+      const picks = medicationDirectionQuickPicksForRoute(route);
+      expect(picks).toContain("1 g IVPB q8h");
+      expect(picks).not.toContain("1 tab PO BID");
+    }
+  });
+
+  it('IVPB set excludes "1 tab PO BID"', () => {
     const picks = medicationDirectionQuickPicksForRoute("IVPB");
     expect(picks).not.toContain("1 tab PO BID");
+    expect(picks).not.toContain("1 tab PO daily");
     expect(picks).not.toContain("1 tab PO TID");
+  });
+
+  it('medicationDirectionQuickPicksForRoute("PO") includes PO options', () => {
+    const picks = medicationDirectionQuickPicksForRoute("PO");
+    expect(picks).toContain("1 tab PO BID");
+    expect(picks).toContain("1 tab PO daily");
+    expect(picks).not.toContain("1 mL IVP now");
+    expect(picks).not.toContain("1 g IVPB q12h");
   });
 
   it('IVP quick-picks include IVP now', () => {
@@ -146,12 +173,18 @@ describe("medicationDirectionQuickPicksForRoute (M1.8B.7J.6)", () => {
     expect(picks).toContain("IVP once");
   });
 
-  it("unknown route falls back to generic quick-picks", () => {
+  it("unknown/blank route returns generic only", () => {
     expect(medicationDirectionQuickPicksForRoute(undefined)).toEqual([
       ...MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
     ]);
     expect(medicationDirectionQuickPicksForRoute("")).toEqual([...MEDICATION_DIRECTION_QUICK_PICKS_GENERIC]);
     expect(medicationDirectionQuickPicksForRoute("UNKNOWN")).toEqual([
+      ...MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
+    ]);
+    expect(medicationDirectionQuickPicksForRoute("IV")).toEqual([
+      ...MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
+    ]);
+    expect(medicationDirectionQuickPicksForRoute("intravenous")).toEqual([
       ...MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
     ]);
   });
@@ -162,6 +195,14 @@ describe("medicationDirectionQuickPicksForRoute (M1.8B.7J.6)", () => {
         directionsSig: "1 g IVPB q12h",
       })
     ).toBe("Q12H");
+  });
+
+  it('"give IVPB now" resolves frequencyCode NOW (direct-MAR, not recurring)', () => {
+    expect(
+      resolveMedicationOrderItemFrequencyCode({
+        directionsSig: "give IVPB now",
+      })
+    ).toBe("NOW");
   });
 
   it("PO BID directions still resolve frequencyCode BID for order payload", () => {
@@ -185,11 +226,17 @@ describe("CreateOrderModal medication draft wiring (M1.7B.6)", () => {
     expect(modalSource).toContain("handleClose");
   });
 
-  it("SelectedMedicationItems uses route-specific directions datalist quick picks", () => {
+  it("SelectedMedicationItems uses item.route for route-specific directions datalist quick picks", () => {
     const source = readFileSync(join(import.meta.dirname, "SelectedMedicationItems.tsx"), "utf8");
+    expect(source).toContain("medicationDirectionQuickPicksForRoute(item.route)");
     expect(source).toContain("list={lineDirectionsListId}");
-    expect(source).toContain("medicationDirectionQuickPicksForRoute");
     expect(source).toContain("directionQuickPicks");
+  });
+
+  it("SelectedMedicationItems renders per-line datalist ids for mixed-route orders", () => {
+    const source = readFileSync(join(import.meta.dirname, "SelectedMedicationItems.tsx"), "utf8");
+    expect(source).toContain("`${directionsListIdPrefix}-${item._lineId}`");
+    expect(source).toContain("<datalist id={lineDirectionsListId}>");
   });
 
   it("CreateOrderModal still infers frequencyCode from directions on submit", () => {
