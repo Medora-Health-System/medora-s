@@ -18,6 +18,7 @@ function sampleItem(overrides?: Partial<MarShiftTimelineCellItem>): MarShiftTime
     medicationLabel: "Potassium Chloride IVPB",
     primaryText: "KCl IVPB",
     secondaryText: "Witness",
+    tertiaryText: "",
     doseStatus: "DUE",
     doseKind: "IVPB_SESSION",
     route: "IVPB",
@@ -26,7 +27,18 @@ function sampleItem(overrides?: Partial<MarShiftTimelineCellItem>): MarShiftTime
     dueWindowStartAt: "2026-06-11T08:00:00.000Z",
     dueWindowEndAt: "2026-06-11T09:00:00.000Z",
     requiresWitness: true,
+    readOnly: false,
     clinicalAction: "START_INFUSION",
+    startedAt: null,
+    startedByDisplay: null,
+    startedByInitials: null,
+    stoppedAt: null,
+    stoppedByDisplay: null,
+    stoppedByInitials: null,
+    administeredAt: null,
+    administeredByDisplay: null,
+    administeredByInitials: null,
+    completionSummary: null,
     hover: {
       title: "KCl IVPB",
       due: "08:00",
@@ -119,10 +131,11 @@ describe("FacilityMarShiftTimeline (M1.8B.7K.2)", () => {
     expect(drawer).toContain('data-testid="mar-shift-timeline-drawer"');
   });
 
-  it("drawer renders actions with mutation actions disabled", () => {
-    expect(drawer).toContain("isMarShiftTimelineMutationAction");
+  it("drawer renders action buttons with handler-based enablement", () => {
+    expect(drawer).toContain("isMarShiftTimelineActionEnabled");
+    expect(drawer).toContain("actionHandlers");
     expect(drawer).toContain('data-testid={`mar-shift-timeline-action-${action}`}');
-    expect(drawer).toContain('t("marShiftTimeline.comingSoon")');
+    expect(drawer).toContain('data-enabled={enabled ? "true" : "false"}');
     expect(isMarShiftTimelineMutationAction("ADMINISTER")).toBe(true);
     expect(isMarShiftTimelineMutationAction("VIEW_ORDER")).toBe(false);
   });
@@ -144,12 +157,9 @@ describe("FacilityMarShiftTimeline (M1.8B.7K.2)", () => {
     expect(timeline).toContain("useEffect");
   });
 
-  it("integrates into MedicationAdministrationTab above pass queue", () => {
+  it("integrates into MedicationAdministrationTab as unified primary MAR UI", () => {
     expect(marTab).toContain("<FacilityMarShiftTimeline");
-    const timelineIdx = marTab.indexOf("<FacilityMarShiftTimeline");
-    const passQueueIdx = marTab.indexOf("<MedicationPassQueuePanel");
-    expect(timelineIdx).toBeGreaterThan(-1);
-    expect(passQueueIdx).toBeGreaterThan(timelineIdx);
+    expect(marTab).toContain("MAR_TAB_SHOW_LEGACY_SECTIONS");
     expect(marTab).toContain("encounterId={encounterId}");
   });
 

@@ -5,6 +5,7 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   Req,
   UseGuards,
   BadRequestException,
@@ -14,6 +15,12 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
+import {
+  ENCOUNTER_ORDER_EVENTS_LIST_DEFAULT_LIMIT,
+  ENCOUNTER_ORDER_EVENTS_LIST_MAX_LIMIT,
+  parseOptionalPositiveInt,
+  resolveBoundedListLimit,
+} from "../common/encounter-clinical-read-limits";
 import { PharmacyVerificationService } from "../medication-safety/pharmacy-verification.service";
 import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
 import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.service";
@@ -133,12 +140,21 @@ export class OrdersController {
 
   @Get("encounters/:encounterId/order-events")
   @Roles("RN", "PROVIDER", "LAB", "RADIOLOGY", "PHARMACY", "ADMIN")
-  async findOrderEventsByEncounter(@Param("encounterId") encounterId: string, @Req() req: any) {
+  async findOrderEventsByEncounter(
+    @Param("encounterId") encounterId: string,
+    @Query("limit") limitRaw: string | undefined,
+    @Req() req: any
+  ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
     if (!facilityId) {
       throw new BadRequestException("Établissement requis");
     }
-    return this.ordersService.findOrderEventsByEncounter(encounterId, facilityId);
+    const limit = resolveBoundedListLimit(
+      parseOptionalPositiveInt(limitRaw),
+      ENCOUNTER_ORDER_EVENTS_LIST_DEFAULT_LIMIT,
+      ENCOUNTER_ORDER_EVENTS_LIST_MAX_LIMIT
+    );
+    return this.ordersService.findOrderEventsByEncounter(encounterId, facilityId, { limit });
   }
 
   @Get("orders/provider-directory")

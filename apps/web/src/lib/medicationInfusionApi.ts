@@ -2,8 +2,15 @@ import { apiFetch } from "@/lib/apiClient";
 
 export type MedicationInfusionStartPayload = {
   notes?: string;
+  medicationDoseInstanceId?: string;
   highAlertVerifierUserId?: string;
   highAlertVerifierDisplayName?: string;
+};
+
+export type MedicationInfusionStopPayload = {
+  notes?: string;
+  stoppedAt?: string;
+  medicationDoseInstanceId?: string;
 };
 
 /** POST /orders/items/:id/infusion/start — IVPB infusion START (M1.8B.7E.1 witness when required). */
@@ -19,6 +26,9 @@ export function startMedicationInfusion(
         : {}
       : {
           ...(payload?.notes?.trim() ? { notes: payload.notes.trim() } : {}),
+          ...(payload?.medicationDoseInstanceId?.trim()
+            ? { medicationDoseInstanceId: payload.medicationDoseInstanceId.trim() }
+            : {}),
           ...(payload?.highAlertVerifierUserId?.trim()
             ? { highAlertVerifierUserId: payload.highAlertVerifierUserId.trim() }
             : {}),
@@ -35,11 +45,27 @@ export function startMedicationInfusion(
 }
 
 /** POST /orders/items/:id/infusion/stop — completes line via backend MAR path. */
-export function stopMedicationInfusion(orderItemId: string, facilityId: string, note?: string): Promise<unknown> {
+export function stopMedicationInfusion(
+  orderItemId: string,
+  facilityId: string,
+  payload?: MedicationInfusionStopPayload | string
+): Promise<unknown> {
+  const body =
+    typeof payload === "string"
+      ? payload.trim()
+        ? { notes: payload.trim() }
+        : {}
+      : {
+          ...(payload?.notes?.trim() ? { notes: payload.notes.trim() } : {}),
+          ...(payload?.stoppedAt?.trim() ? { stoppedAt: payload.stoppedAt.trim() } : {}),
+          ...(payload?.medicationDoseInstanceId?.trim()
+            ? { medicationDoseInstanceId: payload.medicationDoseInstanceId.trim() }
+            : {}),
+        };
   return apiFetch(`/orders/items/${orderItemId}/infusion/stop`, {
     method: "POST",
     facilityId,
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(note?.trim() ? { notes: note.trim() } : {}),
+    body: JSON.stringify(body),
   });
 }

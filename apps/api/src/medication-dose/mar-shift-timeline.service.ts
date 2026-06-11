@@ -10,6 +10,8 @@ import {
   resolveMarShiftTimelineDrawerActions,
   resolveMarShiftTimelineWindow,
   shouldIncludeMarShiftTimelineDose,
+  isMarShiftTimelineItemReadOnly,
+  buildMarShiftTimelineTertiaryText,
   medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
   parseMedicationDoseKind,
@@ -32,6 +34,7 @@ import {
   type MedicationPassQueueDoseRow,
 } from "./medication-pass-queue-dose.select";
 import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.service";
+import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
 
 export type MarShiftTimelineQuery = {
   shiftCode?: MarShiftTimelineShiftCode | string;
@@ -56,7 +59,19 @@ export type MarShiftTimelineCellItem = {
   medicationLabel: string | null;
   primaryText: string;
   secondaryText: string;
+  tertiaryText: string;
   doseStatus: string;
+  readOnly: boolean;
+  startedAt: string | null;
+  startedByDisplay: string | null;
+  startedByInitials: string | null;
+  stoppedAt: string | null;
+  stoppedByDisplay: string | null;
+  stoppedByInitials: string | null;
+  administeredAt: string | null;
+  administeredByDisplay: string | null;
+  administeredByInitials: string | null;
+  completionSummary: string | null;
   doseKind: string;
   route: string | null;
   frequencyCode: string | null;
@@ -237,6 +252,9 @@ export class MarShiftTimelineService {
         ? await loadMedicationSafetyGovernanceByCatalogIdSafe(this.prisma, catalogIds)
         : new Map<string, MedicationSafetyGovernanceSnapshot>();
 
+    const administrationEnrichmentByDoseId =
+      await loadMarShiftTimelineAdministrationEnrichment(this.prisma, doses);
+
     const rowMap = new Map<string, MarShiftTimelineRow>();
 
     for (const dose of doses) {
@@ -300,7 +318,8 @@ export class MarShiftTimelineService {
         parsedDoseKind ?? dose.doseKind,
         parsedStatus
       );
-      const { primaryText, secondaryText } = buildMarShiftTimelineCellDisplay({
+      const enrichment = administrationEnrichmentByDoseId.get(dose.id) ?? null;
+      const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
         medicationLabel,
         doseKind: parsedDoseKind ?? dose.doseKind,
         doseStatus: parsedStatus,
@@ -308,7 +327,15 @@ export class MarShiftTimelineService {
         frequencyCode: frequencySnapshot?.frequencyCode ?? null,
         requiresWitness,
         responseDueAt: dose.responseDueAt,
+        enrichment,
       });
+      const resolvedTertiaryText =
+        tertiaryText.trim() ||
+        buildMarShiftTimelineTertiaryText({
+          doseKind: parsedDoseKind ?? dose.doseKind,
+          doseStatus: parsedStatus,
+          enrichment,
+        });
 
       const doseValue = orderedSnapshot?.doseValue?.trim();
       const doseUnit = orderedSnapshot?.doseUnit?.trim();
@@ -324,7 +351,19 @@ export class MarShiftTimelineService {
         medicationLabel,
         primaryText,
         secondaryText,
+        tertiaryText: resolvedTertiaryText,
         doseStatus: parsedStatus,
+        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction),
+        startedAt: enrichment?.startedAt ?? null,
+        startedByDisplay: enrichment?.startedByDisplay ?? null,
+        startedByInitials: enrichment?.startedByInitials ?? null,
+        stoppedAt: enrichment?.stoppedAt ?? null,
+        stoppedByDisplay: enrichment?.stoppedByDisplay ?? null,
+        stoppedByInitials: enrichment?.stoppedByInitials ?? null,
+        administeredAt: enrichment?.administeredAt ?? null,
+        administeredByDisplay: enrichment?.administeredByDisplay ?? null,
+        administeredByInitials: enrichment?.administeredByInitials ?? null,
+        completionSummary: enrichment?.completionSummary ?? (resolvedTertiaryText || null),
         doseKind: parsedDoseKind ?? dose.doseKind,
         route,
         frequencyCode: frequencySnapshot?.frequencyCode ?? null,

@@ -1,9 +1,21 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
-import { isMarShiftTimelineMutationAction } from "@/features/mar/marShiftTimelineDisplay";
+import {
+  defaultMarShiftTimelineStartTimeValue,
+  defaultMarShiftTimelineStopTimeValue,
+  formatMarShiftTimelineDueWindow,
+  isMarShiftTimelineDrawerReadOnly,
+  marShiftTimelinePrimaryDrawerAction,
+} from "@/features/mar/marShiftTimelineDisplay";
+import {
+  isMarShiftTimelineActionEnabled,
+  isMarShiftTimelineActionShowComingSoon,
+  MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED,
+  type MarShiftTimelineActionHandlers,
+} from "@/features/mar/marShiftTimelineActions";
 
 export type FacilityMarShiftTimelineDrawerContext = {
   patientDisplay: string;
@@ -13,7 +25,9 @@ export type FacilityMarShiftTimelineDrawerContext = {
 export type FacilityMarShiftTimelineDrawerProps = {
   item: MarShiftTimelineCellItem | null;
   context: FacilityMarShiftTimelineDrawerContext | null;
+  actionHandlers?: MarShiftTimelineActionHandlers | null;
   onClose: () => void;
+  onActionSuccess?: () => void | Promise<void>;
 };
 
 function actionLabelKey(action: MarShiftTimelineDrawerAction): string {
@@ -23,13 +37,36 @@ function actionLabelKey(action: MarShiftTimelineDrawerAction): string {
 export function FacilityMarShiftTimelineDrawer({
   item,
   context,
+  actionHandlers = null,
   onClose,
+  onActionSuccess,
 }: FacilityMarShiftTimelineDrawerProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const closeRef = useRef<HTMLButtonElement>(null);
+  const [startTimeValue, setStartTimeValue] = useState("");
+  const [stopTimeValue, setStopTimeValue] = useState("");
+  const [stopNotes, setStopNotes] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
+  const primaryAction = item ? marShiftTimelinePrimaryDrawerAction(item) : null;
+  const showStartTimeField = item?.clinicalAction === "START_INFUSION";
+  const showStopTimeField = item?.clinicalAction === "STOP_INFUSION";
+  const showStopNotesField = item?.clinicalAction === "STOP_INFUSION";
 
   useEffect(() => {
     if (item) closeRef.current?.focus();
+  }, [item]);
+
+  useEffect(() => {
+    if (!item) return;
+    setStartTimeValue(defaultMarShiftTimelineStartTimeValue(item));
+    setStopTimeValue(defaultMarShiftTimelineStopTimeValue(item));
+    setStopNotes("");
+    setActionError(null);
+    setSubmitting(false);
   }, [item]);
 
   useEffect(() => {
@@ -43,17 +80,96 @@ export function FacilityMarShiftTimelineDrawer({
 
   if (!item || !context) return null;
 
-  const detailRows: { label: string; value: string | null | undefined }[] = [
+  const scheduledDisplay = item.hover.due;
+  const dueWindowDisplay = formatMarShiftTimelineDueWindow(
+    item.dueWindowStartAt,
+    item.dueWindowEndAt,
+    dateLocale
+  );
+
+  const detailRows: { label: string; value: string | null | undefined; testId?: string }[] = [
     { label: t("marShiftTimeline.drawer.patient"), value: context.patientDisplay },
     { label: t("marShiftTimeline.drawer.room"), value: context.roomLabel },
-    { label: t("marShiftTimeline.drawer.due"), value: item.hover.due },
+    {
+      label: t("marShiftTimeline.drawer.scheduled"),
+      value: scheduledDisplay,
+      testId: "mar-shift-timeline-drawer-scheduled",
+    },
+    {
+      label: t("marShiftTimeline.drawer.dueWindow"),
+      value: dueWindowDisplay,
+      testId: "mar-shift-timeline-drawer-due-window",
+    },
+    { label: t("marShiftTimeline.drawer.status"), value: item.hover.status },
     { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
     { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
-    { label: t("marShiftTimeline.drawer.witness"), value: item.hover.witness },
-    { label: t("marShiftTimeline.drawer.status"), value: item.hover.status },
     { label: t("marShiftTimeline.drawer.frequency"), value: item.frequencyCode },
+    {
+      label: t("marShiftTimeline.drawer.witness"),
+      value: item.requiresWitness ? t("marShiftTimeline.drawer.witnessRequired") : null,
+    },
     { label: t("marShiftTimeline.drawer.clinicalAction"), value: item.clinicalAction },
+    {
+      label: t("marShiftTimeline.drawer.startedBy"),
+      value: item.startedByDisplay,
+      testId: "mar-shift-timeline-drawer-started-by",
+    },
+    {
+      label: t("marShiftTimeline.drawer.startedAt"),
+      value: item.startedAt ? new Date(item.startedAt).toLocaleString(dateLocale) : null,
+      testId: "mar-shift-timeline-drawer-started-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.stoppedBy"),
+      value: item.stoppedByDisplay,
+      testId: "mar-shift-timeline-drawer-stopped-by",
+    },
+    {
+      label: t("marShiftTimeline.drawer.stoppedAt"),
+      value: item.stoppedAt ? new Date(item.stoppedAt).toLocaleString(dateLocale) : null,
+      testId: "mar-shift-timeline-drawer-stopped-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.administeredBy"),
+      value: item.administeredByDisplay,
+    },
+    {
+      label: t("marShiftTimeline.drawer.administeredAt"),
+      value: item.administeredAt ? new Date(item.administeredAt).toLocaleString(dateLocale) : null,
+    },
+    {
+      label: t("marShiftTimeline.drawer.completionSummary"),
+      value: item.completionSummary,
+    },
   ];
+
+  const handleActionClick = async (action: MarShiftTimelineDrawerAction) => {
+    if (!actionHandlers || !item) return;
+    if (!isMarShiftTimelineActionEnabled(action, item, actionHandlers)) return;
+
+    setActionError(null);
+    setSubmitting(true);
+    try {
+      if (action === "START_INFUSION") {
+        const completed = await actionHandlers.onRequestStartInfusion(item);
+        if (completed) {
+          await onActionSuccess?.();
+        }
+        return;
+      }
+      if (action === "STOP_INFUSION") {
+        await actionHandlers.onExecuteStopInfusion(item, {
+          notes: stopNotes,
+          stopTimeLocal: stopTimeValue,
+        });
+        await onActionSuccess?.();
+      }
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div
@@ -71,6 +187,7 @@ export function FacilityMarShiftTimelineDrawer({
     >
       <aside
         data-testid="mar-shift-timeline-drawer"
+        data-read-only={readOnly ? "true" : "false"}
         role="dialog"
         aria-modal="true"
         aria-labelledby="mar-shift-timeline-drawer-title"
@@ -109,52 +226,185 @@ export function FacilityMarShiftTimelineDrawer({
           </button>
         </div>
 
-        <dl style={{ margin: "16px 0", fontSize: 13, lineHeight: 1.5 }}>
+        {readOnly ? (
+          <p
+            data-testid="mar-shift-timeline-drawer-readonly-notice"
+            style={{ margin: "12px 0 0", fontSize: 13, color: "#64748b" }}
+          >
+            {t("marShiftTimeline.drawer.readOnlyNotice")}
+          </p>
+        ) : null}
+
+        {actionError ? (
+          <p
+            data-testid="mar-shift-timeline-drawer-action-error"
+            style={{ margin: "12px 0 0", fontSize: 13, color: "#b45309" }}
+          >
+            {actionError}
+          </p>
+        ) : null}
+
+        <dl style={{ margin: "16px 0", fontSize: 13, lineHeight: 1.5, flex: 1, overflowY: "auto" }}>
           {detailRows.map((row) =>
             row.value?.trim() ? (
-              <div key={row.label} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, marginBottom: 8 }}>
+              <div
+                key={row.label}
+                data-testid={row.testId}
+                style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, marginBottom: 8 }}
+              >
                 <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>{row.label}</dt>
                 <dd style={{ margin: 0, color: "#0f172a" }}>{row.value}</dd>
               </div>
             ) : null
           )}
+
+          {showStartTimeField ? (
+            <div style={{ marginTop: 12 }}>
+              <label
+                htmlFor="mar-shift-timeline-start-time"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+              >
+                {t("marShiftTimeline.drawer.startTimeField")}
+              </label>
+              <input
+                id="mar-shift-timeline-start-time"
+                data-testid="mar-shift-timeline-drawer-start-time"
+                type="datetime-local"
+                value={startTimeValue}
+                onChange={(e) => setStartTimeValue(e.target.value)}
+                disabled={readOnly || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 14,
+                  boxSizing: "border-box",
+                }}
+              />
+              {!MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED ? (
+                <p
+                  data-testid="mar-shift-timeline-drawer-start-time-unsupported"
+                  style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}
+                >
+                  {t("marShiftTimeline.drawer.startTimeAutoRecorded")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {showStopTimeField ? (
+            <div style={{ marginTop: 12 }}>
+              <label
+                htmlFor="mar-shift-timeline-stop-time"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+              >
+                {t("marShiftTimeline.drawer.stopTimeField")}
+              </label>
+              <input
+                id="mar-shift-timeline-stop-time"
+                data-testid="mar-shift-timeline-drawer-stop-time"
+                type="datetime-local"
+                value={stopTimeValue}
+                onChange={(e) => setStopTimeValue(e.target.value)}
+                disabled={readOnly || submitting}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 14,
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          ) : null}
+
+          {showStopNotesField ? (
+            <div style={{ marginTop: 12 }}>
+              <label
+                htmlFor="mar-shift-timeline-stop-notes"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+              >
+                {t("marShiftTimeline.drawer.stopNotesField")}
+              </label>
+              <textarea
+                id="mar-shift-timeline-stop-notes"
+                data-testid="mar-shift-timeline-drawer-stop-notes"
+                value={stopNotes}
+                onChange={(e) => setStopNotes(e.target.value)}
+                disabled={readOnly || submitting}
+                rows={2}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 14,
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+          ) : null}
         </dl>
 
-        <div style={{ marginTop: "auto" }}>
-          <h3 style={{ margin: "0 0 10px 0", fontSize: 14, fontWeight: 700 }}>{t("marShiftTimeline.drawer.actionsHeading")}</h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {item.actions.map((action) => {
-              const isMutation = isMarShiftTimelineMutationAction(action);
-              return (
-                <button
-                  key={action}
-                  type="button"
-                  data-testid={`mar-shift-timeline-action-${action}`}
-                  disabled={isMutation || action === "VIEW_ORDER"}
-                  title={isMutation || action === "VIEW_ORDER" ? t("marShiftTimeline.comingSoon") : undefined}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #e2e8f0",
-                    backgroundColor: isMutation || action === "VIEW_ORDER" ? "#f8fafc" : "#fff",
-                    color: isMutation || action === "VIEW_ORDER" ? "#94a3b8" : "#0f172a",
-                    cursor: isMutation || action === "VIEW_ORDER" ? "not-allowed" : "pointer",
-                    fontSize: 14,
-                  }}
-                >
-                  {t(actionLabelKey(action))}
-                  {isMutation || action === "VIEW_ORDER" ? (
-                    <span style={{ marginLeft: 8, fontSize: 11, color: "#94a3b8" }}>
-                      ({t("marShiftTimeline.comingSoon")})
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
+        {!readOnly ? (
+          <div style={{ marginTop: "auto" }}>
+            <h3 style={{ margin: "0 0 10px 0", fontSize: 14, fontWeight: 700 }}>
+              {t("marShiftTimeline.drawer.actionsHeading")}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {item.actions.map((action) => {
+                const enabled = isMarShiftTimelineActionEnabled(action, item, actionHandlers);
+                const comingSoon = isMarShiftTimelineActionShowComingSoon(action, item);
+                const isPrimary = primaryAction === action;
+                const disabled = !enabled || submitting || actionHandlers?.busy;
+                return (
+                  <button
+                    key={action}
+                    type="button"
+                    data-testid={`mar-shift-timeline-action-${action}`}
+                    data-primary-action={isPrimary ? "true" : "false"}
+                    data-enabled={enabled ? "true" : "false"}
+                    disabled={disabled}
+                    onClick={() => void handleActionClick(action)}
+                    title={comingSoon ? t("marShiftTimeline.comingSoon") : undefined}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: isPrimary && enabled ? "1px solid #2563eb" : "1px solid #e2e8f0",
+                      backgroundColor:
+                        !enabled
+                          ? "#f8fafc"
+                          : isPrimary
+                            ? "#eff6ff"
+                            : "#fff",
+                      color: !enabled ? "#94a3b8" : "#0f172a",
+                      cursor: disabled ? "not-allowed" : "pointer",
+                      fontSize: 14,
+                      fontWeight: isPrimary && enabled ? 700 : 400,
+                    }}
+                  >
+                    {t(actionLabelKey(action))}
+                    {comingSoon ? (
+                      <span style={{ marginLeft: 8, fontSize: 11, color: "#94a3b8" }}>
+                        ({t("marShiftTimeline.comingSoon")})
+                      </span>
+                    ) : null}
+                    {submitting && enabled && isPrimary ? (
+                      <span style={{ marginLeft: 8, fontSize: 11, color: "#64748b" }}>
+                        ({t("common.loading")})
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : null}
       </aside>
     </div>
   );

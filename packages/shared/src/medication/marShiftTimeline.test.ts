@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildMarShiftTimelineCellDisplay,
   buildMarShiftTimelineColumns,
+  buildMarShiftTimelineCompletionSummary,
   buildMarShiftTimelineTitle,
+  formatMarShiftTimelineClinicianInitials,
   formatMarShiftTimelineHourLabel,
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
@@ -101,5 +103,87 @@ describe("marShiftTimeline (M1.8B.7K.1)", () => {
       columns,
     });
     expect(columns.find((c) => c.key === key)?.label).toBe("08A");
+  });
+
+  it("formatMarShiftTimelineClinicianInitials builds EP from Elizabeth Posada", () => {
+    expect(formatMarShiftTimelineClinicianInitials("Elizabeth", "Posada")).toBe("EP");
+  });
+
+  it("buildMarShiftTimelineCompletionSummary formats in-progress IVPB tertiary", () => {
+    expect(
+      buildMarShiftTimelineCompletionSummary({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "IN_PROGRESS",
+        startedAt: "2026-06-11T17:14:00.000Z",
+        startedByInitials: "EP",
+        stoppedAt: null,
+        stoppedByInitials: null,
+        administeredAt: null,
+        administeredByInitials: null,
+      })
+    ).toBe("EP 17:14 ▶");
+  });
+
+  it("buildMarShiftTimelineCellDisplay shows INFUSING for in-progress IVPB", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Ceftriaxone",
+      doseKind: "IVPB_SESSION",
+      doseStatus: "IN_PROGRESS",
+      route: "IVPB",
+      frequencyCode: "Q12H",
+      requiresWitness: false,
+      enrichment: {
+        startedAt: "2026-06-11T17:14:00.000Z",
+        startedByDisplay: "Elizabeth Posada",
+        startedByInitials: "EP",
+        stoppedAt: null,
+        stoppedByDisplay: null,
+        stoppedByInitials: null,
+        administeredAt: null,
+        administeredByDisplay: null,
+        administeredByInitials: null,
+        completionSummary: "EP 17:14 ▶",
+      },
+    });
+    expect(display.secondaryText).toBe("INFUSING");
+    expect(display.tertiaryText).toContain("EP");
+  });
+
+  it("buildMarShiftTimelineCellDisplay shows ADMIN tertiary for due PO dose", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Furosemide",
+      doseKind: "FIXED_ADMINISTRATION",
+      doseStatus: "DUE",
+      route: "PO",
+      frequencyCode: "BID",
+      requiresWitness: false,
+    });
+    expect(display.secondaryText).toBe("PO");
+    expect(display.tertiaryText).toBe("ADMIN");
+  });
+
+  it("buildMarShiftTimelineCellDisplay shows DONE and completion for completed IVPB", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Ceftriaxone",
+      doseKind: "IVPB_SESSION",
+      doseStatus: "COMPLETED",
+      route: "IVPB",
+      frequencyCode: "Q12H",
+      requiresWitness: false,
+      enrichment: {
+        startedAt: "2026-06-11T17:14:00.000Z",
+        startedByDisplay: "Elizabeth Posada",
+        startedByInitials: "EP",
+        stoppedAt: "2026-06-11T17:42:00.000Z",
+        stoppedByDisplay: "Elizabeth Posada",
+        stoppedByInitials: "EP",
+        administeredAt: null,
+        administeredByDisplay: null,
+        administeredByInitials: null,
+        completionSummary: "EP 17:14–17:42",
+      },
+    });
+    expect(display.secondaryText).toBe("DONE");
+    expect(display.tertiaryText).toBe("EP 17:14–17:42");
   });
 });

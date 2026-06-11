@@ -24,6 +24,7 @@ export type MarShiftTimelineCellItem = {
   medicationLabel: string | null;
   primaryText: string;
   secondaryText: string;
+  tertiaryText: string;
   doseStatus: string;
   doseKind: string;
   route: string | null;
@@ -32,7 +33,18 @@ export type MarShiftTimelineCellItem = {
   dueWindowStartAt: string;
   dueWindowEndAt: string;
   requiresWitness: boolean;
+  readOnly: boolean;
   clinicalAction: string | null;
+  startedAt: string | null;
+  startedByDisplay: string | null;
+  startedByInitials: string | null;
+  stoppedAt: string | null;
+  stoppedByDisplay: string | null;
+  stoppedByInitials: string | null;
+  administeredAt: string | null;
+  administeredByDisplay: string | null;
+  administeredByInitials: string | null;
+  completionSummary: string | null;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
 };

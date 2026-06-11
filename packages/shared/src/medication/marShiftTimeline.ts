@@ -67,6 +67,20 @@ export type MarShiftTimelineHover = {
   status: string;
 };
 
+/** Read-only performer / completion fields for timeline cells (M1.8B.7K.3). */
+export type MarShiftTimelineAdministrationEnrichment = {
+  startedAt: string | null;
+  startedByDisplay: string | null;
+  startedByInitials: string | null;
+  stoppedAt: string | null;
+  stoppedByDisplay: string | null;
+  stoppedByInitials: string | null;
+  administeredAt: string | null;
+  administeredByDisplay: string | null;
+  administeredByInitials: string | null;
+  completionSummary: string | null;
+};
+
 export function buildMarShiftTimelineTitle(facilityName: string): string {
   const name = facilityName.trim() || "Facility";
   return `${name} MAR SHIFT TIMELINE`;
@@ -288,6 +302,102 @@ function abbreviateMedicationLabelForTimeline(medicationLabel: string): string {
   return firstWord.length > 20 ? `${firstWord.slice(0, 20)}…` : firstWord;
 }
 
+export function formatMarShiftTimelineClinicianInitials(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined
+): string | null {
+  const first = firstName?.trim()?.[0];
+  const last = lastName?.trim()?.[0];
+  if (!first && !last) return null;
+  return `${(first ?? "").toUpperCase()}${(last ?? "").toUpperCase()}` || null;
+}
+
+export function formatMarShiftTimelineClinicianDisplay(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined
+): string | null {
+  const parts = [firstName?.trim(), lastName?.trim()].filter(Boolean);
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+export function buildMarShiftTimelineCompletionSummary(input: {
+  doseKind: MedicationDoseKind | string | null | undefined;
+  doseStatus: MedicationDoseStatus;
+  startedAt: string | null;
+  startedByInitials: string | null;
+  stoppedAt: string | null;
+  stoppedByInitials: string | null;
+  administeredAt: string | null;
+  administeredByInitials: string | null;
+}): string | null {
+  if (isIvpbSessionDoseKind(input.doseKind)) {
+    if (input.doseStatus === "IN_PROGRESS" && input.startedAt) {
+      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt));
+      const initials = input.startedByInitials?.trim();
+      return initials ? `${initials} ${startTime} ▶` : `${startTime} ▶`;
+    }
+    if (input.doseStatus === "COMPLETED" && input.startedAt && input.stoppedAt) {
+      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt));
+      const stopTime = formatMarShiftTimelineDueTime(new Date(input.stoppedAt));
+      const startInitials = input.startedByInitials?.trim();
+      const stopInitials = input.stoppedByInitials?.trim();
+      if (startInitials && stopInitials) {
+        if (startInitials === stopInitials) {
+          return `${startInitials} ${startTime}–${stopTime}`;
+        }
+        return `${startInitials} ${startTime}–${stopInitials} ${stopTime}`;
+      }
+      return `${startTime}–${stopTime}`;
+    }
+    return null;
+  }
+
+  if (input.doseStatus === "COMPLETED" && input.administeredAt) {
+    const time = formatMarShiftTimelineDueTime(new Date(input.administeredAt));
+    const initials = input.administeredByInitials?.trim();
+    return initials ? `${initials} ${time}` : time;
+  }
+
+  return null;
+}
+
+export function buildMarShiftTimelineTertiaryText(input: {
+  doseKind: MedicationDoseKind | string | null | undefined;
+  doseStatus: MedicationDoseStatus;
+  enrichment?: MarShiftTimelineAdministrationEnrichment | null;
+}): string {
+  const enrichment = input.enrichment;
+  if (enrichment?.completionSummary?.trim()) {
+    return enrichment.completionSummary.trim();
+  }
+
+  if (input.doseStatus === "HELD" && enrichment?.administeredByInitials?.trim()) {
+    return enrichment.administeredByInitials.trim();
+  }
+
+  return buildMarShiftTimelineCompletionSummary({
+    doseKind: input.doseKind,
+    doseStatus: input.doseStatus,
+    startedAt: enrichment?.startedAt ?? null,
+    startedByInitials: enrichment?.startedByInitials ?? null,
+    stoppedAt: enrichment?.stoppedAt ?? null,
+    stoppedByInitials: enrichment?.stoppedByInitials ?? null,
+    administeredAt: enrichment?.administeredAt ?? null,
+    administeredByInitials: enrichment?.administeredByInitials ?? null,
+  }) ?? "";
+}
+
+export function isMarShiftTimelineItemReadOnly(
+  clinicalAction: MarShiftTimelineClinicalAction | null
+): boolean {
+  return (
+    clinicalAction === "VIEW_ADMINISTRATION" ||
+    clinicalAction === "VIEW_UPCOMING" ||
+    clinicalAction === "VIEW_HELD" ||
+    clinicalAction === "VIEW_MISSED"
+  );
+}
+
 export function buildMarShiftTimelineCellDisplay(input: {
   medicationLabel: string | null;
   doseKind: string | null | undefined;
@@ -296,7 +406,8 @@ export function buildMarShiftTimelineCellDisplay(input: {
   frequencyCode: string | null;
   requiresWitness: boolean;
   responseDueAt?: Date | string | null;
-}): { primaryText: string; secondaryText: string } {
+  enrichment?: MarShiftTimelineAdministrationEnrichment | null;
+}): { primaryText: string; secondaryText: string; tertiaryText: string } {
   const baseLabel = abbreviateMedicationLabelForTimeline(input.medicationLabel ?? "");
   const route = input.route?.trim().toUpperCase() ?? "";
   const isIvpb =
@@ -308,44 +419,70 @@ export function buildMarShiftTimelineCellDisplay(input: {
     primaryText = `${baseLabel} IVPB`;
   }
 
+  const tertiaryText = buildMarShiftTimelineTertiaryText({
+    doseKind: input.doseKind,
+    doseStatus: input.doseStatus,
+    enrichment: input.enrichment,
+  });
+
   if (input.requiresWitness) {
     return {
       primaryText,
       secondaryText: baseLabel === "INS" ? "Wit" : "Witness",
+      tertiaryText,
     };
+  }
+
+  if (input.doseStatus === "HELD") {
+    return { primaryText, secondaryText: "HELD", tertiaryText };
+  }
+  if (input.doseStatus === "MISSED") {
+    return { primaryText, secondaryText: "MISSED", tertiaryText };
+  }
+  if (input.doseStatus === "COMPLETED") {
+    return { primaryText, secondaryText: "DONE", tertiaryText };
   }
 
   if (isIvpbSessionDoseKind(input.doseKind)) {
     if (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") {
-      return { primaryText, secondaryText: "START" };
+      return { primaryText, secondaryText: "START", tertiaryText };
     }
     if (input.doseStatus === "IN_PROGRESS") {
-      return { primaryText, secondaryText: "IVPB" };
+      return { primaryText, secondaryText: "INFUSING", tertiaryText };
     }
-    return { primaryText, secondaryText: "IVPB" };
+    return { primaryText, secondaryText: "IVPB", tertiaryText };
   }
 
   if (isPrn) {
-    return { primaryText, secondaryText: "PRN Resp" };
+    const adminTertiary =
+      input.doseStatus === "DUE" || input.doseStatus === "OVERDUE" ? "ADMIN" : tertiaryText;
+    return { primaryText, secondaryText: "PRN Resp", tertiaryText: adminTertiary };
   }
 
-  if (route === "PO") {
-    return { primaryText, secondaryText: "PO" };
-  }
-  if (route === "IVP") {
-    return { primaryText, secondaryText: "IVP" };
-  }
-  if (route === "IVPB") {
-    return { primaryText, secondaryText: "IVPB" };
-  }
-  if (route === "IM") {
-    return { primaryText, secondaryText: "IM" };
-  }
-  if (route === "SQ") {
-    return { primaryText, secondaryText: "SQ" };
+  const routeSecondary =
+    route === "PO"
+      ? "PO"
+      : route === "IVP"
+        ? "IVP"
+        : route === "IVPB"
+          ? "IVPB"
+          : route === "IM"
+            ? "IM"
+            : route === "SQ"
+              ? "SQ"
+              : "";
+
+  if (routeSecondary) {
+    const adminTertiary =
+      input.doseStatus === "DUE" || input.doseStatus === "OVERDUE" ? "ADMIN" : tertiaryText;
+    return { primaryText, secondaryText: routeSecondary, tertiaryText: adminTertiary };
   }
 
-  return { primaryText, secondaryText: "" };
+  if (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") {
+    return { primaryText, secondaryText: "ADMIN", tertiaryText };
+  }
+
+  return { primaryText, secondaryText: "", tertiaryText };
 }
 
 export function buildMarShiftTimelineHover(input: {

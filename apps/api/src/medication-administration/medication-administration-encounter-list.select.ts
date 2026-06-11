@@ -1,0 +1,33 @@
+import type { Prisma } from "@prisma/client";
+
+/** Fields required by encounter MAR tab list/history (excludes verification/correction joins). */
+export const MEDICATION_ADMINISTRATION_ENCOUNTER_LIST_SELECT: Prisma.MedicationAdministrationSelect = {
+  id: true,
+  facilityId: true,
+  patientId: true,
+  encounterId: true,
+  orderItemId: true,
+  administeredAt: true,
+  administeredByUserId: true,
+  notes: true,
+  createdAt: true,
+  medicationLabelSnapshot: true,
+  route: true,
+  doseValue: true,
+  doseUnit: true,
+  administeredQuantity: true,
+  billingQuantity: true,
+  quantityUnit: true,
+  ndc11Snapshot: true,
+  ndcDisplaySnapshot: true,
+  marAction: true,
+  effectiveAdministeredAt: true,
+  effectiveAdministeredAtSetAt: true,
+  effectiveAdministeredAtSetByUserId: true,
+  effectiveAdministeredAtReason: true,
+  effectiveAdministeredAtVersion: true,
+  infusionPhase: true,
+  infusionSessionKey: true,
+  medicationDoseInstanceId: true,
+  administeredBy: { select: { id: true, firstName: true, lastName: true } },
+};

@@ -1,0 +1,1028 @@
+{
+  "part1": {
+    "totalMedications": 227,
+    "createEntries": 193,
+    "enrichEntries": 34,
+    "totalProducts": 227,
+    "totalPackages": 227,
+    "totalBillingProfiles": 227,
+    "totalAliases": 902
+  },
+  "part2": [
+    {
+      "medication": "KETAMINE_50MG_ML_INJECTABLE, KETAMINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE, KETAMINE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_KETAMINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "PROPOFOL_10MG_ML_IV, PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_PROPOFOL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MIDAZOLAM_5MG_ML_INJECTABLE, MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE, MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MIDAZOLAM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "LORAZEPAM_2_MG_ML_INJECTABLE_INTRAVEINEUSE, LORAZEPAM_4_MG_ML_INJECTABLE_INTRAVEINEUSE, LORAZEPAM_2_MG_ML_PEDS_IV_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_LORAZEPAM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "SUCCINYLCHOLINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE, SUCCINYLCHOLINE_100_MG_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_SUCCINYLCHOLINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ROCURONIUM_10_MG_ML_INJECTABLE_INTRAVEINEUSE, ROCURONIUM_50_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ROCURONIUM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "VECURONIUM_10_MG_POUDRE_INTRAVEINEUSE, VECURONIUM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_VECURONIUM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE, FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE, FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_FENTANYL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE, MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE, MORPHINE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MORPHINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE, HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE, HYDROMORPHONE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_HYDROMORPHONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "KETOROLAC_15_MG_ML_INJECTABLE_INTRAVEINEUSE, KETOROLAC_30_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_KETOROLAC",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ACETAMINOPHEN_10_MG_ML_INJECTABLE_INTRAVEINEUSE, ACETAMINOPHEN_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE, PARACETAMOL_120_MG_PER_5_ML_SIROP_ORAL, PARACETAMOL_250_MG_SUPPOSITOIRE_SUPPOSITOIRE_RECTAL",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ACETAMINOPHEN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "LIDOCAINE_1_INJECTABLE_INJECTABLE, LIDOCAINE_2_INJECTABLE_INJECTABLE, LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_LIDOCAINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "BUPIVACAINE_0_25_INJECTABLE_INJECTABLE, BUPIVACAINE_0_5_INJECTABLE_INJECTABLE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_BUPIVACAINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION, EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE, EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE, EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE, EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE, EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE, EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_EPINEPHRINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "AMIODARONE_150MG_3ML_IV, AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_AMIODARONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ATROPINE_0_1_MG_ML_INJECTABLE_INTRAVEINEUSE, ATROPINE_1_MG_10_ML_INJECTABLE_INTRAVEINEUSE, ATROPINE_0_05_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ATROPINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "CALCIUM_CHLORIDE_10_INJECTABLE_INTRAVEINEUSE, CALCIUM_CHLORIDE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_CALCIUM_CHLORIDE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "CALCIUM_GLUCONATE_10_INJECTABLE_INTRAVEINEUSE, CALCIUM_GLUCONATE_10_100_ML_PERFUSION_INTRAVEINEUSE, CALCIUM_GLUCONATE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_CALCIUM_GLUCONATE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "SODIUM_BICARBONATE_8_4_INJECTABLE_INTRAVEINEUSE, SODIUM_BICARBONATE_50_MEQ_50_ML_INJECTABLE_INTRAVEINEUSE, SODIUM_BICARBONATE_4_2_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_SODIUM_BICARBONATE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MAGNESIUM_SULFATE_2_G_50_ML_INJECTABLE_INTRAVEINEUSE, MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE, MAGNESIUM_SULFATE_1_G_50_ML_NEB_SOLUTION_DE_NEBULISATION_INHALEE, MAGNESIUM_SULFATE_500_MG_PER_ML_INJECTABLE_INJECTION, MAGNESIUM_SULFATE_4_G_100_ML_OB_PERFUSION_INTRAVEINEUSE, MAGNESIUM_SULFATE_40_G_1000_ML_OB_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MAGNESIUM_SULFATE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "METOPROLOL_5MG_5ML_IV, METOPROLOL_25_MG_COMPRIME_ORAL",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_METOPROLOL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE, NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE, NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_NITROGLYCERIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE, NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE, NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_NOREPINEPHRINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "DOPAMINE_400_MG_250_ML_PERFUSION_INTRAVEINEUSE, DOPAMINE_800_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_DOPAMINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "DOBUTAMINE_250_MG_20_ML_INJECTABLE_INTRAVEINEUSE, DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_DOBUTAMINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "PHENYLEPHRINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE, PHENYLEPHRINE_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_PHENYLEPHRINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "VASOPRESSIN_20_UNITS_ML_INJECTABLE_INTRAVEINEUSE, VASOPRESSIN_40_UNITS_100_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_VASOPRESSIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE, MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MILRINONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE, PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE, PIPERACILLIN_TAZOBACTAM_2_25_G_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_PIPERACILLIN_TAZOBACTAM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS, VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE, VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_VANCOMYCIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "CEFEPIME_1G_INJECTABLE, CEFEPIME_2_G_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_CEFEPIME",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE, MEROPENEM_500_MG_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MEROPENEM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "IMIPENEM_CILASTATIN_500_MG_POUDRE_INTRAVEINEUSE, IMIPENEM_CILASTATIN_250_MG_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_IMIPENEM_CILASTATIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "CEFTRIAXONE_1_G_INJECTABLE_INJECTION, CEFTRIAXONE_2_G_INJECTABLE_INJECTION, CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_CEFTRIAXONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "CEFAZOLIN_1G_INJECTABLE, CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_CEFAZOLIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "AMPICILLIN_SULBACTAM_3_G_POUDRE_INTRAVEINEUSE, AMPICILLIN_SULBACTAM_1_5_G_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_AMPICILLIN_SULBACTAM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE, LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_LEVETIRACETAM",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "NIMODIPINE_60_MG_GELULE_ORALE, NIMODIPINE_30_MG_GELULE_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_NIMODIPINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MANNITOL_20_PERFUSION_INTRAVEINEUSE, MANNITOL_15_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MANNITOL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE, HYPERTONIC_SALINE_23_4_30_ML_INJECTABLE_INTRAVEINEUSE, HYPERTONIC_SALINE_3_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_HYPERTONIC_SALINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "LABETALOL_5_MG_ML_INJECTABLE_INTRAVEINEUSE, LABETALOL_100_MG_20_ML_INJECTABLE_INTRAVEINEUSE, LABETALOL_200_MG_COMPRIME_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_LABETALOL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE, HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_HEPARIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION, ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION, ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ENOXAPARIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ASPIRIN_81, ASPIRIN_325_MG_COMPRIME_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ASPIRIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "TICAGRELOR_180_MG_COMPRIME_ORALE, TICAGRELOR_90_MG_COMPRIME_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_TICAGRELOR",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION, ALBUTEROL_0_5_SOLUTION_DE_NEBULISATION_INHALEE, ALBUTEROL_0_083_PEDS_NEB_SOLUTION_DE_NEBULISATION_INHALEE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ALBUTEROL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "RACEMIC_EPINEPHRINE_2_25_SOLUTION_DE_NEBULISATION_INHALEE, RACEMIC_EPINEPHRINE_0_25_ML_PEDS_NEB_SOLUTION_DE_NEBULISATION_INHALEE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_RACEMIC_EPINEPHRINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "METHYLPREDNISOLONE_125MG, METHYLPREDNISOLONE_40_MG_POUDRE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_METHYLPREDNISOLONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "DEXAMETHASONE_4_MG_PER_1_ML_INJECTABLE_INJECTION, DEXAMETHASONE_10_MG_INJECTABLE_INTRAVEINEUSE, DEXAMETHASONE_6_MG_IM_INJECTABLE_INTRAMUSCULAIRE, DEXAMETHASONE_0_4_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_DEXAMETHASONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "TERBUTALINE_1_MG_ML_INJECTABLE_SOUS_CUTANEE, TERBUTALINE_0_25_MG_ML_SOLUTION_DE_NEBULISATION_INHALEE, TERBUTALINE_0_25_MG_SC_OB_INJECTABLE_SOUS_CUTANEE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_TERBUTALINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION, ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE, ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ONDANSETRON",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "NALOXONE_0.4MG_ML, NALOXONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE, NALOXONE_4_MG_0_4_ML_INJECTABLE_INTRANASALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_NALOXONE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ACETYLCYSTEINE_20_IV_INJECTABLE_INTRAVEINEUSE, ACETYLCYSTEINE_6_25_IV_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ACETYLCYSTEINE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS, POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE, POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_POTASSIUM_CHLORIDE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "ALBUMIN_5_250_ML_PERFUSION_INTRAVEINEUSE, ALBUMIN_25_50_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_ALBUMIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "DEXTROSE_50_50_ML_INJECTABLE_INTRAVEINEUSE, DEXTROSE_10_250_ML_PERFUSION_INTRAVEINEUSE, DEXTROSE_5_1000_ML_PERFUSION_INTRAVEINEUSE, DEXTROSE_10_100_ML_PERFUSION_INTRAVEINEUSE, DEXTROSE_25_25_ML_NEONATAL_INJECTABLE_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_DEXTROSE",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS, REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_REGULAR_INSULIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE, OXYTOCIN_30_UNITS_500_ML_PERFUSION_INTRAVEINEUSE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_OXYTOCIN",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "MISOPROSTOL_200_MCG_COMPRIME_ORALE, MISOPROSTOL_25_MCG_COMPRIME_ORALE",
+      "conflictType": "conceptCode (shared generic)",
+      "key": "ENT_W4_MISOPROSTOL",
+      "severity": "INFO",
+      "action": "Expected — multiple SKUs share ENT_W4 concept"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "ketamine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "propofol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "midazolam",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "lorazepam",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "succinylcholine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "rocuronium",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "vecuronium",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "fentanyl",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "morphine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "hydromorphone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "ketorolac",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "4 entries",
+      "conflictType": "genericName",
+      "key": "acetaminophen",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "lidocaine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "bupivacaine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "7 entries",
+      "conflictType": "genericName",
+      "key": "epinephrine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "amiodarone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "atropine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "calcium chloride",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "calcium gluconate",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "sodium bicarbonate",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "6 entries",
+      "conflictType": "genericName",
+      "key": "magnesium sulfate",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "metoprolol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "nitroglycerin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "norepinephrine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "dopamine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "dobutamine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "phenylephrine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "vasopressin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "milrinone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "piperacillin tazobactam",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "vancomycin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "cefepime",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "meropenem",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "imipenem cilastatin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "ceftriaxone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "cefazolin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "ampicillin sulbactam",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "levetiracetam",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "nimodipine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "mannitol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "hypertonic saline",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "labetalol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "heparin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "enoxaparin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "aspirin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "ticagrelor",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "albuterol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "racemic epinephrine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "methylprednisolone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "4 entries",
+      "conflictType": "genericName",
+      "key": "dexamethasone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "terbutaline",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "ondansetron",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "naloxone",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "acetylcysteine",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "3 entries",
+      "conflictType": "genericName",
+      "key": "potassium chloride",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "albumin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "5 entries",
+      "conflictType": "genericName",
+      "key": "dextrose",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "regular insulin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "oxytocin",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    },
+    {
+      "medication": "2 entries",
+      "conflictType": "genericName",
+      "key": "misoprostol",
+      "severity": "INFO",
+      "action": "Expected — strength/route variants"
+    }
+  ],
+  "part3": {
+    "count": 3,
+    "products": [
+      {
+        "catalogCode": "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+        "mode": "ENRICH",
+        "strength": "4 mg/2 mL",
+        "dosageForm": "injectable",
+        "route": "intraveineuse",
+        "administrationType": "INJECTION",
+        "hasOndansetronAlias": true,
+        "hasZofranAlias": true,
+        "aliases": [
+          "Zofran IV",
+          "ondansetron IV",
+          "Zofran IV",
+          "ondansétron IV"
+        ]
+      },
+      {
+        "catalogCode": "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+        "mode": "CREATE",
+        "strength": "4 mg ODT",
+        "dosageForm": "comprimé orodispersible",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "hasOndansetronAlias": true,
+        "hasZofranAlias": true,
+        "aliases": [
+          "Zofran ODT",
+          "ondansetron ODT pediatric",
+          "Zofran ODT",
+          "ondansetron ODT pediatrique"
+        ]
+      },
+      {
+        "catalogCode": "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE",
+        "mode": "CREATE",
+        "strength": "4 mg/5 mL",
+        "dosageForm": "solution buvable",
+        "route": "orale",
+        "administrationType": "ORAL",
+        "hasOndansetronAlias": true,
+        "hasZofranAlias": true,
+        "aliases": [
+          "Zofran oral",
+          "ondansetron pediatric oral",
+          "Zofran solution buvable",
+          "ondansetron sirop pediatrique"
+        ]
+      }
+    ],
+    "duplicateProducts": "PASS"
+  },
+  "part4": {
+    "entries": [
+      {
+        "catalogCode": "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+        "mode": "ENRICH",
+        "genericName": "Regular insulin",
+        "route": "sous-cutanée",
+        "dosageForm": "injectable",
+        "administrationType": "SUBCUTANEOUS",
+        "isInsulin": true,
+        "requiresDoubleSign": true,
+        "isContinuousInfusion": false
+      },
+      {
+        "catalogCode": "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+        "mode": "CREATE",
+        "genericName": "Regular insulin",
+        "route": "intraveineuse",
+        "dosageForm": "perfusion",
+        "administrationType": "INFUSION",
+        "isInsulin": true,
+        "requiresDoubleSign": true,
+        "isContinuousInfusion": false
+      }
+    ]
+  },
+  "part5": {
+    "entries": [
+      {
+        "catalogCode": "METOPROLOL_5MG_5ML_IV",
+        "mode": "ENRICH",
+        "strength": "5 mg/5 mL",
+        "route": "intraveineuse"
+      },
+      {
+        "catalogCode": "METOPROLOL_25_MG_COMPRIME_ORAL",
+        "mode": "ENRICH",
+        "strength": "25 mg",
+        "route": "orale"
+      }
+    ],
+    "oralIsEnrich": true,
+    "ivIsCreate": false
+  },
+  "part6": [
+    {
+      "catalogCode": "PACKED_RED_BLOOD_CELLS_250_ML_PERFUSION_INTRAVEINEUSE",
+      "displayNameEn": "Packed red blood cells",
+      "isBloodProduct": true,
+      "requiresDoubleSign": true,
+      "pass": true
+    },
+    {
+      "catalogCode": "FRESH_FROZEN_PLASMA_250_ML_PERFUSION_INTRAVEINEUSE",
+      "displayNameEn": "Fresh frozen plasma",
+      "isBloodProduct": true,
+      "requiresDoubleSign": true,
+      "pass": true
+    },
+    {
+      "catalogCode": "PLATELETS_APHERESIS_UNIT_PERFUSION_INTRAVEINEUSE",
+      "displayNameEn": "Platelets",
+      "isBloodProduct": true,
+      "requiresDoubleSign": true,
+      "pass": true
+    },
+    {
+      "catalogCode": "CRYOPRECIPITATE_10_UNITS_PERFUSION_INTRAVEINEUSE",
+      "displayNameEn": "Cryoprecipitate",
+      "isBloodProduct": true,
+      "requiresDoubleSign": true,
+      "pass": true
+    },
+    {
+      "catalogCode": "WHOLE_BLOOD_500_ML_PERFUSION_INTRAVEINEUSE",
+      "displayNameEn": "Whole blood",
+      "isBloodProduct": true,
+      "requiresDoubleSign": true,
+      "pass": true
+    }
+  ],
+  "part7": {
+    "formularyCount": 227,
+    "billingManifestCount": 227,
+    "coveragePct": 100,
+    "missing": []
+  },
+  "part8": {
+    "displayNameEnPct": 100,
+    "displayNameFrPct": 100,
+    "genericNamePct": 100,
+    "enAliasPct": 100,
+    "frAliasPct": 100,
+    "searchTermsPct": 100,
+    "blockingIssues": [],
+    "missingFields": []
+  },
+  "part9": {
+    "collisionChecks": {
+      "levofloxacin_vs_levophed": "SAFE",
+      "tpa": "SAFE",
+      "mgso4": "SAFE",
+      "kcl": "SAFE",
+      "ntg": "SAFE"
+    },
+    "searchErrors": []
+  },
+  "part10": {
+    "conflictCount": 0,
+    "conflicts": []
+  },
+  "validationErrors": [],
+  "readiness": {
+    "seedReadiness": 100,
+    "governanceReadiness": 100,
+    "billingReadiness": 100,
+    "localizationReadiness": 100,
+    "searchReadiness": 100,
+    "overall": 100
+  },
+  "verdict": "SAFE"
+}

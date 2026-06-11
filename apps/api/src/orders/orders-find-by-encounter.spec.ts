@@ -1,4 +1,8 @@
 import { OrdersService } from "./orders.service";
+import { ORDER_ITEM_RESULT_SUMMARY_SELECT } from "./order-item-result.select";
+import {
+  ENCOUNTER_ORDERS_LIST_LIMIT,
+} from "../common/encounter-clinical-read-limits";
 
 function makeService(options?: { resultFindMany?: jest.Mock }) {
   const prisma = {
@@ -84,6 +88,7 @@ describe("OrdersService.findByEncounter", () => {
 
     const query = prisma.order.findMany.mock.calls[0][0];
     expect(query.include.items.include.result).toBeUndefined();
+    expect(query.take).toBe(ENCOUNTER_ORDERS_LIST_LIMIT);
     expect(prisma.result.findMany).toHaveBeenCalledWith({
       where: {
         facilityId: "facility-1",
@@ -92,8 +97,36 @@ describe("OrdersService.findByEncounter", () => {
       select: expect.objectContaining({
         id: true,
         orderItemId: true,
+        resultText: true,
       }),
     });
+    expect(prisma.result.findMany.mock.calls[0][0].select.resultData).toBeUndefined();
+    expect(ORDER_ITEM_RESULT_SUMMARY_SELECT.resultData).toBeUndefined();
+  });
+
+  it("uses a single merged orderEvent query for authority and attribution", async () => {
+    const { service, prisma } = makeService();
+    await service.findByEncounter("encounter-1", "facility-1");
+    const eventCalls = prisma.orderEvent.findMany.mock.calls;
+    expect(eventCalls.length).toBeGreaterThanOrEqual(1);
+    expect(eventCalls.some((call) => call[0].where.eventType === "CREATED")).toBe(true);
+    expect(
+      eventCalls.some(
+        (call) =>
+          call[0].where.eventType?.in?.includes("CANCELLED") ||
+          call[0].where.eventType?.in?.includes("COMPLETED")
+      )
+    ).toBe(true);
+    const terminalCall = eventCalls.find((call) => call[0].take != null);
+    expect(terminalCall?.[0].take).toBeDefined();
+  });
+
+  it("returns quickly without enrichment fanout when encounter has no orders", async () => {
+    const { service, prisma } = makeService();
+    prisma.order.findMany.mockResolvedValue([]);
+    await expect(service.findByEncounter("encounter-1", "facility-1")).resolves.toEqual([]);
+    expect(prisma.result.findMany).not.toHaveBeenCalled();
+    expect(prisma.orderEvent.findMany).not.toHaveBeenCalled();
   });
 
   it("attaches controlled result rows when result enrichment succeeds", async () => {

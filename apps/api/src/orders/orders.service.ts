@@ -94,7 +94,17 @@ import {
   type OrderMedicationCatalogRow,
 } from "./order-medication-catalog-resolve.util";
 import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
-import { ORDER_ITEM_RESULT_LIST_SELECT } from "./order-item-result.select";
+import { ORDER_ITEM_RESULT_LIST_SELECT, ORDER_ITEM_RESULT_SUMMARY_SELECT } from "./order-item-result.select";
+import {
+  ENCOUNTER_ORDER_ATTRIBUTION_EVENTS_CAP,
+  ENCOUNTER_ORDER_ATTRIBUTION_LOOKBACK_DAYS,
+  ENCOUNTER_ORDER_EVENTS_LIST_DEFAULT_LIMIT,
+  ENCOUNTER_ORDER_EVENTS_LIST_MAX_LIMIT,
+  ENCOUNTER_ORDER_EVENTS_LOOKBACK_DAYS,
+  ENCOUNTER_ORDERS_LIST_LIMIT,
+  encounterClinicalLookbackStart,
+  resolveBoundedListLimit,
+} from "../common/encounter-clinical-read-limits";
 import { createStructuredLogger } from "../common/logging/structured-logger";
 import { MedicationAdministrationService } from "../medication-administration/medication-administration.service";
 import { marValidationBadRequest } from "../medication-administration/mar-create-validation-log.util";
@@ -262,6 +272,185 @@ export class OrdersService {
     return authority;
   }
 
+  /** CREATED metadata + latest terminal/started action per order (bounded fetch). */
+  private async loadAttributionEventsForOrders(orderIds: string[]): Promise<{
+    createdMetadataByOrderId: Map<string, Prisma.JsonValue | null>;
+    lastActionEvents: Array<{
+      orderId: string;
+      eventType: OrderEventType;
+      performedAt: Date;
+      roleSnapshot: string | null;
+      metadata: Prisma.JsonValue | null;
+      performedBy: { firstName: string | null; lastName: string | null };
+    }>;
+  }> {
+    const createdMetadataByOrderId = new Map<string, Prisma.JsonValue | null>();
+    const lastActionByOrderId = new Map<
+      string,
+      {
+        orderId: string;
+        eventType: OrderEventType;
+        performedAt: Date;
+        roleSnapshot: string | null;
+        metadata: Prisma.JsonValue | null;
+        performedBy: { firstName: string | null; lastName: string | null };
+      }
+    >();
+
+    if (orderIds.length === 0) {
+      return { createdMetadataByOrderId, lastActionEvents: [] };
+    }
+
+    const attributionLookbackStart = encounterClinicalLookbackStart(
+      new Date(),
+      ENCOUNTER_ORDER_ATTRIBUTION_LOOKBACK_DAYS
+    );
+
+    const [createdEvents, terminalEvents] = await Promise.all([
+      this.prisma.orderEvent.findMany({
+        where: {
+          orderId: { in: orderIds },
+          eventType: OrderEventType.CREATED,
+        },
+        orderBy: { performedAt: "asc" },
+        select: {
+          orderId: true,
+          metadata: true,
+        },
+      }),
+      this.prisma.orderEvent.findMany({
+        where: {
+          orderId: { in: orderIds },
+          eventType: { in: [OrderEventType.CANCELLED, OrderEventType.COMPLETED, OrderEventType.STARTED] },
+          performedAt: { gte: attributionLookbackStart },
+        },
+        orderBy: { performedAt: "desc" },
+        take: ENCOUNTER_ORDER_ATTRIBUTION_EVENTS_CAP,
+        select: {
+          orderId: true,
+          eventType: true,
+          performedAt: true,
+          roleSnapshot: true,
+          metadata: true,
+          performedBy: { select: { firstName: true, lastName: true } },
+        },
+      }),
+    ]);
+
+    for (const event of createdEvents) {
+      if (!createdMetadataByOrderId.has(event.orderId)) {
+        createdMetadataByOrderId.set(event.orderId, event.metadata);
+      }
+    }
+
+    for (const event of terminalEvents) {
+      if (lastActionByOrderId.has(event.orderId)) continue;
+      const action = this.actionFromOrderEvent(event);
+      if (!action) continue;
+      lastActionByOrderId.set(event.orderId, event);
+    }
+
+    return {
+      createdMetadataByOrderId,
+      lastActionEvents: [...lastActionByOrderId.values()],
+    };
+  }
+
+  async attachAuthorityAndAttributionToOrders<
+    T extends OrderAuthorityOrder & OrderAttributionOrder,
+  >(
+    orders: T[]
+  ): Promise<
+    Array<
+      T & {
+        authority: OrderAuthority;
+        createdByDisplay: OrderCreatedByDisplay | null;
+        lastActionDisplay: OrderLastActionDisplay | null;
+      }
+    >
+  > {
+    if (orders.length === 0) {
+      return [] as Array<
+        T & {
+          authority: OrderAuthority;
+          createdByDisplay: OrderCreatedByDisplay | null;
+          lastActionDisplay: OrderLastActionDisplay | null;
+        }
+      >;
+    }
+
+    const orderIds = [...new Set(orders.map((o) => o.id).filter(Boolean))];
+    const creatorIds = [...new Set(orders.map((o) => o.orderedBy).filter((id): id is string => Boolean(id)))];
+    const facilityIds = [...new Set(orders.map((o) => o.facilityId).filter(Boolean))];
+
+    const [creatorRows, creatorRoleRows, attributionEvents] = await Promise.all([
+      creatorIds.length
+        ? this.prisma.user.findMany({
+            where: { id: { in: creatorIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : Promise.resolve([]),
+      creatorIds.length && facilityIds.length
+        ? this.prisma.userRole.findMany({
+            where: {
+              userId: { in: creatorIds },
+              facilityId: { in: facilityIds },
+              isActive: true,
+            },
+            include: { role: { select: { code: true } } },
+            orderBy: { createdAt: "asc" },
+          })
+        : Promise.resolve([]),
+      orderIds.length ? this.loadAttributionEventsForOrders(orderIds) : Promise.resolve({
+        createdMetadataByOrderId: new Map<string, Prisma.JsonValue | null>(),
+        lastActionEvents: [],
+      }),
+    ]);
+
+    const { createdMetadataByOrderId, lastActionEvents } = attributionEvents;
+
+    const creatorById = new Map(creatorRows.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
+    const roleByUserFacility = new Map<string, string>();
+    for (const row of creatorRoleRows) {
+      const key = this.roleKey(row.facilityId, row.userId);
+      const current = roleByUserFacility.get(key);
+      const next = row.role.code;
+      roleByUserFacility.set(key, current ? `${current}|${next}` : next);
+    }
+
+    const lastActionByOrderId = new Map<string, OrderLastActionDisplay>();
+    for (const event of lastActionEvents) {
+      const action = this.actionFromOrderEvent(event);
+      if (!action) continue;
+      const name = `${event.performedBy.firstName ?? ""} ${event.performedBy.lastName ?? ""}`.trim();
+      lastActionByOrderId.set(event.orderId, {
+        action,
+        name,
+        role: event.roleSnapshot ?? null,
+        at: event.performedAt,
+      });
+    }
+
+    return orders.map((order) => {
+      const creatorName = order.orderedBy ? creatorById.get(order.orderedBy) : null;
+      const createdByDisplay =
+        order.orderedBy && creatorName
+          ? {
+              userId: order.orderedBy,
+              name: creatorName,
+              role: roleByUserFacility.get(this.roleKey(order.facilityId, order.orderedBy)) ?? null,
+              at: order.createdAt,
+            }
+          : null;
+      return {
+        ...order,
+        authority: this.authorityFromCreatedEvent(order, createdMetadataByOrderId.get(order.id)),
+        createdByDisplay,
+        lastActionDisplay: lastActionByOrderId.get(order.id) ?? null,
+      };
+    });
+  }
+
   async attachAuthorityToOrders<T extends OrderAuthorityOrder>(orders: T[]): Promise<Array<T & { authority: OrderAuthority }>> {
     if (orders.length === 0) return [] as Array<T & { authority: OrderAuthority }>;
 
@@ -332,7 +521,7 @@ export class OrdersService {
     const creatorIds = [...new Set(orders.map((o) => o.orderedBy).filter((id): id is string => Boolean(id)))];
     const facilityIds = [...new Set(orders.map((o) => o.facilityId).filter(Boolean))];
 
-    const [creatorRows, creatorRoleRows, actionEvents] = await Promise.all([
+    const [creatorRows, creatorRoleRows, { lastActionEvents }] = await Promise.all([
       creatorIds.length
         ? this.prisma.user.findMany({
             where: { id: { in: creatorIds } },
@@ -351,22 +540,8 @@ export class OrdersService {
           })
         : Promise.resolve([]),
       orderIds.length
-        ? this.prisma.orderEvent.findMany({
-            where: {
-              orderId: { in: orderIds },
-              eventType: { in: [OrderEventType.CANCELLED, OrderEventType.COMPLETED, OrderEventType.STARTED] },
-            },
-            orderBy: { performedAt: "desc" },
-            select: {
-              orderId: true,
-              eventType: true,
-              performedAt: true,
-              roleSnapshot: true,
-              metadata: true,
-              performedBy: { select: { firstName: true, lastName: true } },
-            },
-          })
-        : Promise.resolve([]),
+        ? this.loadAttributionEventsForOrders(orderIds)
+        : Promise.resolve({ createdMetadataByOrderId: new Map(), lastActionEvents: [] }),
     ]);
 
     const creatorById = new Map(creatorRows.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
@@ -379,8 +554,7 @@ export class OrdersService {
     }
 
     const lastActionByOrderId = new Map<string, OrderLastActionDisplay>();
-    for (const event of actionEvents) {
-      if (lastActionByOrderId.has(event.orderId)) continue;
+    for (const event of lastActionEvents) {
       const action = this.actionFromOrderEvent(event);
       if (!action) continue;
       const name = `${event.performedBy.firstName ?? ""} ${event.performedBy.lastName ?? ""}`.trim();
@@ -948,6 +1122,7 @@ export class OrdersService {
     const orders: OrderWithItems[] = await this.prisma.order.findMany({
       where: { encounterId, facilityId },
       orderBy: { createdAt: "desc" },
+      take: ENCOUNTER_ORDERS_LIST_LIMIT,
       include: {
         items: {
           include: {
@@ -980,19 +1155,42 @@ export class OrdersService {
       userAgent,
     });
 
+    if (orders.length === 0) {
+      return [];
+    }
+
     const enriched = await this.enrichOrderItemsForDisplaySafe(orders);
-    const withResults = await this.attachResultsToOrderItemsSafe(enriched, { facilityId, encounterId });
+    const withResults = await this.attachResultsToOrderItemsSafe(enriched, {
+      facilityId,
+      encounterId,
+      resultSelect: ORDER_ITEM_RESULT_SUMMARY_SELECT,
+    });
     const withResultLabels = await this.attachEnteredByDisplayOnOrdersSafe(withResults, { facilityId, encounterId });
     const withCancellation = await this.attachCancellationDisplayOnOrdersSafe(withResultLabels, { facilityId, encounterId });
     const withOrderedBy = await this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
-    const withAuthority = await this.attachAuthorityToOrders(withOrderedBy);
-    return this.attachAttributionToOrders(withAuthority);
+    return this.attachAuthorityAndAttributionToOrders(withOrderedBy);
   }
 
-  async findOrderEventsByEncounter(encounterId: string, facilityId: string) {
+  async findOrderEventsByEncounter(
+    encounterId: string,
+    facilityId: string,
+    options?: { limit?: number }
+  ) {
+    const lookbackStart = encounterClinicalLookbackStart(new Date(), ENCOUNTER_ORDER_EVENTS_LOOKBACK_DAYS);
+    const take = resolveBoundedListLimit(
+      options?.limit,
+      ENCOUNTER_ORDER_EVENTS_LIST_DEFAULT_LIMIT,
+      ENCOUNTER_ORDER_EVENTS_LIST_MAX_LIMIT
+    );
+
     const events = await this.prisma.orderEvent.findMany({
-      where: { encounterId, facilityId },
+      where: {
+        encounterId,
+        facilityId,
+        performedAt: { gte: lookbackStart },
+      },
       orderBy: { performedAt: "desc" },
+      take,
       include: {
         order: {
           select: {
@@ -1000,17 +1198,6 @@ export class OrdersService {
             type: true,
             status: true,
             cancellationReason: true,
-            items: {
-              select: {
-                id: true,
-                catalogItemType: true,
-                catalogItemId: true,
-                manualLabel: true,
-                manualSecondaryText: true,
-                strength: true,
-                notes: true,
-              },
-            },
           },
         },
         performedBy: {
@@ -1019,25 +1206,76 @@ export class OrdersService {
       },
     });
 
-    const flatItemsForCatalog: Array<{
-      catalogItemType: string;
-      catalogItemId: string | null;
-    }> = [];
-    const seenItemId = new Set<string>();
+    const itemIds = new Set<string>();
+    const ordersNeedingAllItems = new Set<string>();
     for (const ev of events) {
-      for (const it of ev.order.items) {
-        if (seenItemId.has(it.id)) continue;
-        seenItemId.add(it.id);
-        flatItemsForCatalog.push({
-          catalogItemType: it.catalogItemType,
-          catalogItemId: it.catalogItemId,
-        });
+      const itemId = this.orderItemIdFromEventMetadataForLabels(ev.metadata);
+      if (itemId) {
+        itemIds.add(itemId);
+      } else if (ev.eventType === OrderEventType.CREATED) {
+        ordersNeedingAllItems.add(ev.orderId);
       }
+    }
+
+    const orderItems =
+      itemIds.size > 0 || ordersNeedingAllItems.size > 0
+        ? await this.prisma.orderItem.findMany({
+            where: {
+              OR: [
+                ...(itemIds.size > 0 ? [{ id: { in: [...itemIds] } }] : []),
+                ...(ordersNeedingAllItems.size > 0 ? [{ orderId: { in: [...ordersNeedingAllItems] } }] : []),
+              ],
+            },
+            select: {
+              id: true,
+              orderId: true,
+              catalogItemType: true,
+              catalogItemId: true,
+              manualLabel: true,
+              manualSecondaryText: true,
+              strength: true,
+              notes: true,
+            },
+          })
+        : [];
+
+    const itemsByOrderId = new Map<string, typeof orderItems>();
+    const itemsById = new Map<string, (typeof orderItems)[number]>();
+    for (const it of orderItems) {
+      itemsById.set(it.id, it);
+      const list = itemsByOrderId.get(it.orderId) ?? [];
+      list.push(it);
+      itemsByOrderId.set(it.orderId, list);
+    }
+
+    const flatItemsForCatalog: Array<{ catalogItemType: string; catalogItemId: string | null }> = [];
+    const seenCatalogKey = new Set<string>();
+    for (const it of orderItems) {
+      const key = `${it.catalogItemType}:${it.catalogItemId ?? ""}`;
+      if (seenCatalogKey.has(key)) continue;
+      seenCatalogKey.add(key);
+      flatItemsForCatalog.push({
+        catalogItemType: it.catalogItemType,
+        catalogItemId: it.catalogItemId,
+      });
     }
     const { labMap, imgMap, medMap } = await this.loadCatalogMapsForEventLabelResolution(flatItemsForCatalog);
 
     return events.map((event) => {
-      const { en, fr } = this.resolveOrderEventLineLabels(event.metadata, event.order, labMap, imgMap, medMap);
+      const itemId = this.orderItemIdFromEventMetadataForLabels(event.metadata);
+      const orderItemsForEvent = itemId
+        ? (() => {
+            const row = itemsById.get(itemId);
+            return row ? [row] : [];
+          })()
+        : (itemsByOrderId.get(event.orderId) ?? []);
+      const { en, fr } = this.resolveOrderEventLineLabels(
+        event.metadata,
+        { type: event.order.type, items: orderItemsForEvent },
+        labMap,
+        imgMap,
+        medMap
+      );
       return {
         id: event.id,
         encounterId: event.encounterId,
@@ -1138,7 +1376,11 @@ export class OrdersService {
 
   private async attachResultsToOrderItemsSafe(
     orders: OrderWithEnrichedItems[],
-    context: { facilityId: string; encounterId: string }
+    context: {
+      facilityId: string;
+      encounterId: string;
+      resultSelect?: Prisma.ResultSelect;
+    }
   ): Promise<OrderWithEnrichedItems[]> {
     const itemIds = [
       ...new Set(orders.flatMap((order) => (order.items || []).map((item) => item.id)).filter(Boolean)),
@@ -1153,7 +1395,7 @@ export class OrdersService {
           facilityId: context.facilityId,
           orderItemId: { in: itemIds },
         },
-        select: ORDER_ITEM_RESULT_LIST_SELECT,
+        select: context.resultSelect ?? ORDER_ITEM_RESULT_LIST_SELECT,
       });
       const resultByItemId = new Map(results.map((result) => [result.orderItemId, result]));
       return orders.map((order) => ({

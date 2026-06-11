@@ -14,11 +14,14 @@ import {
 } from "@/lib/marShiftTimelineApi";
 import {
   buildMarShiftTimelineItemHoverTitle,
+  formatMarShiftTimelineHeaderClock,
   marShiftTimelineItemStatusStyle,
 } from "@/features/mar/marShiftTimelineDisplay";
+import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
 import { FacilityMarShiftTimelineDrawer } from "./FacilityMarShiftTimelineDrawer";
 
 const DEFAULT_SHIFT_CODE: MarShiftTimelineShiftCode = "7A_7P";
+const HEADER_CLOCK_REFRESH_MS = 60_000;
 
 function interpolateMessage(template: string, vars: Record<string, string>): string {
   return Object.entries(vars).reduce(
@@ -32,6 +35,9 @@ export type FacilityMarShiftTimelineProps = {
   encounterId?: string;
   assignedToUserId?: string;
   compact?: boolean;
+  actionHandlers?: MarShiftTimelineActionHandlers | null;
+  onRegisterRefresh?: (refresh: () => Promise<void>) => void;
+  onRegisterCloseDrawer?: (close: () => void) => void;
 };
 
 type DrawerSelection = {
@@ -45,13 +51,23 @@ export function FacilityMarShiftTimeline({
   encounterId,
   assignedToUserId,
   compact = false,
+  actionHandlers = null,
+  onRegisterRefresh,
+  onRegisterCloseDrawer,
 }: FacilityMarShiftTimelineProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [shiftCode, setShiftCode] = useState<MarShiftTimelineShiftCode>(DEFAULT_SHIFT_CODE);
   const [data, setData] = useState<MarShiftTimelineResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [drawerSelection, setDrawerSelection] = useState<DrawerSelection | null>(null);
+  const [headerNow, setHeaderNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setHeaderNow(new Date()), HEADER_CLOCK_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   const loadTimeline = useCallback(async () => {
     setLoading(true);
@@ -78,6 +94,14 @@ export function FacilityMarShiftTimeline({
     void loadTimeline();
   }, [loadTimeline]);
 
+  useEffect(() => {
+    onRegisterRefresh?.(loadTimeline);
+  }, [loadTimeline, onRegisterRefresh]);
+
+  useEffect(() => {
+    onRegisterCloseDrawer?.(() => setDrawerSelection(null));
+  }, [onRegisterCloseDrawer]);
+
   const title =
     data?.title?.trim() ||
     (data?.facility?.name
@@ -85,6 +109,7 @@ export function FacilityMarShiftTimeline({
       : t("marShiftTimeline.titleFallback"));
 
   const viewerName = data?.viewer?.displayName?.trim() || "—";
+  const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale);
 
   return (
     <section
@@ -99,12 +124,29 @@ export function FacilityMarShiftTimeline({
       }}
     >
       <header style={{ marginBottom: compact ? 8 : 10 }}>
-        <h2
-          data-testid="mar-shift-timeline-title"
-          style={{ margin: "0 0 6px 0", fontSize: compact ? 15 : 17, lineHeight: 1.25 }}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 8,
+            marginBottom: 6,
+          }}
         >
-          {title}
-        </h2>
+          <h2
+            data-testid="mar-shift-timeline-title"
+            style={{ margin: 0, fontSize: compact ? 15 : 17, lineHeight: 1.25, flex: 1 }}
+          >
+            {title}
+          </h2>
+          <span
+            data-testid="mar-shift-timeline-current-time"
+            style={{ fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}
+          >
+            {interpolateMessage(t("marShiftTimeline.currentTimeLine"), { datetime: headerClockText })}
+          </span>
+        </div>
         <div
           style={{
             display: "flex",
@@ -248,14 +290,16 @@ export function FacilityMarShiftTimeline({
                       >
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                           {(cell?.items ?? []).map((item) => {
-                            const statusStyle = marShiftTimelineItemStatusStyle(item.doseStatus);
+                            const readOnly = item.readOnly === true || item.doseStatus === "COMPLETED";
+                            const statusStyle = marShiftTimelineItemStatusStyle(item.doseStatus, readOnly);
                             return (
                               <button
                                 key={item.medicationDoseInstanceId}
                                 type="button"
                                 data-testid="mar-shift-timeline-cell-item"
                                 data-dose-status={item.doseStatus}
-                                aria-label={`${item.primaryText} ${item.secondaryText}`.trim()}
+                                data-read-only={readOnly ? "true" : "false"}
+                                aria-label={`${item.primaryText} ${item.secondaryText} ${item.tertiaryText ?? ""}`.trim()}
                                 title={buildMarShiftTimelineItemHoverTitle(item)}
                                 onClick={() =>
                                   setDrawerSelection({
@@ -287,6 +331,14 @@ export function FacilityMarShiftTimeline({
                                     {item.secondaryText}
                                   </div>
                                 ) : null}
+                                {item.tertiaryText?.trim() ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-tertiary-text"
+                                    style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}
+                                  >
+                                    {item.tertiaryText}
+                                  </div>
+                                ) : null}
                               </button>
                             );
                           })}
@@ -311,7 +363,12 @@ export function FacilityMarShiftTimeline({
               }
             : null
         }
+        actionHandlers={actionHandlers}
         onClose={() => setDrawerSelection(null)}
+        onActionSuccess={async () => {
+          await loadTimeline();
+          setDrawerSelection(null);
+        }}
       />
     </section>
   );

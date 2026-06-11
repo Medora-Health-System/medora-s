@@ -88,8 +88,17 @@ import {
   type MedicationPassQueueResponse,
 } from "@/lib/medicationPassQueueApi";
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
+import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
+import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
+import {
+  buildMarShiftTimelineStopPayload,
+  findPassQueueItemForTimelineCell,
+  marShiftTimelineStartWitnessRequired,
+  resolveMarShiftTimelineOrderId,
+  type MarShiftTimelineActionHandlers,
+} from "@/features/mar/marShiftTimelineActions";
 import {
   findMedicationInfusionTimelineFromOrderEvents,
   formatInfusionDurationForI18n,
@@ -537,6 +546,11 @@ export function MedicationAdministrationTab({
     count: 0,
     items: [],
   });
+  const timelineRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  const timelineCloseDrawerRef = useRef<(() => void) | null>(null);
+  const [pendingTimelineStartItem, setPendingTimelineStartItem] = useState<MarShiftTimelineCellItem | null>(
+    null
+  );
   const marRestoringDraftRef = useRef(false);
   const infusionRestoringDraftRef = useRef(false);
   /** Re-render periodically so infusion elapsed time updates on the MAR grid. */
@@ -786,7 +800,13 @@ export function MedicationAdministrationTab({
       orderId: string,
       op: "start" | "stop",
       note?: string,
-      startVerifier?: { userId: string; displayName: string } | null
+      startVerifier?: { userId: string; displayName: string } | null,
+      options?: {
+        medicationDoseInstanceId?: string;
+        stoppedAtIso?: string;
+        skipReload?: boolean;
+        skipModalClose?: boolean;
+      }
     ) => {
       const busyKey = `${orderId}:${orderItemId}:${op}`;
       setInfusionBusy(busyKey);
@@ -795,6 +815,9 @@ export function MedicationAdministrationTab({
         if (op === "start") {
           await startMedicationInfusion(orderItemId, facilityId, {
             ...(note?.trim() ? { notes: note.trim() } : {}),
+            ...(options?.medicationDoseInstanceId?.trim()
+              ? { medicationDoseInstanceId: options.medicationDoseInstanceId.trim() }
+              : {}),
             ...(startVerifier?.userId
               ? {
                   highAlertVerifierUserId: startVerifier.userId,
@@ -802,27 +825,86 @@ export function MedicationAdministrationTab({
                 }
               : {}),
           });
-        } else await stopMedicationInfusion(orderItemId, facilityId, note);
+        } else {
+          await stopMedicationInfusion(orderItemId, facilityId, {
+            ...(note?.trim() ? { notes: note.trim() } : {}),
+            ...(options?.stoppedAtIso?.trim() ? { stoppedAt: options.stoppedAtIso.trim() } : {}),
+            ...(options?.medicationDoseInstanceId?.trim()
+              ? { medicationDoseInstanceId: options.medicationDoseInstanceId.trim() }
+              : {}),
+          });
+        }
         if (infusionDraftKey && typeof window !== "undefined") {
           removeClinicalDraft(window.localStorage, infusionDraftKey);
         }
-        setInfusionModal(null);
-        setInfusionModalNote("");
-        setPendingInfusionStartVerifier(null);
-        setInfusionDraftRestoredAt(null);
-        setInfusionDraftSavedLocallyAt(null);
-        await reloadMarData();
+        if (!options?.skipModalClose) {
+          setInfusionModal(null);
+          setInfusionModalNote("");
+          setPendingInfusionStartVerifier(null);
+          setInfusionDraftRestoredAt(null);
+          setInfusionDraftSavedLocallyAt(null);
+        }
+        if (!options?.skipReload) {
+          await reloadMarData();
+        }
       } catch (e) {
         setError(
           normalizeUserFacingError(e instanceof Error ? e.message : String(e), language) ||
             t("marTab.infusionActionError")
         );
+        throw e;
       } finally {
         setInfusionBusy(null);
       }
     },
     [facilityId, infusionDraftKey, language, reloadMarData, t]
   );
+
+  const marShiftTimelineActionHandlers = useMemo((): MarShiftTimelineActionHandlers => {
+    const actionsDisabled = !encounterOpen || !encounterClinicalMutationsAllowed;
+    return {
+      disabled: actionsDisabled,
+      busy: Boolean(infusionBusy),
+      onRequestStartInfusion: async (item) => {
+        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
+        const label = item.medicationLabel?.trim() || item.primaryText;
+        if (marShiftTimelineStartWitnessRequired(item, passItem)) {
+          setPendingTimelineStartItem(item);
+          setPendingInfusionStartVerifier(null);
+          setInfusionStartWitnessModal({ orderItemId: item.orderItemId, orderId, label });
+          return false;
+        }
+        await runMarInfusion(item.orderItemId, orderId, "start", undefined, null, {
+          medicationDoseInstanceId: item.medicationDoseInstanceId,
+          skipReload: true,
+          skipModalClose: true,
+        });
+        await timelineRefreshRef.current?.();
+        timelineCloseDrawerRef.current?.();
+        return true;
+      },
+      onExecuteStopInfusion: async (item, input) => {
+        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
+        const stopPayload = buildMarShiftTimelineStopPayload(input);
+        await runMarInfusion(item.orderItemId, orderId, "stop", stopPayload.notes, null, {
+          medicationDoseInstanceId: item.medicationDoseInstanceId,
+          stoppedAtIso: stopPayload.stoppedAt,
+          skipReload: true,
+          skipModalClose: true,
+        });
+        await timelineRefreshRef.current?.();
+        timelineCloseDrawerRef.current?.();
+      },
+    };
+  }, [
+    encounterClinicalMutationsAllowed,
+    encounterOpen,
+    infusionBusy,
+    passQueue.items,
+    runMarInfusion,
+  ]);
 
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
   const lastAdministeredForModal = useMemo(() => {
@@ -1757,8 +1839,17 @@ export function MedicationAdministrationTab({
         encounterId={encounterId}
         assignedToUserId={currentUserId}
         compact={marCompact}
+        actionHandlers={marShiftTimelineActionHandlers}
+        onRegisterRefresh={(refresh) => {
+          timelineRefreshRef.current = refresh;
+        }}
+        onRegisterCloseDrawer={(close) => {
+          timelineCloseDrawerRef.current = close;
+        }}
       />
 
+      {MAR_TAB_SHOW_LEGACY_SECTIONS ? (
+      <>
       <MedicationPassQueuePanel
         enabled={passQueue.enabled}
         items={passQueue.items}
@@ -2398,6 +2489,8 @@ export function MedicationAdministrationTab({
             })}
         </ul>
       )}
+      </>
+      ) : null}
 
       {modalItem ? (
         <div
@@ -3116,12 +3209,40 @@ export function MedicationAdministrationTab({
           searchLabel={t("marHighAlert.verifierLabel")}
           searchAria={t("marHighAlert.verifierAria")}
           searchPlaceholder={t("marHighAlert.verifierPlaceholder")}
-          onCancel={() => setInfusionStartWitnessModal(null)}
+          onCancel={() => {
+            setInfusionStartWitnessModal(null);
+            setPendingTimelineStartItem(null);
+          }}
           onConfirm={(userId, user) => {
             const displayName = `${user.firstName} ${user.lastName}`.trim();
             const target = infusionStartWitnessModal;
-            setPendingInfusionStartVerifier({ userId, displayName });
+            const timelineItem = pendingTimelineStartItem;
             setInfusionStartWitnessModal(null);
+            setPendingTimelineStartItem(null);
+            if (timelineItem && target) {
+              void (async () => {
+                try {
+                  await runMarInfusion(
+                    timelineItem.orderItemId,
+                    target.orderId,
+                    "start",
+                    undefined,
+                    { userId, displayName },
+                    {
+                      medicationDoseInstanceId: timelineItem.medicationDoseInstanceId,
+                      skipReload: true,
+                      skipModalClose: true,
+                    }
+                  );
+                  await timelineRefreshRef.current?.();
+                  timelineCloseDrawerRef.current?.();
+                } catch {
+                  // runMarInfusion sets tab error state
+                }
+              })();
+              return;
+            }
+            setPendingInfusionStartVerifier({ userId, displayName });
             if (target) {
               setInfusionModal({
                 orderItemId: target.orderItemId,

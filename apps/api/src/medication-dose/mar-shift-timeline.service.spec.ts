@@ -739,4 +739,167 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     );
     expect(item?.actions).toContain("VIEW_ORDER");
   });
+
+  it("active IVPB returns startedAt and startedBy initials when MAR START row exists (K.3)", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createRecurringIvpbOrder(encounter.id);
+    const dose = doses[0]!;
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "DUE",
+        scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T07:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T20:00:00.000Z"),
+      },
+    });
+
+    await ordersService.startMedicationInfusion(
+      facilityId,
+      dose.orderItemId,
+      {},
+      [RoleCode.RN],
+      nurseUserId
+    );
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+    });
+
+    const item = allTimelineItems(result).find(
+      (i) => i.medicationDoseInstanceId === dose.id
+    );
+    expect(item?.startedAt).toBeTruthy();
+    expect(item?.startedByInitials).toBe("JN");
+    expect(item?.tertiaryText).toContain("JN");
+    expect(item?.tertiaryText).toContain("▶");
+    expect(item?.secondaryText).toBe("INFUSING");
+  });
+
+  it("completed IVPB returns stoppedAt and stoppedBy initials when terminal MAR exists (K.3)", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createRecurringIvpbOrder(encounter.id);
+    const dose = doses[0]!;
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "DUE",
+        scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T07:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T20:00:00.000Z"),
+      },
+    });
+
+    const orderItemId = dose.orderItemId;
+    await ordersService.startMedicationInfusion(
+      facilityId,
+      orderItemId,
+      {},
+      [RoleCode.RN],
+      nurseUserId
+    );
+    await ordersService.stopMedicationInfusion(
+      facilityId,
+      orderItemId,
+      {},
+      [RoleCode.RN],
+      nurseUserId
+    );
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+
+    const item = allTimelineItems(result).find(
+      (i) => i.medicationDoseInstanceId === dose.id
+    );
+    expect(item?.doseStatus).toBe("COMPLETED");
+    expect(item?.stoppedAt).toBeTruthy();
+    expect(item?.stoppedByInitials).toBe("JN");
+    expect(item?.secondaryText).toBe("DONE");
+    expect(item?.readOnly).toBe(true);
+    expect(item?.completionSummary).toContain("JN");
+  });
+
+  it("completed fixed dose returns administeredBy initials (K.3)", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    const encounterRow = await prisma.encounter.findUniqueOrThrow({
+      where: { id: encounter.id },
+      select: { patientId: true },
+    });
+    const mar = await prisma.medicationAdministration.create({
+      data: {
+        facilityId,
+        patientId: encounterRow.patientId,
+        encounterId: encounter.id,
+        orderItemId: dose.orderItemId,
+        medicationDoseInstanceId: dose.id,
+        administeredByUserId: nurseUserId,
+        administeredAt: new Date("2026-06-11T08:05:00.000Z"),
+        marAction: "administered",
+      },
+    });
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "COMPLETED",
+        scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T09:00:00.000Z"),
+        terminalMedicationAdministrationId: mar.id,
+      },
+    });
+
+    const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+      includeCompleted: true,
+    });
+
+    const item = allTimelineItems(result).find(
+      (i) => i.medicationDoseInstanceId === dose.id
+    );
+    expect(item?.administeredByInitials).toBe("JN");
+    expect(item?.secondaryText).toBe("DONE");
+    expect(item?.tertiaryText).toContain("JN");
+    expect(item?.tertiaryText).toContain("08:05");
+  });
+
+  it("read model enrichment is read-only and does not mutate rows (K.3)", async () => {
+    const encounter = await createEncounterWithNurse();
+    const doses = await createBidOrder(encounter.id);
+    const dose = doses[0]!;
+    await prisma.medicationDoseInstance.update({
+      where: { id: dose.id },
+      data: {
+        doseStatus: "DUE",
+        scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowStartAt: new Date("2026-06-11T08:00:00.000Z"),
+        dueWindowEndAt: new Date("2026-06-11T09:00:00.000Z"),
+      },
+    });
+
+    const before = await prisma.medicationDoseInstance.findUnique({ where: { id: dose.id } });
+    await timelineService.getMarShiftTimeline(facilityId, viewer, {
+      shiftCode: "7A_7P",
+      shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+      shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+      encounterId: encounter.id,
+    });
+    const after = await prisma.medicationDoseInstance.findUnique({ where: { id: dose.id } });
+
+    expect(after?.updatedAt?.getTime()).toBe(before?.updatedAt?.getTime());
+    expect(after?.doseStatus).toBe("DUE");
+  });
 });

@@ -102,8 +102,9 @@ describe("MEDUI.2C MAR tablet compact mode", () => {
     expect(mar).toContain('t("marTab.administer")');
   });
 
-  it("keeps administration history visible", () => {
+  it("gates legacy administration history behind MAR_TAB_SHOW_LEGACY_SECTIONS", () => {
     const mar = readWebSource("src/components/encounters/MedicationAdministrationTab.tsx");
+    expect(mar).toContain("MAR_TAB_SHOW_LEGACY_SECTIONS");
     expect(mar).toContain('t("marTab.historyTitle")');
     expect(mar).toContain("clinicalTabletCompactHistoryItemStyle");
   });
