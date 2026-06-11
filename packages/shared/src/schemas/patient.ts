@@ -741,6 +741,8 @@ export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdminis
 /** POST /orders/items/:id/infusion/start — IVPB infusion start note (manual action only). */
 export const medicationInfusionStartDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** M1.8B.7J.3 — optional explicit IVPB_SESSION dose (auto-resolved when omitted). */
+  medicationDoseInstanceId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
   /** M1.8B.7E.1 — second verifier for high-alert insulin/heparin IVPB START. */
   highAlertVerifierUserId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
   highAlertVerifierDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
@@ -754,6 +756,8 @@ export type MedicationInfusionStartDto = z.infer<typeof medicationInfusionStartD
 export const medicationInfusionStopDtoSchema = z.object({
   stoppedAt: z.coerce.date().optional(),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  /** M1.8B.7J.3 — optional explicit IVPB_SESSION dose (resolved from active session when omitted). */
+  medicationDoseInstanceId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
   /** Passed through to MAR create when visit allergy documentation requires acknowledgment. */
   safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
 });

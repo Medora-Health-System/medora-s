@@ -132,6 +132,13 @@ describe("MedicationDoseHorizonMaintenance (M1.8B.7H.1b)", () => {
     }
   }
 
+  function setIvpbSchedulingFlags(on: boolean) {
+    setSchedulingFlags(on);
+    const key = "MEDICATION_IVPB_DOSE_SCHEDULING";
+    if (!(key in savedEnv)) savedEnv[key] = process.env[key];
+    process.env[key] = on ? "true" : "false";
+  }
+
   async function createOpenEncounter() {
     const patient = await prisma.patient.create({
       data: {
@@ -215,13 +222,48 @@ describe("MedicationDoseHorizonMaintenance (M1.8B.7H.1b)", () => {
     expect(await dosesForOrder(order.id)).toHaveLength(0);
   });
 
-  it("order-create wiring does not expand IVPB route orders", async () => {
+  it("order-create wiring does not expand IVPB route orders when IVPB flag OFF", async () => {
+    setSchedulingFlags(true);
+    process.env.MEDICATION_IVPB_DOSE_SCHEDULING = "false";
     const order = await createMedicationOrder({
       catalogItemId: vancomycinCatalogId,
       frequencyCode: "Q12H",
       route: "IVPB",
     });
     expect(await dosesForOrder(order.id)).toHaveLength(0);
+  });
+
+  it("horizon maintenance replenishes RECURRING_IVPB schedules", async () => {
+    setIvpbSchedulingFlags(true);
+    const now = new Date();
+    const anchorAt = new Date(now.getTime() - 60 * 60 * 60 * 1000);
+    const staleHorizonEnd = new Date(anchorAt.getTime() + MEDICATION_DOSE_EXPANSION_HORIZON_MS);
+
+    const order = await createMedicationOrder({
+      catalogItemId: vancomycinCatalogId,
+      frequencyCode: "Q12H",
+      route: "IVPB",
+    });
+    const schedule = await prisma.medicationOrderSchedule.findFirst({ where: { orderId: order.id } });
+    expect(schedule?.scheduleClassification).toBe("RECURRING_IVPB");
+
+    await prisma.medicationDoseInstance.deleteMany({ where: { medicationOrderScheduleId: schedule!.id } });
+    await prisma.medicationOrderSchedule.update({
+      where: { id: schedule!.id },
+      data: { createdAt: anchorAt },
+    });
+
+    await expansionService.expandForSchedule(schedule!.id, {
+      anchorAt,
+      horizonEndAt: staleHorizonEnd,
+    });
+
+    const snap = await maintenanceService.runOnce(now);
+    expect(snap.status).toBe("ok");
+    expect(snap.dosesCreated).toBeGreaterThan(0);
+
+    const doses = await dosesForOrder(order.id);
+    expect(doses.some((d) => d.doseKind === "IVPB_SESSION")).toBe(true);
   });
 
   it("order-create wiring does not expand blood products", async () => {

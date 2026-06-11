@@ -148,7 +148,7 @@ export class MedicationDoseHorizonMaintenanceService implements OnModuleInit, On
       const schedules = await this.prisma.medicationOrderSchedule.findMany({
         where: {
           scheduleStatus: MEDICATION_ORDER_SCHEDULE_STATUS_ACTIVE,
-          scheduleClassification: "RECURRING",
+          scheduleClassification: { in: ["RECURRING", "RECURRING_IVPB"] },
         },
         select: { id: true },
       });

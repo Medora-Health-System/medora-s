@@ -281,11 +281,11 @@ describe("medicationIvpbDoseSchedulingEnabled (M1.8B.7J.1)", () => {
   });
 });
 
-describe("RECURRING_IVPB expansion contract (M1.8B.7J.1)", () => {
-  it("does not expand until wired in 7J.2", () => {
+describe("RECURRING_IVPB expansion contract (M1.8B.7J.2)", () => {
+  it("expands when classification is RECURRING_IVPB", () => {
     expect(evaluateMedicationDoseExpansionForClassification("RECURRING_IVPB")).toEqual({
-      shouldExpand: false,
-      reason: "RECURRING_IVPB_EXPANSION_NOT_WIRED",
+      shouldExpand: true,
+      reason: "RECURRING_IVPB_MEDICATION_ELIGIBLE",
       classification: "RECURRING_IVPB",
     });
   });

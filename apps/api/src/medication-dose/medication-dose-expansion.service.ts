@@ -1,12 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import {
   buildMedicationOrderedDoseSnapshotJson,
-  evaluateMedicationDoseExpansionEligibility,
+  evaluateMedicationDoseExpansionForClassification,
   filterUnmaterializedMedicationDoseSlots,
+  isRecurringDoseExpandableScheduleClassification,
+  medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
   planMedicationDoseExpansionSlots,
   type MedicationCatalogSnapshotJson,
   type MedicationFrequencySnapshotJson,
+  type MedicationScheduleClassification,
   type MedicationSchedulingFeatureFlags,
 } from "@medora/shared";
 import type { MedicationOrderSchedule, OrderItem, Prisma } from "@prisma/client";
@@ -15,6 +18,7 @@ import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-schedu
 
 export const MEDICATION_DOSE_INSTANCE_STATUS_PLANNED = "PLANNED" as const;
 export const MEDICATION_DOSE_KIND_FIXED_ADMINISTRATION = "FIXED_ADMINISTRATION" as const;
+export const MEDICATION_DOSE_KIND_IVPB_SESSION = "IVPB_SESSION" as const;
 export const MEDICATION_ORDER_SCHEDULE_STATUS_ACTIVE = "ACTIVE" as const;
 
 export type MedicationDoseExpansionServiceResult = {
@@ -114,7 +118,7 @@ async function expandLoadedMedicationOrderSchedule(
       };
     }
 
-    if (schedule.scheduleClassification !== "RECURRING") {
+    if (!isRecurringDoseExpandableScheduleClassification(schedule.scheduleClassification)) {
       return {
         expanded: false,
         reason: "NOT_RECURRING",
@@ -123,19 +127,22 @@ async function expandLoadedMedicationOrderSchedule(
       };
     }
 
-    const catalogSnapshot = schedule.medicationCatalogSnapshotJson as MedicationCatalogSnapshotJson;
-    const eligibility = evaluateMedicationDoseExpansionEligibility({
-      frequencyCode: schedule.frequencyCode,
-      catalog: {
-        catalogItemId: catalogSnapshot.catalogItemId,
-        catalogCode: catalogSnapshot.catalogItemCode,
-        genericName: catalogSnapshot.genericName,
-        therapeuticClass: catalogSnapshot.therapeuticClass,
-        administrationType: catalogSnapshot.administrationType,
-        route: catalogSnapshot.route,
-      },
-      orderRoute: schedule.orderItem.route,
-    });
+    const scheduleClassification =
+      schedule.scheduleClassification as MedicationScheduleClassification;
+
+    if (
+      scheduleClassification === "RECURRING_IVPB" &&
+      !medicationIvpbDoseSchedulingEnabled(input.featureFlags)
+    ) {
+      return {
+        expanded: false,
+        reason: "IVPB_DOSE_SCHEDULING_FLAG_OFF",
+        createdCount: 0,
+        scheduleId: schedule.id,
+      };
+    }
+
+    const eligibility = evaluateMedicationDoseExpansionForClassification(scheduleClassification);
 
     if (!eligibility.shouldExpand) {
       return {
@@ -145,6 +152,8 @@ async function expandLoadedMedicationOrderSchedule(
         scheduleId: schedule.id,
       };
     }
+
+    const catalogSnapshot = schedule.medicationCatalogSnapshotJson as MedicationCatalogSnapshotJson;
 
     const facility = await tx.facility.findUnique({
       where: { id: schedule.facilityId },
@@ -204,6 +213,11 @@ async function expandLoadedMedicationOrderSchedule(
     const immutableFrequencySnapshot = structuredClone(frequencySnapshotJson);
     const immutableCatalogSnapshot = structuredClone(catalogSnapshot);
 
+    const doseKind =
+      scheduleClassification === "RECURRING_IVPB"
+        ? MEDICATION_DOSE_KIND_IVPB_SESSION
+        : MEDICATION_DOSE_KIND_FIXED_ADMINISTRATION;
+
     let createdCount = 0;
     for (const slot of slotsToCreate) {
       try {
@@ -215,7 +229,7 @@ async function expandLoadedMedicationOrderSchedule(
             orderItemId: schedule.orderItemId,
             medicationOrderScheduleId: schedule.id,
             doseSequenceNumber: slot.doseSequenceNumber,
-            doseKind: MEDICATION_DOSE_KIND_FIXED_ADMINISTRATION,
+            doseKind,
             scheduledAt: slot.scheduledAt,
             dueWindowStartAt: slot.dueWindowStartAt,
             dueWindowEndAt: slot.dueWindowEndAt,

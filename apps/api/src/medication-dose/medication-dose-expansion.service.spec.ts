@@ -17,6 +17,7 @@ import {
 import {
   MEDICATION_DOSE_INSTANCE_STATUS_PLANNED,
   MEDICATION_DOSE_KIND_FIXED_ADMINISTRATION,
+  MEDICATION_DOSE_KIND_IVPB_SESSION,
   MedicationDoseExpansionService,
 } from "./medication-dose-expansion.service";
 
@@ -129,6 +130,13 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
       if (!(key in savedEnv)) savedEnv[key] = process.env[key];
       process.env[key] = on ? "true" : "false";
     }
+  }
+
+  function setIvpbSchedulingFlags(on: boolean) {
+    setSchedulingFlags(on);
+    const key = "MEDICATION_IVPB_DOSE_SCHEDULING";
+    if (!(key in savedEnv)) savedEnv[key] = process.env[key];
+    process.env[key] = on ? "true" : "false";
   }
 
   async function createOpenEncounter() {
@@ -333,7 +341,9 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
     expect(await dosesForOrder(order.id)).toHaveLength(0);
   });
 
-  it("IVPB route recurring order does not expand", async () => {
+  it("IVPB route recurring order does not expand when IVPB flag OFF", async () => {
+    setSchedulingFlags(true);
+    process.env.MEDICATION_IVPB_DOSE_SCHEDULING = "false";
     const order = await createMedicationOrder({
       catalogItemId: vancomycinCatalogId,
       frequencyCode: "Q12H",
@@ -341,6 +351,23 @@ describe("MedicationDoseExpansionService (M1.8B.7H.1)", () => {
     });
     expect(await prisma.medicationOrderSchedule.count({ where: { orderId: order.id } })).toBe(0);
     expect(await dosesForOrder(order.id)).toHaveLength(0);
+  });
+
+  it("Vancomycin q12h IVPB expands IVPB_SESSION PLANNED doses when IVPB flag ON", async () => {
+    setIvpbSchedulingFlags(true);
+    const order = await createMedicationOrder({
+      catalogItemId: vancomycinCatalogId,
+      frequencyCode: "Q12H",
+      route: "IVPB",
+    });
+    const schedule = await prisma.medicationOrderSchedule.findFirst({ where: { orderId: order.id } });
+    expect(schedule?.scheduleClassification).toBe("RECURRING_IVPB");
+
+    const doses = await dosesForOrder(order.id);
+    expect(doses.length).toBeGreaterThan(0);
+    expect(doses.every((d) => d.doseKind === MEDICATION_DOSE_KIND_IVPB_SESSION)).toBe(true);
+    expect(doses.every((d) => d.doseStatus === MEDICATION_DOSE_INSTANCE_STATUS_PLANNED)).toBe(true);
+    expect(doses.every((d) => d.scheduleClassificationSnapshot === "RECURRING_IVPB")).toBe(true);
   });
 
   it("snapshot immutability — catalog update does not alter existing dose rows", async () => {

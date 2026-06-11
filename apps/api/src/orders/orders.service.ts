@@ -41,6 +41,10 @@ import {
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { maybeCreateMedicationOrderScheduleForOrderItem } from "../medication-scheduling/medication-order-schedule.persistence";
 import { expandMedicationDosesForScheduleInTransaction } from "../medication-dose/medication-dose-expansion.service";
+import {
+  findRecurringIvpbDoseStopLinkage,
+  resolveRecurringIvpbDoseStartLinkage,
+} from "../medication-administration/medication-ivpb-dose-session-linkage.util";
 import type {
   CareProcedureEffectiveClinicalTimeDto,
   MedicationInfusionStartDto,
@@ -57,6 +61,7 @@ import {
   deltaMinutesBetween,
   isCareProcedureOrderItem,
   medicationSchedulingFeatureFlagsEnabled,
+  isRecurringDoseExpandableScheduleClassification,
   orderItemStatusEligibleForBillingCapture,
   parseCareProcedureEffectiveClinicalTimeIso,
   resolveMedicationOrderItemFrequencyCode,
@@ -923,7 +928,7 @@ export class OrdersService {
           where: { id: scheduleResult.scheduleId },
           select: { scheduleClassification: true },
         });
-        if (schedule?.scheduleClassification === "RECURRING") {
+        if (schedule && isRecurringDoseExpandableScheduleClassification(schedule.scheduleClassification)) {
           await expandMedicationDosesForScheduleInTransaction(tx, {
             medicationOrderScheduleId: scheduleResult.scheduleId,
             featureFlags,
@@ -2918,11 +2923,16 @@ export class OrdersService {
     const infusionSessionKey = randomUUID();
     const infusionStartedAt = new Date();
     const startedIso = infusionStartedAt.toISOString();
+    const schedulingFeatureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
     const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(
       facilityId,
       userId,
       requestorRoleCodes
     );
+
+    let ivpbDoseSessionLink:
+      | { medicationDoseInstanceId: string; infusionSessionId: string }
+      | undefined;
 
     const startMetaRaw: Record<string, unknown> = {
       infusionScope: "MEDICATION_INFUSION",
@@ -2946,6 +2956,32 @@ export class OrdersService {
           data: { status: OrderStatus.IN_PROGRESS, lifecycleState },
         });
       }
+
+      const startLinkage = await resolveRecurringIvpbDoseStartLinkage(tx, {
+        orderItemId,
+        facilityId,
+        featureFlags: schedulingFeatureFlags,
+        now: infusionStartedAt,
+        explicitMedicationDoseInstanceId: dto.medicationDoseInstanceId,
+      });
+
+      if (startLinkage) {
+        const infusionSession = await tx.infusionSession.create({
+          data: {
+            encounterId: orderItem.order.encounterId,
+            facilityId,
+            orderItemId,
+            legacyInfusionSessionKey: infusionSessionKey,
+            status: "IN_PROGRESS",
+            startedAt: infusionStartedAt,
+          },
+        });
+        ivpbDoseSessionLink = {
+          medicationDoseInstanceId: startLinkage.dose.id,
+          infusionSessionId: infusionSession.id,
+        };
+      }
+
       await this.writeOrderEvent({
         facilityId,
         encounterId: orderItem.order.encounterId,
@@ -2973,6 +3009,7 @@ export class OrdersService {
         highAlertVerifierDisplayName: dto.highAlertVerifierDisplayName,
         highAlertOverrideReason: dto.highAlertOverrideReason,
         highAlertOverrideAcknowledged: dto.highAlertOverrideAcknowledged,
+        ...(ivpbDoseSessionLink ? { ivpbDoseSessionLink } : {}),
       }
     );
 
@@ -3255,6 +3292,15 @@ export class OrdersService {
     const stoppedIso = stoppedAt.toISOString();
     const startedIso = active.startedAt.toISOString();
 
+    const schedulingFeatureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
+    const ivpbStopLinkage = await findRecurringIvpbDoseStopLinkage(this.prisma, {
+      orderItemId,
+      facilityId,
+      legacyInfusionSessionKey: active.sessionKey,
+      featureFlags: schedulingFeatureFlags,
+      explicitMedicationDoseInstanceId: dto.medicationDoseInstanceId,
+    });
+
     const marRow = await this.medicationAdministration.create(
       orderItem.order.encounterId,
       facilityId,
@@ -3271,6 +3317,17 @@ export class OrdersService {
         allowAdministeredForInfusionTerminal: true,
         skipAutoMedicationCatalogBilling: true,
         skipDuplicateAdministeredWindowCheck: true,
+        ...(ivpbStopLinkage
+          ? {
+              skipMedicationLineCompletion: true,
+              ivpbDoseSessionMar: {
+                medicationDoseInstanceId: ivpbStopLinkage.dose.id,
+                infusionSessionId: ivpbStopLinkage.infusionSessionId,
+                action: "STOP" as const,
+                infusionStoppedAt: stoppedAt,
+              },
+            }
+          : {}),
         infusionMar: {
           infusionSessionKey: active.sessionKey,
           infusionPhase: "INFUSION_STOP",

@@ -41,11 +41,11 @@ describe("medicationDoseExpansion (M1.8B.7F.1)", () => {
     });
   });
 
-  it("RECURRING_IVPB does not expand until M1.8B.7J.2 wiring", () => {
+  it("RECURRING_IVPB is eligible for dose expansion (M1.8B.7J.2)", () => {
     const result = evaluateMedicationDoseExpansionForClassification("RECURRING_IVPB");
     expect(result).toEqual({
-      shouldExpand: false,
-      reason: "RECURRING_IVPB_EXPANSION_NOT_WIRED",
+      shouldExpand: true,
+      reason: "RECURRING_IVPB_MEDICATION_ELIGIBLE",
       classification: "RECURRING_IVPB",
     });
   });

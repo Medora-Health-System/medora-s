@@ -12,13 +12,15 @@ import {
   medicationSchedulingFeatureFlagsEnabled,
   type MedicationSchedulingFeatureFlags,
 } from "./medicationFrequencyEdHardening.js";
+import { medicationIvpbDoseSchedulingEnabled } from "./medicationIvpbDoseFeatureFlags.js";
+import { evaluateRecurringIvpbEligibility } from "./recurringIvpbEligibility.js";
 
 /**
  * Immutable schedule routing classes (M1.8B.7A.1). Stored as strings in DB for enum-evolution safety.
  *
  * RECURRING_IVPB (M1.8B.7J.1): recurring interval IVPB antibiotics — Vancomycin q12h, Cefepime q8h,
  * Ceftriaxone q24h, Piperacillin-Tazobactam q6h, etc. Dose kind IVPB_SESSION; START → session → STOP.
- * Not wired at order-create until M1.8B.7J.2+.
+ * IVPB_SESSION; START → session → STOP (M1.8B.7J.2 dose generation wired behind flag).
  */
 export const MEDICATION_SCHEDULE_CLASSIFICATIONS = [
   "DIRECT_MAR",
@@ -35,6 +37,13 @@ export function isRecurringIvpbScheduleClassification(
   value: MedicationScheduleClassification | string | null | undefined
 ): boolean {
   return value === "RECURRING_IVPB";
+}
+
+/** Schedule classes that pre-generate MedicationDoseInstance rows (M1.8B.7H / 7J.2). */
+export function isRecurringDoseExpandableScheduleClassification(
+  value: MedicationScheduleClassification | string | null | undefined
+): boolean {
+  return value === "RECURRING" || value === "RECURRING_IVPB";
 }
 
 export type MedicationCatalogSnapshotInput = {
@@ -160,6 +169,35 @@ export function evaluateMedicationOrderScheduleCreateGate(input: {
     const parsedForIvpb = parseMedicationFrequencyCode(
       input.frequencyCode == null ? null : String(input.frequencyCode)
     );
+
+    if (
+      medicationSchedulingFeatureFlagsEnabled(input.featureFlags) &&
+      medicationIvpbDoseSchedulingEnabled(input.featureFlags)
+    ) {
+      const ivpbEligibility = evaluateRecurringIvpbEligibility({
+        orderRoute: input.orderRoute,
+        frequencyCode: input.frequencyCode,
+        catalog,
+      });
+      if (ivpbEligibility.eligible && ivpbEligibility.frequencyCode) {
+        const def = getMedicationFrequencyDefinition(ivpbEligibility.frequencyCode);
+        if (def) {
+          return {
+            shouldCreate: true,
+            reason: "RECURRING_IVPB_SCHEDULE_ALLOWED",
+            classification: "RECURRING_IVPB",
+            frequencyCode: ivpbEligibility.frequencyCode,
+          };
+        }
+        return {
+          shouldCreate: false,
+          reason: "FREQUENCY_DEFINITION_MISSING",
+          classification: "RECURRING_IVPB",
+          frequencyCode: ivpbEligibility.frequencyCode,
+        };
+      }
+    }
+
     return {
       shouldCreate: false,
       reason: "IVPB_ROUTE_NEVER_SCHEDULES",

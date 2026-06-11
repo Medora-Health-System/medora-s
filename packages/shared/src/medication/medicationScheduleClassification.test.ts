@@ -96,6 +96,17 @@ describe("resolveScheduleClassification", () => {
 describe("evaluateMedicationOrderScheduleCreateGate", () => {
   const flagsOn = { MEDICATION_SCHEDULING_V1: true, MEDICATION_DOSE_INSTANCES: true };
   const flagsOff = { MEDICATION_SCHEDULING_V1: false, MEDICATION_DOSE_INSTANCES: false };
+  const ivpbFlagsOn = {
+    ...flagsOn,
+    MEDICATION_IVPB_DOSE_SCHEDULING: true,
+  };
+
+  const vancomycinCatalog = {
+    catalogCode: "VANCOMYCIN",
+    genericName: "Vancomycin",
+    administrationType: "INFUSION",
+    route: "IV",
+  };
 
   it("flags OFF + BID → no schedule", () => {
     const gate = evaluateMedicationOrderScheduleCreateGate({
@@ -146,6 +157,63 @@ describe("evaluateMedicationOrderScheduleCreateGate", () => {
     });
     expect(gate.shouldCreate).toBe(false);
     expect(gate.reason).toBe("INFUSION_CANDIDATE_NEVER_SCHEDULES");
+  });
+
+  it("Vancomycin q12h IVPB + ivpb flags ON → RECURRING_IVPB schedule", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "Q12H",
+      featureFlags: ivpbFlagsOn,
+      orderRoute: "IVPB",
+      catalog: vancomycinCatalog,
+    });
+    expect(gate.shouldCreate).toBe(true);
+    expect(gate.classification).toBe("RECURRING_IVPB");
+    expect(gate.reason).toBe("RECURRING_IVPB_SCHEDULE_ALLOWED");
+  });
+
+  it("Cefepime q8h IVPB + ivpb flags ON → RECURRING_IVPB schedule", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "Q8H",
+      featureFlags: ivpbFlagsOn,
+      orderRoute: "IVPB",
+      catalog: { ...vancomycinCatalog, catalogCode: "CEFEPIME", genericName: "Cefepime" },
+    });
+    expect(gate.shouldCreate).toBe(true);
+    expect(gate.classification).toBe("RECURRING_IVPB");
+  });
+
+  it("Rocephin q24h IVPB + ivpb flags ON → RECURRING_IVPB schedule", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "Q24H",
+      featureFlags: ivpbFlagsOn,
+      orderRoute: "IVPB",
+      catalog: { ...vancomycinCatalog, catalogCode: "CEFTRIAXONE", genericName: "Ceftriaxone" },
+    });
+    expect(gate.shouldCreate).toBe(true);
+    expect(gate.classification).toBe("RECURRING_IVPB");
+  });
+
+  it("NOW IVPB + ivpb flags ON → no schedule (INFUSION_LIFECYCLE)", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "NOW",
+      featureFlags: ivpbFlagsOn,
+      orderRoute: "IVPB",
+      catalog: vancomycinCatalog,
+    });
+    expect(gate.shouldCreate).toBe(false);
+    expect(gate.reason).toBe("IVPB_ROUTE_NEVER_SCHEDULES");
+    expect(gate.classification).toBe("INFUSION_LIFECYCLE");
+  });
+
+  it("IVPB q12h without MEDICATION_IVPB_DOSE_SCHEDULING → no schedule", () => {
+    const gate = evaluateMedicationOrderScheduleCreateGate({
+      frequencyCode: "Q12H",
+      featureFlags: flagsOn,
+      orderRoute: "IVPB",
+      catalog: vancomycinCatalog,
+    });
+    expect(gate.shouldCreate).toBe(false);
+    expect(gate.reason).toBe("IVPB_ROUTE_NEVER_SCHEDULES");
   });
 });
 

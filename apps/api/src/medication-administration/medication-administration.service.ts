@@ -93,6 +93,10 @@ import {
   resolveLoadedDoseGatedMarContext,
   type LoadedDoseGatedMarContext,
 } from "./medication-dose-gated-mar.util";
+import {
+  resolveLoadedIvpbDoseSessionMarContext,
+  type LoadedIvpbDoseSessionMarContext,
+} from "./medication-ivpb-dose-session-mar.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -143,6 +147,13 @@ export type MedicationAdministrationCreateServiceOptions = {
     infusionStoppedAtIso: string;
     infusionDurationMinutes: number;
     orderItemId: string;
+  };
+  /** M1.8B.7J.3 — recurring IVPB dose linkage for infusion START/STOP. */
+  ivpbDoseSessionMar?: {
+    medicationDoseInstanceId: string;
+    infusionSessionId: string;
+    action: "START" | "STOP";
+    infusionStoppedAt?: Date;
   };
 };
 
@@ -536,6 +547,8 @@ export class MedicationAdministrationService {
       data.marAction ?? deriveMarClinicalActionFromNotes(data.notes);
 
     let doseGatedMarContext: LoadedDoseGatedMarContext | null = null;
+    let ivpbDoseSessionMarContext: LoadedIvpbDoseSessionMarContext | null = null;
+
     if (preloadedDoseForGatedMar && doseGatedMarFlagsOn) {
       doseGatedMarContext = resolveLoadedDoseGatedMarContext({
         doseInstance: preloadedDoseForGatedMar,
@@ -548,9 +561,37 @@ export class MedicationAdministrationService {
       });
     }
 
+    const ivpbDoseSessionMar = serviceOptions?.ivpbDoseSessionMar;
+    if (
+      ivpbDoseSessionMar &&
+      medicationIvpbDoseSchedulingEnabled(schedulingFeatureFlags) &&
+      !doseGatedMarContext
+    ) {
+      const ivpbDoseRow = await this.prisma.medicationDoseInstance.findFirst({
+        where: {
+          id: ivpbDoseSessionMar.medicationDoseInstanceId,
+          facilityId,
+        },
+        include: { medicationOrderSchedule: true },
+      });
+      if (!ivpbDoseRow) {
+        throw new BadRequestException("Dose IVPB planifiée introuvable.");
+      }
+      ivpbDoseSessionMarContext = resolveLoadedIvpbDoseSessionMarContext({
+        doseInstance: ivpbDoseRow,
+        featureFlags: schedulingFeatureFlags,
+        action: ivpbDoseSessionMar.action,
+        infusionSessionId: ivpbDoseSessionMar.infusionSessionId,
+        requestOrderItemId: orderItemId ?? ivpbDoseRow.orderItemId,
+        requestEncounterId: encounterId,
+        requestFacilityId: facilityId,
+      });
+    }
+
     const effectiveSkipMedicationLineCompletion =
       serviceOptions?.skipMedicationLineCompletion === true ||
-      doseGatedMarContext?.skipOrderLineCompletion === true;
+      doseGatedMarContext?.skipOrderLineCompletion === true ||
+      ivpbDoseSessionMarContext?.skipOrderLineCompletion === true;
 
     let administeredQuantity = resolveMarAdministeredQuantityForCreate({
       marAction: marActionResolved,
@@ -984,7 +1025,10 @@ export class MedicationAdministrationService {
           patientId: encounter.patientId,
           encounterId,
           orderItemId,
-          medicationDoseInstanceId: doseGatedMarContext?.doseInstance.id ?? null,
+          medicationDoseInstanceId:
+            doseGatedMarContext?.doseInstance.id ??
+            ivpbDoseSessionMarContext?.doseInstance.id ??
+            null,
           medicationLabelSnapshot,
           route: data.route?.trim() ? data.route.trim() : null,
           doseValue,
@@ -1003,6 +1047,7 @@ export class MedicationAdministrationService {
               : MedicationAdministrationInfusionPhase.INFUSION_STOP
             : null,
           infusionSessionKey: serviceOptions?.infusionMar?.infusionSessionKey?.trim() || null,
+          infusionSessionId: ivpbDoseSessionMarContext?.infusionSessionId ?? null,
           notes: persistedNotes,
           ...effectiveCreate.prismaFields,
         },
@@ -1155,6 +1200,25 @@ export class MedicationAdministrationService {
             terminalMedicationAdministrationId: row.id,
           },
         });
+      } else if (ivpbDoseSessionMarContext) {
+        await tx.medicationDoseInstance.update({
+          where: { id: ivpbDoseSessionMarContext.doseInstance.id },
+          data: {
+            doseStatus: ivpbDoseSessionMarContext.nextDoseStatus,
+            ...(ivpbDoseSessionMarContext.action === "START"
+              ? { infusionSessionId: ivpbDoseSessionMarContext.infusionSessionId }
+              : { terminalMedicationAdministrationId: row.id }),
+          },
+        });
+        if (ivpbDoseSessionMarContext.action === "STOP") {
+          await tx.infusionSession.update({
+            where: { id: ivpbDoseSessionMarContext.infusionSessionId },
+            data: {
+              status: "STOPPED",
+              stoppedAt: serviceOptions?.ivpbDoseSessionMar?.infusionStoppedAt ?? row.administeredAt,
+            },
+          });
+        }
       }
 
       return row;
@@ -1267,6 +1331,10 @@ export class MedicationAdministrationService {
       highAlertVerifierDisplayName?: string;
       highAlertOverrideReason?: string;
       highAlertOverrideAcknowledged?: boolean;
+      ivpbDoseSessionLink?: {
+        medicationDoseInstanceId: string;
+        infusionSessionId: string;
+      };
     }
   ) {
     const sessionKey = input.infusionSessionKey.trim();
@@ -1327,6 +1395,15 @@ export class MedicationAdministrationService {
           infusionSessionKey: sessionKey,
           infusionPhase: "INFUSION_START",
         },
+        ...(input.ivpbDoseSessionLink
+          ? {
+              ivpbDoseSessionMar: {
+                medicationDoseInstanceId: input.ivpbDoseSessionLink.medicationDoseInstanceId,
+                infusionSessionId: input.ivpbDoseSessionLink.infusionSessionId,
+                action: "START" as const,
+              },
+            }
+          : {}),
       }
     );
   }
