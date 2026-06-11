@@ -4,7 +4,10 @@ import {
   MEDICATION_DOSE_INSTANCE_QUEUE_BUCKETS,
   MEDICATION_NON_DOSE_QUEUE_BUCKETS,
   MEDICATION_PASS_QUEUE_BUCKETS,
+  MEDICATION_PASS_QUEUE_IVPB_BADGE,
+  mapDoseInstanceToPassQueueBucket,
   mapMedicationDoseStatusToPassQueueBucket,
+  resolveIvpbSessionPassQueueClinicalAction,
 } from "./medicationDoseQueue.js";
 
 describe("medicationDoseQueue (M1.8B.7F.1)", () => {
@@ -47,5 +50,73 @@ describe("medicationDoseQueue (M1.8B.7F.1)", () => {
       expect(bucket).not.toBeNull();
       expect(MEDICATION_DOSE_INSTANCE_QUEUE_BUCKETS).toContain(bucket);
     }
+  });
+});
+
+describe("IVPB_SESSION pass queue mapping (M1.8B.7J.4)", () => {
+  it("maps IVPB_SESSION IN_PROGRESS to ACTIVE_INFUSION when flag ON", () => {
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "IN_PROGRESS",
+        ivpbSchedulingEnabled: true,
+      })
+    ).toBe("ACTIVE_INFUSION");
+  });
+
+  it("maps IVPB_SESSION DUE/OVERDUE/PLANNED like fixed doses when flag ON", () => {
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "DUE",
+        ivpbSchedulingEnabled: true,
+      })
+    ).toBe("DUE");
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "OVERDUE",
+        ivpbSchedulingEnabled: true,
+      })
+    ).toBe("OVERDUE");
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "PLANNED",
+        ivpbSchedulingEnabled: true,
+      })
+    ).toBe("UPCOMING");
+  });
+
+  it("hides IVPB_SESSION when IVPB scheduling flag OFF", () => {
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "DUE",
+        ivpbSchedulingEnabled: false,
+      })
+    ).toBeNull();
+  });
+
+  it("preserves FIXED_ADMINISTRATION IN_PROGRESS as IN_PROGRESS bucket", () => {
+    expect(
+      mapDoseInstanceToPassQueueBucket({
+        doseKind: "FIXED_ADMINISTRATION",
+        doseStatus: "IN_PROGRESS",
+        ivpbSchedulingEnabled: true,
+      })
+    ).toBe("IN_PROGRESS");
+  });
+
+  it("resolves IVPB clinical actions by status", () => {
+    expect(resolveIvpbSessionPassQueueClinicalAction("DUE")).toBe("START_INFUSION");
+    expect(resolveIvpbSessionPassQueueClinicalAction("OVERDUE")).toBe("START_INFUSION");
+    expect(resolveIvpbSessionPassQueueClinicalAction("IN_PROGRESS")).toBe("STOP_INFUSION");
+    expect(resolveIvpbSessionPassQueueClinicalAction("PLANNED")).toBe("VIEW_UPCOMING");
+    expect(resolveIvpbSessionPassQueueClinicalAction("HELD")).toBeNull();
+  });
+
+  it("exposes IVPB queue badge constant", () => {
+    expect(MEDICATION_PASS_QUEUE_IVPB_BADGE).toBe("IVPB");
   });
 });

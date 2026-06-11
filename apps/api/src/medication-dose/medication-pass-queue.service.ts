@@ -1,15 +1,28 @@
 import {
+  isIvpbSessionDoseKind,
   isTerminalMedicationDoseStatus,
-  mapMedicationDoseStatusToPassQueueBucket,
+  mapDoseInstanceToPassQueueBucket,
+  medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
+  parseMedicationDoseKind,
   parseMedicationDoseStatus,
+  resolveIvpbSessionPassQueueClinicalAction,
+  MEDICATION_PASS_QUEUE_IVPB_BADGE,
   type MedicationCatalogSnapshotJson,
+  type MedicationFrequencySnapshotJson,
   type MedicationOrderedDoseSnapshotJson,
+  type MedicationPassQueueBadge,
   type MedicationPassQueueBucket,
+  type MedicationPassQueueClinicalAction,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
 import { Injectable } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
+import {
+  MEDICATION_PASS_QUEUE_LIST_LIMIT,
+  passQueueDefaultShiftWindow,
+} from "../common/encounter-clinical-read-limits";
+import { MEDICATION_PASS_QUEUE_DOSE_SELECT, type MedicationPassQueueDoseRow } from "./medication-pass-queue-dose.select";
 import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -31,6 +44,7 @@ export type MedicationPassQueueItem = {
   medicationDoseInstanceId: string;
   orderItemId: string;
   orderId: string;
+  medicationOrderScheduleId: string;
   encounterId: string;
   patientId: string;
   patientFirstName: string | null;
@@ -42,13 +56,19 @@ export type MedicationPassQueueItem = {
   scheduledAt: string;
   dueWindowStartAt: string;
   dueWindowEndAt: string;
+  doseKind: string;
   doseStatus: string;
   queueBucket: MedicationPassQueueBucket;
   route: string | null;
+  frequencyCode: string | null;
   doseSnapshot: MedicationOrderedDoseSnapshotJson | null;
   highAlertSummary: MedicationPassQueueHighAlertSummary | null;
   responseDueAt: string | null;
   nurseAssignedUserId: string | null;
+  infusionSessionId: string | null;
+  terminalMedicationAdministrationId: string | null;
+  queueBadge: MedicationPassQueueBadge | null;
+  clinicalAction: MedicationPassQueueClinicalAction | null;
 };
 
 export type MedicationPassQueueResponse = {
@@ -71,6 +91,11 @@ function parseOrderedDoseSnapshot(json: unknown): MedicationOrderedDoseSnapshotJ
   return json as MedicationOrderedDoseSnapshotJson;
 }
 
+function parseFrequencySnapshot(json: unknown): MedicationFrequencySnapshotJson | null {
+  if (!json || typeof json !== "object") return null;
+  return json as MedicationFrequencySnapshotJson;
+}
+
 function resolveStatusFilter(query: MedicationPassQueueQuery): string[] {
   if (query.bucket) {
     switch (query.bucket) {
@@ -81,6 +106,8 @@ function resolveStatusFilter(query: MedicationPassQueueQuery): string[] {
       case "OVERDUE":
         return ["OVERDUE"];
       case "IN_PROGRESS":
+        return ["IN_PROGRESS"];
+      case "ACTIVE_INFUSION":
         return ["IN_PROGRESS"];
       case "HELD":
         return ["HELD"];
@@ -133,20 +160,29 @@ export class MedicationPassQueueService {
       return { enabled: false, at: at.toISOString(), count: 0, items: [] };
     }
 
+    const ivpbSchedulingEnabled = medicationIvpbDoseSchedulingEnabled(featureFlags);
+
     const statusFilter = resolveStatusFilter(query);
     if (statusFilter.length === 0) {
       return { enabled: true, at: at.toISOString(), count: 0, items: [] };
     }
 
-    const doses = await this.prisma.medicationDoseInstance.findMany({
+    const shiftWindow =
+      query.shiftStart && query.shiftEnd
+        ? { shiftStart: query.shiftStart, shiftEnd: query.shiftEnd }
+        : !query.encounterId
+          ? passQueueDefaultShiftWindow(at)
+          : null;
+
+    const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
       where: {
         facilityId,
         doseStatus: { in: statusFilter },
         ...(query.encounterId ? { encounterId: query.encounterId } : {}),
-        ...(query.shiftStart && query.shiftEnd
+        ...(shiftWindow
           ? {
-              dueWindowStartAt: { lt: query.shiftEnd },
-              dueWindowEndAt: { gt: query.shiftStart },
+              dueWindowStartAt: { lt: shiftWindow.shiftEnd },
+              dueWindowEndAt: { gt: shiftWindow.shiftStart },
             }
           : {}),
         encounter: {
@@ -156,24 +192,9 @@ export class MedicationPassQueueService {
           ...(!query.encounterId ? { status: "OPEN" } : {}),
         },
       },
-      include: {
-        encounter: {
-          select: {
-            id: true,
-            roomLabel: true,
-            nurseAssignedUserId: true,
-            patient: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                mrn: true,
-              },
-            },
-          },
-        },
-      },
+      select: MEDICATION_PASS_QUEUE_DOSE_SELECT,
       orderBy: [{ scheduledAt: "asc" }, { doseSequenceNumber: "asc" }],
+      take: MEDICATION_PASS_QUEUE_LIST_LIMIT,
     });
 
     const catalogIds = [
@@ -184,10 +205,10 @@ export class MedicationPassQueueService {
       ),
     ];
 
-    const governanceByCatalogId = await loadMedicationSafetyGovernanceByCatalogIdSafe(
-      this.prisma,
-      catalogIds
-    );
+    const governanceByCatalogId =
+      catalogIds.length > 0
+        ? await loadMedicationSafetyGovernanceByCatalogIdSafe(this.prisma, catalogIds)
+        : new Map<string, MedicationSafetyGovernanceSnapshot>();
 
     const items: MedicationPassQueueItem[] = [];
 
@@ -197,7 +218,16 @@ export class MedicationPassQueueService {
         continue;
       }
 
-      const queueBucket = mapMedicationDoseStatusToPassQueueBucket(parsedStatus);
+      if (dose.terminalMedicationAdministrationId?.trim()) {
+        continue;
+      }
+
+      const parsedDoseKind = parseMedicationDoseKind(dose.doseKind);
+      const queueBucket = mapDoseInstanceToPassQueueBucket({
+        doseKind: dose.doseKind,
+        doseStatus: parsedStatus,
+        ivpbSchedulingEnabled,
+      });
       if (!queueBucket) continue;
 
       if (query.bucket && queueBucket !== query.bucket) continue;
@@ -205,6 +235,7 @@ export class MedicationPassQueueService {
 
       const catalogSnapshot = parseCatalogSnapshot(dose.medicationCatalogSnapshotJson);
       const orderedSnapshot = parseOrderedDoseSnapshot(dose.orderedDoseSnapshotJson);
+      const frequencySnapshot = parseFrequencySnapshot(dose.frequencySnapshotJson);
       const catalogId = catalogSnapshot?.catalogItemId?.trim() || null;
       const governance = catalogId ? governanceByCatalogId.get(catalogId) : undefined;
 
@@ -220,10 +251,13 @@ export class MedicationPassQueueService {
         catalogSnapshot?.route?.trim() ||
         null;
 
+      const isIvpbSession = isIvpbSessionDoseKind(parsedDoseKind ?? dose.doseKind);
+
       items.push({
         medicationDoseInstanceId: dose.id,
         orderItemId: dose.orderItemId,
         orderId: dose.orderId,
+        medicationOrderScheduleId: dose.medicationOrderScheduleId,
         encounterId: dose.encounterId,
         patientId: dose.encounter.patient.id,
         patientFirstName: dose.encounter.patient.firstName,
@@ -235,13 +269,21 @@ export class MedicationPassQueueService {
         scheduledAt: dose.scheduledAt.toISOString(),
         dueWindowStartAt: dose.dueWindowStartAt.toISOString(),
         dueWindowEndAt: dose.dueWindowEndAt.toISOString(),
+        doseKind: parsedDoseKind ?? dose.doseKind,
         doseStatus: parsedStatus,
         queueBucket,
         route,
+        frequencyCode: frequencySnapshot?.frequencyCode ?? null,
         doseSnapshot: orderedSnapshot,
         highAlertSummary: toHighAlertSummary(governance),
         responseDueAt: dose.responseDueAt?.toISOString() ?? null,
         nurseAssignedUserId: dose.encounter.nurseAssignedUserId,
+        infusionSessionId: dose.infusionSessionId ?? null,
+        terminalMedicationAdministrationId: null,
+        queueBadge: isIvpbSession ? MEDICATION_PASS_QUEUE_IVPB_BADGE : null,
+        clinicalAction: isIvpbSession
+          ? resolveIvpbSessionPassQueueClinicalAction(parsedStatus)
+          : null,
       });
     }
 

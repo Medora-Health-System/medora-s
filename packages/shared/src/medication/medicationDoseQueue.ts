@@ -1,5 +1,6 @@
 import type { MedicationDoseStatus } from "./medicationDoseStatus.js";
 import { isTerminalMedicationDoseStatus } from "./medicationDoseStatus.js";
+import { isIvpbSessionDoseKind } from "./medicationDoseKind.js";
 
 /**
  * M1.8B.7F.1 — medication pass queue bucket vocabulary (future HOSPITAL_EMAR UI).
@@ -32,6 +33,17 @@ export const MEDICATION_NON_DOSE_QUEUE_BUCKETS = [
   "ACTIVE_INFUSION",
 ] as const satisfies readonly MedicationPassQueueBucket[];
 
+/** M1.8B.7J.4 — queue badge for recurring IVPB_SESSION rows. */
+export const MEDICATION_PASS_QUEUE_IVPB_BADGE = "IVPB" as const;
+
+export type MedicationPassQueueBadge = typeof MEDICATION_PASS_QUEUE_IVPB_BADGE;
+
+/** M1.8B.7J.4 — suggested nurse action for IVPB_SESSION pass queue rows. */
+export type MedicationPassQueueClinicalAction =
+  | "START_INFUSION"
+  | "STOP_INFUSION"
+  | "VIEW_UPCOMING";
+
 /**
  * Maps a dose status to its pass-queue bucket.
  * Returns null for terminal statuses (not shown on active pass lists).
@@ -59,6 +71,50 @@ export function mapMedicationDoseStatusToPassQueueBucket(
     case "MISSED":
     case "CANCELLED":
     case "SUPERSEDED":
+      return null;
+  }
+}
+
+/**
+ * M1.8B.7J.4 — dose-kind-aware pass queue bucket (IVPB_SESSION IN_PROGRESS → ACTIVE_INFUSION).
+ * IVPB_SESSION rows are hidden when `ivpbSchedulingEnabled` is false.
+ */
+export function mapDoseInstanceToPassQueueBucket(input: {
+  doseKind: string | null | undefined;
+  doseStatus: MedicationDoseStatus;
+  ivpbSchedulingEnabled: boolean;
+}): MedicationPassQueueBucket | null {
+  if (isTerminalMedicationDoseStatus(input.doseStatus)) {
+    return null;
+  }
+
+  if (isIvpbSessionDoseKind(input.doseKind) && !input.ivpbSchedulingEnabled) {
+    return null;
+  }
+
+  const base = mapMedicationDoseStatusToPassQueueBucket(input.doseStatus);
+  if (!base) return null;
+
+  if (isIvpbSessionDoseKind(input.doseKind) && input.doseStatus === "IN_PROGRESS") {
+    return "ACTIVE_INFUSION";
+  }
+
+  return base;
+}
+
+/** M1.8B.7J.4 — clinical action hint for IVPB_SESSION queue rows. */
+export function resolveIvpbSessionPassQueueClinicalAction(
+  doseStatus: MedicationDoseStatus
+): MedicationPassQueueClinicalAction | null {
+  switch (doseStatus) {
+    case "DUE":
+    case "OVERDUE":
+      return "START_INFUSION";
+    case "IN_PROGRESS":
+      return "STOP_INFUSION";
+    case "PLANNED":
+      return "VIEW_UPCOMING";
+    default:
       return null;
   }
 }
