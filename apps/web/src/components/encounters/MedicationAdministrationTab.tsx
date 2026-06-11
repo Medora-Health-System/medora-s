@@ -89,6 +89,7 @@ import {
 } from "@/lib/medicationPassQueueApi";
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
+import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
 import {
   findMedicationInfusionTimelineFromOrderEvents,
   formatInfusionDurationForI18n,
@@ -1750,6 +1751,13 @@ export function MedicationAdministrationTab({
       ) : null}
 
       <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
+
+      <FacilityMarShiftTimeline
+        facilityId={facilityId}
+        encounterId={encounterId}
+        assignedToUserId={currentUserId}
+        compact={marCompact}
+      />
 
       <MedicationPassQueuePanel
         enabled={passQueue.enabled}
