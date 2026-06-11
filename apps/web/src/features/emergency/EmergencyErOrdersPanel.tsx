@@ -26,6 +26,11 @@ import {
   orderItemIdFromEventMetadata,
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
+import {
+  isMedicationAdministrationManagedInMar,
+  MEDICATION_ORDER_MAR_HELPER_I18N_KEY,
+  resolveMedicationOrderMarStatusLabel,
+} from "@/features/emergency/medicationOrderMarExecutionPolicy";
 import { apiFetch } from "@/lib/apiClient";
 import { formatOrderCancelErrorMessage, shouldShowErOrderLineCancelAction } from "@/lib/orderCancelErrors";
 import {
@@ -420,6 +425,30 @@ function itemStatusAllowsStart(st: string): boolean {
 
 function itemStatusAllowsComplete(st: string): boolean {
   return st === "IN_PROGRESS";
+}
+
+function renderMedicationMarOrdersStatusSection(
+  itemStatus: string,
+  infusionTl: ReturnType<typeof findMedicationInfusionTimelineFromOrderEvents>,
+  tr: (k: string) => string
+): React.ReactNode {
+  return (
+    <div
+      style={{
+        fontSize: 12,
+        color: "#64748b",
+        lineHeight: 1.45,
+        display: "flex",
+        flexDirection: "column",
+        gap: 4,
+      }}
+    >
+      <div style={{ fontWeight: 700, color: "#0f172a" }}>
+        {resolveMedicationOrderMarStatusLabel(itemStatus, infusionTl, tr)}
+      </div>
+      <div style={{ fontSize: 11, color: "#64748b" }}>{tr(MEDICATION_ORDER_MAR_HELPER_I18N_KEY)}</div>
+    </div>
+  );
 }
 
 function isBedsideAdministerMedicationRow(row: Record<string, unknown>): boolean {
@@ -1268,9 +1297,33 @@ export function EmergencyErOrdersPanel({
                                 ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, o.id, itemId)
                                 : { active: null, lastCompleted: null };
                               const activeInfusion = infusionTl.active;
+                              const marManagedInMar = isMedicationAdministrationManagedInMar(o.type, item);
 
                               const lineBtns: React.ReactNode[] = [];
-                              if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
+                              if (marManagedInMar && hasAnyRole(roles, "RN", "ADMIN")) {
+                                const deptOkAck = deptAllowsOrderLineAction(
+                                  o.type,
+                                  cat,
+                                  item,
+                                  roles,
+                                  "acknowledge"
+                                );
+                                if (deptOkAck && itemStatusAllowsAcknowledge(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="ack"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:acknowledge`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
+                                    >
+                                      {busy === `${itemId}:acknowledge`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                    </button>
+                                  );
+                                }
+                              } else if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
                                 if (!activeInfusion) {
                                   lineBtns.push(
                                     <button
@@ -1377,8 +1430,9 @@ export function EmergencyErOrdersPanel({
                                   );
                                 }
                               }
-                              const activeStatusSection =
-                                isInfusionLifecycleMed && activeInfusion ? (
+                              const activeStatusSection = marManagedInMar ? (
+                                renderMedicationMarOrdersStatusSection(st, infusionTl, t)
+                              ) : isInfusionLifecycleMed && activeInfusion ? (
                                   <div
                                     style={{
                                       fontSize: 12,
@@ -1635,9 +1689,33 @@ export function EmergencyErOrdersPanel({
                                 ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, o.id, itemId)
                                 : { active: null, lastCompleted: null };
                               const activeInfusion = infusionTl.active;
+                              const marManagedInMar = isMedicationAdministrationManagedInMar(o.type, item);
 
                               const lineBtns: React.ReactNode[] = [];
-                              if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
+                              if (marManagedInMar && hasAnyRole(roles, "RN", "ADMIN")) {
+                                const deptOkAck = deptAllowsOrderLineAction(
+                                  o.type,
+                                  cat,
+                                  item,
+                                  roles,
+                                  "acknowledge"
+                                );
+                                if (deptOkAck && itemStatusAllowsAcknowledge(st)) {
+                                  lineBtns.push(
+                                    <button
+                                      key="ack"
+                                      type="button"
+                                      style={touchBtn()}
+                                      disabled={busy === `${itemId}:acknowledge`}
+                                      onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
+                                    >
+                                      {busy === `${itemId}:acknowledge`
+                                        ? t("erEmergencyOrders.lineActionBusy")
+                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                    </button>
+                                  );
+                                }
+                              } else if (isInfusionLifecycleMed && hasAnyRole(roles, "RN", "ADMIN")) {
                                 if (!activeInfusion) {
                                   lineBtns.push(
                                     <button
@@ -1771,8 +1849,10 @@ export function EmergencyErOrdersPanel({
                                     ) : null}
                                   </td>
                                   <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                                    <div style={{ marginBottom: lineBtns.length > 0 || isInfusionLifecycleMed ? 6 : 0 }}>
-                                      {isInfusionLifecycleMed && activeInfusion ? (
+                                    <div style={{ marginBottom: lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>
+                                      {marManagedInMar ? (
+                                        renderMedicationMarOrdersStatusSection(st, infusionTl, t)
+                                      ) : isInfusionLifecycleMed && activeInfusion ? (
                                         <div style={{ fontSize: 12, color: "#0369a1", lineHeight: 1.45, display: "flex", flexDirection: "column", gap: 4 }}>
                                           <div style={{ fontWeight: 700 }}>{t("infusionTimeline.infusionStatusInfusing")}</div>
                                           {activeInfusion.infusionStartedAtIso ? (

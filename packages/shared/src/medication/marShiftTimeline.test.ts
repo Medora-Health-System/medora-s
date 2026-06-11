@@ -180,10 +180,38 @@ describe("marShiftTimeline (M1.8B.7K.1)", () => {
         administeredAt: null,
         administeredByDisplay: null,
         administeredByInitials: null,
-        completionSummary: "EP 17:14–17:42",
+        completionSummary: "EP 17:14–EP 17:42",
       },
     });
     expect(display.secondaryText).toBe("DONE");
-    expect(display.tertiaryText).toBe("EP 17:14–17:42");
+    expect(display.tertiaryText).toBe("EP 17:14–EP 17:42");
+  });
+
+  it("buildMarShiftTimelineCompletionSummary uses both initials for completed IVPB", () => {
+    expect(
+      buildMarShiftTimelineCompletionSummary({
+        doseKind: "IVPB_SESSION",
+        doseStatus: "COMPLETED",
+        startedAt: "2026-06-11T17:14:00.000Z",
+        startedByInitials: "EP",
+        stoppedAt: "2026-06-11T17:42:00.000Z",
+        stoppedByInitials: "EP",
+        administeredAt: null,
+        administeredByInitials: null,
+      })
+    ).toBe("EP 17:14–EP 17:42");
+  });
+
+  it("buildMarShiftTimelineCellDisplay shows STAT secondary for STAT due dose", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Normal Saline",
+      doseKind: "FIXED_ADMINISTRATION",
+      doseStatus: "DUE",
+      route: "IV",
+      frequencyCode: "STAT",
+      requiresWitness: false,
+    });
+    expect(display.secondaryText).toBe("STAT");
+    expect(display.tertiaryText).toBe("ADMIN");
   });
 });

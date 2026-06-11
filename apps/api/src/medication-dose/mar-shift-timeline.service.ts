@@ -35,6 +35,7 @@ import {
 } from "./medication-pass-queue-dose.select";
 import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.service";
 import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
+import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-timeline-order-item-fallback.util";
 
 export type MarShiftTimelineQuery = {
   shiftCode?: MarShiftTimelineShiftCode | string;
@@ -253,7 +254,20 @@ export class MarShiftTimelineService {
         : new Map<string, MedicationSafetyGovernanceSnapshot>();
 
     const administrationEnrichmentByDoseId =
-      await loadMarShiftTimelineAdministrationEnrichment(this.prisma, doses);
+      await loadMarShiftTimelineAdministrationEnrichment(this.prisma, doses, facilityId);
+
+    const doseInstanceOrderItemRows = await this.prisma.medicationDoseInstance.findMany({
+      where: {
+        facilityId,
+        doseStatus: { notIn: excludedStatuses },
+        ...(query.encounterId ? { encounterId: query.encounterId } : {}),
+      },
+      select: { orderItemId: true },
+      distinct: ["orderItemId"],
+    });
+    const orderItemIdsWithDoseInstances = new Set(
+      doseInstanceOrderItemRows.map((row) => row.orderItemId)
+    );
 
     const rowMap = new Map<string, MarShiftTimelineRow>();
 
@@ -406,6 +420,50 @@ export class MarShiftTimelineService {
         row.cells.push(cell);
       }
       cell.items.push(item);
+    }
+
+    const fallbackPlacements = await loadMarShiftTimelineOrderItemFallbackPlacements({
+      prisma: this.prisma,
+      facilityId,
+      shiftStart: shiftWindow.startAt,
+      shiftEnd: shiftWindow.endAt,
+      columns,
+      encounterId: query.encounterId,
+      assignedToUserId: query.assignedToUserId,
+      includeCompleted,
+      orderItemIdsWithDoseInstances,
+      governanceByCatalogId,
+    });
+
+    for (const placement of fallbackPlacements) {
+      const rowKey = placement.encounterId;
+      let row = rowMap.get(rowKey);
+      if (!row) {
+        row = {
+          patientId: placement.patientId,
+          encounterId: placement.encounterId,
+          patientDisplay: placement.patientDisplay,
+          roomLabel: placement.roomLabel,
+          assignedNurseUserId: placement.assignedNurseUserId,
+          cells: [],
+        };
+        rowMap.set(rowKey, row);
+      }
+
+      let cell = row.cells.find((c) => c.columnKey === placement.columnKey);
+      if (!cell) {
+        cell = { columnKey: placement.columnKey, items: [] };
+        row.cells.push(cell);
+      }
+
+      const duplicate = cell.items.some(
+        (existing) =>
+          existing.orderItemId === placement.item.orderItemId &&
+          !existing.medicationDoseInstanceId?.trim()
+      );
+      if (!duplicate) {
+        cell.items.push(placement.item);
+      }
     }
 
     const rows = [...rowMap.values()].sort((a, b) => {

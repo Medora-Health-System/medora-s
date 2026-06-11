@@ -320,6 +320,29 @@ export function formatMarShiftTimelineClinicianDisplay(
   return parts.length > 0 ? parts.join(" ") : null;
 }
 
+/** Full name with optional facility role suffix (e.g. "Elizabeth Posada RN"). */
+export function formatMarShiftTimelineClinicianDisplayWithRole(
+  firstName: string | null | undefined,
+  lastName: string | null | undefined,
+  roleCode: string | null | undefined
+): string | null {
+  const base = formatMarShiftTimelineClinicianDisplay(firstName, lastName);
+  const role = roleCode?.trim();
+  if (base && role) return `${base} ${role}`;
+  return base ?? role ?? null;
+}
+
+/** Drawer/cell performer line — never blank when initials exist. */
+export function resolveMarShiftTimelinePerformerLabel(
+  display: string | null | undefined,
+  initials: string | null | undefined
+): string | null {
+  const name = display?.trim();
+  if (name) return name;
+  const init = initials?.trim();
+  return init || null;
+}
+
 export function buildMarShiftTimelineCompletionSummary(input: {
   doseKind: MedicationDoseKind | string | null | undefined;
   doseStatus: MedicationDoseStatus;
@@ -342,9 +365,6 @@ export function buildMarShiftTimelineCompletionSummary(input: {
       const startInitials = input.startedByInitials?.trim();
       const stopInitials = input.stoppedByInitials?.trim();
       if (startInitials && stopInitials) {
-        if (startInitials === stopInitials) {
-          return `${startInitials} ${startTime}–${stopTime}`;
-        }
         return `${startInitials} ${startTime}–${stopInitials} ${stopTime}`;
       }
       return `${startTime}–${stopTime}`;
@@ -443,6 +463,14 @@ export function buildMarShiftTimelineCellDisplay(input: {
     return { primaryText, secondaryText: "DONE", tertiaryText };
   }
 
+  const freq = input.frequencyCode?.trim().toUpperCase() ?? "";
+  if (
+    (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") &&
+    freq === "STAT"
+  ) {
+    return { primaryText, secondaryText: "STAT", tertiaryText: "ADMIN" };
+  }
+
   if (isIvpbSessionDoseKind(input.doseKind)) {
     if (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") {
       return { primaryText, secondaryText: "START", tertiaryText };
@@ -462,15 +490,21 @@ export function buildMarShiftTimelineCellDisplay(input: {
   const routeSecondary =
     route === "PO"
       ? "PO"
-      : route === "IVP"
-        ? "IVP"
-        : route === "IVPB"
-          ? "IVPB"
-          : route === "IM"
-            ? "IM"
-            : route === "SQ"
-              ? "SQ"
-              : "";
+      : route === "IV"
+        ? "IV"
+        : route === "IVP"
+          ? "IVP"
+          : route === "IVPB"
+            ? "IVPB"
+            : route === "IM"
+              ? "IM"
+              : route === "SQ"
+                ? "SQ"
+                : route === "SC"
+                  ? "SC"
+                  : route === "IO"
+                    ? "IO"
+                    : "";
 
   if (routeSecondary) {
     const adminTertiary =

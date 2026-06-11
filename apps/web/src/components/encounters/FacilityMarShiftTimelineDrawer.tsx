@@ -8,6 +8,7 @@ import {
   defaultMarShiftTimelineStopTimeValue,
   formatMarShiftTimelineDueWindow,
   isMarShiftTimelineDrawerReadOnly,
+  marShiftTimelineDrawerPerformerValue,
   marShiftTimelinePrimaryDrawerAction,
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
@@ -111,7 +112,7 @@ export function FacilityMarShiftTimelineDrawer({
     { label: t("marShiftTimeline.drawer.clinicalAction"), value: item.clinicalAction },
     {
       label: t("marShiftTimeline.drawer.startedBy"),
-      value: item.startedByDisplay,
+      value: marShiftTimelineDrawerPerformerValue(item.startedByDisplay, item.startedByInitials),
       testId: "mar-shift-timeline-drawer-started-by",
     },
     {
@@ -121,7 +122,7 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.stoppedBy"),
-      value: item.stoppedByDisplay,
+      value: marShiftTimelineDrawerPerformerValue(item.stoppedByDisplay, item.stoppedByInitials),
       testId: "mar-shift-timeline-drawer-stopped-by",
     },
     {
@@ -131,7 +132,10 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.administeredBy"),
-      value: item.administeredByDisplay,
+      value: marShiftTimelineDrawerPerformerValue(
+        item.administeredByDisplay,
+        item.administeredByInitials
+      ),
     },
     {
       label: t("marShiftTimeline.drawer.administeredAt"),

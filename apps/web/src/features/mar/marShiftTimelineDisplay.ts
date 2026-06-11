@@ -1,8 +1,11 @@
 import type { CSSProperties } from "react";
+import { resolveMarShiftTimelinePerformerLabel } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
   MarShiftTimelineDrawerAction,
 } from "@/lib/marShiftTimelineApi";
+
+export { resolveMarShiftTimelinePerformerLabel as marShiftTimelineDrawerPerformerValue };
 
 export const MAR_SHIFT_TIMELINE_MUTATION_ACTIONS = new Set<MarShiftTimelineDrawerAction>([
   "ADMINISTER",
