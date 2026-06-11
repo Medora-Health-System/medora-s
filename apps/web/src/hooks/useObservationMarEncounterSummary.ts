@@ -49,6 +49,8 @@ export function useObservationMarEncounterSummary({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const standaloneLoadInFlightRef = useRef(false);
+  const clinicalDataRef = useRef(clinicalData);
+  clinicalDataRef.current = clinicalData;
 
   const computeFromArrays = useCallback(
     (orders: unknown[], admins: unknown[], eventsRaw: unknown[]) => {
@@ -56,6 +58,12 @@ export function useObservationMarEncounterSummary({
     },
     [language, t]
   );
+
+  const recomputeFromSharedCache = useCallback(() => {
+    const cd = clinicalDataRef.current;
+    if (!cd) return;
+    setSummary(computeFromArrays(cd.orders, cd.medicationAdministrations, cd.orderEvents));
+  }, [computeFromArrays]);
 
   const standaloneLoad = useCallback(async () => {
     if (!enabled || !encounterId.trim() || !facilityId.trim()) {
@@ -169,29 +177,31 @@ export function useObservationMarEncounterSummary({
 
   useEffect(() => {
     if (!enabled || !pollingEnabled) return;
+
     if (clinicalData) {
-      if (clinicalData.loading.any || clinicalData.isRefreshing) return;
       const id = setInterval(() => {
-        if (clinicalData.loading.any || clinicalData.isRefreshing) return;
-        perfClinicalDataLog("observation MAR polling refresh via shared clinical data");
-        void clinicalData.refresh("all");
+        perfClinicalDataLog("observation MAR polling recompute from shared cache");
+        recomputeFromSharedCache();
       }, 60_000);
       return () => clearInterval(id);
     }
+
     const id = setInterval(() => {
       if (standaloneLoadInFlightRef.current) return;
       void standaloneLoad();
     }, 60_000);
     return () => clearInterval(id);
-  }, [enabled, pollingEnabled, clinicalData, standaloneLoad]);
+  }, [enabled, pollingEnabled, clinicalData, recomputeFromSharedCache, standaloneLoad]);
 
   const reload = useCallback(async () => {
     if (clinicalData) {
-      await clinicalData.refresh("all");
+      await clinicalData.refresh("ordersAndEvents", { reason: "manual", force: true });
+      await clinicalData.refresh("mar", { reason: "manual", force: true });
+      recomputeFromSharedCache();
       return;
     }
     await standaloneLoad();
-  }, [clinicalData, standaloneLoad]);
+  }, [clinicalData, recomputeFromSharedCache, standaloneLoad]);
 
   return { summary, loading, error, reload };
 }

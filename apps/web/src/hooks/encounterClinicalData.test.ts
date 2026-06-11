@@ -8,6 +8,7 @@ import {
   resetEncounterClinicalDataLoaderForTests,
 } from "@/hooks/encounterClinicalDataLoader";
 import { createEncounterClinicalDataPerfCounters } from "@/hooks/encounterClinicalDataPerf";
+import { scopesForRefresh } from "@/hooks/encounterClinicalDataTypes";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -38,6 +39,15 @@ const webRoot = join(import.meta.dirname, "../..");
 function readWebSource(relPath: string): string {
   return readFileSync(join(webRoot, relPath), "utf8");
 }
+
+describe("scopesForRefresh", () => {
+  it("maps composite scopes to atomic fetch targets", () => {
+    expect(scopesForRefresh("all")).toEqual(["orders", "mar", "orderEvents", "passQueue"]);
+    expect(scopesForRefresh("ordersAndEvents")).toEqual(["orders", "orderEvents"]);
+    expect(scopesForRefresh("orderMutation")).toEqual(["orders", "passQueue"]);
+    expect(scopesForRefresh("marMutation")).toEqual(["mar", "passQueue"]);
+  });
+});
 
 describe("encounterClinicalDataLoader", () => {
   beforeEach(() => {
@@ -163,30 +173,69 @@ describe("encounter clinical data integration (source contracts)", () => {
     expect(loadQuickContextBlock).not.toContain("/orders");
   });
 
-  it("MAR tab reuses shared clinical data cache", () => {
+  it("EncounterClinicalDataProvider initial refresh runs once per encounter scope", () => {
+    const provider = readWebSource("src/hooks/EncounterClinicalDataProvider.tsx");
+    expect(provider).toContain("initialLoadKeyRef");
+    expect(provider).toContain('refresh("all", { reason: "initial", force: true })');
+    expect(provider).toContain("if (initialLoadKeyRef.current === loadKey)");
+    expect(provider).not.toMatch(/activeTab/);
+  });
+
+  it("bridge does not refresh all on rerender or refresh-key bumps", () => {
+    const bridge = readWebSource("src/hooks/encounterClinicalDataBridge.tsx");
+    expect(bridge).not.toContain('refresh("all")');
+    expect(bridge).toContain("no network refetch");
+    expect(bridge).toContain("prefetchedEncounterKeyRef");
+    expect(bridge).not.toContain("requestedRef.current = false");
+  });
+
+  it("observation MAR summary does not poll refresh(all) when using shared cache", () => {
+    const hook = readWebSource("src/hooks/useObservationMarEncounterSummary.ts");
+    expect(hook).not.toContain('refresh("all")');
+    expect(hook).toContain("observation MAR polling recompute from shared cache");
+    expect(hook).toContain("if (!enabled || !pollingEnabled) return");
+    const page = readWebSource("app/app/encounters/[id]/page.tsx");
+    expect(page).toContain('pollingEnabled: activeTab !== "mar" && activeTab !== "orders"');
+  });
+
+  it("MAR tab mount reuses shared data without standalone reload", () => {
     const mar = readWebSource("src/components/encounters/MedicationAdministrationTab.tsx");
     expect(mar).toContain("useEncounterClinicalDataOptional");
     expect(mar).toContain("MAR tab using shared orders cache");
-    expect(mar).toContain("encounterAllergySource");
-    expect(mar).toContain("Promise.all([");
-    expect(mar).toContain("/order-events");
+    expect(mar).toContain("if (useSharedClinicalData) return");
+    expect(mar).toContain("void loadAllStandalone()");
   });
 
-  it("Orders tab reuses shared orders cache and refreshes on mutation", () => {
-    const page = readWebSource("app/app/encounters/[id]/page.tsx");
-    expect(page).toContain('perfClinicalDataLog("Orders tab using shared orders cache")');
-    expect(page).toContain("refreshOrdersAfterMutation");
-    expect(page).toContain('clinicalData.refresh("orders")');
-    expect(page).toContain('clinicalData.refresh("passQueue")');
+  it("MAR mutation refreshes only mar + passQueue via marMutation scope", () => {
+    const mar = readWebSource("src/components/encounters/MedicationAdministrationTab.tsx");
+    expect(mar).toContain('refresh("marMutation"');
+    expect(mar).not.toContain('refresh("mar"), clinicalData.refresh("passQueue")');
   });
 
-  it("observation MAR summary supports shared clinical data and tab-aware polling", () => {
-    const hook = readWebSource("src/hooks/useObservationMarEncounterSummary.ts");
-    expect(hook).toContain("clinicalData");
-    expect(hook).toContain("pollingEnabled");
-    expect(hook).toContain("observation MAR summary using shared clinical data");
+  it("order mutation refreshes only orders + passQueue via orderMutation scope", () => {
     const page = readWebSource("app/app/encounters/[id]/page.tsx");
-    expect(page).toContain('pollingEnabled: activeTab !== "mar" && activeTab !== "orders"');
+    expect(page).toContain('refresh("orderMutation"');
+    expect(page).toContain("refreshAfterOrderCreated");
+    expect(page).not.toContain('clinicalData.refresh("orders"), clinicalData.refresh("passQueue")');
+    expect(page).toContain("refreshObservationEncounterMetadata");
+  });
+
+  it("infusion clock tick does not trigger network fetch", () => {
+    const mar = readWebSource("src/components/encounters/MedicationAdministrationTab.tsx");
+    const clockBlock =
+      mar.match(
+        /Re-render periodically so infusion elapsed time[\s\S]*?useEffect\(\(\) => \{[\s\S]*?\}, \[[^\]]*\]\);/
+      )?.[0] ?? "";
+    expect(clockBlock).toContain("setInfusionClockTick");
+    expect(clockBlock).not.toContain("apiFetch");
+    expect(clockBlock).not.toContain("refresh(");
+    expect(clockBlock).not.toContain("loadAllStandalone");
+  });
+
+  it("observation surfaces refresh orders+events not full clinical bundle", () => {
+    const page = readWebSource("app/app/encounters/[id]/page.tsx");
+    expect(page).toContain('"ordersAndEvents"');
+    expect(page).not.toMatch(/clinicalDataRefreshRef\.current\("all"\)/);
   });
 
   it("pass queue disabled still uses legacy MAR standalone path outside provider", () => {

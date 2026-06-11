@@ -724,7 +724,7 @@ export function MedicationAdministrationTab({
 
   const reloadMarData = useCallback(async () => {
     if (useSharedClinicalData && clinicalData) {
-      await Promise.all([clinicalData.refresh("mar"), clinicalData.refresh("passQueue")]);
+      await clinicalData.refresh("marMutation", { reason: "mutation", force: true });
       return;
     }
     await loadAllStandalone();

@@ -1,6 +1,22 @@
 import type { MedicationPassQueueResponse } from "@/lib/medicationPassQueueApi";
 
-export type EncounterClinicalRefreshScope = "orders" | "mar" | "orderEvents" | "passQueue" | "all";
+export type EncounterClinicalRefreshScope =
+  | "orders"
+  | "mar"
+  | "orderEvents"
+  | "passQueue"
+  | "all"
+  /** Observation timeline / order-line surfaces — no MAR or pass queue. */
+  | "ordersAndEvents"
+  /** After order create/cancel — orders + pass queue only. */
+  | "orderMutation"
+  /** After MAR record — MAR + pass queue only. */
+  | "marMutation";
+
+export type EncounterClinicalRefreshOptions = {
+  reason?: string;
+  force?: boolean;
+};
 
 export type EncounterClinicalDataLoadingState = {
   orders: boolean;
@@ -26,7 +42,10 @@ export type EncounterClinicalDataValue = {
   passQueue: MedicationPassQueueResponse;
   loading: EncounterClinicalDataLoadingState;
   errors: EncounterClinicalDataErrors;
-  refresh: (scope?: EncounterClinicalRefreshScope) => Promise<void>;
+  refresh: (
+    scope?: EncounterClinicalRefreshScope,
+    options?: EncounterClinicalRefreshOptions
+  ) => Promise<void>;
   /** True when any scoped fetch is in flight. */
   isRefreshing: boolean;
 };
@@ -38,7 +57,23 @@ export const EMPTY_PASS_QUEUE: MedicationPassQueueResponse = {
   items: [],
 };
 
-export function scopesForRefresh(scope: EncounterClinicalRefreshScope): EncounterClinicalRefreshScope[] {
-  if (scope === "all") return ["orders", "mar", "orderEvents", "passQueue"];
-  return [scope];
+const ATOMIC_REFRESH_SCOPES = ["orders", "mar", "orderEvents", "passQueue"] as const;
+
+export type AtomicEncounterClinicalRefreshScope = (typeof ATOMIC_REFRESH_SCOPES)[number];
+
+export function scopesForRefresh(
+  scope: EncounterClinicalRefreshScope
+): AtomicEncounterClinicalRefreshScope[] {
+  switch (scope) {
+    case "all":
+      return [...ATOMIC_REFRESH_SCOPES];
+    case "ordersAndEvents":
+      return ["orders", "orderEvents"];
+    case "orderMutation":
+      return ["orders", "passQueue"];
+    case "marMutation":
+      return ["mar", "passQueue"];
+    default:
+      return [scope];
+  }
 }

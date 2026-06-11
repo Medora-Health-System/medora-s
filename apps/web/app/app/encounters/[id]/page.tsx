@@ -456,7 +456,10 @@ function EncounterDetailPageInner() {
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
   const clinicalDataRefreshRef = useRef<
-    ((scope?: EncounterClinicalRefreshScope) => Promise<void>) | null
+    ((
+      scope?: EncounterClinicalRefreshScope,
+      options?: { reason?: string; force?: boolean }
+    ) => Promise<void>) | null
   >(null);
   const clinicalData = useEncounterClinicalData();
 
@@ -989,11 +992,23 @@ function EncounterDetailPageInner() {
     }
   }, [canViewEncounterDetail, encounterId, facilityId]);
 
-  /** Re-fetch encounter + orders + timeline after observation disposition or order-line mutations. */
+  /** Re-fetch encounter metadata + bump dependent UI keys (no clinical bundle refetch). */
+  const refreshObservationEncounterMetadata = useCallback(async () => {
+    await loadEncounter({ silent: true });
+    setClinicalTimelineRefresh((n) => n + 1);
+    setEncounterResultsRefresh((x) => x + 1);
+    if (encounterId && facilityId) {
+      dispatchObservationEncounterRefresh({ encounterId, facilityId });
+    }
+  }, [loadEncounter, encounterId, facilityId]);
+
+  /** Re-fetch encounter + order timeline surfaces after observation disposition or order-line mutations. */
   const refreshObservationClinicalSurfaces = useCallback(async () => {
     await Promise.all([
       loadEncounter({ silent: true }),
-      clinicalDataRefreshRef.current ? clinicalDataRefreshRef.current("all") : refreshQuickOrdersOnly(),
+      clinicalDataRefreshRef.current
+        ? clinicalDataRefreshRef.current("ordersAndEvents", { reason: "observation-surface", force: true })
+        : refreshQuickOrdersOnly(),
     ]);
     setClinicalTimelineRefresh((n) => n + 1);
     setEncounterResultsRefresh((x) => x + 1);
@@ -1001,6 +1016,15 @@ function EncounterDetailPageInner() {
       dispatchObservationEncounterRefresh({ encounterId, facilityId });
     }
   }, [loadEncounter, refreshQuickOrdersOnly, encounterId, facilityId]);
+
+  const refreshAfterOrderCreated = useCallback(async () => {
+    if (clinicalDataRefreshRef.current) {
+      await clinicalDataRefreshRef.current("orderMutation", { reason: "mutation", force: true });
+    } else {
+      await refreshQuickOrdersOnly();
+    }
+    await refreshObservationEncounterMetadata();
+  }, [refreshQuickOrdersOnly, refreshObservationEncounterMetadata]);
 
   const handlePrintDischarge = useCallback(() => {
     if (!encounter?.patient) return;
@@ -2602,8 +2626,8 @@ function EncounterDetailPageInner() {
               medicationModalRequestTick={medicationModalRequestTick}
               careModalRequestTick={careModalRequestTick}
               careModalPresetLabel={careModalPresetLabel}
-              onOrdersUpdated={refreshObservationClinicalSurfaces}
-              onRefetchEncounter={refreshObservationClinicalSurfaces}
+              onOrdersUpdated={refreshObservationEncounterMetadata}
+              onRefetchEncounter={refreshObservationEncounterMetadata}
             />
           )}
           {activeTab === "mar" && canFetchMarTab && (
@@ -3373,7 +3397,7 @@ function EncounterDetailPageInner() {
         facilityId={facilityId}
         existingTemplateItemIds={existingObservationTemplateItemIds}
         onClose={() => setShowObservationOrderTemplateModal(false)}
-        onOrdersCreated={refreshObservationClinicalSurfaces}
+        onOrdersCreated={refreshAfterOrderCreated}
       />
 
       <ObservationReassessmentModal
@@ -6143,7 +6167,7 @@ function OrdersTab({
     if (!opts?.silent) setLoading(true);
     if (opts?.manual) setManualRefreshing(true);
     try {
-      await clinicalData.refresh("orders");
+      await clinicalData.refresh("orders", { reason: opts?.manual ? "manual" : "load", force: true });
     } catch (error) {
       console.error("Failed to load orders:", error);
     } finally {
@@ -6153,7 +6177,7 @@ function OrdersTab({
   };
 
   const refreshOrdersAfterMutation = async () => {
-    await Promise.all([clinicalData.refresh("orders"), clinicalData.refresh("passQueue")]);
+    await clinicalData.refresh("orderMutation", { reason: "mutation", force: true });
     await onOrdersUpdated?.();
   };
 
