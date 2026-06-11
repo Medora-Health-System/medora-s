@@ -18,10 +18,6 @@ import {
 } from "@medora/shared";
 import { Injectable } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
-import {
-  MEDICATION_PASS_QUEUE_LIST_LIMIT,
-  passQueueDefaultShiftWindow,
-} from "../common/encounter-clinical-read-limits";
 import { MEDICATION_PASS_QUEUE_DOSE_SELECT, type MedicationPassQueueDoseRow } from "./medication-pass-queue-dose.select";
 import { loadMedicationSafetyGovernanceByCatalogIdSafe } from "../medication-safety/medication-governance-enrichment.util";
 import { PrismaService } from "../prisma/prisma.service";
@@ -80,6 +76,20 @@ export type MedicationPassQueueResponse = {
 
 const DEFAULT_ACTIVE_STATUSES = ["DUE", "OVERDUE", "IN_PROGRESS", "HELD"] as const;
 const UPCOMING_STATUS = "PLANNED" as const;
+
+/** Max dose rows scanned for pass queue (post-filter count may be lower). */
+export const MEDICATION_PASS_QUEUE_LIST_LIMIT = 500;
+
+const MEDICATION_PASS_QUEUE_DEFAULT_LOOKBACK_HOURS = 2;
+const MEDICATION_PASS_QUEUE_DEFAULT_LOOKAHEAD_HOURS = 24;
+
+function passQueueDefaultShiftWindow(now: Date): { shiftStart: Date; shiftEnd: Date } {
+  const shiftStart = new Date(now);
+  shiftStart.setUTCHours(shiftStart.getUTCHours() - MEDICATION_PASS_QUEUE_DEFAULT_LOOKBACK_HOURS);
+  const shiftEnd = new Date(now);
+  shiftEnd.setUTCHours(shiftEnd.getUTCHours() + MEDICATION_PASS_QUEUE_DEFAULT_LOOKAHEAD_HOURS);
+  return { shiftStart, shiftEnd };
+}
 
 function parseCatalogSnapshot(json: unknown): MedicationCatalogSnapshotJson | null {
   if (!json || typeof json !== "object") return null;

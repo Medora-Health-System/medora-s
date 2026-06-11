@@ -1,5 +1,5 @@
 import { MEDICATION_PASS_QUEUE_DOSE_SELECT } from "./medication-pass-queue-dose.select";
-import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "../common/encounter-clinical-read-limits";
+import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.service";
 
 describe("medication pass queue dose select", () => {
   it("includes IVPB_SESSION linkage fields and frequency for queue metadata", () => {
