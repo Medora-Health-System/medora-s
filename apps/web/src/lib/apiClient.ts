@@ -6,6 +6,7 @@ import { normalizeUserFacingError } from "./userFacingError";
 import { enqueueOfflineAction } from "@/lib/offline/offlineQueue";
 import type { OfflineQueueItemType } from "@/lib/offline/offlineTypes";
 import { processOfflineQueueOnce } from "@/lib/offline/offlineSync";
+import { buildGetDedupeKey, dedupeGetRequest } from "@/lib/getRequestDedupe";
 
 const API_BASE = "/api/backend";
 
@@ -240,7 +241,25 @@ export async function apiFetchResponse(
   return response;
 }
 
+function isGetDedupeEligible(path: string, method: string): boolean {
+  if (method !== "GET") return false;
+  if (path.startsWith("/auth/") || path.includes("/auth/")) return false;
+  return true;
+}
+
 export async function apiFetch(
+  path: string,
+  options: RequestInit & { facilityId?: string } = {}
+): Promise<any> {
+  const method = (options.method ?? "GET").toUpperCase();
+  if (isGetDedupeEligible(path, method)) {
+    const key = buildGetDedupeKey(path, options.facilityId);
+    return dedupeGetRequest(key, () => apiFetchOnce(path, options));
+  }
+  return apiFetchOnce(path, options);
+}
+
+async function apiFetchOnce(
   path: string,
   options: RequestInit & { facilityId?: string } = {}
 ): Promise<any> {

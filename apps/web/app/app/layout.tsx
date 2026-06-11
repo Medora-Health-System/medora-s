@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getRouteGuardRedirect } from "@/lib/landingRoute";
-import { parseApiResponse } from "@/lib/apiClient";
+import { fetchAuthMeSession, invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
@@ -37,16 +37,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const loadSession = useCallback(async () => {
+  const loadSession = useCallback(async (opts?: { force?: boolean }) => {
     try {
-      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const { ok, data } = await fetchAuthMeSession({ force: opts?.force });
       if (!isMountedRef.current) return;
-      if (!res.ok) {
+      if (!ok || !data) {
         router.replace("/login");
         return;
       }
-      const data = await parseApiResponse(res);
-      if (!isMountedRef.current) return;
       const d =
         data && typeof data === "object" && !Array.isArray(data)
           ? (data as { facilityRoles?: unknown; msppRoles?: unknown; accessTokenTtlSeconds?: unknown })
@@ -120,7 +118,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onSessionRefresh = () => {
-      void loadSession();
+      void loadSession({ force: true });
     };
     window.addEventListener("medora:session-refresh", onSessionRefresh);
     return () => window.removeEventListener("medora:session-refresh", onSessionRefresh);
@@ -178,6 +176,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error);
     }
+    invalidateAuthMeSessionCache();
     router.push("/login");
   };
 

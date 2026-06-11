@@ -202,7 +202,7 @@ export function EmergencyActiveWorkspaceView() {
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
+  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe, userId } =
     useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
@@ -1303,6 +1303,7 @@ export function EmergencyActiveWorkspaceView() {
                   <MedicationAdministrationTab
                     encounterId={encounterId}
                     facilityId={fid}
+                    currentUserId={userId}
                     encounterStatus={encounter.status ?? "OPEN"}
                     providerDocumentationStatus={encounter.providerDocumentationStatus}
                     roleCodes={roles}

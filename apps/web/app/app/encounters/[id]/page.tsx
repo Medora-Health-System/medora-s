@@ -6,6 +6,7 @@ import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { invalidateGetRequestDedupeForPath } from "@/lib/getRequestDedupe";
 import { useObservationMarEncounterSummary } from "@/hooks/useObservationMarEncounterSummary";
 import {
   EncounterClinicalDataProvider,
@@ -351,7 +352,8 @@ const ENCOUNTER_PAGE_SHELL: React.CSSProperties = {
 export default function EncounterDetailPage() {
   const params = useParams();
   const encounterId = params.id as string;
-  const { facilityId, roles, ready: rolesReady } = useFacilityAndRoles();
+  const session = useFacilityAndRoles();
+  const { facilityId, roles, ready: rolesReady } = session;
   const { t } = useI18n();
 
   const canFetchEncounterOrders =
@@ -388,17 +390,17 @@ export default function EncounterDetailPage() {
       pendingSyncFirstName={t("marTab.pendingSyncFirstName")}
       pendingSyncLastName={t("marTab.pendingSyncLastName")}
     >
-      <EncounterDetailPageInner />
+      <EncounterDetailPageInner session={session} />
     </EncounterClinicalDataProvider>
   );
 }
 
-function EncounterDetailPageInner() {
+function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useFacilityAndRoles> }) {
   const params = useParams();
   const router = useRouter();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities } = useFacilityAndRoles();
+  const { facilityId, userId, canPrescribe, roles, ready: rolesReady, facilities } = session;
   const encounterDetailPath = `/app/encounters/${encounterId}`;
   const [encounter, setEncounter] = useState<any>(null);
   const [encounterFetchError, setEncounterFetchError] = useState<string | null>(null);
@@ -455,6 +457,7 @@ function EncounterDetailPageInner() {
   const [showContinueObservationQuickModal, setShowContinueObservationQuickModal] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
+  const quickContextLoadedKeyRef = useRef<string | null>(null);
   const clinicalDataRefreshRef = useRef<
     ((
       scope?: EncounterClinicalRefreshScope,
@@ -843,12 +846,20 @@ function EncounterDetailPageInner() {
     };
   }, [activeTab, encounterId, facilityId, t]);
 
-  const loadQuickContext = useCallback(async () => {
+  const loadQuickContext = useCallback(async (opts?: { force?: boolean }) => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
+    const loadKey = `${facilityId}:${encounter.id}`;
+    if (!opts?.force && quickContextLoadedKeyRef.current === loadKey) {
+      return;
+    }
+    quickContextLoadedKeyRef.current = loadKey;
     setQuickContextLoading(true);
     setQuickContextNotice(null);
     const patientId = encounter.patient?.id as string;
     const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
+    if (opts?.force) {
+      invalidateGetRequestDedupeForPath(`/encounters/${encounter.id}/triage`, facilityId);
+    }
     const triageP = canFetchEncounterTriage
       ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId })
       : Promise.resolve(null);
@@ -921,16 +932,21 @@ function EncounterDetailPageInner() {
   ]);
 
   useEffect(() => {
+    quickContextLoadedKeyRef.current = null;
+  }, [encounterId, facilityId]);
+
+  useEffect(() => {
     if (!encounter?.id || !facilityId || !rolesReady) return;
     void loadQuickContext();
-  }, [encounter?.id, encounter?.updatedAt, facilityId, rolesReady, loadQuickContext]);
+  }, [encounter?.id, facilityId, rolesReady, loadQuickContext]);
 
   useEffect(() => {
     if (!encounter?.patient?.id) return;
     const onVitalsUpdated = (ev: Event) => {
       const e = ev as CustomEvent<{ patientId?: string }>;
       if (e.detail?.patientId !== encounter.patient.id) return;
-      void loadQuickContext();
+      quickContextLoadedKeyRef.current = null;
+      void loadQuickContext({ force: true });
     };
     window.addEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
     return () => window.removeEventListener(MEDORA_PATIENT_VITALS_UPDATED, onVitalsUpdated);
@@ -2623,6 +2639,7 @@ function EncounterDetailPageInner() {
               encounter={encounter}
               facilityId={facilityId}
               canPrescribe={canPrescribe}
+              roles={roles}
               medicationModalRequestTick={medicationModalRequestTick}
               careModalRequestTick={careModalRequestTick}
               careModalPresetLabel={careModalPresetLabel}
@@ -2634,6 +2651,7 @@ function EncounterDetailPageInner() {
             <MedicationAdministrationTab
               encounterId={encounterId}
               facilityId={facilityId}
+              currentUserId={userId}
               encounterStatus={encounter.status}
               providerDocumentationStatus={encounter.providerDocumentationStatus}
               roleCodes={roles}
@@ -6046,6 +6064,7 @@ function OrdersTab({
   encounter,
   facilityId,
   canPrescribe,
+  roles,
   medicationModalRequestTick = 0,
   careModalRequestTick = 0,
   careModalPresetLabel = null,
@@ -6056,6 +6075,7 @@ function OrdersTab({
   encounter: any;
   facilityId: string;
   canPrescribe: boolean;
+  roles: string[];
   medicationModalRequestTick?: number;
   careModalRequestTick?: number;
   careModalPresetLabel?: string | null;
@@ -6064,7 +6084,6 @@ function OrdersTab({
 }) {
   const { t, language } = useI18n();
   const orderItemLineLabel = (it: any) => getOrderItemDisplayLabelFromLocale(it, language);
-  const { roles } = useFacilityAndRoles();
   const clinicalData = useEncounterClinicalData();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -181,7 +181,7 @@ export function EmergencyChartView() {
     }
   };
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe } =
+  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe, userId } =
     useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -944,6 +944,7 @@ export function EmergencyChartView() {
                     <MedicationAdministrationTab
                       encounterId={encounterId}
                       facilityId={fid}
+                      currentUserId={userId}
                       encounterStatus={encounter.status ?? "OPEN"}
                       providerDocumentationStatus={encounter.providerDocumentationStatus}
                       roleCodes={roles}

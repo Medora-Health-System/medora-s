@@ -244,3 +244,44 @@ describe("encounter clinical data integration (source contracts)", () => {
     expect(mar).toContain("useSharedClinicalData");
   });
 });
+
+describe("encounter request dedupe (PERF.1D)", () => {
+  it("apiClient dedupes eligible GET requests", () => {
+    const apiClient = readWebSource("src/lib/apiClient.ts");
+    expect(apiClient).toContain("dedupeGetRequest");
+    expect(apiClient).toContain('if (method !== "GET") return false');
+    expect(apiClient).toContain('path.includes("/auth/")');
+  });
+
+  it("auth session client dedupes /api/auth/me", () => {
+    const authMe = readWebSource("src/lib/authSessionMe.ts");
+    expect(authMe).toContain("fetchAuthMeSession");
+    expect(authMe).toContain("inFlight");
+    expect(authMe).toContain("AUTH_ME_SESSION_TTL_MS");
+    const rolesHook = readWebSource("src/hooks/useFacilityAndRoles.ts");
+    expect(rolesHook).toContain("fetchAuthMeSession");
+    const layout = readWebSource("app/app/layout.tsx");
+    expect(layout).toContain("fetchAuthMeSession");
+  });
+
+  it("encounter page loads triage once per encounter scope", () => {
+    const page = readWebSource("app/app/encounters/[id]/page.tsx");
+    expect(page).toContain("quickContextLoadedKeyRef");
+    expect(page).not.toContain("encounter?.updatedAt, facilityId, rolesReady, loadQuickContext");
+    expect(page).toContain("loadQuickContext({ force: true })");
+    expect(page).toContain("EncounterDetailPageInner session={session}");
+    const innerBlock = page.match(/function EncounterDetailPageInner[\s\S]*?^function /m)?.[0] ?? "";
+    expect(innerBlock).not.toContain("useFacilityAndRoles()");
+  });
+
+  it("OrdersTab and MAR tab avoid extra useFacilityAndRoles on encounter page", () => {
+    const page = readWebSource("app/app/encounters/[id]/page.tsx");
+    expect(page).toContain("roles={roles}");
+    expect(page).toContain("currentUserId={userId}");
+    const ordersTabBlock = page.match(/function OrdersTab\([\s\S]*?^\}/m)?.[0] ?? "";
+    expect(ordersTabBlock).not.toContain("useFacilityAndRoles");
+    const mar = readWebSource("src/components/encounters/MedicationAdministrationTab.tsx");
+    expect(mar).toContain("currentUserId: string");
+    expect(mar).not.toContain("useFacilityAndRoles");
+  });
+});

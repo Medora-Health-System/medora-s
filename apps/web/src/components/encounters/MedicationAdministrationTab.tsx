@@ -59,7 +59,6 @@ import {
   marPharmacyWorkflowVisible,
   type MarPharmacyFormState,
 } from "@/components/medication/MarPharmacyVerificationPanel";
-import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useEncounterClinicalDataOptional } from "@/hooks/EncounterClinicalDataProvider";
 import { perfClinicalDataLog } from "@/hooks/encounterClinicalDataPerf";
 import {
@@ -402,6 +401,7 @@ export type EncounterMarAllergySource = {
 export function MedicationAdministrationTab({
   encounterId,
   facilityId,
+  currentUserId,
   encounterStatus,
   providerDocumentationStatus,
   roleCodes = [],
@@ -409,6 +409,7 @@ export function MedicationAdministrationTab({
 }: {
   encounterId: string;
   facilityId: string;
+  currentUserId: string;
   encounterStatus: string;
   /** When SIGNED, clinical mutations (including MAR time adjust) are blocked server-side. */
   providerDocumentationStatus?: string | null;
@@ -418,7 +419,6 @@ export function MedicationAdministrationTab({
   encounterAllergySource?: EncounterMarAllergySource;
 }) {
   const { t, language } = useI18n();
-  const { userId: currentUserId } = useFacilityAndRoles();
   const clinicalData = useEncounterClinicalDataOptional();
   const useSharedClinicalData = clinicalData != null;
   const dateLocale = language === "en" ? "en-US" : "fr-FR";

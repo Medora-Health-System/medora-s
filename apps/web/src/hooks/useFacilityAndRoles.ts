@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { parseApiResponse } from "@/lib/apiClient";
+import { fetchAuthMeSession } from "@/lib/authSessionMe";
 
 export type UserFacilityOption = { id: string; name: string };
 
@@ -103,15 +103,12 @@ export function useFacilityAndRoles() {
   useEffect(() => {
     void (async () => {
       try {
-        const res = await fetch("/api/auth/me", { credentials: "include" });
-        if (!res.ok) {
+        const { ok, data: d } = await fetchAuthMeSession();
+        if (!ok || !d) {
           setIsPlatformOperator(false);
           setReady(true);
           return;
         }
-        const data = await parseApiResponse(res);
-        const d =
-          data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
         applySessionFromMe(d);
       } catch {
         setIsPlatformOperator(false);
@@ -123,13 +120,10 @@ export function useFacilityAndRoles() {
 
   /** Recharge les établissements et rôles depuis `GET /api/auth/me` (ex. après création d’un établissement). */
   const refreshFromMe = useCallback(async () => {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
-    if (!res.ok) {
+    const { ok, data: d } = await fetchAuthMeSession({ force: true });
+    if (!ok || !d) {
       throw new Error("Session expirée.");
     }
-    const data = await parseApiResponse(res);
-    const d =
-      data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
     applySessionFromMe(d);
   }, [applySessionFromMe]);
 
