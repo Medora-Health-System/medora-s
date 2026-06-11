@@ -7,6 +7,18 @@ import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
 import { MEDORA_PATIENT_VITALS_UPDATED, hasVitalsJson, type PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useObservationMarEncounterSummary } from "@/hooks/useObservationMarEncounterSummary";
+import {
+  EncounterClinicalDataProvider,
+  useEncounterClinicalData,
+} from "@/hooks/EncounterClinicalDataProvider";
+import {
+  EncounterClinicalDataRefreshRegistrar,
+  EncounterQuickOrdersBridge,
+  EncounterClinicalDataRefreshKeyBridge,
+  EncounterPassQueuePrefetchBridge,
+} from "@/hooks/encounterClinicalDataBridge";
+import type { EncounterClinicalRefreshScope } from "@/hooks/encounterClinicalDataTypes";
+import { perfClinicalDataLog } from "@/hooks/encounterClinicalDataPerf";
 import { usePathwayTimers } from "@/features/pathways/hooks/usePathwayTimers";
 import { PathwayMilestoneRow } from "@/features/pathways/components/PathwayMilestoneRow";
 import { PathwaySessionSummaryBar } from "@/features/pathways/components/PathwaySessionSummary";
@@ -329,7 +341,59 @@ function dischargeDocumentationDraftHasContent(payload: unknown): boolean {
   return formHasContent || supplementHasContent;
 }
 
+const ENCOUNTER_PAGE_SHELL: React.CSSProperties = {
+  minHeight: "calc(100vh - 48px)",
+  backgroundColor: "#f8fafc",
+  padding: "24px 16px 32px",
+  boxSizing: "border-box",
+};
+
 export default function EncounterDetailPage() {
+  const params = useParams();
+  const encounterId = params.id as string;
+  const { facilityId, roles, ready: rolesReady } = useFacilityAndRoles();
+  const { t } = useI18n();
+
+  const canFetchEncounterOrders =
+    roles.includes("RN") ||
+    roles.includes("PROVIDER") ||
+    roles.includes("ADMIN") ||
+    roles.includes("LAB") ||
+    roles.includes("RADIOLOGY");
+  const canFetchMarTab = roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+
+  if (!facilityId || !encounterId) {
+    return (
+      <div style={{ ...ENCOUNTER_PAGE_SHELL, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
+      </div>
+    );
+  }
+
+  if (!rolesReady) {
+    return (
+      <div style={{ ...ENCOUNTER_PAGE_SHELL, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 15, color: "#475569" }}>{t("common.loading")}</div>
+      </div>
+    );
+  }
+
+  return (
+    <EncounterClinicalDataProvider
+      encounterId={encounterId}
+      facilityId={facilityId}
+      canFetchOrders={canFetchEncounterOrders}
+      canFetchMarData={canFetchMarTab}
+      prefetchPassQueue={false}
+      pendingSyncFirstName={t("marTab.pendingSyncFirstName")}
+      pendingSyncLastName={t("marTab.pendingSyncLastName")}
+    >
+      <EncounterDetailPageInner />
+    </EncounterClinicalDataProvider>
+  );
+}
+
+function EncounterDetailPageInner() {
   const params = useParams();
   const router = useRouter();
   const { t, language } = useI18n();
@@ -391,6 +455,10 @@ export default function EncounterDetailPage() {
   const [showContinueObservationQuickModal, setShowContinueObservationQuickModal] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
+  const clinicalDataRefreshRef = useRef<
+    ((scope?: EncounterClinicalRefreshScope) => Promise<void>) | null
+  >(null);
+  const clinicalData = useEncounterClinicalData();
 
   /** Aligné sur GET /encounters/:id — lecture seule pour LAB/RADIOLOGY (workflow technicien). */
   const canViewEncounterDetail =
@@ -778,50 +846,23 @@ export default function EncounterDetailPage() {
     setQuickContextNotice(null);
     const patientId = encounter.patient?.id as string;
     const triageCacheKey = `encounter-triage:${facilityId}:${encounter.id}`;
-    const ordersCacheKey = `encounter-orders:${facilityId}:${encounter.id}`;
     const triageP = canFetchEncounterTriage
       ? apiFetch(`/encounters/${encounter.id}/triage`, { facilityId })
       : Promise.resolve(null);
-    const ordersP = canFetchEncounterOrders
-      ? apiFetch(`/encounters/${encounter.id}/orders`, { facilityId })
-      : Promise.resolve([]);
     const dxP =
       canFetchPatientDiagnosesList && patientId
         ? apiFetch(`/patients/${patientId}/diagnoses?limit=200`, { facilityId })
         : Promise.resolve(null);
-    const [[triRes, ordRes, dxRes], pendingOrders] = await Promise.all([
-      Promise.allSettled([triageP, ordersP, dxP]),
-      getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(() => [] as Record<string, unknown>[]),
-    ]);
+    const [triRes, dxRes] = await Promise.allSettled([triageP, dxP]);
     const tri = triRes.status === "fulfilled" ? triRes.value : null;
-    const ords = ordRes.status === "fulfilled" ? ordRes.value : null;
     const dx = dxRes.status === "fulfilled" ? dxRes.value : null;
 
     const failedLabels: string[] = [];
     if (canFetchEncounterTriage && triRes.status === "rejected") {
       failedLabels.push(t("encounterChrome.quickContextFailedVitals"));
     }
-    if (canFetchEncounterOrders && ordRes.status === "rejected") {
-      failedLabels.push(t("encounterChrome.quickContextFailedOrders"));
-    }
     if (canFetchPatientDiagnosesList && patientId && dxRes.status === "rejected") {
       failedLabels.push(t("encounterChrome.quickContextFailedDiagnoses"));
-    }
-
-    let mergedQuickOrders = mergeOrders(Array.isArray(ords) ? ords : [], pendingOrders);
-    if (mergedQuickOrders.length === 0) {
-      const cachedOrders = await getCachedRecord<any[]>("encounter_summaries", ordersCacheKey);
-      if (cachedOrders?.data && Array.isArray(cachedOrders.data)) {
-        mergedQuickOrders = mergeOrders(cachedOrders.data, pendingOrders);
-      }
-    }
-    setQuickOrders(mergedQuickOrders);
-    if (mergedQuickOrders.length > 0) {
-      void setCachedRecord("encounter_summaries", ordersCacheKey, mergedQuickOrders, {
-        facilityId,
-        encounterId: encounter.id,
-        patientId,
-      });
     }
 
     if (tri) {
@@ -872,7 +913,6 @@ export default function EncounterDetailPage() {
     encounter?.patient?.id,
     rolesReady,
     canFetchEncounterTriage,
-    canFetchEncounterOrders,
     canFetchPatientDiagnosesList,
     t,
   ]);
@@ -895,6 +935,10 @@ export default function EncounterDetailPage() {
 
   const refreshQuickOrdersOnly = useCallback(async () => {
     if (!encounter?.id || !facilityId || !canFetchEncounterOrders) return;
+    if (clinicalDataRefreshRef.current) {
+      await clinicalDataRefreshRef.current("orders");
+      return;
+    }
     const pendingOrders = await getPendingCreateOrdersForEncounter(facilityId, encounter.id).catch(
       () => [] as Record<string, unknown>[]
     );
@@ -947,7 +991,10 @@ export default function EncounterDetailPage() {
 
   /** Re-fetch encounter + orders + timeline after observation disposition or order-line mutations. */
   const refreshObservationClinicalSurfaces = useCallback(async () => {
-    await Promise.all([loadEncounter({ silent: true }), refreshQuickOrdersOnly()]);
+    await Promise.all([
+      loadEncounter({ silent: true }),
+      clinicalDataRefreshRef.current ? clinicalDataRefreshRef.current("all") : refreshQuickOrdersOnly(),
+    ]);
     setClinicalTimelineRefresh((n) => n + 1);
     setEncounterResultsRefresh((x) => x + 1);
     if (encounterId && facilityId) {
@@ -1276,12 +1323,7 @@ export default function EncounterDetailPage() {
     }
   };
 
-  const encounterPageShell: React.CSSProperties = {
-    minHeight: "calc(100vh - 48px)",
-    backgroundColor: "#f8fafc",
-    padding: "24px 16px 32px",
-    boxSizing: "border-box",
-  };
+  const encounterPageShell = ENCOUNTER_PAGE_SHELL;
 
   const handleDocumentationDeficiencyNavigate = useCallback((code: string) => {
     setShowDocumentationDeficiencyModal(false);
@@ -1473,6 +1515,8 @@ export default function EncounterDetailPage() {
     ),
     language,
     t,
+    clinicalData,
+    pollingEnabled: activeTab !== "mar" && activeTab !== "orders",
   });
 
   const existingObservationTemplateItemIds = useMemo(() => {
@@ -1734,6 +1778,10 @@ export default function EncounterDetailPage() {
 
   return (
     <div style={encounterPageShell}>
+      <EncounterClinicalDataRefreshRegistrar refreshRef={clinicalDataRefreshRef} />
+      <EncounterQuickOrdersBridge canFetchOrders={canFetchEncounterOrders} setQuickOrders={setQuickOrders} />
+      <EncounterClinicalDataRefreshKeyBridge refreshKey={medicationMarSummaryRefreshKey} />
+      <EncounterPassQueuePrefetchBridge active={activeTab === "mar" && canFetchMarTab} />
       <div style={{ maxWidth: 1152, margin: "0 auto", width: "100%" }}>
         {quickContextNotice ? (
           <div
@@ -2565,6 +2613,11 @@ export default function EncounterDetailPage() {
               encounterStatus={encounter.status}
               providerDocumentationStatus={encounter.providerDocumentationStatus}
               roleCodes={roles}
+              encounterAllergySource={{
+                vitals: encounter.vitals,
+                nursingAssessment: encounter.nursingAssessment,
+                triage: quickTriage,
+              }}
             />
           )}
           {activeTab === "results" && (
@@ -5988,8 +6041,10 @@ function OrdersTab({
   const { t, language } = useI18n();
   const orderItemLineLabel = (it: any) => getOrderItemDisplayLabelFromLocale(it, language);
   const { roles } = useFacilityAndRoles();
+  const clinicalData = useEncounterClinicalData();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showProcedureLauncher, setShowProcedureLauncher] = useState(false);
   const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] =
@@ -6037,10 +6092,17 @@ function OrdersTab({
   };
 
   useEffect(() => {
-    if (facilityId) {
-      loadOrders();
-    }
-  }, [encounterId, facilityId]);
+    if (!clinicalData) return;
+    perfClinicalDataLog("Orders tab using shared orders cache");
+    setOrders(clinicalData.orders as any[]);
+    const awaitingFirstPayload = clinicalData.orders.length === 0;
+    setLoading(clinicalData.loading.orders && awaitingFirstPayload && !manualRefreshing);
+  }, [
+    clinicalData,
+    clinicalData.orders,
+    clinicalData.loading.orders,
+    manualRefreshing,
+  ]);
 
   useEffect(() => {
     const hasEnterpriseCareLines = (displayOrders as Array<{
@@ -6077,21 +6139,22 @@ function OrdersTab({
     setShowProcedureLauncher(true);
   };
 
-  const loadOrders = async (opts?: { silent?: boolean }) => {
+  const loadOrders = async (opts?: { silent?: boolean; manual?: boolean }) => {
     if (!opts?.silent) setLoading(true);
-    const pending = await getPendingCreateOrdersForEncounter(facilityId, encounterId).catch(
-      () => [] as Record<string, unknown>[]
-    );
+    if (opts?.manual) setManualRefreshing(true);
     try {
-      const data = await apiFetch(`/encounters/${encounterId}/orders`, { facilityId });
-      const server = Array.isArray(data) ? data : [];
-      setOrders(mergeOrders(server, pending));
+      await clinicalData.refresh("orders");
     } catch (error) {
       console.error("Failed to load orders:", error);
-      setOrders(mergeOrders([], pending));
     } finally {
       if (!opts?.silent) setLoading(false);
+      if (opts?.manual) setManualRefreshing(false);
     }
+  };
+
+  const refreshOrdersAfterMutation = async () => {
+    await Promise.all([clinicalData.refresh("orders"), clinicalData.refresh("passQueue")]);
+    await onOrdersUpdated?.();
   };
 
   const confirmCancelWholeOrder = async (payload: CancelOrderConfirmPayload) => {
@@ -6110,8 +6173,7 @@ function OrdersTab({
       });
       setCancelConfirmOrderId(null);
       setOrdersFeedback({ type: "ok", text: t("encounterChrome.ordersTab.orderCanceledOk") });
-      await loadOrders({ silent: true });
-      await onOrdersUpdated?.();
+      await refreshOrdersAfterMutation();
       await onRefetchEncounter?.();
     } catch (e: unknown) {
       setOrdersFeedback({
@@ -6173,8 +6235,7 @@ function OrdersTab({
         encounterOpen={encounterOpen}
         roles={roles}
         onOrdersUpdated={async () => {
-          await loadOrders({ silent: true });
-          await onOrdersUpdated?.();
+          await refreshOrdersAfterMutation();
         }}
       />
       <div
@@ -6603,8 +6664,7 @@ function OrdersTab({
           }}
           onSuccess={async () => {
             setShowCreateModal(false);
-            await loadOrders();
-            await onOrdersUpdated?.();
+            await refreshOrdersAfterMutation();
           }}
         />
       )}
@@ -6622,8 +6682,7 @@ function OrdersTab({
             setShowProcedureLauncher(false);
             setProcedureLauncherInitialStep(null);
             void onRefetchEncounter?.();
-            void loadOrders({ silent: true });
-            void onOrdersUpdated?.();
+            void refreshOrdersAfterMutation();
           }}
         />
       ) : null}
@@ -6671,8 +6730,7 @@ function OrdersTab({
                 type: "ok",
                 text: t("encounterChrome.ordersTab.careClinicalTime.clinicalTimeAdjusted"),
               });
-              await loadOrders({ silent: true });
-              await onOrdersUpdated?.();
+              await refreshOrdersAfterMutation();
             } catch (e: unknown) {
               throw new Error(
                 normalizeUserFacingError(e instanceof Error ? e.message : null, language) ||

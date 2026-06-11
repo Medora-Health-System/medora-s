@@ -60,6 +60,8 @@ import {
   type MarPharmacyFormState,
 } from "@/components/medication/MarPharmacyVerificationPanel";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { useEncounterClinicalDataOptional } from "@/hooks/EncounterClinicalDataProvider";
+import { perfClinicalDataLog } from "@/hooks/encounterClinicalDataPerf";
 import {
   resolveMedicationMarActionFromStorage,
   getEncounterAllergyDocumentationSummary,
@@ -391,12 +393,19 @@ function latestMarClinicalActionForRow(latest: AdminRow | undefined): MarAction 
   });
 }
 
+export type EncounterMarAllergySource = {
+  vitals?: unknown;
+  nursingAssessment?: unknown;
+  triage?: { vitalsJson?: unknown } | null;
+} | null;
+
 export function MedicationAdministrationTab({
   encounterId,
   facilityId,
   encounterStatus,
   providerDocumentationStatus,
   roleCodes = [],
+  encounterAllergySource = null,
 }: {
   encounterId: string;
   facilityId: string;
@@ -405,9 +414,13 @@ export function MedicationAdministrationTab({
   providerDocumentationStatus?: string | null;
   /** RN / PROVIDER / ADMIN may adjust effective administration time (MAR tab callers). */
   roleCodes?: string[];
+  /** Parent encounter allergy context — avoids refetching GET /encounters/:id on the MAR tab. */
+  encounterAllergySource?: EncounterMarAllergySource;
 }) {
   const { t, language } = useI18n();
   const { userId: currentUserId } = useFacilityAndRoles();
+  const clinicalData = useEncounterClinicalDataOptional();
+  const useSharedClinicalData = clinicalData != null;
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const [orders, setOrders] = useState<unknown[]>([]);
   const [admins, setAdmins] = useState<AdminRow[]>([]);
@@ -639,7 +652,18 @@ export function MedicationAdministrationTab({
     [orderItemById, language, t]
   );
 
-  const loadAll = useCallback(async () => {
+  useEffect(() => {
+    if (!encounterAllergySource) return;
+    setMarAllergyDocSummary(
+      getEncounterAllergyDocumentationSummary({
+        vitals: encounterAllergySource.vitals,
+        nursingAssessment: encounterAllergySource.nursingAssessment,
+        triageVitalsJson: encounterAllergySource.triage?.vitalsJson ?? null,
+      })
+    );
+  }, [encounterAllergySource]);
+
+  const loadAllStandalone = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -654,34 +678,33 @@ export function MedicationAdministrationTab({
     ]);
 
     try {
-      const [o, a, encRaw, passQueueRes] = await Promise.all([
+      const [o, a, encRaw, passQueueRes, ev] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
-        apiFetch(`/encounters/${encounterId}`, { facilityId }),
+        encounterAllergySource
+          ? Promise.resolve(null)
+          : apiFetch(`/encounters/${encounterId}`, { facilityId }),
         fetchMedicationPassQueue(facilityId, { encounterId, includeUpcoming: true }),
+        apiFetch(`/encounters/${encounterId}/order-events`, { facilityId }).catch(() => []),
       ]);
-      let eventsRaw: unknown[] = [];
-      try {
-        const ev = await apiFetch(`/encounters/${encounterId}/order-events`, { facilityId });
-        eventsRaw = Array.isArray(ev) ? ev : [];
-      } catch {
-        eventsRaw = [];
-      }
+      const eventsRaw = Array.isArray(ev) ? ev : [];
 
       const serverOrders = Array.isArray(o) ? o : [];
       const serverAdmins = Array.isArray(a) ? (a as AdminRow[]) : [];
-      const encObj = asApiObject(encRaw) as {
-        vitals?: unknown;
-        nursingAssessment?: unknown;
-        triage?: { vitalsJson?: unknown } | null;
-      } | null;
-      setMarAllergyDocSummary(
-        getEncounterAllergyDocumentationSummary({
-          vitals: encObj?.vitals,
-          nursingAssessment: encObj?.nursingAssessment,
-          triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
-        })
-      );
+      if (!encounterAllergySource) {
+        const encObj = asApiObject(encRaw) as {
+          vitals?: unknown;
+          nursingAssessment?: unknown;
+          triage?: { vitalsJson?: unknown } | null;
+        } | null;
+        setMarAllergyDocSummary(
+          getEncounterAllergyDocumentationSummary({
+            vitals: encObj?.vitals,
+            nursingAssessment: encObj?.nursingAssessment,
+            triageVitalsJson: encObj?.triage?.vitalsJson ?? null,
+          })
+        );
+      }
 
       setOrders(mergeOrders(serverOrders, pendingOrders));
       setAdmins([...serverAdmins, ...pendingAdmins]);
@@ -692,16 +715,52 @@ export function MedicationAdministrationTab({
       setOrders(mergeOrders([], pendingOrders));
       setAdmins(pendingAdmins);
       setOrderEventsRaw([]);
-      setMarAllergyDocSummary(null);
+      if (!encounterAllergySource) setMarAllergyDocSummary(null);
       setPassQueue({ enabled: false, at: new Date().toISOString(), count: 0, items: [] });
     } finally {
       setLoading(false);
     }
-  }, [encounterId, facilityId, t]);
+  }, [encounterId, facilityId, encounterAllergySource, t]);
+
+  const reloadMarData = useCallback(async () => {
+    if (useSharedClinicalData && clinicalData) {
+      await Promise.all([clinicalData.refresh("mar"), clinicalData.refresh("passQueue")]);
+      return;
+    }
+    await loadAllStandalone();
+  }, [useSharedClinicalData, clinicalData, loadAllStandalone]);
 
   useEffect(() => {
-    void loadAll();
-  }, [loadAll]);
+    if (!useSharedClinicalData || !clinicalData) return;
+    perfClinicalDataLog("MAR tab using shared orders cache");
+    setOrders(clinicalData.orders);
+    setAdmins(clinicalData.medicationAdministrations as AdminRow[]);
+    setOrderEventsRaw(clinicalData.orderEvents);
+    setPassQueue(clinicalData.passQueue);
+    const awaitingFirstPayload =
+      clinicalData.orders.length === 0 && clinicalData.medicationAdministrations.length === 0;
+    setLoading(clinicalData.loading.any && awaitingFirstPayload);
+    if (clinicalData.errors.mar || clinicalData.errors.orders) {
+      setError(clinicalData.errors.mar || clinicalData.errors.orders);
+    } else if (!clinicalData.loading.any || !awaitingFirstPayload) {
+      setError(null);
+    }
+  }, [
+    useSharedClinicalData,
+    clinicalData,
+    clinicalData?.orders,
+    clinicalData?.medicationAdministrations,
+    clinicalData?.orderEvents,
+    clinicalData?.passQueue,
+    clinicalData?.loading.any,
+    clinicalData?.errors.mar,
+    clinicalData?.errors.orders,
+  ]);
+
+  useEffect(() => {
+    if (useSharedClinicalData) return;
+    void loadAllStandalone();
+  }, [useSharedClinicalData, loadAllStandalone]);
 
   const adminsByOrderItemId = useMemo(() => {
     const m = new Map<string, AdminRow[]>();
@@ -751,7 +810,7 @@ export function MedicationAdministrationTab({
         setPendingInfusionStartVerifier(null);
         setInfusionDraftRestoredAt(null);
         setInfusionDraftSavedLocallyAt(null);
-        await loadAll();
+        await reloadMarData();
       } catch (e) {
         setError(
           normalizeUserFacingError(e instanceof Error ? e.message : String(e), language) ||
@@ -761,7 +820,7 @@ export function MedicationAdministrationTab({
         setInfusionBusy(null);
       }
     },
-    [facilityId, infusionDraftKey, language, loadAll, t]
+    [facilityId, infusionDraftKey, language, reloadMarData, t]
   );
 
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
@@ -1606,7 +1665,7 @@ export function MedicationAdministrationTab({
       setMarDraftRestoredAt(null);
       setMarDraftSavedLocallyAt(null);
       setModalItem(null);
-      await loadAll();
+      await reloadMarData();
     } catch (err) {
       const apiErr = err as Error & {
         body?: { code?: string; message?: string | string[] };
@@ -3277,7 +3336,7 @@ export function MedicationAdministrationTab({
                   }
                 );
                 setAdminTimeModalRow(null);
-                await loadAll();
+                await reloadMarData();
               } catch (err) {
                 throw err;
               } finally {
