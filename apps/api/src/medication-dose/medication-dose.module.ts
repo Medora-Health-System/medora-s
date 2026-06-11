@@ -5,21 +5,25 @@ import { MedicationDoseHorizonMaintenanceService } from "./medication-dose-horiz
 import { MedicationDoseStatusPromotionService } from "./medication-dose-status-promotion.service";
 import { MedicationPassQueueService } from "./medication-pass-queue.service";
 import { MedicationPassQueueController } from "./medication-pass-queue.controller";
+import { MarShiftTimelineService } from "./mar-shift-timeline.service";
+import { MarShiftTimelineController } from "./mar-shift-timeline.controller";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [MedicationPassQueueController],
+  controllers: [MedicationPassQueueController, MarShiftTimelineController],
   providers: [
     MedicationDoseExpansionService,
     MedicationDoseHorizonMaintenanceService,
     MedicationDoseStatusPromotionService,
     MedicationPassQueueService,
+    MarShiftTimelineService,
   ],
   exports: [
     MedicationDoseExpansionService,
     MedicationDoseHorizonMaintenanceService,
     MedicationDoseStatusPromotionService,
     MedicationPassQueueService,
+    MarShiftTimelineService,
   ],
 })
 export class MedicationDoseModule {}
