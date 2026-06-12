@@ -14594,6 +14594,11 @@ export default {
         "This line is not eligible for infusion (route / label). Use routine bedside administration.",
       ORDER_LINE_TERMINAL: "Order line is already completed or cancelled.",
     },
+    safetyGovernanceErrors: {
+      MAR_EARLY_ADMIN_REASON_REQUIRED: "Early administration requires a reason.",
+      MAR_LATE_ADMIN_REASON_REQUIRED: "Late administration requires a reason.",
+      MAR_MISSED_REASON_REQUIRED: "Missed dose requires a reason.",
+    },
     drawer: {
       close: "Close",
       patient: "Patient",
@@ -14646,6 +14651,7 @@ export default {
       STOP_INFUSION: "Stop infusion",
       REFUSE: "Refuse",
       HOLD: "Hold",
+      MARK_MISSED: "Mark missed",
       VIEW_ORDER: "View order",
       START_FLUID: "Start fluid",
       PAUSE_FLUID: "Pause fluid",
@@ -15072,12 +15078,29 @@ export default {
   },
   marScheduleTiming: {
     earlyWarning:
-      "Early administration: this medication is scheduled for {scheduledTime}. Enter reason to continue.",
+      "Medication is being administered early. Scheduled: {scheduledTime}. Actual: {actualTime}. ({minutes} min early)",
     lateWarning:
-      "Late administration: this medication was due at {scheduledTime}. Enter reason to continue.",
-    reasonLabel: "Reason (required)",
+      "Medication is being administered late. Due: {scheduledTime}. Actual: {actualTime}. ({minutes} min late)",
+    timingDetail: "Scheduled: {scheduledTime} · Actual: {actualTime} · Δ {minutes} min",
+    reasonLabel: "Reason (required to proceed)",
+    reasonSelectPlaceholder: "Select a reason…",
+    otherPlaceholder: "Describe other reason…",
     reasonRequired: "A reason is required for early or late administration.",
+    otherDetailRequired: "Please describe the reason when selecting Other.",
     reasonPrefix: "Off-window timing",
+    reasonCodes: {
+      PATIENT_LEAVING_UNIT: "Patient leaving unit",
+      PROVIDER_REQUESTED_EARLY: "Provider requested early administration",
+      PROCEDURE_SCHEDULED: "Procedure scheduled",
+      PAIN_CRISIS: "Pain crisis",
+      NAUSEA_VOMITING: "Nausea / vomiting",
+      PATIENT_UNAVAILABLE: "Patient unavailable",
+      MEDICATION_UNAVAILABLE: "Medication unavailable",
+      CLINICAL_DELAY: "Clinical delay",
+      PROCEDURE: "Procedure",
+      PROVIDER_REQUEST: "Provider request",
+      OTHER: "Other",
+    },
   },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Latest vitals",

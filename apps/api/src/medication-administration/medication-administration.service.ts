@@ -37,6 +37,10 @@ import {
   validateMedicationAdministrationEffectiveTime,
   validateImInjectionSiteForMarCreate,
   mergeInjectionSiteIntoMarNotes,
+  validatePrnAdministrationForMarCreate,
+  mergePrnAdministrationIntoMarNotes,
+  isMarPrnReasonCode,
+  parsePrnIndicationFromDirections,
   resolveMarAdministeredQuantityForCreate,
   validateMarAdministeredQuantityRequired,
   isMedicationInfusionCandidate,
@@ -44,6 +48,7 @@ import {
   validateHighAlertIvpbInfusionStartWitness,
   medicationDoseGatedMarEnabled,
   medicationIvpbDoseSchedulingEnabled,
+  resolveClinicalTimeZone,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -98,6 +103,10 @@ import {
   resolveLoadedIvpbDoseSessionMarContext,
   type LoadedIvpbDoseSessionMarContext,
 } from "./medication-ivpb-dose-session-mar.util";
+import {
+  assertMarMissedDoseGovernanceForCreate,
+  assertMarScheduleTimingGovernanceForCreate,
+} from "./mar-administration-safety-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
 const MAR_MEDICATION_LINE_PRE_CLOSE_STATUSES: OrderStatus[] = [
@@ -589,6 +598,24 @@ export class MedicationAdministrationService {
       });
     }
 
+    let scheduleGovernanceDoseInstance:
+      | (MedicationDoseInstance & { medicationOrderSchedule: MedicationOrderSchedule })
+      | null =
+      doseGatedMarContext?.doseInstance ??
+      ivpbDoseSessionMarContext?.doseInstance ??
+      preloadedDoseForGatedMar ??
+      null;
+
+    if (!scheduleGovernanceDoseInstance && requestedDoseInstanceId) {
+      const governanceDoseRow = await this.prisma.medicationDoseInstance.findFirst({
+        where: { id: requestedDoseInstanceId, facilityId },
+        include: { medicationOrderSchedule: true },
+      });
+      if (governanceDoseRow) {
+        scheduleGovernanceDoseInstance = governanceDoseRow;
+      }
+    }
+
     const effectiveSkipMedicationLineCompletion =
       serviceOptions?.skipMedicationLineCompletion === true ||
       doseGatedMarContext?.skipOrderLineCompletion === true ||
@@ -869,6 +896,60 @@ export class MedicationAdministrationService {
       this.logAndThrowMarCreateBlocked(marValidationLogContext, imSiteValidation.message);
     }
 
+    const prnValidation = validatePrnAdministrationForMarCreate({
+      marAction: marActionResolved,
+      frequencyCode: linkedMedicationLine?.frequencyCode ?? null,
+      directionsSig: linkedMedicationLine?.notes ?? null,
+      medicationLabel:
+        medicationLabelSnapshot ??
+        catalogMedication?.displayNameFr ??
+        catalogMedication?.name ??
+        null,
+      genericName: catalogMedication?.genericName ?? null,
+      therapeuticClass: catalogMedication?.therapeuticClass ?? null,
+      prnReasonCode: data.prnReasonCode ?? null,
+      prnReasonOther: data.prnReasonOther ?? null,
+      painScore: data.painScore ?? null,
+    });
+    if (prnValidation) {
+      this.logAndThrowMarCreateBlocked(marValidationLogContext, prnValidation.message);
+    }
+
+    const skipMarSafetyGovernanceForInfusion =
+      serviceOptions?.allowAdministeredForInfusionTerminal === true ||
+      serviceOptions?.allowAdministeredForInfusionStart === true;
+
+    runMarGovernanceAssert(() =>
+      assertMarMissedDoseGovernanceForCreate({
+        marAction: marActionResolved,
+        data,
+        skipForInfusionLifecycle: skipMarSafetyGovernanceForInfusion,
+      })
+    );
+
+    if (
+      marActionResolved === "administered" &&
+      scheduleGovernanceDoseInstance?.scheduledAt &&
+      !skipMarSafetyGovernanceForInfusion
+    ) {
+      const facilityRow = await this.prisma.facility.findFirst({
+        where: { id: facilityId },
+        select: { timezone: true },
+      });
+      const facilityTimeZone = resolveClinicalTimeZone({
+        facilityTimeZone: facilityRow?.timezone ?? null,
+      });
+      runMarGovernanceAssert(() =>
+        assertMarScheduleTimingGovernanceForCreate({
+          marAction: marActionResolved,
+          data,
+          doseInstance: scheduleGovernanceDoseInstance,
+          facilityTimeZone,
+          skipForInfusionLifecycle: skipMarSafetyGovernanceForInfusion,
+        })
+      );
+    }
+
     if (
       orderItemId &&
       linkedMedicationLine &&
@@ -999,12 +1080,27 @@ export class MedicationAdministrationService {
         ? administeredAtEffective.toISOString()
         : new Date(administeredAtEffective).toISOString();
 
-    const persistedNotes =
+    let persistedNotes =
       marActionResolved === "administered" && data.injectionSite
         ? mergeInjectionSiteIntoMarNotes(data.notes, data.injectionSite, "fr")
         : data.notes?.trim()
           ? data.notes.trim()
           : null;
+
+    if (
+      marActionResolved === "administered" &&
+      isMarPrnReasonCode(data.prnReasonCode ?? null)
+    ) {
+      persistedNotes = mergePrnAdministrationIntoMarNotes({
+        notes: persistedNotes,
+        prnReasonCode: data.prnReasonCode!,
+        prnReasonOther: data.prnReasonOther,
+        prnIndication: parsePrnIndicationFromDirections(linkedMedicationLine?.notes),
+        painScore: data.painScore ?? null,
+        painLocation: data.painLocation,
+        locale: "fr",
+      });
+    }
 
     const marAuditMetadata: Record<string, unknown> = {
       marOutcome: marActionResolved,

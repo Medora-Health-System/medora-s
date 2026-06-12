@@ -49,7 +49,7 @@ export function badRequestExceptionCode(err: BadRequestException): string | null
 
 /** Structured MAR governance rejection (M1.7B.2). */
 export function marValidationBadRequest(code: string, message: string): BadRequestException {
-  return new BadRequestException({ statusCode: 400, message, code });
+  return new BadRequestException({ statusCode: 400, message, code, errorCode: code });
 }
 
 export function governanceBlockerCodeFromMessage(message: string): string | null {
@@ -66,6 +66,9 @@ export function governanceBlockerCodeFromMessage(message: string): string | null
   if (m.includes("site d'injection") || m.includes("injection")) return "INJECTION_SITE_REQUIRED";
   if (m.includes("infusion start/stop")) return "INFUSION_LIFECYCLE_REQUIRED";
   if (m.includes("quantité administrée est requise")) return "ADMINISTERED_QUANTITY_REQUIRED";
+  if (m.includes("Early administration requires a reason")) return "MAR_EARLY_ADMIN_REASON_REQUIRED";
+  if (m.includes("Late administration requires a reason")) return "MAR_LATE_ADMIN_REASON_REQUIRED";
+  if (m.includes("Missed dose requires a reason")) return "MAR_MISSED_REASON_REQUIRED";
   if (m.includes("Données invalides") || m.includes("Invalid")) return "DTO_VALIDATION_FAILED";
   return null;
 }

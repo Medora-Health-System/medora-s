@@ -159,6 +159,7 @@ describe("MedicationAdministrationService dose-gated MAR harness (M1.8B.7I.2)", 
       medicationDoseInstanceId: doseInstance.id,
       marAction: "administered",
       administeredQuantity: 1,
+      administeredAt: doseInstance.scheduledAt,
     });
 
     expect(marCreate).toHaveBeenCalledWith(
@@ -185,6 +186,7 @@ describe("MedicationAdministrationService dose-gated MAR harness (M1.8B.7I.2)", 
       medicationDoseInstanceId: doseInstance.id,
       marAction: "administered",
       administeredQuantity: 1,
+      administeredAt: doseInstance.scheduledAt,
     });
 
     expectOrderLineNotCompleted(orderItemUpdate);

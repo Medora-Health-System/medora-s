@@ -2,6 +2,7 @@ import type { SupportedLanguage } from "@/i18n/config";
 import { extractApiErrorMeta } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { resolveMedicationInfusionErrorMessage } from "@/features/mar/marInfusionErrorMessage";
+import { resolveMarSafetyGovernanceErrorMessage } from "@/features/mar/marSafetyGovernanceErrorMessage";
 
 const GENERIC_EN = "Something went wrong.";
 const GENERIC_FR = "Une erreur est survenue.";
@@ -15,6 +16,9 @@ export function extractMarSaveErrorMessage(
 ): string {
   const infusionMsg = resolveMedicationInfusionErrorMessage(err, language, t);
   if (infusionMsg) return infusionMsg;
+
+  const safetyGovernanceMsg = resolveMarSafetyGovernanceErrorMessage(err, language, t);
+  if (safetyGovernanceMsg) return safetyGovernanceMsg;
 
   const apiErr = err as Error & { body?: unknown; message?: string };
 

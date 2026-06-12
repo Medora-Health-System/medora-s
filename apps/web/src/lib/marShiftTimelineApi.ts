@@ -22,6 +22,7 @@ export type MarShiftTimelineDrawerAction =
   | "COMPLETE_BOLUS"
   | "REFUSE"
   | "HOLD"
+  | "MARK_MISSED"
   | "VIEW_ORDER";
 
 export type MarShiftTimelineCellItem = {

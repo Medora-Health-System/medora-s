@@ -1,4 +1,4 @@
-import { formatClinicalDateTimeInZone } from "../clinical/clinicalTimeZone.js";
+import { evaluateMarScheduleTimingGovernance } from "../mar/marAdministrationSafetyGovernance.js";
 
 export type MarScheduleAdministrationTimingKind = "on_time" | "early" | "late";
 
@@ -6,17 +6,14 @@ export type MarScheduleAdministrationTimingResult = {
   kind: MarScheduleAdministrationTimingKind;
   /** Facility-local display of scheduled anchor time. */
   scheduledTimeDisplay: string;
+  /** Facility-local display of actual administration time (K.10B.9). */
+  actualTimeDisplay?: string;
+  /** Minutes early or late when off-window (K.10B.9). */
+  minutesDelta?: number;
   requiresReason: boolean;
 };
 
-function parseInstant(value: Date | string | null | undefined): Date | null {
-  if (value == null) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 /**
- * Early/late administration governance relative to scheduled/due window (K.10B.5).
  * Uses administered/effective time vs scheduledAt and due window bounds.
  */
 export function evaluateMarScheduleAdministrationTiming(input: {
@@ -27,25 +24,12 @@ export function evaluateMarScheduleAdministrationTiming(input: {
   facilityTimeZone: string;
   locale?: string;
 }): MarScheduleAdministrationTimingResult {
-  const administered = parseInstant(input.administeredAt);
-  const scheduled = parseInstant(input.scheduledAt);
-  const locale = input.locale ?? "en-US";
-  const tz = input.facilityTimeZone;
-
-  if (!administered || !scheduled) {
-    return { kind: "on_time", scheduledTimeDisplay: "", requiresReason: false };
-  }
-
-  const scheduledDisplay = formatClinicalDateTimeInZone(scheduled, locale, tz);
-  const dueStart = parseInstant(input.dueWindowStartAt) ?? scheduled;
-  const dueEnd = parseInstant(input.dueWindowEndAt) ?? scheduled;
-
-  const adminMs = administered.getTime();
-  if (adminMs < dueStart.getTime()) {
-    return { kind: "early", scheduledTimeDisplay: scheduledDisplay, requiresReason: true };
-  }
-  if (adminMs > dueEnd.getTime()) {
-    return { kind: "late", scheduledTimeDisplay: scheduledDisplay, requiresReason: true };
-  }
-  return { kind: "on_time", scheduledTimeDisplay: scheduledDisplay, requiresReason: false };
+  const governed = evaluateMarScheduleTimingGovernance(input);
+  return {
+    kind: governed.kind,
+    scheduledTimeDisplay: governed.scheduledTimeDisplay,
+    actualTimeDisplay: governed.actualTimeDisplay,
+    minutesDelta: governed.minutesDelta,
+    requiresReason: governed.requiresReason,
+  };
 }

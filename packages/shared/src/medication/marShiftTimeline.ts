@@ -153,6 +153,7 @@ export const MAR_SHIFT_TIMELINE_DRAWER_ACTIONS = [
   "COMPLETE_BOLUS",
   "REFUSE",
   "HOLD",
+  "MARK_MISSED",
   "VIEW_ORDER",
 ] as const;
 
@@ -500,13 +501,13 @@ export function resolveMarShiftTimelineDrawerActions(
 
   switch (clinicalAction) {
     case "ADMINISTER":
-      return ["ADMINISTER", "REFUSE", "HOLD", "VIEW_ORDER"];
+      return ["ADMINISTER", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "START_INFUSION":
-      return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "VIEW_ORDER"];
+      return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "STOP_INFUSION":
-      return ["START_INFUSION", "STOP_INFUSION", "REFUSE", "HOLD", "VIEW_ORDER"];
+      return ["START_INFUSION", "STOP_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "START_FLUID":
-      return ["START_FLUID", "REFUSE", "HOLD", "VIEW_ORDER"];
+      return ["START_FLUID", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "PAUSE_FLUID":
       return ["PAUSE_FLUID", "STOP_FLUID", "VIEW_ORDER"];
     case "STOP_FLUID":
@@ -767,19 +768,19 @@ export function buildMarShiftTimelineCellDisplay(input: {
     return { primaryText, secondaryText: "REFUSED", tertiaryText };
   }
 
+  if (input.doseStatus === "HELD" || terminalOutcome === "HELD") {
+    return { primaryText, secondaryText: "HELD", tertiaryText };
+  }
+  if (input.doseStatus === "MISSED" || terminalOutcome === "MISSED") {
+    return { primaryText, secondaryText: "MISSED", tertiaryText };
+  }
+
   if (input.requiresWitness) {
     return {
       primaryText,
       secondaryText: baseLabel === "INS" ? "Wit" : "Witness",
       tertiaryText,
     };
-  }
-
-  if (input.doseStatus === "HELD" || terminalOutcome === "HELD") {
-    return { primaryText, secondaryText: "HELD", tertiaryText };
-  }
-  if (input.doseStatus === "MISSED") {
-    return { primaryText, secondaryText: "MISSED", tertiaryText };
   }
 
   if (isFluidBolusCell && input.fluidBolusStatus) {

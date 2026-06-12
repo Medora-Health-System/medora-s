@@ -69,6 +69,10 @@ import {
   medicationWarningsRequireMarHighRiskAck,
   evaluateMedicationTimingSafety,
   evaluateMarScheduleAdministrationTiming,
+  buildMarScheduleTimingDocumentation,
+  validateMarScheduleTimingGovernance,
+  MAR_SCHEDULE_EARLY_REASON_CODES,
+  MAR_SCHEDULE_LATE_REASON_CODES,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcDate,
   resolveClinicalTimeZone,
@@ -518,6 +522,7 @@ export function MedicationAdministrationTab({
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
   const [marScheduleTimingReason, setMarScheduleTimingReason] = useState("");
+  const [marScheduleTimingReasonCode, setMarScheduleTimingReasonCode] = useState("");
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
   const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(false);
@@ -1452,7 +1457,7 @@ export function MedicationAdministrationTab({
   const submitTimelineTerminalMar = useCallback(
     async (
       item: MarShiftTimelineCellItem,
-      action: "REFUSE" | "HOLD",
+      action: "REFUSE" | "HOLD" | "MARK_MISSED",
       input: MarShiftTimelineRefuseHoldInput
     ) => {
       if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
@@ -1508,6 +1513,9 @@ export function MedicationAdministrationTab({
       },
       onExecuteHold: async (item, input) => {
         await submitTimelineTerminalMar(item, "HOLD", input);
+      },
+      onExecuteMissed: async (item, input) => {
+        await submitTimelineTerminalMar(item, "MARK_MISSED", input);
       },
       onExecuteStartFluid: async (item) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
@@ -1691,9 +1699,20 @@ export function MedicationAdministrationTab({
         facilityTimeZone: clinicalTz,
         locale: dateLocale,
       });
-      if (scheduleTiming.requiresReason && !marScheduleTimingReason.trim()) {
-        setModalSubmitError(t("marScheduleTiming.reasonRequired"));
-        return;
+      if (scheduleTiming.requiresReason) {
+        const timingValidation = validateMarScheduleTimingGovernance({
+          timing: scheduleTiming,
+          reasonCode: marScheduleTimingReasonCode,
+          otherText: marScheduleTimingReason,
+        });
+        if (!timingValidation.ok) {
+          setModalSubmitError(
+            timingValidation.code === "OTHER_DETAIL_REQUIRED"
+              ? t("marScheduleTiming.otherDetailRequired")
+              : t("marScheduleTiming.reasonRequired")
+          );
+          return;
+        }
       }
     }
 
@@ -1916,6 +1935,21 @@ export function MedicationAdministrationTab({
         administeredQuantity: resolvedAdministeredQuantity,
       });
 
+      const scheduleTimingForNotes =
+        modalAction === "administered" && modalItem.scheduledAt?.trim()
+          ? evaluateMarScheduleAdministrationTiming({
+              administeredAt:
+                modalEffectiveTimeLocal.trim()
+                  ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? documentedAt
+                  : documentedAt,
+              scheduledAt: modalItem.scheduledAt,
+              dueWindowStartAt: modalItem.dueWindowStartAt,
+              dueWindowEndAt: modalItem.dueWindowEndAt,
+              facilityTimeZone: clinicalTz,
+              locale: dateLocale,
+            })
+          : null;
+
       const body = appendMedicationDoseInstanceIdToMarCreateBody(
         {
         orderItemId,
@@ -1936,9 +1970,16 @@ export function MedicationAdministrationTab({
           modalAction,
           routeLine,
           [
-            marScheduleTimingReason.trim()
-              ? `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`
-              : null,
+            scheduleTimingForNotes?.requiresReason && marScheduleTimingReasonCode.trim()
+              ? buildMarScheduleTimingDocumentation({
+                  kind: scheduleTimingForNotes.kind === "early" ? "early" : "late",
+                  reasonCode: marScheduleTimingReasonCode,
+                  otherText: marScheduleTimingReason,
+                  minutesDelta: scheduleTimingForNotes.minutesDelta ?? 0,
+                })
+              : marScheduleTimingReason.trim()
+                ? `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`
+                : null,
             modalAction === "administered" &&
             modalItem?.isPrn &&
             marPrnEarlyOverrideReason.trim() &&
@@ -3445,6 +3486,10 @@ export function MedicationAdministrationTab({
                 locale: dateLocale,
               });
               if (!scheduleTiming.requiresReason) return null;
+              const reasonCodes =
+                scheduleTiming.kind === "early"
+                  ? MAR_SCHEDULE_EARLY_REASON_CODES
+                  : MAR_SCHEDULE_LATE_REASON_CODES;
               const msgKey =
                 scheduleTiming.kind === "early"
                   ? "marScheduleTiming.earlyWarning"
@@ -3464,15 +3509,23 @@ export function MedicationAdministrationTab({
                       color: "#92400e",
                     }}
                   >
-                    {t(msgKey).replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)}
+                    {t(msgKey)
+                      .replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)
+                      .replace("{actualTime}", scheduleTiming.actualTimeDisplay ?? "")
+                      .replace("{minutes}", String(scheduleTiming.minutesDelta ?? 0))}
                   </div>
+                  <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
+                    {t("marScheduleTiming.timingDetail")
+                      .replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)
+                      .replace("{actualTime}", scheduleTiming.actualTimeDisplay ?? "")
+                      .replace("{minutes}", String(scheduleTiming.minutesDelta ?? 0))}
+                  </p>
                   <label style={{ display: "block", marginTop: 10, marginBottom: 4, fontSize: 13, fontWeight: 600 }}>
                     {t("marScheduleTiming.reasonLabel")}
                   </label>
-                  <input
-                    type="text"
-                    value={marScheduleTimingReason}
-                    onChange={(e) => setMarScheduleTimingReason(e.target.value)}
+                  <select
+                    value={marScheduleTimingReasonCode}
+                    onChange={(e) => setMarScheduleTimingReasonCode(e.target.value)}
                     disabled={submitting}
                     style={{
                       width: "100%",
@@ -3481,8 +3534,33 @@ export function MedicationAdministrationTab({
                       border: "1px solid #ccc",
                       fontSize: 14,
                       boxSizing: "border-box",
+                      marginBottom: 8,
                     }}
-                  />
+                  >
+                    <option value="">{t("marScheduleTiming.reasonSelectPlaceholder")}</option>
+                    {reasonCodes.map((code) => (
+                      <option key={code} value={code}>
+                        {t(`marScheduleTiming.reasonCodes.${code}`)}
+                      </option>
+                    ))}
+                  </select>
+                  {marScheduleTimingReasonCode === "OTHER" ? (
+                    <input
+                      type="text"
+                      value={marScheduleTimingReason}
+                      onChange={(e) => setMarScheduleTimingReason(e.target.value)}
+                      disabled={submitting}
+                      placeholder={t("marScheduleTiming.otherPlaceholder")}
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        fontSize: 14,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  ) : null}
                 </div>
               );
             })()}

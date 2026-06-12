@@ -14624,6 +14624,11 @@ export default {
         "Cette ligne n'est pas éligible à la perfusion (voie / libellé). Utilisez l'administration au lit habituelle.",
       ORDER_LINE_TERMINAL: "Ligne déjà terminée ou annulée.",
     },
+    safetyGovernanceErrors: {
+      MAR_EARLY_ADMIN_REASON_REQUIRED: "Une administration anticipée nécessite un motif.",
+      MAR_LATE_ADMIN_REASON_REQUIRED: "Une administration tardive nécessite un motif.",
+      MAR_MISSED_REASON_REQUIRED: "Une dose manquée nécessite un motif.",
+    },
     drawer: {
       close: "Fermer",
       patient: "Patient",
@@ -14676,6 +14681,7 @@ export default {
       STOP_INFUSION: "Arrêter perfusion",
       REFUSE: "Refuser",
       HOLD: "Suspendre",
+      MARK_MISSED: "Marquer manqué",
       VIEW_ORDER: "Voir l'ordonnance",
       START_FLUID: "Démarrer perfusion",
       PAUSE_FLUID: "Mettre en pause",
@@ -15104,12 +15110,29 @@ export default {
   },
   marScheduleTiming: {
     earlyWarning:
-      "Administration anticipée : ce médicament est prévu à {scheduledTime}. Saisissez un motif pour continuer.",
+      "Administration anticipée : prévu à {scheduledTime}, administré à {actualTime} ({minutes} min en avance).",
     lateWarning:
-      "Administration tardive : ce médicament était dû à {scheduledTime}. Saisissez un motif pour continuer.",
-    reasonLabel: "Motif (obligatoire)",
+      "Administration tardive : dû à {scheduledTime}, administré à {actualTime} ({minutes} min de retard).",
+    timingDetail: "Prévu : {scheduledTime} · Administré : {actualTime} · Δ {minutes} min",
+    reasonLabel: "Motif (obligatoire pour continuer)",
+    reasonSelectPlaceholder: "Choisir un motif…",
+    otherPlaceholder: "Préciser le motif…",
     reasonRequired: "Un motif est requis pour une administration anticipée ou tardive.",
+    otherDetailRequired: "Précisez le motif lorsque « Autre » est sélectionné.",
     reasonPrefix: "Horaire hors fenêtre",
+    reasonCodes: {
+      PATIENT_LEAVING_UNIT: "Patient quitte l'unité",
+      PROVIDER_REQUESTED_EARLY: "Demande médicale — administration anticipée",
+      PROCEDURE_SCHEDULED: "Procédure programmée",
+      PAIN_CRISIS: "Crise douloureuse",
+      NAUSEA_VOMITING: "Nausées / vomissements",
+      PATIENT_UNAVAILABLE: "Patient indisponible",
+      MEDICATION_UNAVAILABLE: "Médicament indisponible",
+      CLINICAL_DELAY: "Retard clinique",
+      PROCEDURE: "Procédure",
+      PROVIDER_REQUEST: "Demande médicale",
+      OTHER: "Autre",
+    },
   },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Derniers signes vitaux",

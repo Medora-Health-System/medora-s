@@ -161,6 +161,7 @@ describe("MedicationAdministrationService dose-gated MAR (M1.8B.7I.2)", () => {
       medicationDoseInstanceId: dose.id,
       marAction: "administered",
       administeredQuantity: 1,
+      administeredAt: dose.scheduledAt,
     });
 
     expect(mar.medicationDoseInstanceId).toBe(dose.id);
@@ -188,6 +189,7 @@ describe("MedicationAdministrationService dose-gated MAR (M1.8B.7I.2)", () => {
       medicationDoseInstanceId: dose.id,
       marAction: "administered",
       administeredQuantity: 1,
+      administeredAt: dose.scheduledAt,
     });
 
     await expect(
@@ -196,6 +198,7 @@ describe("MedicationAdministrationService dose-gated MAR (M1.8B.7I.2)", () => {
         medicationDoseInstanceId: dose.id,
         marAction: "administered",
         administeredQuantity: 1,
+        administeredAt: dose.scheduledAt,
       })
     ).rejects.toMatchObject({
       response: expect.objectContaining({

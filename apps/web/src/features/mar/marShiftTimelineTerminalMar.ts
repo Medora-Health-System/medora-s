@@ -1,8 +1,10 @@
 import {
   buildMarShiftTimelineHoldNotes,
+  buildMarShiftTimelineMissedNotes,
   buildMarShiftTimelineRefuseNotes,
   marShiftTimelineTerminalMarActionForDrawerAction,
   type MarShiftTimelineHoldReasonCode,
+  type MarShiftTimelineMissedReasonCode,
   type MarShiftTimelineRefuseReasonCode,
 } from "@medora/shared";
 import { apiFetch } from "@/lib/apiClient";
@@ -15,14 +17,14 @@ export type MarShiftTimelineTerminalMarInput = {
 };
 
 /**
- * Submit REFUSE/HOLD from MAR shift timeline drawer.
+ * Submit REFUSE/HOLD/MARK_MISSED from MAR shift timeline drawer.
  * `apiFetch` returns parsed JSON (or null) and throws on HTTP errors — never a Response (K.10B.4).
  */
 export async function submitMarShiftTimelineTerminalMar(
   encounterId: string,
   facilityId: string,
   item: MarShiftTimelineCellItem,
-  action: "REFUSE" | "HOLD",
+  action: "REFUSE" | "HOLD" | "MARK_MISSED",
   input: MarShiftTimelineTerminalMarInput
 ): Promise<void> {
   const marAction = marShiftTimelineTerminalMarActionForDrawerAction(action);
@@ -32,10 +34,15 @@ export async function submitMarShiftTimelineTerminalMar(
           input.reasonCode as MarShiftTimelineRefuseReasonCode,
           input.otherText
         )
-      : buildMarShiftTimelineHoldNotes(
-          input.reasonCode as MarShiftTimelineHoldReasonCode,
-          input.otherText
-        );
+      : action === "MARK_MISSED"
+        ? buildMarShiftTimelineMissedNotes(
+            input.reasonCode as MarShiftTimelineMissedReasonCode,
+            input.otherText
+          )
+        : buildMarShiftTimelineHoldNotes(
+            input.reasonCode as MarShiftTimelineHoldReasonCode,
+            input.otherText
+          );
 
   await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
     facilityId,

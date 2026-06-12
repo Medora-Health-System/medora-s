@@ -302,6 +302,9 @@ export function buildMarAdministrationTestHarness(options: MarHarnessOptions) {
       findFirst: jest.fn().mockResolvedValue(encounter),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
+    facility: {
+      findFirst: jest.fn().mockResolvedValue({ timezone: "UTC" }),
+    },
     orderItem: {
       findFirst: jest.fn().mockResolvedValue(options.orderItem),
       update: orderItemUpdate,

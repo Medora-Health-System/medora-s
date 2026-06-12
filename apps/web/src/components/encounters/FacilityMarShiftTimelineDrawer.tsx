@@ -15,6 +15,7 @@ import {
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
   MAR_SHIFT_TIMELINE_HOLD_REASON_CODES,
+  MAR_SHIFT_TIMELINE_MISSED_REASON_CODES,
   MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES,
 } from "@medora/shared";
 import {
@@ -69,7 +70,7 @@ export function FacilityMarShiftTimelineDrawer({
   const [stopNotes, setStopNotes] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [reasonModal, setReasonModal] = useState<null | { action: "REFUSE" | "HOLD" }>(null);
+  const [reasonModal, setReasonModal] = useState<null | { action: "REFUSE" | "HOLD" | "MARK_MISSED" }>(null);
   const [reasonCode, setReasonCode] = useState("");
   const [reasonOther, setReasonOther] = useState("");
   const [reasonTimeValue, setReasonTimeValue] = useState("");
@@ -334,7 +335,9 @@ export function FacilityMarShiftTimelineDrawer({
   const reasonCodes =
     reasonModal?.action === "HOLD"
       ? MAR_SHIFT_TIMELINE_HOLD_REASON_CODES
-      : MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES;
+      : reasonModal?.action === "MARK_MISSED"
+        ? MAR_SHIFT_TIMELINE_MISSED_REASON_CODES
+        : MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES;
 
   const handleReasonConfirm = async () => {
     if (!actionHandlers || !item || !reasonModal) return;
@@ -361,6 +364,12 @@ export function FacilityMarShiftTimelineDrawer({
       };
       if (reasonModal.action === "REFUSE") {
         await actionHandlers.onExecuteRefuse(item, payload);
+      } else if (reasonModal.action === "MARK_MISSED") {
+        if (!actionHandlers.onExecuteMissed) {
+          setActionError(t("marShiftTimeline.actionError"));
+          return;
+        }
+        await actionHandlers.onExecuteMissed(item, payload);
       } else {
         await actionHandlers.onExecuteHold(item, payload);
       }
@@ -482,7 +491,7 @@ export function FacilityMarShiftTimelineDrawer({
       return;
     }
 
-    if (action === "REFUSE" || action === "HOLD") {
+    if (action === "REFUSE" || action === "HOLD" || action === "MARK_MISSED") {
       setActionError(null);
       setReasonModal({ action });
       return;

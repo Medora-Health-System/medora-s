@@ -64,6 +64,7 @@ export * from "./mar/medicationInfusionApiErrors.js";
 export * from "./mar/medicationAdministrationInjectionSite.js";
 export * from "./mar/medicationAdministrationPrnGovernance.js";
 export * from "./mar/marPrnTimeline.js";
+export * from "./mar/marAdministrationSafetyGovernance.js";
 export * from "./mar/marHiddenBillingPayload.js";
 export * from "./mar/marAdministeredQuantity.js";
 export * from "./orders/orderItemDisplayLabels.js";

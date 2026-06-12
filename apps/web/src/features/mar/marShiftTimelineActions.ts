@@ -44,6 +44,10 @@ export type MarShiftTimelineActionHandlers = {
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineRefuseHoldInput
   ) => Promise<void>;
+  onExecuteMissed?: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineRefuseHoldInput
+  ) => Promise<void>;
   onExecuteStartFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
   onExecutePauseFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
   onExecuteResumeFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
@@ -192,7 +196,7 @@ export function isMarShiftTimelineActionEnabled(
   }
   if (action === "START_BOLUS") return item.clinicalAction === "START_BOLUS";
   if (action === "COMPLETE_BOLUS") return item.clinicalAction === "COMPLETE_BOLUS";
-  if (action === "REFUSE" || action === "HOLD") {
+  if (action === "REFUSE" || action === "HOLD" || action === "MARK_MISSED") {
     return isMarShiftTimelineRefuseHoldEligible(item);
   }
   return false;

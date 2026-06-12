@@ -1,4 +1,5 @@
 import type { MarClinicalAction } from "../mar/marClinicalAction.js";
+import { isMarMissedDoseNotes } from "../mar/marAdministrationSafetyGovernance.js";
 
 /** Structured refuse reasons for MAR shift timeline (M1.8B.7K.9). */
 export const MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES = [
@@ -28,7 +29,20 @@ export const MAR_SHIFT_TIMELINE_HOLD_REASON_CODES = [
 export type MarShiftTimelineHoldReasonCode =
   (typeof MAR_SHIFT_TIMELINE_HOLD_REASON_CODES)[number];
 
-export type MarShiftTimelineTerminalOutcome = "REFUSED" | "HELD";
+/** Structured missed-dose reasons (K.10B.9). */
+export const MAR_SHIFT_TIMELINE_MISSED_REASON_CODES = [
+  "PATIENT_UNAVAILABLE",
+  "MEDICATION_UNAVAILABLE",
+  "TRANSFERRED",
+  "PROCEDURE",
+  "CLINICAL_HOLD",
+  "OTHER",
+] as const;
+
+export type MarShiftTimelineMissedReasonCode =
+  (typeof MAR_SHIFT_TIMELINE_MISSED_REASON_CODES)[number];
+
+export type MarShiftTimelineTerminalOutcome = "REFUSED" | "HELD" | "MISSED";
 
 const MAR_HOLD_NOTES_PREFIX = "Held:";
 
@@ -66,12 +80,35 @@ export function buildMarShiftTimelineHoldNotes(
   return `${MAR_HOLD_NOTES_PREFIX} ${code}`;
 }
 
+export function buildMarShiftTimelineMissedNotes(
+  reasonCode: MarShiftTimelineMissedReasonCode | string,
+  otherText?: string | null
+): string {
+  const code = String(reasonCode).trim().toUpperCase();
+  if (code === "OTHER") {
+    const detail = otherText?.trim();
+    if (!detail) {
+      throw new Error("Missed dose reason detail required for OTHER");
+    }
+    return `Missed: OTHER — ${detail}`;
+  }
+  return `Missed: ${code}`;
+}
+
 export function resolveMarShiftTimelineTerminalOutcome(input: {
   marAction?: string | null;
   notes?: string | null;
+  doseStatus?: string | null;
 }): MarShiftTimelineTerminalOutcome | null {
+  const status = input.doseStatus?.trim().toUpperCase();
+  if (status === "MISSED" || isMarMissedDoseNotes(input.notes)) {
+    return "MISSED";
+  }
   const action = input.marAction?.trim().toLowerCase();
-  if (action === "refused" || action === "not_available") {
+  if (action === "refused") {
+    return "REFUSED";
+  }
+  if (action === "not_available" && !isMarMissedDoseNotes(input.notes)) {
     return "REFUSED";
   }
   if (action === "md_changed" && isMarShiftTimelineHoldNotes(input.notes)) {
@@ -81,7 +118,9 @@ export function resolveMarShiftTimelineTerminalOutcome(input: {
 }
 
 export function marShiftTimelineTerminalMarActionForDrawerAction(
-  action: "REFUSE" | "HOLD"
+  action: "REFUSE" | "HOLD" | "MARK_MISSED"
 ): MarClinicalAction {
-  return action === "REFUSE" ? "refused" : "md_changed";
+  if (action === "REFUSE") return "refused";
+  if (action === "MARK_MISSED") return "not_available";
+  return "md_changed";
 }

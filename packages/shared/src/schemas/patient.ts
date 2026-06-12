@@ -751,6 +751,12 @@ export const medicationAdministrationCreateDtoSchema = z.object({
   pharmacyVerificationOverrideAcknowledged: z.boolean().optional(),
   /** M1.8B.7I.2 — optional dose instance gate for recurring scheduled MAR. */
   medicationDoseInstanceId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),
+  /** K.10B.9A — structured early/late schedule timing reason (optional; notes prefix also accepted). */
+  scheduleTimingReasonCode: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+  scheduleTimingReasonText: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  /** K.10B.9A — structured missed-dose reason (optional; Missed: notes prefix also accepted). */
+  missedReasonCode: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+  missedReasonText: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
 });
 
 export type MedicationAdministrationCreateDto = z.infer<typeof medicationAdministrationCreateDtoSchema>;
