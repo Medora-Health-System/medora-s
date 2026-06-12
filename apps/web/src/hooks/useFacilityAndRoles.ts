@@ -39,6 +39,7 @@ export function useFacilityAndRoles() {
    * **active** facility. Defaults to `false` when missing from `/auth/me`.
    */
   const [allowRnLabResultSubmission, setAllowRnLabResultSubmission] = useState(false);
+  const [facilityTimeZone, setFacilityTimeZone] = useState("UTC");
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -77,6 +78,7 @@ export function useFacilityAndRoles() {
       (d.facilityRoles as {
         facilityId?: string;
         role?: string;
+        timezone?: string;
         allowRnLabResultSubmission?: boolean;
       }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
@@ -89,6 +91,11 @@ export function useFacilityAndRoles() {
     /** Read the facility-scoped policy from any matching role row (server emits it on every entry). */
     const activePolicyRow = frsTyped.find((fr) => String(fr.facilityId) === fidKey);
     setAllowRnLabResultSubmission(activePolicyRow?.allowRnLabResultSubmission === true);
+    setFacilityTimeZone(
+      typeof activePolicyRow?.timezone === "string" && activePolicyRow.timezone.trim()
+        ? activePolicyRow.timezone.trim()
+        : "UTC"
+    );
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -184,5 +191,7 @@ export function useFacilityAndRoles() {
     canPrescribe,
     /** Phase 1 — `Facility.allowRnLabResultSubmission` for the **active** facility. */
     allowRnLabResultSubmission,
+    /** IANA timezone for clinical display (M1.8B.7K.10B.1). */
+    facilityTimeZone,
   };
 }

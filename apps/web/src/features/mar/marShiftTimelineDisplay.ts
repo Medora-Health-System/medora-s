@@ -1,9 +1,9 @@
 import type { CSSProperties } from "react";
 import {
-  getZonedWallClockParts,
   resolveMarShiftTimelinePerformerLabel,
   toMedicationAdministrationEffectiveTimeIsoUtc,
-  wallClockToUtc,
+  clinicalDatetimeLocalFromInstant,
+  clinicalDatetimeLocalToUtcIso,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -28,6 +28,54 @@ export function isMarShiftTimelineDrawerReadOnly(item: MarShiftTimelineCellItem)
   return item.readOnly === true;
 }
 
+/** Locate a timeline cell item after refresh (K.10B.2 drawer resync). */
+export function findMarShiftTimelineCellItem(
+  timeline: { rows: { patientDisplay: string; roomLabel: string | null; cells: { items: MarShiftTimelineCellItem[] }[] }[] },
+  target: Pick<MarShiftTimelineCellItem, "orderItemId" | "medicationDoseInstanceId" | "scheduledAt">
+): { item: MarShiftTimelineCellItem; patientDisplay: string; roomLabel: string | null } | null {
+  const orderItemId = target.orderItemId.trim();
+  if (!orderItemId) return null;
+  const doseId = target.medicationDoseInstanceId?.trim() || "";
+  const scheduledAt = target.scheduledAt?.trim() || "";
+
+  for (const row of timeline.rows) {
+    for (const cell of row.cells) {
+      for (const item of cell.items) {
+        if (item.orderItemId !== orderItemId) continue;
+        if (doseId && item.medicationDoseInstanceId?.trim() !== doseId) continue;
+        if (!doseId && scheduledAt && item.scheduledAt?.trim() !== scheduledAt) continue;
+        return {
+          item,
+          patientDisplay: row.patientDisplay,
+          roomLabel: row.roomLabel,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+export type MarShiftTimelineDrawerSelection = {
+  item: MarShiftTimelineCellItem;
+  patientDisplay: string;
+  roomLabel: string | null;
+};
+
+/** Reconcile open drawer with refreshed timeline; close when item no longer present (K.10B.2). */
+export function reconcileMarShiftTimelineDrawerSelection(
+  prev: MarShiftTimelineDrawerSelection | null,
+  timeline: { rows: { patientDisplay: string; roomLabel: string | null; cells: { items: MarShiftTimelineCellItem[] }[] }[] }
+): MarShiftTimelineDrawerSelection | null {
+  if (!prev) return null;
+  const found = findMarShiftTimelineCellItem(timeline, prev.item);
+  if (!found) return null;
+  return {
+    item: found.item,
+    patientDisplay: found.patientDisplay,
+    roomLabel: found.roomLabel,
+  };
+}
+
 export function marShiftTimelinePrimaryDrawerAction(
   item: MarShiftTimelineCellItem
 ): MarShiftTimelineDrawerAction | null {
@@ -49,13 +97,8 @@ export function toMarShiftTimelineDateTimeLocalValue(
   if (!iso?.trim()) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-
   const tz = facilityTimeZone?.trim();
-  if (tz) {
-    const parts = getZonedWallClockParts(date, tz);
-    return `${parts.year}-${padDateTimeLocalPart(parts.month)}-${padDateTimeLocalPart(parts.day)}T${padDateTimeLocalPart(parts.hour)}:${padDateTimeLocalPart(parts.minute)}`;
-  }
-
+  if (tz) return clinicalDatetimeLocalFromInstant(date, tz);
   return `${date.getFullYear()}-${padDateTimeLocalPart(date.getMonth() + 1)}-${padDateTimeLocalPart(date.getDate())}T${padDateTimeLocalPart(date.getHours())}:${padDateTimeLocalPart(date.getMinutes())}`;
 }
 
@@ -64,18 +107,10 @@ export function marShiftTimelineDateTimeLocalToUtcIso(
   localValue: string | null | undefined,
   facilityTimeZone?: string | null
 ): string | null {
-  if (!localValue?.trim()) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(localValue.trim());
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = Number(match[2]);
-  const day = Number(match[3]);
-  const hour = Number(match[4]);
-  const minute = Number(match[5]);
   const tz = facilityTimeZone?.trim();
-  const date = tz
-    ? wallClockToUtc(year, month, day, hour, minute, tz)
-    : new Date(localValue);
+  if (tz) return clinicalDatetimeLocalToUtcIso(localValue, tz);
+  if (!localValue?.trim()) return null;
+  const date = new Date(localValue);
   if (Number.isNaN(date.getTime())) return null;
   return toMedicationAdministrationEffectiveTimeIsoUtc(date);
 }

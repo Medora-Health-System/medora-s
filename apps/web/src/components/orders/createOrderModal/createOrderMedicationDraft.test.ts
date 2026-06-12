@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { resolveMedicationOrderItemFrequencyCode } from "@medora/shared";
+import { clinicalDatetimeLocalFromInstant, resolveMedicationOrderItemFrequencyCode, wallClockToUtc } from "@medora/shared";
 import { describe, expect, it } from "vitest";
 import type { CreateOrderLineItem } from "./types";
 import {
@@ -73,10 +73,24 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
     const fixed = new Date("2026-06-03T15:04:00");
     const line = applyDefaultPlannedAdministrationIfNeeded(
       medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
+      undefined,
       fixed
     );
-    expect(line.intendedAdministrationAt).toBe(defaultPlannedAdministrationLocal(fixed));
+    expect(line.intendedAdministrationAt).toBe(defaultPlannedAdministrationLocal(undefined, fixed));
     expect(line.intendedAdministrationAt).toBe(toDatetimeLocalValue(fixed));
+  });
+
+  it("defaults planned administration in facility timezone when provided (K10B1)", () => {
+    const fixed = wallClockToUtc(2026, 6, 11, 22, 15, "America/Port-au-Prince");
+    const line = applyDefaultPlannedAdministrationIfNeeded(
+      medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
+      "America/Port-au-Prince",
+      fixed
+    );
+    expect(line.intendedAdministrationAt).toBe(
+      clinicalDatetimeLocalFromInstant(fixed, "America/Port-au-Prince")
+    );
+    expect(line.intendedAdministrationAt).toBe("2026-06-11T22:15");
   });
 
   it("does not default planned administration for pharmacy dispense", () => {
@@ -91,12 +105,13 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
     const edited = patchMedicationLineWithPlannedAdminRules(
       medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
       { intendedAdministrationAt: "2026-06-03T10:30" },
+      undefined,
       fixed
     );
     expect(edited.intendedAdministrationAt).toBe("2026-06-03T10:30");
     expect(edited._plannedAdminAtTouched).toBe(true);
 
-    const reDefault = applyDefaultPlannedAdministrationIfNeeded(edited, fixed);
+    const reDefault = applyDefaultPlannedAdministrationIfNeeded(edited, undefined, fixed);
     expect(reDefault.intendedAdministrationAt).toBe("2026-06-03T10:30");
   });
 

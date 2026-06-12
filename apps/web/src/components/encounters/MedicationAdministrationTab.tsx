@@ -9,6 +9,8 @@ import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDi
 import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
@@ -430,6 +432,7 @@ export function MedicationAdministrationTab({
   encounterAllergySource?: EncounterMarAllergySource;
 }) {
   const { t, language } = useI18n();
+  const { facilityTimeZone } = useFacilityAndRoles();
   const clinicalData = useEncounterClinicalDataOptional();
   const useSharedClinicalData = clinicalData != null;
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -549,6 +552,14 @@ export function MedicationAdministrationTab({
   });
   const timelineRefreshRef = useRef<(() => Promise<void>) | null>(null);
   const timelineCloseDrawerRef = useRef<(() => void) | null>(null);
+  const timelineReopenDrawerRef = useRef<
+    ((orderItemId: string, medicationDoseInstanceId?: string | null, scheduledAt?: string | null) => void) | null
+  >(null);
+  const timelineDrawerAdministerTargetRef = useRef<{
+    orderItemId: string;
+    medicationDoseInstanceId: string;
+    scheduledAt: string;
+  } | null>(null);
   const [pendingTimelineStartItem, setPendingTimelineStartItem] = useState<MarShiftTimelineCellItem | null>(
     null
   );
@@ -1280,12 +1291,17 @@ export function MedicationAdministrationTab({
       if (!row) {
         throw new Error(t("marShiftTimeline.actionError"));
       }
+      timelineDrawerAdministerTargetRef.current = {
+        orderItemId: item.orderItemId,
+        medicationDoseInstanceId: item.medicationDoseInstanceId ?? "",
+        scheduledAt: item.scheduledAt ?? "",
+      };
       openModal(row, {
         medicationDoseInstanceId: item.medicationDoseInstanceId?.trim() || null,
       });
       timelineCloseDrawerRef.current?.();
     },
-    [taskRows, t]
+    [openModal, taskRows, t]
   );
 
   const submitTimelineTerminalMar = useCallback(
@@ -1298,7 +1314,6 @@ export function MedicationAdministrationTab({
       await submitMarShiftTimelineTerminalMar(encounterId, facilityId, item, action, input);
       await reloadMarData();
       await timelineRefreshRef.current?.();
-      timelineCloseDrawerRef.current?.();
     },
     [encounterId, facilityId, reloadMarData, t]
   );
@@ -1327,8 +1342,8 @@ export function MedicationAdministrationTab({
           skipReload: true,
           skipModalClose: true,
         });
+        await reloadMarData();
         await timelineRefreshRef.current?.();
-        timelineCloseDrawerRef.current?.();
         return true;
       },
       onExecuteStopInfusion: async (item, input) => {
@@ -1340,8 +1355,8 @@ export function MedicationAdministrationTab({
           skipReload: true,
           skipModalClose: true,
         });
+        await reloadMarData();
         await timelineRefreshRef.current?.();
-        timelineCloseDrawerRef.current?.();
       },
       onExecuteRefuse: async (item, input) => {
         await submitTimelineTerminalMar(item, "REFUSE", input);
@@ -1362,6 +1377,7 @@ export function MedicationAdministrationTab({
 
   const closeModal = () => {
     if (submitting) return;
+    timelineDrawerAdministerTargetRef.current = null;
     setModalItem(null);
     setModalSubmitError(null);
     setShowHighAlertVerifierModal(false);
@@ -1789,8 +1805,20 @@ export function MedicationAdministrationTab({
       }
       setMarDraftRestoredAt(null);
       setMarDraftSavedLocallyAt(null);
+      const drawerReopenTarget =
+        modalAction === "administered" ? timelineDrawerAdministerTargetRef.current : null;
+      timelineDrawerAdministerTargetRef.current = null;
       setModalItem(null);
       await reloadMarData();
+      if (drawerReopenTarget) {
+        timelineReopenDrawerRef.current?.(
+          drawerReopenTarget.orderItemId,
+          drawerReopenTarget.medicationDoseInstanceId,
+          drawerReopenTarget.scheduledAt
+        );
+      } else {
+        await timelineRefreshRef.current?.();
+      }
     } catch (err) {
       const apiErr = err as Error & {
         body?: { code?: string; message?: string | string[] };
@@ -1888,6 +1916,9 @@ export function MedicationAdministrationTab({
         }}
         onRegisterCloseDrawer={(close) => {
           timelineCloseDrawerRef.current = close;
+        }}
+        onRegisterReopenDrawer={(reopen) => {
+          timelineReopenDrawerRef.current = reopen;
         }}
       />
 
@@ -2164,10 +2195,11 @@ export function MedicationAdministrationTab({
                   const elapsedInner =
                     !Number.isNaN(startedMs) ? formatInfusionElapsedInnerOnly(nowMs - startedMs, t) : null;
                   const startedAtStr = activeMarInfusion.infusionStartedAtIso
-                    ? new Date(activeMarInfusion.infusionStartedAtIso).toLocaleString(dateLocale, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })
+                    ? formatClinicalInstantForFacility(
+                        activeMarInfusion.infusionStartedAtIso,
+                        facilityTimeZone,
+                        language
+                      )
                     : null;
                   const byParts = [activeMarInfusion.startedByDisplayName, activeMarInfusion.startedByTitle].filter(
                     (x): x is string => typeof x === "string" && Boolean(x.trim())
@@ -2203,17 +2235,11 @@ export function MedicationAdministrationTab({
                   const startAt =
                     lc.infusionStartedAtIso &&
                     !Number.isNaN(new Date(lc.infusionStartedAtIso).getTime())
-                      ? new Date(lc.infusionStartedAtIso).toLocaleString(dateLocale, {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
+                      ? formatClinicalInstantForFacility(lc.infusionStartedAtIso, facilityTimeZone, language)
                       : t("common.dash");
                   const stopAt =
                     lc.infusionStoppedAtIso && !Number.isNaN(new Date(lc.infusionStoppedAtIso).getTime())
-                      ? new Date(lc.infusionStoppedAtIso).toLocaleString(dateLocale, {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        })
+                      ? formatClinicalInstantForFacility(lc.infusionStoppedAtIso, facilityTimeZone, language)
                       : t("common.dash");
                   const durLine = formatInfusionDurationForI18n(lc.durationMinutes, t);
                   const startByParts = [lc.startedByDisplayName, lc.startedByTitle].filter(
@@ -2339,7 +2365,7 @@ export function MedicationAdministrationTab({
 
                 const intendedLine =
                   row.intendedAt != null && String(row.intendedAt).trim() !== ""
-                    ? new Date(row.intendedAt as string).toLocaleString(dateLocale)
+                    ? formatClinicalInstantForFacility(String(row.intendedAt), facilityTimeZone, language)
                     : null;
 
                 const intendedUrgency = intendedLine
@@ -2393,7 +2419,12 @@ export function MedicationAdministrationTab({
                     </td>
                     <td style={{ ...marTablePrimaryCellStyle, color: "#424242" }}>
                       {latest ? (
-                        <MedicationAdministrationTimeCell row={latest} dateLocale={dateLocale} t={t} />
+                        <MedicationAdministrationTimeCell
+                          row={latest}
+                          facilityTimeZone={facilityTimeZone}
+                          language={language}
+                          t={t}
+                        />
                       ) : (
                         <div style={{ whiteSpace: "nowrap" }}>{t("common.dash")}</div>
                       )}
@@ -2499,7 +2530,8 @@ export function MedicationAdministrationTab({
                       <div style={{ marginTop: 4 }}>
                         <MedicationAdministrationTimeCell
                           row={r}
-                          dateLocale={dateLocale}
+                          facilityTimeZone={facilityTimeZone}
+                          language={language}
                           t={t}
                           showPerformer
                         />
@@ -2682,7 +2714,7 @@ export function MedicationAdministrationTab({
               const list = adminsByOrderItemId.get(modalItem.orderItemId) ?? [];
               const latest = list[0];
               const lastWhen = latest
-                ? new Date(latest.administeredAt).toLocaleString(dateLocale)
+                ? formatClinicalInstantForFacility(latest.administeredAt, facilityTimeZone, language)
                 : t("common.dash");
               const now = new Date();
               let todayCount = 0;
@@ -3277,8 +3309,8 @@ export function MedicationAdministrationTab({
                       skipModalClose: true,
                     }
                   );
+                  await reloadMarData();
                   await timelineRefreshRef.current?.();
-                  timelineCloseDrawerRef.current?.();
                 } catch {
                   // runMarInfusion sets tab error state
                 }

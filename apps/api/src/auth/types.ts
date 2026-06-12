@@ -21,6 +21,8 @@ export type FacilityRoleDto = {
    * le serveur reste seul juge — l'UI ne fait que masquer les contrôles quand `false` / absent.
    */
   allowRnLabResultSubmission?: boolean;
+  /** IANA timezone for clinical time display (M1.8B.7K.10B.1). */
+  timezone?: string;
 };
 
 /** Détection mode national MSPP vs accès établissement (lecture seule ; RBAC inchangé). */

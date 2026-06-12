@@ -151,6 +151,7 @@ export class AuthService {
               select: {
                 name: true,
                 defaultLanguage: true,
+                timezone: true,
                 allowRnLabResultSubmission: true,
               },
             },
@@ -188,6 +189,7 @@ export class AuthService {
       facilityId: ur.facilityId,
       facilityName: ur.facility?.name,
       defaultLanguage: ur.facility?.defaultLanguage ?? "fr",
+      timezone: ur.facility?.timezone ?? "UTC",
       role: ur.role.code,
       departmentId: ur.departmentId ?? null,
       /**
@@ -212,6 +214,7 @@ export class AuthService {
         facilityId: base.facilityId,
         facilityName: base.facilityName,
         defaultLanguage: base.defaultLanguage,
+        timezone: base.timezone,
         role: "MEDORA_SUPER_ADMIN",
         departmentId: null,
         allowRnLabResultSubmission: base.allowRnLabResultSubmission,

@@ -256,6 +256,55 @@ describe("marShiftTimeline timezone placement (M1.8B.7K.7 / K.9)", () => {
     expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("10P");
   });
 
+  it("10:24 PM NOW fallback maps to 10P on 7P_7A shift (K.10A)", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 22, 24, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("10P");
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).not.toBe("11P");
+  });
+
+  it("10:59 PM NOW fallback maps to 10P on 7P_7A shift (K.10A)", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 22, 59, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("10P");
+  });
+
+  it("11:00 PM NOW fallback maps to 11P on 7P_7A shift (K.10A)", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 23, 0, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("11P");
+  });
+
+  it("two NOW meds at 10:07 and 10:24 both map to 10P (K.10A)", () => {
+    const first = wallClockToUtc(2026, 6, 3, 22, 7, haitiTz);
+    const second = wallClockToUtc(2026, 6, 3, 22, 24, haitiTz);
+    expect(columnLabelForInstant(first, "7P_7A", haitiTz)).toBe("10P");
+    expect(columnLabelForInstant(second, "7P_7A", haitiTz)).toBe("10P");
+  });
+
+  it("dueWindowEndAt at 11:24 does not move 10:24 placement to 11P (K.10A)", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 22, 24, haitiTz);
+    const dueWindowEndAt = wallClockToUtc(2026, 6, 3, 23, 24, haitiTz);
+    const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", createdAt, haitiTz);
+    const columns = buildMarShiftTimelineColumns(startAt, endAt, haitiTz);
+    const key = resolveMarShiftTimelineColumnKey({
+      scheduledAt: createdAt,
+      dueWindowStartAt: dueWindowEndAt,
+      columns,
+      facilityTimeZone: haitiTz,
+    });
+    expect(columns.find((c) => c.key === key)?.label).toBe("10P");
+    const wrongKey = resolveMarShiftTimelineColumnKey({
+      scheduledAt: dueWindowEndAt,
+      columns,
+      facilityTimeZone: haitiTz,
+    });
+    expect(columns.find((c) => c.key === wrongKey)?.label).toBe("11P");
+  });
+
+  it("America/New_York facility timezone keeps 10:24 PM in 10P (K.10A)", () => {
+    const nyTz = "America/New_York";
+    const createdAt = wallClockToUtc(2026, 6, 3, 22, 24, nyTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", nyTz)).toBe("10P");
+  });
+
   it("facility timezone conversion does not drift NOW PO to next hour", () => {
     const createdAt = wallClockToUtc(2026, 6, 3, 21, 7, haitiTz);
     expect(formatMarShiftTimelineHourLabel(createdAt, haitiTz)).toBe("09P");

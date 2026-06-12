@@ -1,4 +1,4 @@
-import { normalizeMedicationRoute, type MedicationOrderRoute } from "@medora/shared";
+import { clinicalDatetimeLocalFromInstant, normalizeMedicationRoute, type MedicationOrderRoute } from "@medora/shared";
 import type { CreateOrderLineItem, MedicationRoute } from "./types";
 
 export type OrderDraftTypeKey = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
@@ -142,23 +142,31 @@ export function toDatetimeLocalValue(d: Date): string {
   return x.toISOString().slice(0, 16);
 }
 
-export function defaultPlannedAdministrationLocal(now = new Date()): string {
+export function defaultPlannedAdministrationLocal(
+  facilityTimeZone?: string | null,
+  now = new Date()
+): string {
+  if (facilityTimeZone?.trim()) {
+    return clinicalDatetimeLocalFromInstant(now, facilityTimeZone);
+  }
   return toDatetimeLocalValue(now);
 }
 
 export function applyDefaultPlannedAdministrationIfNeeded(
   item: CreateOrderLineItem,
+  facilityTimeZone?: string | null,
   now = new Date()
 ): CreateOrderLineItem {
   if (!isAdministerToPatientIntent(item.medicationFulfillmentIntent)) return item;
   if (item._plannedAdminAtTouched) return item;
   if (item.intendedAdministrationAt?.trim()) return item;
-  return { ...item, intendedAdministrationAt: defaultPlannedAdministrationLocal(now) };
+  return { ...item, intendedAdministrationAt: defaultPlannedAdministrationLocal(facilityTimeZone, now) };
 }
 
 export function patchMedicationLineWithPlannedAdminRules(
   item: CreateOrderLineItem,
   patch: Partial<CreateOrderLineItem>,
+  facilityTimeZone?: string | null,
   now = new Date()
 ): CreateOrderLineItem {
   const merged: CreateOrderLineItem = { ...item, ...patch };
@@ -178,12 +186,13 @@ export function patchMedicationLineWithPlannedAdminRules(
     if (patch.medicationFulfillmentIntent === "ADMINISTER_CHART") {
       return applyDefaultPlannedAdministrationIfNeeded(
         { ...merged, _plannedAdminAtTouched: merged._plannedAdminAtTouched ?? false },
+        facilityTimeZone,
         now
       );
     }
   }
 
-  return applyDefaultPlannedAdministrationIfNeeded(merged, now);
+  return applyDefaultPlannedAdministrationIfNeeded(merged, facilityTimeZone, now);
 }
 
 export type OrderDraftMedicationStrippable = {

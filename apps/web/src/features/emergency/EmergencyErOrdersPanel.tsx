@@ -6,6 +6,7 @@ import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
@@ -498,7 +499,7 @@ export function EmergencyErOrdersPanel({
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
-  const { userId: currentUserId } = useFacilityAndRoles();
+  const { userId: currentUserId, facilityTimeZone } = useFacilityAndRoles();
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
   const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
@@ -1241,7 +1242,7 @@ export function EmergencyErOrdersPanel({
                     const issuedPrimary = attributionLines[0] ?? authorityLine;
                     const timeStr =
                       o.createdAt != null && String(o.createdAt).trim()
-                        ? new Date(String(o.createdAt)).toLocaleString(language === "fr" ? "fr-FR" : "en-US")
+                        ? formatClinicalInstantForFacility(String(o.createdAt), facilityTimeZone, language)
                         : "—";
                     const categoryLabel = t(domainHeadingKey(o.type as ErOrderDomain));
                     return (
@@ -1450,9 +1451,10 @@ export function EmergencyErOrdersPanel({
                                       <div style={{ color: "#0c4a6e" }}>
                                         {t("infusionTimeline.infusionStartedAt").replace(
                                           "{at}",
-                                          new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
-                                            language === "fr" ? "fr-FR" : "en-US",
-                                            { dateStyle: "short", timeStyle: "short" }
+                                          formatClinicalInstantForFacility(
+                                            activeInfusion.infusionStartedAtIso,
+                                            facilityTimeZone,
+                                            language
                                           )
                                         )}
                                       </div>
@@ -1622,7 +1624,7 @@ export function EmergencyErOrdersPanel({
                         const issuedPrimary = attributionLines[0] ?? authorityLine;
                         const timeStr =
                           o.createdAt != null && String(o.createdAt).trim()
-                            ? new Date(String(o.createdAt)).toLocaleString(language === "fr" ? "fr-FR" : "en-US")
+                            ? formatClinicalInstantForFacility(String(o.createdAt), facilityTimeZone, language)
                             : "—";
                         const categoryLabel = t(domainHeadingKey(o.type as ErOrderDomain));
                         return (
@@ -1859,9 +1861,10 @@ export function EmergencyErOrdersPanel({
                                             <div style={{ color: "#0c4a6e" }}>
                                               {t("infusionTimeline.infusionStartedAt").replace(
                                                 "{at}",
-                                                new Date(activeInfusion.infusionStartedAtIso).toLocaleString(
-                                                  language === "fr" ? "fr-FR" : "en-US",
-                                                  { dateStyle: "short", timeStyle: "short" }
+                                                formatClinicalInstantForFacility(
+                                                  activeInfusion.infusionStartedAtIso,
+                                                  facilityTimeZone,
+                                                  language
                                                 )
                                               )}
                                             </div>
@@ -1962,9 +1965,7 @@ export function EmergencyErOrdersPanel({
                     const typeKey = (completedOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
                     const categoryLabel = t(domainHeadingKey(typeKey));
                     const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
-                    const performedWhen = new Date(e.performedAt).toLocaleString(
-                      language === "fr" ? "fr-FR" : "en-US"
-                    );
+                    const performedWhen = formatClinicalInstantForFacility(e.performedAt, facilityTimeZone, language);
                     const titleCell = formatErOrderEventAttributionCell(completedOrder, e, t, language);
                     const statusSection = infusionStopTimeline ? (
                       <div
@@ -1984,9 +1985,10 @@ export function EmergencyErOrdersPanel({
                             "{at}",
                             infusionStopTimeline.infusionStartedAtIso &&
                               !Number.isNaN(new Date(infusionStopTimeline.infusionStartedAtIso).getTime())
-                              ? new Date(infusionStopTimeline.infusionStartedAtIso).toLocaleString(
-                                  language === "fr" ? "fr-FR" : "en-US",
-                                  { dateStyle: "short", timeStyle: "short" }
+                              ? formatClinicalInstantForFacility(
+                                  infusionStopTimeline.infusionStartedAtIso,
+                                  facilityTimeZone,
+                                  language
                                 )
                               : t("common.dash")
                           )}
@@ -1996,9 +1998,10 @@ export function EmergencyErOrdersPanel({
                             "{at}",
                             infusionStopTimeline.infusionStoppedAtIso &&
                               !Number.isNaN(new Date(infusionStopTimeline.infusionStoppedAtIso).getTime())
-                              ? new Date(infusionStopTimeline.infusionStoppedAtIso).toLocaleString(
-                                  language === "fr" ? "fr-FR" : "en-US",
-                                  { dateStyle: "short", timeStyle: "short" }
+                              ? formatClinicalInstantForFacility(
+                                  infusionStopTimeline.infusionStoppedAtIso,
+                                  facilityTimeZone,
+                                  language
                                 )
                               : t("common.dash")
                           )}
@@ -2122,7 +2125,7 @@ export function EmergencyErOrdersPanel({
                         const typeKey = (completedOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
                         const categoryLabel = t(domainHeadingKey(typeKey));
                         const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
-                        const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
+                        const performedWhen = formatClinicalInstantForFacility(e.performedAt, facilityTimeZone, language);
                         const titleCell = formatErOrderEventAttributionCell(completedOrder, e, t, language);
                         return (
                           <tr key={e.id} style={{ verticalAlign: "top" }}>
@@ -2201,9 +2204,10 @@ export function EmergencyErOrdersPanel({
                                       "{at}",
                                       infusionStopTimeline.infusionStartedAtIso &&
                                         !Number.isNaN(new Date(infusionStopTimeline.infusionStartedAtIso).getTime())
-                                        ? new Date(infusionStopTimeline.infusionStartedAtIso).toLocaleString(
-                                            language === "fr" ? "fr-FR" : "en-US",
-                                            { dateStyle: "short", timeStyle: "short" }
+                                        ? formatClinicalInstantForFacility(
+                                            infusionStopTimeline.infusionStartedAtIso,
+                                            facilityTimeZone,
+                                            language
                                           )
                                         : t("common.dash")
                                     )}
@@ -2213,9 +2217,10 @@ export function EmergencyErOrdersPanel({
                                       "{at}",
                                       infusionStopTimeline.infusionStoppedAtIso &&
                                         !Number.isNaN(new Date(infusionStopTimeline.infusionStoppedAtIso).getTime())
-                                        ? new Date(infusionStopTimeline.infusionStoppedAtIso).toLocaleString(
-                                            language === "fr" ? "fr-FR" : "en-US",
-                                            { dateStyle: "short", timeStyle: "short" }
+                                        ? formatClinicalInstantForFacility(
+                                            infusionStopTimeline.infusionStoppedAtIso,
+                                            facilityTimeZone,
+                                            language
                                           )
                                         : t("common.dash")
                                     )}
@@ -2306,9 +2311,7 @@ export function EmergencyErOrdersPanel({
                     const typeKey = (cancelledOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
                     const categoryLabel = t(domainHeadingKey(typeKey));
                     const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
-                    const performedWhen = new Date(e.performedAt).toLocaleString(
-                      language === "fr" ? "fr-FR" : "en-US"
-                    );
+                    const performedWhen = formatClinicalInstantForFacility(e.performedAt, facilityTimeZone, language);
                     const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
                     const titleCell = formatErOrderEventAttributionCell(cancelledOrder, e, t, language);
                     const statusSection = (
@@ -2390,7 +2393,7 @@ export function EmergencyErOrdersPanel({
                         const typeKey = (cancelledOrder?.type ?? e.order?.type ?? "CARE") as ErOrderDomain;
                         const categoryLabel = t(domainHeadingKey(typeKey));
                         const primaryTitle = eventLinePrimaryTitle(e, language, t, parsedOrders);
-                        const performedWhen = new Date(e.performedAt).toLocaleString(language === "fr" ? "fr-FR" : "en-US");
+                        const performedWhen = formatClinicalInstantForFacility(e.performedAt, facilityTimeZone, language);
                         const cancelReason = formatCancellationReasonForDisplay(e.note || e.order?.cancellationReason, t);
                         const titleCell = formatErOrderEventAttributionCell(cancelledOrder, e, t, language);
                         return (

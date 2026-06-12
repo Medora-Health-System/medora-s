@@ -14,6 +14,7 @@ import {
   buildMarShiftTimelineTertiaryText,
   resolveMarShiftTimelineMedicationLabel,
   normalizeMarShiftTimelineLocale,
+  resolveClinicalTimeZone,
   medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
   parseMedicationDoseKind,
@@ -186,7 +187,7 @@ export class MarShiftTimelineService {
       columns: [] as ReturnType<typeof buildMarShiftTimelineColumns>,
     };
 
-    const facilityTimeZone = facility.timezone?.trim() || "UTC";
+    const facilityTimeZone = resolveClinicalTimeZone({ facilityTimeZone: facility.timezone });
     const displayLocale = normalizeMarShiftTimelineLocale(query.locale);
 
     if (!medicationSchedulingFeatureFlagsEnabled(featureFlags)) {

@@ -14,8 +14,11 @@ import {
 } from "@/lib/marShiftTimelineApi";
 import {
   buildMarShiftTimelineItemHoverTitle,
+  findMarShiftTimelineCellItem,
   formatMarShiftTimelineHeaderClock,
   marShiftTimelineItemStatusStyle,
+  reconcileMarShiftTimelineDrawerSelection,
+  type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
 import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
 import { FacilityMarShiftTimelineDrawer } from "./FacilityMarShiftTimelineDrawer";
@@ -44,13 +47,13 @@ export type FacilityMarShiftTimelineProps = {
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onRegisterRefresh?: (refresh: () => Promise<void>) => void;
   onRegisterCloseDrawer?: (close: () => void) => void;
+  /** Re-open drawer with fresh timeline item after administer modal (K.10B.2). */
+  onRegisterReopenDrawer?: (
+    reopen: (orderItemId: string, medicationDoseInstanceId?: string | null, scheduledAt?: string | null) => void
+  ) => void;
 };
 
-type DrawerSelection = {
-  item: MarShiftTimelineCellItem;
-  patientDisplay: string;
-  roomLabel: string | null;
-};
+type DrawerSelection = MarShiftTimelineDrawerSelection;
 
 export function FacilityMarShiftTimeline({
   facilityId,
@@ -61,6 +64,7 @@ export function FacilityMarShiftTimeline({
   actionHandlers = null,
   onRegisterRefresh,
   onRegisterCloseDrawer,
+  onRegisterReopenDrawer,
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -98,7 +102,7 @@ export function FacilityMarShiftTimeline({
     [facilityId, viewerUserId]
   );
 
-  const loadTimeline = useCallback(async () => {
+  const loadTimeline = useCallback(async (reopenDrawer?: Pick<MarShiftTimelineCellItem, "orderItemId" | "medicationDoseInstanceId" | "scheduledAt">) => {
     setLoading(true);
     setError(false);
     try {
@@ -112,6 +116,20 @@ export function FacilityMarShiftTimeline({
         includeUpcoming: true,
       });
       setData(response);
+      if (reopenDrawer) {
+        const found = findMarShiftTimelineCellItem(response, reopenDrawer);
+        setDrawerSelection(
+          found
+            ? {
+                item: found.item,
+                patientDisplay: found.patientDisplay,
+                roomLabel: found.roomLabel,
+              }
+            : null
+        );
+      } else {
+        setDrawerSelection((prev) => reconcileMarShiftTimelineDrawerSelection(prev, response));
+      }
     } catch {
       setData(null);
       setError(true);
@@ -125,8 +143,18 @@ export function FacilityMarShiftTimeline({
   }, [loadTimeline]);
 
   useEffect(() => {
-    onRegisterRefresh?.(loadTimeline);
+    onRegisterRefresh?.(() => loadTimeline());
   }, [loadTimeline, onRegisterRefresh]);
+
+  useEffect(() => {
+    onRegisterReopenDrawer?.((orderItemId, medicationDoseInstanceId, scheduledAt) => {
+      void loadTimeline({
+        orderItemId,
+        medicationDoseInstanceId: medicationDoseInstanceId ?? "",
+        scheduledAt: scheduledAt ?? "",
+      });
+    });
+  }, [loadTimeline, onRegisterReopenDrawer]);
 
   useEffect(() => {
     onRegisterCloseDrawer?.(() => setDrawerSelection(null));
@@ -410,7 +438,6 @@ export function FacilityMarShiftTimeline({
         onClose={() => setDrawerSelection(null)}
         onActionSuccess={async () => {
           await loadTimeline();
-          setDrawerSelection(null);
         }}
       />
     </section>

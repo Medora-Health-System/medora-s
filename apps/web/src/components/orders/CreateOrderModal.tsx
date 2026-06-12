@@ -33,6 +33,8 @@ import {
   patchMedicationLineWithPlannedAdminRules,
   stripMedicationFromOrderDraftPayload,
 } from "./createOrderModal/createOrderMedicationDraft";
+import { clinicalDatetimeLocalToUtcDate } from "@/lib/clinicalTimeDisplay";
+import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
 import { buildActiveCatalogDedupKeySetFromOrders } from "@/lib/encounterClinicalSafetyUi";
@@ -244,7 +246,8 @@ function catalogItemToOrderLine(
   item: CatalogSearchItem,
   language: SupportedLanguage,
   t: (key: string) => string,
-  medicationOrderMode: MedicationOrderMode = "DEFAULT"
+  medicationOrderMode: MedicationOrderMode = "DEFAULT",
+  facilityTimeZone?: string | null
 ): CreateOrderLineItem | null {
   if (item.type === "LAB_TEST") {
     return {
@@ -299,7 +302,7 @@ function catalogItemToOrderLine(
         therapeuticClass: item.metadata?.therapeuticClass,
         commonAliases: item.metadata?.commonAliases,
       },
-    });
+    }, facilityTimeZone);
   }
 
   return null;
@@ -509,7 +512,8 @@ function buildPayload(
   prescriberContact: string,
   items: CreateOrderLineItem[],
   authority?: OrderAuthorityPayloadFields,
-  safetyAcknowledgedMedicationAllergies?: boolean
+  safetyAcknowledgedMedicationAllergies?: boolean,
+  facilityTimeZone?: string | null
 ): OrderCreateDto {
   const rootNotes = notes.trim() || undefined;
   const authorityFields = {
@@ -597,7 +601,10 @@ function buildPayload(
       : {}),
     items: items.map((it) => {
       const raw = it.intendedAdministrationAt?.trim();
-      const intendedDate = raw ? new Date(raw) : undefined;
+      const intendedDate = raw
+        ? clinicalDatetimeLocalToUtcDate(raw, facilityTimeZone ?? "UTC") ??
+          (raw ? new Date(raw) : undefined)
+        : undefined;
       const resolvedFrequencyCode = resolveMedicationOrderItemFrequencyCode({
         directionsSig: it.notes?.trim(),
       });
@@ -674,6 +681,7 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
+  const { facilityTimeZone } = useFacilityAndRoles();
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
   const careCatalogMatches = useMemo(() => {
@@ -1239,7 +1247,8 @@ export function CreateOrderModal({
         ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
         : items,
       authorityPayloadFieldsForType(type),
-      allergyAckForApi ? true : undefined
+      allergyAckForApi ? true : undefined,
+      facilityTimeZone
     );
     return (await apiFetch(`/encounters/${encounterId}/orders`, {
       method: "POST",
@@ -1319,7 +1328,7 @@ export function CreateOrderModal({
         continue;
       }
 
-        const line = catalogItemToOrderLine(catalogItem, language, t, medicationOrderMode);
+        const line = catalogItemToOrderLine(catalogItem, language, t, medicationOrderMode, facilityTimeZone);
       if (!line) {
         resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
         continue;
@@ -1535,7 +1544,7 @@ export function CreateOrderModal({
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
         : line;
     if (nextLine.catalogItemType === "MEDICATION") {
-      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine);
+      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine, facilityTimeZone);
     }
     setFormData((fd) => ({ ...fd, items: [...fd.items, nextLine] }));
   };
@@ -1558,7 +1567,7 @@ export function CreateOrderModal({
   const patchMedItem = (idx: number, patch: Partial<CreateOrderLineItem>) => {
     setFormData((fd) => {
       const next = [...fd.items];
-      let patched = patchMedicationLineWithPlannedAdminRules(next[idx], patch);
+      let patched = patchMedicationLineWithPlannedAdminRules(next[idx], patch, facilityTimeZone);
       if (erAdministerOnlyMedication) {
         patched = { ...patched, medicationFulfillmentIntent: "ADMINISTER_CHART" as const };
       }

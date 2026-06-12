@@ -1857,4 +1857,61 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       });
     });
   });
+
+  describe("M1.8B.7K.10B.1 late evening facility placement", () => {
+    const haitiTz = "America/Port-au-Prince";
+
+    async function withHaitiFacilityTimezone<T>(fn: () => Promise<T>): Promise<T> {
+      await prisma.facility.update({ where: { id: facilityId }, data: { timezone: haitiTz } });
+      try {
+        return await fn();
+      } finally {
+        await prisma.facility.update({ where: { id: facilityId }, data: { timezone: "UTC" } });
+      }
+    }
+
+    async function expectNowOrderAtLocalTimeMapsToColumn(
+      hour: number,
+      minute: number,
+      expectedColumn: string
+    ) {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 11, hour, minute, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", createdAt, haitiTz);
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "IVP" as MedicationRoute,
+          catalogItemId: genericCatalogId,
+          intendedAdministrationAt: wallClockToUtc(2026, 6, 12, 0, minute, haitiTz),
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe(expectedColumn);
+      });
+    }
+
+    it("10:15 PM facility → 10P", async () => {
+      await expectNowOrderAtLocalTimeMapsToColumn(22, 15, "10P");
+    });
+
+    it("10:45 PM facility → 10P", async () => {
+      await expectNowOrderAtLocalTimeMapsToColumn(22, 45, "10P");
+    });
+
+    it("11:05 PM facility → 11P", async () => {
+      await expectNowOrderAtLocalTimeMapsToColumn(23, 5, "11P");
+    });
+
+    it("11:35 PM facility → 11P (not 12A)", async () => {
+      await expectNowOrderAtLocalTimeMapsToColumn(23, 35, "11P");
+    });
+  });
 });

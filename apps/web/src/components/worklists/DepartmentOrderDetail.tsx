@@ -22,6 +22,7 @@ import {
   tPathwayType,
 } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
+import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import { highRiskMedicationWarning } from "@/lib/highRiskMedication";
@@ -139,7 +140,7 @@ export default function DepartmentOrderDetail({
   const dateLocale = encounterBcp47(language);
   const searchParams = useSearchParams();
   const highlightLineId = searchParams.get("ligne") || "";
-  const { roles, userId, allowRnLabResultSubmission } = useFacilityAndRoles();
+  const { roles, userId, allowRnLabResultSubmission, facilityTimeZone } = useFacilityAndRoles();
 
   /**
    * Acteur autorisé aux actions worklist (accusé / démarrage / clôture). Labo / imagerie :
@@ -434,7 +435,9 @@ export default function DepartmentOrderDetail({
           </div>
           <div>
             <strong>{t("orderDetail.orderDateLabel")}</strong>{" "}
-            {order.createdAt ? new Date(order.createdAt).toLocaleString(dateLocale) : t("common.dash")}
+            {order.createdAt
+              ? formatClinicalInstantForFacility(String(order.createdAt), facilityTimeZone, language)
+              : t("common.dash")}
           </div>
           {order.notes ? (
             <div style={{ marginTop: 8 }}>

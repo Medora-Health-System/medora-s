@@ -7,11 +7,14 @@ import {
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import { MedicationAdministrationAdjustedBadge } from "@/components/encounters/MedicationAdministrationClockButton";
 import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
+import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
+import type { SupportedLanguage } from "@/i18n/config";
 
 /** Date/time column — clinical + documented times when adjusted; clock lives in Controls column. */
 export function MedicationAdministrationTimeCell({
   row,
-  dateLocale,
+  facilityTimeZone,
+  language,
   t,
   showPerformer,
 }: {
@@ -19,7 +22,8 @@ export function MedicationAdministrationTimeCell({
     administeredBy?: { firstName: string; lastName: string };
     infusionPhase?: string | null;
   };
-  dateLocale: string;
+  facilityTimeZone: string | null | undefined;
+  language: SupportedLanguage;
   t: (key: string) => string;
   showPerformer?: boolean;
 }) {
@@ -29,7 +33,8 @@ export function MedicationAdministrationTimeCell({
       ? ` · ${row.administeredBy.firstName} ${row.administeredBy.lastName}`
       : "";
 
-  const formatWhen = (iso: string) => new Date(iso).toLocaleString(dateLocale);
+  const formatWhen = (iso: string) =>
+    formatClinicalInstantForFacility(iso, facilityTimeZone, language);
 
   if (displayTimes.showDualTimeLabels) {
     return (

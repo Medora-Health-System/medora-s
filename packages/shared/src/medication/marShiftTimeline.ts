@@ -723,26 +723,22 @@ export function buildMarShiftTimelineHover(input: {
 }
 
 /**
- * Column placement (M1.8B.7K.1):
- * Prefer `scheduledAt` hour bucket; fall back to `dueWindowStartAt`.
- * IN_PROGRESS IVPB doses use the same rule (scheduled hour, not “now”).
+ * Column placement (M1.8B.7K.1 / K.10A):
+ * Uses only the placement instant (`scheduledAt`). Never `dueWindowEndAt`.
+ * Does not round up, shift for collision, or fall back to window edges.
  */
 export function resolveMarShiftTimelineColumnKey(input: {
   scheduledAt: Date;
-  dueWindowStartAt: Date;
+  /** @deprecated Ignored for column placement (K.10A). Kept for call-site compatibility. */
+  dueWindowStartAt?: Date;
   columns: readonly MarShiftTimelineColumn[];
   facilityTimeZone?: string | null;
 }): string | null {
-  const candidates = [input.scheduledAt, input.dueWindowStartAt];
-  for (const instant of candidates) {
-    const key = findMarShiftTimelineColumnKeyForInstant(
-      instant,
-      input.columns,
-      input.facilityTimeZone
-    );
-    if (key) return key;
-  }
-  return null;
+  return findMarShiftTimelineColumnKeyForInstant(
+    input.scheduledAt,
+    input.columns,
+    input.facilityTimeZone
+  );
 }
 
 export function findMarShiftTimelineColumnKeyForInstant(

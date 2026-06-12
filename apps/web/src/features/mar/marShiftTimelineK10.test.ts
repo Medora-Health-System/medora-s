@@ -99,7 +99,7 @@ describe("M1.8B.7K.10 — stop infusion + shift persistence", () => {
     it("drawer surfaces action errors from backend", () => {
       const drawer = readSrc("components/encounters/FacilityMarShiftTimelineDrawer.tsx");
       expect(drawer).toContain("mar-shift-timeline-drawer-action-error");
-      expect(drawer).toContain("e instanceof Error ? e.message");
+      expect(drawer).toContain("extractMarSaveErrorMessage");
     });
   });
 
