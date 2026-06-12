@@ -326,6 +326,7 @@ export class MarShiftTimelineService {
         scheduledAt: dose.scheduledAt,
         dueWindowStartAt: dose.dueWindowStartAt,
         columns,
+        facilityTimeZone: shiftWindow.facilityTimeZone,
       });
       if (!columnKey) continue;
 

@@ -125,6 +125,7 @@ export * from "./medication/recurringIvpbCompletionPolicy.js";
 export * from "./medication/medicationIvpbDoseFeatureFlags.js";
 export * from "./medication/marShiftTimeline.js";
 export * from "./medication/marShiftTimelineOrderItemFallback.js";
+export * from "./medication/marShiftTimelineTerminalActions.js";
 export * from "./medication/medicationGovernanceChartSummary.js";
 export * from "./medication/medicationCatalogCodeDerive.js";
 export * from "./medication/medicationBillingMappingManifest.js";

@@ -1492,7 +1492,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
 
       const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
       expect(item?.medicationLabel).toBe("Normal Saline");
-      expect(item?.primaryText).toBe("Normal");
+      expect(item?.primaryText).toBe("NS 0.9%");
       expect(item?.hover.title).toBe("Normal Saline");
       expect(result.locale).toBe("en");
     });
@@ -1593,6 +1593,173 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(doneItem?.secondaryText).toBe("DONE");
       expect(doneItem?.readOnly).toBe(true);
       expect(doneItem?.completionSummary).toMatch(/JN.*–.*JN/);
+    });
+  });
+
+  describe("M1.8B.7K.9 placement, actions, refuse/hold", () => {
+    const haitiTz = "America/Port-au-Prince";
+
+    async function withHaitiFacilityTimezone<T>(fn: () => Promise<T>): Promise<T> {
+      await prisma.facility.update({ where: { id: facilityId }, data: { timezone: haitiTz } });
+      try {
+        return await fn();
+      } finally {
+        await prisma.facility.update({ where: { id: facilityId }, data: { timezone: "UTC" } });
+      }
+    }
+
+    it("9:07 PM NOW PO fallback maps to 09P on 7P_7A shift", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 3, 21, 7, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", createdAt, haitiTz);
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "PO" as MedicationRoute,
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe("09P");
+        expect(item?.clinicalAction).toBe("ADMINISTER");
+      });
+    });
+
+    it("10:00 PM NOW fallback maps to 10P on 7P_7A shift", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 3, 22, 0, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", createdAt, haitiTz);
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe("10P");
+      });
+    });
+
+    it("administer fallback creates completed DONE cell", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+      });
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt: createdAt,
+          marAction: "administered",
+          notes: "Administered",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.secondaryText).toBe("DONE");
+      expect(item?.readOnly).toBe(true);
+    });
+
+    it("refuse fallback creates REFUSED read-only cell", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+      });
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt: createdAt,
+          marAction: "refused",
+          notes: "Refused: PATIENT_REFUSED",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.secondaryText).toBe("REFUSED");
+      expect(item?.readOnly).toBe(true);
+    });
+
+    it("hold fallback creates HELD read-only cell", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+      });
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt: createdAt,
+          marAction: "md_changed",
+          notes: "Held: NPO",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.secondaryText).toBe("HELD");
+      expect(item?.doseStatus).toBe("HELD");
+      expect(item?.readOnly).toBe(true);
     });
   });
 });

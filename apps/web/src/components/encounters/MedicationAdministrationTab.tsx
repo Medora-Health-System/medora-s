@@ -97,7 +97,9 @@ import {
   marShiftTimelineStartWitnessRequired,
   resolveMarShiftTimelineOrderId,
   type MarShiftTimelineActionHandlers,
+  type MarShiftTimelineRefuseHoldInput,
 } from "@/features/mar/marShiftTimelineActions";
+import { submitMarShiftTimelineTerminalMar } from "@/features/mar/marShiftTimelineTerminalMar";
 import {
   findMedicationInfusionTimelineFromOrderEvents,
   formatInfusionDurationForI18n,
@@ -861,52 +863,6 @@ export function MedicationAdministrationTab({
     [facilityId, infusionDraftKey, language, reloadMarData, t]
   );
 
-  const marShiftTimelineActionHandlers = useMemo((): MarShiftTimelineActionHandlers => {
-    const actionsDisabled = !encounterOpen || !encounterClinicalMutationsAllowed;
-    return {
-      disabled: actionsDisabled,
-      busy: Boolean(infusionBusy),
-      onRequestStartInfusion: async (item, input) => {
-        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
-        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
-        const label = item.medicationLabel?.trim() || item.primaryText;
-        if (marShiftTimelineStartWitnessRequired(item, passItem)) {
-          setPendingTimelineStartItem(item);
-          setPendingInfusionStartVerifier(null);
-          setInfusionStartWitnessModal({ orderItemId: item.orderItemId, orderId, label });
-          return false;
-        }
-        await runMarInfusion(item.orderItemId, orderId, "start", input.notes, null, {
-          medicationDoseInstanceId: item.medicationDoseInstanceId,
-          startedAtIso: input.startedAt,
-          skipReload: true,
-          skipModalClose: true,
-        });
-        await timelineRefreshRef.current?.();
-        timelineCloseDrawerRef.current?.();
-        return true;
-      },
-      onExecuteStopInfusion: async (item, input) => {
-        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
-        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
-        await runMarInfusion(item.orderItemId, orderId, "stop", input.notes, null, {
-          medicationDoseInstanceId: item.medicationDoseInstanceId,
-          stoppedAtIso: input.stoppedAt,
-          skipReload: true,
-          skipModalClose: true,
-        });
-        await timelineRefreshRef.current?.();
-        timelineCloseDrawerRef.current?.();
-      },
-    };
-  }, [
-    encounterClinicalMutationsAllowed,
-    encounterOpen,
-    infusionBusy,
-    passQueue.items,
-    runMarInfusion,
-  ]);
-
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
   const lastAdministeredForModal = useMemo(() => {
     if (!modalItem) return null;
@@ -1318,6 +1274,92 @@ export function MedicationAdministrationTab({
     },
     [taskRows, t]
   );
+
+  const openModalFromTimelineItem = useCallback(
+    (item: MarShiftTimelineCellItem) => {
+      const row = taskRows.find((r) => r.orderItemId === item.orderItemId);
+      if (!row) {
+        throw new Error(t("marShiftTimeline.actionError"));
+      }
+      openModal(row, {
+        medicationDoseInstanceId: item.medicationDoseInstanceId?.trim() || null,
+      });
+      timelineCloseDrawerRef.current?.();
+    },
+    [taskRows, t]
+  );
+
+  const submitTimelineTerminalMar = useCallback(
+    async (
+      item: MarShiftTimelineCellItem,
+      action: "REFUSE" | "HOLD",
+      input: MarShiftTimelineRefuseHoldInput
+    ) => {
+      if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+      await submitMarShiftTimelineTerminalMar(encounterId, facilityId, item, action, input);
+      await reloadMarData();
+      await timelineRefreshRef.current?.();
+      timelineCloseDrawerRef.current?.();
+    },
+    [encounterId, facilityId, reloadMarData, t]
+  );
+
+  const marShiftTimelineActionHandlers = useMemo((): MarShiftTimelineActionHandlers => {
+    const actionsDisabled = !encounterOpen || !encounterClinicalMutationsAllowed;
+    return {
+      disabled: actionsDisabled,
+      busy: Boolean(infusionBusy),
+      onRequestAdminister: async (item) => {
+        openModalFromTimelineItem(item);
+      },
+      onRequestStartInfusion: async (item, input) => {
+        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
+        const label = item.medicationLabel?.trim() || item.primaryText;
+        if (marShiftTimelineStartWitnessRequired(item, passItem)) {
+          setPendingTimelineStartItem(item);
+          setPendingInfusionStartVerifier(null);
+          setInfusionStartWitnessModal({ orderItemId: item.orderItemId, orderId, label });
+          return false;
+        }
+        await runMarInfusion(item.orderItemId, orderId, "start", input.notes, null, {
+          medicationDoseInstanceId: item.medicationDoseInstanceId,
+          startedAtIso: input.startedAt,
+          skipReload: true,
+          skipModalClose: true,
+        });
+        await timelineRefreshRef.current?.();
+        timelineCloseDrawerRef.current?.();
+        return true;
+      },
+      onExecuteStopInfusion: async (item, input) => {
+        const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
+        const orderId = resolveMarShiftTimelineOrderId(item, passItem);
+        await runMarInfusion(item.orderItemId, orderId, "stop", input.notes, null, {
+          medicationDoseInstanceId: item.medicationDoseInstanceId,
+          stoppedAtIso: input.stoppedAt,
+          skipReload: true,
+          skipModalClose: true,
+        });
+        await timelineRefreshRef.current?.();
+        timelineCloseDrawerRef.current?.();
+      },
+      onExecuteRefuse: async (item, input) => {
+        await submitTimelineTerminalMar(item, "REFUSE", input);
+      },
+      onExecuteHold: async (item, input) => {
+        await submitTimelineTerminalMar(item, "HOLD", input);
+      },
+    };
+  }, [
+    encounterClinicalMutationsAllowed,
+    encounterOpen,
+    infusionBusy,
+    openModalFromTimelineItem,
+    passQueue.items,
+    runMarInfusion,
+    submitTimelineTerminalMar,
+  ]);
 
   const closeModal = () => {
     if (submitting) return;

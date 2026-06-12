@@ -5,6 +5,10 @@ import {
   wallClockToUtc,
 } from "./medicationDoseExpansionPlanner.js";
 import {
+  resolveMarShiftTimelineTerminalOutcome,
+  type MarShiftTimelineTerminalOutcome,
+} from "./marShiftTimelineTerminalActions.js";
+import {
   isTerminalMedicationDoseStatus,
   parseMedicationDoseStatus,
   type MedicationDoseStatus,
@@ -270,6 +274,20 @@ export function formatMarShiftTimelineHourLabel(
   return formatMarShiftTimelineHourLabelFromHour(parts.hour);
 }
 
+function advanceMarShiftTimelineColumnEnd(
+  cursor: Date,
+  facilityTimeZone: string
+): Date {
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  const parts = getZonedWallClockParts(cursor, tz);
+  const nextHour = parts.hour + 1;
+  if (nextHour >= 24) {
+    const nextDay = addCalendarDays(parts.year, parts.month, parts.day, 1);
+    return wallClockToUtc(nextDay.year, nextDay.month, nextDay.day, 0, 0, tz);
+  }
+  return wallClockToUtc(parts.year, parts.month, parts.day, nextHour, 0, tz);
+}
+
 export function buildMarShiftTimelineColumns(
   startAt: Date,
   endAt: Date,
@@ -279,10 +297,11 @@ export function buildMarShiftTimelineColumns(
   const columns: MarShiftTimelineColumn[] = [];
   let cursor = new Date(startAt);
   while (cursor < endAt) {
-    const columnEnd = new Date(cursor.getTime() + 3_600_000);
+    const parts = getZonedWallClockParts(cursor, tz);
+    const columnEnd = advanceMarShiftTimelineColumnEnd(cursor, tz);
     columns.push({
       key: cursor.toISOString(),
-      label: formatMarShiftTimelineHourLabel(cursor, tz),
+      label: formatMarShiftTimelineHourLabelFromHour(parts.hour),
       startAt: cursor.toISOString(),
       endAt: columnEnd.toISOString(),
     });
@@ -398,9 +417,32 @@ export function resolveMarShiftTimelineDrawerActions(
   }
 }
 
+function abbreviateNormalSalineForTimeline(trimmed: string): string | null {
+  const lower = trimmed.toLowerCase();
+  const isNormalSaline =
+    lower.includes("normal saline") ||
+    lower.includes("chlorure de sodium") ||
+    lower.includes("sodium chloride") ||
+    /\bnacl\b/.test(lower) ||
+    (/\b0\.9\s*%/.test(lower) &&
+      (lower.includes("saline") || lower.includes("sodium") || lower.includes("chlorure")));
+  if (!isNormalSaline) return null;
+
+  const volumeMatch = trimmed.match(/\b(\d+(?:[.,]\d+)?)\s*(l|ml|mL)\b/i);
+  if (volumeMatch) {
+    const amount = volumeMatch[1]!.replace(",", ".");
+    const unit = volumeMatch[2]!.toLowerCase() === "l" ? "L" : "mL";
+    return `NS 0.9% ${amount} ${unit}`;
+  }
+  return "NS 0.9%";
+}
+
 function abbreviateMedicationLabelForTimeline(medicationLabel: string): string {
   const trimmed = medicationLabel.trim();
   if (!trimmed) return "Med";
+
+  const normalSaline = abbreviateNormalSalineForTimeline(trimmed);
+  if (normalSaline) return normalSaline;
 
   const lower = trimmed.toLowerCase();
   if (lower.includes("vancomycin") || lower.includes("vancomycine")) return "Vanco";
@@ -547,15 +589,30 @@ export function buildMarShiftTimelineCellDisplay(input: {
   responseDueAt?: Date | string | null;
   enrichment?: MarShiftTimelineAdministrationEnrichment | null;
   facilityTimeZone?: string | null;
+  terminalOutcome?: MarShiftTimelineTerminalOutcome | null;
+  marAction?: string | null;
+  marNotes?: string | null;
 }): { primaryText: string; secondaryText: string; tertiaryText: string } {
   const baseLabel = abbreviateMedicationLabelForTimeline(input.medicationLabel ?? "");
+  const terminalOutcome =
+    input.terminalOutcome ??
+    resolveMarShiftTimelineTerminalOutcome({
+      marAction: input.marAction,
+      notes: input.marNotes,
+    });
   const route = input.route?.trim().toUpperCase() ?? "";
   const isIvpb =
     isIvpbSessionDoseKind(input.doseKind) || route === "IVPB" || baseLabel.includes("IVPB");
   const isPrn = input.frequencyCode?.trim().toUpperCase() === "PRN" || input.responseDueAt != null;
 
   let primaryText = baseLabel;
-  if (isIvpb && !primaryText.toUpperCase().includes("IVPB") && route === "IVPB") {
+  const primaryAlreadyAbbreviatedNs = primaryText.startsWith("NS 0.9%");
+  if (
+    isIvpb &&
+    !primaryAlreadyAbbreviatedNs &&
+    !primaryText.toUpperCase().includes("IVPB") &&
+    route === "IVPB"
+  ) {
     primaryText = `${baseLabel} IVPB`;
   }
 
@@ -566,6 +623,10 @@ export function buildMarShiftTimelineCellDisplay(input: {
     facilityTimeZone: input.facilityTimeZone,
   });
 
+  if (terminalOutcome === "REFUSED") {
+    return { primaryText, secondaryText: "REFUSED", tertiaryText };
+  }
+
   if (input.requiresWitness) {
     return {
       primaryText,
@@ -574,7 +635,7 @@ export function buildMarShiftTimelineCellDisplay(input: {
     };
   }
 
-  if (input.doseStatus === "HELD") {
+  if (input.doseStatus === "HELD" || terminalOutcome === "HELD") {
     return { primaryText, secondaryText: "HELD", tertiaryText };
   }
   if (input.doseStatus === "MISSED") {
@@ -670,10 +731,15 @@ export function resolveMarShiftTimelineColumnKey(input: {
   scheduledAt: Date;
   dueWindowStartAt: Date;
   columns: readonly MarShiftTimelineColumn[];
+  facilityTimeZone?: string | null;
 }): string | null {
   const candidates = [input.scheduledAt, input.dueWindowStartAt];
   for (const instant of candidates) {
-    const key = findMarShiftTimelineColumnKeyForInstant(instant, input.columns);
+    const key = findMarShiftTimelineColumnKeyForInstant(
+      instant,
+      input.columns,
+      input.facilityTimeZone
+    );
     if (key) return key;
   }
   return null;
@@ -681,9 +747,20 @@ export function resolveMarShiftTimelineColumnKey(input: {
 
 export function findMarShiftTimelineColumnKeyForInstant(
   instant: Date,
-  columns: readonly MarShiftTimelineColumn[]
+  columns: readonly MarShiftTimelineColumn[],
+  facilityTimeZone?: string | null
 ): string | null {
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  const targetLabel = formatMarShiftTimelineHourLabel(instant, tz);
   const time = instant.getTime();
+
+  for (const column of columns) {
+    if (column.label !== targetLabel) continue;
+    const start = new Date(column.startAt).getTime();
+    const end = new Date(column.endAt).getTime();
+    if (time >= start && time < end) return column.key;
+  }
+
   for (const column of columns) {
     const start = new Date(column.startAt).getTime();
     const end = new Date(column.endAt).getTime();

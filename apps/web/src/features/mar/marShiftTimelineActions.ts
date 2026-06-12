@@ -17,9 +17,16 @@ export type MarShiftTimelineInfusionStopInput = {
   stoppedAt?: string;
 };
 
+export type MarShiftTimelineRefuseHoldInput = {
+  reasonCode: string;
+  otherText?: string;
+  administeredAtIso: string;
+};
+
 export type MarShiftTimelineActionHandlers = {
   disabled: boolean;
   busy: boolean;
+  onRequestAdminister: (item: MarShiftTimelineCellItem) => Promise<void>;
   /** Resolves true when infusion start completed; false when witness modal opened. */
   onRequestStartInfusion: (
     item: MarShiftTimelineCellItem,
@@ -28,6 +35,14 @@ export type MarShiftTimelineActionHandlers = {
   onExecuteStopInfusion: (
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineInfusionStopInput
+  ) => Promise<void>;
+  onExecuteRefuse: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineRefuseHoldInput
+  ) => Promise<void>;
+  onExecuteHold: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineRefuseHoldInput
   ) => Promise<void>;
 };
 
@@ -115,6 +130,10 @@ export function buildMarShiftTimelineStopPayload(
 /** POST /orders/items/:id/infusion/start accepts optional `startedAt` (M1.8B.7K.8). */
 export const MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED = true;
 
+function isMarShiftTimelineRefuseHoldEligible(item: MarShiftTimelineCellItem): boolean {
+  return item.clinicalAction === "ADMINISTER" || item.clinicalAction === "START_INFUSION";
+}
+
 export function isMarShiftTimelineActionEnabled(
   action: MarShiftTimelineDrawerAction,
   item: MarShiftTimelineCellItem,
@@ -122,16 +141,18 @@ export function isMarShiftTimelineActionEnabled(
 ): boolean {
   if (!handlers || handlers.disabled || handlers.busy) return false;
   if (item.readOnly) return false;
+  if (action === "ADMINISTER") return item.clinicalAction === "ADMINISTER";
   if (action === "START_INFUSION") return item.clinicalAction === "START_INFUSION";
   if (action === "STOP_INFUSION") return item.clinicalAction === "STOP_INFUSION";
+  if (action === "REFUSE" || action === "HOLD") {
+    return isMarShiftTimelineRefuseHoldEligible(item);
+  }
   return false;
 }
 
 export function isMarShiftTimelineActionShowComingSoon(
   action: MarShiftTimelineDrawerAction,
-  item: MarShiftTimelineCellItem
+  _item: MarShiftTimelineCellItem
 ): boolean {
-  if (action === "ADMINISTER") return item.clinicalAction === "ADMINISTER";
-  if (action === "REFUSE" || action === "HOLD" || action === "VIEW_ORDER") return true;
-  return false;
+  return action === "VIEW_ORDER";
 }

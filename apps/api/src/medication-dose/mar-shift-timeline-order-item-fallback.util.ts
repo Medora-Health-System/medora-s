@@ -12,8 +12,10 @@ import {
   resolveMarShiftTimelineOrderItemFallbackDoseKind,
   resolveMarShiftTimelineOrderItemFallbackDoseStatus,
   resolveMarShiftTimelineOrderItemPlacementInstant,
+  marShiftTimelineOrderItemFallbackHasCompletedAdministration,
   shouldCreateMarShiftTimelineOrderItemFallback,
   resolveMarShiftTimelineMedicationLabel,
+  resolveMarShiftTimelineTerminalOutcome,
   type MarShiftTimelineColumn,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
@@ -316,10 +318,20 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         orderItemId: { in: orderItemIds },
         OR: [
           { infusionPhase: "INFUSION_STOP" },
-          { marAction: "administered", infusionPhase: null },
+          {
+            marAction: { in: ["administered", "refused", "not_available", "md_changed"] },
+            infusionPhase: null,
+          },
         ],
       },
-      select: { id: true, orderItemId: true, administeredAt: true },
+      select: {
+        id: true,
+        orderItemId: true,
+        administeredAt: true,
+        marAction: true,
+        notes: true,
+        infusionPhase: true,
+      },
       orderBy: { administeredAt: "desc" },
     }),
   ]);
@@ -331,10 +343,16 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     }
   }
 
-  const terminalMarByOrderItemId = new Map<string, string>();
+  type TerminalMarSlice = {
+    id: string;
+    marAction: string | null;
+    notes: string | null;
+    infusionPhase: string | null;
+  };
+  const terminalMarByOrderItemId = new Map<string, TerminalMarSlice>();
   for (const mar of terminalMarRows) {
     if (mar.orderItemId && !terminalMarByOrderItemId.has(mar.orderItemId)) {
-      terminalMarByOrderItemId.set(mar.orderItemId, mar.id);
+      terminalMarByOrderItemId.set(mar.orderItemId, mar);
     }
   }
 
@@ -348,14 +366,19 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     const route = resolveRoute(orderItem, catalog);
     const isIvpb = isStructuredMedicationOrderRouteIvpb(route);
     const activeSession = activeSessionByOrderItemId.get(orderItem.id);
-    const terminalMarId = terminalMarByOrderItemId.get(orderItem.id) ?? null;
+    const terminalMar = terminalMarByOrderItemId.get(orderItem.id) ?? null;
 
     const doseStatus = resolveMarShiftTimelineOrderItemFallbackDoseStatus({
       orderItemCompleted: orderItemCompleted(orderItem.status),
       isIvpb,
       activeInfusionSession: activeSession != null,
       orderItemInProgress: orderItem.status === OrderStatus.IN_PROGRESS,
-      hasCompletedAdministration: terminalMarId != null,
+      hasCompletedAdministration: marShiftTimelineOrderItemFallbackHasCompletedAdministration({
+        terminalMarAction: terminalMar?.marAction,
+        hasInfusionStopMar: terminalMar?.infusionPhase === "INFUSION_STOP",
+      }),
+      terminalMarAction: terminalMar?.marAction,
+      terminalMarNotes: terminalMar?.notes,
     });
 
     if (doseStatus === "COMPLETED" && !input.includeCompleted) continue;
@@ -384,7 +407,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       doseStatus,
       placementInstant,
       infusionSessionId: activeSession?.id ?? null,
-      terminalMedicationAdministrationId: terminalMarId,
+      terminalMedicationAdministrationId: terminalMar?.id ?? null,
     });
     pseudoDoses.push(pseudo);
     pseudoMeta.set(pseudo.id, orderItem);
@@ -421,12 +444,18 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       scheduledAt: pseudo.scheduledAt,
       dueWindowStartAt: pseudo.dueWindowStartAt,
       columns: input.columns,
+      facilityTimeZone: input.facilityTimeZone,
     });
     if (!columnKey) continue;
 
     const medicationLabel = resolveMedicationLabel(orderItem, catalog, input.displayLocale);
     const enrichment = enrichmentByPseudoId.get(pseudo.id) ?? null;
     const clinicalAction = resolveMarShiftTimelineClinicalAction(pseudo.doseKind, parsedStatus);
+    const terminalMar = terminalMarByOrderItemId.get(orderItem.id) ?? null;
+    const terminalOutcome = resolveMarShiftTimelineTerminalOutcome({
+      marAction: terminalMar?.marAction,
+      notes: terminalMar?.notes,
+    });
     const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
       medicationLabel,
       doseKind: pseudo.doseKind,
@@ -436,6 +465,9 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       requiresWitness,
       enrichment,
       facilityTimeZone: input.facilityTimeZone,
+      terminalOutcome,
+      marAction: terminalMar?.marAction,
+      marNotes: terminalMar?.notes,
     });
     const resolvedTertiaryText =
       tertiaryText.trim() ||

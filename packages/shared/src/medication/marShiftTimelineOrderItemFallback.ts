@@ -8,6 +8,10 @@ import {
 import { parseMedicationFrequencyCode } from "./medicationFrequencyCatalog.js";
 import { isStructuredMedicationOrderRouteIvpb } from "./medicationOrderRoute.js";
 import type { MedicationDoseStatus } from "./medicationDoseStatus.js";
+import {
+  isMarShiftTimelineHoldNotes,
+  resolveMarShiftTimelineTerminalOutcome,
+} from "./marShiftTimelineTerminalActions.js";
 
 const NOW_STAT_NOTES_PATTERN = /\b(now|stat|asap|imm[eé]diat|urgent)\b/i;
 
@@ -98,6 +102,13 @@ export function resolveMarShiftTimelineOrderItemFallbackDoseKind(
   return isMarShiftTimelineOrderItemIvpbRoute(route) ? "IVPB_SESSION" : "FIXED_ADMINISTRATION";
 }
 
+function isMarShiftTimelineAdministrationCompletionMarAction(
+  marAction: string | null | undefined
+): boolean {
+  const action = marAction?.trim().toLowerCase();
+  return action === "administered";
+}
+
 /** Derive timeline dose status from order line + MAR / infusion session state. */
 export function resolveMarShiftTimelineOrderItemFallbackDoseStatus(input: {
   orderItemCompleted: boolean;
@@ -106,6 +117,8 @@ export function resolveMarShiftTimelineOrderItemFallbackDoseStatus(input: {
   /** NOW/STAT IVPB fallback may lack InfusionSession row; order line IN_PROGRESS implies active infusion. */
   orderItemInProgress?: boolean;
   hasCompletedAdministration: boolean;
+  terminalMarAction?: string | null;
+  terminalMarNotes?: string | null;
 }): MedicationDoseStatus {
   if (
     input.isIvpb &&
@@ -114,11 +127,34 @@ export function resolveMarShiftTimelineOrderItemFallbackDoseStatus(input: {
     return "IN_PROGRESS";
   }
 
+  const terminalOutcome = resolveMarShiftTimelineTerminalOutcome({
+    marAction: input.terminalMarAction,
+    notes: input.terminalMarNotes,
+  });
+  if (terminalOutcome === "REFUSED") {
+    return "COMPLETED";
+  }
+  if (
+    terminalOutcome === "HELD" ||
+    (input.terminalMarAction?.trim().toLowerCase() === "md_changed" &&
+      isMarShiftTimelineHoldNotes(input.terminalMarNotes))
+  ) {
+    return "HELD";
+  }
+
   if (input.hasCompletedAdministration || input.orderItemCompleted) {
     return "COMPLETED";
   }
 
   return "DUE";
+}
+
+export function marShiftTimelineOrderItemFallbackHasCompletedAdministration(input: {
+  terminalMarAction?: string | null;
+  hasInfusionStopMar?: boolean;
+}): boolean {
+  if (input.hasInfusionStopMar) return true;
+  return isMarShiftTimelineAdministrationCompletionMarAction(input.terminalMarAction);
 }
 
 export function marShiftTimelineOrderItemFallbackOverlapsShift(input: {

@@ -13,6 +13,10 @@ import {
   marShiftTimelinePrimaryDrawerAction,
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
+  MAR_SHIFT_TIMELINE_HOLD_REASON_CODES,
+  MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES,
+} from "@medora/shared";
+import {
   isMarShiftTimelineActionEnabled,
   isMarShiftTimelineActionShowComingSoon,
   MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED,
@@ -20,6 +24,10 @@ import {
   buildMarShiftTimelineStopPayload,
   type MarShiftTimelineActionHandlers,
 } from "@/features/mar/marShiftTimelineActions";
+import {
+  marShiftTimelineDateTimeLocalToUtcIso,
+  toMarShiftTimelineDateTimeLocalValue,
+} from "@/features/mar/marShiftTimelineDisplay";
 
 export type FacilityMarShiftTimelineDrawerContext = {
   patientDisplay: string;
@@ -55,6 +63,10 @@ export function FacilityMarShiftTimelineDrawer({
   const [stopNotes, setStopNotes] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [reasonModal, setReasonModal] = useState<null | { action: "REFUSE" | "HOLD" }>(null);
+  const [reasonCode, setReasonCode] = useState("");
+  const [reasonOther, setReasonOther] = useState("");
+  const [reasonTimeValue, setReasonTimeValue] = useState("");
 
   const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
   const primaryAction = item ? marShiftTimelinePrimaryDrawerAction(item) : null;
@@ -73,6 +85,13 @@ export function FacilityMarShiftTimelineDrawer({
     setStopNotes("");
     setActionError(null);
     setSubmitting(false);
+    setReasonModal(null);
+    setReasonCode("");
+    setReasonOther("");
+    setReasonTimeValue(
+      toMarShiftTimelineDateTimeLocalValue(item.scheduledAt, facilityTimeZone) ||
+        toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone)
+    );
   }, [item, facilityTimeZone]);
 
   useEffect(() => {
@@ -163,9 +182,70 @@ export function FacilityMarShiftTimelineDrawer({
     },
   ];
 
+  const reasonCodes =
+    reasonModal?.action === "HOLD"
+      ? MAR_SHIFT_TIMELINE_HOLD_REASON_CODES
+      : MAR_SHIFT_TIMELINE_REFUSE_REASON_CODES;
+
+  const handleReasonConfirm = async () => {
+    if (!actionHandlers || !item || !reasonModal) return;
+    if (!reasonCode.trim()) {
+      setActionError(t("marShiftTimeline.reasonModal.reasonRequired"));
+      return;
+    }
+    if (reasonCode === "OTHER" && !reasonOther.trim()) {
+      setActionError(t("marShiftTimeline.reasonModal.otherRequired"));
+      return;
+    }
+
+    setActionError(null);
+    setSubmitting(true);
+    try {
+      const administeredAtIso =
+        (reasonTimeValue.trim()
+          ? marShiftTimelineDateTimeLocalToUtcIso(reasonTimeValue, facilityTimeZone)
+          : null) ?? new Date().toISOString();
+      const payload = {
+        reasonCode,
+        otherText: reasonOther.trim() || undefined,
+        administeredAtIso,
+      };
+      if (reasonModal.action === "REFUSE") {
+        await actionHandlers.onExecuteRefuse(item, payload);
+      } else {
+        await actionHandlers.onExecuteHold(item, payload);
+      }
+      setReasonModal(null);
+      await onActionSuccess?.();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleActionClick = async (action: MarShiftTimelineDrawerAction) => {
     if (!actionHandlers || !item) return;
     if (!isMarShiftTimelineActionEnabled(action, item, actionHandlers)) return;
+
+    if (action === "ADMINISTER") {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        await actionHandlers.onRequestAdminister(item);
+      } catch (e) {
+        setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "REFUSE" || action === "HOLD") {
+      setActionError(null);
+      setReasonModal({ action });
+      return;
+    }
 
     setActionError(null);
     setSubmitting(true);
@@ -446,6 +526,145 @@ export function FacilityMarShiftTimelineDrawer({
                   </button>
                 );
               })}
+            </div>
+          </div>
+        ) : null}
+
+        {reasonModal ? (
+          <div
+            data-testid="mar-shift-timeline-reason-modal"
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundColor: "rgba(15, 23, 42, 0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 16,
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              style={{
+                width: "100%",
+                maxWidth: 360,
+                backgroundColor: "#fff",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                padding: "16px 18px",
+                boxShadow: "0 12px 32px rgba(15, 23, 42, 0.18)",
+              }}
+            >
+              <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>
+                {reasonModal.action === "REFUSE"
+                  ? t("marShiftTimeline.reasonModal.refuseTitle")
+                  : t("marShiftTimeline.reasonModal.holdTitle")}
+              </h3>
+              <label
+                htmlFor="mar-shift-timeline-reason-code"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}
+              >
+                {t("marShiftTimeline.reasonModal.reasonLabel")}
+              </label>
+              <select
+                id="mar-shift-timeline-reason-code"
+                data-testid="mar-shift-timeline-reason-code"
+                value={reasonCode}
+                onChange={(e) => setReasonCode(e.target.value)}
+                disabled={submitting}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 14,
+                  marginBottom: 12,
+                }}
+              >
+                <option value="">{t("marShiftTimeline.reasonModal.reasonPlaceholder")}</option>
+                {reasonCodes.map((code) => (
+                  <option key={code} value={code}>
+                    {t(`marShiftTimeline.reasonModal.reasons.${code}`)}
+                  </option>
+                ))}
+              </select>
+              {reasonCode === "OTHER" ? (
+                <textarea
+                  data-testid="mar-shift-timeline-reason-other"
+                  value={reasonOther}
+                  onChange={(e) => setReasonOther(e.target.value)}
+                  disabled={submitting}
+                  rows={2}
+                  placeholder={t("marShiftTimeline.reasonModal.otherPlaceholder")}
+                  style={{
+                    width: "100%",
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                />
+              ) : null}
+              <label
+                htmlFor="mar-shift-timeline-reason-time"
+                style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}
+              >
+                {t("marShiftTimeline.reasonModal.timeField")}
+              </label>
+              <input
+                id="mar-shift-timeline-reason-time"
+                data-testid="mar-shift-timeline-reason-time"
+                type="datetime-local"
+                value={reasonTimeValue}
+                onChange={(e) => setReasonTimeValue(e.target.value)}
+                disabled={submitting}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 14,
+                  marginBottom: 16,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  data-testid="mar-shift-timeline-reason-cancel"
+                  disabled={submitting}
+                  onClick={() => setReasonModal(null)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
+                    background: "#fff",
+                    cursor: submitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  type="button"
+                  data-testid="mar-shift-timeline-reason-confirm"
+                  disabled={submitting}
+                  onClick={() => void handleReasonConfirm()}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#2563eb",
+                    color: "#fff",
+                    fontWeight: 600,
+                    cursor: submitting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {submitting ? t("common.loading") : t("marShiftTimeline.reasonModal.confirm")}
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

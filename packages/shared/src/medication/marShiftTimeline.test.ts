@@ -218,8 +218,50 @@ describe("marShiftTimeline (M1.8B.7K.1)", () => {
   });
 });
 
-describe("marShiftTimeline timezone placement (M1.8B.7K.7)", () => {
+describe("marShiftTimeline timezone placement (M1.8B.7K.7 / K.9)", () => {
   const haitiTz = "America/Port-au-Prince";
+
+  function columnLabelForInstant(
+    instant: Date,
+    shiftCode: "7A_7P" | "7P_7A",
+    facilityTimeZone: string
+  ): string | undefined {
+    const { startAt, endAt } = resolveStandardMarShiftTimelineWindow(
+      shiftCode,
+      instant,
+      facilityTimeZone
+    );
+    const columns = buildMarShiftTimelineColumns(startAt, endAt, facilityTimeZone);
+    const key = resolveMarShiftTimelineColumnKey({
+      scheduledAt: instant,
+      dueWindowStartAt: instant,
+      columns,
+      facilityTimeZone,
+    });
+    return columns.find((c) => c.key === key)?.label;
+  }
+
+  it("9:07 PM NOW fallback maps to 09P on 7P_7A shift", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 21, 7, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("09P");
+  });
+
+  it("9:59 PM NOW fallback maps to 09P on 7P_7A shift", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 21, 59, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("09P");
+  });
+
+  it("10:00 PM NOW fallback maps to 10P on 7P_7A shift", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 22, 0, haitiTz);
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("10P");
+  });
+
+  it("facility timezone conversion does not drift NOW PO to next hour", () => {
+    const createdAt = wallClockToUtc(2026, 6, 3, 21, 7, haitiTz);
+    expect(formatMarShiftTimelineHourLabel(createdAt, haitiTz)).toBe("09P");
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).toBe("09P");
+    expect(columnLabelForInstant(createdAt, "7P_7A", haitiTz)).not.toBe("10P");
+  });
 
   it("NOW fallback instant at 2:16 PM Haiti maps to 02P column", () => {
     const createdAt = wallClockToUtc(2026, 6, 11, 14, 16, haitiTz);
@@ -229,6 +271,7 @@ describe("marShiftTimeline timezone placement (M1.8B.7K.7)", () => {
       scheduledAt: createdAt,
       dueWindowStartAt: createdAt,
       columns,
+      facilityTimeZone: haitiTz,
     });
     expect(columns.find((c) => c.key === key)?.label).toBe("02P");
     expect(formatMarShiftTimelineHourLabel(createdAt, haitiTz)).toBe("02P");
@@ -270,7 +313,7 @@ describe("resolveMarShiftTimelineMedicationLabel (M1.8B.7K.8)", () => {
     ).toBe("Chlorure de sodium");
   });
 
-  it("cell display uses same localized medication label", () => {
+  it("cell display abbreviates Normal Saline to NS 0.9%", () => {
     const label = resolveMarShiftTimelineMedicationLabel({ locale: "en", catalogSnapshot: catalog });
     const display = buildMarShiftTimelineCellDisplay({
       medicationLabel: label,
@@ -280,7 +323,33 @@ describe("resolveMarShiftTimelineMedicationLabel (M1.8B.7K.8)", () => {
       frequencyCode: "NOW",
       requiresWitness: false,
     });
-    expect(display.primaryText).toContain("Normal");
+    expect(display.primaryText).toBe("NS 0.9%");
     expect(label).toBe("Normal Saline");
+  });
+
+  it("cell display includes volume for Normal Saline 0.9% 1 L", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Normal Saline 0.9% 1 L",
+      doseKind: "IVPB_SESSION",
+      doseStatus: "DUE",
+      route: "IVPB",
+      frequencyCode: "NOW",
+      requiresWitness: false,
+    });
+    expect(display.primaryText).toBe("NS 0.9% 1 L");
+  });
+
+  it("cell display shows REFUSED secondary for refused terminal MAR", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Metoprolol",
+      doseKind: "FIXED_ADMINISTRATION",
+      doseStatus: "COMPLETED",
+      route: "PO",
+      frequencyCode: "NOW",
+      requiresWitness: false,
+      marAction: "refused",
+      marNotes: "Refused: PATIENT_REFUSED",
+    });
+    expect(display.secondaryText).toBe("REFUSED");
   });
 });
