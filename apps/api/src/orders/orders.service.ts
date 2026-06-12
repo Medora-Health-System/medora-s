@@ -3163,7 +3163,10 @@ export class OrdersService {
     }
 
     const infusionSessionKey = randomUUID();
-    const infusionStartedAt = new Date();
+    const infusionStartedAt = dto.startedAt ?? new Date();
+    if (Number.isNaN(infusionStartedAt.getTime())) {
+      throw new BadRequestException("Heure de début de perfusion invalide.");
+    }
     const startedIso = infusionStartedAt.toISOString();
     const schedulingFeatureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
     const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(

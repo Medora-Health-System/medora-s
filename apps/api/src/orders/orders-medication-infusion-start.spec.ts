@@ -70,6 +70,7 @@ describe("OrdersService.startMedicationInfusion", () => {
     const tx = {
       orderItem: { update: orderItemUpdate },
       orderEvent: { create: orderEventCreate },
+      medicationOrderSchedule: { findFirst: jest.fn().mockResolvedValue(null) },
     };
     const prisma = {
       orderItem: {
@@ -149,5 +150,89 @@ describe("OrdersService.startMedicationInfusion", () => {
       })
     );
     expect(orderEventUpdate).toHaveBeenCalled();
+  });
+
+  it("uses custom startedAt from DTO when provided (K.8A)", async () => {
+    const row = makeVancomycinIvpbOrderItem(OrderStatus.PLACED);
+    const customStartedAt = new Date("2026-06-11T14:16:00.000Z");
+    const orderItemUpdate = jest.fn().mockResolvedValue({});
+    let capturedSessionKey = "";
+    let orderEventFindManyCall = 0;
+    const orderEventCreate = jest.fn().mockImplementation(async (args: { data: { metadata: Record<string, unknown> } }) => {
+      capturedSessionKey = String(args.data.metadata.infusionSessionKey ?? "");
+    });
+    const orderEventUpdate = jest.fn().mockResolvedValue({});
+    const orderEventFindMany = jest.fn().mockImplementation(async () => {
+      orderEventFindManyCall += 1;
+      if (orderEventFindManyCall === 1) return [];
+      return [
+        {
+          id: "oe-start-1",
+          metadata: {
+            infusionScope: "MEDICATION_INFUSION",
+            infusionAction: "START",
+            infusionSessionKey: capturedSessionKey,
+          },
+        },
+      ];
+    });
+    const tx = {
+      orderItem: { update: orderItemUpdate },
+      orderEvent: { create: orderEventCreate },
+      medicationOrderSchedule: { findFirst: jest.fn().mockResolvedValue(null) },
+    };
+    const prisma = {
+      orderItem: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(row)
+          .mockResolvedValueOnce({
+            ...row,
+            status: OrderStatus.IN_PROGRESS,
+            lifecycleState: OrderItemLifecycleState.IN_PROGRESS,
+            order: { facilityId: "fac-1" },
+          }),
+      },
+      catalogMedication: {
+        findUnique: jest.fn().mockResolvedValue({
+          code: "VANCO",
+          name: "Vancomycin",
+          displayNameEn: "Vancomycin",
+          genericName: "vancomycin",
+          route: "IVPB",
+          strength: "1 g",
+        }),
+      },
+      orderEvent: { findMany: orderEventFindMany, update: orderEventUpdate },
+      user: { findUnique: jest.fn().mockResolvedValue({ firstName: "Marie", lastName: "Infirmier" }) },
+      userRole: {
+        findMany: jest.fn().mockResolvedValue([{ role: { code: RoleCode.RN, name: "Infirmier(ère)" } }]),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<void>) => {
+        await fn(tx);
+      }),
+    };
+    const audit = { log: jest.fn().mockResolvedValue(undefined) };
+    const createInfusionStartMar = jest.fn().mockResolvedValue({ id: "mar-infusion-start-1" });
+    const service = new OrdersService(prisma as any, audit as any, {
+      createInfusionStartMar,
+    } as any);
+
+    await service.startMedicationInfusion(
+      "fac-1",
+      "item-vanco-1",
+      { startedAt: customStartedAt },
+      [RoleCode.RN],
+      "user-1"
+    );
+
+    expect(createInfusionStartMar).toHaveBeenCalledWith(
+      "enc-1",
+      "fac-1",
+      "user-1",
+      expect.objectContaining({
+        startedAt: customStartedAt,
+      })
+    );
   });
 });

@@ -12,6 +12,8 @@ import {
   shouldIncludeMarShiftTimelineDose,
   isMarShiftTimelineItemReadOnly,
   buildMarShiftTimelineTertiaryText,
+  resolveMarShiftTimelineMedicationLabel,
+  normalizeMarShiftTimelineLocale,
   medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
   parseMedicationDoseKind,
@@ -45,6 +47,7 @@ export type MarShiftTimelineQuery = {
   assignedToUserId?: string;
   includeCompleted?: boolean;
   includeUpcoming?: boolean;
+  locale?: string;
 };
 
 export type MarShiftTimelineViewer = {
@@ -117,6 +120,7 @@ export type MarShiftTimelineResponse = {
     columns: ReturnType<typeof buildMarShiftTimelineColumns>;
   };
   rows: MarShiftTimelineRow[];
+  locale: "en" | "fr";
 };
 
 function parseCatalogSnapshot(json: unknown): MedicationCatalogSnapshotJson | null {
@@ -183,6 +187,7 @@ export class MarShiftTimelineService {
     };
 
     const facilityTimeZone = facility.timezone?.trim() || "UTC";
+    const displayLocale = normalizeMarShiftTimelineLocale(query.locale);
 
     if (!medicationSchedulingFeatureFlagsEnabled(featureFlags)) {
       return {
@@ -192,6 +197,7 @@ export class MarShiftTimelineService {
         viewer,
         shift: { ...emptyShift, timeZone: facilityTimeZone },
         rows: [],
+        locale: displayLocale,
       };
     }
 
@@ -329,12 +335,11 @@ export class MarShiftTimelineService {
       const catalogId = catalogSnapshot?.catalogItemId?.trim() || null;
       const governance = catalogId ? governanceByCatalogId.get(catalogId) : undefined;
 
-      const medicationLabel =
-        orderedSnapshot?.medicationLabel?.trim() ||
-        catalogSnapshot?.displayNameFr?.trim() ||
-        catalogSnapshot?.displayNameEn?.trim() ||
-        catalogSnapshot?.genericName?.trim() ||
-        null;
+      const medicationLabel = resolveMarShiftTimelineMedicationLabel({
+        locale: displayLocale,
+        orderedMedicationLabel: orderedSnapshot?.medicationLabel,
+        catalogSnapshot: catalogSnapshot,
+      });
 
       const route =
         orderedSnapshot?.route?.trim() ||
@@ -447,6 +452,7 @@ export class MarShiftTimelineService {
       shiftEnd: shiftWindow.endAt,
       columns,
       facilityTimeZone: shiftWindow.facilityTimeZone,
+      displayLocale,
       encounterId: query.encounterId,
       assignedToUserId: query.assignedToUserId,
       includeCompleted,
@@ -506,6 +512,7 @@ export class MarShiftTimelineService {
         columns,
       },
       rows,
+      locale: displayLocale,
     };
   }
 

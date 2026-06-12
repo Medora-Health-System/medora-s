@@ -16,6 +16,8 @@ import {
   isMarShiftTimelineActionEnabled,
   isMarShiftTimelineActionShowComingSoon,
   MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED,
+  buildMarShiftTimelineStartPayload,
+  buildMarShiftTimelineStopPayload,
   type MarShiftTimelineActionHandlers,
 } from "@/features/mar/marShiftTimelineActions";
 
@@ -169,17 +171,22 @@ export function FacilityMarShiftTimelineDrawer({
     setSubmitting(true);
     try {
       if (action === "START_INFUSION") {
-        const completed = await actionHandlers.onRequestStartInfusion(item);
+        const startPayload = buildMarShiftTimelineStartPayload(
+          { startTimeLocal: startTimeValue },
+          facilityTimeZone
+        );
+        const completed = await actionHandlers.onRequestStartInfusion(item, startPayload);
         if (completed) {
           await onActionSuccess?.();
         }
         return;
       }
       if (action === "STOP_INFUSION") {
-        await actionHandlers.onExecuteStopInfusion(item, {
-          notes: stopNotes,
-          stopTimeLocal: stopTimeValue,
-        });
+        const stopPayload = buildMarShiftTimelineStopPayload(
+          { notes: stopNotes, stopTimeLocal: stopTimeValue },
+          facilityTimeZone
+        );
+        await actionHandlers.onExecuteStopInfusion(item, stopPayload);
         await onActionSuccess?.();
       }
     } catch (e) {
@@ -277,10 +284,17 @@ export function FacilityMarShiftTimelineDrawer({
           )}
 
           {showStartTimeField ? (
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 12, position: "relative", zIndex: 1 }}>
               <label
                 htmlFor="mar-shift-timeline-start-time"
-                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#64748b",
+                  marginBottom: 6,
+                  cursor: readOnly || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED ? "default" : "pointer",
+                }}
               >
                 {t("marShiftTimeline.drawer.startTimeField")}
               </label>
@@ -290,7 +304,7 @@ export function FacilityMarShiftTimelineDrawer({
                 type="datetime-local"
                 value={startTimeValue}
                 onChange={(e) => setStartTimeValue(e.target.value)}
-                disabled={readOnly || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}
+                disabled={readOnly || submitting || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}
                 style={{
                   width: "100%",
                   padding: "8px 10px",
@@ -298,6 +312,10 @@ export function FacilityMarShiftTimelineDrawer({
                   border: "1px solid #cbd5e1",
                   fontSize: 14,
                   boxSizing: "border-box",
+                  cursor:
+                    readOnly || submitting || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED
+                      ? "not-allowed"
+                      : "text",
                 }}
               />
               {!MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED ? (
@@ -312,10 +330,17 @@ export function FacilityMarShiftTimelineDrawer({
           ) : null}
 
           {showStopTimeField ? (
-            <div style={{ marginTop: 12 }}>
+            <div style={{ marginTop: 12, position: "relative", zIndex: 1 }}>
               <label
                 htmlFor="mar-shift-timeline-stop-time"
-                style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+                style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#64748b",
+                  marginBottom: 6,
+                  cursor: readOnly || submitting ? "default" : "pointer",
+                }}
               >
                 {t("marShiftTimeline.drawer.stopTimeField")}
               </label>
@@ -333,6 +358,7 @@ export function FacilityMarShiftTimelineDrawer({
                   border: "1px solid #cbd5e1",
                   fontSize: 14,
                   boxSizing: "border-box",
+                  cursor: readOnly || submitting ? "not-allowed" : "text",
                 }}
               />
             </div>

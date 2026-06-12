@@ -93,7 +93,6 @@ import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPass
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import {
-  buildMarShiftTimelineStopPayload,
   findPassQueueItemForTimelineCell,
   marShiftTimelineStartWitnessRequired,
   resolveMarShiftTimelineOrderId,
@@ -803,6 +802,7 @@ export function MedicationAdministrationTab({
       startVerifier?: { userId: string; displayName: string } | null,
       options?: {
         medicationDoseInstanceId?: string;
+        startedAtIso?: string;
         stoppedAtIso?: string;
         skipReload?: boolean;
         skipModalClose?: boolean;
@@ -815,6 +815,7 @@ export function MedicationAdministrationTab({
         if (op === "start") {
           await startMedicationInfusion(orderItemId, facilityId, {
             ...(note?.trim() ? { notes: note.trim() } : {}),
+            ...(options?.startedAtIso?.trim() ? { startedAt: options.startedAtIso.trim() } : {}),
             ...(options?.medicationDoseInstanceId?.trim()
               ? { medicationDoseInstanceId: options.medicationDoseInstanceId.trim() }
               : {}),
@@ -865,7 +866,7 @@ export function MedicationAdministrationTab({
     return {
       disabled: actionsDisabled,
       busy: Boolean(infusionBusy),
-      onRequestStartInfusion: async (item) => {
+      onRequestStartInfusion: async (item, input) => {
         const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
         const orderId = resolveMarShiftTimelineOrderId(item, passItem);
         const label = item.medicationLabel?.trim() || item.primaryText;
@@ -875,8 +876,9 @@ export function MedicationAdministrationTab({
           setInfusionStartWitnessModal({ orderItemId: item.orderItemId, orderId, label });
           return false;
         }
-        await runMarInfusion(item.orderItemId, orderId, "start", undefined, null, {
+        await runMarInfusion(item.orderItemId, orderId, "start", input.notes, null, {
           medicationDoseInstanceId: item.medicationDoseInstanceId,
+          startedAtIso: input.startedAt,
           skipReload: true,
           skipModalClose: true,
         });
@@ -887,10 +889,9 @@ export function MedicationAdministrationTab({
       onExecuteStopInfusion: async (item, input) => {
         const passItem = findPassQueueItemForTimelineCell(item, passQueue.items);
         const orderId = resolveMarShiftTimelineOrderId(item, passItem);
-        const stopPayload = buildMarShiftTimelineStopPayload(input);
-        await runMarInfusion(item.orderItemId, orderId, "stop", stopPayload.notes, null, {
+        await runMarInfusion(item.orderItemId, orderId, "stop", input.notes, null, {
           medicationDoseInstanceId: item.medicationDoseInstanceId,
-          stoppedAtIso: stopPayload.stoppedAt,
+          stoppedAtIso: input.stoppedAt,
           skipReload: true,
           skipModalClose: true,
         });

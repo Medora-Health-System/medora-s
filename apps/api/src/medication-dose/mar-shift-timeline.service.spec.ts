@@ -1467,4 +1467,132 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(columnLabelForOrderItem(result, dose.orderItemId)).toBe("02P");
     });
   });
+
+  describe("Medication label locale (M1.8B.7K.8)", () => {
+    it("English locale shows Normal Saline not French catalog label for NOW fallback", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem, doses } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+        catalogItemId: normalSalineCatalogId,
+      });
+      expect(doses).toHaveLength(0);
+      await prisma.orderItem.update({
+        where: { id: orderItem.id },
+        data: { createdAt },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+      });
+
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.medicationLabel).toBe("Normal Saline");
+      expect(item?.primaryText).toBe("Normal");
+      expect(item?.hover.title).toBe("Normal Saline");
+      expect(result.locale).toBe("en");
+    });
+
+    it("French locale may show French catalog label for NOW fallback", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+        catalogItemId: normalSalineCatalogId,
+      });
+      await prisma.orderItem.update({
+        where: { id: orderItem.id },
+        data: { createdAt },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "fr",
+      });
+
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.medicationLabel).toBe("NaCl 0,9 %");
+      expect(result.locale).toBe("fr");
+    });
+  });
+
+  describe("K.8A start/stop MAR cell update proof", () => {
+    it("NOW IVPB fallback shows INFUSING after start with locale=en English labels", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+        route: "IVPB" as MedicationRoute,
+        catalogItemId: normalSalineCatalogId,
+      });
+      await prisma.orderItem.update({
+        where: { id: orderItem.id },
+        data: { createdAt },
+      });
+
+      const before = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+      });
+      const beforeItem = allTimelineItems(before).find((i) => i.orderItemId === orderItem.id);
+      expect(beforeItem?.medicationLabel).toBe("Normal Saline");
+      expect(beforeItem?.clinicalAction).toBe("START_INFUSION");
+
+      const customStart = new Date("2026-06-11T14:16:00.000Z");
+      await ordersService.startMedicationInfusion(
+        facilityId,
+        orderItem.id,
+        { startedAt: customStart },
+        [RoleCode.RN],
+        nurseUserId
+      );
+
+      const afterStart = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+      });
+      const startedItem = allTimelineItems(afterStart).find((i) => i.orderItemId === orderItem.id);
+      expect(startedItem?.doseStatus).toBe("IN_PROGRESS");
+      expect(startedItem?.secondaryText).toBe("INFUSING");
+      expect(startedItem?.medicationLabel).toBe("Normal Saline");
+      expect(startedItem?.startedByInitials).toBe("JN");
+      expect(startedItem?.tertiaryText).toContain("▶");
+
+      const customStop = new Date("2026-06-11T14:42:00.000Z");
+      await ordersService.stopMedicationInfusion(
+        facilityId,
+        orderItem.id,
+        { stoppedAt: customStop },
+        [RoleCode.RN],
+        nurseUserId
+      );
+
+      const afterStop = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+        includeCompleted: true,
+      });
+      const doneItem = allTimelineItems(afterStop).find((i) => i.orderItemId === orderItem.id);
+      expect(doneItem?.doseStatus).toBe("COMPLETED");
+      expect(doneItem?.secondaryText).toBe("DONE");
+      expect(doneItem?.readOnly).toBe(true);
+      expect(doneItem?.completionSummary).toMatch(/JN.*–.*JN/);
+    });
+  });
 });

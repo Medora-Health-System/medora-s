@@ -3,24 +3,28 @@ import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import type { MedicationPassQueueItem } from "@/lib/medicationPassQueueApi";
 import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
 import { marInfusionStartWitnessRequired, type MarHighAlertRouteOptions } from "@/components/medication/MarHighAlertFields";
-import { datetimeLocalValueToUtcIso } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
+import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
 
 export type MarShiftTimelineInfusionStartInput = {
   notes?: string;
-  highAlertVerifierUserId?: string;
-  highAlertVerifierDisplayName?: string;
+  /** UTC ISO start instant (from facility-local datetime-local when edited). */
+  startedAt?: string;
 };
 
 export type MarShiftTimelineInfusionStopInput = {
   notes?: string;
-  stopTimeLocal?: string;
+  /** UTC ISO stop instant (from facility-local datetime-local when edited). */
+  stoppedAt?: string;
 };
 
 export type MarShiftTimelineActionHandlers = {
   disabled: boolean;
   busy: boolean;
   /** Resolves true when infusion start completed; false when witness modal opened. */
-  onRequestStartInfusion: (item: MarShiftTimelineCellItem) => Promise<boolean>;
+  onRequestStartInfusion: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineInfusionStartInput
+  ) => Promise<boolean>;
   onExecuteStopInfusion: (
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineInfusionStopInput
@@ -80,21 +84,36 @@ export function resolveMarShiftTimelineOrderId(
   return passQueueItem?.orderId?.trim() || item.orderItemId;
 }
 
-export function buildMarShiftTimelineStopPayload(input: MarShiftTimelineInfusionStopInput): {
-  notes?: string;
-  stoppedAt?: string;
-} {
+export function buildMarShiftTimelineStartPayload(
+  input: { startTimeLocal?: string; notes?: string },
+  facilityTimeZone?: string | null
+): MarShiftTimelineInfusionStartInput {
   const notes = input.notes?.trim() || undefined;
-  const stopTimeLocal = input.stopTimeLocal?.trim();
-  const stoppedAtIso = stopTimeLocal ? datetimeLocalValueToUtcIso(stopTimeLocal) : null;
+  const startedAt = input.startTimeLocal?.trim()
+    ? marShiftTimelineDateTimeLocalToUtcIso(input.startTimeLocal, facilityTimeZone) ?? undefined
+    : undefined;
   return {
     ...(notes ? { notes } : {}),
-    ...(stoppedAtIso ? { stoppedAt: stoppedAtIso } : {}),
+    ...(startedAt ? { startedAt } : {}),
   };
 }
 
-/** START API does not accept startedAt — effective start is server clock at confirmation. */
-export const MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED = false;
+export function buildMarShiftTimelineStopPayload(
+  input: { stopTimeLocal?: string; notes?: string },
+  facilityTimeZone?: string | null
+): MarShiftTimelineInfusionStopInput {
+  const notes = input.notes?.trim() || undefined;
+  const stoppedAt = input.stopTimeLocal?.trim()
+    ? marShiftTimelineDateTimeLocalToUtcIso(input.stopTimeLocal, facilityTimeZone) ?? undefined
+    : undefined;
+  return {
+    ...(notes ? { notes } : {}),
+    ...(stoppedAt ? { stoppedAt } : {}),
+  };
+}
+
+/** POST /orders/items/:id/infusion/start accepts optional `startedAt` (M1.8B.7K.8). */
+export const MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED = true;
 
 export function isMarShiftTimelineActionEnabled(
   action: MarShiftTimelineDrawerAction,

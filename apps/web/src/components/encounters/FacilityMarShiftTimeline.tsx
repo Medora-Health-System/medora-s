@@ -78,6 +78,7 @@ export function FacilityMarShiftTimeline({
         encounterId,
         assignedToUserId,
         shiftCode,
+        locale: language,
         includeCompleted: true,
         includeUpcoming: true,
       });
@@ -88,7 +89,7 @@ export function FacilityMarShiftTimeline({
     } finally {
       setLoading(false);
     }
-  }, [assignedToUserId, encounterId, facilityId, shiftCode]);
+  }, [assignedToUserId, encounterId, facilityId, shiftCode, language]);
 
   useEffect(() => {
     void loadTimeline();

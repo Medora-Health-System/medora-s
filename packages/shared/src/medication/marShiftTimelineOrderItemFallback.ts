@@ -103,9 +103,14 @@ export function resolveMarShiftTimelineOrderItemFallbackDoseStatus(input: {
   orderItemCompleted: boolean;
   isIvpb: boolean;
   activeInfusionSession: boolean;
+  /** NOW/STAT IVPB fallback may lack InfusionSession row; order line IN_PROGRESS implies active infusion. */
+  orderItemInProgress?: boolean;
   hasCompletedAdministration: boolean;
 }): MedicationDoseStatus {
-  if (input.isIvpb && input.activeInfusionSession) {
+  if (
+    input.isIvpb &&
+    (input.activeInfusionSession || input.orderItemInProgress === true)
+  ) {
     return "IN_PROGRESS";
   }
 

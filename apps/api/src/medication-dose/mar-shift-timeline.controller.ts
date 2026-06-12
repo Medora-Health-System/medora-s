@@ -50,6 +50,7 @@ export class MarShiftTimelineController {
     @Query("assignedToUserId") assignedToUserId: string | undefined,
     @Query("includeCompleted") includeCompletedRaw: string | undefined,
     @Query("includeUpcoming") includeUpcomingRaw: string | undefined,
+    @Query("locale") localeRaw: string | undefined,
     @Req()
     req: {
       user?: { userId?: string; facilityId?: string };
@@ -96,6 +97,7 @@ export class MarShiftTimelineController {
       assignedToUserId: assignedToUserId?.trim() || undefined,
       includeCompleted: parseOptionalBoolean(includeCompletedRaw, "includeCompleted"),
       includeUpcoming: parseOptionalBoolean(includeUpcomingRaw, "includeUpcoming"),
+      locale: localeRaw?.trim() || undefined,
     };
 
     const viewer = await this.marShiftTimelineService.resolveViewer(facilityId, userId);

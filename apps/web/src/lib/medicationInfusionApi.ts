@@ -2,6 +2,7 @@ import { apiFetch } from "@/lib/apiClient";
 
 export type MedicationInfusionStartPayload = {
   notes?: string;
+  startedAt?: string;
   medicationDoseInstanceId?: string;
   highAlertVerifierUserId?: string;
   highAlertVerifierDisplayName?: string;
@@ -26,6 +27,7 @@ export function startMedicationInfusion(
         : {}
       : {
           ...(payload?.notes?.trim() ? { notes: payload.notes.trim() } : {}),
+          ...(payload?.startedAt?.trim() ? { startedAt: payload.startedAt.trim() } : {}),
           ...(payload?.medicationDoseInstanceId?.trim()
             ? { medicationDoseInstanceId: payload.medicationDoseInstanceId.trim() }
             : {}),

@@ -9,6 +9,11 @@ import {
   parseMedicationDoseStatus,
   type MedicationDoseStatus,
 } from "./medicationDoseStatus.js";
+import {
+  resolveMedicationCatalogPrimaryLabel,
+  type CatalogMedicationLabel,
+} from "../orders/orderItemDisplayLabels.js";
+import type { MedicationCatalogSnapshotJson } from "./medicationOrderScheduleSnapshot.js";
 
 /**
  * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
@@ -26,6 +31,46 @@ export function normalizeMarShiftTimelineTimeZone(raw: string | null | undefined
   } catch {
     return MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE;
   }
+}
+
+/** UI locale for MAR medication labels (M1.8B.7K.8). Defaults to English when unknown. */
+export function normalizeMarShiftTimelineLocale(raw: string | null | undefined): "en" | "fr" {
+  const value = raw?.trim().toLowerCase();
+  if (value === "fr" || value?.startsWith("fr-")) return "fr";
+  return "en";
+}
+
+export type MarShiftTimelineMedicationLabelInput = {
+  locale?: "en" | "fr" | string | null;
+  orderedMedicationLabel?: string | null;
+  manualLabel?: string | null;
+  catalogSnapshot?: Pick<
+    MedicationCatalogSnapshotJson,
+    "catalogItemId" | "catalogItemCode" | "displayNameEn" | "displayNameFr" | "genericName"
+  > | null;
+};
+
+/** Locale-aware medication label for MAR cells, hover, and drawer (M1.8B.7K.8). */
+export function resolveMarShiftTimelineMedicationLabel(
+  input: MarShiftTimelineMedicationLabelInput
+): string | null {
+  const locale = normalizeMarShiftTimelineLocale(input.locale);
+  const catalog: CatalogMedicationLabel | null = input.catalogSnapshot
+    ? {
+        code: input.catalogSnapshot.catalogItemCode,
+        displayNameEn: input.catalogSnapshot.displayNameEn,
+        displayNameFr: input.catalogSnapshot.displayNameFr,
+        genericName: input.catalogSnapshot.genericName,
+      }
+    : null;
+  const manual =
+    input.manualLabel?.trim() ||
+    input.orderedMedicationLabel?.trim() ||
+    null;
+  if (catalog?.displayNameEn?.trim() || catalog?.displayNameFr?.trim()) {
+    return resolveMedicationCatalogPrimaryLabel(locale, catalog, manual);
+  }
+  return manual;
 }
 
 export const MAR_SHIFT_TIMELINE_SHIFT_CODES = [

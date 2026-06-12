@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import {
   getZonedWallClockParts,
   resolveMarShiftTimelinePerformerLabel,
+  toMedicationAdministrationEffectiveTimeIsoUtc,
+  wallClockToUtc,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -55,6 +57,27 @@ export function toMarShiftTimelineDateTimeLocalValue(
   }
 
   return `${date.getFullYear()}-${padDateTimeLocalPart(date.getMonth() + 1)}-${padDateTimeLocalPart(date.getDate())}T${padDateTimeLocalPart(date.getHours())}:${padDateTimeLocalPart(date.getMinutes())}`;
+}
+
+/** Parse `datetime-local` wall clock in facility TZ → UTC ISO for API storage. */
+export function marShiftTimelineDateTimeLocalToUtcIso(
+  localValue: string | null | undefined,
+  facilityTimeZone?: string | null
+): string | null {
+  if (!localValue?.trim()) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(localValue.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const tz = facilityTimeZone?.trim();
+  const date = tz
+    ? wallClockToUtc(year, month, day, hour, minute, tz)
+    : new Date(localValue);
+  if (Number.isNaN(date.getTime())) return null;
+  return toMedicationAdministrationEffectiveTimeIsoUtc(date);
 }
 
 export function defaultMarShiftTimelineStartTimeValue(

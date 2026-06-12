@@ -92,6 +92,7 @@ export type MarShiftTimelineResponse = {
     columns: MarShiftTimelineColumn[];
   };
   rows: MarShiftTimelineRow[];
+  locale?: "en" | "fr";
 };
 
 export type FetchMarShiftTimelineInput = {
@@ -103,6 +104,7 @@ export type FetchMarShiftTimelineInput = {
   shiftEnd?: string;
   includeCompleted?: boolean;
   includeUpcoming?: boolean;
+  locale?: string;
 };
 
 function buildMarShiftTimelineSearchParams(query: Omit<FetchMarShiftTimelineInput, "facilityId">): string {
@@ -116,6 +118,7 @@ function buildMarShiftTimelineSearchParams(query: Omit<FetchMarShiftTimelineInpu
   if (query.includeCompleted === false) params.set("includeCompleted", "false");
   if (query.includeUpcoming === true) params.set("includeUpcoming", "true");
   if (query.includeUpcoming === false) params.set("includeUpcoming", "false");
+  if (query.locale?.trim()) params.set("locale", query.locale.trim());
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }

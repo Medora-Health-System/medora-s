@@ -191,11 +191,10 @@ describe("MAR unified action workflow (M1.8B.7K.4)", () => {
     expect(payload.stoppedAt).toBeTruthy();
   });
 
-  it("start effective time is not sent when API does not support it", () => {
-    expect(MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED).toBe(false);
-    expect(drawer).toContain("MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED");
-    expect(drawer).toContain("mar-shift-timeline-drawer-start-time-unsupported");
-    expect(infusionApi).not.toContain("startedAt");
+  it("start effective time is sent when API supports it (K.8)", () => {
+    expect(MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED).toBe(true);
+    expect(drawer).toContain("buildMarShiftTimelineStartPayload");
+    expect(infusionApi).toContain("startedAt");
   });
 
   it("timeline refresh is registered and called after successful actions", () => {

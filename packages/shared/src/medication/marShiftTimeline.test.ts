@@ -8,6 +8,7 @@ import {
   formatMarShiftTimelineHourLabel,
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
+  resolveMarShiftTimelineMedicationLabel,
   resolveStandardMarShiftTimelineWindow,
 } from "./marShiftTimeline.js";
 import { wallClockToUtc } from "./medicationDoseExpansionPlanner.js";
@@ -245,5 +246,41 @@ describe("marShiftTimeline timezone placement (M1.8B.7K.7)", () => {
     const utcLabel = formatMarShiftTimelineHourLabel(createdAt, "UTC");
     expect(utcColumns.find((c) => c.key === utcKey)?.label).toBe(utcLabel);
     expect(utcLabel).not.toBe("02P");
+  });
+});
+
+describe("resolveMarShiftTimelineMedicationLabel (M1.8B.7K.8)", () => {
+  const catalog = {
+    catalogItemId: "cat-ns",
+    catalogItemCode: "NS",
+    displayNameEn: "Normal Saline",
+    displayNameFr: "Chlorure de sodium",
+    genericName: "Sodium Chloride",
+  };
+
+  it("English locale shows Normal Saline, not Chlorure de sodium", () => {
+    expect(
+      resolveMarShiftTimelineMedicationLabel({ locale: "en", catalogSnapshot: catalog })
+    ).toBe("Normal Saline");
+  });
+
+  it("French locale may show Chlorure de sodium", () => {
+    expect(
+      resolveMarShiftTimelineMedicationLabel({ locale: "fr", catalogSnapshot: catalog })
+    ).toBe("Chlorure de sodium");
+  });
+
+  it("cell display uses same localized medication label", () => {
+    const label = resolveMarShiftTimelineMedicationLabel({ locale: "en", catalogSnapshot: catalog });
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: label,
+      doseKind: "IVPB_SESSION",
+      doseStatus: "DUE",
+      route: "IVPB",
+      frequencyCode: "NOW",
+      requiresWitness: false,
+    });
+    expect(display.primaryText).toContain("Normal");
+    expect(label).toBe("Normal Saline");
   });
 });

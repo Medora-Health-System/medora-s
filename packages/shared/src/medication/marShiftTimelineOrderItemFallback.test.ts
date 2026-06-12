@@ -90,4 +90,16 @@ describe("marShiftTimelineOrderItemFallback (M1.8B.7K.6)", () => {
       })
     ).toBe("IN_PROGRESS");
   });
+
+  it("resolveMarShiftTimelineOrderItemFallbackDoseStatus maps IVPB order line IN_PROGRESS without session", () => {
+    expect(
+      resolveMarShiftTimelineOrderItemFallbackDoseStatus({
+        orderItemCompleted: false,
+        isIvpb: true,
+        activeInfusionSession: false,
+        orderItemInProgress: true,
+        hasCompletedAdministration: false,
+      })
+    ).toBe("IN_PROGRESS");
+  });
 });

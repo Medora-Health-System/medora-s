@@ -109,14 +109,14 @@ describe("MAR timezone placement + drawer times (M1.8B.7K.7)", () => {
     expect(drawer).toContain("defaultMarShiftTimelineStopTimeValue");
   });
 
-  it("stop action passes edited stopTimeLocal to handler", () => {
-    expect(drawer).toContain("stopTimeLocal: stopTimeValue");
+  it("stop action passes edited stoppedAt to handler", () => {
+    expect(drawer).toContain("buildMarShiftTimelineStopPayload");
   });
 
-  it("start action does not pass unsupported start time when API flag is false", () => {
-    expect(MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED).toBe(false);
-    expect(drawer).not.toContain("startTimeLocal");
-    expect(drawer).toContain("mar-shift-timeline-drawer-start-time-unsupported");
+  it("start action passes startedAt when API supports effective start time", () => {
+    expect(MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED).toBe(true);
+    expect(drawer).toContain("buildMarShiftTimelineStartPayload");
+    expect(drawer).toContain("startedAt");
   });
 
   it("datetime-local defaults use facility timezone wall clock", () => {

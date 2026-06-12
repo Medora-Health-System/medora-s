@@ -13,6 +13,7 @@ import {
   resolveMarShiftTimelineOrderItemFallbackDoseStatus,
   resolveMarShiftTimelineOrderItemPlacementInstant,
   shouldCreateMarShiftTimelineOrderItemFallback,
+  resolveMarShiftTimelineMedicationLabel,
   type MarShiftTimelineColumn,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
@@ -181,16 +182,25 @@ function buildPseudoDoseRow(input: {
 
 function resolveMedicationLabel(
   orderItem: OrderItemFallbackRow,
-  catalog: CatalogSlice | null
+  catalog: CatalogSlice | null,
+  displayLocale: "en" | "fr"
 ): string | null {
-  return (
-    orderItem.manualLabel?.trim() ||
-    catalog?.displayNameFr?.trim() ||
-    catalog?.displayNameEn?.trim() ||
-    catalog?.genericName?.trim() ||
-    orderItem.manualSecondaryText?.trim() ||
-    null
-  );
+  return resolveMarShiftTimelineMedicationLabel({
+    locale: displayLocale,
+    manualLabel: orderItem.manualLabel,
+    orderedMedicationLabel: orderItem.manualSecondaryText,
+    catalogSnapshot: catalog
+      ? {
+          catalogItemId: orderItem.catalogItemId,
+          catalogItemCode: null,
+          displayNameEn: catalog.displayNameEn,
+          displayNameFr: catalog.displayNameFr,
+          genericName: catalog.genericName,
+        }
+      : orderItem.catalogItemId
+        ? { catalogItemId: orderItem.catalogItemId, catalogItemCode: null, displayNameEn: null, displayNameFr: null, genericName: null }
+        : null,
+  });
 }
 
 function resolveRoute(orderItem: OrderItemFallbackRow, catalog: CatalogSlice | null): string | null {
@@ -235,6 +245,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   shiftEnd: Date;
   columns: readonly MarShiftTimelineColumn[];
   facilityTimeZone: string;
+  displayLocale: "en" | "fr";
   encounterId?: string;
   assignedToUserId?: string;
   includeCompleted: boolean;
@@ -343,6 +354,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       orderItemCompleted: orderItemCompleted(orderItem.status),
       isIvpb,
       activeInfusionSession: activeSession != null,
+      orderItemInProgress: orderItem.status === OrderStatus.IN_PROGRESS,
       hasCompletedAdministration: terminalMarId != null,
     });
 
@@ -412,7 +424,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     });
     if (!columnKey) continue;
 
-    const medicationLabel = resolveMedicationLabel(orderItem, catalog);
+    const medicationLabel = resolveMedicationLabel(orderItem, catalog, input.displayLocale);
     const enrichment = enrichmentByPseudoId.get(pseudo.id) ?? null;
     const clinicalAction = resolveMarShiftTimelineClinicalAction(pseudo.doseKind, parsedStatus);
     const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({

@@ -748,6 +748,8 @@ export const medicationInfusionStartDtoSchema = z.object({
   highAlertVerifierDisplayName: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
   highAlertOverrideReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
   highAlertOverrideAcknowledged: z.boolean().optional(),
+  /** Optional clinical start instant (defaults to server time at confirmation). */
+  startedAt: z.coerce.date().optional(),
 });
 
 export type MedicationInfusionStartDto = z.infer<typeof medicationInfusionStartDtoSchema>;
