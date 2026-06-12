@@ -95,4 +95,72 @@ describe("EncountersService.updateRoom (K.10B.10)", () => {
       })
     );
   });
+
+  it("accepts EMERGENCY unitCode alias and returns governed display", async () => {
+    const edEncounter = {
+      ...baseEncounter,
+      type: EncounterType.EMERGENCY,
+      roomLabel: null,
+      admissionSummaryJson: null,
+    };
+    const encounterUpdateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const updatedRow = {
+      ...edEncounter,
+      roomLabel: "2",
+      patient: { id: "pat-1", firstName: "Jean", lastName: "Test", mrn: "MRN1", dob: null, sexAtBirth: null },
+      physicianAssigned: null,
+      nurseAssigned: null,
+    };
+    const encounterFindFirst = jest
+      .fn()
+      .mockResolvedValueOnce(edEncounter)
+      .mockResolvedValue(updatedRow);
+    const auditLog = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      encounter: {
+        findFirst: encounterFindFirst,
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: encounterUpdateMany,
+      },
+    };
+    const service = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+
+    const res = (await service.updateRoom(facilityId, "enc-1", {
+      room: "2",
+      unitCode: "EMERGENCY" as never,
+      reason: "ROOM_CHANGE",
+    })) as Record<string, unknown>;
+
+    expect(res.governedRoomDisplay).toBe("ED-2");
+  });
+
+  it("returns success without DB update when room is unchanged (no-op)", async () => {
+    const edEncounter = {
+      ...baseEncounter,
+      type: EncounterType.EMERGENCY,
+      roomLabel: "4",
+      admissionSummaryJson: null,
+    };
+    const encounterFindFirst = jest.fn().mockResolvedValue(edEncounter);
+    const encounterUpdateMany = jest.fn();
+    const auditLog = jest.fn().mockResolvedValue(undefined);
+    const prisma = {
+      encounter: {
+        findFirst: encounterFindFirst,
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: encounterUpdateMany,
+      },
+    };
+    const service = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+
+    const res = (await service.updateRoom(facilityId, "enc-1", {
+      room: "4",
+      unitCode: "ED",
+      reason: "ROOM_CHANGE",
+    })) as Record<string, unknown>;
+
+    expect(encounterUpdateMany).not.toHaveBeenCalled();
+    expect(auditLog).not.toHaveBeenCalled();
+    expect(res.governedRoomDisplay).toBe("ED-4");
+  });
 });

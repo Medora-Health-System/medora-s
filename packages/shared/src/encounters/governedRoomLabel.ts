@@ -16,6 +16,35 @@ export const ENCOUNTER_ROOM_CHANGE_REASON_CODES = [
 
 export type EncounterRoomChangeReasonCode = (typeof ENCOUNTER_ROOM_CHANGE_REASON_CODES)[number];
 
+/** Normalize client/API unit aliases to canonical care-unit codes (K.10B.10A). */
+export function normalizeEncounterRoomUnitCodeInput(
+  raw: unknown
+): EncounterCareUnitCode | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || raw === "") return null;
+  const token = String(raw).trim().toUpperCase().replace(/[\s-]+/g, "_");
+  if (!token) return null;
+  if (token === "ED" || token === "ER" || token === "EMERGENCY" || token === "URGENT" || token === "URGENT_CARE") {
+    return "ED";
+  }
+  if (token === "ICU" || token === "CRITICAL_CARE" || token === "INTENSIVE_CARE") return "ICU";
+  if (token === "OBS" || token === "OBSERVATION") return "OBS";
+  if (
+    token === "MS" ||
+    token === "MED_SURG" ||
+    token === "MEDSURG" ||
+    token === "MEDICAL_SURGICAL" ||
+    token === "MEDICAL_SURG"
+  ) {
+    return "MS";
+  }
+  if (token === "LD" || token === "L_AND_D" || token === "LABOR_DELIVERY") return "LD";
+  if ((ENCOUNTER_CARE_UNIT_CODES as readonly string[]).includes(token)) {
+    return token as EncounterCareUnitCode;
+  }
+  return undefined;
+}
+
 const UNIT_PREFIX_PATTERN = /^(ED|ICU|MS|OBS|LD)[-–/ ]+/i;
 
 function parseServiceUnitToken(serviceUnit: string | null | undefined): EncounterCareUnitCode | null {

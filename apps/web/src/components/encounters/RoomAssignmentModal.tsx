@@ -26,7 +26,7 @@ import {
   updateEncounterRoomAssignment,
   type EncounterRoomUpdateResponse,
 } from "@/lib/roomAssignmentApi";
-import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { extractRoomAssignmentSaveErrorMessage } from "@/lib/roomAssignmentErrorMessage";
 
 export type RoomAssignmentModalProps = {
   open: boolean;
@@ -100,8 +100,7 @@ export function RoomAssignmentModal({
           return;
         }
         setError(
-          normalizeUserFacingError(err instanceof Error ? err.message : null, language) ||
-            t("roomAssignment.saveFailed")
+          extractRoomAssignmentSaveErrorMessage(err, language, t("roomAssignment.saveFailed"))
         );
       } finally {
         setSaving(false);

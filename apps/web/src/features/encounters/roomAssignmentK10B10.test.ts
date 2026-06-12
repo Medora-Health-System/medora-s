@@ -28,7 +28,7 @@ describe("room assignment governance (K.10B.10 web)", () => {
     const active = readSrc("features/emergency/EmergencyActiveWorkspaceView.tsx");
     expect(active).toContain("RoomAssignmentModal");
     expect(active).toContain("setShowRoomAssignmentModal");
-    expect(active).toContain("formatEncounterGovernedRoomDisplay");
+    expect(active).toContain("EncounterGovernedRoomChip");
   });
 
   it("MAR shift timeline shows governed room display on patient row", () => {
@@ -41,5 +41,17 @@ describe("room assignment governance (K.10B.10 web)", () => {
     const drawer = readSrc("components/encounters/FacilityMarShiftTimelineDrawer.tsx");
     expect(drawer).toContain("governedRoomDisplay");
     expect(drawer).toContain("roomAssignment.noRoomAssigned");
+  });
+
+  it("room assignment API calls PATCH /encounters/:id/room", () => {
+    const api = readSrc("lib/roomAssignmentApi.ts");
+    expect(api).toContain("/encounters/${encounterId}/room");
+    expect(api).toContain('method: "PATCH"');
+  });
+
+  it("RoomAssignmentModal surfaces backend API errors", () => {
+    const modal = readSrc("components/encounters/RoomAssignmentModal.tsx");
+    expect(modal).toContain("extractRoomAssignmentSaveErrorMessage");
+    expect(modal).toContain("updateEncounterRoomAssignment");
   });
 });

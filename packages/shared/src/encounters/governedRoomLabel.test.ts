@@ -5,6 +5,7 @@ import {
   formatGovernedRoomDisplay,
   parseGovernedRoomStorage,
   resolveEncounterCareUnit,
+  normalizeEncounterRoomUnitCodeInput,
 } from "./governedRoomLabel.js";
 
 describe("governedRoomLabel (K.10B.10)", () => {
@@ -92,5 +93,13 @@ describe("governedRoomLabel (K.10B.10)", () => {
         encounterType: "EMERGENCY",
       })
     ).toBe("ED");
+  });
+
+  it("normalizeEncounterRoomUnitCodeInput maps aliases", () => {
+    expect(normalizeEncounterRoomUnitCodeInput("EMERGENCY")).toBe("ED");
+    expect(normalizeEncounterRoomUnitCodeInput("ER")).toBe("ED");
+    expect(normalizeEncounterRoomUnitCodeInput("MED_SURG")).toBe("MS");
+    expect(normalizeEncounterRoomUnitCodeInput("OBSERVATION")).toBe("OBS");
+    expect(normalizeEncounterRoomUnitCodeInput(null)).toBeNull();
   });
 });

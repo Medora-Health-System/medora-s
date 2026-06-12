@@ -114,6 +114,7 @@ import {
   buildRoomLabelForStorage,
   formatGovernedRoomDisplay,
   resolveEncounterCareUnit,
+  normalizeEncounterRoomUnitCodeInput,
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
 } from "@medora/shared";
@@ -1879,8 +1880,12 @@ export class EncountersService {
       encounterType: encounter.type,
       admissionSummaryJson: encounter.admissionSummaryJson,
     });
+    const normalizedUnitInput =
+      data.unitCode === undefined
+        ? undefined
+        : normalizeEncounterRoomUnitCodeInput(data.unitCode) ?? data.unitCode;
     const nextUnit =
-      data.unitCode ??
+      normalizedUnitInput ??
       previousUnit ??
       (encounter.type === EncounterType.EMERGENCY ? "ED" : encounter.type === EncounterType.INPATIENT ? "MS" : null);
 

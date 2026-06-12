@@ -5,6 +5,8 @@ import { MAR_PRN_REASON_CODES } from "../mar/medicationAdministrationPrnGovernan
 import {
   ENCOUNTER_CARE_UNIT_CODES,
   ENCOUNTER_ROOM_CHANGE_REASON_CODES,
+  normalizeEncounterRoomUnitCodeInput,
+  type EncounterCareUnitCode,
 } from "../encounters/governedRoomLabel.js";
 import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
@@ -316,6 +318,14 @@ export type EncounterUpdateDto = z.infer<typeof encounterUpdateDtoSchema>;
 
 /** Accueil / infirmière : salle et médecin attribué uniquement */
 const emptyStrToNull = (v: unknown) => (v === "" ? null : v);
+
+function preprocessEncounterRoomUnitCode(v: unknown): EncounterCareUnitCode | null | undefined {
+  const normalized = normalizeEncounterRoomUnitCodeInput(emptyStrToNull(v));
+  if (normalized !== undefined) return normalized;
+  const raw = emptyStrToNull(v);
+  if (raw === null || raw === undefined) return raw;
+  return String(raw).trim().toUpperCase() as EncounterCareUnitCode;
+}
 export const encounterOperationalUpdateDtoSchema = z.object({
   roomLabel: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
   physicianAssignedUserId: z.preprocess(
@@ -342,14 +352,21 @@ export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalU
 export const encounterRoomUpdateDtoSchema = z.object({
   room: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
   unitCode: z.preprocess(
-    emptyStrToNull,
-    z.enum(ENCOUNTER_CARE_UNIT_CODES as unknown as [string, ...string[]]).optional()
+    preprocessEncounterRoomUnitCode,
+    z
+      .union([z.enum(ENCOUNTER_CARE_UNIT_CODES as unknown as [string, ...string[]]), z.null()])
+      .optional()
   ),
   reason: z.preprocess(
     emptyStrToNull,
-    z.enum(ENCOUNTER_ROOM_CHANGE_REASON_CODES as unknown as [string, ...string[]]).optional()
+    z
+      .union([z.enum(ENCOUNTER_ROOM_CHANGE_REASON_CODES as unknown as [string, ...string[]]), z.null()])
+      .optional()
   ),
-  reasonOther: z.preprocess(emptyStrToNull, z.string().trim().max(500).optional()),
+  reasonOther: z.preprocess(
+    emptyStrToNull,
+    z.union([z.string().trim().max(500), z.null()]).optional()
+  ),
   confirmOccupiedRoomAssignment: z.boolean().optional(),
   roomOccupancyOverride: z
     .object({
