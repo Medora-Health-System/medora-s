@@ -4,8 +4,9 @@ import {
   checkEdRoomAssignmentConflict,
   isSameNormalizedRoom,
   parseEdRoomOccupiedApiError,
+  parseRoomOccupancyApiError,
 } from "@/lib/edRoomAssignment";
-import { ED_ROOM_OCCUPIED_CODE } from "@medora/shared";
+import { ED_ROOM_OCCUPIED_CODE, ROOM_ALREADY_OCCUPIED_CODE } from "@medora/shared";
 
 vi.mock("@/lib/clinicalWorklistApi", () => ({
   fetchOpenEncounters: vi.fn(),
@@ -34,7 +35,27 @@ describe("edRoomAssignment — web conflict helper", () => {
     expect(isSameNormalizedRoom("WAITING_ROOM", "Salle d'attente")).toBe(true);
   });
 
-  it("parses 409 ED_ROOM_OCCUPIED from api error body", () => {
+  it("parses 409 ROOM_ALREADY_OCCUPIED from api error body", () => {
+    const err = Object.assign(new Error("conflict"), {
+      status: 409,
+      body: {
+        code: ROOM_ALREADY_OCCUPIED_CODE,
+        occupiedRoom: "ED-4",
+        requestedRoom: "4",
+        suggestedRoom: "4A",
+        occupiedByEncounterId: "enc-1",
+      },
+    });
+    expect(parseRoomOccupancyApiError(err)).toEqual({
+      occupyingEncounterId: "enc-1",
+      requestedRoom: "4",
+      suggestedRoom: "4A",
+      occupiedRoom: "ED-4",
+      occupiedByPatientName: undefined,
+    });
+  });
+
+  it("parses legacy 409 ED_ROOM_OCCUPIED from api error body", () => {
     const err = Object.assign(new Error("conflict"), {
       status: 409,
       body: {
@@ -47,6 +68,8 @@ describe("edRoomAssignment — web conflict helper", () => {
       occupyingEncounterId: "",
       requestedRoom: "4",
       suggestedRoom: "4A",
+      occupiedRoom: undefined,
+      occupiedByPatientName: undefined,
     });
   });
 

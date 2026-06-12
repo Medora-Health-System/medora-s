@@ -37,6 +37,10 @@ export type RoomAssignmentModalProps = {
   encounter: EncounterRoomContext & { id: string };
   onClose: () => void;
   onSaved: (patch: EncounterRoomUpdateResponse) => void | Promise<void>;
+  /** Preselect room input when opening from bed board (K.10B.10D). */
+  initialRoom?: string | null;
+  /** Override unit when opening from bed board (K.10B.10D). */
+  initialUnitCode?: EncounterCareUnitCode | null;
 };
 
 export function RoomAssignmentModal({
@@ -45,9 +49,14 @@ export function RoomAssignmentModal({
   encounter,
   onClose,
   onSaved,
+  initialRoom,
+  initialUnitCode,
 }: RoomAssignmentModalProps) {
   const { t, language } = useI18n();
-  const unit = useMemo(() => resolveEncounterRoomUnit(encounter), [encounter]);
+  const unit = useMemo(
+    () => initialUnitCode ?? resolveEncounterRoomUnit(encounter),
+    [encounter, initialUnitCode]
+  );
   const currentDisplay = useMemo(
     () => formatEncounterGovernedRoomDisplay(encounter, t),
     [encounter, t]
@@ -64,13 +73,17 @@ export function RoomAssignmentModal({
 
   useEffect(() => {
     if (!open) return;
-    setRoomInput(extractEncounterRoomInput(encounter));
+    const prefill =
+      initialRoom !== undefined && initialRoom !== null
+        ? initialRoom
+        : extractEncounterRoomInput(encounter);
+    setRoomInput(prefill);
     setReasonCode("");
     setReasonOther("");
     setError(null);
     setOccupancyConflict(null);
     setBedStatusConflict(null);
-  }, [open, encounter]);
+  }, [open, encounter, initialRoom]);
 
   const roomOptions = useMemo(
     () => (isEd ? buildEncounterRoomSelectOptions(encounter.roomLabel) : []),
