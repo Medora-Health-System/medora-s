@@ -48,6 +48,25 @@ describe("Orders dashboard medication MAR execution policy (M1.8B.7K.5)", () => 
     expect(panel).toContain('t("erEmergencyOrders.completeOrder")');
   });
 
+  it("resolveMedicationOrderMarStatusLabel maps refused and held MAR outcomes", () => {
+    expect(
+      resolveMedicationOrderMarStatusLabel(
+        "ORDERED",
+        { active: null, lastCompleted: null },
+        (k) => k,
+        { marAction: "refused", notes: "Refused: PATIENT_REFUSED" }
+      )
+    ).toBe("erEmergencyOrders.marStatusRefusedOnMar");
+    expect(
+      resolveMedicationOrderMarStatusLabel(
+        "ORDERED",
+        { active: null, lastCompleted: null },
+        (k) => k,
+        { marAction: "md_changed", notes: "Held: NPO" }
+      )
+    ).toBe("erEmergencyOrders.marStatusHeldOnMar");
+  });
+
   it("resolveMedicationOrderMarStatusLabel maps infusion in progress", () => {
     const label = resolveMedicationOrderMarStatusLabel(
       "IN_PROGRESS",

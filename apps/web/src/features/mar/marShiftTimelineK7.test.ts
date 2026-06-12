@@ -82,6 +82,7 @@ describe("MAR timezone placement + drawer times (M1.8B.7K.7)", () => {
       scheduledAt: createdAt,
       dueWindowStartAt: createdAt,
       columns,
+      facilityTimeZone: haitiTz,
     });
     expect(columns.find((c) => c.key === key)?.label).toBe("02P");
   });

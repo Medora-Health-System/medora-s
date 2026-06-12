@@ -58,8 +58,11 @@ function sampleItem(overrides?: Partial<MarShiftTimelineCellItem>): MarShiftTime
 const enabledHandlers = {
   disabled: false,
   busy: false,
+  onRequestAdminister: async () => undefined,
   onRequestStartInfusion: async () => true,
   onExecuteStopInfusion: async () => undefined,
+  onExecuteRefuse: async () => undefined,
+  onExecuteHold: async () => undefined,
 };
 
 describe("MAR unified action workflow (M1.8B.7K.4)", () => {
@@ -204,7 +207,7 @@ describe("MAR unified action workflow (M1.8B.7K.4)", () => {
     expect(marTab).toContain("timelineRefreshRef");
   });
 
-  it("non-IVPB Administer remains disabled in K.4", () => {
+  it("non-IVPB Administer is enabled when handlers are wired (K.9)", () => {
     const administerItem = sampleItem({
       doseKind: "FIXED_ADMINISTRATION",
       doseStatus: "DUE",
@@ -212,7 +215,7 @@ describe("MAR unified action workflow (M1.8B.7K.4)", () => {
       route: "PO",
       actions: ["ADMINISTER", "REFUSE", "HOLD", "VIEW_ORDER"],
     });
-    expect(isMarShiftTimelineActionEnabled("ADMINISTER", administerItem, enabledHandlers)).toBe(false);
-    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", administerItem)).toBe(true);
+    expect(isMarShiftTimelineActionEnabled("ADMINISTER", administerItem, enabledHandlers)).toBe(true);
+    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", administerItem)).toBe(false);
   });
 });

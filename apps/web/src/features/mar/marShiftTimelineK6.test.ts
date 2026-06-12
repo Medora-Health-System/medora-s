@@ -103,12 +103,11 @@ describe("MAR OrderItem fallback visibility (M1.8B.7K.6)", () => {
     expect(service).toContain("orderItemIdsWithDoseInstances");
   });
 
-  it("fallback item opens drawer with administer action (coming soon until wired)", () => {
+  it("fallback item opens drawer with administer action enabled when wired (K.9)", () => {
     expect(timeline).toContain("FacilityMarShiftTimelineDrawer");
-    expect(drawer).toContain("FacilityMarShiftTimelineDrawer");
+    expect(drawer).toContain("onRequestAdminister");
     const item = fallbackItem();
-    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", item)).toBe(true);
-    expect(isMarShiftTimelineActionEnabled("ADMINISTER", item, null)).toBe(false);
+    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", item)).toBe(false);
   });
 
   it("IVPB fallback shows Start infusion clinical action", () => {

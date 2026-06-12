@@ -54,8 +54,11 @@ function ivpbItem(
 const enabledHandlers = {
   disabled: false,
   busy: false,
+  onRequestAdminister: async () => undefined,
   onRequestStartInfusion: async () => true,
   onExecuteStopInfusion: async () => undefined,
+  onExecuteRefuse: async () => undefined,
+  onExecuteHold: async () => undefined,
 };
 
 describe("MAR language, time picker, action enablement (M1.8B.7K.8)", () => {
@@ -143,15 +146,16 @@ describe("MAR language, time picker, action enablement (M1.8B.7K.8)", () => {
     expect(isMarShiftTimelineActionEnabled("STOP_INFUSION", completed, enabledHandlers)).toBe(false);
   });
 
-  it("Administer remains coming soon when not safely wired", () => {
+  it("Administer is enabled for eligible non-IVPB NOW items", () => {
     const administer = ivpbItem({ clinicalAction: "ADMINISTER", doseKind: "FIXED_ADMINISTRATION" });
-    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", administer)).toBe(true);
-    expect(isMarShiftTimelineActionEnabled("ADMINISTER", administer, enabledHandlers)).toBe(false);
+    expect(isMarShiftTimelineActionShowComingSoon("ADMINISTER", administer)).toBe(false);
+    expect(isMarShiftTimelineActionEnabled("ADMINISTER", administer, enabledHandlers)).toBe(true);
   });
 
-  it("Refuse and Hold remain coming soon", () => {
-    const item = ivpbItem();
-    expect(isMarShiftTimelineActionShowComingSoon("REFUSE", item)).toBe(true);
-    expect(isMarShiftTimelineActionShowComingSoon("HOLD", item)).toBe(true);
+  it("Refuse and Hold are enabled for pending administer/start items", () => {
+    const administer = ivpbItem({ clinicalAction: "ADMINISTER", doseKind: "FIXED_ADMINISTRATION" });
+    expect(isMarShiftTimelineActionShowComingSoon("REFUSE", administer)).toBe(false);
+    expect(isMarShiftTimelineActionEnabled("REFUSE", administer, enabledHandlers)).toBe(true);
+    expect(isMarShiftTimelineActionEnabled("HOLD", administer, enabledHandlers)).toBe(true);
   });
 });

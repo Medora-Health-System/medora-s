@@ -115,7 +115,7 @@ describe("K.8A UI validation + blocker proof (M1.8B.7K.8A)", () => {
       expect(label).not.toContain("NaCl");
     });
 
-    it("MAR cell primaryText abbreviates English label without French leak", () => {
+    it("MAR cell primaryText abbreviates Normal Saline to NS 0.9% without French leak", () => {
       const display = buildMarShiftTimelineCellDisplay({
         medicationLabel: "Normal Saline",
         doseKind: "IVPB_SESSION",
@@ -124,7 +124,7 @@ describe("K.8A UI validation + blocker proof (M1.8B.7K.8A)", () => {
         frequencyCode: "NOW",
         requiresWitness: false,
       });
-      expect(display.primaryText).toContain("Normal");
+      expect(display.primaryText).toBe("NS 0.9%");
       expect(display.primaryText).not.toContain("Chlorure");
       expect(display.primaryText).not.toContain("NaCl");
     });
@@ -369,8 +369,11 @@ describe("K.8A UI validation + blocker proof (M1.8B.7K.8A)", () => {
         isMarShiftTimelineActionEnabled("START_INFUSION", normalSalineEnItem(), {
           disabled: false,
           busy: false,
+          onRequestAdminister: async () => undefined,
           onRequestStartInfusion: async () => true,
           onExecuteStopInfusion: async () => undefined,
+          onExecuteRefuse: async () => undefined,
+          onExecuteHold: async () => undefined,
         })
       ).toBe(true);
     });
