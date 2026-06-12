@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   MAR_SHIFT_TIMELINE_SHIFT_CODES,
   MAR_SHIFT_TIMELINE_SHIFT_LABELS,
@@ -19,6 +19,10 @@ import {
 } from "@/features/mar/marShiftTimelineDisplay";
 import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
 import { FacilityMarShiftTimelineDrawer } from "./FacilityMarShiftTimelineDrawer";
+import {
+  readStoredMarShiftTimelineShiftCode,
+  writeStoredMarShiftTimelineShiftCode,
+} from "@/lib/marShiftTimelineUiState";
 
 const DEFAULT_SHIFT_CODE: MarShiftTimelineShiftCode = "7A_7P";
 const HEADER_CLOCK_REFRESH_MS = 60_000;
@@ -34,6 +38,8 @@ export type FacilityMarShiftTimelineProps = {
   facilityId: string;
   encounterId?: string;
   assignedToUserId?: string;
+  /** Active viewer user id — used for per-user shift preference persistence (K.10). */
+  viewerUserId?: string;
   compact?: boolean;
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onRegisterRefresh?: (refresh: () => Promise<void>) => void;
@@ -50,6 +56,7 @@ export function FacilityMarShiftTimeline({
   facilityId,
   encounterId,
   assignedToUserId,
+  viewerUserId,
   compact = false,
   actionHandlers = null,
   onRegisterRefresh,
@@ -57,6 +64,7 @@ export function FacilityMarShiftTimeline({
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const shiftHydratedRef = useRef(false);
   const [shiftCode, setShiftCode] = useState<MarShiftTimelineShiftCode>(DEFAULT_SHIFT_CODE);
   const [data, setData] = useState<MarShiftTimelineResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +76,27 @@ export function FacilityMarShiftTimeline({
     const id = window.setInterval(() => setHeaderNow(new Date()), HEADER_CLOCK_REFRESH_MS);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    shiftHydratedRef.current = false;
+  }, [facilityId, viewerUserId]);
+
+  useEffect(() => {
+    if (shiftHydratedRef.current || !facilityId.trim() || !viewerUserId?.trim()) return;
+    const stored = readStoredMarShiftTimelineShiftCode(facilityId, viewerUserId);
+    if (stored) setShiftCode(stored);
+    shiftHydratedRef.current = true;
+  }, [facilityId, viewerUserId]);
+
+  const handleShiftChange = useCallback(
+    (next: MarShiftTimelineShiftCode) => {
+      setShiftCode(next);
+      if (facilityId.trim() && viewerUserId?.trim()) {
+        writeStoredMarShiftTimelineShiftCode(facilityId, viewerUserId, next);
+      }
+    },
+    [facilityId, viewerUserId]
+  );
 
   const loadTimeline = useCallback(async () => {
     setLoading(true);
@@ -166,7 +195,7 @@ export function FacilityMarShiftTimeline({
             <select
               data-testid="mar-shift-timeline-shift-select"
               value={shiftCode}
-              onChange={(e) => setShiftCode(e.target.value as MarShiftTimelineShiftCode)}
+              onChange={(e) => handleShiftChange(e.target.value as MarShiftTimelineShiftCode)}
               style={{
                 padding: "4px 8px",
                 borderRadius: 8,
@@ -287,15 +316,23 @@ export function FacilityMarShiftTimeline({
                           padding: 4,
                           verticalAlign: "top",
                           minWidth: 72,
+                          overflow: "hidden",
                         }}
                       >
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 4,
+                            alignItems: "stretch",
+                          }}
+                        >
                           {(cell?.items ?? []).map((item) => {
                             const readOnly = item.readOnly === true || item.doseStatus === "COMPLETED";
                             const statusStyle = marShiftTimelineItemStatusStyle(item.doseStatus, readOnly);
                             return (
                               <button
-                                key={item.medicationDoseInstanceId}
+                                key={`${item.orderItemId}:${item.medicationDoseInstanceId || "fallback"}`}
                                 type="button"
                                 data-testid="mar-shift-timeline-cell-item"
                                 data-dose-status={item.doseStatus}
@@ -312,6 +349,9 @@ export function FacilityMarShiftTimeline({
                                 style={{
                                   display: "block",
                                   width: "100%",
+                                  maxWidth: "100%",
+                                  boxSizing: "border-box",
+                                  flexShrink: 0,
                                   textAlign: "left",
                                   padding: "4px 6px",
                                   borderRadius: 6,
@@ -321,6 +361,7 @@ export function FacilityMarShiftTimeline({
                                   cursor: "pointer",
                                   fontSize: 11,
                                   lineHeight: 1.25,
+                                  overflow: "hidden",
                                 }}
                               >
                                 <div data-testid="mar-shift-timeline-primary-text">{item.primaryText}</div>

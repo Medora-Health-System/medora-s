@@ -113,6 +113,26 @@ export function buildMarShiftTimelineStartPayload(
   };
 }
 
+export type MarShiftTimelineStopTimeValidation =
+  | { ok: true }
+  | { ok: false; reason: "before_start" | "invalid_stop_time" };
+
+export function validateMarShiftTimelineStopTime(
+  item: MarShiftTimelineCellItem,
+  stopTimeLocal: string,
+  facilityTimeZone?: string | null
+): MarShiftTimelineStopTimeValidation {
+  const startIso = item.startedAt?.trim();
+  const stopLocal = stopTimeLocal?.trim();
+  if (!startIso || !stopLocal) return { ok: true };
+  const stopIso = marShiftTimelineDateTimeLocalToUtcIso(stopLocal, facilityTimeZone);
+  if (!stopIso) return { ok: false, reason: "invalid_stop_time" };
+  if (new Date(stopIso).getTime() < new Date(startIso).getTime()) {
+    return { ok: false, reason: "before_start" };
+  }
+  return { ok: true };
+}
+
 export function buildMarShiftTimelineStopPayload(
   input: { stopTimeLocal?: string; notes?: string },
   facilityTimeZone?: string | null

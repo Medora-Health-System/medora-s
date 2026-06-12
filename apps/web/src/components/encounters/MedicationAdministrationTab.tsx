@@ -1881,6 +1881,7 @@ export function MedicationAdministrationTab({
         facilityId={facilityId}
         encounterId={encounterId}
         assignedToUserId={currentUserId}
+        viewerUserId={currentUserId}
         compact={marCompact}
         actionHandlers={marShiftTimelineActionHandlers}
         onRegisterRefresh={(refresh) => {

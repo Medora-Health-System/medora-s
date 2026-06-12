@@ -243,7 +243,7 @@ describe("Recurring IVPB dose session linkage (M1.8B.7J.3)", () => {
     expect(orderItem?.status).not.toBe("COMPLETED");
   });
 
-  it("legacy NOW IVPB with flags OFF does not create InfusionSession or dose linkage", async () => {
+  it("legacy NOW IVPB with flags OFF creates InfusionSession without dose linkage (K.10)", async () => {
     setIvpbSchedulingFlags(false);
     const order = await createRecurringIvpbOrder({ frequencyCode: "NOW" });
     const orderItemId = order.items[0]!.id;
@@ -256,7 +256,7 @@ describe("Recurring IVPB dose session linkage (M1.8B.7J.3)", () => {
       userId
     );
 
-    expect(await prisma.infusionSession.count({ where: { orderItemId } })).toBe(0);
+    expect(await prisma.infusionSession.count({ where: { orderItemId } })).toBe(1);
     expect(await prisma.medicationDoseInstance.count({ where: { orderItemId } })).toBe(0);
 
     await ordersService.stopMedicationInfusion(

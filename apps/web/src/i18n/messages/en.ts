@@ -14536,6 +14536,8 @@ export default {
     error: "Unable to load MAR shift timeline.",
     comingSoon: "Coming soon",
     actionError: "Unable to complete MAR action.",
+    stopTimeBeforeStart: "Stop time cannot be before start time.",
+    stopTimeInvalid: "Invalid stop time.",
     drawer: {
       close: "Close",
       patient: "Patient",

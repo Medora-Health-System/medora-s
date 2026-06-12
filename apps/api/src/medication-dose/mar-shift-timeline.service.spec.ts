@@ -1762,4 +1762,99 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(item?.readOnly).toBe(true);
     });
   });
+
+  describe("M1.8B.7K.10A same-hour placement", () => {
+    const haitiTz = "America/Port-au-Prince";
+
+    async function withHaitiFacilityTimezone<T>(fn: () => Promise<T>): Promise<T> {
+      await prisma.facility.update({ where: { id: facilityId }, data: { timezone: haitiTz } });
+      try {
+        return await fn();
+      } finally {
+        await prisma.facility.update({ where: { id: facilityId }, data: { timezone: "UTC" } });
+      }
+    }
+
+    it("10:24 PM NOW fallback maps to 10P on 7P_7A shift", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 3, 22, 24, haitiTz);
+        const intendedOneHourLater = wallClockToUtc(2026, 6, 3, 23, 24, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", createdAt, haitiTz);
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "IVP" as MedicationRoute,
+          catalogItemId: genericCatalogId,
+          intendedAdministrationAt: intendedOneHourLater,
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe("10P");
+        expect(columnLabelForOrderItem(result, orderItem.id)).not.toBe("11P");
+      });
+    });
+
+    it("Metoprolol 10:07 and Ondansetron 10:24 share the 10P cell", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const metoprololAt = wallClockToUtc(2026, 6, 3, 22, 7, haitiTz);
+        const ondansetronAt = wallClockToUtc(2026, 6, 3, 22, 24, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow(
+          "7P_7A",
+          ondansetronAt,
+          haitiTz
+        );
+
+        const metoprolol = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "PO" as MedicationRoute,
+          catalogItemId: genericCatalogId,
+        });
+        const ondansetron = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "IVP" as MedicationRoute,
+          catalogItemId: kclCatalogId,
+          intendedAdministrationAt: wallClockToUtc(2026, 6, 3, 23, 24, haitiTz),
+        });
+        await prisma.orderItem.update({
+          where: { id: metoprolol.orderItem.id },
+          data: { createdAt: metoprololAt, manualLabel: "Metoprolol" },
+        });
+        await prisma.orderItem.update({
+          where: { id: ondansetron.orderItem.id },
+          data: { createdAt: ondansetronAt, manualLabel: "Ondansetron" },
+        });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        const tenPLabel = "10P";
+        const tenPColumn = result.shift.columns.find((c) => c.label === tenPLabel);
+        expect(tenPColumn).toBeTruthy();
+        const tenPCell = result.rows[0]?.cells.find((c) => c.columnKey === tenPColumn?.key);
+        expect(tenPCell?.items.length).toBeGreaterThanOrEqual(2);
+        expect(tenPCell?.items.some((i) => i.orderItemId === metoprolol.orderItem.id)).toBe(true);
+        expect(tenPCell?.items.some((i) => i.orderItemId === ondansetron.orderItem.id)).toBe(true);
+        expect(columnLabelForOrderItem(result, ondansetron.orderItem.id)).toBe(tenPLabel);
+
+        expect(columnLabelForOrderItem(result, ondansetron.orderItem.id)).not.toBe("11P");
+        const elevenPColumn = result.shift.columns.find((c) => c.label === "11P");
+        const elevenPCell = result.rows[0]?.cells.find((c) => c.columnKey === elevenPColumn?.key);
+        expect(
+          elevenPCell?.items.some((i) => i.orderItemId === ondansetron.orderItem.id) ?? false
+        ).toBe(false);
+      });
+    });
+  });
 });

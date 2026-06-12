@@ -22,6 +22,7 @@ import {
   MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED,
   buildMarShiftTimelineStartPayload,
   buildMarShiftTimelineStopPayload,
+  validateMarShiftTimelineStopTime,
   type MarShiftTimelineActionHandlers,
 } from "@/features/mar/marShiftTimelineActions";
 import {
@@ -262,6 +263,15 @@ export function FacilityMarShiftTimelineDrawer({
         return;
       }
       if (action === "STOP_INFUSION") {
+        const stopValidation = validateMarShiftTimelineStopTime(item, stopTimeValue, facilityTimeZone);
+        if (!stopValidation.ok) {
+          setActionError(
+            stopValidation.reason === "before_start"
+              ? t("marShiftTimeline.stopTimeBeforeStart")
+              : t("marShiftTimeline.stopTimeInvalid")
+          );
+          return;
+        }
         const stopPayload = buildMarShiftTimelineStopPayload(
           { notes: stopNotes, stopTimeLocal: stopTimeValue },
           facilityTimeZone

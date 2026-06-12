@@ -59,7 +59,20 @@ describe("marShiftTimelineOrderItemFallback (M1.8B.7K.6)", () => {
     ).toBe(createdAt.toISOString());
   });
 
-  it("resolveMarShiftTimelineOrderItemPlacementInstant prefers intendedAdministrationAt", () => {
+  it("resolveMarShiftTimelineOrderItemPlacementInstant uses createdAt for NOW even when intended differs (K.10A)", () => {
+    const createdAt = new Date("2026-06-04T02:24:00.000Z");
+    const intendedOneHourLater = new Date("2026-06-04T03:24:00.000Z");
+    expect(
+      resolveMarShiftTimelineOrderItemPlacementInstant({
+        createdAt,
+        intendedAdministrationAt: intendedOneHourLater,
+        frequencyCode: "NOW",
+        notes: null,
+      }).toISOString()
+    ).toBe(createdAt.toISOString());
+  });
+
+  it("resolveMarShiftTimelineOrderItemPlacementInstant prefers intendedAdministrationAt for ONCE", () => {
     const planned = new Date("2026-06-11T17:00:00.000Z");
     expect(
       resolveMarShiftTimelineOrderItemPlacementInstant({

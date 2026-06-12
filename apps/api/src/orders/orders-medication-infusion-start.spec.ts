@@ -67,10 +67,12 @@ describe("OrdersService.startMedicationInfusion", () => {
         },
       ];
     });
+    const infusionSessionCreate = jest.fn().mockResolvedValue({ id: "inf-session-1" });
     const tx = {
       orderItem: { update: orderItemUpdate },
       orderEvent: { create: orderEventCreate },
       medicationOrderSchedule: { findFirst: jest.fn().mockResolvedValue(null) },
+      infusionSession: { create: infusionSessionCreate },
     };
     const prisma = {
       orderItem: {
@@ -149,6 +151,14 @@ describe("OrdersService.startMedicationInfusion", () => {
         infusionSessionKey: expect.any(String),
       })
     );
+    expect(infusionSessionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          orderItemId: "item-vanco-1",
+          status: "IN_PROGRESS",
+        }),
+      })
+    );
     expect(orderEventUpdate).toHaveBeenCalled();
   });
 
@@ -180,6 +190,7 @@ describe("OrdersService.startMedicationInfusion", () => {
       orderItem: { update: orderItemUpdate },
       orderEvent: { create: orderEventCreate },
       medicationOrderSchedule: { findFirst: jest.fn().mockResolvedValue(null) },
+      infusionSession: { create: jest.fn().mockResolvedValue({ id: "inf-session-2" }) },
     };
     const prisma = {
       orderItem: {

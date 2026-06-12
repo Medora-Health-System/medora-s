@@ -14565,6 +14565,8 @@ export default {
     error: "Impossible de charger le quart MAR.",
     comingSoon: "Bientôt disponible",
     actionError: "Impossible d'exécuter l'action MAR.",
+    stopTimeBeforeStart: "L'heure d'arrêt ne peut pas précéder le début de la perfusion.",
+    stopTimeInvalid: "Heure d'arrêt invalide.",
     drawer: {
       close: "Fermer",
       patient: "Patient",

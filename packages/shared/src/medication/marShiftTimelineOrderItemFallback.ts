@@ -76,24 +76,26 @@ export function resolveMarShiftTimelineOrderItemPlacementInstant(input: {
   frequencyCode: string | null | undefined;
   notes: string | null | undefined;
 }): Date {
+  const createdAt = new Date(input.createdAt);
+  const parsed = parseMedicationFrequencyCode(
+    input.frequencyCode == null ? null : String(input.frequencyCode)
+  );
+
+  // NOW / STAT anchor to true order time — not auto-default planned admin or due-window end.
+  if (parsed === "NOW" || parsed === "STAT" || notesImplyImmediateMarPlacement(input.notes)) {
+    return createdAt;
+  }
+
   if (input.intendedAdministrationAt != null) {
     const planned = new Date(input.intendedAdministrationAt);
     if (!Number.isNaN(planned.getTime())) return planned;
   }
 
-  const parsed = parseMedicationFrequencyCode(
-    input.frequencyCode == null ? null : String(input.frequencyCode)
-  );
-
-  if (isDirectMarFrequency(parsed) || notesImplyImmediateMarPlacement(input.notes)) {
-    return new Date(input.createdAt);
+  if (isDirectMarFrequency(parsed) || !parsed) {
+    return createdAt;
   }
 
-  if (!parsed) {
-    return new Date(input.createdAt);
-  }
-
-  return new Date(input.createdAt);
+  return createdAt;
 }
 
 export function resolveMarShiftTimelineOrderItemFallbackDoseKind(

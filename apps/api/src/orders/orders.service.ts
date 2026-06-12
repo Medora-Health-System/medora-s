@@ -30,7 +30,7 @@ import {
   assertEncounterOpenForClinicalMutation,
 } from "../encounters/encounter-sign-lock.util";
 import { queueMedoraAlert } from "../common/logging/medoraAlert";
-import { logError as medoraLogError } from "../common/logging/medoraLogger";
+import { logError as medoraLogError, logInfo } from "../common/logging/medoraLogger";
 import {
   assertAckOrStartActor,
   assertCareProcedureEffectiveTimeActor,
@@ -3030,6 +3030,32 @@ export class OrdersService {
   /**
    * Replays infusion-tagged OrderEvents for the order to find an unmatched START for this order line.
    */
+  /**
+   * Resolves active infusion from infusion-tagged OrderEvents, or from an in-progress
+   * InfusionSession row when events are missing (legacy fallback IVPB recovery path).
+   */
+  private async resolveActiveMedicationInfusionSession(
+    facilityId: string,
+    orderItemId: string,
+    events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>,
+    routeFallback: string
+  ): Promise<{ sessionKey: string; startedAt: Date; route: string } | null> {
+    const fromEvents = this.findActiveMedicationInfusionSession(orderItemId, events);
+    if (fromEvents) return fromEvents;
+
+    const session = await this.prisma.infusionSession.findFirst({
+      where: { orderItemId, facilityId, status: "IN_PROGRESS" },
+      orderBy: { startedAt: "desc" },
+      select: { legacyInfusionSessionKey: true, startedAt: true },
+    });
+    if (!session?.legacyInfusionSessionKey?.trim() || !session.startedAt) return null;
+    return {
+      sessionKey: session.legacyInfusionSessionKey.trim(),
+      startedAt: session.startedAt,
+      route: routeFallback,
+    };
+  }
+
   private findActiveMedicationInfusionSession(
     orderItemId: string,
     events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>
@@ -3225,6 +3251,17 @@ export class OrdersService {
           medicationDoseInstanceId: startLinkage.dose.id,
           infusionSessionId: infusionSession.id,
         };
+      } else {
+        await tx.infusionSession.create({
+          data: {
+            encounterId: orderItem.order.encounterId,
+            facilityId,
+            orderItemId,
+            legacyInfusionSessionKey: infusionSessionKey,
+            status: "IN_PROGRESS",
+            startedAt: infusionStartedAt,
+          },
+        });
       }
 
       await this.writeOrderEvent({
@@ -3387,8 +3424,18 @@ export class OrdersService {
       orderBy: { performedAt: "asc" },
       select: { eventType: true, metadata: true },
     });
-    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    const active = await this.resolveActiveMedicationInfusionSession(
+      facilityId,
+      orderItemId,
+      infusionEvents,
+      routeResolved
+    );
     if (!active) {
+      logInfo("medication_infusion_stop_rejected", {
+        facilityId,
+        orderItemId,
+        reason: "no_active_session",
+      });
       throw new BadRequestException("Aucune perfusion en cours pour cette ligne.");
     }
 
@@ -3397,6 +3444,13 @@ export class OrdersService {
       throw new BadRequestException("Horodatage d’arrêt invalide.");
     }
     if (stoppedAt.getTime() < active.startedAt.getTime()) {
+      logInfo("medication_infusion_stop_rejected", {
+        facilityId,
+        orderItemId,
+        reason: "stop_before_start",
+        startedAt: active.startedAt.toISOString(),
+        stoppedAt: stoppedAt.toISOString(),
+      });
       throw new BadRequestException("L’heure d’arrêt ne peut pas précéder le début de perfusion.");
     }
     const durationMinutes = Math.max(
@@ -3625,6 +3679,18 @@ export class OrdersService {
       critical: true,
       metadata: stopMeta,
     });
+
+    if (!ivpbStopLinkage) {
+      await this.prisma.infusionSession.updateMany({
+        where: {
+          facilityId,
+          orderItemId,
+          legacyInfusionSessionKey: active.sessionKey,
+          status: "IN_PROGRESS",
+        },
+        data: { status: "STOPPED", stoppedAt },
+      });
+    }
 
     const refreshed = await this.prisma.orderItem.findFirst({
       where: { id: orderItemId, order: { facilityId } },
