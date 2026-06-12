@@ -7,12 +7,13 @@ import {
   applyDefaultPlannedAdministrationIfNeeded,
   defaultPlannedAdministrationLocal,
   isAdministerToPatientIntent,
+  medicationDirectionQuickPicksForMedicationLine,
   medicationDirectionQuickPicksForRoute,
+  refreshUntouchedPlannedAdministrationLocal,
   MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
   patchMedicationLineWithPlannedAdminRules,
   resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
-  toDatetimeLocalValue,
 } from "./createOrderMedicationDraft";
 
 function medLine(overrides?: Partial<CreateOrderLineItem>): CreateOrderLineItem {
@@ -70,15 +71,27 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
     expect(stripped.formData.items).toHaveLength(1);
   });
 
-  it("defaults planned administration to now for administer-to-patient intent", () => {
+  it("does not default planned administration before facility timezone is known (K10B4)", () => {
     const fixed = new Date("2026-06-03T15:04:00");
     const line = applyDefaultPlannedAdministrationIfNeeded(
       medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
-      undefined,
+      null,
       fixed
     );
-    expect(line.intendedAdministrationAt).toBe(defaultPlannedAdministrationLocal(undefined, fixed));
-    expect(line.intendedAdministrationAt).toBe(toDatetimeLocalValue(fixed));
+    expect(line.intendedAdministrationAt).toBeUndefined();
+    expect(defaultPlannedAdministrationLocal(null, fixed)).toBe("");
+  });
+
+  it("refreshUntouchedPlannedAdministrationLocal replaces stale default when facility TZ loads", () => {
+    const haiti = "America/Port-au-Prince";
+    const fixed = wallClockToUtc(2026, 6, 11, 22, 15, haiti);
+    const stale = medLine({
+      medicationFulfillmentIntent: "ADMINISTER_CHART",
+      intendedAdministrationAt: "2026-06-11T23:34",
+      _plannedAdminAtTouched: false,
+    });
+    const refreshed = refreshUntouchedPlannedAdministrationLocal(stale, haiti, fixed);
+    expect(refreshed.intendedAdministrationAt).toBe("2026-06-11T22:15");
   });
 
   it("defaults planned administration in facility timezone when provided (K10B1)", () => {
@@ -279,11 +292,21 @@ describe("CreateOrderModal medication draft wiring (M1.7B.6)", () => {
     expect(modalSource).toContain("handleClose");
   });
 
-  it("SelectedMedicationItems uses item.route for route-specific directions datalist quick picks", () => {
+  it("SelectedMedicationItems uses fluid-aware direction quick picks (K10B4)", () => {
     const source = readFileSync(join(import.meta.dirname, "SelectedMedicationItems.tsx"), "utf8");
-    expect(source).toContain("medicationDirectionQuickPicksForRoute(item.route)");
+    expect(source).toContain("medicationDirectionQuickPicksForMedicationLine");
     expect(source).toContain("list={lineDirectionsListId}");
     expect(source).toContain("directionQuickPicks");
+    expect(source).toContain("facilityClinicalTimeZoneReady");
+  });
+
+  it("NS IV fluid quick-picks include 100 mL/hr (K10B4)", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVPB",
+      label: "Normal Saline 0.9%",
+      therapeuticClass: "Soluté",
+    });
+    expect(picks).toContain("NS 0.9% at 100 mL/hr");
   });
 
   it("SelectedMedicationItems renders per-line datalist ids for mixed-route orders", () => {

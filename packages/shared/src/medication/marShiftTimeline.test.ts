@@ -3,6 +3,7 @@ import {
   buildMarShiftTimelineCellDisplay,
   buildMarShiftTimelineColumns,
   buildMarShiftTimelineCompletionSummary,
+  buildMarShiftTimelineHover,
   buildMarShiftTimelineTitle,
   formatMarShiftTimelineClinicianInitials,
   formatMarShiftTimelineHourLabel,
@@ -124,6 +125,36 @@ describe("marShiftTimeline (M1.8B.7K.1)", () => {
         administeredByInitials: null,
       })
     ).toBe("EP 17:14 ▶");
+  });
+
+  it("buildMarShiftTimelineCellDisplay shows IV fluid rate and START for due IVPB (K10B.4)", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Normal Saline",
+      doseKind: "IVPB_SESSION",
+      doseStatus: "DUE",
+      route: "IVPB",
+      frequencyCode: "NOW",
+      requiresWitness: false,
+      directionsSig: "NS 0.9% at 100 mL/hr",
+    });
+    expect(display.primaryText).toBe("NS 0.9%");
+    expect(display.secondaryText).toBe("100 mL/hr");
+    expect(display.tertiaryText).toBe("START");
+  });
+
+  it("buildMarShiftTimelineHover exposes parsed infusion rate (K10B.4)", () => {
+    const hover = buildMarShiftTimelineHover({
+      medicationLabel: "Normal Saline",
+      scheduledAt: new Date("2026-06-11T14:07:00.000Z"),
+      doseAmount: "0.9% 1 L",
+      route: "IVPB",
+      requiresWitness: false,
+      doseStatus: "DUE",
+      directionsSig: "NS 0.9% at 100 mL/hr",
+      facilityTimeZone: "America/Port-au-Prince",
+    });
+    expect(hover.dose).toBe("0.9% 1 L");
+    expect(hover.rate).toBe("100 mL/hr");
   });
 
   it("buildMarShiftTimelineCellDisplay shows INFUSING for in-progress IVPB", () => {

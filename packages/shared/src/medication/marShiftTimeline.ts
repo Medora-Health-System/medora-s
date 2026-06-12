@@ -18,6 +18,10 @@ import {
   type CatalogMedicationLabel,
 } from "../orders/orderItemDisplayLabels.js";
 import type { MedicationCatalogSnapshotJson } from "./medicationOrderScheduleSnapshot.js";
+import {
+  formatIvInfusionRateDisplay,
+  parseIvInfusionRateFromDirections,
+} from "./ivFluidOrderDirections.js";
 
 /**
  * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
@@ -129,6 +133,8 @@ export type MarShiftTimelineHover = {
   due: string;
   dose: string | null;
   route: string | null;
+  /** Parsed IV infusion rate when directions sig includes one (K.10B.4). */
+  rate?: string | null;
   witness: string | null;
   status: string;
 };
@@ -592,8 +598,12 @@ export function buildMarShiftTimelineCellDisplay(input: {
   terminalOutcome?: MarShiftTimelineTerminalOutcome | null;
   marAction?: string | null;
   marNotes?: string | null;
+  /** Order directions / sig — used for IV fluid rate display (K.10B.4). */
+  directionsSig?: string | null;
 }): { primaryText: string; secondaryText: string; tertiaryText: string } {
   const baseLabel = abbreviateMedicationLabelForTimeline(input.medicationLabel ?? "");
+  const parsedRate = parseIvInfusionRateFromDirections(input.directionsSig);
+  const rateLabel = parsedRate ? formatIvInfusionRateDisplay(parsedRate) : null;
   const terminalOutcome =
     input.terminalOutcome ??
     resolveMarShiftTimelineTerminalOutcome({
@@ -655,12 +665,20 @@ export function buildMarShiftTimelineCellDisplay(input: {
 
   if (isIvpbSessionDoseKind(input.doseKind)) {
     if (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") {
-      return { primaryText, secondaryText: "START", tertiaryText };
+      return {
+        primaryText,
+        secondaryText: rateLabel ?? "START",
+        tertiaryText: rateLabel ? "START" : tertiaryText,
+      };
     }
     if (input.doseStatus === "IN_PROGRESS") {
-      return { primaryText, secondaryText: "INFUSING", tertiaryText };
+      return {
+        primaryText,
+        secondaryText: rateLabel ?? "INFUSING",
+        tertiaryText: rateLabel ? "INFUSING" : tertiaryText,
+      };
     }
-    return { primaryText, secondaryText: "IVPB", tertiaryText };
+    return { primaryText, secondaryText: rateLabel ?? "IVPB", tertiaryText };
   }
 
   if (isPrn) {
@@ -709,14 +727,18 @@ export function buildMarShiftTimelineHover(input: {
   requiresWitness: boolean;
   doseStatus: MedicationDoseStatus;
   facilityTimeZone?: string | null;
+  directionsSig?: string | null;
 }): MarShiftTimelineHover {
   const title = input.medicationLabel?.trim() || "Medication";
   const tz = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
+  const parsedRate = parseIvInfusionRateFromDirections(input.directionsSig);
+  const rateLabel = parsedRate ? formatIvInfusionRateDisplay(parsedRate) : null;
   return {
     title,
     due: formatMarShiftTimelineDueTime(input.scheduledAt, tz),
-    dose: input.doseAmount,
+    dose: input.doseAmount?.trim() || null,
     route: input.route,
+    rate: rateLabel,
     witness: input.requiresWitness ? "Required" : null,
     status: doseStatusMarShiftTimelineHoverLabel(input.doseStatus),
   };

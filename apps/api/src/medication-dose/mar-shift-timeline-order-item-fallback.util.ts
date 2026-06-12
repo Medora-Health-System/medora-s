@@ -456,6 +456,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       marAction: terminalMar?.marAction,
       notes: terminalMar?.notes,
     });
+    const directionsSig = orderItem.notes?.trim() || null;
     const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
       medicationLabel,
       doseKind: pseudo.doseKind,
@@ -468,6 +469,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       terminalOutcome,
       marAction: terminalMar?.marAction,
       marNotes: terminalMar?.notes,
+      directionsSig,
     });
     const resolvedTertiaryText =
       tertiaryText.trim() ||
@@ -530,6 +532,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
           requiresWitness,
           doseStatus: parsedStatus,
           facilityTimeZone: input.facilityTimeZone,
+          directionsSig,
         }),
         actions: resolveMarShiftTimelineDrawerActions(clinicalAction),
       },

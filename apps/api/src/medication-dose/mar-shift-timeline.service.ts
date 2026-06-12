@@ -278,6 +278,18 @@ export class MarShiftTimelineService {
         shiftWindow.facilityTimeZone
       );
 
+    const orderItemIdsForDirections = [...new Set(doses.map((d) => d.orderItemId))];
+    const orderItemNotesRows =
+      orderItemIdsForDirections.length > 0
+        ? await this.prisma.orderItem.findMany({
+            where: { id: { in: orderItemIdsForDirections } },
+            select: { id: true, notes: true },
+          })
+        : [];
+    const directionsSigByOrderItemId = new Map(
+      orderItemNotesRows.map((row) => [row.id, row.notes?.trim() || null])
+    );
+
     const doseInstanceOrderItemRows = await this.prisma.medicationDoseInstance.findMany({
       where: {
         facilityId,
@@ -355,6 +367,7 @@ export class MarShiftTimelineService {
         parsedStatus
       );
       const enrichment = administrationEnrichmentByDoseId.get(dose.id) ?? null;
+      const directionsSig = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
       const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
         medicationLabel,
         doseKind: parsedDoseKind ?? dose.doseKind,
@@ -365,6 +378,7 @@ export class MarShiftTimelineService {
         responseDueAt: dose.responseDueAt,
         enrichment,
         facilityTimeZone: shiftWindow.facilityTimeZone,
+        directionsSig,
       });
       const resolvedTertiaryText =
         tertiaryText.trim() ||
@@ -418,6 +432,7 @@ export class MarShiftTimelineService {
           requiresWitness,
           doseStatus: parsedStatus,
           facilityTimeZone: shiftWindow.facilityTimeZone,
+          directionsSig,
         }),
         actions: resolveMarShiftTimelineDrawerActions(clinicalAction),
       };

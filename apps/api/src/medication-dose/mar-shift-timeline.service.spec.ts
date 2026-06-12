@@ -1763,6 +1763,65 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     });
   });
 
+  describe("M1.8B.7K.10B.4 IV fluid rate + refuse/hold response", () => {
+    it("NOW IV fluid fallback shows parsed rate on MAR cell and hover", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+        route: "IVPB" as MedicationRoute,
+        catalogItemId: normalSalineCatalogId,
+        notes: "NS 0.9% at 100 mL/hr",
+      });
+      await prisma.orderItem.update({
+        where: { id: orderItem.id },
+        data: { createdAt },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+      });
+
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.primaryText).toBe("NS 0.9%");
+      expect(item?.secondaryText).toBe("100 mL/hr");
+      expect(item?.tertiaryText).toBe("START");
+      expect(item?.clinicalAction).toBe("START_INFUSION");
+      expect(item?.hover.rate).toBe("100 mL/hr");
+    });
+
+    it("bolus IV fluid fallback shows BOLUS secondary on MAR cell", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+        route: "IVPB" as MedicationRoute,
+        catalogItemId: normalSalineCatalogId,
+        notes: "NS 0.9% bolus",
+      });
+      await prisma.orderItem.update({
+        where: { id: orderItem.id },
+        data: { createdAt },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        locale: "en",
+      });
+
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item?.secondaryText).toBe("BOLUS");
+      expect(item?.tertiaryText).toBe("START");
+    });
+  });
+
   describe("M1.8B.7K.10A same-hour placement", () => {
     const haitiTz = "America/Port-au-Prince";
 

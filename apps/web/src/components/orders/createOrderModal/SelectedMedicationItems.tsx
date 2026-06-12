@@ -8,7 +8,10 @@ import {
   medicationSoftSafetyWarningsForOrderLine,
 } from "@/components/medication/MedicationSoftSafetyPanel";
 import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDisplay";
-import { medicationDirectionQuickPicksForRoute } from "./createOrderMedicationDraft";
+import {
+  isAdministerToPatientIntent,
+  medicationDirectionQuickPicksForMedicationLine,
+} from "./createOrderMedicationDraft";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -62,6 +65,7 @@ export function SelectedMedicationItems({
   onPatch,
   onRemove,
   medicationOrderMode = "DEFAULT",
+  facilityClinicalTimeZoneReady = true,
   ivRouteConfirmations,
   erQuantityConfirmations,
   onIvRouteConfirmationChange,
@@ -71,6 +75,7 @@ export function SelectedMedicationItems({
   onPatch: (index: number, patch: Partial<CreateOrderLineItem>) => void;
   onRemove: (index: number) => void;
   medicationOrderMode?: "DEFAULT" | "ER_ADMINISTER_ONLY";
+  facilityClinicalTimeZoneReady?: boolean;
   ivRouteConfirmations?: Record<string, boolean>;
   erQuantityConfirmations?: Record<string, boolean>;
   onIvRouteConfirmationChange?: (lineId: string, confirmed: boolean) => void;
@@ -93,7 +98,12 @@ export function SelectedMedicationItems({
           const needsIvConfirmation = item.route === "IVP" || item.route === "IVPB";
           const needsErQuantityConfirmation = erAdministerOnly && (item.quantity ?? 0) > 1;
           const lineDirectionsListId = `${directionsListIdPrefix}-${item._lineId}`;
-          const directionQuickPicks = medicationDirectionQuickPicksForRoute(item.route);
+          const directionQuickPicks = medicationDirectionQuickPicksForMedicationLine({
+            route: item.route,
+            catalogRoute: item._route,
+            label: item._label ?? item.manualLabel,
+            therapeuticClass: item._safetyCatalog?.therapeuticClass,
+          });
           const highRiskWarning = highRiskMedicationWarning(item, t);
           const scheduleLabel = item._controlledSchedule?.trim()
             ? `${t("createOrderModal.controlledScheduleBadge")} ${item._controlledSchedule.trim()}`
@@ -285,7 +295,17 @@ export function SelectedMedicationItems({
                 <span style={labelSm}>{t("createOrderModal.selectedMedPlannedAdmin")}</span>
                 <input
                   type="datetime-local"
+                  disabled={
+                    isAdministerToPatientIntent(item.medicationFulfillmentIntent) &&
+                    !facilityClinicalTimeZoneReady
+                  }
                   value={item.intendedAdministrationAt ?? ""}
+                  placeholder={
+                    isAdministerToPatientIntent(item.medicationFulfillmentIntent) &&
+                    !facilityClinicalTimeZoneReady
+                      ? t("createOrderModal.selectedMedPlannedAdminLoading")
+                      : undefined
+                  }
                   onChange={(e) =>
                     onPatch(idx, {
                       intendedAdministrationAt: e.target.value ? e.target.value : undefined,

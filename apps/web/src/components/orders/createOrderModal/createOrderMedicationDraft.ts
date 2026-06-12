@@ -1,6 +1,7 @@
 import {
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcDate,
+  medicationDirectionQuickPicksForIvFluid,
   normalizeMedicationRoute,
   parseMedicationFrequencyCode,
   resolveMedicationOrderItemFrequencyCode,
@@ -118,6 +119,23 @@ export function resolveMedicationDirectionQuickPickRoute(
  * Route-aware direction datalist suggestions for medication order entry (M1.8B.7J.6).
  * Does not mutate user-entered directions; suggestions only.
  */
+/** Fluid-aware direction quick-picks when route + label indicate IV solution (K.10B.4). */
+export function medicationDirectionQuickPicksForMedicationLine(input: {
+  route?: MedicationRoute | string | null;
+  catalogRoute?: string | null;
+  label?: string | null;
+  therapeuticClass?: string | null;
+}): readonly string[] {
+  const routeToken = input.route?.trim() || input.catalogRoute?.trim() || null;
+  const fluidPicks = medicationDirectionQuickPicksForIvFluid(
+    routeToken,
+    input.label,
+    input.therapeuticClass
+  );
+  if (fluidPicks) return fluidPicks;
+  return medicationDirectionQuickPicksForRoute(input.route ?? input.catalogRoute);
+}
+
 export function medicationDirectionQuickPicksForRoute(
   route?: MedicationRoute | string | null
 ): readonly string[] {
@@ -153,10 +171,25 @@ export function defaultPlannedAdministrationLocal(
   facilityTimeZone?: string | null,
   now = new Date()
 ): string {
-  if (facilityTimeZone?.trim()) {
-    return clinicalDatetimeLocalFromInstant(now, facilityTimeZone);
-  }
-  return toDatetimeLocalValue(now);
+  const tz = facilityTimeZone?.trim();
+  if (!tz) return "";
+  return clinicalDatetimeLocalFromInstant(now, tz);
+}
+
+/** Force-refresh untouched planned admin when facility timezone becomes available (K.10B.4). */
+export function refreshUntouchedPlannedAdministrationLocal(
+  item: CreateOrderLineItem,
+  facilityTimeZone: string,
+  now = new Date()
+): CreateOrderLineItem {
+  if (!isAdministerToPatientIntent(item.medicationFulfillmentIntent)) return item;
+  if (item._plannedAdminAtTouched) return item;
+  const tz = facilityTimeZone.trim();
+  if (!tz) return item;
+  return {
+    ...item,
+    intendedAdministrationAt: defaultPlannedAdministrationLocal(tz, now),
+  };
 }
 
 export function applyDefaultPlannedAdministrationIfNeeded(
@@ -167,7 +200,9 @@ export function applyDefaultPlannedAdministrationIfNeeded(
   if (!isAdministerToPatientIntent(item.medicationFulfillmentIntent)) return item;
   if (item._plannedAdminAtTouched) return item;
   if (item.intendedAdministrationAt?.trim()) return item;
-  return { ...item, intendedAdministrationAt: defaultPlannedAdministrationLocal(facilityTimeZone, now) };
+  const planned = defaultPlannedAdministrationLocal(facilityTimeZone, now);
+  if (!planned) return item;
+  return { ...item, intendedAdministrationAt: planned };
 }
 
 export function patchMedicationLineWithPlannedAdminRules(

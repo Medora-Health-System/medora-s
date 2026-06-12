@@ -138,6 +138,7 @@ export function FacilityMarShiftTimelineDrawer({
     { label: t("marShiftTimeline.drawer.status"), value: item.hover.status },
     { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
     { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
+    { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
     { label: t("marShiftTimeline.drawer.frequency"), value: item.frequencyCode },
     {
       label: t("marShiftTimeline.drawer.witness"),

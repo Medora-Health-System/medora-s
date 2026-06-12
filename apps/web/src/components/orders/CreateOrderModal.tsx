@@ -30,6 +30,7 @@ import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderMo
 import { newOrderLineId } from "./createOrderModal/types";
 import {
   applyDefaultPlannedAdministrationIfNeeded,
+  refreshUntouchedPlannedAdministrationLocal,
   patchMedicationLineWithPlannedAdminRules,
   resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
@@ -684,7 +685,8 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
-  const { facilityTimeZone } = useFacilityAndRoles();
+  const { facilityTimeZone, facilityClinicalTimeZoneReady } = useFacilityAndRoles();
+  const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
   const careCatalogMatches = useMemo(() => {
@@ -785,24 +787,22 @@ export function CreateOrderModal({
   const prescriberPrefilled = useRef(false);
   const lastAppliedFacilityTzRef = useRef<string | null>(null);
 
-  /** Re-default untouched planned administration when facility TZ loads (K.10B.3). */
+  /** Re-default untouched planned administration when facility TZ loads (K.10B.3 / K.10B.4). */
   useEffect(() => {
     const tz = facilityTimeZone?.trim();
-    if (!tz || lastAppliedFacilityTzRef.current === tz) return;
+    if (!facilityClinicalTimeZoneReady || !tz || lastAppliedFacilityTzRef.current === tz) return;
     lastAppliedFacilityTzRef.current = tz;
     setFormData((fd) => ({
       ...fd,
       items: fd.items.map((it) =>
-        it.catalogItemType === "MEDICATION"
-          ? applyDefaultPlannedAdministrationIfNeeded(it, tz)
-          : it
+        it.catalogItemType === "MEDICATION" ? refreshUntouchedPlannedAdministrationLocal(it, tz) : it
       ),
     }));
     setStagedItems((current) => ({
       ...current,
-      MEDICATION: current.MEDICATION.map((it) => applyDefaultPlannedAdministrationIfNeeded(it, tz)),
+      MEDICATION: current.MEDICATION.map((it) => refreshUntouchedPlannedAdministrationLocal(it, tz)),
     }));
-  }, [facilityTimeZone]);
+  }, [facilityTimeZone, facilityClinicalTimeZoneReady]);
 
   const draftScope = useMemo<ClinicalDraftScope>(
     () => ({
@@ -1352,7 +1352,13 @@ export function CreateOrderModal({
         continue;
       }
 
-        const line = catalogItemToOrderLine(catalogItem, language, t, medicationOrderMode, facilityTimeZone);
+        const line = catalogItemToOrderLine(
+          catalogItem,
+          language,
+          t,
+          medicationOrderMode,
+          plannedAdminFacilityTimeZone
+        );
       if (!line) {
         resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
         continue;
@@ -1568,7 +1574,7 @@ export function CreateOrderModal({
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
         : line;
     if (nextLine.catalogItemType === "MEDICATION") {
-      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine, facilityTimeZone);
+      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine, plannedAdminFacilityTimeZone);
     }
     setFormData((fd) => ({ ...fd, items: [...fd.items, nextLine] }));
   };
@@ -1591,7 +1597,11 @@ export function CreateOrderModal({
   const patchMedItem = (idx: number, patch: Partial<CreateOrderLineItem>) => {
     setFormData((fd) => {
       const next = [...fd.items];
-      let patched = patchMedicationLineWithPlannedAdminRules(next[idx], patch, facilityTimeZone);
+      let patched = patchMedicationLineWithPlannedAdminRules(
+        next[idx],
+        patch,
+        plannedAdminFacilityTimeZone
+      );
       if (erAdministerOnlyMedication) {
         patched = { ...patched, medicationFulfillmentIntent: "ADMINISTER_CHART" as const };
       }
@@ -2835,6 +2845,7 @@ export function CreateOrderModal({
                         onPatch={patchMedItem}
                         onRemove={removeItem}
                         medicationOrderMode={medicationOrderMode}
+                        facilityClinicalTimeZoneReady={facilityClinicalTimeZoneReady}
                         ivRouteConfirmations={ivRouteConfirmations}
                         erQuantityConfirmations={erQuantityConfirmations}
                         onIvRouteConfirmationChange={(lineId, confirmed) =>

@@ -5,6 +5,7 @@ export type MarShiftTimelineHover = {
   due: string;
   dose: string | null;
   route: string | null;
+  rate?: string | null;
   witness: string | null;
   status: string;
 };

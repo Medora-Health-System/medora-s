@@ -39,7 +39,8 @@ export function useFacilityAndRoles() {
    * **active** facility. Defaults to `false` when missing from `/auth/me`.
    */
   const [allowRnLabResultSubmission, setAllowRnLabResultSubmission] = useState(false);
-  const [facilityTimeZone, setFacilityTimeZone] = useState("UTC");
+  /** Null until `/auth/me` resolves facility timezone (K.10B.4 — never default to browser/UTC early). */
+  const [facilityTimeZone, setFacilityTimeZone] = useState<string | null>(null);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -66,6 +67,7 @@ export function useFacilityAndRoles() {
       setFacilities([]);
       setIsPlatformOperator(false);
       setAllowRnLabResultSubmission(false);
+      setFacilityTimeZone(null);
       setReady(true);
       return;
     }
@@ -193,5 +195,11 @@ export function useFacilityAndRoles() {
     allowRnLabResultSubmission,
     /** IANA timezone for clinical display (M1.8B.7K.10B.1). */
     facilityTimeZone,
+    /**
+     * True when planned-administration defaults may use facility wall-clock (K.10B.4).
+     * False while session loads; true with no facilityId when user has no active facility.
+     */
+    facilityClinicalTimeZoneReady:
+      ready && (!facilityId.trim() || Boolean(facilityTimeZone?.trim())),
   };
 }
