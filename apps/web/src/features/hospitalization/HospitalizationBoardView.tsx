@@ -25,6 +25,9 @@ import {
 } from "@/components/medora-card";
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { HospitalBedStatusChip } from "@/components/encounters/BedOperationalStatusChip";
+import { fetchFacilityBedBoard, indexBedBoardByKey, type FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import { lookupBedStatusForEncounter } from "@/lib/bedStatusDisplay";
 import {
   canAssignEncounterRoom,
   formatEncounterGovernedRoomDisplay,
@@ -479,6 +482,7 @@ export function HospitalizationBoardView() {
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
   const [roomAssignmentEncounter, setRoomAssignmentEncounter] =
     useState<HospitalisationBoardEncounterRow | null>(null);
+  const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
@@ -535,8 +539,14 @@ export function HospitalizationBoardView() {
       setFetchError(null);
     }
     try {
-      const data = await fetchHospitalisationEncounters(facilityId);
+      const [data, bedBoard] = await Promise.all([
+        fetchHospitalisationEncounters(facilityId),
+        fetchFacilityBedBoard(facilityId).catch(() => null),
+      ]);
       setEncounters(data || []);
+      if (bedBoard) {
+        setBedIndex(indexBedBoardByKey(bedBoard));
+      }
     } catch (error) {
       console.error("Failed to load hospitalisation board:", error);
       setFetchError(t("hospitalizationBoard.loadListError"));
@@ -1166,6 +1176,15 @@ export function HospitalizationBoardView() {
                 },
                 t
               );
+              const bedStatus =
+                lookupBedStatusForEncounter(
+                  {
+                    roomLabel: encounter.roomLabel,
+                    type: encounter.type ?? "INPATIENT",
+                    admissionSummaryJson: encounter.admissionSummaryJson,
+                  },
+                  bedIndex
+                )?.status ?? null;
               const physName = physicianLabel(encounter);
               const nurseName = nurseLabel(encounter);
               const physLine = physName || t("emergencyTrackboard.unassignedDash");
@@ -1245,6 +1264,7 @@ export function HospitalizationBoardView() {
                             {usesCompactCensus ? (
                               <div style={observationBoardPrimaryBadgeRowStyle(layoutMode)}>
                                 <MedoraCardBadge compact soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
+                                <HospitalBedStatusChip status={bedStatus} compact />
                                 {obs ? (
                                   <>
                                     <ObservationDispositionBoardChips encounter={encounter} t={t} compact />
@@ -1267,6 +1287,7 @@ export function HospitalizationBoardView() {
                                   }}
                                 >
                                   <MedoraCardBadge soft={ACUITY_SOFT[acuity]}>{acuityLabel[acuity]}</MedoraCardBadge>
+                                  <HospitalBedStatusChip status={bedStatus} />
                                 </div>
                                 {obs ? (
                                   <>

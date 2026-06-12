@@ -9,6 +9,7 @@ import { DiagnosesModule } from "../diagnoses/diagnoses.module";
 import { OrdersModule } from "../orders/orders.module";
 import { ObservationOrderTemplateService } from "./observation-order-template.service";
 import { TrackboardModule } from "../trackboard/trackboard.module";
+import { FacilitiesModule } from "../facilities/facilities.module";
 import { BillingClassificationService } from "./billing-classification.service";
 import { FacilityBillingWorkflowService } from "./facility-billing-workflow.service";
 import { BillingExportReadinessService } from "./billing-export-readiness.service";
@@ -21,7 +22,7 @@ import { EncounterNotesService } from "./encounter-notes.service";
 import { ClinicalDocumentationService } from "./clinical-documentation.service";
 
 @Module({
-  imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule],
+  imports: [PrismaModule, DiagnosesModule, OrdersModule, TrackboardModule, FacilitiesModule],
   controllers: [EncountersController],
   providers: [
     EncountersService,

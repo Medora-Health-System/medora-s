@@ -374,6 +374,9 @@ export const encounterRoomUpdateDtoSchema = z.object({
       acceptedRoom: z.string().max(64),
     })
     .optional(),
+  confirmBedStatusOverride: z.boolean().optional(),
+  bedStatusOverrideReasonCode: z.string().trim().max(64).optional(),
+  bedStatusOverrideReasonText: z.string().trim().max(500).optional(),
 });
 
 export type EncounterRoomUpdateDto = z.infer<typeof encounterRoomUpdateDtoSchema>;

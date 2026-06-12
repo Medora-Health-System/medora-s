@@ -31,6 +31,9 @@ import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { erHandoffV1SatisfiesInpatientTransferConfirm, sortRowsByRoomLabel } from "@medora/shared";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { EdBedStatusChip } from "@/components/encounters/BedOperationalStatusChip";
+import { fetchFacilityBedBoard, indexBedBoardByKey, type FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import { lookupBedStatusForEncounter } from "@/lib/bedStatusDisplay";
 import {
   canAssignEncounterRoom,
   formatEncounterGovernedRoomDisplay,
@@ -216,6 +219,7 @@ export function EmergencyTrackboardView() {
   const [roomAssignmentEncounter, setRoomAssignmentEncounter] = useState<OpenEncounterRow | null>(
     null
   );
+  const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
    * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
@@ -263,9 +267,15 @@ export function EmergencyTrackboardView() {
     setLoading(true);
     setFetchError(null);
     try {
-      const data = await fetchOpenEncounters(facilityId);
+      const [data, bedBoard] = await Promise.all([
+        fetchOpenEncounters(facilityId),
+        fetchFacilityBedBoard(facilityId, "ED").catch(() => null),
+      ]);
       const arr = Array.isArray(data) ? data : [];
       setRows(arr as OpenEncounterRow[]);
+      if (bedBoard) {
+        setBedIndex(indexBedBoardByKey(bedBoard));
+      }
     } catch (e) {
       console.error("Failed to load emergency trackboard:", e);
       setFetchError(t("emergencyTrackboard.loadError"));
@@ -584,6 +594,15 @@ export function EmergencyTrackboardView() {
                 },
                 t
               );
+              const bedStatus =
+                lookupBedStatusForEncounter(
+                  {
+                    roomLabel: encounter.roomLabel,
+                    type: encounter.type ?? "EMERGENCY",
+                    admissionSummaryJson: encounter.admissionSummaryJson,
+                  },
+                  bedIndex
+                )?.status ?? null;
               const phys = physicianLabel(encounter);
               const nurse = nurseLabel(encounter);
               const physId = (encounter.physicianAssigned?.id ?? "").trim();
@@ -831,6 +850,7 @@ export function EmergencyTrackboardView() {
                               >
                                 <MedoraCardBadge compact={usesCompactCensus} soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
                               </span>
+                              <EdBedStatusChip status={bedStatus} compact={usesCompactCensus} />
                               {sortieInfirmierOk ? (
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge compact={usesCompactCensus} soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>

@@ -3,23 +3,18 @@
 import React from "react";
 import { useI18n } from "@/lib/i18n";
 
-export function EdRoomOccupancyConfirmModal({
-  requestedRoom,
-  suggestedRoom,
-  occupiedRoom,
+export function BedStatusBlocksConfirmModal({
+  message,
   saving,
   onConfirm,
   onCancel,
 }: {
-  requestedRoom: string;
-  suggestedRoom: string;
-  occupiedRoom?: string;
+  message: string;
   saving?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
-  const displayRoom = occupiedRoom?.trim() || requestedRoom;
 
   return (
     <div
@@ -28,7 +23,7 @@ export function EdRoomOccupancyConfirmModal({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 1000,
+        zIndex: 1001,
         backgroundColor: "rgba(15, 23, 42, 0.45)",
         display: "flex",
         alignItems: "center",
@@ -39,7 +34,7 @@ export function EdRoomOccupancyConfirmModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="ed-room-occupancy-title"
+        aria-labelledby="bed-status-blocks-title"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
@@ -52,17 +47,13 @@ export function EdRoomOccupancyConfirmModal({
         }}
       >
         <h2
-          id="ed-room-occupancy-title"
+          id="bed-status-blocks-title"
           style={{ margin: "0 0 10px 0", fontSize: 17, fontWeight: 700, color: "#0f172a" }}
         >
-          {t("encounterOperational.roomOccupiedTitle")}
+          {t("roomAssignment.bedStatusConflictTitle")}
         </h2>
         <p style={{ margin: "0 0 18px 0", fontSize: 14, color: "#334155", lineHeight: 1.5 }}>
-          {occupiedRoom
-            ? t("roomAssignment.occupancyConflictBody").replace("{occupiedRoom}", displayRoom)
-            : t("encounterOperational.roomOccupiedBody")
-                .replace("{room}", requestedRoom)
-                .replace("{suggestedRoom}", suggestedRoom)}
+          {message}
         </p>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
           <button
@@ -80,7 +71,7 @@ export function EdRoomOccupancyConfirmModal({
               cursor: saving ? "wait" : "pointer",
             }}
           >
-            {t("encounterOperational.roomOccupiedCancel")}
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -97,7 +88,7 @@ export function EdRoomOccupancyConfirmModal({
               cursor: saving ? "wait" : "pointer",
             }}
           >
-            {saving ? t("common.saving") : t("encounterOperational.roomOccupiedConfirm")}
+            {saving ? t("common.saving") : t("roomAssignment.bedStatusConflictConfirm")}
           </button>
         </div>
       </div>

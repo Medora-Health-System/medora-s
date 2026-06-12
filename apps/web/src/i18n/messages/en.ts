@@ -13180,6 +13180,12 @@ export default {
     saveRoom: "Save room",
     saveFailed: "Unable to save room assignment.",
     changeRoomTooltip: "Change room assignment",
+    occupancyConflictBody:
+      "{occupiedRoom} is already assigned to another active encounter. Confirm override to continue.",
+    bedStatusConflictTitle: "Bed status conflict",
+    bedStatusConflictBody:
+      "{bedDisplay} is {statusLabel}. Confirm override to continue.",
+    bedStatusConflictConfirm: "Confirm override",
     noRoomAssigned: "No room assigned",
     unknownUnit: "Care unit",
     units: {
@@ -13195,6 +13201,26 @@ export default {
       CLEANING: "Cleaning",
       CLINICAL_ISOLATION: "Clinical isolation",
       OTHER: "Other",
+    },
+  },
+  bedStatus: {
+    AVAILABLE: "Available",
+    OCCUPIED: "Occupied",
+    DIRTY: "Needs cleaning",
+    CLEANING: "Cleaning",
+    RESERVED: "Reserved",
+    BLOCKED: "Blocked",
+    TRANSFER_PENDING: "Transfer pending",
+    DISCHARGE_PENDING: "Discharge pending",
+    edSimplified: {
+      AVAILABLE: "Available",
+      OCCUPIED: "Occupied",
+      DIRTY: "Blocked",
+      CLEANING: "Blocked",
+      RESERVED: "Blocked",
+      BLOCKED: "Blocked",
+      TRANSFER_PENDING: "Occupied",
+      DISCHARGE_PENDING: "Occupied",
     },
   },
   encounterOperational: {

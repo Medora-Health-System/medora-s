@@ -13187,6 +13187,12 @@ export default {
     saveRoom: "Enregistrer la salle",
     saveFailed: "Impossible d'enregistrer l'attribution de salle.",
     changeRoomTooltip: "Modifier l'assignation de chambre",
+    occupancyConflictBody:
+      "{occupiedRoom} est déjà assignée à une autre rencontre active. Confirmez le remplacement pour continuer.",
+    bedStatusConflictTitle: "Statut de chambre",
+    bedStatusConflictBody:
+      "{bedDisplay} est {statusLabel}. Confirmez le remplacement pour continuer.",
+    bedStatusConflictConfirm: "Confirmer le remplacement",
     noRoomAssigned: "Aucune chambre assignée",
     unknownUnit: "Unité de soins",
     units: {
@@ -13202,6 +13208,26 @@ export default {
       CLEANING: "Nettoyage",
       CLINICAL_ISOLATION: "Isolement clinique",
       OTHER: "Autre",
+    },
+  },
+  bedStatus: {
+    AVAILABLE: "Disponible",
+    OCCUPIED: "Occupée",
+    DIRTY: "À nettoyer",
+    CLEANING: "Nettoyage",
+    RESERVED: "Réservée",
+    BLOCKED: "Bloquée",
+    TRANSFER_PENDING: "Transfert en attente",
+    DISCHARGE_PENDING: "Sortie en attente",
+    edSimplified: {
+      AVAILABLE: "Disponible",
+      OCCUPIED: "Occupée",
+      DIRTY: "Bloquée",
+      CLEANING: "Bloquée",
+      RESERVED: "Bloquée",
+      BLOCKED: "Bloquée",
+      TRANSFER_PENDING: "Occupée",
+      DISCHARGE_PENDING: "Occupée",
     },
   },
   encounterOperational: {

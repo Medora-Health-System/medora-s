@@ -108,17 +108,22 @@ import {
   legacyErNotesV1DisplayEntries,
   mapEncounterNoteForLegalChart,
   mapClinicalDocumentationEntryForLegalChart,
-  resolveEdRoomAssignmentForSave,
-  ED_CANONICAL_WAITING_ROOM_LABEL,
-  type EdRoomOccupancyRow,
+  type BedOccupancyRow,
   buildRoomLabelForStorage,
   formatGovernedRoomDisplay,
   resolveEncounterCareUnit,
   normalizeEncounterRoomUnitCodeInput,
+  normalizeBedUnitCode,
+  validateBedInPool,
+  formatCanonicalBedDisplay,
+  resolveBedAssignmentForSave,
+  ED_CANONICAL_WAITING_ROOM_LABEL,
+  type EdRoomOccupancyRow,
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
 } from "@medora/shared";
-import { throwEdRoomOccupiedConflict } from "./ed-room-occupancy.util";
+import { throwRoomAlreadyOccupiedConflict } from "./ed-room-occupancy.util";
+import { FacilityBedBoardService } from "../facilities/facility-bed-board.service";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
 import { observationReassessmentClinicalEventPayload } from "../utils/clinical-event-observation-reassessment.util";
 import { evaluateEncounterBillingReadinessFromData } from "../billing/billing-encounter-readiness.util";
@@ -293,7 +298,8 @@ export class EncountersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
-    private readonly trackboardService: TrackboardService
+    private readonly trackboardService: TrackboardService,
+    private readonly bedBoardService: FacilityBedBoardService
   ) {}
 
   async create(patientId: string, facilityId: string, data: EncounterCreateDto, userId?: string, ip?: string, userAgent?: string) {
@@ -331,16 +337,18 @@ export class EncountersService {
 
     let roomLabel = roomLabelRaw;
     if (data.type === EncounterType.EMERGENCY) {
-      const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
-      const resolved = resolveEdRoomAssignmentForSave({
+      const openEncounters = await this.loadOpenBedOccupancyRows(facilityId);
+      const resolved = resolveBedAssignmentForSave({
         facilityId,
         requestedRoomRaw: roomLabelRaw,
+        encounterType: data.type,
+        unitCode: "ED",
         confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
         roomOccupancyOverride: data.roomOccupancyOverride ?? null,
         openEncounters,
       });
       if (!resolved.ok) {
-        throwEdRoomOccupiedConflict(resolved.conflict);
+        throwRoomAlreadyOccupiedConflict(resolved.conflict);
       }
       roomLabel = resolved.roomLabel ?? ED_CANONICAL_WAITING_ROOM_LABEL;
     }
@@ -1727,25 +1735,28 @@ export class EncountersService {
     assertOperationalUpdateAllowedWhenSigned(encounter, data);
     const updateData: Record<string, unknown> = {};
     if (data.roomLabel !== undefined) {
-      if (encounter.type !== EncounterType.INPATIENT) {
-        const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
-        const resolved = resolveEdRoomAssignmentForSave({
-          facilityId,
-          encounterId: id,
-          currentRoomLabel: encounter.roomLabel,
-          requestedRoomRaw: data.roomLabel,
-          confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
-          roomOccupancyOverride: data.roomOccupancyOverride ?? null,
-          openEncounters,
-        });
-        if (!resolved.ok) {
-          throwEdRoomOccupiedConflict(resolved.conflict);
-        }
-        updateData.roomLabel = resolved.roomLabel;
-      } else {
-        updateData.roomLabel =
-          data.roomLabel === null ? null : data.roomLabel?.toString().trim() || null;
+      const openEncounters = await this.loadOpenBedOccupancyRows(facilityId);
+      const unit = normalizeBedUnitCode(
+        resolveEncounterCareUnit({
+          encounterType: encounter.type,
+          admissionSummaryJson: encounter.admissionSummaryJson,
+        })
+      );
+      const resolved = resolveBedAssignmentForSave({
+        facilityId,
+        encounterId: id,
+        encounterType: encounter.type,
+        unitCode: unit,
+        currentRoomLabel: encounter.roomLabel,
+        requestedRoomRaw: data.roomLabel,
+        confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
+        roomOccupancyOverride: data.roomOccupancyOverride ?? null,
+        openEncounters,
+      });
+      if (!resolved.ok) {
+        throwRoomAlreadyOccupiedConflict(resolved.conflict);
       }
+      updateData.roomLabel = resolved.roomLabel;
     }
     let resolvedPhysicianId: string | null = encounter.physicianAssignedUserId ?? null;
     if (data.physicianAssignedUserId !== undefined) {
@@ -1889,38 +1900,62 @@ export class EncountersService {
       previousUnit ??
       (encounter.type === EncounterType.EMERGENCY ? "ED" : encounter.type === EncounterType.INPATIENT ? "MS" : null);
 
-    const requestedStorage =
+    const requestedRoomRaw =
       data.room === undefined
-        ? encounter.roomLabel
+        ? undefined
         : data.room === null || !String(data.room).trim()
           ? null
-          : buildRoomLabelForStorage({
-              room: data.room,
-              unitCode: nextUnit as EncounterCareUnitCode | null,
-              encounterType: encounter.type,
-            });
+          : String(data.room).trim();
 
-    if (requestedStorage === encounter.roomLabel) {
+    const proposedStorage =
+      requestedRoomRaw === undefined
+        ? encounter.roomLabel
+        : buildRoomLabelForStorage({
+            room: requestedRoomRaw,
+            unitCode: nextUnit as EncounterCareUnitCode | null,
+            encounterType: encounter.type,
+          });
+
+    if (proposedStorage === encounter.roomLabel) {
       return this.buildEncounterRoomUpdateResponse(encounter);
     }
 
-    let resolvedRoomLabel = requestedStorage;
-    if (encounter.type !== EncounterType.INPATIENT) {
-      const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
-      const resolved = resolveEdRoomAssignmentForSave({
-        facilityId,
-        encounterId: id,
-        currentRoomLabel: encounter.roomLabel,
-        requestedRoomRaw: requestedStorage,
-        confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
-        roomOccupancyOverride: data.roomOccupancyOverride ?? null,
-        openEncounters,
-      });
-      if (!resolved.ok) {
-        throwEdRoomOccupiedConflict(resolved.conflict);
-      }
-      resolvedRoomLabel = resolved.roomLabel;
+    const bedUnit = normalizeBedUnitCode(nextUnit);
+    if (requestedRoomRaw && bedUnit && !validateBedInPool(bedUnit, requestedRoomRaw)) {
+      throw new BadRequestException(
+        `La chambre ${formatCanonicalBedDisplay(bedUnit, requestedRoomRaw)} n'est pas disponible dans le registre de l'unité.`
+      );
     }
+
+    let blockedStatusAtAssignment: string | null = null;
+    if (requestedRoomRaw && bedUnit) {
+      const bedKey = this.bedBoardService.buildBedKeyForAssignment(bedUnit, requestedRoomRaw);
+      const bedRow = await this.bedBoardService.getEffectiveBedRow(facilityId, bedKey);
+      if (bedRow) {
+        blockedStatusAtAssignment = bedRow.status;
+        this.bedBoardService.assertBedAssignableOrThrow({
+          bedRow,
+          confirmBedStatusOverride: data.confirmBedStatusOverride,
+        });
+      }
+    }
+
+    const openEncounters = await this.loadOpenBedOccupancyRows(facilityId);
+    const resolved = resolveBedAssignmentForSave({
+      facilityId,
+      encounterId: id,
+      encounterType: encounter.type,
+      unitCode: nextUnit as EncounterCareUnitCode | null,
+      currentRoomLabel: encounter.roomLabel,
+      requestedRoomRaw: requestedRoomRaw === undefined ? encounter.roomLabel : requestedRoomRaw,
+      confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
+      roomOccupancyOverride: data.roomOccupancyOverride ?? null,
+      openEncounters,
+    });
+    if (!resolved.ok) {
+      throwRoomAlreadyOccupiedConflict(resolved.conflict);
+    }
+    const resolvedRoomLabel = resolved.roomLabel;
 
     const u = await this.prisma.encounter.updateMany({
       where: { id, facilityId, version: encounter.version },
@@ -1959,6 +1994,21 @@ export class EncountersService {
         unitTo: nextUnit,
         reasonCode: data.reason ?? null,
         reasonOther: data.reasonOther?.trim() || null,
+        ...(data.confirmOccupiedRoomAssignment || data.roomOccupancyOverride
+          ? {
+              override: true,
+              overrideRequestedRoom: data.roomOccupancyOverride?.requestedRoom ?? null,
+              overrideAcceptedRoom: data.roomOccupancyOverride?.acceptedRoom ?? null,
+            }
+          : {}),
+        ...(data.confirmBedStatusOverride
+          ? {
+              bedStatusOverride: true,
+              overrideReasonCode: data.bedStatusOverrideReasonCode ?? null,
+              overrideReasonText: data.bedStatusOverrideReasonText ?? null,
+              blockedStatusOverridden: blockedStatusAtAssignment,
+            }
+          : {}),
         ...(encounter.providerDocumentationStatus === "SIGNED"
           ? { postSignModification: true }
           : {}),
@@ -1987,21 +2037,39 @@ export class EncountersService {
     return res;
   }
 
-  /** Open non-inpatient encounters used for ED numbered-room occupancy checks. */
-  private async loadOpenEdRoomOccupancyRows(facilityId: string): Promise<EdRoomOccupancyRow[]> {
-    return this.prisma.encounter.findMany({
+  /** Open encounters with room assignments for canonical bed occupancy checks (K.10B.10B). */
+  private async loadOpenBedOccupancyRows(facilityId: string): Promise<BedOccupancyRow[]> {
+    const rows = await this.prisma.encounter.findMany({
       where: {
         facilityId,
         status: EncounterStatus.OPEN,
-        type: { not: EncounterType.INPATIENT },
+        roomLabel: { not: null },
       },
       select: {
         id: true,
         facilityId: true,
         roomLabel: true,
         status: true,
+        type: true,
+        admissionSummaryJson: true,
+        patient: { select: { firstName: true, lastName: true } },
       },
     });
+    return rows.map((row) => ({
+      id: row.id,
+      facilityId: row.facilityId,
+      roomLabel: row.roomLabel,
+      status: row.status,
+      type: row.type,
+      admissionSummaryJson: row.admissionSummaryJson,
+      patientFirstName: row.patient?.firstName ?? null,
+      patientLastName: row.patient?.lastName ?? null,
+    }));
+  }
+
+  /** @deprecated Use loadOpenBedOccupancyRows — retained for call-site compatibility. */
+  private async loadOpenEdRoomOccupancyRows(facilityId: string): Promise<EdRoomOccupancyRow[]> {
+    return this.loadOpenBedOccupancyRows(facilityId);
   }
 
   /**

@@ -11,6 +11,9 @@ export type EncounterRoomUpdatePayload = {
     requestedRoom: string;
     acceptedRoom: string;
   };
+  confirmBedStatusOverride?: boolean;
+  bedStatusOverrideReasonCode?: string | null;
+  bedStatusOverrideReasonText?: string | null;
 };
 
 export type EncounterRoomUpdateResponse = {

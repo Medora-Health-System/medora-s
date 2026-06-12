@@ -7,13 +7,16 @@ import {
   type EncounterRoomChangeReasonCode,
 } from "@medora/shared";
 import { EdRoomOccupancyConfirmModal } from "@/components/encounters/EdRoomOccupancyConfirmModal";
+import { BedStatusBlocksConfirmModal } from "@/components/encounters/BedStatusBlocksConfirmModal";
 import { useI18n } from "@/lib/i18n";
 import {
   buildEdRoomOccupancyConfirmPayload,
   checkEdRoomAssignmentConflict,
-  parseEdRoomOccupiedApiError,
+  formatBedStatusBlocksMessage,
+  parseRoomAssignmentApiError,
+  type BedStatusBlocksAssignmentUi,
+  type RoomOccupancyConflictUi,
 } from "@/lib/edRoomAssignment";
-import type { EdRoomOccupancyConflict } from "@medora/shared";
 import { buildEncounterRoomSelectOptions } from "@/lib/encounterRoomOptions";
 import {
   encounterRoomUnitLabel,
@@ -56,7 +59,8 @@ export function RoomAssignmentModal({
   const [reasonOther, setReasonOther] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [occupancyConflict, setOccupancyConflict] = useState<EdRoomOccupancyConflict | null>(null);
+  const [occupancyConflict, setOccupancyConflict] = useState<RoomOccupancyConflictUi | null>(null);
+  const [bedStatusConflict, setBedStatusConflict] = useState<BedStatusBlocksAssignmentUi | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,6 +69,7 @@ export function RoomAssignmentModal({
     setReasonOther("");
     setError(null);
     setOccupancyConflict(null);
+    setBedStatusConflict(null);
   }, [open, encounter]);
 
   const roomOptions = useMemo(
@@ -77,6 +82,9 @@ export function RoomAssignmentModal({
       confirmOccupiedRoomAssignment?: boolean;
       roomOccupancyOverride?: { requestedRoom: string; acceptedRoom: string };
       roomOverride?: string | null;
+      confirmBedStatusOverride?: boolean;
+      bedStatusOverrideReasonCode?: string | null;
+      bedStatusOverrideReasonText?: string | null;
     }) => {
       setSaving(true);
       setError(null);
@@ -90,13 +98,20 @@ export function RoomAssignmentModal({
           reasonOther: reasonCode === "OTHER" ? reasonOther.trim() || null : null,
           confirmOccupiedRoomAssignment: opts?.confirmOccupiedRoomAssignment,
           roomOccupancyOverride: opts?.roomOccupancyOverride,
+          confirmBedStatusOverride: opts?.confirmBedStatusOverride,
+          bedStatusOverrideReasonCode: opts?.bedStatusOverrideReasonCode,
+          bedStatusOverrideReasonText: opts?.bedStatusOverrideReasonText,
         });
         await onSaved(res);
         onClose();
       } catch (err) {
-        const conflict = parseEdRoomOccupiedApiError(err);
-        if (conflict) {
-          setOccupancyConflict(conflict);
+        const conflict = parseRoomAssignmentApiError(err);
+        if (conflict?.kind === "occupancy") {
+          setOccupancyConflict(conflict.conflict);
+          return;
+        }
+        if (conflict?.kind === "bedStatus") {
+          setBedStatusConflict(conflict.conflict);
           return;
         }
         setError(
@@ -342,8 +357,9 @@ export function RoomAssignmentModal({
 
       {occupancyConflict ? (
         <EdRoomOccupancyConfirmModal
-          requestedRoom={occupancyConflict.requestedRoom}
+          requestedRoom={occupancyConflict.occupiedRoom ?? occupancyConflict.requestedRoom}
           suggestedRoom={occupancyConflict.suggestedRoom}
+          occupiedRoom={occupancyConflict.occupiedRoom}
           saving={saving}
           onCancel={() => setOccupancyConflict(null)}
           onConfirm={() => {
@@ -352,6 +368,26 @@ export function RoomAssignmentModal({
               confirmOccupiedRoomAssignment: true,
               roomOccupancyOverride: payload.roomOccupancyOverride,
               roomOverride: payload.roomLabel,
+            });
+          }}
+        />
+      ) : null}
+
+      {bedStatusConflict ? (
+        <BedStatusBlocksConfirmModal
+          message={formatBedStatusBlocksMessage(
+            bedStatusConflict,
+            language === "fr" ? "fr" : "en",
+            t
+          )}
+          saving={saving}
+          onCancel={() => setBedStatusConflict(null)}
+          onConfirm={() => {
+            void performSave({
+              confirmBedStatusOverride: true,
+              bedStatusOverrideReasonCode: reasonCode || "OTHER",
+              bedStatusOverrideReasonText:
+                reasonCode === "OTHER" ? reasonOther.trim() || null : null,
             });
           }}
         />
