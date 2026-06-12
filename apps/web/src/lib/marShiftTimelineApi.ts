@@ -56,6 +56,10 @@ export type MarShiftTimelineCellItem = {
   prnReasonLabel?: string | null;
   prnPainScore?: number | null;
   prnPainLocation?: string | null;
+  isPrnBand?: boolean;
+  prnFrequencyLabel?: string | null;
+  prnLastGivenAt?: string | null;
+  prnNextEligibleAt?: string | null;
   continuousFluidStatus?: string | null;
   fluidRateLabel?: string | null;
   fluidVolumeInfusedMl?: number | null;
@@ -85,6 +89,8 @@ export type MarShiftTimelineRow = {
   roomLabel: string | null;
   assignedNurseUserId: string | null;
   cells: MarShiftTimelineRowCell[];
+  rowKind?: "SCHEDULED" | "PRN";
+  prnBandSubtitle?: string | null;
 };
 
 export type MarShiftTimelineColumn = {

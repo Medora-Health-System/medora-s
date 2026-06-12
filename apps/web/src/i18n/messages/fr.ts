@@ -14498,11 +14498,16 @@ export default {
     painLocationPlaceholder: "Ex. abdomen, thorax…",
     opioidRespiratoryWarning:
       "Aucune fréquence respiratoire documentée pour cette visite. Vérifiez les constantes avant un opioïde PRN.",
+    earlyOverrideWarning:
+      "AVERTISSEMENT : ce médicament PRN est administré avant la prochaine heure admissible. Motif obligatoire.",
+    earlyOverrideReasonLabel: "Motif de l'administration anticipée",
     errors: {
       prn_reason_required: "Un motif PRN est requis avant d'administrer ce médicament.",
       prn_reason_other_required: "Veuillez préciser le motif lorsque « Autre » est sélectionné.",
       prn_pain_score_required:
         "Le score de douleur (0–10) est requis pour ce médicament PRN antalgique.",
+      prn_early_override_required:
+        "Un motif est requis lorsque ce médicament PRN est administré avant la prochaine heure admissible.",
     },
     reasons: {
       mild_pain: "Douleur légère",
@@ -14600,6 +14605,8 @@ export default {
     nurseLine: "Infirmier(ère) : {name}",
     shiftLabel: "Quart :",
     patientRoomColumn: "Patient / Chambre",
+    prnRowLabel: "PRN",
+    prnRowSubtitle: "Médicaments PRN disponibles",
     disabled: "Le quart MAR planifié n'est pas activé pour cet établissement.",
     empty: "Aucun élément MAR planifié pour ce quart.",
     error: "Impossible de charger le quart MAR.",
@@ -14631,6 +14638,9 @@ export default {
       witnessRequired: "Requis",
       status: "Statut",
       frequency: "Fréquence",
+      prnYes: "PRN",
+      prnLastGiven: "Dernière administration",
+      prnNextEligible: "Prochaine administration possible",
       clinicalAction: "Action clinique",
       startedBy: "Démarré par",
       startedAt: "Heure de début",

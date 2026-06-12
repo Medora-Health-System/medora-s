@@ -118,6 +118,8 @@ export function extractMarUserFreeTextNotes(notes: string | null | undefined): s
     if (lower.startsWith("voie :") || lower.startsWith("voie:")) continue;
     if (lower.startsWith("route :") || lower.startsWith("route:")) continue;
     if (trimmed.startsWith(IM_INJECTION_SITE_NOTE_PREFIX)) continue;
+    if (trimmed.startsWith("MAR_PRN_") || trimmed.startsWith("MAR_PAIN_")) continue;
+    if (lower.startsWith("motif prn") || lower.startsWith("prn reason")) continue;
     let isSiteLine = false;
     for (const prefix of NOTE_INJECTION_SITE_PREFIXES) {
       if (lower.startsWith(prefix)) {

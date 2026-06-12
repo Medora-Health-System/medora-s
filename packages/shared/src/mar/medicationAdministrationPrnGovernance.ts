@@ -4,6 +4,7 @@ import {
   type ResolveMedicationOrderItemFrequencyInput,
 } from "../medication/medicationFrequencyNormalization.js";
 import { parseMedicationFrequencyCode } from "../medication/medicationFrequencyCatalog.js";
+import { getMedicationFrequencyDefinition } from "../medication/medicationFrequencyCatalog.js";
 import { extractMarUserFreeTextNotes } from "./medicationAdministrationInjectionSite.js";
 
 /** Machine-readable MAR notes line for PRN reason code. */
@@ -100,6 +101,17 @@ export function parsePrnIndicationFromDirections(
   return null;
 }
 
+const PRN_CLASSIFICATION_MARKERS = [
+  /\bprn\b/i,
+  /\bp\.r\.n\.\b/i,
+  /\bas needed\b/i,
+  /\bselon besoin\b/i,
+  /\bpain\s+prn\b/i,
+  /\bnausea\s+prn\b/i,
+  /\bfever\s+prn\b/i,
+  /\bcough\s+prn\b/i,
+] as const;
+
 /** Whether medication order is PRN (standalone PRN or interval + PRN modifier). */
 export function isPrnMedicationOrder(input: ResolveMedicationOrderItemFrequencyInput): boolean {
   const explicit = parseMedicationFrequencyCode(
@@ -107,7 +119,10 @@ export function isPrnMedicationOrder(input: ResolveMedicationOrderItemFrequencyI
   );
   if (explicit === "PRN") return true;
   const fromSig = normalizeMedicationFrequencyFromSig(input.directionsSig);
-  return fromSig.prnModifier === true;
+  if (fromSig.prnModifier === true) return true;
+  const hay = `${input.frequencyCode ?? ""} ${input.directionsSig ?? ""}`.trim();
+  if (!hay) return false;
+  return PRN_CLASSIFICATION_MARKERS.some((marker) => marker.test(hay));
 }
 
 /** Classify PRN reason group from medication label / class (K.10B.7). */
@@ -435,7 +450,11 @@ export function mergePrnAdministrationIntoMarNotes(input: {
 export type MarPrnAdministrationValidationCode =
   | "prn_reason_required"
   | "prn_reason_other_required"
-  | "prn_pain_score_required";
+  | "prn_pain_score_required"
+  | "prn_early_override_required";
+
+export const MAR_PRN_EARLY_OVERRIDE_REQUIRED_MESSAGE =
+  "A reason is required when administering this PRN medication before the next eligible time.";
 
 /** PRN drawer / timeline item fields from order directions + administration notes. */
 export function resolveMarTimelinePrnDisplayFields(input: {
@@ -467,6 +486,9 @@ export function validatePrnAdministrationForMarCreate(input: {
   prnReasonCode?: string | null;
   prnReasonOther?: string | null;
   painScore?: number | null;
+  proposedAdministeredAt?: Date | string | null;
+  lastAdministeredAt?: Date | string | null;
+  prnEarlyOverrideReason?: string | null;
 }): { code: MarPrnAdministrationValidationCode; message: string } | null {
   if (input.marAction !== "administered") return null;
   if (
@@ -506,5 +528,30 @@ export function validatePrnAdministrationForMarCreate(input: {
     }
   }
 
+  if (input.proposedAdministeredAt) {
+    const lastMs = parsePrnGovernanceInstant(input.lastAdministeredAt);
+    if (lastMs != null) {
+      const def = getMedicationFrequencyDefinition(input.frequencyCode ?? null);
+      const intervalMinutes = def?.intervalMinutes;
+      if (intervalMinutes != null && intervalMinutes > 0) {
+        const nextEligibleMs = lastMs + intervalMinutes * 60_000;
+        const proposedMs = parsePrnGovernanceInstant(input.proposedAdministeredAt);
+        if (proposedMs != null && proposedMs < nextEligibleMs && !input.prnEarlyOverrideReason?.trim()) {
+          return {
+            code: "prn_early_override_required",
+            message: MAR_PRN_EARLY_OVERRIDE_REQUIRED_MESSAGE,
+          };
+        }
+      }
+    }
+  }
+
   return null;
+}
+
+function parsePrnGovernanceInstant(value: Date | string | null | undefined): number | null {
+  if (value == null) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  const t = d.getTime();
+  return Number.isNaN(t) ? null : t;
 }

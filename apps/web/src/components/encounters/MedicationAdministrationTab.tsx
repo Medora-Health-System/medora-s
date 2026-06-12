@@ -82,6 +82,8 @@ import {
   marModalRequiresInjectionSite,
   validateImInjectionSiteForMarCreate,
   validatePrnAdministrationForMarCreate,
+  isPrnAdministrationBeforeNextEligible,
+  MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX,
   resolveMarPrnOrderMetadata,
   marPrnReasonCodesForGroup,
   marPrnAdministrationRequiresPainScore,
@@ -501,6 +503,7 @@ export function MedicationAdministrationTab({
   const [modalRoute, setModalRoute] = useState("");
   const [modalInjectionSite, setModalInjectionSite] = useState<ImInjectionSiteId | "">("");
   const [marPrnReasonCode, setMarPrnReasonCode] = useState<MarPrnReasonCode | "">("");
+  const [marPrnEarlyOverrideReason, setMarPrnEarlyOverrideReason] = useState("");
   const [marPrnReasonOther, setMarPrnReasonOther] = useState("");
   const [marPainScore, setMarPainScore] = useState("");
   const [marPainLocation, setMarPainLocation] = useState("");
@@ -921,6 +924,26 @@ export function MedicationAdministrationTab({
     return null;
   }, [modalItem, adminsByOrderItemId]);
 
+  const modalPrnEarlyAdministration = useMemo(() => {
+    if (!modalItem?.isPrn || modalAction !== "administered") return false;
+    const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
+    const proposed =
+      modalEffectiveTimeLocal.trim()
+        ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? new Date()
+        : new Date();
+    return isPrnAdministrationBeforeNextEligible({
+      proposedAdministeredAt: proposed,
+      lastAdministeredAt: lastAdministeredForModal?.administeredAt ?? null,
+      frequencyCode: modalItem.frequencyCode,
+    });
+  }, [
+    modalItem,
+    modalAction,
+    modalEffectiveTimeLocal,
+    facilityTimeZone,
+    lastAdministeredForModal,
+  ]);
+
   const taskRows = useMemo(() => {
     type RowDraft = {
       orderId: string;
@@ -1327,6 +1350,7 @@ export function MedicationAdministrationTab({
     setModalSubmitError(null);
     setMarPrnReasonCode("");
     setMarPrnReasonOther("");
+    setMarPrnEarlyOverrideReason("");
     setMarPainScore("");
     setMarPainLocation("");
     setMarScheduleTimingReason("");
@@ -1607,6 +1631,12 @@ export function MedicationAdministrationTab({
       return;
     }
     if (modalAction === "administered" && modalItem?.isPrn) {
+      const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
+      const nowForPrn = new Date();
+      const administeredAtForPrn =
+        modalEffectiveTimeLocal.trim()
+          ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? nowForPrn
+          : nowForPrn;
       const prnValidation = validatePrnAdministrationForMarCreate({
         marAction: modalAction,
         frequencyCode: modalItem.frequencyCode,
@@ -1617,6 +1647,9 @@ export function MedicationAdministrationTab({
         prnReasonCode: marPrnReasonCode || null,
         prnReasonOther: marPrnReasonOther,
         painScore: marPainScore.trim() ? Number(marPainScore) : null,
+        proposedAdministeredAt: administeredAtForPrn,
+        lastAdministeredAt: lastAdministeredForModal?.administeredAt ?? null,
+        prnEarlyOverrideReason: marPrnEarlyOverrideReason,
       });
       if (prnValidation) {
         setModalSubmitError(t(`marPrnGovernance.errors.${prnValidation.code}`));
@@ -1901,11 +1934,20 @@ export function MedicationAdministrationTab({
         notes: buildMarNotes(
           modalAction,
           routeLine,
-          marScheduleTimingReason.trim()
-            ? [modalNotes, `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`]
-                .filter((line) => line?.trim())
-                .join("\n")
-            : modalNotes,
+          [
+            marScheduleTimingReason.trim()
+              ? `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`
+              : null,
+            modalAction === "administered" &&
+            modalItem?.isPrn &&
+            marPrnEarlyOverrideReason.trim() &&
+            modalPrnEarlyAdministration
+              ? `${MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX}${marPrnEarlyOverrideReason.trim()}`
+              : null,
+          ]
+            .filter(Boolean)
+            .concat(modalNotes.trim() ? [modalNotes] : [])
+            .join("\n"),
           t,
           requiresInjectionSite ? modalInjectionSite || undefined : undefined
         ),
@@ -3063,6 +3105,48 @@ export function MedicationAdministrationTab({
                   <p style={{ margin: "0 0 10px", fontSize: 13, color: "#475569" }}>
                     {t("marPrnGovernance.orderIndication")}: {modalItem.prnIndication}
                   </p>
+                ) : null}
+                {modalPrnEarlyAdministration ? (
+                  <div
+                    data-testid="mar-prn-early-override-warning"
+                    style={{
+                      marginBottom: 10,
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #f59e0b",
+                      backgroundColor: "#fffbeb",
+                      color: "#92400e",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {t("marPrnGovernance.earlyOverrideWarning")}
+                  </div>
+                ) : null}
+                {modalPrnEarlyAdministration ? (
+                  <>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marPrnGovernance.earlyOverrideReasonLabel")} *
+                    </label>
+                    <textarea
+                      data-testid="mar-prn-early-override-reason"
+                      value={marPrnEarlyOverrideReason}
+                      onChange={(e) => setMarPrnEarlyOverrideReason(e.target.value)}
+                      disabled={submitting}
+                      rows={2}
+                      style={{
+                        width: "100%",
+                        padding: 12,
+                        marginBottom: 10,
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        fontSize: 16,
+                        resize: "vertical",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </>
                 ) : null}
                 <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
                   {t("marPrnGovernance.reasonLabel")} *

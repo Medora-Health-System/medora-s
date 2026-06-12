@@ -41,6 +41,17 @@ import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.servic
 import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
 import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-timeline-order-item-fallback.util";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
+import {
+  appendMarShiftTimelineCellItem,
+  createEmptyMarShiftTimelineRow,
+  isPrnMedicationOrderClassification,
+  loadLastPrnAdministrationByOrderItemId,
+  mergeScheduledAndPrnMarShiftTimelineRows,
+  buildMarShiftTimelinePrnCellTexts,
+  resolveMarShiftTimelinePrnColumnKey,
+  resolveMarShiftTimelinePrnTiming,
+  type MarShiftTimelineRowWithKind,
+} from "./mar-shift-timeline-prn.util";
 
 export type MarShiftTimelineQuery = {
   shiftCode?: MarShiftTimelineShiftCode | string;
@@ -83,6 +94,10 @@ export type MarShiftTimelineCellItem = {
   prnReasonLabel?: string | null;
   prnPainScore?: number | null;
   prnPainLocation?: string | null;
+  isPrnBand?: boolean;
+  prnFrequencyLabel?: string | null;
+  prnLastGivenAt?: string | null;
+  prnNextEligibleAt?: string | null;
   continuousFluidStatus?: string | null;
   fluidRateLabel?: string | null;
   fluidVolumeInfusedMl?: number | null;
@@ -120,6 +135,8 @@ export type MarShiftTimelineRow = {
   roomLabel: string | null;
   assignedNurseUserId: string | null;
   cells: MarShiftTimelineRowCell[];
+  rowKind?: "SCHEDULED" | "PRN";
+  prnBandSubtitle?: string | null;
 };
 
 export type MarShiftTimelineResponse = {
@@ -328,7 +345,49 @@ export class MarShiftTimelineService {
     /** Only suppress fallback when a dose row is visible on this timeline (K.10B.5). */
     const orderItemIdsWithDoseInstances = new Set(doses.map((d) => d.orderItemId));
 
-    const rowMap = new Map<string, MarShiftTimelineRow>();
+    const prnOrderItemIds = [
+      ...new Set(
+        doses
+          .filter((d) =>
+            isPrnMedicationOrderClassification({
+              frequencyCode: parseFrequencySnapshot(d.frequencySnapshotJson)?.frequencyCode ?? null,
+              directionsSig: directionsSigByOrderItemId.get(d.orderItemId) ?? null,
+            })
+          )
+          .map((d) => d.orderItemId)
+      ),
+    ];
+    const lastPrnAdminByOrderItemId = await loadLastPrnAdministrationByOrderItemId(
+      this.prisma,
+      prnOrderItemIds
+    );
+
+    const scheduledRowMap = new Map<string, MarShiftTimelineRowWithKind>();
+    const prnRowMap = new Map<string, MarShiftTimelineRowWithKind>();
+
+    function ensureRowMaps(input: {
+      patientId: string;
+      encounterId: string;
+      patientDisplay: string;
+      roomLabel: string | null;
+      assignedNurseUserId: string | null;
+    }): { scheduled: MarShiftTimelineRowWithKind; prn: MarShiftTimelineRowWithKind } {
+      let scheduled = scheduledRowMap.get(input.encounterId);
+      if (!scheduled) {
+        scheduled = createEmptyMarShiftTimelineRow({ ...input, rowKind: "SCHEDULED" });
+        scheduledRowMap.set(input.encounterId, scheduled);
+      }
+      let prn = prnRowMap.get(input.encounterId);
+      if (!prn) {
+        prn = createEmptyMarShiftTimelineRow({
+          ...input,
+          rowKind: "PRN",
+          patientDisplay: "PRN",
+        });
+        prnRowMap.set(input.encounterId, prn);
+      }
+      return { scheduled, prn };
+    }
 
     for (const dose of doses) {
       const parsedStatus = parseMedicationDoseStatus(dose.doseStatus);
@@ -411,29 +470,91 @@ export class MarShiftTimelineService {
       const clinicalAction =
         fluidEnrichment?.clinicalAction ??
         resolveMarShiftTimelineClinicalAction(parsedDoseKind ?? dose.doseKind, parsedStatus);
-      const columnKey = resolveMarShiftTimelineColumnKey({
-        scheduledAt: placementInstant,
-        dueWindowStartAt: dose.dueWindowStartAt,
-        columns,
-        facilityTimeZone: shiftWindow.facilityTimeZone,
+
+      const frequencyCode = frequencySnapshot?.frequencyCode ?? null;
+      const isPrnBand = isPrnMedicationOrderClassification({
+        frequencyCode,
+        directionsSig,
       });
+
+      const doseValue = orderedSnapshot?.doseValue?.trim();
+      const doseUnit = orderedSnapshot?.doseUnit?.trim();
+      const doseAmount =
+        doseValue && doseUnit
+          ? `${doseValue} ${doseUnit}`
+          : doseValue || doseUnit || orderedSnapshot?.quantity?.trim() || null;
+
+      const prnTiming = isPrnBand
+        ? resolveMarShiftTimelinePrnTiming({
+            orderItemId: dose.orderItemId,
+            frequencyCode,
+            lastAdminByOrderItemId: lastPrnAdminByOrderItemId,
+            enrichmentAdministeredAt: enrichment?.administeredAt ?? null,
+          })
+        : { prnLastGivenAt: null, prnNextEligibleAt: null };
+
+      const columnKey = isPrnBand
+        ? resolveMarShiftTimelinePrnColumnKey({
+            doseStatus: parsedStatus,
+            administeredAt: enrichment?.administeredAt ?? null,
+            prnLastGivenAt: prnTiming.prnLastGivenAt,
+            prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+            referenceAt,
+            columns,
+            facilityTimeZone: shiftWindow.facilityTimeZone,
+          })
+        : resolveMarShiftTimelineColumnKey({
+            scheduledAt: placementInstant,
+            dueWindowStartAt: dose.dueWindowStartAt,
+            columns,
+            facilityTimeZone: shiftWindow.facilityTimeZone,
+          });
       if (!columnKey) continue;
 
       const cellFromFluid = fluidEnrichment?.cellDisplay;
-      const { primaryText, secondaryText, tertiaryText } = cellFromFluid ??
-        buildMarShiftTimelineCellDisplay({
+      let primaryText: string;
+      let secondaryText: string;
+      let tertiaryText: string;
+      let prnFrequencyLabel: string | null = null;
+
+      if (isPrnBand) {
+        const prnCell = buildMarShiftTimelinePrnCellTexts({
           medicationLabel,
-          doseKind: parsedDoseKind ?? dose.doseKind,
-          doseStatus: parsedStatus,
+          doseAmount,
           route,
-          frequencyCode: frequencySnapshot?.frequencyCode ?? null,
-          requiresWitness,
-          responseDueAt: dose.responseDueAt,
-          enrichment,
-          facilityTimeZone: shiftWindow.facilityTimeZone,
+          frequencyCode,
           directionsSig,
-          marNotes: administrationNotes,
+          doseStatus: parsedStatus,
+          administeredAt: enrichment?.administeredAt ?? null,
+          administeredByInitials: enrichment?.administeredByInitials ?? null,
+          prnLastGivenAt: prnTiming.prnLastGivenAt,
+          prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+          facilityTimeZone: shiftWindow.facilityTimeZone,
         });
+        primaryText = prnCell.primaryText;
+        secondaryText = prnCell.secondaryText;
+        tertiaryText = prnCell.tertiaryText;
+        prnFrequencyLabel = prnCell.prnFrequencyLabel;
+      } else {
+        const scheduledDisplay = cellFromFluid ??
+          buildMarShiftTimelineCellDisplay({
+            medicationLabel,
+            doseKind: parsedDoseKind ?? dose.doseKind,
+            doseStatus: parsedStatus,
+            route,
+            frequencyCode,
+            requiresWitness,
+            responseDueAt: dose.responseDueAt,
+            enrichment,
+            facilityTimeZone: shiftWindow.facilityTimeZone,
+            directionsSig,
+            marNotes: administrationNotes,
+          });
+        primaryText = scheduledDisplay.primaryText;
+        secondaryText = scheduledDisplay.secondaryText;
+        tertiaryText = scheduledDisplay.tertiaryText;
+      }
+
       const prnDisplay = resolveMarTimelinePrnDisplayFields({
         directionsSig,
         administrationNotes,
@@ -446,13 +567,6 @@ export class MarShiftTimelineService {
           enrichment,
           facilityTimeZone: shiftWindow.facilityTimeZone,
         });
-
-      const doseValue = orderedSnapshot?.doseValue?.trim();
-      const doseUnit = orderedSnapshot?.doseUnit?.trim();
-      const doseAmount =
-        doseValue && doseUnit
-          ? `${doseValue} ${doseUnit}`
-          : doseValue || doseUnit || orderedSnapshot?.quantity?.trim() || null;
 
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
@@ -478,6 +592,10 @@ export class MarShiftTimelineService {
         prnReasonLabel: prnDisplay.prnReasonLabel,
         prnPainScore: prnDisplay.prnPainScore,
         prnPainLocation: prnDisplay.prnPainLocation,
+        isPrnBand,
+        prnFrequencyLabel,
+        prnLastGivenAt: prnTiming.prnLastGivenAt,
+        prnNextEligibleAt: prnTiming.prnNextEligibleAt,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
         fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
         fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,
@@ -493,7 +611,7 @@ export class MarShiftTimelineService {
         isFluidBolus: fluidEnrichment?.isFluidBolus ?? false,
         doseKind: parsedDoseKind ?? dose.doseKind,
         route,
-        frequencyCode: frequencySnapshot?.frequencyCode ?? null,
+        frequencyCode,
         scheduledAt: dose.scheduledAt.toISOString(),
         dueWindowStartAt: dose.dueWindowStartAt.toISOString(),
         dueWindowEndAt: dose.dueWindowEndAt.toISOString(),
@@ -517,29 +635,18 @@ export class MarShiftTimelineService {
           }),
       };
 
-      const rowKey = dose.encounterId;
-      let row = rowMap.get(rowKey);
-      if (!row) {
-        row = {
-          patientId: dose.encounter.patient.id,
-          encounterId: dose.encounterId,
-          patientDisplay: formatPatientDisplay(
-            dose.encounter.patient.firstName,
-            dose.encounter.patient.lastName
-          ),
-          roomLabel: dose.encounter.roomLabel,
-          assignedNurseUserId: dose.encounter.nurseAssignedUserId,
-          cells: [],
-        };
-        rowMap.set(rowKey, row);
-      }
-
-      let cell = row.cells.find((c) => c.columnKey === columnKey);
-      if (!cell) {
-        cell = { columnKey, items: [] };
-        row.cells.push(cell);
-      }
-      cell.items.push(item);
+      const rowMeta = {
+        patientId: dose.encounter.patient.id,
+        encounterId: dose.encounterId,
+        patientDisplay: formatPatientDisplay(
+          dose.encounter.patient.firstName,
+          dose.encounter.patient.lastName
+        ),
+        roomLabel: dose.encounter.roomLabel,
+        assignedNurseUserId: dose.encounter.nurseAssignedUserId,
+      };
+      const { scheduled, prn } = ensureRowMaps(rowMeta);
+      appendMarShiftTimelineCellItem(isPrnBand ? prn : scheduled, columnKey, item);
     }
 
     const fallbackPlacements = await loadMarShiftTimelineOrderItemFallbackPlacements({
@@ -555,45 +662,32 @@ export class MarShiftTimelineService {
       includeCompleted,
       orderItemIdsWithDoseInstances,
       governanceByCatalogId,
+      lastPrnAdminByOrderItemId,
+      referenceAt,
     });
 
     for (const placement of fallbackPlacements) {
-      const rowKey = placement.encounterId;
-      let row = rowMap.get(rowKey);
-      if (!row) {
-        row = {
-          patientId: placement.patientId,
-          encounterId: placement.encounterId,
-          patientDisplay: placement.patientDisplay,
-          roomLabel: placement.roomLabel,
-          assignedNurseUserId: placement.assignedNurseUserId,
-          cells: [],
-        };
-        rowMap.set(rowKey, row);
-      }
-
-      let cell = row.cells.find((c) => c.columnKey === placement.columnKey);
-      if (!cell) {
-        cell = { columnKey: placement.columnKey, items: [] };
-        row.cells.push(cell);
-      }
-
-      const duplicate = cell.items.some(
+      const isPrnBand = placement.item.isPrnBand === true;
+      const { scheduled, prn } = ensureRowMaps({
+        patientId: placement.patientId,
+        encounterId: placement.encounterId,
+        patientDisplay: placement.patientDisplay,
+        roomLabel: placement.roomLabel,
+        assignedNurseUserId: placement.assignedNurseUserId,
+      });
+      const targetRow = isPrnBand ? prn : scheduled;
+      const existingCell = targetRow.cells.find((c) => c.columnKey === placement.columnKey);
+      const duplicate = existingCell?.items.some(
         (existing) =>
           existing.orderItemId === placement.item.orderItemId &&
           !existing.medicationDoseInstanceId?.trim()
       );
       if (!duplicate) {
-        cell.items.push(placement.item);
+        appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
       }
     }
 
-    const rows = [...rowMap.values()].sort((a, b) => {
-      const roomA = a.roomLabel ?? "";
-      const roomB = b.roomLabel ?? "";
-      if (roomA !== roomB) return roomA.localeCompare(roomB, undefined, { numeric: true });
-      return a.patientDisplay.localeCompare(b.patientDisplay);
-    });
+    const rows = mergeScheduledAndPrnMarShiftTimelineRows(scheduledRowMap, prnRowMap);
 
     return {
       enabled: true,

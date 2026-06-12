@@ -21,6 +21,13 @@ import {
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
+import {
+  buildMarShiftTimelinePrnCellTexts,
+  isPrnMedicationOrderClassification,
+  loadLastPrnAdministrationByOrderItemId,
+  resolveMarShiftTimelinePrnColumnKey,
+  resolveMarShiftTimelinePrnTiming,
+} from "./mar-shift-timeline-prn.util";
 import { OrderStatus } from "@prisma/client";
 import type { PrismaService } from "../prisma/prisma.service";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -255,6 +262,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   includeCompleted: boolean;
   orderItemIdsWithDoseInstances: ReadonlySet<string>;
   governanceByCatalogId: Map<string, MedicationSafetyGovernanceSnapshot>;
+  lastPrnAdminByOrderItemId?: Map<string, { administeredAt: Date }>;
+  referenceAt?: Date;
 }): Promise<MarShiftTimelineOrderItemFallbackPlacement[]> {
   const featureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
   const excludedOrderStatuses: OrderStatus[] = [OrderStatus.CANCELLED];
@@ -294,6 +303,25 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   );
 
   if (candidateItems.length === 0) return [];
+
+  const fallbackPrnOrderItemIds = candidateItems
+    .filter((row) =>
+      isPrnMedicationOrderClassification({
+        frequencyCode: row.frequencyCode,
+        directionsSig: row.notes,
+      })
+    )
+    .map((row) => row.id);
+  const fallbackLastPrnAdmin = await loadLastPrnAdministrationByOrderItemId(
+    input.prisma,
+    fallbackPrnOrderItemIds
+  );
+  const lastPrnAdminByOrderItemId = new Map(input.lastPrnAdminByOrderItemId ?? []);
+  for (const [orderItemId, slice] of fallbackLastPrnAdmin) {
+    if (!lastPrnAdminByOrderItemId.has(orderItemId)) {
+      lastPrnAdminByOrderItemId.set(orderItemId, slice);
+    }
+  }
 
   const catalogIds = [
     ...new Set(
@@ -465,23 +493,47 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     const parsedStatus = parseMedicationDoseStatus(pseudo.doseStatus);
     if (!parsedStatus) continue;
 
-    const columnKey = resolveMarShiftTimelineColumnKey({
-      scheduledAt: pseudo.scheduledAt,
-      dueWindowStartAt: pseudo.dueWindowStartAt,
-      columns: input.columns,
-      facilityTimeZone: input.facilityTimeZone,
+    const directionsSig = orderItem.notes?.trim() || null;
+    const isPrnBand = isPrnMedicationOrderClassification({
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig,
     });
-    if (!columnKey) continue;
 
     const medicationLabel = resolveMedicationLabel(orderItem, catalog, input.displayLocale);
     const enrichment = enrichmentByPseudoId.get(pseudo.id) ?? null;
-    const directionsSig = orderItem.notes?.trim() || null;
     const terminalMar = terminalMarByOrderItemId.get(orderItem.id) ?? null;
     const terminalOutcome = resolveMarShiftTimelineTerminalOutcome({
       marAction: terminalMar?.marAction,
       notes: terminalMar?.notes,
     });
     const administrationNotes = terminalMar?.notes?.trim() || null;
+
+    const prnTiming = isPrnBand
+      ? resolveMarShiftTimelinePrnTiming({
+          orderItemId: orderItem.id,
+          frequencyCode: orderItem.frequencyCode,
+          lastAdminByOrderItemId: lastPrnAdminByOrderItemId,
+          enrichmentAdministeredAt: enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
+        })
+      : { prnLastGivenAt: null, prnNextEligibleAt: null };
+
+    const columnKey = isPrnBand
+      ? resolveMarShiftTimelinePrnColumnKey({
+          doseStatus: parsedStatus,
+          administeredAt: enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
+          prnLastGivenAt: prnTiming.prnLastGivenAt,
+          prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+          referenceAt: input.referenceAt ?? new Date(),
+          columns: input.columns,
+          facilityTimeZone: input.facilityTimeZone,
+        })
+      : resolveMarShiftTimelineColumnKey({
+          scheduledAt: pseudo.scheduledAt,
+          dueWindowStartAt: pseudo.dueWindowStartAt,
+          columns: input.columns,
+          facilityTimeZone: input.facilityTimeZone,
+        });
+    if (!columnKey) continue;
 
     const fluidEnrichment = resolveMarTimelineFluidEnrichment({
       orderItemId: orderItem.id,
@@ -504,21 +556,53 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       resolveMarShiftTimelineClinicalAction(pseudo.doseKind, parsedStatus);
 
     const cellFromFluid = fluidEnrichment?.cellDisplay;
-    const { primaryText, secondaryText, tertiaryText } = cellFromFluid ??
-      buildMarShiftTimelineCellDisplay({
+    let primaryText: string;
+    let secondaryText: string;
+    let tertiaryText: string;
+    let prnFrequencyLabel: string | null = null;
+
+    const doseValue = orderItem.strength?.trim() || null;
+    const doseAmount =
+      doseValue || (orderItem.quantity != null ? String(orderItem.quantity) : null);
+
+    if (isPrnBand) {
+      const prnCell = buildMarShiftTimelinePrnCellTexts({
         medicationLabel,
-        doseKind: pseudo.doseKind,
-        doseStatus: parsedStatus,
+        doseAmount,
         route,
         frequencyCode: orderItem.frequencyCode,
-        requiresWitness,
-        enrichment,
-        facilityTimeZone: input.facilityTimeZone,
-        terminalOutcome,
-        marAction: terminalMar?.marAction,
-        marNotes: administrationNotes,
         directionsSig,
+        doseStatus: parsedStatus,
+        administeredAt: enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
+        administeredByInitials: enrichment?.administeredByInitials ?? null,
+        prnLastGivenAt: prnTiming.prnLastGivenAt,
+        prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+        facilityTimeZone: input.facilityTimeZone,
       });
+      primaryText = prnCell.primaryText;
+      secondaryText = prnCell.secondaryText;
+      tertiaryText = prnCell.tertiaryText;
+      prnFrequencyLabel = prnCell.prnFrequencyLabel;
+    } else {
+      const scheduledDisplay = cellFromFluid ??
+        buildMarShiftTimelineCellDisplay({
+          medicationLabel,
+          doseKind: pseudo.doseKind,
+          doseStatus: parsedStatus,
+          route,
+          frequencyCode: orderItem.frequencyCode,
+          requiresWitness,
+          enrichment,
+          facilityTimeZone: input.facilityTimeZone,
+          terminalOutcome,
+          marAction: terminalMar?.marAction,
+          marNotes: administrationNotes,
+          directionsSig,
+        });
+      primaryText = scheduledDisplay.primaryText;
+      secondaryText = scheduledDisplay.secondaryText;
+      tertiaryText = scheduledDisplay.tertiaryText;
+    }
     const prnDisplay = resolveMarTimelinePrnDisplayFields({
       directionsSig,
       administrationNotes,
@@ -531,10 +615,6 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         enrichment,
         facilityTimeZone: input.facilityTimeZone,
       });
-
-    const doseValue = orderItem.strength?.trim() || null;
-    const doseAmount =
-      doseValue || (orderItem.quantity != null ? String(orderItem.quantity) : null);
 
     const encounter = orderItem.order.encounter;
 
@@ -572,6 +652,10 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         prnReasonLabel: prnDisplay.prnReasonLabel,
         prnPainScore: prnDisplay.prnPainScore,
         prnPainLocation: prnDisplay.prnPainLocation,
+        isPrnBand,
+        prnFrequencyLabel,
+        prnLastGivenAt: prnTiming.prnLastGivenAt,
+        prnNextEligibleAt: prnTiming.prnNextEligibleAt,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
         fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
         fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,

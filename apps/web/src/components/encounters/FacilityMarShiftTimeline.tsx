@@ -17,6 +17,7 @@ import {
   findMarShiftTimelineCellItem,
   formatMarShiftTimelineHeaderClock,
   marShiftTimelineItemStatusStyle,
+  marShiftTimelinePrnRowStyle,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -312,39 +313,71 @@ export function FacilityMarShiftTimeline({
               </tr>
             </thead>
             <tbody>
-              {data.rows.map((row) => (
-                <tr key={row.encounterId} data-testid={`mar-shift-timeline-row-${row.encounterId}`}>
+              {data.rows.map((row) => {
+                const isPrnRow = row.rowKind === "PRN";
+                const rowKey = `${row.encounterId}-${row.rowKind ?? "SCHEDULED"}`;
+                const prnRowShell = isPrnRow ? marShiftTimelinePrnRowStyle() : null;
+                return (
+                <tr
+                  key={rowKey}
+                  data-testid={
+                    isPrnRow
+                      ? `mar-shift-timeline-prn-row-${row.encounterId}`
+                      : `mar-shift-timeline-row-${row.encounterId}`
+                  }
+                  data-row-kind={row.rowKind ?? "SCHEDULED"}
+                >
                   <td
                     style={{
                       position: "sticky",
                       left: 0,
                       zIndex: 1,
-                      backgroundColor: "#fff",
-                      borderBottom: "1px solid #e2e8f0",
-                      borderRight: "1px solid #e2e8f0",
+                      backgroundColor: prnRowShell?.backgroundColor ?? "#fff",
+                      borderBottom: `1px solid ${prnRowShell?.borderColor ?? "#e2e8f0"}`,
+                      borderRight: `1px solid ${prnRowShell?.borderColor ?? "#e2e8f0"}`,
                       padding: "8px 10px",
                       verticalAlign: "top",
                     }}
                   >
-                    <div data-testid="mar-shift-timeline-patient" style={{ fontWeight: 600, lineHeight: 1.3 }}>
-                      {row.patientDisplay}
-                    </div>
-                    <div data-testid="mar-shift-timeline-room" style={{ color: "#64748b", marginTop: 2 }}>
-                      {row.roomLabel?.trim() || t("common.dash")}
-                    </div>
+                    {isPrnRow ? (
+                      <>
+                        <div
+                          data-testid="mar-shift-timeline-prn-label"
+                          style={{ fontWeight: 700, lineHeight: 1.3, color: "#664D03" }}
+                        >
+                          {t("marShiftTimeline.prnRowLabel")}
+                        </div>
+                        <div
+                          data-testid="mar-shift-timeline-prn-subtitle"
+                          style={{ color: "#92400e", marginTop: 2, fontSize: 11 }}
+                        >
+                          {row.prnBandSubtitle?.trim() || t("marShiftTimeline.prnRowSubtitle")}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div data-testid="mar-shift-timeline-patient" style={{ fontWeight: 600, lineHeight: 1.3 }}>
+                          {row.patientDisplay}
+                        </div>
+                        <div data-testid="mar-shift-timeline-room" style={{ color: "#64748b", marginTop: 2 }}>
+                          {row.roomLabel?.trim() || t("common.dash")}
+                        </div>
+                      </>
+                    )}
                   </td>
                   {data.shift.columns.map((column) => {
                     const cell = row.cells.find((c) => c.columnKey === column.key);
                     return (
                       <td
-                        key={`${row.encounterId}-${column.key}`}
+                        key={`${rowKey}-${column.key}`}
                         style={{
-                          borderBottom: "1px solid #e2e8f0",
-                          borderRight: "1px solid #e2e8f0",
+                          borderBottom: `1px solid ${prnRowShell?.borderColor ?? "#e2e8f0"}`,
+                          borderRight: `1px solid ${prnRowShell?.borderColor ?? "#e2e8f0"}`,
                           padding: 4,
                           verticalAlign: "top",
                           minWidth: 72,
                           overflow: "hidden",
+                          backgroundColor: prnRowShell?.backgroundColor,
                         }}
                       >
                         <div
@@ -357,7 +390,17 @@ export function FacilityMarShiftTimeline({
                         >
                           {(cell?.items ?? []).map((item) => {
                             const readOnly = item.readOnly === true || item.doseStatus === "COMPLETED";
-                            const statusStyle = marShiftTimelineItemStatusStyle(item.doseStatus, readOnly);
+                            const statusStyle = marShiftTimelineItemStatusStyle(
+                              item.doseStatus,
+                              readOnly,
+                              item.isPrnBand === true
+                            );
+                            const scheduledPatientDisplay =
+                              data.rows.find(
+                                (candidate) =>
+                                  candidate.encounterId === row.encounterId &&
+                                  (candidate.rowKind ?? "SCHEDULED") === "SCHEDULED"
+                              )?.patientDisplay ?? row.patientDisplay;
                             return (
                               <button
                                 key={`${item.orderItemId}:${item.medicationDoseInstanceId || "fallback"}`}
@@ -365,12 +408,13 @@ export function FacilityMarShiftTimeline({
                                 data-testid="mar-shift-timeline-cell-item"
                                 data-dose-status={item.doseStatus}
                                 data-read-only={readOnly ? "true" : "false"}
+                                data-prn-band={item.isPrnBand ? "true" : "false"}
                                 aria-label={`${item.primaryText} ${item.secondaryText} ${item.tertiaryText ?? ""}`.trim()}
                                 title={buildMarShiftTimelineItemHoverTitle(item)}
                                 onClick={() =>
                                   setDrawerSelection({
                                     item,
-                                    patientDisplay: row.patientDisplay,
+                                    patientDisplay: scheduledPatientDisplay,
                                     roomLabel: row.roomLabel,
                                   })
                                 }
@@ -417,7 +461,8 @@ export function FacilityMarShiftTimeline({
                     );
                   })}
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

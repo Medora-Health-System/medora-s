@@ -14470,10 +14470,15 @@ export default {
     painLocationPlaceholder: "e.g. abdomen, chest…",
     opioidRespiratoryWarning:
       "No respiratory rate documented for this visit. Verify vitals before giving a PRN opioid.",
+    earlyOverrideWarning:
+      "WARNING: This PRN medication is being administered before the next eligible time. Reason required.",
+    earlyOverrideReasonLabel: "Early administration reason",
     errors: {
       prn_reason_required: "A PRN reason is required before administering this medication.",
       prn_reason_other_required: "Please describe the reason when selecting Other.",
       prn_pain_score_required: "Pain score (0–10) is required for this PRN pain medication.",
+      prn_early_override_required:
+        "A reason is required when administering this PRN medication before the next eligible time.",
     },
     reasons: {
       mild_pain: "Mild pain",
@@ -14570,6 +14575,8 @@ export default {
     nurseLine: "Nurse: {name}",
     shiftLabel: "Shift:",
     patientRoomColumn: "Patient / Room",
+    prnRowLabel: "PRN",
+    prnRowSubtitle: "Available PRN meds",
     disabled: "Scheduled MAR timeline is not enabled for this facility.",
     empty: "No scheduled MAR items for this shift.",
     error: "Unable to load MAR shift timeline.",
@@ -14601,6 +14608,9 @@ export default {
       witnessRequired: "Required",
       status: "Status",
       frequency: "Frequency",
+      prnYes: "PRN",
+      prnLastGiven: "Last given",
+      prnNextEligible: "Next eligible",
       clinicalAction: "Clinical action",
       startedBy: "Started by",
       startedAt: "Start time",

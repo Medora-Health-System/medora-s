@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { formatMarShiftTimelineClinicalDateTime } from "@medora/shared";
+import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
 import {
@@ -126,6 +126,16 @@ export function FacilityMarShiftTimelineDrawer({
     facilityTimeZone
   );
 
+  const isPrnItem = item.isPrnBand === true;
+  const prnFrequencyDisplay =
+    item.prnFrequencyLabel?.trim() ||
+    (isPrnItem
+      ? formatMarPrnFrequencyLabel({
+          frequencyCode: item.frequencyCode,
+          directionsSig: item.orderPrnIndication,
+        })
+      : item.frequencyCode);
+
   const detailRows: { label: string; value: string | null | undefined; testId?: string }[] = [
     { label: t("marShiftTimeline.drawer.patient"), value: context.patientDisplay },
     { label: t("marShiftTimeline.drawer.room"), value: context.roomLabel },
@@ -143,7 +153,38 @@ export function FacilityMarShiftTimelineDrawer({
     { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
     { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
     { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
-    { label: t("marShiftTimeline.drawer.frequency"), value: item.frequencyCode },
+    {
+      label: t("marShiftTimeline.drawer.frequency"),
+      value: isPrnItem ? prnFrequencyDisplay : item.frequencyCode,
+      testId: "mar-shift-timeline-drawer-frequency",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnYes"),
+      value: isPrnItem ? t("common.yes") : null,
+      testId: "mar-shift-timeline-drawer-prn-yes",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnLastGiven"),
+      value: item.prnLastGivenAt
+        ? formatMarShiftTimelineClinicalDateTime(
+            item.prnLastGivenAt,
+            dateLocale,
+            facilityTimeZone ?? undefined
+          )
+        : null,
+      testId: "mar-shift-timeline-drawer-prn-last-given",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnNextEligible"),
+      value: item.prnNextEligibleAt
+        ? formatMarShiftTimelineClinicalDateTime(
+            item.prnNextEligibleAt,
+            dateLocale,
+            facilityTimeZone ?? undefined
+          )
+        : null,
+      testId: "mar-shift-timeline-drawer-prn-next-eligible",
+    },
     {
       label: t("marShiftTimeline.drawer.witness"),
       value: item.requiresWitness ? t("marShiftTimeline.drawer.witnessRequired") : null,
