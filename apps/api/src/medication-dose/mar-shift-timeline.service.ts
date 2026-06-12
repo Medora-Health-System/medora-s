@@ -104,6 +104,7 @@ export type MarShiftTimelineResponse = {
   facility: {
     id: string;
     name: string;
+    timeZone: string;
   };
   title: string;
   viewer: MarShiftTimelineViewer;
@@ -112,6 +113,7 @@ export type MarShiftTimelineResponse = {
     label: string;
     startAt: string;
     endAt: string;
+    timeZone: string;
     columns: ReturnType<typeof buildMarShiftTimelineColumns>;
   };
   rows: MarShiftTimelineRow[];
@@ -164,7 +166,7 @@ export class MarShiftTimelineService {
   ): Promise<MarShiftTimelineResponse> {
     const facility = await this.prisma.facility.findFirst({
       where: { id: facilityId, isActive: true },
-      select: { id: true, name: true },
+      select: { id: true, name: true, timezone: true },
     });
     if (!facility) {
       throw new NotFoundException("Facility not found");
@@ -176,16 +178,19 @@ export class MarShiftTimelineService {
       label: "7A–7P",
       startAt: new Date().toISOString(),
       endAt: new Date().toISOString(),
+      timeZone: "UTC",
       columns: [] as ReturnType<typeof buildMarShiftTimelineColumns>,
     };
+
+    const facilityTimeZone = facility.timezone?.trim() || "UTC";
 
     if (!medicationSchedulingFeatureFlagsEnabled(featureFlags)) {
       return {
         enabled: false,
-        facility: { id: facility.id, name: facility.name },
+        facility: { id: facility.id, name: facility.name, timeZone: facilityTimeZone },
         title: buildMarShiftTimelineTitle(facility.name),
         viewer,
-        shift: emptyShift,
+        shift: { ...emptyShift, timeZone: facilityTimeZone },
         rows: [],
       };
     }
@@ -202,12 +207,17 @@ export class MarShiftTimelineService {
         shiftStart: query.shiftStart,
         shiftEnd: query.shiftEnd,
         referenceAt,
+        facilityTimeZone,
       });
     } catch {
       throw new BadRequestException("shiftStart et shiftEnd requis pour le quart personnalisé.");
     }
 
-    const columns = buildMarShiftTimelineColumns(shiftWindow.startAt, shiftWindow.endAt);
+    const columns = buildMarShiftTimelineColumns(
+      shiftWindow.startAt,
+      shiftWindow.endAt,
+      shiftWindow.facilityTimeZone
+    );
 
     const excludedStatuses = ["CANCELLED", "SUPERSEDED"];
     const doses: MedicationPassQueueDoseRow[] = await this.prisma.medicationDoseInstance.findMany({
@@ -254,7 +264,12 @@ export class MarShiftTimelineService {
         : new Map<string, MedicationSafetyGovernanceSnapshot>();
 
     const administrationEnrichmentByDoseId =
-      await loadMarShiftTimelineAdministrationEnrichment(this.prisma, doses, facilityId);
+      await loadMarShiftTimelineAdministrationEnrichment(
+        this.prisma,
+        doses,
+        facilityId,
+        shiftWindow.facilityTimeZone
+      );
 
     const doseInstanceOrderItemRows = await this.prisma.medicationDoseInstance.findMany({
       where: {
@@ -342,6 +357,7 @@ export class MarShiftTimelineService {
         requiresWitness,
         responseDueAt: dose.responseDueAt,
         enrichment,
+        facilityTimeZone: shiftWindow.facilityTimeZone,
       });
       const resolvedTertiaryText =
         tertiaryText.trim() ||
@@ -349,6 +365,7 @@ export class MarShiftTimelineService {
           doseKind: parsedDoseKind ?? dose.doseKind,
           doseStatus: parsedStatus,
           enrichment,
+          facilityTimeZone: shiftWindow.facilityTimeZone,
         });
 
       const doseValue = orderedSnapshot?.doseValue?.trim();
@@ -393,6 +410,7 @@ export class MarShiftTimelineService {
           route,
           requiresWitness,
           doseStatus: parsedStatus,
+          facilityTimeZone: shiftWindow.facilityTimeZone,
         }),
         actions: resolveMarShiftTimelineDrawerActions(clinicalAction),
       };
@@ -428,6 +446,7 @@ export class MarShiftTimelineService {
       shiftStart: shiftWindow.startAt,
       shiftEnd: shiftWindow.endAt,
       columns,
+      facilityTimeZone: shiftWindow.facilityTimeZone,
       encounterId: query.encounterId,
       assignedToUserId: query.assignedToUserId,
       includeCompleted,
@@ -475,7 +494,7 @@ export class MarShiftTimelineService {
 
     return {
       enabled: true,
-      facility: { id: facility.id, name: facility.name },
+      facility: { id: facility.id, name: facility.name, timeZone: shiftWindow.facilityTimeZone },
       title: buildMarShiftTimelineTitle(facility.name),
       viewer,
       shift: {
@@ -483,6 +502,7 @@ export class MarShiftTimelineService {
         label: shiftWindow.label,
         startAt: shiftWindow.startAt.toISOString(),
         endAt: shiftWindow.endAt.toISOString(),
+        timeZone: shiftWindow.facilityTimeZone,
         columns,
       },
       rows,

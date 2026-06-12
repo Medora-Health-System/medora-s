@@ -1,5 +1,8 @@
 import type { CSSProperties } from "react";
-import { resolveMarShiftTimelinePerformerLabel } from "@medora/shared";
+import {
+  getZonedWallClockParts,
+  resolveMarShiftTimelinePerformerLabel,
+} from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
   MarShiftTimelineDrawerAction,
@@ -36,29 +39,45 @@ function padDateTimeLocalPart(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-/** `datetime-local` value from ISO instant (browser local). */
-export function toMarShiftTimelineDateTimeLocalValue(iso: string | null | undefined): string {
+/** `datetime-local` value from ISO instant in facility (or browser) local wall clock. */
+export function toMarShiftTimelineDateTimeLocalValue(
+  iso: string | null | undefined,
+  facilityTimeZone?: string | null
+): string {
   if (!iso?.trim()) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
+
+  const tz = facilityTimeZone?.trim();
+  if (tz) {
+    const parts = getZonedWallClockParts(date, tz);
+    return `${parts.year}-${padDateTimeLocalPart(parts.month)}-${padDateTimeLocalPart(parts.day)}T${padDateTimeLocalPart(parts.hour)}:${padDateTimeLocalPart(parts.minute)}`;
+  }
+
   return `${date.getFullYear()}-${padDateTimeLocalPart(date.getMonth() + 1)}-${padDateTimeLocalPart(date.getDate())}T${padDateTimeLocalPart(date.getHours())}:${padDateTimeLocalPart(date.getMinutes())}`;
 }
 
-export function defaultMarShiftTimelineStartTimeValue(item: MarShiftTimelineCellItem): string {
+export function defaultMarShiftTimelineStartTimeValue(
+  item: MarShiftTimelineCellItem,
+  facilityTimeZone?: string | null
+): string {
   if (item.startedAt?.trim()) {
-    return toMarShiftTimelineDateTimeLocalValue(item.startedAt);
+    return toMarShiftTimelineDateTimeLocalValue(item.startedAt, facilityTimeZone);
   }
   if (item.scheduledAt?.trim()) {
-    return toMarShiftTimelineDateTimeLocalValue(item.scheduledAt);
+    return toMarShiftTimelineDateTimeLocalValue(item.scheduledAt, facilityTimeZone);
   }
-  return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString());
+  return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone);
 }
 
-export function defaultMarShiftTimelineStopTimeValue(item: MarShiftTimelineCellItem): string {
+export function defaultMarShiftTimelineStopTimeValue(
+  item: MarShiftTimelineCellItem,
+  facilityTimeZone?: string | null
+): string {
   if (item.stoppedAt?.trim()) {
-    return toMarShiftTimelineDateTimeLocalValue(item.stoppedAt);
+    return toMarShiftTimelineDateTimeLocalValue(item.stoppedAt, facilityTimeZone);
   }
-  return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString());
+  return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone);
 }
 
 export function formatMarShiftTimelineHeaderClock(date: Date, locale: string): string {
@@ -74,12 +93,17 @@ export function formatMarShiftTimelineHeaderClock(date: Date, locale: string): s
 export function formatMarShiftTimelineDueWindow(
   startIso: string,
   endIso: string,
-  locale: string
+  locale: string,
+  facilityTimeZone?: string | null
 ): string {
-  const formatter = new Intl.DateTimeFormat(locale, {
+  const options: Intl.DateTimeFormatOptions = {
     hour: "numeric",
     minute: "2-digit",
-  });
+  };
+  const tz = facilityTimeZone?.trim();
+  if (tz) options.timeZone = tz;
+
+  const formatter = new Intl.DateTimeFormat(locale, options);
   const start = formatter.format(new Date(startIso));
   const end = formatter.format(new Date(endIso));
   return `${start} – ${end}`;

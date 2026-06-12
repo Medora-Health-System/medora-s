@@ -10,6 +10,7 @@ import {
   resolveMarShiftTimelineColumnKey,
   resolveStandardMarShiftTimelineWindow,
 } from "./marShiftTimeline.js";
+import { wallClockToUtc } from "./medicationDoseExpansionPlanner.js";
 
 describe("marShiftTimeline (M1.8B.7K.1)", () => {
   it("buildMarShiftTimelineTitle uses facility name, not Medora MAR", () => {
@@ -213,5 +214,36 @@ describe("marShiftTimeline (M1.8B.7K.1)", () => {
     });
     expect(display.secondaryText).toBe("STAT");
     expect(display.tertiaryText).toBe("ADMIN");
+  });
+});
+
+describe("marShiftTimeline timezone placement (M1.8B.7K.7)", () => {
+  const haitiTz = "America/Port-au-Prince";
+
+  it("NOW fallback instant at 2:16 PM Haiti maps to 02P column", () => {
+    const createdAt = wallClockToUtc(2026, 6, 11, 14, 16, haitiTz);
+    const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7A_7P", createdAt, haitiTz);
+    const columns = buildMarShiftTimelineColumns(startAt, endAt, haitiTz);
+    const key = resolveMarShiftTimelineColumnKey({
+      scheduledAt: createdAt,
+      dueWindowStartAt: createdAt,
+      columns,
+    });
+    expect(columns.find((c) => c.key === key)?.label).toBe("02P");
+    expect(formatMarShiftTimelineHourLabel(createdAt, haitiTz)).toBe("02P");
+  });
+
+  it("same instant buckets to UTC hour when columns use UTC labels (regression guard)", () => {
+    const createdAt = wallClockToUtc(2026, 6, 11, 14, 16, haitiTz);
+    const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7A_7P", createdAt, "UTC");
+    const utcColumns = buildMarShiftTimelineColumns(startAt, endAt, "UTC");
+    const utcKey = resolveMarShiftTimelineColumnKey({
+      scheduledAt: createdAt,
+      dueWindowStartAt: createdAt,
+      columns: utcColumns,
+    });
+    const utcLabel = formatMarShiftTimelineHourLabel(createdAt, "UTC");
+    expect(utcColumns.find((c) => c.key === utcKey)?.label).toBe(utcLabel);
+    expect(utcLabel).not.toBe("02P");
   });
 });

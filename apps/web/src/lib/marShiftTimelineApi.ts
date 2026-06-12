@@ -75,6 +75,7 @@ export type MarShiftTimelineResponse = {
   facility: {
     id: string;
     name: string;
+    timeZone: string;
   };
   title: string;
   viewer: {
@@ -87,6 +88,7 @@ export type MarShiftTimelineResponse = {
     label: string;
     startAt: string;
     endAt: string;
+    timeZone: string;
     columns: MarShiftTimelineColumn[];
   };
   rows: MarShiftTimelineRow[];

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { formatMarShiftTimelineClinicalDateTime } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
 import {
@@ -26,6 +27,7 @@ export type FacilityMarShiftTimelineDrawerContext = {
 export type FacilityMarShiftTimelineDrawerProps = {
   item: MarShiftTimelineCellItem | null;
   context: FacilityMarShiftTimelineDrawerContext | null;
+  facilityTimeZone?: string | null;
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onClose: () => void;
   onActionSuccess?: () => void | Promise<void>;
@@ -38,6 +40,7 @@ function actionLabelKey(action: MarShiftTimelineDrawerAction): string {
 export function FacilityMarShiftTimelineDrawer({
   item,
   context,
+  facilityTimeZone = null,
   actionHandlers = null,
   onClose,
   onActionSuccess,
@@ -63,12 +66,12 @@ export function FacilityMarShiftTimelineDrawer({
 
   useEffect(() => {
     if (!item) return;
-    setStartTimeValue(defaultMarShiftTimelineStartTimeValue(item));
-    setStopTimeValue(defaultMarShiftTimelineStopTimeValue(item));
+    setStartTimeValue(defaultMarShiftTimelineStartTimeValue(item, facilityTimeZone));
+    setStopTimeValue(defaultMarShiftTimelineStopTimeValue(item, facilityTimeZone));
     setStopNotes("");
     setActionError(null);
     setSubmitting(false);
-  }, [item]);
+  }, [item, facilityTimeZone]);
 
   useEffect(() => {
     if (!item) return;
@@ -81,11 +84,16 @@ export function FacilityMarShiftTimelineDrawer({
 
   if (!item || !context) return null;
 
-  const scheduledDisplay = item.hover.due;
+  const scheduledDisplay = formatMarShiftTimelineClinicalDateTime(
+    item.scheduledAt,
+    dateLocale,
+    facilityTimeZone ?? undefined
+  );
   const dueWindowDisplay = formatMarShiftTimelineDueWindow(
     item.dueWindowStartAt,
     item.dueWindowEndAt,
-    dateLocale
+    dateLocale,
+    facilityTimeZone
   );
 
   const detailRows: { label: string; value: string | null | undefined; testId?: string }[] = [
@@ -117,7 +125,9 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.startedAt"),
-      value: item.startedAt ? new Date(item.startedAt).toLocaleString(dateLocale) : null,
+      value: item.startedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.startedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
       testId: "mar-shift-timeline-drawer-started-at",
     },
     {
@@ -127,7 +137,9 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.stoppedAt"),
-      value: item.stoppedAt ? new Date(item.stoppedAt).toLocaleString(dateLocale) : null,
+      value: item.stoppedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.stoppedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
       testId: "mar-shift-timeline-drawer-stopped-at",
     },
     {
@@ -139,7 +151,9 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.administeredAt"),
-      value: item.administeredAt ? new Date(item.administeredAt).toLocaleString(dateLocale) : null,
+      value: item.administeredAt
+        ? formatMarShiftTimelineClinicalDateTime(item.administeredAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
     },
     {
       label: t("marShiftTimeline.drawer.completionSummary"),

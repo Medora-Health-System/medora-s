@@ -234,6 +234,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   shiftStart: Date;
   shiftEnd: Date;
   columns: readonly MarShiftTimelineColumn[];
+  facilityTimeZone: string;
   encounterId?: string;
   assignedToUserId?: string;
   includeCompleted: boolean;
@@ -382,7 +383,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   const enrichmentByPseudoId = await loadMarShiftTimelineAdministrationEnrichment(
     input.prisma,
     pseudoDoses,
-    input.facilityId
+    input.facilityId,
+    input.facilityTimeZone
   );
 
   const placements: MarShiftTimelineOrderItemFallbackPlacement[] = [];
@@ -421,6 +423,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       frequencyCode: orderItem.frequencyCode,
       requiresWitness,
       enrichment,
+      facilityTimeZone: input.facilityTimeZone,
     });
     const resolvedTertiaryText =
       tertiaryText.trim() ||
@@ -428,6 +431,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         doseKind: pseudo.doseKind,
         doseStatus: parsedStatus,
         enrichment,
+        facilityTimeZone: input.facilityTimeZone,
       });
 
     const doseValue = orderItem.strength?.trim() || null;
@@ -481,6 +485,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
           route,
           requiresWitness,
           doseStatus: parsedStatus,
+          facilityTimeZone: input.facilityTimeZone,
         }),
         actions: resolveMarShiftTimelineDrawerActions(clinicalAction),
       },

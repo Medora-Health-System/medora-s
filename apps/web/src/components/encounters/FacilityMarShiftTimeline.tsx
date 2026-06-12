@@ -363,6 +363,7 @@ export function FacilityMarShiftTimeline({
               }
             : null
         }
+        facilityTimeZone={data?.shift.timeZone ?? data?.facility.timeZone ?? null}
         actionHandlers={actionHandlers}
         onClose={() => setDrawerSelection(null)}
         onActionSuccess={async () => {

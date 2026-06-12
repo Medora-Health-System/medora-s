@@ -199,7 +199,8 @@ function resolveDoseEnrichment(
   dose: MedicationPassQueueDoseRow,
   marRows: MarEnrichmentRow[],
   session: InfusionSessionRow | undefined,
-  roleByUserId: Map<string, string>
+  roleByUserId: Map<string, string>,
+  facilityTimeZone: string
 ): MarShiftTimelineAdministrationEnrichment {
   const parsedStatus = parseMedicationDoseStatus(dose.doseStatus);
   const parsedKind = parseMedicationDoseKind(dose.doseKind);
@@ -231,6 +232,7 @@ function resolveDoseEnrichment(
         stoppedByInitials: null,
         administeredAt: null,
         administeredByInitials: null,
+        facilityTimeZone,
       });
       return enrichment;
     }
@@ -254,6 +256,7 @@ function resolveDoseEnrichment(
         stoppedByInitials: enrichment.stoppedByInitials,
         administeredAt: null,
         administeredByInitials: null,
+        facilityTimeZone,
       });
     }
 
@@ -280,6 +283,7 @@ function resolveDoseEnrichment(
       stoppedByInitials: null,
       administeredAt: enrichment.administeredAt,
       administeredByInitials: enrichment.administeredByInitials,
+      facilityTimeZone,
     });
   }
 
@@ -327,7 +331,8 @@ async function loadPerformerRoleCodes(
 export async function loadMarShiftTimelineAdministrationEnrichment(
   prisma: PrismaService,
   doses: MedicationPassQueueDoseRow[],
-  facilityId?: string
+  facilityId?: string,
+  facilityTimeZone?: string
 ): Promise<Map<string, MarShiftTimelineAdministrationEnrichment>> {
   const result = new Map<string, MarShiftTimelineAdministrationEnrichment>();
   if (doses.length === 0) return result;
@@ -419,7 +424,8 @@ export async function loadMarShiftTimelineAdministrationEnrichment(
         dose,
         merged,
         sessionId ? sessionById.get(sessionId) : undefined,
-        roleByUserId
+        roleByUserId,
+        facilityTimeZone ?? "UTC"
       )
     );
   }

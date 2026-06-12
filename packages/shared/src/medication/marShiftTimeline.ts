@@ -1,15 +1,32 @@
 import { isIvpbSessionDoseKind, parseMedicationDoseKind } from "./medicationDoseKind.js";
 import type { MedicationDoseKind } from "./medicationDoseKind.js";
 import {
+  getZonedWallClockParts,
+  wallClockToUtc,
+} from "./medicationDoseExpansionPlanner.js";
+import {
   isTerminalMedicationDoseStatus,
   parseMedicationDoseStatus,
   type MedicationDoseStatus,
 } from "./medicationDoseStatus.js";
 
 /**
- * M1.8B.7K.1 — Facility MAR shift timeline read model (shared contracts).
- * UTC hour boundaries unless a facility timezone is supplied (future refinement).
+ * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
+ * Column labels and shift windows use facility timezone when supplied.
  */
+
+export const MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE = "UTC";
+
+export function normalizeMarShiftTimelineTimeZone(raw: string | null | undefined): string {
+  const tz = raw?.trim();
+  if (!tz) return MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE;
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE;
+  }
+}
 
 export const MAR_SHIFT_TIMELINE_SHIFT_CODES = [
   "6A_6P",
@@ -96,40 +113,55 @@ export function parseMarShiftTimelineShiftCode(
     : null;
 }
 
-function startOfUtcDay(referenceAt: Date): Date {
-  return new Date(
-    Date.UTC(referenceAt.getUTCFullYear(), referenceAt.getUTCMonth(), referenceAt.getUTCDate())
-  );
+function addCalendarDays(year: number, month: number, day: number, days: number) {
+  const d = new Date(Date.UTC(year, month - 1, day + days, 12, 0, 0, 0));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
 }
 
-function addUtcHours(date: Date, hours: number): Date {
-  return new Date(date.getTime() + hours * 3_600_000);
+function zonedDayParts(referenceAt: Date, facilityTimeZone: string) {
+  const parts = getZonedWallClockParts(referenceAt, facilityTimeZone);
+  return { year: parts.year, month: parts.month, day: parts.day, hour: parts.hour };
 }
 
 /**
  * Standard shift windows use 13 hourly columns (e.g. 7A–7P → 07A … 07P).
- * Boundaries are UTC; facility timezone refinement is future work.
+ * Boundaries follow facility-local wall clock when `facilityTimeZone` is set.
  */
 export function resolveStandardMarShiftTimelineWindow(
   shiftCode: Exclude<MarShiftTimelineShiftCode, "CUSTOM">,
-  referenceAt: Date = new Date()
+  referenceAt: Date = new Date(),
+  facilityTimeZone: string = MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE
 ): { startAt: Date; endAt: Date } {
-  const day = startOfUtcDay(referenceAt);
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  let { year, month, day, hour } = zonedDayParts(referenceAt, tz);
 
   switch (shiftCode) {
-    case "6A_6P":
-      return { startAt: addUtcHours(day, 6), endAt: addUtcHours(day, 19) };
-    case "7A_7P":
-      return { startAt: addUtcHours(day, 7), endAt: addUtcHours(day, 20) };
-    case "7P_7A": {
-      const hour = referenceAt.getUTCHours();
-      const base = hour < 8 ? addUtcHours(day, -24) : day;
-      return { startAt: addUtcHours(base, 19), endAt: addUtcHours(base, 32) };
+    case "6A_6P": {
+      const startAt = wallClockToUtc(year, month, day, 6, 0, tz);
+      return { startAt, endAt: new Date(startAt.getTime() + 13 * 3_600_000) };
     }
-    case "12P_12A":
-      return { startAt: addUtcHours(day, 12), endAt: addUtcHours(day, 25) };
-    case "3P_3A":
-      return { startAt: addUtcHours(day, 15), endAt: addUtcHours(day, 28) };
+    case "7A_7P": {
+      const startAt = wallClockToUtc(year, month, day, 7, 0, tz);
+      return { startAt, endAt: new Date(startAt.getTime() + 13 * 3_600_000) };
+    }
+    case "7P_7A": {
+      if (hour < 8) {
+        const prev = addCalendarDays(year, month, day, -1);
+        year = prev.year;
+        month = prev.month;
+        day = prev.day;
+      }
+      const startAt = wallClockToUtc(year, month, day, 19, 0, tz);
+      return { startAt, endAt: new Date(startAt.getTime() + 13 * 3_600_000) };
+    }
+    case "12P_12A": {
+      const startAt = wallClockToUtc(year, month, day, 12, 0, tz);
+      return { startAt, endAt: new Date(startAt.getTime() + 13 * 3_600_000) };
+    }
+    case "3P_3A": {
+      const startAt = wallClockToUtc(year, month, day, 15, 0, tz);
+      return { startAt, endAt: new Date(startAt.getTime() + 13 * 3_600_000) };
+    }
   }
 }
 
@@ -138,13 +170,16 @@ export function resolveMarShiftTimelineWindow(input: {
   shiftStart?: Date | null;
   shiftEnd?: Date | null;
   referenceAt?: Date;
+  facilityTimeZone?: string | null;
 }): {
   code: MarShiftTimelineShiftCode;
   label: string;
   startAt: Date;
   endAt: Date;
+  facilityTimeZone: string;
 } {
   const referenceAt = input.referenceAt ?? new Date();
+  const facilityTimeZone = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
   const parsedCode = parseMarShiftTimelineShiftCode(input.shiftCode ?? undefined);
 
   if (parsedCode === "CUSTOM" || (input.shiftStart && input.shiftEnd)) {
@@ -156,37 +191,53 @@ export function resolveMarShiftTimelineWindow(input: {
       label: MAR_SHIFT_TIMELINE_SHIFT_LABELS.CUSTOM,
       startAt: input.shiftStart,
       endAt: input.shiftEnd,
+      facilityTimeZone,
     };
   }
 
   const code = (parsedCode ?? "7A_7P") as Exclude<MarShiftTimelineShiftCode, "CUSTOM">;
 
-  const window = resolveStandardMarShiftTimelineWindow(code, referenceAt);
+  const window = resolveStandardMarShiftTimelineWindow(code, referenceAt, facilityTimeZone);
   return {
     code,
     label: MAR_SHIFT_TIMELINE_SHIFT_LABELS[code],
     startAt: window.startAt,
     endAt: window.endAt,
+    facilityTimeZone,
   };
 }
 
-/** Formats an hour bucket label (07A, 12P, 01P, 07P, 12A, 01A). */
-export function formatMarShiftTimelineHourLabel(instant: Date): string {
-  const hour = instant.getUTCHours();
+/** Formats an hour bucket label (07A, 12P, 01P, 07P, 12A, 01A) in facility-local time. */
+export function formatMarShiftTimelineHourLabelFromHour(hour: number): string {
   if (hour === 0) return "12A";
   if (hour === 12) return "12P";
   if (hour < 12) return `${String(hour).padStart(2, "0")}A`;
   return `${String(hour - 12).padStart(2, "0")}P`;
 }
 
-export function buildMarShiftTimelineColumns(startAt: Date, endAt: Date): MarShiftTimelineColumn[] {
+/** Formats an hour bucket label (07A, 12P, 01P, 07P, 12A, 01A). */
+export function formatMarShiftTimelineHourLabel(
+  instant: Date,
+  facilityTimeZone: string = MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE
+): string {
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  const parts = getZonedWallClockParts(instant, tz);
+  return formatMarShiftTimelineHourLabelFromHour(parts.hour);
+}
+
+export function buildMarShiftTimelineColumns(
+  startAt: Date,
+  endAt: Date,
+  facilityTimeZone: string = MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE
+): MarShiftTimelineColumn[] {
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
   const columns: MarShiftTimelineColumn[] = [];
   let cursor = new Date(startAt);
   while (cursor < endAt) {
-    const columnEnd = addUtcHours(cursor, 1);
+    const columnEnd = new Date(cursor.getTime() + 3_600_000);
     columns.push({
       key: cursor.toISOString(),
-      label: formatMarShiftTimelineHourLabel(cursor),
+      label: formatMarShiftTimelineHourLabel(cursor, tz),
       startAt: cursor.toISOString(),
       endAt: columnEnd.toISOString(),
     });
@@ -195,10 +246,29 @@ export function buildMarShiftTimelineColumns(startAt: Date, endAt: Date): MarShi
   return columns;
 }
 
-export function formatMarShiftTimelineDueTime(instant: Date): string {
-  const hours = String(instant.getUTCHours()).padStart(2, "0");
-  const minutes = String(instant.getUTCMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+export function formatMarShiftTimelineDueTime(
+  instant: Date,
+  facilityTimeZone: string = MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE
+): string {
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  const parts = getZonedWallClockParts(instant, tz);
+  return `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
+}
+
+/** User-facing clinical date/time for drawer display (M1.8B.7K.7). */
+export function formatMarShiftTimelineClinicalDateTime(
+  instant: Date | string,
+  locale: string,
+  facilityTimeZone: string = MAR_SHIFT_TIMELINE_DEFAULT_TIME_ZONE
+): string {
+  const date = instant instanceof Date ? instant : new Date(instant);
+  if (Number.isNaN(date.getTime())) return "";
+  const tz = normalizeMarShiftTimelineTimeZone(facilityTimeZone);
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
 }
 
 export function doseStatusMarShiftTimelineHoverLabel(status: MedicationDoseStatus): string {
@@ -352,16 +422,18 @@ export function buildMarShiftTimelineCompletionSummary(input: {
   stoppedByInitials: string | null;
   administeredAt: string | null;
   administeredByInitials: string | null;
+  facilityTimeZone?: string | null;
 }): string | null {
+  const tz = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
   if (isIvpbSessionDoseKind(input.doseKind)) {
     if (input.doseStatus === "IN_PROGRESS" && input.startedAt) {
-      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt));
+      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt), tz);
       const initials = input.startedByInitials?.trim();
       return initials ? `${initials} ${startTime} ▶` : `${startTime} ▶`;
     }
     if (input.doseStatus === "COMPLETED" && input.startedAt && input.stoppedAt) {
-      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt));
-      const stopTime = formatMarShiftTimelineDueTime(new Date(input.stoppedAt));
+      const startTime = formatMarShiftTimelineDueTime(new Date(input.startedAt), tz);
+      const stopTime = formatMarShiftTimelineDueTime(new Date(input.stoppedAt), tz);
       const startInitials = input.startedByInitials?.trim();
       const stopInitials = input.stoppedByInitials?.trim();
       if (startInitials && stopInitials) {
@@ -373,7 +445,7 @@ export function buildMarShiftTimelineCompletionSummary(input: {
   }
 
   if (input.doseStatus === "COMPLETED" && input.administeredAt) {
-    const time = formatMarShiftTimelineDueTime(new Date(input.administeredAt));
+    const time = formatMarShiftTimelineDueTime(new Date(input.administeredAt), tz);
     const initials = input.administeredByInitials?.trim();
     return initials ? `${initials} ${time}` : time;
   }
@@ -385,6 +457,7 @@ export function buildMarShiftTimelineTertiaryText(input: {
   doseKind: MedicationDoseKind | string | null | undefined;
   doseStatus: MedicationDoseStatus;
   enrichment?: MarShiftTimelineAdministrationEnrichment | null;
+  facilityTimeZone?: string | null;
 }): string {
   const enrichment = input.enrichment;
   if (enrichment?.completionSummary?.trim()) {
@@ -404,6 +477,7 @@ export function buildMarShiftTimelineTertiaryText(input: {
     stoppedByInitials: enrichment?.stoppedByInitials ?? null,
     administeredAt: enrichment?.administeredAt ?? null,
     administeredByInitials: enrichment?.administeredByInitials ?? null,
+    facilityTimeZone: input.facilityTimeZone,
   }) ?? "";
 }
 
@@ -427,6 +501,7 @@ export function buildMarShiftTimelineCellDisplay(input: {
   requiresWitness: boolean;
   responseDueAt?: Date | string | null;
   enrichment?: MarShiftTimelineAdministrationEnrichment | null;
+  facilityTimeZone?: string | null;
 }): { primaryText: string; secondaryText: string; tertiaryText: string } {
   const baseLabel = abbreviateMedicationLabelForTimeline(input.medicationLabel ?? "");
   const route = input.route?.trim().toUpperCase() ?? "";
@@ -443,6 +518,7 @@ export function buildMarShiftTimelineCellDisplay(input: {
     doseKind: input.doseKind,
     doseStatus: input.doseStatus,
     enrichment: input.enrichment,
+    facilityTimeZone: input.facilityTimeZone,
   });
 
   if (input.requiresWitness) {
@@ -526,11 +602,13 @@ export function buildMarShiftTimelineHover(input: {
   route: string | null;
   requiresWitness: boolean;
   doseStatus: MedicationDoseStatus;
+  facilityTimeZone?: string | null;
 }): MarShiftTimelineHover {
   const title = input.medicationLabel?.trim() || "Medication";
+  const tz = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
   return {
     title,
-    due: formatMarShiftTimelineDueTime(input.scheduledAt),
+    due: formatMarShiftTimelineDueTime(input.scheduledAt, tz),
     dose: input.doseAmount,
     route: input.route,
     witness: input.requiresWitness ? "Required" : null,
