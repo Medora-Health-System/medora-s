@@ -13179,7 +13179,7 @@ export default {
     clearRoom: "Clear room",
     saveRoom: "Save room",
     saveFailed: "Unable to save room assignment.",
-    changeRoomTooltip: "Change room",
+    changeRoomTooltip: "Change room assignment",
     noRoomAssigned: "No room assigned",
     unknownUnit: "Care unit",
     units: {

@@ -74,6 +74,12 @@ import { getPendingCreateOrdersForEncounter, mergeOrders } from "@/lib/offline/p
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { EncounterProcedureCapturePanel } from "@/components/encounters/EncounterProcedureCapturePanel";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import {
+  EncounterGovernedRoomChip,
+  EncounterGovernedRoomInline,
+} from "@/components/encounters/EncounterGovernedRoomChip";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { ObservationEncounterDisplayPill } from "@/components/encounters/ObservationEncounterDisplayPill";
 import { BillingClassificationBadgeReadOnly } from "@/components/encounters/BillingClassificationBadgeReadOnly";
@@ -455,6 +461,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     null
   );
   const [showContinueObservationQuickModal, setShowContinueObservationQuickModal] = useState(false);
+  const [showRoomAssignmentModal, setShowRoomAssignmentModal] = useState(false);
   /** Distingue la 1re ouverture (libellé dédié) des rechargements (ex. après clôture). */
   const encounterHasLoadedOnceRef = useRef(false);
   const quickContextLoadedKeyRef = useRef<string | null>(null);
@@ -1699,6 +1706,14 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
   /** Dossier médical signé : saisie verrouillée (addendum et navigation restent possibles). */
   const isLocked = isEncounterLocked(encounter);
   const isRNOnly = roles.includes("RN") && !isProviderLike;
+  const canAssignRoom =
+    canAssignEncounterRoom(roles) && encounter.status === "OPEN" && !isLocked;
+  const encounterRoomContext = {
+    roomLabel: encounter.roomLabel,
+    type: encounter.type,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+  };
+  const openRoomAssignmentModal = canAssignRoom ? () => setShowRoomAssignmentModal(true) : undefined;
 
   const canAddObsProviderReassessment =
     observationWorkflowActive && encounter.status === "OPEN" && isProviderLike;
@@ -1930,8 +1945,11 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               }}
             >
               <div>
-                <span style={{ color: "#64748b" }}>{t("encounterChrome.labelRoom")}:</span>{" "}
-                {encounter.roomLabel?.trim() || t("common.dash")}
+                <EncounterGovernedRoomInline
+                  encounter={encounterRoomContext}
+                  clickable={canAssignRoom}
+                  onClick={openRoomAssignmentModal}
+                />
               </div>
               {encounter.admittedAt ? (
                 <div>
@@ -2118,6 +2136,13 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                       encounterId={encounterId}
                       enabled={canViewBillingExportReadiness}
                     />
+                    <EncounterGovernedRoomChip
+                      encounter={encounterRoomContext}
+                      clickable={canAssignRoom}
+                      onClick={openRoomAssignmentModal}
+                      alignSelf="center"
+                      compact
+                    />
                   </div>
                 </div>
               </div>
@@ -2161,10 +2186,6 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
                       {formatEncounterChromeDate(encounter.followUpDate, language)}
                     </div>
                   )}
-                  <div>
-                    <span style={{ color: "#64748b" }}>{t("encounterChrome.labelRoom")}:</span>{" "}
-                    {encounter.roomLabel?.trim() || t("common.dash")}
-                  </div>
                   <div>
                     <span style={{ color: "#64748b" }}>{t("encounterChrome.labelAssignedPhysician")}:</span>{" "}
                     {formatEncounterProviderAssigned(encounter)}
@@ -3437,6 +3458,25 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
         onClose={() => setShowContinueObservationQuickModal(false)}
         onSaved={refreshObservationClinicalSurfaces}
       />
+
+      {facilityId && encounter && showRoomAssignmentModal ? (
+        <RoomAssignmentModal
+          open
+          facilityId={facilityId}
+          encounter={{
+            id: encounter.id,
+            roomLabel: encounter.roomLabel,
+            type: encounter.type,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+          }}
+          onClose={() => setShowRoomAssignmentModal(false)}
+          onSaved={(patch) => {
+            setEncounter((prev: typeof encounter) =>
+              prev ? { ...prev, roomLabel: patch.roomLabel ?? prev.roomLabel } : prev
+            );
+          }}
+        />
+      ) : null}
 
       {showCloseConfirmModal && (
         <div

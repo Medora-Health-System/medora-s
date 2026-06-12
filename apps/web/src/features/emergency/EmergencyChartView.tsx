@@ -64,6 +64,9 @@ import {
 } from "@/features/emergency/emergencyRoutes";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import { EmergencyChartSectionJumpNav, type EmergencyChartJumpSection } from "@/features/emergency/EmergencyChartSectionJumpNav";
@@ -206,6 +209,7 @@ export function EmergencyChartView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOperationalPanel, setShowOperationalPanel] = useState(false);
+  const [showRoomAssignmentModal, setShowRoomAssignmentModal] = useState(false);
   const [layoutMode, setLayoutMode] = useState<EmergencyChartLayoutMode>("desktopSplit");
 
   const fid = facilityId || facilityIdFromHook;
@@ -475,9 +479,15 @@ export function EmergencyChartView() {
   const patient = encounter.patient;
   const statusKey = (encounter.status ?? "").trim() || "OPEN";
   const typeKey = (encounter.type ?? "").trim() || "—";
-  const roomDisplay = encounter.roomLabel?.trim() || dash;
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = isEncounterLocked(encounter);
+  const canAssignRoom =
+    canAssignEncounterRoom(roles) && encounter.status === "OPEN" && !isLocked;
+  const encounterRoomContext = {
+    roomLabel: encounter.roomLabel,
+    type: encounter.type,
+    admissionSummaryJson: encounter.admissionSummaryJson,
+  };
   const vitalsQuickEditEnabled =
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
@@ -750,57 +760,14 @@ export function EmergencyChartView() {
                 </div>
 
                 <div style={emergencyChartHeaderRailStyle(layoutMode)}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setShowOperationalPanel((prev) => !prev)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setShowOperationalPanel((prev) => !prev);
-                      }
-                    }}
-                    aria-expanded={showOperationalPanel}
-                    aria-label={t("emergencyWorkspace.operationalRoomAria")}
-                    style={{
-                      padding: "8px 12px",
-                      alignSelf: "flex-end",
-                      cursor: "pointer",
-                      borderRadius: 10,
-                      border: "1px solid #bae6fd",
-                      backgroundColor: "#f0f9ff",
-                      textAlign: "center",
-                      minWidth: 88,
-                      maxWidth: 132,
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 9,
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: "#0369a1",
-                      }}
-                    >
-                      {t("encounterChrome.room")}
-                    </div>
-
-                    <div
-                      style={{
-                        marginTop: 2,
-                        fontSize: 16,
-                        fontWeight: 700,
-                        lineHeight: 1.15,
-                        color: "#0c4a6e",
-                        fontVariantNumeric: "tabular-nums",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      {roomDisplay}
-                    </div>
-                  </div>
+                  <EncounterGovernedRoomChip
+                    encounter={encounterRoomContext}
+                    clickable={canAssignRoom}
+                    onClick={
+                      canAssignRoom && fid ? () => setShowRoomAssignmentModal(true) : undefined
+                    }
+                    labelKey="encounterChrome.room"
+                  />
                   <MedoraCardBadgeRow marginTop={0}>
                     <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>
                     <MedoraCardBadge soft={{ bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" }}>
@@ -1133,6 +1100,25 @@ export function EmergencyChartView() {
           </section>
         </div>
       </div>
+
+      {fid && encounter && showRoomAssignmentModal ? (
+        <RoomAssignmentModal
+          open
+          facilityId={fid}
+          encounter={{
+            id: encounter.id,
+            roomLabel: encounter.roomLabel,
+            type: encounter.type ?? EMERGENCY_TYPE,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+          }}
+          onClose={() => setShowRoomAssignmentModal(false)}
+          onSaved={(patch) => {
+            setEncounter((prev) =>
+              prev ? { ...prev, roomLabel: patch.roomLabel ?? prev.roomLabel } : prev
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }

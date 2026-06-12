@@ -10,13 +10,14 @@ import {
   EmergencyWorkspaceAllergiesCard,
   EmergencyWorkspaceVitalsCard,
 } from "@/features/emergency/EmergencyWorkspaceClinicalStrip";
+import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
+import type { EncounterRoomContext } from "@/lib/governedRoomDisplay";
 import {
   emergencyChartCompactAvatarCircleStyle,
   emergencyChartCompactAvatarClusterStyle,
   emergencyChartCompactBadgeRowStyle,
   emergencyChartCompactClinicalPairGridStyle,
   emergencyChartCompactIdentityRowStyle,
-  emergencyChartCompactRoomChipStyle,
   emergencyChartCompactScrollBodyStyle,
   emergencyChartCompactStickyStripStyle,
 } from "@/features/emergency/emergencyChartCompactTabletHeader";
@@ -58,7 +59,7 @@ export function EmergencyWorkspaceCompactTabletSummary({
   triageLoading,
   fullPatientName,
   complaintLine,
-  roomDisplay,
+  encounterRoom,
   statusKey,
   typeKey,
   billingClassKey,
@@ -101,7 +102,7 @@ export function EmergencyWorkspaceCompactTabletSummary({
   triageLoading: boolean;
   fullPatientName: string;
   complaintLine: string;
-  roomDisplay: string;
+  encounterRoom: EncounterRoomContext;
   statusKey: string;
   typeKey: string;
   billingClassKey: string | null | undefined;
@@ -165,41 +166,14 @@ export function EmergencyWorkspaceCompactTabletSummary({
               {formatPatientAgeSexLine(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null, t)}
             </p>
           </div>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => {
-              if (onRoomClick) {
-                onRoomClick();
-                return;
-              }
-              setShowOperationalPanel((prev) => !prev);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                if (onRoomClick) {
-                  onRoomClick();
-                  return;
-                }
-                setShowOperationalPanel((prev) => !prev);
-              }
-            }}
-            aria-expanded={onRoomClick ? undefined : showOperationalPanel}
-            aria-label={onRoomClick ? roomButtonTitle ?? t("roomAssignment.changeRoomTooltip") : t("emergencyWorkspace.operationalRoomAria")}
-            title={onRoomClick ? roomButtonTitle ?? t("roomAssignment.changeRoomTooltip") : undefined}
-            style={{
-              ...emergencyChartCompactRoomChipStyle(),
-              cursor: onRoomClick ? "pointer" : undefined,
-            }}
-          >
-            <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.06em", color: "#0369a1" }}>
-              {t("printOutput.patientChart.room")}
-            </div>
-            <div style={{ marginTop: 1, fontSize: 14, fontWeight: 700, color: "#0c4a6e", lineHeight: 1.1 }}>
-              {roomDisplay}
-            </div>
-          </div>
+          <EncounterGovernedRoomChip
+            encounter={encounterRoom}
+            clickable={Boolean(onRoomClick)}
+            onClick={onRoomClick}
+            labelKey="printOutput.patientChart.room"
+            compact
+            alignSelf="auto"
+          />
         </div>
         <div style={emergencyChartCompactBadgeRowStyle()}>
           <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>

@@ -13186,8 +13186,8 @@ export default {
     clearRoom: "Effacer la salle",
     saveRoom: "Enregistrer la salle",
     saveFailed: "Impossible d'enregistrer l'attribution de salle.",
-    changeRoomTooltip: "Modifier la salle",
-    noRoomAssigned: "Aucune salle attribuée",
+    changeRoomTooltip: "Modifier l'assignation de chambre",
+    noRoomAssigned: "Aucune chambre assignée",
     unknownUnit: "Unité de soins",
     units: {
       ED: "Urgences",
