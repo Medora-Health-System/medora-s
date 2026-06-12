@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "rm -rf dist tsconfig.build.tsbuildinfo && nest start --watch",
     "postinstall": "prisma generate",
-    "prebuild": "prisma generate",
+    "prebuild": "pnpm --filter @medora/shared build && prisma generate",
     "build": "rm -f tsconfig.build.tsbuildinfo && nest build",
     "start": "node dist/main.js",
     "migrate:deploy": "prisma migrate deploy",

@@ -179,4 +179,49 @@ describe("marShiftTimelineOrderItemFallback (M1.8B.7K.6)", () => {
       })
     ).toBe("IN_PROGRESS");
   });
+
+  it("completed fallback placement uses administeredAt not scheduled time (K.10B.5)", () => {
+    const haiti = "America/Port-au-Prince";
+    const createdAt = wallClockToUtc(2026, 6, 12, 14, 7, haiti);
+    const administeredAt = wallClockToUtc(2026, 6, 12, 16, 10, haiti);
+    expect(
+      resolveMarShiftTimelineOrderItemPlacementInstant({
+        createdAt,
+        intendedAdministrationAt: createdAt,
+        frequencyCode: "NOW",
+        notes: null,
+        administeredAt,
+        useAdministeredPlacement: true,
+      }).toISOString()
+    ).toBe(administeredAt.toISOString());
+  });
+
+  it("useAdministeredPlacement without administeredAt falls back to createdAt (K.10B.5)", () => {
+    const createdAt = new Date("2026-06-11T14:07:00.000Z");
+    expect(
+      resolveMarShiftTimelineOrderItemPlacementInstant({
+        createdAt,
+        intendedAdministrationAt: createdAt,
+        frequencyCode: "NOW",
+        notes: null,
+        administeredAt: null,
+        useAdministeredPlacement: true,
+      }).toISOString()
+    ).toBe(createdAt.toISOString());
+  });
+
+  it("administeredAt ignored when useAdministeredPlacement is false (K.10B.5)", () => {
+    const createdAt = new Date("2026-06-11T14:07:00.000Z");
+    const administeredAt = new Date("2026-06-11T16:10:00.000Z");
+    expect(
+      resolveMarShiftTimelineOrderItemPlacementInstant({
+        createdAt,
+        intendedAdministrationAt: createdAt,
+        frequencyCode: "NOW",
+        notes: null,
+        administeredAt,
+        useAdministeredPlacement: false,
+      }).toISOString()
+    ).toBe(createdAt.toISOString());
+  });
 });

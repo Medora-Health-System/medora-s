@@ -97,13 +97,25 @@ export function isNowStatAutoDefaultPlannedAdminArtifact(input: {
   );
 }
 
-/** Hour-bucket placement for OrderItem fallback rows. */
-export function resolveMarShiftTimelineOrderItemPlacementInstant(input: {
+/** Hour-bucket placement input for OrderItem fallback rows (K.10B.5). */
+export type MarShiftTimelineOrderItemPlacementInstantInput = {
   createdAt: Date | string;
   intendedAdministrationAt: Date | string | null | undefined;
   frequencyCode: string | null | undefined;
   notes: string | null | undefined;
-}): Date {
+  /** When administration completed, column uses actual administered time (K.10B.5). */
+  administeredAt?: Date | string | null | undefined;
+  useAdministeredPlacement?: boolean;
+};
+
+/** Hour-bucket placement for OrderItem fallback rows. */
+export function resolveMarShiftTimelineOrderItemPlacementInstant(
+  input: MarShiftTimelineOrderItemPlacementInstantInput
+): Date {
+  if (input.useAdministeredPlacement && input.administeredAt != null) {
+    const administered = new Date(input.administeredAt);
+    if (!Number.isNaN(administered.getTime())) return administered;
+  }
   const createdAt = new Date(input.createdAt);
   const parsed = parseMedicationFrequencyCode(
     input.frequencyCode == null ? null : String(input.frequencyCode)
