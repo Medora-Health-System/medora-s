@@ -39,7 +39,8 @@ type ZonedParts = {
   minute: number;
 };
 
-function getZonedParts(date: Date, timeZone: string): ZonedParts {
+/** Facility-local wall-clock parts for a UTC instant (shared MAR / dose scheduling). */
+export function getZonedWallClockParts(date: Date, timeZone: string): ZonedParts {
   const dtf = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -77,7 +78,7 @@ export function wallClockToUtc(
 
   let utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
   for (let i = 0; i < 4; i++) {
-    const parts = getZonedParts(new Date(utcGuess), timeZone);
+    const parts = getZonedWallClockParts(new Date(utcGuess), timeZone);
     const diffMinutes =
       (day - parts.day) * 24 * 60 + (hour - parts.hour) * 60 + (minute - parts.minute);
     if (diffMinutes === 0) break;
@@ -122,7 +123,7 @@ function planFixedDailyClockSlots(input: MedicationDoseExpansionPlannerInput): D
   const clockSlots = MEDICATION_DOSE_FIXED_DAILY_CLOCK_SLOTS[dosesPerDay];
   if (!clockSlots) return [];
 
-  const anchorParts = getZonedParts(anchorAt, facilityTimeZone);
+  const anchorParts = getZonedWallClockParts(anchorAt, facilityTimeZone);
   const scheduledTimes: Date[] = [];
 
   for (let dayOffset = 0; dayOffset <= 4; dayOffset++) {
