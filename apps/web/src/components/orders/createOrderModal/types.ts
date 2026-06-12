@@ -2,7 +2,7 @@ export type OrderModalTab = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
 export type CreateOrderModalTab = "ORDER_SET" | OrderModalTab;
 
 export type OrderLineCatalogType = "LAB_TEST" | "IMAGING_STUDY" | "MEDICATION" | "CARE";
-import type { MedicationOrderRoute } from "@medora/shared";
+import type { FluidOrderDraft, MedicationOrderRoute } from "@medora/shared";
 
 export type MedicationRoute = MedicationOrderRoute;
 
@@ -55,6 +55,8 @@ export type CreateOrderLineItem = {
    * manualLabel is localized display snapshot only and must not become billing/reporting identity.
    */
   _enterpriseProcedureId?: string;
+  /** UI-only structured IV fluid order draft (K.10B.8A). */
+  _fluidOrderDraft?: FluidOrderDraft | null;
   /** Snapshot from catalog search at pick time (soft safety rules). */
   _safetyCatalog?: {
     code?: string;
