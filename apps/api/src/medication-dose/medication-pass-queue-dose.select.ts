@@ -21,7 +21,9 @@ export const MEDICATION_PASS_QUEUE_DOSE_SELECT = {
   encounter: {
     select: {
       id: true,
+      type: true,
       roomLabel: true,
+      admissionSummaryJson: true,
       nurseAssignedUserId: true,
       patient: {
         select: {

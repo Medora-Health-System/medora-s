@@ -32,9 +32,21 @@ export function isMarShiftTimelineDrawerReadOnly(item: MarShiftTimelineCellItem)
 
 /** Locate a timeline cell item after refresh (K.10B.2 drawer resync). */
 export function findMarShiftTimelineCellItem(
-  timeline: { rows: { patientDisplay: string; roomLabel: string | null; cells: { items: MarShiftTimelineCellItem[] }[] }[] },
+  timeline: {
+    rows: {
+      patientDisplay: string;
+      roomLabel: string | null;
+      governedRoomDisplay?: string | null;
+      cells: { items: MarShiftTimelineCellItem[] }[];
+    }[];
+  },
   target: Pick<MarShiftTimelineCellItem, "orderItemId" | "medicationDoseInstanceId" | "scheduledAt">
-): { item: MarShiftTimelineCellItem; patientDisplay: string; roomLabel: string | null } | null {
+): {
+  item: MarShiftTimelineCellItem;
+  patientDisplay: string;
+  roomLabel: string | null;
+  governedRoomDisplay?: string | null;
+} | null {
   const orderItemId = target.orderItemId.trim();
   if (!orderItemId) return null;
   const doseId = target.medicationDoseInstanceId?.trim() || "";
@@ -50,6 +62,7 @@ export function findMarShiftTimelineCellItem(
           item,
           patientDisplay: row.patientDisplay,
           roomLabel: row.roomLabel,
+          governedRoomDisplay: row.governedRoomDisplay ?? null,
         };
       }
     }
@@ -61,12 +74,20 @@ export type MarShiftTimelineDrawerSelection = {
   item: MarShiftTimelineCellItem;
   patientDisplay: string;
   roomLabel: string | null;
+  governedRoomDisplay?: string | null;
 };
 
 /** Reconcile open drawer with refreshed timeline; close when item no longer present (K.10B.2). */
 export function reconcileMarShiftTimelineDrawerSelection(
   prev: MarShiftTimelineDrawerSelection | null,
-  timeline: { rows: { patientDisplay: string; roomLabel: string | null; cells: { items: MarShiftTimelineCellItem[] }[] }[] }
+  timeline: {
+    rows: {
+      patientDisplay: string;
+      roomLabel: string | null;
+      governedRoomDisplay?: string | null;
+      cells: { items: MarShiftTimelineCellItem[] }[];
+    }[];
+  }
 ): MarShiftTimelineDrawerSelection | null {
   if (!prev) return null;
   const found = findMarShiftTimelineCellItem(timeline, prev.item);
@@ -75,6 +96,7 @@ export function reconcileMarShiftTimelineDrawerSelection(
     item: found.item,
     patientDisplay: found.patientDisplay,
     roomLabel: found.roomLabel,
+    governedRoomDisplay: found.governedRoomDisplay,
   };
 }
 
