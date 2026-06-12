@@ -43,6 +43,9 @@ export function extractMarSaveErrorMessage(
 
   const raw = err instanceof Error ? err.message : "";
   const stripped = raw.replace(/\s*\([A-Z0-9_]+\)\s*$/, "").trim();
+  if (/\.json is not a function/i.test(stripped) || /is not a function.*\.json/i.test(stripped)) {
+    return fallback;
+  }
   const normalized = normalizeUserFacingError(stripped || null, language);
   if (normalized && normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR)) {
     return normalized;

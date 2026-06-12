@@ -78,41 +78,47 @@ export function formatIvInfusionRateDisplay(result: IvInfusionRateParseResult): 
   return "WIDE OPEN";
 }
 
-export const IV_FLUID_NS_QUICK_PICKS = [
-  "NS 0.9% at 100 mL/hr",
-  "NS 0.9% at 125 mL/hr",
-  "NS 0.9% at 150 mL/hr",
-  "NS 0.9% at 200 mL/hr",
-  "NS 0.9% at 250 mL/hr",
-  "NS 0.9% at 500 mL/hr",
-  "NS 0.9% bolus",
-  "KVO",
-] as const;
-
-export const IV_FLUID_LR_QUICK_PICKS = [
-  "LR at 100 mL/hr",
-  "LR at 125 mL/hr",
-  "LR at 150 mL/hr",
-  "LR at 250 mL/hr",
-  "LR bolus",
-  "KVO",
-] as const;
-
-export const IV_FLUID_D5W_QUICK_PICKS = [
-  "D5W at 100 mL/hr",
-  "D5W at 125 mL/hr",
-  "D5W at 150 mL/hr",
-  "KVO",
-] as const;
-
-export const IV_FLUID_GENERIC_QUICK_PICKS = [
+const IV_FLUID_RATE_PICKS = [
+  "50 mL/hr",
+  "75 mL/hr",
   "100 mL/hr",
   "125 mL/hr",
   "150 mL/hr",
   "200 mL/hr",
   "250 mL/hr",
   "500 mL/hr",
+] as const;
+
+export const IV_FLUID_NS_QUICK_PICKS = [
+  ...IV_FLUID_RATE_PICKS.map((rate) => `NS 0.9% at ${rate}`),
+  "NS 0.9% bolus 500 mL",
+  "NS 0.9% bolus 1 L",
+  "NS 0.9% bolus",
+  "NS 0.9% wide open",
+  "NS 0.9% KVO",
+] as const;
+
+export const IV_FLUID_LR_QUICK_PICKS = [
+  ...IV_FLUID_RATE_PICKS.map((rate) => `LR at ${rate}`),
+  "LR bolus 500 mL",
+  "LR bolus 1 L",
+  "LR bolus",
+  "LR wide open",
+  "LR KVO",
+] as const;
+
+export const IV_FLUID_D5W_QUICK_PICKS = [
+  ...IV_FLUID_RATE_PICKS.map((rate) => `D5W at ${rate}`),
+  "D5W bolus 500 mL",
+  "D5W bolus 1 L",
+  "D5W wide open",
+  "D5W KVO",
+] as const;
+
+export const IV_FLUID_GENERIC_QUICK_PICKS = [
+  ...IV_FLUID_RATE_PICKS,
   "bolus",
+  "wide open",
   "KVO",
 ] as const;
 
@@ -133,10 +139,24 @@ function resolveIvFluidQuickPickFamily(label: string | null | undefined): readon
     return IV_FLUID_D5W_QUICK_PICKS;
   }
   if (/\bd10w\b/.test(text)) {
-    return ["D10W as ordered", "100 mL/hr", "125 mL/hr", "KVO"];
+    return [
+      "D10W as ordered",
+      ...IV_FLUID_RATE_PICKS.map((rate) => `D10W at ${rate}`),
+      "D10W bolus",
+      "D10W wide open",
+      "D10W KVO",
+    ];
   }
-  if (/\bd50w\b/.test(text)) {
-    return ["D50W as ordered", "bolus"];
+  if (/\bd50w\b/.test(text) || /\bd50\b/.test(text)) {
+    return ["D50W as ordered", "D50W bolus", "D50W wide open"];
+  }
+  if (/\bd5ns\b/.test(text)) {
+    return [
+      ...IV_FLUID_RATE_PICKS.map((rate) => `D5NS at ${rate}`),
+      "D5NS bolus",
+      "D5NS wide open",
+      "D5NS KVO",
+    ];
   }
   return IV_FLUID_GENERIC_QUICK_PICKS;
 }

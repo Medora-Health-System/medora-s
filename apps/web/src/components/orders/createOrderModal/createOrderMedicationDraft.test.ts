@@ -21,6 +21,7 @@ import {
   refreshUntouchedPlannedAdministrationLocal,
   MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
   patchMedicationLineWithPlannedAdminRules,
+  prepareMedicationOrderLinePlannedAdmin,
   resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
 } from "./createOrderMedicationDraft";
@@ -432,5 +433,64 @@ describe("Wayne Urgent Care prescription timezone chain (K.10B.5)", () => {
         facilityTimeZone: wayneTz,
       })
     ).toBeUndefined();
+  });
+});
+
+describe("K.10B.6 prescription timezone + quick-picks", () => {
+  const haiti = "America/Port-au-Prince";
+
+  it("prepareMedicationOrderLinePlannedAdmin uses facility-local now, not browser time", () => {
+    const fixed = wallClockToUtc(2026, 6, 12, 12, 21, haiti);
+    const line = prepareMedicationOrderLinePlannedAdmin(
+      medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
+      haiti,
+      fixed
+    );
+    expect(line.intendedAdministrationAt).toBe("2026-06-12T12:21");
+    expect(line.intendedAdministrationAt).not.toBe(browserLocalDatetimeLocalValue(fixed));
+  });
+
+  it("does not set planned admin before facility timezone is known", () => {
+    const line = prepareMedicationOrderLinePlannedAdmin(
+      medLine({ medicationFulfillmentIntent: "ADMINISTER_CHART" }),
+      null
+    );
+    expect(line.intendedAdministrationAt).toBeUndefined();
+  });
+
+  it("PRN Zofran quick-picks appear via clinical label", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVP",
+      label: "Ondansetron 4 mg",
+    });
+    expect(picks).toContain("4 mg IVP q6h PRN nausea/vomiting");
+    expect(picks).toContain("4 mg PO q8h PRN nausea/vomiting");
+  });
+
+  it("PRN pain med quick-picks merge with route picks for ibuprofen", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "PO",
+      label: "Ibuprofen 200 mg",
+    });
+    expect(picks).toContain("1 tab PO q6h PRN moderate pain");
+    expect(picks).toContain("1 tab PO BID");
+  });
+
+  it("NS IV fluid quick-picks include 50 and 75 mL/hr (K.10B.6)", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVPB",
+      label: "Normal Saline 0.9%",
+      therapeuticClass: "Soluté",
+    });
+    expect(picks).toContain("NS 0.9% at 50 mL/hr");
+    expect(picks).toContain("NS 0.9% at 75 mL/hr");
+    expect(picks).toContain("NS 0.9% at 100 mL/hr");
+  });
+
+  it("CreateOrderModal catalog select uses catalogItemToOrderLine + facility TZ (K.10B.6)", () => {
+    const source = readFileSync(join(import.meta.dirname, "../CreateOrderModal.tsx"), "utf8");
+    expect(source).toContain("catalogItemToOrderLine(");
+    expect(source).toContain("prepareMedicationOrderLinePlannedAdmin");
+    expect(source).toContain("plannedAdminFacilityTimeZone");
   });
 });

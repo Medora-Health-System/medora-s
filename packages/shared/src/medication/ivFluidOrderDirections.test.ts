@@ -33,9 +33,19 @@ describe("ivFluidOrderDirections (K.10B.4)", () => {
     expect(isIvFluidMedicationLabel("Normal Saline 0.9% 1 L", "Soluté")).toBe(true);
   });
 
-  it("NS fluid quick-picks include 100 mL/hr", () => {
+  it("NS fluid quick-picks include expanded rates and bolus (K.10B.6)", () => {
     const picks = medicationDirectionQuickPicksForIvFluid("IVPB", "Normal Saline 0.9%");
+    expect(picks).toContain("NS 0.9% at 50 mL/hr");
+    expect(picks).toContain("NS 0.9% at 75 mL/hr");
     expect(picks).toContain("NS 0.9% at 100 mL/hr");
+    expect(picks).toContain("NS 0.9% at 500 mL/hr");
     expect(picks).toContain("NS 0.9% bolus");
+    expect(picks).toContain("NS 0.9% wide open");
+    expect(picks).toContain("NS 0.9% KVO");
+  });
+
+  it("LR fluid quick-picks include 125 mL/hr", () => {
+    const picks = medicationDirectionQuickPicksForIvFluid("IV", "Lactated Ringer's");
+    expect(picks).toContain("LR at 125 mL/hr");
   });
 });

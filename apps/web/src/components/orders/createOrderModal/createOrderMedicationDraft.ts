@@ -3,6 +3,7 @@ import {
   clinicalDatetimeLocalToUtcDate,
   medicationDirectionQuickPicksForIvFluid,
   medicationDirectionQuickPicksForClinicalLabel,
+  medicationDirectionQuickPicksForPrnCategory,
   normalizeMedicationRoute,
   parseMedicationFrequencyCode,
   resolveMedicationOrderItemFrequencyCode,
@@ -71,6 +72,26 @@ export const MEDICATION_DIRECTION_QUICK_PICKS_SQ = [
   "take as directed",
 ] as const;
 
+export const MEDICATION_DIRECTION_QUICK_PICKS_IO = [
+  "IO now",
+  "IO once",
+  "take as directed",
+] as const;
+
+function dedupeDirectionQuickPicks(...groups: readonly (readonly string[])[]): readonly string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const group of groups) {
+    for (const pick of group) {
+      const key = pick.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(pick);
+    }
+  }
+  return out;
+}
+
 /** @deprecated Use {@link medicationDirectionQuickPicksForRoute} — generic fallback only. */
 export const MEDICATION_DIRECTION_QUICK_PICKS = MEDICATION_DIRECTION_QUICK_PICKS_GENERIC;
 
@@ -137,12 +158,21 @@ export function medicationDirectionQuickPicksForMedicationLine(input: {
     input.therapeuticClass
   );
   if (fluidPicks) return fluidPicks;
-  return medicationDirectionQuickPicksForRoute(input.route ?? input.catalogRoute);
+  const routePicks = medicationDirectionQuickPicksForRoute(input.route ?? input.catalogRoute);
+  const prnPicks = medicationDirectionQuickPicksForPrnCategory(input.label, input.therapeuticClass);
+  if (prnPicks?.length) {
+    return dedupeDirectionQuickPicks(routePicks, prnPicks);
+  }
+  return routePicks;
 }
 
 export function medicationDirectionQuickPicksForRoute(
   route?: MedicationRoute | string | null
 ): readonly string[] {
+  const routeToken = normalizeDirectionQuickPickRouteToken(String(route ?? ""));
+  if (routeToken === "IO" || routeToken === "INTRAOSSEOUS" || routeToken === "INTRA OSSEOUS") {
+    return MEDICATION_DIRECTION_QUICK_PICKS_IO;
+  }
   switch (resolveMedicationDirectionQuickPickRoute(route)) {
     case "PO":
       return MEDICATION_DIRECTION_QUICK_PICKS_PO;
@@ -157,6 +187,16 @@ export function medicationDirectionQuickPicksForRoute(
     default:
       return MEDICATION_DIRECTION_QUICK_PICKS_GENERIC;
   }
+}
+
+/** Apply facility-TZ planned administration when adding a medication line (K.10B.6). */
+export function prepareMedicationOrderLinePlannedAdmin(
+  line: CreateOrderLineItem,
+  facilityTimeZone?: string | null,
+  now = new Date()
+): CreateOrderLineItem {
+  if (line.catalogItemType !== "MEDICATION") return line;
+  return applyDefaultPlannedAdministrationIfNeeded(line, facilityTimeZone, now);
 }
 
 export function isAdministerToPatientIntent(

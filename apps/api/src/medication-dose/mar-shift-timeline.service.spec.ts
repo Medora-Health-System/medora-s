@@ -2121,4 +2121,53 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(columnLabelForOrderItem(result, orderItem.id)).not.toBe("02P");
     });
   });
+
+  describe("M1.8B.7K.10B.6 MAR fallback route coverage", () => {
+    it.each([
+      ["PO", "PO", "PO"],
+      ["IVP", "IVP", "PUSH"],
+      ["IM", "IM", "IM"],
+      ["SQ", "SQ", "SQ"],
+      ["IVPB", "100 mL/hr", "INFUSION"],
+    ] as const)(
+      "NOW %s fallback appears alongside recurring dose instances on same encounter (K.10B.6)",
+      async (route, expectedSecondary, administrationType) => {
+        const encounter = await createEncounterWithNurse();
+        await createRecurringIvpbOrder(encounter.id);
+        const createdAt = new Date("2026-06-11T14:07:00.000Z");
+        const routeMed = await prisma.catalogMedication.create({
+          data: {
+            code: `ROUTE_${route}_MST_${suffix}_${randomBytes(2).toString("hex")}`,
+            name: `${route} Route Test Med`,
+            displayNameEn: `${route} Route Test Med`,
+            displayNameFr: `${route} Route Test Med`,
+            administrationType,
+            route,
+          },
+        });
+        const { orderItem, doses } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: route as MedicationRoute,
+          catalogItemId: routeMed.id,
+          ...(route === "IVPB"
+            ? { notes: "NS 0.9% at 100 mL/hr" }
+            : {}),
+        });
+        expect(doses).toHaveLength(0);
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7A_7P",
+          shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+          shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+          encounterId: encounter.id,
+        });
+
+        const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+        expect(item).toBeTruthy();
+        expect(item?.medicationDoseInstanceId).toBe("");
+        expect(item?.secondaryText).toBe(expectedSecondary);
+      }
+    );
+  });
 });

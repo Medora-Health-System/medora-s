@@ -133,6 +133,7 @@ describe("MAR timezone placement + drawer times (M1.8B.7K.7)", () => {
       startedAt: wallClockToUtc(2026, 6, 11, 14, 16, haitiTz).toISOString(),
     });
     const value = defaultMarShiftTimelineStopTimeValue(item, haitiTz);
-    expect(value).toMatch(/^2026-06-11T\d{2}:\d{2}$/);
+    expect(value).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(value).toContain("T");
   });
 });

@@ -30,6 +30,7 @@ import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderMo
 import { newOrderLineId } from "./createOrderModal/types";
 import {
   applyDefaultPlannedAdministrationIfNeeded,
+  prepareMedicationOrderLinePlannedAdmin,
   refreshUntouchedPlannedAdministrationLocal,
   patchMedicationLineWithPlannedAdminRules,
   isAdministerToPatientIntent,
@@ -1529,42 +1530,17 @@ export function CreateOrderModal({
 
     setFormData((fd) => {
       if (fd.items.some((x) => x.catalogItemId && x.catalogItemId === item.id)) return fd;
-      const erAdministerOnly = medicationOrderMode === "ER_ADMINISTER_ONLY";
+      const line = catalogItemToOrderLine(
+        item,
+        language,
+        t,
+        medicationOrderMode,
+        plannedAdminFacilityTimeZone
+      );
+      if (!line) return fd;
       return {
         ...fd,
-        items: [
-          ...fd.items,
-          {
-            _lineId: newOrderLineId(),
-            isManual: false,
-            catalogItemId: item.id,
-            catalogItemType: "MEDICATION",
-            quantity: erAdministerOnly ? 1 : 30,
-            notes: "",
-            strength: item.metadata?.strength ?? undefined,
-            route: normalizeMedicationRoute({
-              route: item.metadata?.route,
-              administrationType: item.metadata?.administrationType,
-            }),
-            _label: catalogLineLabel(item, language, t),
-            _dosageForm: item.metadata?.dosageForm ?? undefined,
-            _route: item.metadata?.route ?? undefined,
-            _isControlled: item.metadata?.isControlled,
-            _controlledSchedule: item.metadata?.controlledSchedule,
-            _requiresWitness: item.metadata?.requiresWitness,
-            _requiresDoubleSign: item.metadata?.requiresDoubleSign,
-            refillCount: 0,
-            medicationFulfillmentIntent: erAdministerOnly ? "ADMINISTER_CHART" : "PHARMACY_DISPENSE",
-            _safetyCatalog: {
-              code: item.code,
-              name: item.name ?? null,
-              displayName: item.displayNameEn?.trim() || item.displayNameFr?.trim() || item.name || null,
-              genericName: item.metadata?.genericName,
-              therapeuticClass: item.metadata?.therapeuticClass,
-              commonAliases: item.metadata?.commonAliases,
-            },
-          },
-        ],
+        items: [...fd.items, prepareMedicationOrderLinePlannedAdmin(line, plannedAdminFacilityTimeZone)],
       };
     });
   };
@@ -1575,7 +1551,7 @@ export function CreateOrderModal({
         ? { ...line, quantity: line.quantity ?? 1, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }
         : line;
     if (nextLine.catalogItemType === "MEDICATION") {
-      nextLine = applyDefaultPlannedAdministrationIfNeeded(nextLine, plannedAdminFacilityTimeZone);
+      nextLine = prepareMedicationOrderLinePlannedAdmin(nextLine, plannedAdminFacilityTimeZone);
     }
     setFormData((fd) => ({ ...fd, items: [...fd.items, nextLine] }));
   };

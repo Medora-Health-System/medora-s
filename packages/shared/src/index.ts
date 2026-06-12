@@ -132,6 +132,7 @@ export * from "./clinical/clinicalTimeZone.js";
 export * from "./clinical/prescriptionPlannedAdministration.js";
 export * from "./medication/marScheduleAdministrationTiming.js";
 export * from "./medication/medicationDirectionQuickPicksClinical.js";
+export * from "./medication/medicationDirectionQuickPicksPrn.js";
 export * from "./medication/medicationGovernanceChartSummary.js";
 export * from "./medication/medicationCatalogCodeDerive.js";
 export * from "./medication/medicationBillingMappingManifest.js";
