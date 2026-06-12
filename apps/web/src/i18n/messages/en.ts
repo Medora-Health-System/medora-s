@@ -15001,6 +15001,15 @@ export default {
     info: "Last administration was recorded {minutes} minutes ago.",
     overrideAck: "I confirm this administration is intentional.",
   },
+  marScheduleTiming: {
+    earlyWarning:
+      "Early administration: this medication is scheduled for {scheduledTime}. Enter reason to continue.",
+    lateWarning:
+      "Late administration: this medication was due at {scheduledTime}. Enter reason to continue.",
+    reasonLabel: "Reason (required)",
+    reasonRequired: "A reason is required for early or late administration.",
+    reasonPrefix: "Off-window timing",
+  },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Latest vitals",
     latestVitalsRecorded: "Recorded: {datetime}",
@@ -16755,6 +16764,8 @@ export default {
     errPrescriberRequired: "Prescriber is required.",
     errQuantityRequired: "Quantity is required.",
     errEncounterClosed: "Unable to create an order: the encounter must be open.",
+    errFacilityTimezoneNotReady:
+      "Facility timezone is not loaded yet. Wait a moment before prescribing.",
     errLabCatalogIdMissing:
       "A lab line from the catalog is missing its catalog id. Remove the line and add it again from search, or use explicit manual entry.",
     sectionRxHeader: "Prescription (prescriber)",

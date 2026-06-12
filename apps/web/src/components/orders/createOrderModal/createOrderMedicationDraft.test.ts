@@ -1,6 +1,15 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { clinicalDatetimeLocalFromInstant, resolveMedicationOrderItemFrequencyCode, wallClockToUtc } from "@medora/shared";
+import {
+  browserLocalDatetimeLocalValue,
+  buildMarShiftTimelineColumns,
+  clinicalDatetimeLocalFromInstant,
+  resolveMarShiftTimelineColumnKey,
+  resolveMarShiftTimelineOrderItemPlacementInstant,
+  resolveMedicationOrderItemFrequencyCode,
+  resolveStandardMarShiftTimelineWindow,
+  wallClockToUtc,
+} from "@medora/shared";
 import { describe, expect, it } from "vitest";
 import type { CreateOrderLineItem } from "./types";
 import {
@@ -82,12 +91,12 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
     expect(defaultPlannedAdministrationLocal(null, fixed)).toBe("");
   });
 
-  it("refreshUntouchedPlannedAdministrationLocal replaces stale default when facility TZ loads", () => {
+  it("refreshUntouchedPlannedAdministrationLocal replaces browser-local artifact when facility TZ loads", () => {
     const haiti = "America/Port-au-Prince";
     const fixed = wallClockToUtc(2026, 6, 11, 22, 15, haiti);
     const stale = medLine({
       medicationFulfillmentIntent: "ADMINISTER_CHART",
-      intendedAdministrationAt: "2026-06-11T23:34",
+      intendedAdministrationAt: browserLocalDatetimeLocalValue(fixed),
       _plannedAdminAtTouched: false,
     });
     const refreshed = refreshUntouchedPlannedAdministrationLocal(stale, haiti, fixed);
@@ -319,5 +328,109 @@ describe("CreateOrderModal medication draft wiring (M1.7B.6)", () => {
     const modalSource = readFileSync(join(import.meta.dirname, "../CreateOrderModal.tsx"), "utf8");
     expect(modalSource).toContain("resolveMedicationOrderItemFrequencyCode");
     expect(modalSource).toContain("frequencyCode: resolvedFrequencyCode");
+  });
+});
+
+describe("medicationDirectionQuickPicksForMedicationLine clinical picks (K.10B.5)", () => {
+  it("Morphine IVP includes dose-specific quick-picks", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVP",
+      label: "Morphine 10 mg/mL",
+    });
+    expect(picks).toContain("2 mg IVP now");
+    expect(picks).toContain("4 mg IVP now");
+    expect(picks).toContain("1 mg IVP q2h PRN severe pain");
+    expect(picks).toContain("2 mg IVP q4h PRN severe pain");
+  });
+
+  it("Hydromorphone IVP includes dose-specific quick-picks", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVP",
+      label: "Hydromorphone 1 mg/mL",
+    });
+    expect(picks).toContain("0.2 mg IVP now");
+    expect(picks).toContain("0.5 mg IVP now");
+    expect(picks).toContain("1 mg IVP q3h PRN severe pain");
+  });
+
+  it("Ondansetron includes IVP and PO PRN quick-picks", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVP",
+      label: "Ondansetron 4 mg",
+    });
+    expect(picks).toContain("4 mg IVP now");
+    expect(picks).toContain("4 mg IVP q6h PRN nausea/vomiting");
+    expect(picks).toContain("4 mg PO q8h PRN nausea/vomiting");
+  });
+
+  it("NS IV fluid quick-picks include expanded rates and bolus (K.10B.5)", () => {
+    const picks = medicationDirectionQuickPicksForMedicationLine({
+      route: "IVPB",
+      label: "Normal Saline 0.9%",
+      therapeuticClass: "Soluté",
+    });
+    expect(picks).toContain("NS 0.9% at 200 mL/hr");
+    expect(picks).toContain("NS 0.9% at 500 mL/hr");
+    expect(picks).toContain("NS 0.9% bolus 500 mL");
+    expect(picks).toContain("NS 0.9% bolus 1 L");
+  });
+});
+
+describe("Wayne Urgent Care prescription timezone chain (K.10B.5)", () => {
+  const wayneTz = "America/Port-au-Prince";
+
+  it("planned field, submit UTC, and MAR column agree for provider 06:00 AM", () => {
+    const orderTime = wallClockToUtc(2026, 6, 12, 12, 21, wayneTz);
+    const providerLocal = "2026-06-12T06:00";
+
+    const draftLine = applyDefaultPlannedAdministrationIfNeeded(
+      medLine({
+        medicationFulfillmentIntent: "ADMINISTER_CHART",
+        intendedAdministrationAt: providerLocal,
+        _plannedAdminAtTouched: true,
+      }),
+      wayneTz,
+      orderTime
+    );
+    expect(draftLine.intendedAdministrationAt).toBe(providerLocal);
+
+    const submittedUtc = resolveMedicationOrderItemIntendedUtcForSubmit({
+      intendedAdministrationAtLocal: providerLocal,
+      plannedAdminAtTouched: true,
+      frequencyCode: "NOW",
+      facilityTimeZone: wayneTz,
+    });
+    expect(submittedUtc?.toISOString()).toBe(wallClockToUtc(2026, 6, 12, 6, 0, wayneTz).toISOString());
+
+    const marPlacement = resolveMarShiftTimelineOrderItemPlacementInstant({
+      createdAt: orderTime,
+      intendedAdministrationAt: submittedUtc,
+      frequencyCode: "NOW",
+      notes: "give now",
+    });
+    const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7P_7A", marPlacement, wayneTz);
+    const columns = buildMarShiftTimelineColumns(startAt, endAt, wayneTz);
+    const columnKey = resolveMarShiftTimelineColumnKey({
+      scheduledAt: marPlacement,
+      columns,
+      facilityTimeZone: wayneTz,
+    });
+    const columnLabel = columns.find((c) => c.key === columnKey)?.label;
+    expect(columnLabel).toBe("06A");
+  });
+
+  it("untouched NOW omits intendedAdministrationAt from submit payload", () => {
+    const facilityNow = clinicalDatetimeLocalFromInstant(
+      wallClockToUtc(2026, 6, 12, 12, 21, wayneTz),
+      wayneTz
+    );
+    expect(
+      resolveMedicationOrderItemIntendedUtcForSubmit({
+        intendedAdministrationAtLocal: facilityNow,
+        plannedAdminAtTouched: false,
+        frequencyCode: "NOW",
+        facilityTimeZone: wayneTz,
+      })
+    ).toBeUndefined();
   });
 });

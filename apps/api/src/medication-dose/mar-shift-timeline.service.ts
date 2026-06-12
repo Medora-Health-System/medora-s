@@ -290,18 +290,8 @@ export class MarShiftTimelineService {
       orderItemNotesRows.map((row) => [row.id, row.notes?.trim() || null])
     );
 
-    const doseInstanceOrderItemRows = await this.prisma.medicationDoseInstance.findMany({
-      where: {
-        facilityId,
-        doseStatus: { notIn: excludedStatuses },
-        ...(query.encounterId ? { encounterId: query.encounterId } : {}),
-      },
-      select: { orderItemId: true },
-      distinct: ["orderItemId"],
-    });
-    const orderItemIdsWithDoseInstances = new Set(
-      doseInstanceOrderItemRows.map((row) => row.orderItemId)
-    );
+    /** Only suppress fallback when a dose row is visible on this timeline (K.10B.5). */
+    const orderItemIdsWithDoseInstances = new Set(doses.map((d) => d.orderItemId));
 
     const rowMap = new Map<string, MarShiftTimelineRow>();
 
@@ -321,11 +311,21 @@ export class MarShiftTimelineService {
         continue;
       }
 
+      const enrichment = administrationEnrichmentByDoseId.get(dose.id) ?? null;
+      const administeredPlacement =
+        parsedStatus === "COMPLETED" && enrichment?.administeredAt
+          ? new Date(enrichment.administeredAt)
+          : null;
+      const placementInstant =
+        administeredPlacement && !Number.isNaN(administeredPlacement.getTime())
+          ? administeredPlacement
+          : dose.scheduledAt;
+
       if (
         !doseOverlapsMarShiftTimelineWindow({
           shiftStart: shiftWindow.startAt,
           shiftEnd: shiftWindow.endAt,
-          scheduledAt: dose.scheduledAt,
+          scheduledAt: placementInstant,
           dueWindowStartAt: dose.dueWindowStartAt,
           dueWindowEndAt: dose.dueWindowEndAt,
           doseStatus: dose.doseStatus,
@@ -334,14 +334,6 @@ export class MarShiftTimelineService {
       ) {
         continue;
       }
-
-      const columnKey = resolveMarShiftTimelineColumnKey({
-        scheduledAt: dose.scheduledAt,
-        dueWindowStartAt: dose.dueWindowStartAt,
-        columns,
-        facilityTimeZone: shiftWindow.facilityTimeZone,
-      });
-      if (!columnKey) continue;
 
       const catalogSnapshot = parseCatalogSnapshot(dose.medicationCatalogSnapshotJson);
       const orderedSnapshot = parseOrderedDoseSnapshot(dose.orderedDoseSnapshotJson);
@@ -366,7 +358,14 @@ export class MarShiftTimelineService {
         parsedDoseKind ?? dose.doseKind,
         parsedStatus
       );
-      const enrichment = administrationEnrichmentByDoseId.get(dose.id) ?? null;
+      const columnKey = resolveMarShiftTimelineColumnKey({
+        scheduledAt: placementInstant,
+        dueWindowStartAt: dose.dueWindowStartAt,
+        columns,
+        facilityTimeZone: shiftWindow.facilityTimeZone,
+      });
+      if (!columnKey) continue;
+
       const directionsSig = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
       const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
         medicationLabel,

@@ -32,6 +32,7 @@ import {
   applyDefaultPlannedAdministrationIfNeeded,
   refreshUntouchedPlannedAdministrationLocal,
   patchMedicationLineWithPlannedAdminRules,
+  isAdministerToPatientIntent,
   resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
 } from "./createOrderModal/createOrderMedicationDraft";
@@ -1660,6 +1661,15 @@ export function CreateOrderModal({
     const rnAuthorityError = validateRnAuthorityForSubmit();
     if (rnAuthorityError) {
       setError(rnAuthorityError);
+      return;
+    }
+
+    if (
+      formData.type === "MEDICATION" &&
+      formData.items.some((it) => isAdministerToPatientIntent(it.medicationFulfillmentIntent)) &&
+      !facilityClinicalTimeZoneReady
+    ) {
+      setError(t("createOrderModal.errFacilityTimezoneNotReady"));
       return;
     }
 

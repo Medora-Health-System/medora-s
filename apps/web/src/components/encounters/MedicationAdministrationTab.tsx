@@ -69,6 +69,10 @@ import {
   getMedicationSafetyWarnings,
   medicationWarningsRequireMarHighRiskAck,
   evaluateMedicationTimingSafety,
+  evaluateMarScheduleAdministrationTiming,
+  clinicalDatetimeLocalFromInstant,
+  clinicalDatetimeLocalToUtcDate,
+  resolveClinicalTimeZone,
   computeAdvancedMedicationSafetyForSingleLine,
   mergeAdvancedMedicationLineWithDraft,
   isMedicationInfusionCandidate,
@@ -467,6 +471,9 @@ export function MedicationAdministrationTab({
     infusionClassifyPayload?: MedicationInfusionCandidateInput;
     /** M1.8B.7I.5 — dose-gated MAR instance when opened from pass queue. */
     medicationDoseInstanceId?: string | null;
+    scheduledAt?: string | null;
+    dueWindowStartAt?: string | null;
+    dueWindowEndAt?: string | null;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
@@ -480,6 +487,7 @@ export function MedicationAdministrationTab({
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
+  const [marScheduleTimingReason, setMarScheduleTimingReason] = useState("");
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
   const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(false);
@@ -1195,8 +1203,25 @@ export function MedicationAdministrationTab({
 
   const openModal = (
     row: (typeof taskRows)[0],
-    options?: { hideAdministeredAction?: boolean; medicationDoseInstanceId?: string | null }
+    options?: {
+      hideAdministeredAction?: boolean;
+      medicationDoseInstanceId?: string | null;
+      scheduledAt?: string | null;
+      dueWindowStartAt?: string | null;
+      dueWindowEndAt?: string | null;
+    }
   ) => {
+    const orderItem = orderItemById.get(row.orderItemId);
+    const fallbackScheduled =
+      row.intendedAt?.trim() ||
+      (orderItem?.createdAt ? String(orderItem.createdAt) : null);
+    const scheduledAt = options?.scheduledAt?.trim() || fallbackScheduled;
+    const dueWindowStartAt = options?.dueWindowStartAt?.trim() || scheduledAt;
+    const dueWindowEndAt =
+      options?.dueWindowEndAt?.trim() ||
+      (scheduledAt
+        ? new Date(new Date(scheduledAt).getTime() + 60 * 60 * 1000).toISOString()
+        : null);
     const hideAdmin = options?.hideAdministeredAction === true;
     setModalItem({
       orderItemId: row.orderItemId,
@@ -1216,8 +1241,12 @@ export function MedicationAdministrationTab({
       infusionClassifyPayload: row.infusionClassifyPayload,
       governanceDisplay: row.governanceDisplay,
       medicationDoseInstanceId: options?.medicationDoseInstanceId?.trim() || null,
+      scheduledAt,
+      dueWindowStartAt,
+      dueWindowEndAt,
     });
     setModalSubmitError(null);
+    setMarScheduleTimingReason("");
     setModalAction(hideAdmin ? "refused" : "administered");
     setModalRoute(row.routeHint);
     setModalInjectionSite("");
@@ -1280,7 +1309,12 @@ export function MedicationAdministrationTab({
         setError(t("marTab.errInfusionUseStartStop"));
         return;
       }
-      openModal(row, { medicationDoseInstanceId: item.medicationDoseInstanceId });
+      openModal(row, {
+        medicationDoseInstanceId: item.medicationDoseInstanceId,
+        scheduledAt: item.scheduledAt,
+        dueWindowStartAt: item.dueWindowStartAt,
+        dueWindowEndAt: item.dueWindowEndAt,
+      });
     },
     [taskRows, t]
   );
@@ -1298,6 +1332,9 @@ export function MedicationAdministrationTab({
       };
       openModal(row, {
         medicationDoseInstanceId: item.medicationDoseInstanceId?.trim() || null,
+        scheduledAt: item.scheduledAt,
+        dueWindowStartAt: item.dueWindowStartAt,
+        dueWindowEndAt: item.dueWindowEndAt,
       });
       timelineCloseDrawerRef.current?.();
     },
@@ -1382,6 +1419,7 @@ export function MedicationAdministrationTab({
     setModalSubmitError(null);
     setShowHighAlertVerifierModal(false);
     setMarTimingOverrideAck(false);
+    setMarScheduleTimingReason("");
     setMarHighRiskSafetyAck(false);
     clearModalEffectiveTime();
   };
@@ -1441,6 +1479,7 @@ export function MedicationAdministrationTab({
       return;
     }
     const documentedAt = new Date();
+    const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
     const linkedOrderItem = orderItemById.get(orderItemId);
     const linkedOrder = orders
       .map((o) => asApiObject(o))
@@ -1459,6 +1498,25 @@ export function MedicationAdministrationTab({
         ? new Date(String(linkedOrder.cancelledAt))
         : null;
     const controlledMedication = Boolean(linkedOrderItem?.catalogMedication?.isControlled);
+
+    if (modalAction === "administered" && modalItem.scheduledAt?.trim()) {
+      const administeredAtForTiming =
+        modalEffectiveTimeLocal.trim()
+          ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? documentedAt
+          : documentedAt;
+      const scheduleTiming = evaluateMarScheduleAdministrationTiming({
+        administeredAt: administeredAtForTiming,
+        scheduledAt: modalItem.scheduledAt,
+        dueWindowStartAt: modalItem.dueWindowStartAt,
+        dueWindowEndAt: modalItem.dueWindowEndAt,
+        facilityTimeZone: clinicalTz,
+        locale: dateLocale,
+      });
+      if (scheduleTiming.requiresReason && !marScheduleTimingReason.trim()) {
+        setModalSubmitError(t("marScheduleTiming.reasonRequired"));
+        return;
+      }
+    }
 
     if (modalAction === "administered" && modalEffectiveTimeLocal.trim()) {
       const clientErr = marRecordModalEffectiveTimeClientError({
@@ -1698,7 +1756,11 @@ export function MedicationAdministrationTab({
         notes: buildMarNotes(
           modalAction,
           routeLine,
-          modalNotes,
+          marScheduleTimingReason.trim()
+            ? [modalNotes, `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`]
+                .filter((line) => line?.trim())
+                .join("\n")
+            : modalNotes,
           t,
           requiresInjectionSite ? modalInjectionSite || undefined : undefined
         ),
@@ -2994,6 +3056,66 @@ export function MedicationAdministrationTab({
               </div>
             ) : null}
 
+            {(() => {
+              if (!modalItem || modalAction !== "administered" || !modalItem.scheduledAt?.trim()) {
+                return null;
+              }
+              const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
+              const administeredAtForTiming =
+                modalEffectiveTimeLocal.trim()
+                  ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? new Date()
+                  : new Date();
+              const scheduleTiming = evaluateMarScheduleAdministrationTiming({
+                administeredAt: administeredAtForTiming,
+                scheduledAt: modalItem.scheduledAt,
+                dueWindowStartAt: modalItem.dueWindowStartAt,
+                dueWindowEndAt: modalItem.dueWindowEndAt,
+                facilityTimeZone: clinicalTz,
+                locale: dateLocale,
+              });
+              if (!scheduleTiming.requiresReason) return null;
+              const msgKey =
+                scheduleTiming.kind === "early"
+                  ? "marScheduleTiming.earlyWarning"
+                  : "marScheduleTiming.lateWarning";
+              return (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    role="status"
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      lineHeight: 1.45,
+                      fontWeight: 600,
+                      border: "1px solid #f59e0b",
+                      backgroundColor: "#fffbeb",
+                      color: "#92400e",
+                    }}
+                  >
+                    {t(msgKey).replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)}
+                  </div>
+                  <label style={{ display: "block", marginTop: 10, marginBottom: 4, fontSize: 13, fontWeight: 600 }}>
+                    {t("marScheduleTiming.reasonLabel")}
+                  </label>
+                  <input
+                    type="text"
+                    value={marScheduleTimingReason}
+                    onChange={(e) => setMarScheduleTimingReason(e.target.value)}
+                    disabled={submitting}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #ccc",
+                      fontSize: 14,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              );
+            })()}
+
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>{t("marTab.notesLabel")}</label>
             {marDraftRestoredAt ? (
               <p style={{ margin: "0 0 8px", fontSize: 12, color: "#0369a1", fontWeight: 600 }}>
@@ -3134,11 +3256,8 @@ export function MedicationAdministrationTab({
                     setModalShowEffectiveTimeEditor((open) => {
                       const next = !open;
                       if (next && !modalEffectiveTimeLocal.trim()) {
-                        const d = new Date();
-                        const pad = (n: number) => String(n).padStart(2, "0");
-                        setModalEffectiveTimeLocal(
-                          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-                        );
+                        const tz = resolveClinicalTimeZone({ facilityTimeZone });
+                        setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
                       }
                       return next;
                     });

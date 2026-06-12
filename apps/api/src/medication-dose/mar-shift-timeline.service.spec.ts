@@ -2042,4 +2042,83 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       });
     });
   });
+
+  describe("M1.8B.7K.10B.5 MAR prescription time + IVP fallback hardening", () => {
+    it("Morphine IVP ONCE fallback appears when other dose instances exist on timeline (K.10B.5)", async () => {
+      const encounter = await createEncounterWithNurse();
+      const recurringDoses = await createRecurringIvpbOrder(encounter.id);
+      expect(recurringDoses.length).toBeGreaterThan(0);
+
+      const morphine = await prisma.catalogMedication.create({
+        data: {
+          code: `MORPHINE_MST_${suffix}`,
+          name: "Morphine 10 mg/mL",
+          displayNameEn: "Morphine 10 mg/mL",
+          displayNameFr: "Morphine 10 mg/mL",
+          genericName: "Morphine",
+          administrationType: "PUSH",
+          route: "IVP",
+        },
+      });
+
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const { orderItem, doses } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "ONCE" as MedicationFrequencyCode,
+        route: "IVP" as MedicationRoute,
+        catalogItemId: morphine.id,
+      });
+      expect(doses).toHaveLength(0);
+      await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+      });
+
+      const item = allTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item).toBeTruthy();
+      expect(item?.medicationDoseInstanceId).toBe("");
+      expect(item?.clinicalAction).toBe("ADMINISTER");
+      expect(item?.primaryText).toMatch(/Morphine/i);
+    });
+
+    it("completed fallback cell maps to administeredAt hour not order createdAt (K.10B.5)", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T14:07:00.000Z");
+      const administeredAt = new Date("2026-06-11T16:10:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "NOW" as MedicationFrequencyCode,
+      });
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered early/late test",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      expect(columnLabelForOrderItem(result, orderItem.id)).toBe("04P");
+      expect(columnLabelForOrderItem(result, orderItem.id)).not.toBe("02P");
+    });
+  });
 });

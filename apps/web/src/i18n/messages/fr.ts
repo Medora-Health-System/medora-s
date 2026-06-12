@@ -15032,6 +15032,15 @@ export default {
     info: "Dernière administration enregistrée il y a {minutes} min.",
     overrideAck: "Je confirme que cette administration est volontaire.",
   },
+  marScheduleTiming: {
+    earlyWarning:
+      "Administration anticipée : ce médicament est prévu à {scheduledTime}. Saisissez un motif pour continuer.",
+    lateWarning:
+      "Administration tardive : ce médicament était dû à {scheduledTime}. Saisissez un motif pour continuer.",
+    reasonLabel: "Motif (obligatoire)",
+    reasonRequired: "Un motif est requis pour une administration anticipée ou tardive.",
+    reasonPrefix: "Horaire hors fenêtre",
+  },
   clinicalSafetyGuardrails: {
     latestVitalsTitle: "Derniers signes vitaux",
     latestVitalsRecorded: "Relevé : {datetime}",
@@ -16790,6 +16799,8 @@ export default {
     errPrescriberRequired: "Le prescripteur est requis",
     errQuantityRequired: "La quantité est requise",
     errEncounterClosed: "Impossible de créer un ordre : la consultation doit être ouverte.",
+    errFacilityTimezoneNotReady:
+      "Fuseau horaire de l'établissement non chargé. Réessayez dans un instant avant de prescrire.",
     errLabCatalogIdMissing:
       "Une ligne d’analyse issue du catalogue n’a pas d’identifiant catalogue. Retirez la ligne et rajoutez-la depuis la recherche, ou utilisez la saisie manuelle explicite.",
     sectionRxHeader: "Prescription (prescripteur)",

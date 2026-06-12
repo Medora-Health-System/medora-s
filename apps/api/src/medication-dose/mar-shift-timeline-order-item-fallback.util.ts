@@ -345,6 +345,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
 
   type TerminalMarSlice = {
     id: string;
+    administeredAt: Date | null;
     marAction: string | null;
     notes: string | null;
     infusionPhase: string | null;
@@ -383,11 +384,19 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
 
     if (doseStatus === "COMPLETED" && !input.includeCompleted) continue;
 
+    const completedAdministration =
+      doseStatus === "COMPLETED" &&
+      marShiftTimelineOrderItemFallbackHasCompletedAdministration({
+        terminalMarAction: terminalMar?.marAction,
+        hasInfusionStopMar: terminalMar?.infusionPhase === "INFUSION_STOP",
+      });
     const placementInstant = resolveMarShiftTimelineOrderItemPlacementInstant({
       createdAt: orderItem.createdAt,
       intendedAdministrationAt: orderItem.intendedAdministrationAt,
       frequencyCode: orderItem.frequencyCode,
       notes: orderItem.notes,
+      administeredAt: terminalMar?.administeredAt,
+      useAdministeredPlacement: completedAdministration,
     });
 
     if (

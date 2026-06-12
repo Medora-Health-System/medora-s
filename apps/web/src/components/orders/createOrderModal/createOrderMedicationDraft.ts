@@ -2,9 +2,11 @@ import {
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcDate,
   medicationDirectionQuickPicksForIvFluid,
+  medicationDirectionQuickPicksForClinicalLabel,
   normalizeMedicationRoute,
   parseMedicationFrequencyCode,
   resolveMedicationOrderItemFrequencyCode,
+  shouldReplaceUntouchedPlannedAdminLocal,
   type MedicationOrderRoute,
 } from "@medora/shared";
 import type { CreateOrderLineItem, MedicationRoute } from "./types";
@@ -127,6 +129,8 @@ export function medicationDirectionQuickPicksForMedicationLine(input: {
   therapeuticClass?: string | null;
 }): readonly string[] {
   const routeToken = input.route?.trim() || input.catalogRoute?.trim() || null;
+  const clinicalPicks = medicationDirectionQuickPicksForClinicalLabel(routeToken, input.label);
+  if (clinicalPicks) return clinicalPicks;
   const fluidPicks = medicationDirectionQuickPicksForIvFluid(
     routeToken,
     input.label,
@@ -161,7 +165,7 @@ export function isAdministerToPatientIntent(
   return (intent ?? "PHARMACY_DISPENSE") === "ADMINISTER_CHART";
 }
 
-/** Browser-local datetime-local string (YYYY-MM-DDTHH:mm). */
+/** @deprecated Use facility TZ via {@link defaultPlannedAdministrationLocal} — browser-local only for artifact detection. */
 export function toDatetimeLocalValue(d: Date): string {
   const x = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
   return x.toISOString().slice(0, 16);
@@ -183,9 +187,18 @@ export function refreshUntouchedPlannedAdministrationLocal(
   now = new Date()
 ): CreateOrderLineItem {
   if (!isAdministerToPatientIntent(item.medicationFulfillmentIntent)) return item;
-  if (item._plannedAdminAtTouched) return item;
   const tz = facilityTimeZone.trim();
   if (!tz) return item;
+  if (
+    !shouldReplaceUntouchedPlannedAdminLocal({
+      localValue: item.intendedAdministrationAt,
+      plannedAdminAtTouched: item._plannedAdminAtTouched,
+      facilityTimeZone: tz,
+      now,
+    })
+  ) {
+    return item;
+  }
   return {
     ...item,
     intendedAdministrationAt: defaultPlannedAdministrationLocal(tz, now),
@@ -198,9 +211,19 @@ export function applyDefaultPlannedAdministrationIfNeeded(
   now = new Date()
 ): CreateOrderLineItem {
   if (!isAdministerToPatientIntent(item.medicationFulfillmentIntent)) return item;
-  if (item._plannedAdminAtTouched) return item;
-  if (item.intendedAdministrationAt?.trim()) return item;
-  const planned = defaultPlannedAdministrationLocal(facilityTimeZone, now);
+  const tz = facilityTimeZone?.trim();
+  if (!tz) return item;
+  if (
+    !shouldReplaceUntouchedPlannedAdminLocal({
+      localValue: item.intendedAdministrationAt,
+      plannedAdminAtTouched: item._plannedAdminAtTouched,
+      facilityTimeZone: tz,
+      now,
+    })
+  ) {
+    return item;
+  }
+  const planned = defaultPlannedAdministrationLocal(tz, now);
   if (!planned) return item;
   return { ...item, intendedAdministrationAt: planned };
 }
@@ -258,7 +281,9 @@ export function resolveMedicationOrderItemIntendedUtcForSubmit(input: {
   if ((parsed === "NOW" || parsed === "STAT") && !input.plannedAdminAtTouched) {
     return undefined;
   }
-  const date = clinicalDatetimeLocalToUtcDate(raw, input.facilityTimeZone ?? "UTC");
+  const tz = input.facilityTimeZone?.trim();
+  if (!tz) return undefined;
+  const date = clinicalDatetimeLocalToUtcDate(raw, tz);
   return date ?? undefined;
 }
 
