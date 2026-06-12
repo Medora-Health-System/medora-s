@@ -14567,6 +14567,16 @@ export default {
     actionError: "Impossible d'exécuter l'action MAR.",
     stopTimeBeforeStart: "L'heure d'arrêt ne peut pas précéder le début de la perfusion.",
     stopTimeInvalid: "Heure d'arrêt invalide.",
+    infusionErrors: {
+      NO_ACTIVE_INFUSION: "Aucune perfusion en cours pour ce médicament.",
+      STOP_BEFORE_START: "L'heure d'arrêt ne peut pas précéder le début de la perfusion.",
+      INFUSION_ALREADY_STOPPED: "La perfusion est déjà arrêtée pour cette ligne.",
+      INVALID_STOP_TIME: "Horodatage d'arrêt invalide.",
+      INVALID_START_TIME: "Heure de début de perfusion invalide.",
+      INFUSION_NOT_ELIGIBLE:
+        "Cette ligne n'est pas éligible à la perfusion (voie / libellé). Utilisez l'administration au lit habituelle.",
+      ORDER_LINE_TERMINAL: "Ligne déjà terminée ou annulée.",
+    },
     drawer: {
       close: "Fermer",
       patient: "Patient",

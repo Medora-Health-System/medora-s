@@ -14538,6 +14538,16 @@ export default {
     actionError: "Unable to complete MAR action.",
     stopTimeBeforeStart: "Stop time cannot be before start time.",
     stopTimeInvalid: "Invalid stop time.",
+    infusionErrors: {
+      NO_ACTIVE_INFUSION: "No active infusion was found for this medication.",
+      STOP_BEFORE_START: "Stop time cannot be before start time.",
+      INFUSION_ALREADY_STOPPED: "Infusion is already stopped for this line.",
+      INVALID_STOP_TIME: "Invalid stop time.",
+      INVALID_START_TIME: "Invalid infusion start time.",
+      INFUSION_NOT_ELIGIBLE:
+        "This line is not eligible for infusion (route / label). Use routine bedside administration.",
+      ORDER_LINE_TERMINAL: "Order line is already completed or cancelled.",
+    },
     drawer: {
       close: "Close",
       patient: "Patient",

@@ -67,18 +67,18 @@ export async function parseApiResponse(response: Response): Promise<unknown> {
 }
 
 /** Extracts a user-visible message from Nest/Express JSON error bodies. */
-export function formatApiErrorJson(json: {
+export function extractApiErrorMeta(json: {
   message?: unknown;
   error?: string;
   code?: string;
+  errorCode?: string;
   blockers?: string[];
   blockingReasons?: string[];
-}): string {
+}): { message: string; errorCode: string | null } {
   let message = "";
   const m = json.message;
   if (typeof m === "string") {
-    message =
-      typeof json.code === "string" && json.code ? `${m} (${json.code})` : m;
+    message = m;
   } else if (Array.isArray(m)) {
     message = m.filter((x): x is string => typeof x === "string" && Boolean(x)).join(" ");
   } else if (typeof m === "object" && m !== null) {
@@ -93,8 +93,18 @@ export function formatApiErrorJson(json: {
     const joined = blockers.join(", ");
     message = message ? `${message}: ${joined}` : joined;
   }
-  if (!message && typeof json.code === "string") message = json.code;
-  return message;
+  const rawCode =
+    typeof json.errorCode === "string" && json.errorCode.trim()
+      ? json.errorCode.trim()
+      : typeof json.code === "string" && json.code.trim()
+        ? json.code.trim()
+        : null;
+  if (!message && rawCode) message = rawCode;
+  return { message, errorCode: rawCode };
+}
+
+export function formatApiErrorJson(json: Parameters<typeof extractApiErrorMeta>[0]): string {
+  return extractApiErrorMeta(json).message;
 }
 
 /** Objet JSON attendu (GET) : exclut null, tableaux, et enveloppe hors-ligne `queued`. */
@@ -212,9 +222,9 @@ export async function apiFetchResponse(
     let message = `Request failed (${response.status}).`;
     try {
       if (txt.trim()) {
-        const json = JSON.parse(txt) as Parameters<typeof formatApiErrorJson>[0];
-        const extracted = formatApiErrorJson(json);
-        if (extracted) message = extracted;
+        const json = JSON.parse(txt) as Parameters<typeof extractApiErrorMeta>[0];
+        const extracted = extractApiErrorMeta(json);
+        if (extracted.message) message = extracted.message;
       }
     } catch {
       if (txt?.trim()) {
@@ -228,10 +238,16 @@ export async function apiFetchResponse(
     const err = new Error(normalizeUserFacingError(raw, loc) || raw) as Error & {
       status?: number;
       body?: unknown;
+      errorCode?: string | null;
     };
     err.status = response.status;
     try {
-      if (txt.trim()) err.body = JSON.parse(txt) as unknown;
+      if (txt.trim()) {
+        err.body = JSON.parse(txt) as unknown;
+        err.errorCode = extractApiErrorMeta(
+          err.body as Parameters<typeof extractApiErrorMeta>[0]
+        ).errorCode;
+      }
     } catch {
       /* ignore non-JSON body */
     }
@@ -364,9 +380,9 @@ async function apiFetchOnce(
     let message = `Request failed (${response.status}).`;
     try {
       if (txt.trim()) {
-        const json = JSON.parse(txt) as Parameters<typeof formatApiErrorJson>[0];
-        const extracted = formatApiErrorJson(json);
-        if (extracted) message = extracted;
+        const json = JSON.parse(txt) as Parameters<typeof extractApiErrorMeta>[0];
+        const extracted = extractApiErrorMeta(json);
+        if (extracted.message) message = extracted.message;
       }
     } catch {
       if (txt?.trim()) {
@@ -380,10 +396,16 @@ async function apiFetchOnce(
     const err = new Error(normalizeUserFacingError(raw, loc) || raw) as Error & {
       status?: number;
       body?: unknown;
+      errorCode?: string | null;
     };
     err.status = response.status;
     try {
-      if (txt.trim()) err.body = JSON.parse(txt) as unknown;
+      if (txt.trim()) {
+        err.body = JSON.parse(txt) as unknown;
+        err.errorCode = extractApiErrorMeta(
+          err.body as Parameters<typeof extractApiErrorMeta>[0]
+        ).errorCode;
+      }
     } catch {
       /* ignore non-JSON body */
     }

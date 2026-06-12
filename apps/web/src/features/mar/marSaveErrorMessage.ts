@@ -1,6 +1,7 @@
 import type { SupportedLanguage } from "@/i18n/config";
-import { formatApiErrorJson } from "@/lib/apiClient";
+import { extractApiErrorMeta } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { resolveMedicationInfusionErrorMessage } from "@/features/mar/marInfusionErrorMessage";
 
 const GENERIC_EN = "Something went wrong.";
 const GENERIC_FR = "Une erreur est survenue.";
@@ -9,22 +10,34 @@ const GENERIC_FR = "Une erreur est survenue.";
 export function extractMarSaveErrorMessage(
   err: unknown,
   language: SupportedLanguage,
-  fallback: string
+  fallback: string,
+  t?: (key: string) => string
 ): string {
+  const infusionMsg = resolveMedicationInfusionErrorMessage(err, language, t);
+  if (infusionMsg) return infusionMsg;
+
   const apiErr = err as Error & { body?: unknown; message?: string };
 
   if (apiErr.body && typeof apiErr.body === "object" && !Array.isArray(apiErr.body)) {
-    const extracted = formatApiErrorJson(
-      apiErr.body as Parameters<typeof formatApiErrorJson>[0]
+    const extracted = extractApiErrorMeta(
+      apiErr.body as Parameters<typeof extractApiErrorMeta>[0]
     );
-    if (extracted.trim()) {
-      const normalized = normalizeUserFacingError(extracted, language);
+    if (extracted.message.trim()) {
+      const normalized = normalizeUserFacingError(extracted.message, language);
       if (normalized && normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR)) {
         return normalized;
       }
-      if (/[àâäéèêëïîôùûçœæ]/i.test(extracted)) return extracted;
-      if (language === "en" && extracted.length <= 500) return extracted;
-      if (extracted.length >= 3 && extracted.length <= 500) return extracted;
+      if (language === "fr" && /[àâäéèêëïîôùûçœæ]/i.test(extracted.message)) {
+        return extracted.message;
+      }
+      if (
+        language === "en" &&
+        extracted.message.length <= 500 &&
+        !/[^\x00-\x7F]/.test(extracted.message) &&
+        !/^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion)/i.test(extracted.message)
+      ) {
+        return extracted.message;
+      }
     }
   }
 
@@ -34,7 +47,15 @@ export function extractMarSaveErrorMessage(
   if (normalized && normalized !== (language === "en" ? GENERIC_EN : GENERIC_FR)) {
     return normalized;
   }
-  if (/[àâäéèêëïîôùûçœæ]/i.test(stripped)) return stripped;
-  if (stripped.length >= 3 && stripped.length <= 500) return stripped;
+  if (language === "fr" && /[àâäéèêëïîôùûçœæ]/i.test(stripped)) return stripped;
+  if (
+    language === "en" &&
+    stripped.length >= 3 &&
+    stripped.length <= 500 &&
+    !/[^\x00-\x7F]/.test(stripped) &&
+    !/^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion)/i.test(stripped)
+  ) {
+    return stripped;
+  }
   return fallback;
 }

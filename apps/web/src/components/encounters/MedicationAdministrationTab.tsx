@@ -852,8 +852,7 @@ export function MedicationAdministrationTab({
         }
       } catch (e) {
         setError(
-          normalizeUserFacingError(e instanceof Error ? e.message : String(e), language) ||
-            t("marTab.infusionActionError")
+          extractMarSaveErrorMessage(e, language, t("marTab.infusionActionError"), t)
         );
         throw e;
       } finally {

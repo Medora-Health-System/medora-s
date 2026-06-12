@@ -76,6 +76,9 @@ import {
   buildOrderItemDisplayLabelFr,
   isMedicationInfusionCandidate,
   validateHighAlertIvpbInfusionStartWitness,
+  medicationAdministrationRowIsInfusionStart,
+  medicationAdministrationRowIsInfusionStop,
+  medicationAdministrationRowIsInfusionTerminal,
 } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -121,6 +124,7 @@ import {
   loadMedicationInfusionClassificationContext,
   buildMedicationInfusionCandidateInputFromOrderItem,
 } from "../common/medication/medication-infusion-candidate-from-order-item.util";
+import { medicationInfusionBadRequest } from "./medication-infusion-api-errors.util";
 import {
   buildInfusionPerformerIdentitySnapshotFromDbParts,
   resolvePerformedByDisplayNameFromOrderEvent,
@@ -3028,18 +3032,16 @@ export class OrdersService {
   }
 
   /**
-   * Replays infusion-tagged OrderEvents for the order to find an unmatched START for this order line.
-   */
-  /**
-   * Resolves active infusion from infusion-tagged OrderEvents, or from an in-progress
-   * InfusionSession row when events are missing (legacy fallback IVPB recovery path).
+   * Resolves active infusion from infusion-tagged OrderEvents, in-progress InfusionSession,
+   * or legacy START MAR rows (K.10B recovery when session/event rows are missing).
    */
   private async resolveActiveMedicationInfusionSession(
     facilityId: string,
-    orderItemId: string,
+    orderItem: Pick<OrderItem, "id" | "status"> & { order: { encounterId: string } },
     events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>,
     routeFallback: string
   ): Promise<{ sessionKey: string; startedAt: Date; route: string } | null> {
+    const orderItemId = orderItem.id;
     const fromEvents = this.findActiveMedicationInfusionSession(orderItemId, events);
     if (fromEvents) return fromEvents;
 
@@ -3048,12 +3050,130 @@ export class OrdersService {
       orderBy: { startedAt: "desc" },
       select: { legacyInfusionSessionKey: true, startedAt: true },
     });
-    if (!session?.legacyInfusionSessionKey?.trim() || !session.startedAt) return null;
-    return {
-      sessionKey: session.legacyInfusionSessionKey.trim(),
-      startedAt: session.startedAt,
-      route: routeFallback,
-    };
+    if (session?.legacyInfusionSessionKey?.trim() && session.startedAt) {
+      return {
+        sessionKey: session.legacyInfusionSessionKey.trim(),
+        startedAt: session.startedAt,
+        route: routeFallback,
+      };
+    }
+
+    const startMarRows = await this.prisma.medicationAdministration.findMany({
+      where: {
+        facilityId,
+        orderItemId,
+        OR: [
+          { infusionPhase: MedicationAdministrationInfusionPhase.INFUSION_START },
+          { notes: { startsWith: "Perfusion IV" } },
+        ],
+      },
+      orderBy: { administeredAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        infusionSessionKey: true,
+        administeredAt: true,
+        notes: true,
+        infusionPhase: true,
+      },
+    });
+
+    for (const startMar of startMarRows) {
+      if (!medicationAdministrationRowIsInfusionStart(startMar.notes, startMar.infusionPhase)) {
+        continue;
+      }
+      const startedAt =
+        startMar.administeredAt instanceof Date
+          ? startMar.administeredAt
+          : new Date(startMar.administeredAt);
+      if (Number.isNaN(startedAt.getTime())) continue;
+
+      const sessionKey =
+        startMar.infusionSessionKey?.trim() || `mar-recover:${startMar.id}`;
+
+      if (this.isMedicationInfusionStoppedInEvents(orderItemId, sessionKey, events)) {
+        continue;
+      }
+
+      const stopMar = await this.prisma.medicationAdministration.findFirst({
+        where: {
+          facilityId,
+          orderItemId,
+          administeredAt: { gte: startedAt },
+          OR: [
+            { infusionPhase: MedicationAdministrationInfusionPhase.INFUSION_STOP },
+            { notes: { startsWith: "Perfusion IV terminée" } },
+          ],
+          ...(startMar.infusionSessionKey?.trim()
+            ? { infusionSessionKey: startMar.infusionSessionKey.trim() }
+            : {}),
+        },
+        orderBy: { administeredAt: "asc" },
+      });
+      if (
+        stopMar &&
+        (medicationAdministrationRowIsInfusionStop(stopMar.notes, stopMar.infusionPhase) ||
+          medicationAdministrationRowIsInfusionTerminal(stopMar.notes))
+      ) {
+        continue;
+      }
+
+      const existingSession = await this.prisma.infusionSession.findFirst({
+        where: { facilityId, orderItemId, legacyInfusionSessionKey: sessionKey },
+        orderBy: { startedAt: "desc" },
+        select: { id: true, status: true },
+      });
+      if (existingSession?.status === "STOPPED") continue;
+
+      if (!existingSession && orderItem.status === OrderStatus.IN_PROGRESS) {
+        await this.prisma.infusionSession.create({
+          data: {
+            facilityId,
+            encounterId: orderItem.order.encounterId,
+            orderItemId,
+            legacyInfusionSessionKey: sessionKey,
+            status: "IN_PROGRESS",
+            startedAt,
+          },
+        });
+        logInfo("medication_infusion_session_recovered_from_start_mar", {
+          facilityId,
+          orderItemId,
+          sessionKey,
+          medicationAdministrationId: startMar.id,
+        });
+      } else if (existingSession?.status === "IN_PROGRESS") {
+        // use existing in-progress session row
+      } else if (orderItem.status !== OrderStatus.IN_PROGRESS) {
+        continue;
+      }
+
+      return { sessionKey, startedAt, route: routeFallback };
+    }
+
+    return null;
+  }
+
+  private isMedicationInfusionStoppedInEvents(
+    orderItemId: string,
+    sessionKey: string,
+    events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>
+  ): boolean {
+    let activeKey: string | null = null;
+    for (const ev of events) {
+      const m = this.parseMedicationInfusionOrderEventMeta(ev.metadata);
+      if (!m || m.orderItemId !== orderItemId) continue;
+      if (m.infusionAction === "START" && m.infusionSessionKey) {
+        activeKey = m.infusionSessionKey;
+      } else if (
+        m.infusionAction === "STOP" &&
+        m.infusionSessionKey &&
+        (activeKey === m.infusionSessionKey || sessionKey === m.infusionSessionKey)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private findActiveMedicationInfusionSession(
@@ -3407,15 +3527,13 @@ export class OrdersService {
       throw new ForbiddenException("Authentification requise pour arrêter une perfusion.");
     }
     if (orderItem.status === OrderStatus.COMPLETED || orderItem.status === OrderStatus.CANCELLED) {
-      throw new BadRequestException("Ligne déjà terminée ou annulée.");
+      throw medicationInfusionBadRequest("ORDER_LINE_TERMINAL");
     }
 
     const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(this.prisma, orderItem);
     const candidateInput = buildMedicationInfusionCandidateInputFromOrderItem(orderItem, catalog, resolvedRoute);
     if (!isMedicationInfusionCandidate(candidateInput)) {
-      throw new BadRequestException(
-        "Cette ligne n’est pas éligible à la perfusion (voie / libellé). Utilisez l’administration au lit habituelle."
-      );
+      throw medicationInfusionBadRequest("INFUSION_NOT_ELIGIBLE");
     }
     const routeResolved = (resolvedRoute ?? "").trim() || (candidateInput.route ?? "").trim() || "IV";
 
@@ -3426,7 +3544,7 @@ export class OrdersService {
     });
     const active = await this.resolveActiveMedicationInfusionSession(
       facilityId,
-      orderItemId,
+      orderItem,
       infusionEvents,
       routeResolved
     );
@@ -3436,12 +3554,12 @@ export class OrdersService {
         orderItemId,
         reason: "no_active_session",
       });
-      throw new BadRequestException("Aucune perfusion en cours pour cette ligne.");
+      throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
     }
 
     const stoppedAt = dto.stoppedAt ?? new Date();
     if (Number.isNaN(stoppedAt.getTime())) {
-      throw new BadRequestException("Horodatage d’arrêt invalide.");
+      throw medicationInfusionBadRequest("INVALID_STOP_TIME");
     }
     if (stoppedAt.getTime() < active.startedAt.getTime()) {
       logInfo("medication_infusion_stop_rejected", {
@@ -3451,7 +3569,7 @@ export class OrdersService {
         startedAt: active.startedAt.toISOString(),
         stoppedAt: stoppedAt.toISOString(),
       });
-      throw new BadRequestException("L’heure d’arrêt ne peut pas précéder le début de perfusion.");
+      throw medicationInfusionBadRequest("STOP_BEFORE_START");
     }
     const durationMinutes = Math.max(
       0,
@@ -3473,11 +3591,12 @@ export class OrdersService {
           { metadata: { path: ["infusionScope"], equals: "MEDICATION_INFUSION" } as Prisma.JsonFilter },
           { metadata: { path: ["infusionAction"], equals: "STOP" } as Prisma.JsonFilter },
           { metadata: { path: ["orderItemId"], equals: orderItemId } as Prisma.JsonFilter },
+          { metadata: { path: ["infusionSessionKey"], equals: active.sessionKey } as Prisma.JsonFilter },
         ],
       },
     });
     if (alreadyStopped) {
-      throw new BadRequestException("Infusion already stopped");
+      throw medicationInfusionBadRequest("INFUSION_ALREADY_STOPPED");
     }
 
     /**
@@ -3493,6 +3612,7 @@ export class OrdersService {
         orderItemId,
         marAction: MedicationMarAction.administered,
         administeredAt: { gte: active.startedAt },
+        infusionSessionKey: active.sessionKey,
         notes: { startsWith: TERMINAL_INFUSION_MAR_NOTE_PREFIX },
       },
       orderBy: { administeredAt: "desc" },
@@ -3518,10 +3638,10 @@ export class OrdersService {
             ? orphanTerminalMar.administeredAt
             : new Date(orphanTerminalMar.administeredAt);
         if (Number.isNaN(recoveredStoppedAt.getTime())) {
-          throw new BadRequestException("Horodatage d’arrêt invalide.");
+          throw medicationInfusionBadRequest("INVALID_STOP_TIME");
         }
         if (recoveredStoppedAt.getTime() < active.startedAt.getTime()) {
-          throw new BadRequestException("L’heure d’arrêt ne peut pas précéder le début de perfusion.");
+          throw medicationInfusionBadRequest("STOP_BEFORE_START");
         }
         const recoveredDurationMinutes = Math.max(
           0,

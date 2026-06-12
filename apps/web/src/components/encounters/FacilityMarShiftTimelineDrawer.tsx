@@ -29,6 +29,7 @@ import {
   marShiftTimelineDateTimeLocalToUtcIso,
   toMarShiftTimelineDateTimeLocalValue,
 } from "@/features/mar/marShiftTimelineDisplay";
+import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 
 export type FacilityMarShiftTimelineDrawerContext = {
   patientDisplay: string;
@@ -57,6 +58,9 @@ export function FacilityMarShiftTimelineDrawer({
   onActionSuccess,
 }: FacilityMarShiftTimelineDrawerProps) {
   const { t, language } = useI18n();
+  const marActionErrorFallback = t("marShiftTimeline.actionError");
+  const resolveActionError = (e: unknown) =>
+    extractMarSaveErrorMessage(e, language, marActionErrorFallback, t);
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
   const closeRef = useRef<HTMLButtonElement>(null);
   const [startTimeValue, setStartTimeValue] = useState("");
@@ -219,7 +223,7 @@ export function FacilityMarShiftTimelineDrawer({
       setReasonModal(null);
       await onActionSuccess?.();
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+      setActionError(resolveActionError(e));
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +239,7 @@ export function FacilityMarShiftTimelineDrawer({
       try {
         await actionHandlers.onRequestAdminister(item);
       } catch (e) {
-        setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+        setActionError(resolveActionError(e));
       } finally {
         setSubmitting(false);
       }
@@ -280,7 +284,7 @@ export function FacilityMarShiftTimelineDrawer({
         await onActionSuccess?.();
       }
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : t("marShiftTimeline.actionError"));
+      setActionError(resolveActionError(e));
     } finally {
       setSubmitting(false);
     }

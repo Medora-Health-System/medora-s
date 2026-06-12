@@ -255,8 +255,13 @@ export function normalizeUserFacingError(
   if (/server error/i.test(s)) return locale === "en" ? "Server error." : "Erreur serveur.";
 
   /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
-  if (locale === "en" && s.length >= 3 && s.length <= 500 && !/[^\x00-\x7F]/.test(s)) {
-    return s;
+  if (locale === "en") {
+    if (/^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion)/i.test(s)) {
+      return "Something went wrong.";
+    }
+    if (s.length >= 3 && s.length <= 500 && !/[^\x00-\x7F]/.test(s)) {
+      return s;
+    }
   }
 
   return locale === "en" ? "Something went wrong." : "Une erreur est survenue.";
