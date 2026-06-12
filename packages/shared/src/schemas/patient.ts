@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
+import { MAR_PRN_REASON_CODES } from "../mar/medicationAdministrationPrnGovernance.js";
 import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
@@ -689,6 +690,22 @@ export const medicationAdministrationCreateDtoSchema = z.object({
     emptyStrToUndefined,
     z.enum(imInjectionSiteValues).optional()
   ),
+  /** K.10B.7 — structured PRN reason when administering PRN medication. */
+  prnReasonCode: z.preprocess(
+    emptyStrToUndefined,
+    z.enum(MAR_PRN_REASON_CODES).optional()
+  ),
+  /** K.10B.7 — free-text when prnReasonCode is other. */
+  prnReasonOther: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  /** K.10B.7 — pain score 0–10 for pain PRN medications. */
+  painScore: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().min(0).max(10).optional()
+  ),
+  /** K.10B.7 — optional pain location for pain PRN. */
+  painLocation: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  /** K.10B.7 — optional reassessment reminder (clinical flag at capture). */
+  prnReassessReminder: z.boolean().optional(),
   /** Required when documented allergies exist on the visit and MAR outcome is administered (server-enforced). */
   safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
   /** Phase 15F-B: optional clinical administration time at create (ISO-8601 UTC); `administeredAt` stays documented time. */
@@ -765,6 +782,54 @@ export const medicationInfusionStopDtoSchema = z.object({
 });
 
 export type MedicationInfusionStopDto = z.infer<typeof medicationInfusionStopDtoSchema>;
+
+/** POST /orders/items/:id/fluid/start — continuous IV fluid start (K.10B.8). */
+export const continuousFluidStartDtoSchema = z.object({
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  startedAt: z.coerce.date().optional(),
+  bagSizeMl: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().positive().optional()
+  ),
+});
+
+export type ContinuousFluidStartDto = z.infer<typeof continuousFluidStartDtoSchema>;
+
+/** POST /orders/items/:id/fluid/pause|resume — continuous IV fluid pause/resume (K.10B.8). */
+export const continuousFluidPauseResumeDtoSchema = z.object({
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  actionAt: z.coerce.date().optional(),
+});
+
+export type ContinuousFluidPauseResumeDto = z.infer<typeof continuousFluidPauseResumeDtoSchema>;
+
+/** POST /orders/items/:id/fluid/stop — continuous IV fluid stop (K.10B.8). */
+export const continuousFluidStopDtoSchema = z.object({
+  stoppedAt: z.coerce.date().optional(),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type ContinuousFluidStopDto = z.infer<typeof continuousFluidStopDtoSchema>;
+
+/** POST /orders/items/:id/fluid/bolus/start — IV fluid bolus start (K.10B.8A). */
+export const fluidBolusStartDtoSchema = z.object({
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  startedAt: z.coerce.date().optional(),
+  bolusVolumeMl: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().positive().optional()
+  ),
+});
+
+export type FluidBolusStartDto = z.infer<typeof fluidBolusStartDtoSchema>;
+
+/** POST /orders/items/:id/fluid/bolus/complete — IV fluid bolus complete (K.10B.8A). */
+export const fluidBolusCompleteDtoSchema = z.object({
+  completedAt: z.coerce.date().optional(),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type FluidBolusCompleteDto = z.infer<typeof fluidBolusCompleteDtoSchema>;
 
 /** POST /encounters/:id/provider-addenda — append-only after signed provider documentation (V1). */
 export const encounterProviderAddendumCreateDtoSchema = z.object({

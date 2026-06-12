@@ -76,8 +76,12 @@ export function FacilityMarShiftTimelineDrawer({
   const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
   const primaryAction = item ? marShiftTimelinePrimaryDrawerAction(item) : null;
   const showStartTimeField = item?.clinicalAction === "START_INFUSION";
-  const showStopTimeField = item?.clinicalAction === "STOP_INFUSION";
-  const showStopNotesField = item?.clinicalAction === "STOP_INFUSION";
+  const showStopTimeField =
+    item?.clinicalAction === "STOP_INFUSION" ||
+    item?.clinicalAction === "STOP_FLUID" ||
+    item?.clinicalAction === "RESUME_FLUID";
+  const showStopNotesField =
+    item?.clinicalAction === "STOP_INFUSION" || item?.clinicalAction === "STOP_FLUID";
 
   useEffect(() => {
     if (item) closeRef.current?.focus();
@@ -186,6 +190,86 @@ export function FacilityMarShiftTimelineDrawer({
       label: t("marShiftTimeline.drawer.completionSummary"),
       value: item.completionSummary,
     },
+    {
+      label: t("marShiftTimeline.drawer.prnIndication"),
+      value: item.orderPrnIndication,
+      testId: "mar-shift-timeline-drawer-prn-indication",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnReason"),
+      value: item.prnReasonLabel,
+      testId: "mar-shift-timeline-drawer-prn-reason",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnPainScore"),
+      value: item.prnPainScore != null ? `${item.prnPainScore}/10` : null,
+      testId: "mar-shift-timeline-drawer-prn-pain-score",
+    },
+    {
+      label: t("marShiftTimeline.drawer.prnPainLocation"),
+      value: item.prnPainLocation,
+      testId: "mar-shift-timeline-drawer-prn-pain-location",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidRate"),
+      value: item.fluidRateLabel,
+      testId: "mar-shift-timeline-drawer-fluid-rate",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidStartedAt"),
+      value: item.fluidStartedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.fluidStartedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
+      testId: "mar-shift-timeline-drawer-fluid-started-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidPausedAt"),
+      value: item.fluidPausedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.fluidPausedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
+      testId: "mar-shift-timeline-drawer-fluid-paused-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidStoppedAt"),
+      value: item.fluidStoppedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.fluidStoppedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
+      testId: "mar-shift-timeline-drawer-fluid-stopped-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidCompletedAt"),
+      value: item.fluidCompletedAt
+        ? formatMarShiftTimelineClinicalDateTime(item.fluidCompletedAt, dateLocale, facilityTimeZone ?? undefined)
+        : null,
+      testId: "mar-shift-timeline-drawer-fluid-completed-at",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidRunningDuration"),
+      value: item.fluidRunningDurationLabel,
+      testId: "mar-shift-timeline-drawer-fluid-running-duration",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidActiveDuration"),
+      value: item.fluidActiveDurationLabel,
+      testId: "mar-shift-timeline-drawer-fluid-active-duration",
+    },
+    {
+      label: t("marShiftTimeline.drawer.fluidTotalDuration"),
+      value: item.fluidTotalDurationLabel,
+      testId: "mar-shift-timeline-drawer-fluid-total-duration",
+    },
+    {
+      label: item.isFluidBolus
+        ? t("marShiftTimeline.drawer.fluidBolusVolume")
+        : t("marShiftTimeline.drawer.fluidVolumeInfused"),
+      value:
+        item.isFluidBolus && item.fluidBolusVolumeMl != null
+          ? `${item.fluidBolusVolumeMl} mL`
+          : item.fluidVolumeInfusedMl != null
+            ? `${item.fluidVolumeInfusedMl} mL`
+            : null,
+      testId: "mar-shift-timeline-drawer-fluid-volume-final",
+    },
   ];
 
   const reasonCodes =
@@ -239,6 +323,98 @@ export function FacilityMarShiftTimelineDrawer({
       setSubmitting(true);
       try {
         await actionHandlers.onRequestAdminister(item);
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "START_FLUID" && actionHandlers.onExecuteStartFluid) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        await actionHandlers.onExecuteStartFluid(item);
+        await onActionSuccess?.();
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "PAUSE_FLUID" && actionHandlers.onExecutePauseFluid) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        await actionHandlers.onExecutePauseFluid(item);
+        await onActionSuccess?.();
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "RESUME_FLUID" && actionHandlers.onExecuteResumeFluid) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        await actionHandlers.onExecuteResumeFluid(item);
+        await onActionSuccess?.();
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "STOP_FLUID" && actionHandlers.onExecuteStopFluid) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        const stopPayload = buildMarShiftTimelineStopPayload(
+          { stopTimeLocal: stopTimeValue },
+          facilityTimeZone
+        );
+        await actionHandlers.onExecuteStopFluid(item, stopPayload);
+        await onActionSuccess?.();
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "START_BOLUS" && actionHandlers.onExecuteStartBolus) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        await actionHandlers.onExecuteStartBolus(item);
+        await onActionSuccess?.();
+      } catch (e) {
+        setActionError(resolveActionError(e));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    if (action === "COMPLETE_BOLUS" && actionHandlers.onExecuteCompleteBolus) {
+      setActionError(null);
+      setSubmitting(true);
+      try {
+        const completePayload = buildMarShiftTimelineStopPayload(
+          { stopTimeLocal: stopTimeValue },
+          facilityTimeZone
+        );
+        await actionHandlers.onExecuteCompleteBolus(item, completePayload);
+        await onActionSuccess?.();
       } catch (e) {
         setActionError(resolveActionError(e));
       } finally {

@@ -18,6 +18,7 @@ import {
   medicationIvpbDoseSchedulingEnabled,
   medicationSchedulingFeatureFlagsEnabled,
   parseMedicationDoseKind,
+  resolveMarTimelinePrnDisplayFields,
   parseMedicationDoseStatus,
   type MarShiftTimelineClinicalAction,
   type MarShiftTimelineDrawerAction,
@@ -39,6 +40,7 @@ import {
 import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.service";
 import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
 import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-timeline-order-item-fallback.util";
+import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
 
 export type MarShiftTimelineQuery = {
   shiftCode?: MarShiftTimelineShiftCode | string;
@@ -77,6 +79,23 @@ export type MarShiftTimelineCellItem = {
   administeredByDisplay: string | null;
   administeredByInitials: string | null;
   completionSummary: string | null;
+  orderPrnIndication?: string | null;
+  prnReasonLabel?: string | null;
+  prnPainScore?: number | null;
+  prnPainLocation?: string | null;
+  continuousFluidStatus?: string | null;
+  fluidRateLabel?: string | null;
+  fluidVolumeInfusedMl?: number | null;
+  fluidStartedAt?: string | null;
+  fluidStoppedAt?: string | null;
+  fluidCompletedAt?: string | null;
+  fluidBolusStatus?: string | null;
+  fluidBolusVolumeMl?: number | null;
+  fluidRunningDurationLabel?: string | null;
+  fluidActiveDurationLabel?: string | null;
+  fluidTotalDurationLabel?: string | null;
+  fluidPausedAt?: string | null;
+  isFluidBolus?: boolean;
   doseKind: string;
   route: string | null;
   frequencyCode: string | null;
@@ -290,6 +309,22 @@ export class MarShiftTimelineService {
       orderItemNotesRows.map((row) => [row.id, row.notes?.trim() || null])
     );
 
+    const orderIds = [...new Set(doses.map((d) => d.orderId))];
+    const orderEventRows =
+      orderIds.length > 0
+        ? await this.prisma.orderEvent.findMany({
+            where: { orderId: { in: orderIds } },
+            orderBy: { performedAt: "asc" },
+            select: { orderId: true, metadata: true },
+          })
+        : [];
+    const orderEventsByOrderId = new Map<string, Array<{ metadata: unknown }>>();
+    for (const ev of orderEventRows) {
+      const list = orderEventsByOrderId.get(ev.orderId) ?? [];
+      list.push({ metadata: ev.metadata });
+      orderEventsByOrderId.set(ev.orderId, list);
+    }
+
     /** Only suppress fallback when a dose row is visible on this timeline (K.10B.5). */
     const orderItemIdsWithDoseInstances = new Set(doses.map((d) => d.orderItemId));
 
@@ -354,10 +389,28 @@ export class MarShiftTimelineService {
 
       const parsedDoseKind = parseMedicationDoseKind(dose.doseKind);
       const requiresWitness = governanceRequiresWitness(governance);
-      const clinicalAction = resolveMarShiftTimelineClinicalAction(
-        parsedDoseKind ?? dose.doseKind,
-        parsedStatus
-      );
+      const directionsSig = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
+      const administrationNotes = enrichment?.administrationNotes ?? null;
+
+      const fluidEnrichment = resolveMarTimelineFluidEnrichment({
+        orderItemId: dose.orderItemId,
+        medicationLabel,
+        directionsSig,
+        route,
+        doseKind: parsedDoseKind ?? dose.doseKind,
+        doseStatus: parsedStatus,
+        orderEvents: orderEventsByOrderId.get(dose.orderId) ?? [],
+        requiresWitness,
+        facilityTimeZone: shiftWindow.facilityTimeZone,
+        enrichment: {
+          marAction: administrationNotes ? "administered" : null,
+          marNotes: administrationNotes,
+        },
+      });
+
+      const clinicalAction =
+        fluidEnrichment?.clinicalAction ??
+        resolveMarShiftTimelineClinicalAction(parsedDoseKind ?? dose.doseKind, parsedStatus);
       const columnKey = resolveMarShiftTimelineColumnKey({
         scheduledAt: placementInstant,
         dueWindowStartAt: dose.dueWindowStartAt,
@@ -366,18 +419,24 @@ export class MarShiftTimelineService {
       });
       if (!columnKey) continue;
 
-      const directionsSig = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
-      const { primaryText, secondaryText, tertiaryText } = buildMarShiftTimelineCellDisplay({
-        medicationLabel,
-        doseKind: parsedDoseKind ?? dose.doseKind,
-        doseStatus: parsedStatus,
-        route,
-        frequencyCode: frequencySnapshot?.frequencyCode ?? null,
-        requiresWitness,
-        responseDueAt: dose.responseDueAt,
-        enrichment,
-        facilityTimeZone: shiftWindow.facilityTimeZone,
+      const cellFromFluid = fluidEnrichment?.cellDisplay;
+      const { primaryText, secondaryText, tertiaryText } = cellFromFluid ??
+        buildMarShiftTimelineCellDisplay({
+          medicationLabel,
+          doseKind: parsedDoseKind ?? dose.doseKind,
+          doseStatus: parsedStatus,
+          route,
+          frequencyCode: frequencySnapshot?.frequencyCode ?? null,
+          requiresWitness,
+          responseDueAt: dose.responseDueAt,
+          enrichment,
+          facilityTimeZone: shiftWindow.facilityTimeZone,
+          directionsSig,
+          marNotes: administrationNotes,
+        });
+      const prnDisplay = resolveMarTimelinePrnDisplayFields({
         directionsSig,
+        administrationNotes,
       });
       const resolvedTertiaryText =
         tertiaryText.trim() ||
@@ -415,6 +474,23 @@ export class MarShiftTimelineService {
         administeredByDisplay: enrichment?.administeredByDisplay ?? null,
         administeredByInitials: enrichment?.administeredByInitials ?? null,
         completionSummary: enrichment?.completionSummary ?? (resolvedTertiaryText || null),
+        orderPrnIndication: prnDisplay.orderPrnIndication,
+        prnReasonLabel: prnDisplay.prnReasonLabel,
+        prnPainScore: prnDisplay.prnPainScore,
+        prnPainLocation: prnDisplay.prnPainLocation,
+        continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
+        fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
+        fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,
+        fluidStartedAt: fluidEnrichment?.fluidStartedAt ?? null,
+        fluidStoppedAt: fluidEnrichment?.fluidStoppedAt ?? null,
+        fluidCompletedAt: fluidEnrichment?.fluidCompletedAt ?? null,
+        fluidBolusStatus: fluidEnrichment?.fluidBolusStatus ?? null,
+        fluidBolusVolumeMl: fluidEnrichment?.fluidBolusVolumeMl ?? null,
+        fluidRunningDurationLabel: fluidEnrichment?.fluidRunningDurationLabel ?? null,
+        fluidActiveDurationLabel: fluidEnrichment?.fluidActiveDurationLabel ?? null,
+        fluidTotalDurationLabel: fluidEnrichment?.fluidTotalDurationLabel ?? null,
+        fluidPausedAt: fluidEnrichment?.fluidPausedAt ?? null,
+        isFluidBolus: fluidEnrichment?.isFluidBolus ?? false,
         doseKind: parsedDoseKind ?? dose.doseKind,
         route,
         frequencyCode: frequencySnapshot?.frequencyCode ?? null,
@@ -433,7 +509,12 @@ export class MarShiftTimelineService {
           facilityTimeZone: shiftWindow.facilityTimeZone,
           directionsSig,
         }),
-        actions: resolveMarShiftTimelineDrawerActions(clinicalAction),
+        actions:
+          fluidEnrichment?.drawerActions ??
+          resolveMarShiftTimelineDrawerActions(clinicalAction, {
+            continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
+            fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
+          }),
       };
 
       const rowKey = dose.encounterId;

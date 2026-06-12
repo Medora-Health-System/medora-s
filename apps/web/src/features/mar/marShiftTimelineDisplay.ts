@@ -81,6 +81,12 @@ export function marShiftTimelinePrimaryDrawerAction(
 ): MarShiftTimelineDrawerAction | null {
   if (item.clinicalAction === "START_INFUSION") return "START_INFUSION";
   if (item.clinicalAction === "STOP_INFUSION") return "STOP_INFUSION";
+  if (item.clinicalAction === "START_FLUID") return "START_FLUID";
+  if (item.clinicalAction === "START_BOLUS") return "START_BOLUS";
+  if (item.clinicalAction === "COMPLETE_BOLUS") return "COMPLETE_BOLUS";
+  if (item.clinicalAction === "RESUME_FLUID") return "RESUME_FLUID";
+  if (item.clinicalAction === "STOP_FLUID") return "STOP_FLUID";
+  if (item.clinicalAction === "PAUSE_FLUID") return "PAUSE_FLUID";
   if (item.clinicalAction === "ADMINISTER") return "ADMINISTER";
   return null;
 }

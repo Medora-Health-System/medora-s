@@ -1790,7 +1790,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(item?.primaryText).toBe("NS 0.9%");
       expect(item?.secondaryText).toBe("100 mL/hr");
       expect(item?.tertiaryText).toBe("START");
-      expect(item?.clinicalAction).toBe("START_INFUSION");
+      expect(item?.clinicalAction).toBe("START_FLUID");
       expect(item?.hover.rate).toBe("100 mL/hr");
     });
 

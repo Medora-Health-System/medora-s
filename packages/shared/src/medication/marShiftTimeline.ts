@@ -22,6 +22,24 @@ import {
   formatIvInfusionRateDisplay,
   parseIvInfusionRateFromDirections,
 } from "./ivFluidOrderDirections.js";
+import {
+  formatPrnMarAdministrationCellSummary,
+  isPrnMedicationOrder,
+  parsePrnIndicationFromDirections,
+} from "../mar/medicationAdministrationPrnGovernance.js";
+import {
+  abbreviateFluidPrimaryLabel,
+  formatFluidRateDisplay,
+  isContinuousFluidOrder,
+  parseFluidBagSizeMl,
+  resolveFluidRate,
+} from "./continuousFluidOrder.js";
+import { type ContinuousFluidSessionStatus } from "./continuousFluidSession.js";
+import { isFluidBolusOrder } from "./continuousFluidOrder.js";
+import {
+  formatFluidBolusCompletedTimeRange,
+  type FluidBolusSessionStatus,
+} from "./fluidBolusSession.js";
 
 /**
  * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
@@ -112,6 +130,12 @@ export type MarShiftTimelineClinicalAction =
   | "ADMINISTER"
   | "START_INFUSION"
   | "STOP_INFUSION"
+  | "START_FLUID"
+  | "PAUSE_FLUID"
+  | "RESUME_FLUID"
+  | "STOP_FLUID"
+  | "START_BOLUS"
+  | "COMPLETE_BOLUS"
   | "VIEW_UPCOMING"
   | "VIEW_ADMINISTRATION"
   | "VIEW_HELD"
@@ -121,6 +145,12 @@ export const MAR_SHIFT_TIMELINE_DRAWER_ACTIONS = [
   "ADMINISTER",
   "START_INFUSION",
   "STOP_INFUSION",
+  "START_FLUID",
+  "PAUSE_FLUID",
+  "RESUME_FLUID",
+  "STOP_FLUID",
+  "START_BOLUS",
+  "COMPLETE_BOLUS",
   "REFUSE",
   "HOLD",
   "VIEW_ORDER",
@@ -151,6 +181,8 @@ export type MarShiftTimelineAdministrationEnrichment = {
   administeredByDisplay: string | null;
   administeredByInitials: string | null;
   completionSummary: string | null;
+  /** Terminal MAR notes for PRN cell/drawer display (K.10B.7). */
+  administrationNotes?: string | null;
 };
 
 export function buildMarShiftTimelineTitle(facilityName: string): string {
@@ -362,10 +394,57 @@ export function doseStatusMarShiftTimelineHoverLabel(status: MedicationDoseStatu
   }
 }
 
+/** Fluid bolus MAR action from session status (K.10B.8A). */
+export function resolveFluidBolusClinicalAction(
+  bolusStatus: FluidBolusSessionStatus
+): MarShiftTimelineClinicalAction | null {
+  switch (bolusStatus) {
+    case "DUE":
+      return "START_BOLUS";
+    case "RUNNING":
+      return "COMPLETE_BOLUS";
+    case "COMPLETED":
+      return "VIEW_ADMINISTRATION";
+    default:
+      return null;
+  }
+}
+
+/** Continuous IV fluid MAR action from session status (K.10B.8). */
+export function resolveContinuousFluidClinicalAction(
+  fluidStatus: ContinuousFluidSessionStatus
+): MarShiftTimelineClinicalAction | null {
+  switch (fluidStatus) {
+    case "DUE":
+      return "START_FLUID";
+    case "RUNNING":
+      return "STOP_FLUID";
+    case "PAUSED":
+      return "RESUME_FLUID";
+    case "COMPLETED":
+      return "VIEW_ADMINISTRATION";
+    default:
+      return null;
+  }
+}
+
 export function resolveMarShiftTimelineClinicalAction(
   doseKind: MedicationDoseKind | string | null | undefined,
-  doseStatus: MedicationDoseStatus
+  doseStatus: MedicationDoseStatus,
+  options?: {
+    continuousFluidStatus?: ContinuousFluidSessionStatus | null;
+    fluidBolusStatus?: FluidBolusSessionStatus | null;
+    isContinuousFluid?: boolean;
+    isFluidBolus?: boolean;
+  }
 ): MarShiftTimelineClinicalAction | null {
+  if (options?.isFluidBolus && options.fluidBolusStatus) {
+    return resolveFluidBolusClinicalAction(options.fluidBolusStatus);
+  }
+  if (options?.isContinuousFluid && options.continuousFluidStatus) {
+    return resolveContinuousFluidClinicalAction(options.continuousFluidStatus);
+  }
+
   if (isIvpbSessionDoseKind(doseKind)) {
     switch (doseStatus) {
       case "DUE":
@@ -404,9 +483,20 @@ export function resolveMarShiftTimelineClinicalAction(
 }
 
 export function resolveMarShiftTimelineDrawerActions(
-  clinicalAction: MarShiftTimelineClinicalAction | null
+  clinicalAction: MarShiftTimelineClinicalAction | null,
+  options?: {
+    continuousFluidStatus?: ContinuousFluidSessionStatus | null;
+    fluidBolusStatus?: FluidBolusSessionStatus | null;
+  }
 ): MarShiftTimelineDrawerAction[] {
   if (!clinicalAction) return ["VIEW_ORDER"];
+
+  if (clinicalAction === "STOP_FLUID" && options?.continuousFluidStatus === "RUNNING") {
+    return ["PAUSE_FLUID", "STOP_FLUID", "VIEW_ORDER"];
+  }
+  if (clinicalAction === "RESUME_FLUID") {
+    return ["RESUME_FLUID", "STOP_FLUID", "VIEW_ORDER"];
+  }
 
   switch (clinicalAction) {
     case "ADMINISTER":
@@ -415,6 +505,16 @@ export function resolveMarShiftTimelineDrawerActions(
       return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "VIEW_ORDER"];
     case "STOP_INFUSION":
       return ["START_INFUSION", "STOP_INFUSION", "REFUSE", "HOLD", "VIEW_ORDER"];
+    case "START_FLUID":
+      return ["START_FLUID", "REFUSE", "HOLD", "VIEW_ORDER"];
+    case "PAUSE_FLUID":
+      return ["PAUSE_FLUID", "STOP_FLUID", "VIEW_ORDER"];
+    case "STOP_FLUID":
+      return ["STOP_FLUID", "VIEW_ORDER"];
+    case "START_BOLUS":
+      return ["START_BOLUS", "REFUSE", "HOLD", "VIEW_ORDER"];
+    case "COMPLETE_BOLUS":
+      return ["COMPLETE_BOLUS", "VIEW_ORDER"];
     case "VIEW_UPCOMING":
     case "VIEW_ADMINISTRATION":
     case "VIEW_HELD":
@@ -600,10 +700,34 @@ export function buildMarShiftTimelineCellDisplay(input: {
   marNotes?: string | null;
   /** Order directions / sig — used for IV fluid rate display (K.10B.4). */
   directionsSig?: string | null;
+  continuousFluidStatus?: ContinuousFluidSessionStatus | null;
+  fluidBolusStatus?: FluidBolusSessionStatus | null;
+  fluidStartedAt?: string | null;
+  fluidStoppedAt?: string | null;
+  fluidCompletedAt?: string | null;
+  fluidBagSizeMl?: number | null;
+  fluidBolusVolumeMl?: number | null;
 }): { primaryText: string; secondaryText: string; tertiaryText: string } {
   const baseLabel = abbreviateMedicationLabelForTimeline(input.medicationLabel ?? "");
+  const isFluidBolusCell = Boolean(
+    input.fluidBolusStatus &&
+      isFluidBolusOrder({
+        medicationLabel: input.medicationLabel,
+        directionsSig: input.directionsSig,
+      })
+  );
+  const isContinuousFluidCell = Boolean(
+    !isFluidBolusCell &&
+      input.continuousFluidStatus &&
+      isContinuousFluidOrder({
+        medicationLabel: input.medicationLabel,
+        directionsSig: input.directionsSig,
+      })
+  );
+  const fluidRate = resolveFluidRate(input.directionsSig);
+  const rateLabel = fluidRate ? formatFluidRateDisplay(fluidRate) : null;
   const parsedRate = parseIvInfusionRateFromDirections(input.directionsSig);
-  const rateLabel = parsedRate ? formatIvInfusionRateDisplay(parsedRate) : null;
+  const ivRateLabel = parsedRate ? formatIvInfusionRateDisplay(parsedRate) : null;
   const terminalOutcome =
     input.terminalOutcome ??
     resolveMarShiftTimelineTerminalOutcome({
@@ -613,9 +737,15 @@ export function buildMarShiftTimelineCellDisplay(input: {
   const route = input.route?.trim().toUpperCase() ?? "";
   const isIvpb =
     isIvpbSessionDoseKind(input.doseKind) || route === "IVPB" || baseLabel.includes("IVPB");
-  const isPrn = input.frequencyCode?.trim().toUpperCase() === "PRN" || input.responseDueAt != null;
+  const isPrn =
+    isPrnMedicationOrder({
+      frequencyCode: input.frequencyCode,
+      directionsSig: input.directionsSig,
+    }) || input.responseDueAt != null;
 
-  let primaryText = baseLabel;
+  let primaryText = isContinuousFluidCell
+    ? abbreviateFluidPrimaryLabel(input.medicationLabel)
+    : baseLabel;
   const primaryAlreadyAbbreviatedNs = primaryText.startsWith("NS 0.9%");
   if (
     isIvpb &&
@@ -651,8 +781,77 @@ export function buildMarShiftTimelineCellDisplay(input: {
   if (input.doseStatus === "MISSED") {
     return { primaryText, secondaryText: "MISSED", tertiaryText };
   }
+
+  if (isFluidBolusCell && input.fluidBolusStatus) {
+    const bolusVol =
+      input.fluidBolusVolumeMl ??
+      parseFluidBagSizeMl(input.directionsSig) ??
+      input.fluidBagSizeMl;
+    const secondary = bolusVol ? `${bolusVol} mL BOLUS` : "BOLUS";
+    const tz = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
+    if (input.fluidBolusStatus === "DUE") {
+      return { primaryText, secondaryText: secondary, tertiaryText: "START" };
+    }
+    if (input.fluidBolusStatus === "RUNNING") {
+      const started = input.fluidStartedAt
+        ? formatMarShiftTimelineDueTime(new Date(input.fluidStartedAt), tz)
+        : "";
+      const tertiary = started ? `RUNNING · ${started}` : "RUNNING";
+      return { primaryText, secondaryText: secondary, tertiaryText: tertiary };
+    }
+    if (input.fluidBolusStatus === "COMPLETED") {
+      const range =
+        input.fluidStartedAt && input.fluidCompletedAt
+          ? formatFluidBolusCompletedTimeRange({
+              startedAt: input.fluidStartedAt,
+              completedAt: input.fluidCompletedAt,
+              facilityTimeZone: tz,
+              formatTime: (iso, timeZone) =>
+                formatMarShiftTimelineDueTime(new Date(iso), timeZone ?? tz),
+            })
+          : "";
+      return {
+        primaryText,
+        secondaryText: secondary,
+        tertiaryText: range ? range : "DONE",
+      };
+    }
+  }
+
+  if (isContinuousFluidCell && input.continuousFluidStatus) {
+    const bagMl = input.fluidBagSizeMl ?? parseFluidBagSizeMl(input.directionsSig);
+    const secondary =
+      bagMl && rateLabel ? `${bagMl} mL bag · ${rateLabel}` : rateLabel ?? "FLUID";
+    if (input.continuousFluidStatus === "DUE") {
+      return { primaryText, secondaryText: rateLabel ?? secondary, tertiaryText: "START" };
+    }
+    if (input.continuousFluidStatus === "RUNNING" || input.continuousFluidStatus === "PAUSED") {
+      const tz = normalizeMarShiftTimelineTimeZone(input.facilityTimeZone);
+      const started = input.fluidStartedAt
+        ? formatMarShiftTimelineDueTime(new Date(input.fluidStartedAt), tz)
+        : "";
+      const tertiary =
+        input.continuousFluidStatus === "PAUSED"
+          ? started
+            ? `PAUSED · ${started}`
+            : "PAUSED"
+          : started
+            ? `RUNNING · ${started}`
+            : "RUNNING";
+      return { primaryText, secondaryText: rateLabel ?? secondary, tertiaryText: tertiary };
+    }
+    if (input.continuousFluidStatus === "COMPLETED") {
+      return { primaryText, secondaryText: rateLabel ?? secondary, tertiaryText: "DONE" };
+    }
+  }
+
   if (input.doseStatus === "COMPLETED") {
-    return { primaryText, secondaryText: "DONE", tertiaryText };
+    const prnSummary = formatPrnMarAdministrationCellSummary(input.marNotes);
+    return {
+      primaryText,
+      secondaryText: "DONE",
+      tertiaryText: prnSummary ?? tertiaryText,
+    };
   }
 
   const freq = input.frequencyCode?.trim().toUpperCase() ?? "";
@@ -667,24 +866,31 @@ export function buildMarShiftTimelineCellDisplay(input: {
     if (input.doseStatus === "DUE" || input.doseStatus === "OVERDUE") {
       return {
         primaryText,
-        secondaryText: rateLabel ?? "START",
-        tertiaryText: rateLabel ? "START" : tertiaryText,
+        secondaryText: ivRateLabel ?? "START",
+        tertiaryText: ivRateLabel ? "START" : tertiaryText,
       };
     }
     if (input.doseStatus === "IN_PROGRESS") {
       return {
         primaryText,
-        secondaryText: rateLabel ?? "INFUSING",
-        tertiaryText: rateLabel ? "INFUSING" : tertiaryText,
+        secondaryText: ivRateLabel ?? "INFUSING",
+        tertiaryText: ivRateLabel ? "INFUSING" : tertiaryText,
       };
     }
-    return { primaryText, secondaryText: rateLabel ?? "IVPB", tertiaryText };
+    return { primaryText, secondaryText: ivRateLabel ?? "IVPB", tertiaryText };
   }
 
   if (isPrn) {
+    const indication = parsePrnIndicationFromDirections(input.directionsSig);
+    const secondary =
+      indication && indication.length > 0
+        ? indication.length > 14
+          ? `${indication.slice(0, 14)}…`
+          : indication
+        : "PRN";
     const adminTertiary =
       input.doseStatus === "DUE" || input.doseStatus === "OVERDUE" ? "ADMIN" : tertiaryText;
-    return { primaryText, secondaryText: "PRN Resp", tertiaryText: adminTertiary };
+    return { primaryText, secondaryText: secondary, tertiaryText: adminTertiary };
   }
 
   const routeSecondary =

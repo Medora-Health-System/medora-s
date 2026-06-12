@@ -81,6 +81,12 @@ import {
   isIntramuscularMarRoute,
   marModalRequiresInjectionSite,
   validateImInjectionSiteForMarCreate,
+  validatePrnAdministrationForMarCreate,
+  resolveMarPrnOrderMetadata,
+  marPrnReasonCodesForGroup,
+  marPrnAdministrationRequiresPainScore,
+  isOpioidPainMedicationLabel,
+  type MarPrnReasonCode,
   type ImInjectionSiteId,
   type MedicationInfusionCandidateInput,
   type AdvancedMedicationSafetyLine,
@@ -88,6 +94,14 @@ import {
   type MedicationSafetyWarning,
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
+import {
+  pauseContinuousFluid,
+  resumeContinuousFluid,
+  startContinuousFluid,
+  stopContinuousFluid,
+  startFluidBolus,
+  completeFluidBolus,
+} from "@/lib/continuousFluidApi";
 import {
   fetchMedicationPassQueue,
   type MedicationPassQueueItem,
@@ -193,6 +207,8 @@ type OrderItemApi = {
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
   route?: string | null;
+  notes?: string | null;
+  frequencyCode?: string | null;
   intendedAdministrationAt?: string | null;
   catalogMedication?: {
     code?: string | null;
@@ -474,10 +490,20 @@ export function MedicationAdministrationTab({
     scheduledAt?: string | null;
     dueWindowStartAt?: string | null;
     dueWindowEndAt?: string | null;
+    isPrn?: boolean;
+    prnIndication?: string | null;
+    prnReasonGroup?: ReturnType<typeof resolveMarPrnOrderMetadata>["prnReasonGroup"];
+    frequencyCode?: string | null;
+    directionsSig?: string | null;
+    genericName?: string | null;
   } | null>(null);
   const [modalAction, setModalAction] = useState<MarAction>("administered");
   const [modalRoute, setModalRoute] = useState("");
   const [modalInjectionSite, setModalInjectionSite] = useState<ImInjectionSiteId | "">("");
+  const [marPrnReasonCode, setMarPrnReasonCode] = useState<MarPrnReasonCode | "">("");
+  const [marPrnReasonOther, setMarPrnReasonOther] = useState("");
+  const [marPainScore, setMarPainScore] = useState("");
+  const [marPainLocation, setMarPainLocation] = useState("");
   const [modalNotes, setModalNotes] = useState("");
   const [modalDoseValue, setModalDoseValue] = useState("");
   const [modalDoseUnit, setModalDoseUnit] = useState("");
@@ -1191,6 +1217,41 @@ export function MedicationAdministrationTab({
     marAction: modalAction,
     route: modalResolvedRoute,
   });
+  const modalShowsPrnSection =
+    Boolean(modalItem?.isPrn) && modalAction === "administered";
+  const modalPrnReasonOptions = useMemo(() => {
+    if (!modalItem?.prnReasonGroup) return [] as MarPrnReasonCode[];
+    return [...marPrnReasonCodesForGroup(modalItem.prnReasonGroup)];
+  }, [modalItem?.prnReasonGroup]);
+  const modalRequiresPainScore = useMemo(() => {
+    if (!modalItem?.isPrn) return false;
+    return marPrnAdministrationRequiresPainScore({
+      medicationLabel: modalItem.label,
+      genericName: modalItem.genericName,
+      therapeuticClass: modalItem.therapeuticClass,
+      prnIndication: modalItem.prnIndication,
+      prnReasonGroup: modalItem.prnReasonGroup,
+    });
+  }, [modalItem]);
+  const modalOpioidPrnMissingRespiratoryRate = useMemo(() => {
+    if (!modalShowsPrnSection || !modalRequiresPainScore) return false;
+    if (
+      !isOpioidPainMedicationLabel(modalItem?.label, modalItem?.genericName ?? null)
+    ) {
+      return false;
+    }
+    const vitals = encounterAllergySource?.vitals;
+    if (!vitals || typeof vitals !== "object") return true;
+    const record = vitals as Record<string, unknown>;
+    const rr = record.respiratoryRate ?? record.respRate ?? record.rr;
+    return rr == null || String(rr).trim() === "";
+  }, [
+    modalShowsPrnSection,
+    modalRequiresPainScore,
+    modalItem?.label,
+    modalItem?.genericName,
+    encounterAllergySource?.vitals,
+  ]);
 
   useEffect(() => {
     if (!modalItem) return;
@@ -1223,6 +1284,18 @@ export function MedicationAdministrationTab({
         ? new Date(new Date(scheduledAt).getTime() + 60 * 60 * 1000).toISOString()
         : null);
     const hideAdmin = options?.hideAdministeredAction === true;
+    const directionsSig = orderItem?.notes?.trim() || null;
+    const frequencyCode = orderItem?.frequencyCode?.trim() || null;
+    const catalogMed = asApiObject(orderItem?.catalogMedication);
+    const genericName =
+      typeof catalogMed?.genericName === "string" ? catalogMed.genericName : null;
+    const prnMeta = resolveMarPrnOrderMetadata({
+      frequencyCode,
+      directionsSig,
+      medicationLabel: row.label,
+      genericName,
+      therapeuticClass: row.therapeuticClass,
+    });
     setModalItem({
       orderItemId: row.orderItemId,
       label: row.label,
@@ -1244,8 +1317,18 @@ export function MedicationAdministrationTab({
       scheduledAt,
       dueWindowStartAt,
       dueWindowEndAt,
+      isPrn: prnMeta.isPrn,
+      prnIndication: prnMeta.prnIndication,
+      prnReasonGroup: prnMeta.prnReasonGroup,
+      frequencyCode,
+      directionsSig,
+      genericName,
     });
     setModalSubmitError(null);
+    setMarPrnReasonCode("");
+    setMarPrnReasonOther("");
+    setMarPainScore("");
+    setMarPainLocation("");
     setMarScheduleTimingReason("");
     setModalAction(hideAdmin ? "refused" : "administered");
     setModalRoute(row.routeHint);
@@ -1401,15 +1484,60 @@ export function MedicationAdministrationTab({
       onExecuteHold: async (item, input) => {
         await submitTimelineTerminalMar(item, "HOLD", input);
       },
+      onExecuteStartFluid: async (item) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await startContinuousFluid(item.orderItemId, facilityId);
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
+      onExecutePauseFluid: async (item) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await pauseContinuousFluid(item.orderItemId, facilityId);
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
+      onExecuteResumeFluid: async (item) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await resumeContinuousFluid(item.orderItemId, facilityId);
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
+      onExecuteStopFluid: async (item, input) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await stopContinuousFluid(item.orderItemId, facilityId, {
+          notes: input.notes,
+          stoppedAt: input.stoppedAt,
+        });
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
+      onExecuteStartBolus: async (item) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await startFluidBolus(item.orderItemId, facilityId);
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
+      onExecuteCompleteBolus: async (item, input) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await completeFluidBolus(item.orderItemId, facilityId, {
+          notes: input.notes,
+          completedAt: input.stoppedAt,
+        });
+        await reloadMarData();
+        await timelineRefreshRef.current?.();
+      },
     };
   }, [
     encounterClinicalMutationsAllowed,
     encounterOpen,
+    facilityId,
     infusionBusy,
     openModalFromTimelineItem,
     passQueue.items,
+    reloadMarData,
     runMarInfusion,
     submitTimelineTerminalMar,
+    t,
   ]);
 
   const closeModal = () => {
@@ -1477,6 +1605,23 @@ export function MedicationAdministrationTab({
         )
       );
       return;
+    }
+    if (modalAction === "administered" && modalItem?.isPrn) {
+      const prnValidation = validatePrnAdministrationForMarCreate({
+        marAction: modalAction,
+        frequencyCode: modalItem.frequencyCode,
+        directionsSig: modalItem.directionsSig,
+        medicationLabel: modalItem.label,
+        genericName: modalItem.genericName,
+        therapeuticClass: modalItem.therapeuticClass,
+        prnReasonCode: marPrnReasonCode || null,
+        prnReasonOther: marPrnReasonOther,
+        painScore: marPainScore.trim() ? Number(marPainScore) : null,
+      });
+      if (prnValidation) {
+        setModalSubmitError(t(`marPrnGovernance.errors.${prnValidation.code}`));
+        return;
+      }
     }
     const documentedAt = new Date();
     const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
@@ -1765,6 +1910,16 @@ export function MedicationAdministrationTab({
           requiresInjectionSite ? modalInjectionSite || undefined : undefined
         ),
         ...(requiresInjectionSite && modalInjectionSite ? { injectionSite: modalInjectionSite } : {}),
+        ...(modalAction === "administered" && modalItem?.isPrn && marPrnReasonCode
+          ? {
+              prnReasonCode: marPrnReasonCode,
+              ...(marPrnReasonCode === "other" && marPrnReasonOther.trim()
+                ? { prnReasonOther: marPrnReasonOther.trim() }
+                : {}),
+              ...(marPainScore.trim() ? { painScore: Number(marPainScore) } : {}),
+              ...(marPainLocation.trim() ? { painLocation: marPainLocation.trim() } : {}),
+            }
+          : {}),
         ...(modalAction === "administered" && marAllergyDocSummary && marAllergySafetyAck
           ? { safetyAcknowledgedMedicationAllergies: true }
           : {}),
@@ -2889,6 +3044,137 @@ export function MedicationAdministrationTab({
                 boxSizing: "border-box",
               }}
             />
+
+            {modalShowsPrnSection ? (
+              <div
+                data-testid="mar-prn-governance-section"
+                style={{
+                  marginBottom: 14,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#f8fafc",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                  {t("marPrnGovernance.sectionTitle")}
+                </div>
+                {modalItem?.prnIndication?.trim() ? (
+                  <p style={{ margin: "0 0 10px", fontSize: 13, color: "#475569" }}>
+                    {t("marPrnGovernance.orderIndication")}: {modalItem.prnIndication}
+                  </p>
+                ) : null}
+                <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                  {t("marPrnGovernance.reasonLabel")} *
+                </label>
+                <select
+                  data-testid="mar-prn-reason-code"
+                  value={marPrnReasonCode}
+                  onChange={(e) => setMarPrnReasonCode(e.target.value as MarPrnReasonCode | "")}
+                  disabled={submitting}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    marginBottom: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 16,
+                    boxSizing: "border-box",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  <option value="">{t("marPrnGovernance.reasonPlaceholder")}</option>
+                  {modalPrnReasonOptions.map((code) => (
+                    <option key={code} value={code}>
+                      {t(`marPrnGovernance.reasons.${code}`)}
+                    </option>
+                  ))}
+                </select>
+                {marPrnReasonCode === "other" ? (
+                  <>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marPrnGovernance.otherLabel")} *
+                    </label>
+                    <input
+                      data-testid="mar-prn-reason-other"
+                      type="text"
+                      value={marPrnReasonOther}
+                      onChange={(e) => setMarPrnReasonOther(e.target.value)}
+                      disabled={submitting}
+                      style={{
+                        width: "100%",
+                        padding: 12,
+                        marginBottom: 10,
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        fontSize: 16,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </>
+                ) : null}
+                {modalRequiresPainScore ? (
+                  <>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marPrnGovernance.painScoreLabel")} *
+                    </label>
+                    <select
+                      data-testid="mar-prn-pain-score"
+                      value={marPainScore}
+                      onChange={(e) => setMarPainScore(e.target.value)}
+                      disabled={submitting}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: 12,
+                        marginBottom: 10,
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        fontSize: 16,
+                        boxSizing: "border-box",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      <option value="">{t("marPrnGovernance.painScorePlaceholder")}</option>
+                      {Array.from({ length: 11 }, (_, n) => (
+                        <option key={n} value={String(n)}>
+                          {n}/10
+                        </option>
+                      ))}
+                    </select>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marPrnGovernance.painLocationLabel")}
+                    </label>
+                    <input
+                      data-testid="mar-prn-pain-location"
+                      type="text"
+                      value={marPainLocation}
+                      onChange={(e) => setMarPainLocation(e.target.value)}
+                      disabled={submitting}
+                      placeholder={t("marPrnGovernance.painLocationPlaceholder")}
+                      style={{
+                        width: "100%",
+                        padding: 12,
+                        marginBottom: 10,
+                        borderRadius: 8,
+                        border: "1px solid #ccc",
+                        fontSize: 16,
+                        boxSizing: "border-box",
+                      }}
+                    />
+                    {modalOpioidPrnMissingRespiratoryRate ? (
+                      <p
+                        data-testid="mar-prn-opioid-resp-warning"
+                        style={{ margin: 0, fontSize: 13, color: "#b45309" }}
+                      >
+                        {t("marPrnGovernance.opioidRespiratoryWarning")}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
 
             {modalRequiresInjectionSite ? (
               <>

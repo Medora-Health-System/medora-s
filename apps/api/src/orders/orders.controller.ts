@@ -15,6 +15,8 @@ import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
 import { OrdersService } from "./orders.service";
+import { OrdersContinuousFluidService } from "./orders-continuous-fluid.service";
+import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
 import {
   ENCOUNTER_ORDER_EVENTS_LIST_DEFAULT_LIMIT,
   ENCOUNTER_ORDER_EVENTS_LIST_MAX_LIMIT,
@@ -30,6 +32,11 @@ import {
   labRadiologyEffectiveClinicalTimeDtoSchema,
   medicationInfusionStartDtoSchema,
   medicationInfusionStopDtoSchema,
+  continuousFluidStartDtoSchema,
+  continuousFluidPauseResumeDtoSchema,
+  continuousFluidStopDtoSchema,
+  fluidBolusStartDtoSchema,
+  fluidBolusCompleteDtoSchema,
   orderCancelDtoSchema,
   orderCreateDtoSchema,
   orderItemCompleteWithClinicalTimeDtoSchema,
@@ -43,6 +50,8 @@ import { assertZodBody } from "../common/http/zod-parse";
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
+    private readonly continuousFluid: OrdersContinuousFluidService,
+    private readonly fluidBolus: OrdersFluidBolusService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
     private readonly procedureBillingReadiness: ProcedureBillingReadinessService,
     private readonly pharmacyVerification: PharmacyVerificationService,
@@ -548,6 +557,103 @@ export class OrdersController {
       req.user?.userId,
       req.ip,
       req.headers["user-agent"]
+    );
+  }
+
+  /** Continuous IV fluid — start (K.10B.8). */
+  @Post("orders/items/:id/fluid/start")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async startContinuousFluid(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(continuousFluidStartDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.continuousFluid.startContinuousFluid(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
+    );
+  }
+
+  @Post("orders/items/:id/fluid/pause")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async pauseContinuousFluid(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(continuousFluidPauseResumeDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.continuousFluid.pauseContinuousFluid(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
+    );
+  }
+
+  @Post("orders/items/:id/fluid/resume")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async resumeContinuousFluid(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(continuousFluidPauseResumeDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.continuousFluid.resumeContinuousFluid(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
+    );
+  }
+
+  @Post("orders/items/:id/fluid/stop")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async stopContinuousFluid(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(continuousFluidStopDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.continuousFluid.stopContinuousFluid(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
+    );
+  }
+
+  @Post("orders/items/:id/fluid/bolus/start")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async startFluidBolus(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(fluidBolusStartDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.fluidBolus.startFluidBolus(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
+    );
+  }
+
+  @Post("orders/items/:id/fluid/bolus/complete")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async completeFluidBolus(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(fluidBolusCompleteDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.fluidBolus.completeFluidBolus(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId
     );
   }
 }

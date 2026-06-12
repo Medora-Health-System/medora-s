@@ -12,6 +12,11 @@ import {
   isAdministerToPatientIntent,
   medicationDirectionQuickPicksForMedicationLine,
 } from "./createOrderMedicationDraft";
+import { FluidOrderPicker } from "./FluidOrderPicker";
+import {
+  parseFluidOrderDraftFromDirections,
+  shouldShowFluidOrderEntryFields,
+} from "@medora/shared";
 import type { CreateOrderLineItem } from "./types";
 
 const labelSm: React.CSSProperties = {
@@ -108,6 +113,14 @@ export function SelectedMedicationItems({
           const scheduleLabel = item._controlledSchedule?.trim()
             ? `${t("createOrderModal.controlledScheduleBadge")} ${item._controlledSchedule.trim()}`
             : null;
+          const showFluidPicker = shouldShowFluidOrderEntryFields({
+            label: item._label ?? item.manualLabel,
+            therapeuticClass: item._safetyCatalog?.therapeuticClass,
+            route: item.route ?? item._route,
+          });
+          const fluidDraft =
+            item._fluidOrderDraft ??
+            (item.notes?.trim() ? parseFluidOrderDraftFromDirections(item.notes) : null);
           return (
             <li
               key={item._lineId}
@@ -230,6 +243,7 @@ export function SelectedMedicationItems({
                   <option value="">{t("common.dash")}</option>
                   <option value="PO">PO</option>
                   <option value="IM">IM</option>
+                  <option value="IV">IV</option>
                   <option value="IVP">IVP</option>
                   <option value="IVPB">IVPB</option>
                   <option value="SQ">SQ</option>
@@ -241,6 +255,14 @@ export function SelectedMedicationItems({
                   </div>
                 ) : null}
               </div>
+              {showFluidPicker ? (
+                <FluidOrderPicker
+                  draft={fluidDraft}
+                  onChange={(draft, directions) =>
+                    onPatch(idx, { _fluidOrderDraft: draft, notes: directions })
+                  }
+                />
+              ) : null}
               <div>
                 <span style={labelSm}>{t("createOrderModal.selectedMedSig")}</span>
                 <input
@@ -248,7 +270,12 @@ export function SelectedMedicationItems({
                   list={lineDirectionsListId}
                   placeholder={t("createOrderModal.selectedMedSigPlaceholder")}
                   value={item.notes ?? ""}
-                  onChange={(e) => onPatch(idx, { notes: e.target.value })}
+                  onChange={(e) =>
+                    onPatch(idx, {
+                      notes: e.target.value,
+                      _fluidOrderDraft: undefined,
+                    })
+                  }
                   style={inputSm}
                 />
                 <datalist id={lineDirectionsListId}>

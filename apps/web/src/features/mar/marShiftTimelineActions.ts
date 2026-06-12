@@ -44,6 +44,18 @@ export type MarShiftTimelineActionHandlers = {
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineRefuseHoldInput
   ) => Promise<void>;
+  onExecuteStartFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onExecutePauseFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onExecuteResumeFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onExecuteStopFluid?: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineInfusionStopInput
+  ) => Promise<void>;
+  onExecuteStartBolus?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onExecuteCompleteBolus?: (
+    item: MarShiftTimelineCellItem,
+    input: MarShiftTimelineInfusionStopInput
+  ) => Promise<void>;
 };
 
 export function resolveMarShiftTimelineItemGovernance(
@@ -151,7 +163,11 @@ export function buildMarShiftTimelineStopPayload(
 export const MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED = true;
 
 function isMarShiftTimelineRefuseHoldEligible(item: MarShiftTimelineCellItem): boolean {
-  return item.clinicalAction === "ADMINISTER" || item.clinicalAction === "START_INFUSION";
+  return (
+    item.clinicalAction === "ADMINISTER" ||
+    item.clinicalAction === "START_INFUSION" ||
+    item.clinicalAction === "START_BOLUS"
+  );
 }
 
 export function isMarShiftTimelineActionEnabled(
@@ -164,6 +180,18 @@ export function isMarShiftTimelineActionEnabled(
   if (action === "ADMINISTER") return item.clinicalAction === "ADMINISTER";
   if (action === "START_INFUSION") return item.clinicalAction === "START_INFUSION";
   if (action === "STOP_INFUSION") return item.clinicalAction === "STOP_INFUSION";
+  if (action === "START_FLUID") return item.clinicalAction === "START_FLUID";
+  if (action === "PAUSE_FLUID") {
+    return item.clinicalAction === "STOP_FLUID" && item.continuousFluidStatus === "RUNNING";
+  }
+  if (action === "RESUME_FLUID") return item.clinicalAction === "RESUME_FLUID";
+  if (action === "STOP_FLUID") {
+    return (
+      item.clinicalAction === "STOP_FLUID" || item.clinicalAction === "RESUME_FLUID"
+    );
+  }
+  if (action === "START_BOLUS") return item.clinicalAction === "START_BOLUS";
+  if (action === "COMPLETE_BOLUS") return item.clinicalAction === "COMPLETE_BOLUS";
   if (action === "REFUSE" || action === "HOLD") {
     return isMarShiftTimelineRefuseHoldEligible(item);
   }

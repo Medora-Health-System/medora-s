@@ -14,6 +14,12 @@ export type MarShiftTimelineDrawerAction =
   | "ADMINISTER"
   | "START_INFUSION"
   | "STOP_INFUSION"
+  | "START_FLUID"
+  | "PAUSE_FLUID"
+  | "RESUME_FLUID"
+  | "STOP_FLUID"
+  | "START_BOLUS"
+  | "COMPLETE_BOLUS"
   | "REFUSE"
   | "HOLD"
   | "VIEW_ORDER";
@@ -46,6 +52,23 @@ export type MarShiftTimelineCellItem = {
   administeredByDisplay: string | null;
   administeredByInitials: string | null;
   completionSummary: string | null;
+  orderPrnIndication?: string | null;
+  prnReasonLabel?: string | null;
+  prnPainScore?: number | null;
+  prnPainLocation?: string | null;
+  continuousFluidStatus?: string | null;
+  fluidRateLabel?: string | null;
+  fluidVolumeInfusedMl?: number | null;
+  fluidStartedAt?: string | null;
+  fluidStoppedAt?: string | null;
+  fluidCompletedAt?: string | null;
+  fluidBolusStatus?: string | null;
+  fluidBolusVolumeMl?: number | null;
+  fluidRunningDurationLabel?: string | null;
+  fluidActiveDurationLabel?: string | null;
+  fluidTotalDurationLabel?: string | null;
+  fluidPausedAt?: string | null;
+  isFluidBolus?: boolean;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
 };

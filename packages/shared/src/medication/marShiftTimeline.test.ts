@@ -432,4 +432,34 @@ describe("resolveMarShiftTimelineMedicationLabel (M1.8B.7K.8)", () => {
     });
     expect(display.secondaryText).toBe("REFUSED");
   });
+
+  it("completed PRN cell shows pain score summary (K.10B.7)", () => {
+    const notes = `Motif PRN : Douleur sévère\nMAR_PRN_REASON:severe_pain\nMAR_PRN_REASON_LABEL:Douleur sévère\nMAR_PAIN_SCORE:8`;
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Morphine",
+      doseKind: "FIXED_ADMINISTRATION",
+      doseStatus: "COMPLETED",
+      route: "IVP",
+      frequencyCode: "Q4H",
+      requiresWitness: false,
+      directionsSig: "2 mg IVP q4h PRN severe pain",
+      marNotes: notes,
+    });
+    expect(display.secondaryText).toBe("DONE");
+    expect(display.tertiaryText).toBe("Douleur 8/10");
+  });
+
+  it("due interval+PRN order shows indication secondary (K.10B.7)", () => {
+    const display = buildMarShiftTimelineCellDisplay({
+      medicationLabel: "Zofran",
+      doseKind: "FIXED_ADMINISTRATION",
+      doseStatus: "DUE",
+      route: "IVP",
+      frequencyCode: "Q6H",
+      requiresWitness: false,
+      directionsSig: "4 mg IVP q6h PRN nausea/vomiting",
+    });
+    expect(display.secondaryText).toBe("nausea/vomitin…");
+    expect(display.tertiaryText).toBe("ADMIN");
+  });
 });

@@ -7,12 +7,16 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationAdministrationModule } from "../medication-administration/medication-administration.module";
 import { PharmacyVerificationService } from "../medication-safety/pharmacy-verification.service";
+import { OrdersContinuousFluidService } from "./orders-continuous-fluid.service";
+import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
 
 @Module({
   imports: [PrismaModule, MedicationAdministrationModule],
   controllers: [OrdersController],
   providers: [
     OrdersService,
+    OrdersContinuousFluidService,
+    OrdersFluidBolusService,
     OrdersLabRadiologyEffectiveTimeService,
     ProcedureBillingReadinessService,
     PharmacyVerificationService,
