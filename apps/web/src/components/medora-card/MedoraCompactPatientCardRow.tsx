@@ -41,33 +41,19 @@ export const MEDORA_COMPACT_AVATAR_CIRCLE_STYLE: React.CSSProperties = {
 
 export type MedoraCompactPatientCardRowProps = {
   avatarInitials: string;
-  /** e.g. ESI digit under avatar (Emergency only) */
   avatarFooter?: React.ReactNode;
   identity: React.ReactNode;
   roomLabel: string;
   roomValue: string;
   right: React.ReactNode;
-  /** Wider right column when many actions (e.g. nursing). */
   rightMaxWidth?: number;
-  /**
-   * When true, stacks identity / tiles / actions vertically for narrow viewports
-   * (ED trackboard mobile/tablet). Default false preserves desktop-dense worklist rows.
-   */
   stackedLayout?: boolean;
-  /**
-   * Optional content rendered immediately *before* the room tile, in the same
-   * horizontal "tile group" position. Used by the Emergency trackboard to
-   * display a LOS tile next to the Room tile. Kept optional so existing
-   * worklists continue to render unchanged.
-   */
   centerLeading?: React.ReactNode;
-  /**
-   * Optional content rendered immediately *after* the room tile, before the
-   * right column. Used for compact metadata blocks (e.g. assigned personnel).
-   */
   centerTrailing?: React.ReactNode;
-  /** Optional max width for the centerTrailing block (default 200). */
   centerTrailingMaxWidth?: number;
+  roomClickable?: boolean;
+  onRoomClick?: () => void;
+  roomButtonTitle?: string;
 };
 
 export function MedoraCompactPatientCardRow({
@@ -82,7 +68,73 @@ export function MedoraCompactPatientCardRow({
   centerLeading,
   centerTrailing,
   centerTrailingMaxWidth = 200,
+  roomClickable = false,
+  onRoomClick,
+  roomButtonTitle,
 }: MedoraCompactPatientCardRowProps) {
+  const roomTileInner = (
+    <>
+      <div
+        style={{
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "#0369a1",
+          marginBottom: 1,
+          lineHeight: 1,
+        }}
+      >
+        {roomLabel}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: 700,
+          lineHeight: 1.15,
+          color: "#0c4a6e",
+          fontVariantNumeric: "tabular-nums",
+          wordBreak: "break-word",
+        }}
+      >
+        {roomValue}
+      </div>
+    </>
+  );
+
+  const roomTileShellStyle: React.CSSProperties = {
+    padding: "4px 8px",
+    borderRadius: 8,
+    border: "1px solid #bae6fd",
+    backgroundColor: "#f0f9ff",
+    boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.5)",
+    textAlign: "center",
+  };
+
+  const renderRoomTile = (extraStyle: React.CSSProperties) => {
+    const shell = { ...roomTileShellStyle, ...extraStyle };
+    if (roomClickable && onRoomClick) {
+      return (
+        <button
+          type="button"
+          onClick={onRoomClick}
+          title={roomButtonTitle}
+          aria-label={roomButtonTitle ? `${roomButtonTitle}: ${roomValue}` : roomValue}
+          style={{
+            ...shell,
+            cursor: "pointer",
+            width: "100%",
+            font: "inherit",
+            appearance: "none",
+          }}
+        >
+          {roomTileInner}
+        </button>
+      );
+    }
+    return <div style={shell}>{roomTileInner}</div>;
+  };
+
   if (stackedLayout) {
     return (
       <div style={INNER_OFFSET} data-testid="medora-compact-patient-card-stacked">
@@ -139,45 +191,7 @@ export function MedoraCompactPatientCardRow({
                 justifyContent: "flex-start",
               }}
             >
-              <div
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: 8,
-                  border: "1px solid #bae6fd",
-                  backgroundColor: "#f0f9ff",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
-                  textAlign: "center",
-                  minWidth: 0,
-                  width: "100%",
-                  maxWidth: "100%",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "#0369a1",
-                    marginBottom: 1,
-                    lineHeight: 1,
-                  }}
-                >
-                  {roomLabel}
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    lineHeight: 1.15,
-                    color: "#0c4a6e",
-                    fontVariantNumeric: "tabular-nums",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {roomValue}
-                </div>
-              </div>
+              {renderRoomTile({ minWidth: 0, width: "100%", maxWidth: "100%" })}
             </div>
             {centerTrailing ? (
               <div
@@ -268,44 +282,7 @@ export function MedoraCompactPatientCardRow({
             alignSelf: "center",
           }}
         >
-          <div
-            style={{
-              padding: "4px 8px",
-              borderRadius: 8,
-              border: "1px solid #bae6fd",
-              backgroundColor: "#f0f9ff",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5)",
-              textAlign: "center",
-              minWidth: 72,
-              maxWidth: 120,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#0369a1",
-                marginBottom: 1,
-                lineHeight: 1,
-              }}
-            >
-              {roomLabel}
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                lineHeight: 1.15,
-                color: "#0c4a6e",
-                fontVariantNumeric: "tabular-nums",
-                wordBreak: "break-word",
-              }}
-            >
-              {roomValue}
-            </div>
-          </div>
+          {renderRoomTile({ minWidth: 72, maxWidth: 120 })}
         </div>
 
         {centerTrailing ? (

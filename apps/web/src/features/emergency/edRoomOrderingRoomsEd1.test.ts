@@ -34,8 +34,9 @@ describe("ROOMS.ED.1 — occupied room assignment wiring", () => {
     expect(operationalSource).toContain("confirmOccupiedRoomAssignment");
   });
 
-  it("trackboard localizes waiting room display", () => {
-    expect(trackboardSource).toContain("formatEncounterRoomDisplay");
+  it("trackboard uses governed room display (K.10B.10)", () => {
+    expect(trackboardSource).toContain("formatEncounterGovernedRoomDisplay");
+    expect(trackboardSource).toContain("RoomAssignmentModal");
   });
 
   it("ED triage intake checks room occupancy before create and handles API 409", () => {

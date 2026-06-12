@@ -85,6 +85,8 @@ export function EmergencyWorkspaceCompactTabletSummary({
   onBillingUpdated,
   showOperationalPanel,
   setShowOperationalPanel,
+  onRoomClick,
+  roomButtonTitle,
   erChartHref,
   genericEncounterHref,
   isLocked,
@@ -126,6 +128,8 @@ export function EmergencyWorkspaceCompactTabletSummary({
   onBillingUpdated: () => void;
   showOperationalPanel: boolean;
   setShowOperationalPanel: React.Dispatch<React.SetStateAction<boolean>>;
+  onRoomClick?: () => void;
+  roomButtonTitle?: string;
   erChartHref: string;
   genericEncounterHref: string;
   isLocked: boolean;
@@ -164,16 +168,30 @@ export function EmergencyWorkspaceCompactTabletSummary({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => setShowOperationalPanel((prev) => !prev)}
+            onClick={() => {
+              if (onRoomClick) {
+                onRoomClick();
+                return;
+              }
+              setShowOperationalPanel((prev) => !prev);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
+                if (onRoomClick) {
+                  onRoomClick();
+                  return;
+                }
                 setShowOperationalPanel((prev) => !prev);
               }
             }}
-            aria-expanded={showOperationalPanel}
-            aria-label={t("emergencyWorkspace.operationalRoomAria")}
-            style={emergencyChartCompactRoomChipStyle()}
+            aria-expanded={onRoomClick ? undefined : showOperationalPanel}
+            aria-label={onRoomClick ? roomButtonTitle ?? t("roomAssignment.changeRoomTooltip") : t("emergencyWorkspace.operationalRoomAria")}
+            title={onRoomClick ? roomButtonTitle ?? t("roomAssignment.changeRoomTooltip") : undefined}
+            style={{
+              ...emergencyChartCompactRoomChipStyle(),
+              cursor: onRoomClick ? "pointer" : undefined,
+            }}
           >
             <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: "0.06em", color: "#0369a1" }}>
               {t("printOutput.patientChart.room")}
