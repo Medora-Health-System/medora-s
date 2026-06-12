@@ -16,7 +16,7 @@ describe("marShiftTimelineK10B1 — facility timezone authority", () => {
     const columns = buildMarShiftTimelineColumns(startAt, endAt, haitiTz);
     const placement = resolveMarShiftTimelineOrderItemPlacementInstant({
       createdAt,
-      intendedAdministrationAt: wallClockToUtc(2026, 6, 12, 0, 34, haitiTz),
+      intendedAdministrationAt: new Date(createdAt.getTime() + 60 * 60 * 1000),
       frequencyCode: "NOW",
       notes: null,
     });

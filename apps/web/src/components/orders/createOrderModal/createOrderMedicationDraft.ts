@@ -1,4 +1,11 @@
-import { clinicalDatetimeLocalFromInstant, normalizeMedicationRoute, type MedicationOrderRoute } from "@medora/shared";
+import {
+  clinicalDatetimeLocalFromInstant,
+  clinicalDatetimeLocalToUtcDate,
+  normalizeMedicationRoute,
+  parseMedicationFrequencyCode,
+  resolveMedicationOrderItemFrequencyCode,
+  type MedicationOrderRoute,
+} from "@medora/shared";
 import type { CreateOrderLineItem, MedicationRoute } from "./types";
 
 export type OrderDraftTypeKey = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
@@ -193,6 +200,31 @@ export function patchMedicationLineWithPlannedAdminRules(
   }
 
   return applyDefaultPlannedAdministrationIfNeeded(merged, facilityTimeZone, now);
+}
+
+/**
+ * UTC intendedAdministrationAt for order submit (K.10B.3).
+ * Omits auto-default planned time for untouched NOW/STAT so MAR anchors to createdAt.
+ */
+export function resolveMedicationOrderItemIntendedUtcForSubmit(input: {
+  intendedAdministrationAtLocal?: string | null;
+  plannedAdminAtTouched?: boolean;
+  frequencyCode?: string | null;
+  directionsSig?: string | null;
+  facilityTimeZone?: string | null;
+}): Date | undefined {
+  const raw = input.intendedAdministrationAtLocal?.trim();
+  if (!raw) return undefined;
+  const resolvedFrequency = resolveMedicationOrderItemFrequencyCode({
+    frequencyCode: input.frequencyCode,
+    directionsSig: input.directionsSig,
+  });
+  const parsed = parseMedicationFrequencyCode(resolvedFrequency);
+  if ((parsed === "NOW" || parsed === "STAT") && !input.plannedAdminAtTouched) {
+    return undefined;
+  }
+  const date = clinicalDatetimeLocalToUtcDate(raw, input.facilityTimeZone ?? "UTC");
+  return date ?? undefined;
 }
 
 export type OrderDraftMedicationStrippable = {

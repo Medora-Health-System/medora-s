@@ -15,6 +15,10 @@ import {
 
 const NOW_STAT_NOTES_PATTERN = /\b(now|stat|asap|imm[eé]diat|urgent)\b/i;
 
+/** NOW/STAT auto-default planned admin skew band (browser vs facility +1h artifact). */
+export const MAR_NOW_AUTO_PLANNED_ARTIFACT_MIN_SKEW_MS = 50 * 60 * 1000;
+export const MAR_NOW_AUTO_PLANNED_ARTIFACT_MAX_SKEW_MS = 70 * 60 * 1000;
+
 export function notesImplyImmediateMarPlacement(notes: string | null | undefined): boolean {
   const text = notes?.trim();
   if (!text) return false;
@@ -69,6 +73,30 @@ export function shouldCreateMarShiftTimelineOrderItemFallback(input: {
   return !gate.scheduleExpansionAllowed;
 }
 
+/**
+ * Detect legacy/auto NOW planned-administration timestamps (~+1h from createdAt)
+ * caused by browser-local defaults. User-selected times outside this band are explicit.
+ */
+export function isNowStatAutoDefaultPlannedAdminArtifact(input: {
+  createdAt: Date | string;
+  intendedAdministrationAt: Date | string | null | undefined;
+  frequencyCode: string | null | undefined;
+}): boolean {
+  if (input.intendedAdministrationAt == null) return false;
+  const parsed = parseMedicationFrequencyCode(
+    input.frequencyCode == null ? null : String(input.frequencyCode)
+  );
+  if (parsed !== "NOW" && parsed !== "STAT") return false;
+  const created = new Date(input.createdAt);
+  const planned = new Date(input.intendedAdministrationAt);
+  if (Number.isNaN(created.getTime()) || Number.isNaN(planned.getTime())) return false;
+  const absDiffMs = Math.abs(planned.getTime() - created.getTime());
+  return (
+    absDiffMs >= MAR_NOW_AUTO_PLANNED_ARTIFACT_MIN_SKEW_MS &&
+    absDiffMs <= MAR_NOW_AUTO_PLANNED_ARTIFACT_MAX_SKEW_MS
+  );
+}
+
 /** Hour-bucket placement for OrderItem fallback rows. */
 export function resolveMarShiftTimelineOrderItemPlacementInstant(input: {
   createdAt: Date | string;
@@ -80,16 +108,31 @@ export function resolveMarShiftTimelineOrderItemPlacementInstant(input: {
   const parsed = parseMedicationFrequencyCode(
     input.frequencyCode == null ? null : String(input.frequencyCode)
   );
+  const intended =
+    input.intendedAdministrationAt != null ? new Date(input.intendedAdministrationAt) : null;
+  const intendedValid =
+    intended != null && !Number.isNaN(intended.getTime()) ? intended : null;
 
-  // NOW / STAT anchor to true order time — not auto-default planned admin or due-window end.
-  if (parsed === "NOW" || parsed === "STAT" || notesImplyImmediateMarPlacement(input.notes)) {
+  const isImmediate =
+    parsed === "NOW" ||
+    parsed === "STAT" ||
+    notesImplyImmediateMarPlacement(input.notes);
+
+  if (isImmediate) {
+    if (
+      intendedValid &&
+      !isNowStatAutoDefaultPlannedAdminArtifact({
+        createdAt,
+        intendedAdministrationAt: intendedValid,
+        frequencyCode: input.frequencyCode,
+      })
+    ) {
+      return intendedValid;
+    }
     return createdAt;
   }
 
-  if (input.intendedAdministrationAt != null) {
-    const planned = new Date(input.intendedAdministrationAt);
-    if (!Number.isNaN(planned.getTime())) return planned;
-  }
+  if (intendedValid) return intendedValid;
 
   if (isDirectMarFrequency(parsed) || !parsed) {
     return createdAt;

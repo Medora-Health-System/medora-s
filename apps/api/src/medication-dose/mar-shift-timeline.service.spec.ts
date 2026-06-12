@@ -1883,7 +1883,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
           frequencyCode: "NOW" as MedicationFrequencyCode,
           route: "IVP" as MedicationRoute,
           catalogItemId: genericCatalogId,
-          intendedAdministrationAt: wallClockToUtc(2026, 6, 12, 0, minute, haitiTz),
+          intendedAdministrationAt: new Date(createdAt.getTime() + 60 * 60 * 1000),
         });
         await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
 
@@ -1912,6 +1912,75 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
 
     it("11:35 PM facility → 11P (not 12A)", async () => {
       await expectNowOrderAtLocalTimeMapsToColumn(23, 35, "11P");
+    });
+  });
+
+  describe("M1.8B.7K.10B.3 explicit planned administration placement", () => {
+    const haitiTz = "America/Port-au-Prince";
+
+    async function withHaitiFacilityTimezone<T>(fn: () => Promise<T>): Promise<T> {
+      await prisma.facility.update({ where: { id: facilityId }, data: { timezone: haitiTz } });
+      try {
+        return await fn();
+      } finally {
+        await prisma.facility.update({ where: { id: facilityId }, data: { timezone: "UTC" } });
+      }
+    }
+
+    it("NOW order at 12:21 PM with explicit 06:00 AM intended → 06A", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 12, 12, 21, haitiTz);
+        const plannedSixAm = wallClockToUtc(2026, 6, 12, 6, 0, haitiTz);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow(
+          "7P_7A",
+          plannedSixAm,
+          haitiTz
+        );
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "PO" as MedicationRoute,
+          catalogItemId: genericCatalogId,
+          intendedAdministrationAt: plannedSixAm,
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7P_7A",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe("06A");
+        expect(columnLabelForOrderItem(result, orderItem.id)).not.toBe("12P");
+      });
+    });
+
+    it("NOW at 12:21 PM with +1h auto intended artifact → 12P", async () => {
+      await withHaitiFacilityTimezone(async () => {
+        const encounter = await createEncounterWithNurse();
+        const createdAt = wallClockToUtc(2026, 6, 12, 12, 21, haitiTz);
+        const intendedOneHourLater = new Date(createdAt.getTime() + 60 * 60 * 1000);
+        const { startAt, endAt } = resolveStandardMarShiftTimelineWindow("7A_7P", createdAt, haitiTz);
+        const { orderItem } = await createDirectMarOrder(encounter.id, {
+          frequencyCode: "NOW" as MedicationFrequencyCode,
+          route: "PO" as MedicationRoute,
+          catalogItemId: genericCatalogId,
+          intendedAdministrationAt: intendedOneHourLater,
+        });
+        await prisma.orderItem.update({ where: { id: orderItem.id }, data: { createdAt } });
+
+        const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+          shiftCode: "7A_7P",
+          shiftStart: startAt,
+          shiftEnd: endAt,
+          encounterId: encounter.id,
+        });
+
+        expect(columnLabelForOrderItem(result, orderItem.id)).toBe("12P");
+        expect(columnLabelForOrderItem(result, orderItem.id)).not.toBe("01P");
+      });
     });
   });
 });

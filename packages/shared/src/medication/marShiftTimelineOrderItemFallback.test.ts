@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { wallClockToUtc } from "./medicationDoseExpansionPlanner.js";
 import {
   notesImplyImmediateMarPlacement,
+  isNowStatAutoDefaultPlannedAdminArtifact,
   resolveMarShiftTimelineOrderItemFallbackDoseKind,
   resolveMarShiftTimelineOrderItemFallbackDoseStatus,
   resolveMarShiftTimelineOrderItemPlacementInstant,
@@ -70,6 +72,68 @@ describe("marShiftTimelineOrderItemFallback (M1.8B.7K.6)", () => {
         notes: null,
       }).toISOString()
     ).toBe(createdAt.toISOString());
+    expect(
+      isNowStatAutoDefaultPlannedAdminArtifact({
+        createdAt,
+        intendedAdministrationAt: intendedOneHourLater,
+        frequencyCode: "NOW",
+      })
+    ).toBe(true);
+  });
+
+  describe("K.10B.3 explicit planned administration placement", () => {
+    const haiti = "America/Port-au-Prince";
+
+    it("NOW at 12:21 PM facility → placement 12:21 (not +1h artifact)", () => {
+      const createdAt = wallClockToUtc(2026, 6, 12, 12, 21, haiti);
+      expect(
+        resolveMarShiftTimelineOrderItemPlacementInstant({
+          createdAt,
+          intendedAdministrationAt: null,
+          frequencyCode: "NOW",
+          notes: null,
+        }).toISOString()
+      ).toBe(createdAt.toISOString());
+    });
+
+    it("NOW with +1h auto intended → placement createdAt", () => {
+      const createdAt = wallClockToUtc(2026, 6, 12, 12, 21, haiti);
+      const intendedOneHourLater = new Date(createdAt.getTime() + 60 * 60 * 1000);
+      expect(
+        resolveMarShiftTimelineOrderItemPlacementInstant({
+          createdAt,
+          intendedAdministrationAt: intendedOneHourLater,
+          frequencyCode: "NOW",
+          notes: null,
+        }).toISOString()
+      ).toBe(createdAt.toISOString());
+    });
+
+    it("provider-selected 06:00 AM → placement 06:00 AM", () => {
+      const createdAt = wallClockToUtc(2026, 6, 12, 12, 21, haiti);
+      const plannedSixAm = wallClockToUtc(2026, 6, 12, 6, 0, haiti);
+      expect(
+        resolveMarShiftTimelineOrderItemPlacementInstant({
+          createdAt,
+          intendedAdministrationAt: plannedSixAm,
+          frequencyCode: "NOW",
+          notes: "give now",
+        }).toISOString()
+      ).toBe(plannedSixAm.toISOString());
+    });
+
+    it("provider-selected 11:35 PM → placement 11:35 PM", () => {
+      const createdAt = wallClockToUtc(2026, 6, 11, 23, 5, haiti);
+      const planned = wallClockToUtc(2026, 6, 11, 23, 35, haiti);
+      expect(
+        resolveMarShiftTimelineOrderItemPlacementInstant({
+          createdAt,
+          intendedAdministrationAt: planned,
+          frequencyCode: "NOW",
+          notes: null,
+        }).toISOString()
+      ).toBe(planned.toISOString());
+    });
   });
 
   it("resolveMarShiftTimelineOrderItemPlacementInstant prefers intendedAdministrationAt for ONCE", () => {

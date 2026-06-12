@@ -10,6 +10,7 @@ import {
   medicationDirectionQuickPicksForRoute,
   MEDICATION_DIRECTION_QUICK_PICKS_GENERIC,
   patchMedicationLineWithPlannedAdminRules,
+  resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
   toDatetimeLocalValue,
 } from "./createOrderMedicationDraft";
@@ -126,6 +127,43 @@ describe("createOrderMedicationDraft (M1.7B.6)", () => {
     );
     expect(patched.intendedAdministrationAt).toBeUndefined();
     expect(isAdministerToPatientIntent(patched.medicationFulfillmentIntent)).toBe(false);
+  });
+
+  describe("resolveMedicationOrderItemIntendedUtcForSubmit (K10B3)", () => {
+    const haiti = "America/Port-au-Prince";
+
+    it("converts facility-local 06:00 AM to correct UTC ISO", () => {
+      const utc = resolveMedicationOrderItemIntendedUtcForSubmit({
+        intendedAdministrationAtLocal: "2026-06-12T06:00",
+        plannedAdminAtTouched: true,
+        frequencyCode: "NOW",
+        facilityTimeZone: haiti,
+      });
+      expect(utc?.toISOString()).toBe(wallClockToUtc(2026, 6, 12, 6, 0, haiti).toISOString());
+    });
+
+    it("omits untouched NOW auto-default planned time from payload", () => {
+      expect(
+        resolveMedicationOrderItemIntendedUtcForSubmit({
+          intendedAdministrationAtLocal: "2026-06-12T12:21",
+          plannedAdminAtTouched: false,
+          frequencyCode: "NOW",
+          directionsSig: "give now",
+          facilityTimeZone: haiti,
+        })
+      ).toBeUndefined();
+    });
+
+    it("includes touched NOW planned time in payload", () => {
+      expect(
+        resolveMedicationOrderItemIntendedUtcForSubmit({
+          intendedAdministrationAtLocal: "2026-06-12T06:00",
+          plannedAdminAtTouched: true,
+          frequencyCode: "NOW",
+          facilityTimeZone: haiti,
+        })?.toISOString()
+      ).toBe(wallClockToUtc(2026, 6, 12, 6, 0, haiti).toISOString());
+    });
   });
 
 });

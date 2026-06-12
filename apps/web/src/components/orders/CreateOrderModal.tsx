@@ -31,9 +31,10 @@ import { newOrderLineId } from "./createOrderModal/types";
 import {
   applyDefaultPlannedAdministrationIfNeeded,
   patchMedicationLineWithPlannedAdminRules,
+  resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
 } from "./createOrderModal/createOrderMedicationDraft";
-import { clinicalDatetimeLocalToUtcDate } from "@/lib/clinicalTimeDisplay";
+import { resolveClinicalTimeZone } from "@/lib/clinicalTimeDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
 import type { SupportedLanguage } from "@/i18n/config";
@@ -600,13 +601,15 @@ function buildPayload(
       ? { safetyAcknowledgedMedicationAllergies: true }
       : {}),
     items: items.map((it) => {
-      const raw = it.intendedAdministrationAt?.trim();
-      const intendedDate = raw
-        ? clinicalDatetimeLocalToUtcDate(raw, facilityTimeZone ?? "UTC") ??
-          (raw ? new Date(raw) : undefined)
-        : undefined;
       const resolvedFrequencyCode = resolveMedicationOrderItemFrequencyCode({
         directionsSig: it.notes?.trim(),
+      });
+      const intendedDate = resolveMedicationOrderItemIntendedUtcForSubmit({
+        intendedAdministrationAtLocal: it.intendedAdministrationAt,
+        plannedAdminAtTouched: it._plannedAdminAtTouched,
+        frequencyCode: resolvedFrequencyCode,
+        directionsSig: it.notes?.trim(),
+        facilityTimeZone: resolveClinicalTimeZone({ facilityTimeZone }),
       });
       const frequencyField =
         resolvedFrequencyCode != null ? { frequencyCode: resolvedFrequencyCode } : {};
@@ -780,6 +783,27 @@ export function CreateOrderModal({
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const prescriberPrefilled = useRef(false);
+  const lastAppliedFacilityTzRef = useRef<string | null>(null);
+
+  /** Re-default untouched planned administration when facility TZ loads (K.10B.3). */
+  useEffect(() => {
+    const tz = facilityTimeZone?.trim();
+    if (!tz || lastAppliedFacilityTzRef.current === tz) return;
+    lastAppliedFacilityTzRef.current = tz;
+    setFormData((fd) => ({
+      ...fd,
+      items: fd.items.map((it) =>
+        it.catalogItemType === "MEDICATION"
+          ? applyDefaultPlannedAdministrationIfNeeded(it, tz)
+          : it
+      ),
+    }));
+    setStagedItems((current) => ({
+      ...current,
+      MEDICATION: current.MEDICATION.map((it) => applyDefaultPlannedAdministrationIfNeeded(it, tz)),
+    }));
+  }, [facilityTimeZone]);
+
   const draftScope = useMemo<ClinicalDraftScope>(
     () => ({
       workflowType: "ORDERS_DRAFTING",
