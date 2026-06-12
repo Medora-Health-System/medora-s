@@ -16,6 +16,16 @@ export const MAR_SHIFT_TIMELINE_STATUS_COLORS = {
   administered: { backgroundColor: "#E5E7EB", borderColor: "#9CA3AF", color: "#374151" },
   refused: { backgroundColor: "#F3F4F6", borderColor: "#6B7280", color: "#4B5563" },
   held: { backgroundColor: "#FEF3C7", borderColor: "#D97706", color: "#92400E" },
+  overdue: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+    color: "#991B1B",
+  },
+  missed: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#DC2626",
+    color: "#991B1B",
+  },
   prnRow: { backgroundColor: "#FFFBE6", borderColor: "#E8D38A", color: "#664D03" },
 } as const;
 
@@ -43,13 +53,14 @@ export function resolveMarShiftTimelineStatusColorKey(input: {
 
   if (secondary === "REFUSED") return "refused";
   if (status === "HELD" || secondary === "HELD") return "held";
+  if (status === "MISSED") return "missed";
+  if (status === "OVERDUE") return "overdue";
   if (status === "COMPLETED" || input.readOnly === true || secondary === "DONE") {
     return "administered";
   }
 
   if (
     status === "DUE" ||
-    status === "OVERDUE" ||
     status === "IN_PROGRESS" ||
     status === "PLANNED" ||
     status === "STARTED" ||
