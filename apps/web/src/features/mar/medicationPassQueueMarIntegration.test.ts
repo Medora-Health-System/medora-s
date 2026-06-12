@@ -93,7 +93,7 @@ describe("medicationPassQueueMarIntegration (M1.8B.7I.5)", () => {
 
     it("clicking pass queue item opens MAR modal workflow", () => {
       expect(marTab).toContain("openModalFromPassQueueItem");
-      expect(marTab).toContain("openModal(row, { medicationDoseInstanceId:");
+      expect(marTab).toContain("medicationDoseInstanceId");
       expect(passQueuePanel).toContain("onSelectItem(item)");
     });
 

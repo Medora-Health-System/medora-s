@@ -166,6 +166,32 @@ export function resolveMarShiftTimelinePrnColumnKey(input: {
   });
 }
 
+/** PRN order items already rendered from visible MedicationDoseInstance cells (K.10B.8B). */
+export function collectVisiblePrnOrderItemIds(
+  prnRowMap: ReadonlyMap<string, MarShiftTimelineRowWithKind>
+): Set<string> {
+  const ids = new Set<string>();
+  for (const row of prnRowMap.values()) {
+    for (const cell of row.cells) {
+      for (const item of cell.items) {
+        if (item.isPrnBand === true && item.medicationDoseInstanceId?.trim()) {
+          ids.add(item.orderItemId);
+        }
+      }
+    }
+  }
+  return ids;
+}
+
+export function marShiftTimelinePrnRowHasOrderItem(
+  row: MarShiftTimelineRowWithKind,
+  orderItemId: string
+): boolean {
+  return row.cells.some((cell) =>
+    cell.items.some((item) => item.isPrnBand === true && item.orderItemId === orderItemId)
+  );
+}
+
 export function mergeScheduledAndPrnMarShiftTimelineRows(
   scheduledMap: Map<string, MarShiftTimelineRowWithKind>,
   prnMap: Map<string, MarShiftTimelineRowWithKind>

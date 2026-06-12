@@ -202,8 +202,15 @@ export function EmergencyActiveWorkspaceView() {
   const searchParams = useSearchParams();
   const { t, language } = useI18n();
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe, userId } =
-    useFacilityAndRoles();
+  const {
+    facilityId: facilityIdFromHook,
+    facilities,
+    roles,
+    ready: rolesReady,
+    canPrescribe,
+    userId,
+    facilityTimeZone,
+  } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   /** Bumped after embedded saves so les résultats embarqués se rechargent (même idée que l’onglet consultation). */
   const [resultsRefresh, setResultsRefresh] = useState(0);
@@ -1307,6 +1314,7 @@ export function EmergencyActiveWorkspaceView() {
                     encounterStatus={encounter.status ?? "OPEN"}
                     providerDocumentationStatus={encounter.providerDocumentationStatus}
                     roleCodes={roles}
+                    facilityTimeZone={facilityTimeZone}
                   />
                 </div>
               </MedoraCardInner>

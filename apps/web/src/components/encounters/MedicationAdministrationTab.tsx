@@ -9,7 +9,6 @@ import { normalizeMedicationDisplayForLocale } from "@/lib/localizedMedicationDi
 import { isOrderItemIdUuid } from "@/lib/orderItemIdUuid";
 import { isOrderItemPendingNurseMedication } from "@/lib/nurseMedicationWorkload";
 import { useI18n } from "@/lib/i18n";
-import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatOrderAuthority } from "@/lib/orderAuthority";
@@ -441,6 +440,7 @@ export function MedicationAdministrationTab({
   providerDocumentationStatus,
   roleCodes = [],
   encounterAllergySource = null,
+  facilityTimeZone = null,
 }: {
   encounterId: string;
   facilityId: string;
@@ -452,9 +452,10 @@ export function MedicationAdministrationTab({
   roleCodes?: string[];
   /** Parent encounter allergy context — avoids refetching GET /encounters/:id on the MAR tab. */
   encounterAllergySource?: EncounterMarAllergySource;
+  /** Facility IANA timezone from encounter page shell (not fetched inside this tab). */
+  facilityTimeZone?: string | null;
 }) {
   const { t, language } = useI18n();
-  const { facilityTimeZone } = useFacilityAndRoles();
   const clinicalData = useEncounterClinicalDataOptional();
   const useSharedClinicalData = clinicalData != null;
   const dateLocale = language === "en" ? "en-US" : "fr-FR";

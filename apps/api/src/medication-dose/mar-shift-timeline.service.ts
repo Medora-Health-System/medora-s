@@ -43,9 +43,11 @@ import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-tim
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
 import {
   appendMarShiftTimelineCellItem,
+  collectVisiblePrnOrderItemIds,
   createEmptyMarShiftTimelineRow,
   isPrnMedicationOrderClassification,
   loadLastPrnAdministrationByOrderItemId,
+  marShiftTimelinePrnRowHasOrderItem,
   mergeScheduledAndPrnMarShiftTimelineRows,
   buildMarShiftTimelinePrnCellTexts,
   resolveMarShiftTimelinePrnColumnKey,
@@ -646,8 +648,14 @@ export class MarShiftTimelineService {
         assignedNurseUserId: dose.encounter.nurseAssignedUserId,
       };
       const { scheduled, prn } = ensureRowMaps(rowMeta);
-      appendMarShiftTimelineCellItem(isPrnBand ? prn : scheduled, columnKey, item);
+      const targetRow = isPrnBand ? prn : scheduled;
+      if (isPrnBand && marShiftTimelinePrnRowHasOrderItem(prn, dose.orderItemId)) {
+        continue;
+      }
+      appendMarShiftTimelineCellItem(targetRow, columnKey, item);
     }
+
+    const visiblePrnOrderItemIds = collectVisiblePrnOrderItemIds(prnRowMap);
 
     const fallbackPlacements = await loadMarShiftTimelineOrderItemFallbackPlacements({
       prisma: this.prisma,
@@ -661,6 +669,7 @@ export class MarShiftTimelineService {
       assignedToUserId: query.assignedToUserId,
       includeCompleted,
       orderItemIdsWithDoseInstances,
+      visiblePrnOrderItemIds,
       governanceByCatalogId,
       lastPrnAdminByOrderItemId,
       referenceAt,
@@ -676,12 +685,17 @@ export class MarShiftTimelineService {
         assignedNurseUserId: placement.assignedNurseUserId,
       });
       const targetRow = isPrnBand ? prn : scheduled;
+      if (isPrnBand && marShiftTimelinePrnRowHasOrderItem(targetRow, placement.item.orderItemId)) {
+        continue;
+      }
       const existingCell = targetRow.cells.find((c) => c.columnKey === placement.columnKey);
-      const duplicate = existingCell?.items.some(
-        (existing) =>
-          existing.orderItemId === placement.item.orderItemId &&
-          !existing.medicationDoseInstanceId?.trim()
-      );
+      const duplicate = isPrnBand
+        ? existingCell?.items.some((existing) => existing.orderItemId === placement.item.orderItemId)
+        : existingCell?.items.some(
+            (existing) =>
+              existing.orderItemId === placement.item.orderItemId &&
+              !existing.medicationDoseInstanceId?.trim()
+          );
       if (!duplicate) {
         appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
       }

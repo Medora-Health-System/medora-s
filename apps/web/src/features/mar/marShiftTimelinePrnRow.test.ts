@@ -29,12 +29,13 @@ describe("marShiftTimelinePrnRow — dedicated PRN band (K.10B.8A)", () => {
   });
 
   it("status colors follow MAR governance palette", () => {
-    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.due.backgroundColor).toBe("#FFF3CD");
-    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.overdue.backgroundColor).toBe("#F8D7DA");
-    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.backgroundColor).toBe("#D1E7DD");
-    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.held.backgroundColor).toBe("#E2E3E5");
+    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.active.backgroundColor).toBe("#DCFCE7");
+    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.backgroundColor).toBe("#E5E7EB");
+    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.refused.backgroundColor).toBe("#F3F4F6");
+    expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.held.backgroundColor).toBe("#FEF3C7");
     expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.backgroundColor).toBe("#FFFBE6");
     expect(display).toContain("MAR_SHIFT_TIMELINE_STATUS_COLORS");
+    expect(display).toContain("resolveMarShiftTimelineStatusColorKey");
   });
 
   it("drawer shows Q6H PRN, PRN yes, last given, next eligible", () => {

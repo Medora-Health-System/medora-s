@@ -2655,6 +2655,7 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
               encounterStatus={encounter.status}
               providerDocumentationStatus={encounter.providerDocumentationStatus}
               roleCodes={roles}
+              facilityTimeZone={session.facilityTimeZone}
               encounterAllergySource={{
                 vitals: encounter.vitals,
                 nursingAssessment: encounter.nursingAssessment,

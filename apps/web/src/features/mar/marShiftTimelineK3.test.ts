@@ -113,8 +113,8 @@ describe("MAR unified timeline shell (M1.8B.7K.3)", () => {
 
   it("completed cell renders gray inactive style", () => {
     const style = marShiftTimelineItemStatusStyle("COMPLETED", true);
-    expect(style.backgroundColor).toBe("#e2e8f0");
-    expect(style.color).toBe("#64748b");
+    expect(style.backgroundColor).toBe("#E5E7EB");
+    expect(style.color).toBe("#374151");
     expect(timeline).toContain('data-read-only={readOnly ? "true" : "false"}');
   });
 

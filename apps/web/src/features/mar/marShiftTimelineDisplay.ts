@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import {
   MAR_SHIFT_TIMELINE_STATUS_COLORS,
+  resolveMarShiftTimelineStatusColorKey,
   resolveMarShiftTimelinePerformerLabel,
   toMedicationAdministrationEffectiveTimeIsoUtc,
   clinicalDatetimeLocalFromInstant,
@@ -190,48 +191,21 @@ export function buildMarShiftTimelineItemHoverTitle(item: MarShiftTimelineCellIt
 export function marShiftTimelineItemStatusStyle(
   doseStatus: string,
   readOnly = false,
-  isPrnBand = false
+  isPrnBand = false,
+  secondaryText?: string | null
 ): CSSProperties {
-  if (isPrnBand) {
-    return {
-      backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.backgroundColor,
-      borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.borderColor,
-      color: MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.color,
-    };
-  }
-  const status = doseStatus.trim().toUpperCase();
-  if (status === "COMPLETED" || readOnly) {
-    return {
-      backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.backgroundColor,
-      borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.borderColor,
-      color: MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.color,
-    };
-  }
-  if (status === "OVERDUE") {
-    return {
-      backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.overdue.backgroundColor,
-      borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.overdue.borderColor,
-      color: MAR_SHIFT_TIMELINE_STATUS_COLORS.overdue.color,
-    };
-  }
-  if (status === "DUE" || status === "PLANNED") {
-    return {
-      backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.due.backgroundColor,
-      borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.due.borderColor,
-      color: MAR_SHIFT_TIMELINE_STATUS_COLORS.due.color,
-    };
-  }
-  if (status === "IN_PROGRESS") {
-    return { backgroundColor: "#eff6ff", borderColor: "#93c5fd", color: "#1e40af" };
-  }
-  if (status === "HELD" || status === "MISSED") {
-    return {
-      backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.held.backgroundColor,
-      borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.held.borderColor,
-      color: MAR_SHIFT_TIMELINE_STATUS_COLORS.held.color,
-    };
-  }
-  return { backgroundColor: "#ffffff", borderColor: "#e2e8f0", color: "#0f172a" };
+  const colorKey = resolveMarShiftTimelineStatusColorKey({
+    doseStatus,
+    readOnly,
+    isPrnBand,
+    secondaryText,
+  });
+  const palette = MAR_SHIFT_TIMELINE_STATUS_COLORS[colorKey];
+  return {
+    backgroundColor: palette.backgroundColor,
+    borderColor: palette.borderColor,
+    color: palette.color,
+  };
 }
 
 export function marShiftTimelinePrnRowStyle(): CSSProperties {

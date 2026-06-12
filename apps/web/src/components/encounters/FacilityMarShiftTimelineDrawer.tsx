@@ -10,6 +10,7 @@ import {
   formatMarShiftTimelineDueWindow,
   isMarShiftTimelineDrawerReadOnly,
   marShiftTimelineDrawerPerformerValue,
+  marShiftTimelineItemStatusStyle,
   marShiftTimelinePrimaryDrawerAction,
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
@@ -136,7 +137,19 @@ export function FacilityMarShiftTimelineDrawer({
         })
       : item.frequencyCode);
 
-  const detailRows: { label: string; value: string | null | undefined; testId?: string }[] = [
+  const statusBadgeStyle = marShiftTimelineItemStatusStyle(
+    item.doseStatus,
+    readOnly,
+    item.isPrnBand === true,
+    item.secondaryText
+  );
+
+  const detailRows: {
+    label: string;
+    value: string | null | undefined;
+    testId?: string;
+    statusBadge?: boolean;
+  }[] = [
     { label: t("marShiftTimeline.drawer.patient"), value: context.patientDisplay },
     { label: t("marShiftTimeline.drawer.room"), value: context.roomLabel },
     {
@@ -149,7 +162,12 @@ export function FacilityMarShiftTimelineDrawer({
       value: dueWindowDisplay,
       testId: "mar-shift-timeline-drawer-due-window",
     },
-    { label: t("marShiftTimeline.drawer.status"), value: item.hover.status },
+    {
+      label: t("marShiftTimeline.drawer.status"),
+      value: item.hover.status,
+      testId: "mar-shift-timeline-drawer-status",
+      statusBadge: true,
+    },
     { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
     { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
     { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
@@ -590,7 +608,27 @@ export function FacilityMarShiftTimelineDrawer({
                 style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, marginBottom: 8 }}
               >
                 <dt style={{ margin: 0, color: "#64748b", fontWeight: 600 }}>{row.label}</dt>
-                <dd style={{ margin: 0, color: "#0f172a" }}>{row.value}</dd>
+                {row.statusBadge ? (
+                  <dd style={{ margin: 0 }}>
+                    <span
+                      data-testid="mar-shift-timeline-drawer-status-badge"
+                      style={{
+                        display: "inline-block",
+                        padding: "2px 8px",
+                        borderRadius: 6,
+                        border: `1px solid ${statusBadgeStyle.borderColor}`,
+                        backgroundColor: statusBadgeStyle.backgroundColor as string,
+                        color: statusBadgeStyle.color as string,
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {row.value}
+                    </span>
+                  </dd>
+                ) : (
+                  <dd style={{ margin: 0, color: "#0f172a" }}>{row.value}</dd>
+                )}
               </div>
             ) : null
           )}

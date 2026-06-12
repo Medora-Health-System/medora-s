@@ -10,14 +10,63 @@ import {
   parsePrnIndicationFromDirections,
 } from "./medicationAdministrationPrnGovernance.js";
 
-/** MAR shift timeline status colors (K.10B.8A PRN row governance). */
+/** MAR shift timeline status colors (K.10B.8B clinical governance). */
 export const MAR_SHIFT_TIMELINE_STATUS_COLORS = {
-  due: { backgroundColor: "#FFF3CD", borderColor: "#E8D38A", color: "#664D03" },
-  overdue: { backgroundColor: "#F8D7DA", borderColor: "#F1AEB5", color: "#58151C" },
-  administered: { backgroundColor: "#D1E7DD", borderColor: "#A3CFBB", color: "#0A3622" },
-  held: { backgroundColor: "#E2E3E5", borderColor: "#C4C8CB", color: "#41464B" },
+  active: { backgroundColor: "#DCFCE7", borderColor: "#16A34A", color: "#166534" },
+  administered: { backgroundColor: "#E5E7EB", borderColor: "#9CA3AF", color: "#374151" },
+  refused: { backgroundColor: "#F3F4F6", borderColor: "#6B7280", color: "#4B5563" },
+  held: { backgroundColor: "#FEF3C7", borderColor: "#D97706", color: "#92400E" },
   prnRow: { backgroundColor: "#FFFBE6", borderColor: "#E8D38A", color: "#664D03" },
 } as const;
+
+export type MarShiftTimelineStatusColorKey = keyof typeof MAR_SHIFT_TIMELINE_STATUS_COLORS;
+
+const ACTIVE_SECONDARY_MARKERS = [
+  "ADMIN",
+  "INFUSING",
+  "START",
+  "RUNNING",
+  "DUE",
+] as const;
+
+/** Resolve timeline/drawer status color bucket from dose status and cell labels. */
+export function resolveMarShiftTimelineStatusColorKey(input: {
+  doseStatus: string;
+  readOnly?: boolean;
+  isPrnBand?: boolean;
+  secondaryText?: string | null;
+}): MarShiftTimelineStatusColorKey {
+  if (input.isPrnBand) return "prnRow";
+
+  const status = input.doseStatus.trim().toUpperCase();
+  const secondary = input.secondaryText?.trim().toUpperCase() ?? "";
+
+  if (secondary === "REFUSED") return "refused";
+  if (status === "HELD" || secondary === "HELD") return "held";
+  if (status === "COMPLETED" || input.readOnly === true || secondary === "DONE") {
+    return "administered";
+  }
+
+  if (
+    status === "DUE" ||
+    status === "OVERDUE" ||
+    status === "IN_PROGRESS" ||
+    status === "PLANNED" ||
+    status === "STARTED" ||
+    secondary === "INFUSING" ||
+    secondary === "ADMIN" ||
+    secondary === "START" ||
+    secondary.endsWith(" BOLUS")
+  ) {
+    return "active";
+  }
+
+  if (ACTIVE_SECONDARY_MARKERS.some((marker) => secondary.includes(marker))) {
+    return "active";
+  }
+
+  return "active";
+}
 
 export const MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX = "MAR_PRN_EARLY_OVERRIDE:";
 

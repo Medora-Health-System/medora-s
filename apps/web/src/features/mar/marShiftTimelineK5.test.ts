@@ -125,7 +125,7 @@ describe("MAR timeline display (M1.8B.7K.5)", () => {
     expect(isMarShiftTimelineDrawerReadOnly(item)).toBe(true);
     expect(isMarShiftTimelineItemReadOnly("VIEW_ADMINISTRATION")).toBe(true);
     const style = marShiftTimelineItemStatusStyle(item.doseStatus, item.readOnly);
-    expect(style.color).toBe("#64748b");
+    expect(style.color).toBe("#374151");
     expect(timeline).toContain("marShiftTimelineItemStatusStyle");
   });
 

@@ -181,8 +181,15 @@ export function EmergencyChartView() {
     }
   };
   const encounterId = params.id as string;
-  const { facilityId: facilityIdFromHook, facilities, roles, ready: rolesReady, canPrescribe, userId } =
-    useFacilityAndRoles();
+  const {
+    facilityId: facilityIdFromHook,
+    facilities,
+    roles,
+    ready: rolesReady,
+    canPrescribe,
+    userId,
+    facilityTimeZone,
+  } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [resultsRefresh, setResultsRefresh] = useState(0);
   const [triageRefresh, setTriageRefresh] = useState(0);
@@ -948,6 +955,7 @@ export function EmergencyChartView() {
                       encounterStatus={encounter.status ?? "OPEN"}
                       providerDocumentationStatus={encounter.providerDocumentationStatus}
                       roleCodes={roles}
+                      facilityTimeZone={facilityTimeZone}
                     />
                   </div>
                 </MedoraCardInner>

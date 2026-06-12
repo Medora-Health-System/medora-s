@@ -261,6 +261,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   assignedToUserId?: string;
   includeCompleted: boolean;
   orderItemIdsWithDoseInstances: ReadonlySet<string>;
+  visiblePrnOrderItemIds?: ReadonlySet<string>;
   governanceByCatalogId: Map<string, MedicationSafetyGovernanceSnapshot>;
   lastPrnAdminByOrderItemId?: Map<string, { administeredAt: Date }>;
   referenceAt?: Date;
@@ -290,17 +291,21 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     take: 500,
   });
 
-  const candidateItems = orderItems.filter(
-    (row) =>
-      !input.orderItemIdsWithDoseInstances.has(row.id) &&
-      shouldCreateMarShiftTimelineOrderItemFallback({
-        frequencyCode: row.frequencyCode,
-        notes: row.notes,
-        intendedAdministrationAt: row.intendedAdministrationAt,
-        hasMedicationDoseInstances: false,
-        featureFlags,
-      })
-  );
+  const candidateItems = orderItems.filter((row) => {
+    if (input.orderItemIdsWithDoseInstances.has(row.id)) return false;
+    const isPrn = isPrnMedicationOrderClassification({
+      frequencyCode: row.frequencyCode,
+      directionsSig: row.notes,
+    });
+    if (isPrn && input.visiblePrnOrderItemIds?.has(row.id)) return false;
+    return shouldCreateMarShiftTimelineOrderItemFallback({
+      frequencyCode: row.frequencyCode,
+      notes: row.notes,
+      intendedAdministrationAt: row.intendedAdministrationAt,
+      hasMedicationDoseInstances: false,
+      featureFlags,
+    });
+  });
 
   if (candidateItems.length === 0) return [];
 

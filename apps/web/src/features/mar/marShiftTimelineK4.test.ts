@@ -140,8 +140,8 @@ describe("MAR unified action workflow (M1.8B.7K.4)", () => {
 
   it("completed cell uses gray read-only style", () => {
     const style = marShiftTimelineItemStatusStyle("COMPLETED", true);
-    expect(style.backgroundColor).toBe("#e2e8f0");
-    expect(style.color).toBe("#64748b");
+    expect(style.backgroundColor).toBe("#E5E7EB");
+    expect(style.color).toBe("#374151");
   });
 
   it("DUE IVPB drawer enables Start infusion action", () => {

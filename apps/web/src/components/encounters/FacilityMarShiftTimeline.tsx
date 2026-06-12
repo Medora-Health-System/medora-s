@@ -393,7 +393,8 @@ export function FacilityMarShiftTimeline({
                             const statusStyle = marShiftTimelineItemStatusStyle(
                               item.doseStatus,
                               readOnly,
-                              item.isPrnBand === true
+                              item.isPrnBand === true,
+                              item.secondaryText
                             );
                             const scheduledPatientDisplay =
                               data.rows.find(
