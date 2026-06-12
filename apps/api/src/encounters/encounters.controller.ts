@@ -27,6 +27,7 @@ import {
   encounterCreateDtoSchema,
   encounterIntakeUpsertDtoSchema,
   encounterOperationalUpdateDtoSchema,
+  encounterRoomUpdateDtoSchema,
   encounterOutpatientCreateDtoSchema,
   encounterProviderAddendumCreateDtoSchema,
   encounterProviderDocumentationSignDtoSchema,
@@ -979,6 +980,29 @@ export class EncountersController {
     }
 
     return this.encountersService.updateOperational(
+      facilityId,
+      id,
+      parsed.data,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Patch("encounters/:id/room")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async updateRoom(@Param("id") id: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+
+    const parsed = encounterRoomUpdateDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException("Invalid payload", { cause: parsed.error });
+    }
+
+    return this.encountersService.updateRoom(
       facilityId,
       id,
       parsed.data,

@@ -24,6 +24,11 @@ import {
   type PriorityBadgeSoft,
 } from "@/components/medora-card";
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import {
+  canAssignEncounterRoom,
+  formatEncounterGovernedRoomDisplay,
+} from "@/lib/governedRoomDisplay";
 import {
   compareObservationBoardRows,
   computeObservationBoardCensus,
@@ -472,9 +477,12 @@ export function HospitalizationBoardView() {
   /** Phase 14G-B — same self-assign flow as ER trackboard (operational ownership). */
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
+  const [roomAssignmentEncounter, setRoomAssignmentEncounter] =
+    useState<HospitalisationBoardEncounterRow | null>(null);
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
+  const canAssignRoom = canAssignEncounterRoom(roles);
 
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -1150,7 +1158,14 @@ export function HospitalizationBoardView() {
               const cc =
                 encounter.triage?.chiefComplaint || encounter.chiefComplaint || t("common.dash");
               const esiDisplay = encounter.triage?.esi != null ? `ESI ${encounter.triage.esi}` : t("common.dash");
-              const room = encounter.roomLabel?.trim() || t("common.dash");
+              const room = formatEncounterGovernedRoomDisplay(
+                {
+                  roomLabel: encounter.roomLabel,
+                  type: encounter.type ?? "INPATIENT",
+                  admissionSummaryJson: encounter.admissionSummaryJson,
+                },
+                t
+              );
               const physName = physicianLabel(encounter);
               const nurseName = nurseLabel(encounter);
               const physLine = physName || t("emergencyTrackboard.unassignedDash");
@@ -1171,6 +1186,9 @@ export function HospitalizationBoardView() {
                         avatarInitials={patientInitials(patient)}
                         roomLabel={t("common.room")}
                         roomValue={room}
+                        roomClickable={canAssignRoom}
+                        roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
+                        onRoomClick={() => setRoomAssignmentEncounter(encounter)}
                         centerTrailingMaxWidth={usesCompactCensus ? 200 : 260}
                         centerTrailing={
                           <div
@@ -1445,6 +1463,28 @@ export function HospitalizationBoardView() {
           </ul>
         )}
       </div>
+      {effectiveFacilityId && roomAssignmentEncounter ? (
+        <RoomAssignmentModal
+          open
+          facilityId={effectiveFacilityId}
+          encounter={{
+            id: roomAssignmentEncounter.id,
+            roomLabel: roomAssignmentEncounter.roomLabel,
+            type: roomAssignmentEncounter.type ?? "INPATIENT",
+            admissionSummaryJson: roomAssignmentEncounter.admissionSummaryJson,
+          }}
+          onClose={() => setRoomAssignmentEncounter(null)}
+          onSaved={(patch) => {
+            setEncounters((prev) =>
+              prev.map((row) =>
+                row.id === roomAssignmentEncounter.id
+                  ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
+                  : row
+              )
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }

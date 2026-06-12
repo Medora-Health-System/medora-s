@@ -4,6 +4,7 @@ import {
   buildMarShiftTimelineHover,
   buildMarShiftTimelineTitle,
   doseOverlapsMarShiftTimelineWindow,
+  formatGovernedRoomDisplay,
   parseMarShiftTimelineShiftCode,
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
@@ -135,6 +136,8 @@ export type MarShiftTimelineRow = {
   encounterId: string;
   patientDisplay: string;
   roomLabel: string | null;
+  /** K.10B.10 — governed display label (e.g. ED-4, MS-2). */
+  governedRoomDisplay?: string | null;
   assignedNurseUserId: string | null;
   cells: MarShiftTimelineRowCell[];
   rowKind?: "SCHEDULED" | "PRN";
@@ -372,6 +375,8 @@ export class MarShiftTimelineService {
       encounterId: string;
       patientDisplay: string;
       roomLabel: string | null;
+      encounterType: string | null;
+      admissionSummaryJson: unknown;
       assignedNurseUserId: string | null;
     }): { scheduled: MarShiftTimelineRowWithKind; prn: MarShiftTimelineRowWithKind } {
       let scheduled = scheduledRowMap.get(input.encounterId);
@@ -645,6 +650,8 @@ export class MarShiftTimelineService {
           dose.encounter.patient.lastName
         ),
         roomLabel: dose.encounter.roomLabel,
+        encounterType: dose.encounter.type,
+        admissionSummaryJson: dose.encounter.admissionSummaryJson,
         assignedNurseUserId: dose.encounter.nurseAssignedUserId,
       };
       const { scheduled, prn } = ensureRowMaps(rowMeta);
@@ -682,6 +689,8 @@ export class MarShiftTimelineService {
         encounterId: placement.encounterId,
         patientDisplay: placement.patientDisplay,
         roomLabel: placement.roomLabel,
+        encounterType: placement.encounterType,
+        admissionSummaryJson: placement.admissionSummaryJson,
         assignedNurseUserId: placement.assignedNurseUserId,
       });
       const targetRow = isPrnBand ? prn : scheduled;

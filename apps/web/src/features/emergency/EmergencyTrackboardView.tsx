@@ -30,7 +30,11 @@ import {
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { erHandoffV1SatisfiesInpatientTransferConfirm, sortRowsByRoomLabel } from "@medora/shared";
-import { formatEncounterRoomDisplay } from "@/lib/encounterRoomOptions";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import {
+  canAssignEncounterRoom,
+  formatEncounterGovernedRoomDisplay,
+} from "@/lib/governedRoomDisplay";
 import {
   computeLos,
   LOS_ESCALATION_SOFT,
@@ -209,6 +213,9 @@ export function EmergencyTrackboardView() {
   /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
+  const [roomAssignmentEncounter, setRoomAssignmentEncounter] = useState<OpenEncounterRow | null>(
+    null
+  );
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
    * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
@@ -229,6 +236,7 @@ export function EmergencyTrackboardView() {
     roles.includes("FRONT_DESK") ||
     roles.includes("BILLING");
   const isNurse = roles.includes("RN");
+  const canAssignRoom = canAssignEncounterRoom(roles);
   const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
   const usesCompactCensus = erTrackboardUsesCompactCensus(layoutMode);
 
@@ -568,7 +576,14 @@ export function EmergencyTrackboardView() {
               const dash = t("common.dash");
               const cc = encounter.triage?.chiefComplaint || encounter.chiefComplaint || dash;
               const esiLevel = esiLevelFromUnknown(encounter.triage?.esi ?? null);
-              const room = formatEncounterRoomDisplay(encounter.roomLabel, t, dash);
+              const room = formatEncounterGovernedRoomDisplay(
+                {
+                  roomLabel: encounter.roomLabel,
+                  type: encounter.type ?? "EMERGENCY",
+                  admissionSummaryJson: encounter.admissionSummaryJson,
+                },
+                t
+              );
               const phys = physicianLabel(encounter);
               const nurse = nurseLabel(encounter);
               const physId = (encounter.physicianAssigned?.id ?? "").trim();
@@ -694,6 +709,9 @@ export function EmergencyTrackboardView() {
                         }
                         roomLabel={t("encounterChrome.labelRoom")}
                         roomValue={room}
+                        roomClickable={canAssignRoom}
+                        roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
+                        onRoomClick={() => setRoomAssignmentEncounter(encounter)}
                         centerLeading={
                           los ? (
                             <div
@@ -1004,6 +1022,28 @@ export function EmergencyTrackboardView() {
           </ul>
         )}
       </div>
+      {facilityId && roomAssignmentEncounter ? (
+        <RoomAssignmentModal
+          open
+          facilityId={facilityId}
+          encounter={{
+            id: roomAssignmentEncounter.id,
+            roomLabel: roomAssignmentEncounter.roomLabel,
+            type: roomAssignmentEncounter.type ?? "EMERGENCY",
+            admissionSummaryJson: roomAssignmentEncounter.admissionSummaryJson,
+          }}
+          onClose={() => setRoomAssignmentEncounter(null)}
+          onSaved={(patch) => {
+            setRows((prev) =>
+              prev.map((row) =>
+                row.id === roomAssignmentEncounter.id
+                  ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
+                  : row
+              )
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }

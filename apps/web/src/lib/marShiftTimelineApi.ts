@@ -88,6 +88,7 @@ export type MarShiftTimelineRow = {
   encounterId: string;
   patientDisplay: string;
   roomLabel: string | null;
+  governedRoomDisplay?: string | null;
   assignedNurseUserId: string | null;
   cells: MarShiftTimelineRowCell[];
   rowKind?: "SCHEDULED" | "PRN";

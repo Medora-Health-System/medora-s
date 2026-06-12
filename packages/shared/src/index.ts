@@ -33,6 +33,7 @@ export * from "./encounters/encounterNote.js";
 export * from "./encounters/encounterNoteGovernance.js";
 export * from "./encounters/erNotesV1LegacyRead.js";
 export * from "./encounters/edRoomLabel.js";
+export * from "./encounters/governedRoomLabel.js";
 export * from "./clinicalDocumentation/clinicalDocumentationRegistry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationEntry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationLegalCoverageHarness.js";

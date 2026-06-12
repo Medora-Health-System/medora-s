@@ -68,6 +68,11 @@ import {
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
+import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import {
+  canAssignEncounterRoom,
+  formatEncounterGovernedRoomDisplay,
+} from "@/lib/governedRoomDisplay";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
 import {
@@ -236,6 +241,7 @@ export function EmergencyActiveWorkspaceView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showOperationalPanel, setShowOperationalPanel] = useState(false);
+  const [showRoomAssignmentModal, setShowRoomAssignmentModal] = useState(false);
   const [showCreateDx, setShowCreateDx] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [dxSubmitting, setDxSubmitting] = useState(false);
@@ -698,9 +704,18 @@ export function EmergencyActiveWorkspaceView() {
   const statusKey = (encounter.status ?? "").trim() || "OPEN";
   const typeKey = (encounter.type ?? "").trim() || "—";
   const billingClassKey = String((encounter as { billingClassification?: string }).billingClassification ?? "").trim();
-  const roomDisplay = encounter.roomLabel?.trim() || t("common.dash");
+  const roomDisplay = formatEncounterGovernedRoomDisplay(
+    {
+      roomLabel: encounter.roomLabel,
+      type: encounter.type,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+    },
+    t
+  );
   const isEmergencyType = encounter.type === EMERGENCY_TYPE;
   const isLocked = isEncounterLocked(encounter);
+  const canAssignRoom =
+    canAssignEncounterRoom(roles) && encounter.status === "OPEN" && !isLocked;
   const vitalsQuickEditEnabled =
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
 
@@ -819,6 +834,10 @@ export function EmergencyActiveWorkspaceView() {
                 onBillingUpdated={load}
                 showOperationalPanel={showOperationalPanel}
                 setShowOperationalPanel={setShowOperationalPanel}
+                onRoomClick={
+                  canAssignRoom && fid ? () => setShowRoomAssignmentModal(true) : undefined
+                }
+                roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
                 erChartHref={erChartHref}
                 genericEncounterHref={genericEncounterHref}
                 isLocked={isLocked}
@@ -1070,16 +1089,31 @@ export function EmergencyActiveWorkspaceView() {
               <div style={emergencyChartHeaderRailStyle(layoutMode)}>
                 <div
                   role="button"
-                  tabIndex={0}
-                  onClick={() => setShowOperationalPanel((prev) => !prev)}
+                  tabIndex={canAssignRoom ? 0 : 0}
+                  onClick={() => {
+                    if (canAssignRoom && fid) {
+                      setShowRoomAssignmentModal(true);
+                      return;
+                    }
+                    setShowOperationalPanel((prev) => !prev);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      if (canAssignRoom && fid) {
+                        setShowRoomAssignmentModal(true);
+                        return;
+                      }
                       setShowOperationalPanel((prev) => !prev);
                     }
                   }}
-                  aria-expanded={showOperationalPanel}
-                  aria-label={t("emergencyWorkspace.operationalRoomAria")}
+                  aria-expanded={canAssignRoom ? undefined : showOperationalPanel}
+                  aria-label={
+                    canAssignRoom
+                      ? t("roomAssignment.changeRoomTooltip")
+                      : t("emergencyWorkspace.operationalRoomAria")
+                  }
+                  title={canAssignRoom ? t("roomAssignment.changeRoomTooltip") : undefined}
                   style={{
                     padding: "8px 12px",
                     alignSelf: "flex-end",
@@ -1596,6 +1630,25 @@ export function EmergencyActiveWorkspaceView() {
           ariaLabel={t("emergencyWorkspace.dashboardHeading")}
         />
       </div>
+
+      {fid && encounter && showRoomAssignmentModal ? (
+        <RoomAssignmentModal
+          open
+          facilityId={fid}
+          encounter={{
+            id: encounter.id,
+            roomLabel: encounter.roomLabel,
+            type: encounter.type ?? EMERGENCY_TYPE,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+          }}
+          onClose={() => setShowRoomAssignmentModal(false)}
+          onSaved={(patch) => {
+            setEncounter((prev) =>
+              prev ? { ...prev, roomLabel: patch.roomLabel ?? prev.roomLabel } : prev
+            );
+          }}
+        />
+      ) : null}
     </div>
   );
 }

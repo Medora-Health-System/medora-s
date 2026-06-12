@@ -61,7 +61,9 @@ const ORDER_ITEM_FALLBACK_SELECT = {
       encounter: {
         select: {
           id: true,
+          type: true,
           roomLabel: true,
+          admissionSummaryJson: true,
           nurseAssignedUserId: true,
           status: true,
           patient: {
@@ -102,7 +104,9 @@ type OrderItemFallbackRow = {
     status: OrderStatus;
     encounter: {
       id: string;
+      type: string;
       roomLabel: string | null;
+      admissionSummaryJson: unknown;
       nurseAssignedUserId: string | null;
       status: string;
       patient: {
@@ -130,6 +134,8 @@ export type MarShiftTimelineOrderItemFallbackPlacement = {
   encounterId: string;
   patientDisplay: string;
   roomLabel: string | null;
+  encounterType: string | null;
+  admissionSummaryJson: unknown;
   assignedNurseUserId: string | null;
 };
 
@@ -632,6 +638,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         encounter.patient.lastName
       ),
       roomLabel: encounter.roomLabel,
+      encounterType: encounter.type,
+      admissionSummaryJson: encounter.admissionSummaryJson,
       assignedNurseUserId: encounter.nurseAssignedUserId,
       item: {
         type: "MEDICATION",

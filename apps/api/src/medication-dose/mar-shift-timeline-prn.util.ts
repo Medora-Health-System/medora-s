@@ -1,5 +1,6 @@
 import {
   buildMarPrnTimelineCellDisplay,
+  formatGovernedRoomDisplay,
   formatMarPrnFrequencyLabel,
   isPrnMedicationOrderClassification,
   resolveMarPrnTimelineColumnKey,
@@ -25,14 +26,23 @@ export function createEmptyMarShiftTimelineRow(input: {
   encounterId: string;
   patientDisplay: string;
   roomLabel: string | null;
+  encounterType?: string | null;
+  admissionSummaryJson?: unknown;
   assignedNurseUserId: string | null;
   rowKind: MarShiftTimelineRowKind;
 }): MarShiftTimelineRowWithKind {
+  const governed = formatGovernedRoomDisplay({
+    roomLabel: input.roomLabel,
+    encounterType: input.encounterType,
+    admissionSummaryJson: input.admissionSummaryJson,
+    emptyLabel: "No room assigned",
+  });
   return {
     patientId: input.patientId,
     encounterId: input.encounterId,
     patientDisplay: input.patientDisplay,
     roomLabel: input.roomLabel,
+    governedRoomDisplay: governed.display,
     assignedNurseUserId: input.assignedNurseUserId,
     cells: [],
     rowKind: input.rowKind,

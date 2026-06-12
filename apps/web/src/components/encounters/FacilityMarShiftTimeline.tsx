@@ -125,6 +125,7 @@ export function FacilityMarShiftTimeline({
                 item: found.item,
                 patientDisplay: found.patientDisplay,
                 roomLabel: found.roomLabel,
+                governedRoomDisplay: found.governedRoomDisplay,
               }
             : null
         );
@@ -360,7 +361,9 @@ export function FacilityMarShiftTimeline({
                           {row.patientDisplay}
                         </div>
                         <div data-testid="mar-shift-timeline-room" style={{ color: "#64748b", marginTop: 2 }}>
-                          {row.roomLabel?.trim() || t("common.dash")}
+                          {row.governedRoomDisplay?.trim() ||
+                            row.roomLabel?.trim() ||
+                            t("roomAssignment.noRoomAssigned")}
                         </div>
                       </>
                     )}
@@ -417,6 +420,7 @@ export function FacilityMarShiftTimeline({
                                     item,
                                     patientDisplay: scheduledPatientDisplay,
                                     roomLabel: row.roomLabel,
+                                    governedRoomDisplay: row.governedRoomDisplay ?? null,
                                   })
                                 }
                                 style={{
@@ -476,6 +480,7 @@ export function FacilityMarShiftTimeline({
             ? {
                 patientDisplay: drawerSelection.patientDisplay,
                 roomLabel: drawerSelection.roomLabel,
+                governedRoomDisplay: drawerSelection.governedRoomDisplay,
               }
             : null
         }

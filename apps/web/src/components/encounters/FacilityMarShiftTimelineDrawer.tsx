@@ -36,6 +36,7 @@ import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 export type FacilityMarShiftTimelineDrawerContext = {
   patientDisplay: string;
   roomLabel: string | null;
+  governedRoomDisplay?: string | null;
 };
 
 export type FacilityMarShiftTimelineDrawerProps = {
@@ -152,7 +153,13 @@ export function FacilityMarShiftTimelineDrawer({
     statusBadge?: boolean;
   }[] = [
     { label: t("marShiftTimeline.drawer.patient"), value: context.patientDisplay },
-    { label: t("marShiftTimeline.drawer.room"), value: context.roomLabel },
+    {
+      label: t("marShiftTimeline.drawer.room"),
+      value:
+        context.governedRoomDisplay?.trim() ||
+        context.roomLabel?.trim() ||
+        t("roomAssignment.noRoomAssigned"),
+    },
     {
       label: t("marShiftTimeline.drawer.scheduled"),
       value: scheduledDisplay,

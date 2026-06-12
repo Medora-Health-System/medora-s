@@ -111,6 +111,11 @@ import {
   resolveEdRoomAssignmentForSave,
   ED_CANONICAL_WAITING_ROOM_LABEL,
   type EdRoomOccupancyRow,
+  buildRoomLabelForStorage,
+  formatGovernedRoomDisplay,
+  resolveEncounterCareUnit,
+  type EncounterRoomUpdateDto,
+  type EncounterCareUnitCode,
 } from "@medora/shared";
 import { throwEdRoomOccupiedConflict } from "./ed-room-occupancy.util";
 import { handoffNursingEncounterPayload, handoffProviderEncounterPayload } from "../utils/clinical-event-handoff.util";
@@ -1845,6 +1850,136 @@ export class EncountersService {
       },
     });
     return toEncounterClinicResponse(updated);
+  }
+
+  /**
+   * K.10B.10 — Dashboard/MAR room assignment without opening full chart.
+   * Persists `roomLabel` using governed unit prefixes; ED occupancy rules unchanged.
+   */
+  async updateRoom(
+    facilityId: string,
+    id: string,
+    data: EncounterRoomUpdateDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id, facilityId },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+    if (encounter.workflowState === EncounterWorkflowState.CLOSED) {
+      throw new BadRequestException("Le parcours de cette consultation est terminé.");
+    }
+    assertOperationalUpdateAllowedWhenSigned(encounter, {});
+
+    const previousUnit = resolveEncounterCareUnit({
+      encounterType: encounter.type,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+    });
+    const nextUnit =
+      data.unitCode ??
+      previousUnit ??
+      (encounter.type === EncounterType.EMERGENCY ? "ED" : encounter.type === EncounterType.INPATIENT ? "MS" : null);
+
+    const requestedStorage =
+      data.room === undefined
+        ? encounter.roomLabel
+        : data.room === null || !String(data.room).trim()
+          ? null
+          : buildRoomLabelForStorage({
+              room: data.room,
+              unitCode: nextUnit as EncounterCareUnitCode | null,
+              encounterType: encounter.type,
+            });
+
+    if (requestedStorage === encounter.roomLabel) {
+      return this.buildEncounterRoomUpdateResponse(encounter);
+    }
+
+    let resolvedRoomLabel = requestedStorage;
+    if (encounter.type !== EncounterType.INPATIENT) {
+      const openEncounters = await this.loadOpenEdRoomOccupancyRows(facilityId);
+      const resolved = resolveEdRoomAssignmentForSave({
+        facilityId,
+        encounterId: id,
+        currentRoomLabel: encounter.roomLabel,
+        requestedRoomRaw: requestedStorage,
+        confirmOccupiedRoomAssignment: data.confirmOccupiedRoomAssignment,
+        roomOccupancyOverride: data.roomOccupancyOverride ?? null,
+        openEncounters,
+      });
+      if (!resolved.ok) {
+        throwEdRoomOccupiedConflict(resolved.conflict);
+      }
+      resolvedRoomLabel = resolved.roomLabel;
+    }
+
+    const u = await this.prisma.encounter.updateMany({
+      where: { id, facilityId, version: encounter.version },
+      data: {
+        roomLabel: resolvedRoomLabel,
+        version: { increment: 1 },
+      },
+    });
+    if (u.count === 0) throwEncounterConcurrentModification();
+
+    const updated = await this.prisma.encounter.findFirst({
+      where: { id, facilityId },
+      include: {
+        patient: { select: encounterDetailPatientSelect },
+        physicianAssigned: { select: { id: true, firstName: true, lastName: true } },
+        nurseAssigned: { select: { id: true, firstName: true, lastName: true } },
+      },
+    });
+    if (!updated) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    await this.audit.log(AuditAction.ENCOUNTER_UPDATE, "ENCOUNTER", {
+      userId,
+      facilityId,
+      patientId: encounter.patientId,
+      encounterId: encounter.id,
+      entityId: encounter.id,
+      ip,
+      userAgent,
+      metadata: {
+        event: "ROOM_ASSIGNMENT_UPDATE",
+        roomFrom: encounter.roomLabel ?? null,
+        roomTo: resolvedRoomLabel ?? null,
+        unitFrom: previousUnit,
+        unitTo: nextUnit,
+        reasonCode: data.reason ?? null,
+        reasonOther: data.reasonOther?.trim() || null,
+        ...(encounter.providerDocumentationStatus === "SIGNED"
+          ? { postSignModification: true }
+          : {}),
+      },
+    });
+
+    return this.buildEncounterRoomUpdateResponse(updated);
+  }
+
+  private buildEncounterRoomUpdateResponse(
+    encounter: {
+      roomLabel: string | null;
+      type: EncounterType;
+      admissionSummaryJson: unknown;
+    } & Record<string, unknown>
+  ) {
+    const res = toEncounterClinicResponse(encounter) as Record<string, unknown>;
+    const governed = formatGovernedRoomDisplay({
+      roomLabel: encounter.roomLabel,
+      encounterType: encounter.type,
+      admissionSummaryJson: encounter.admissionSummaryJson,
+    });
+    res.governedRoomDisplay = governed.display;
+    res.governedRoomUnit = governed.unit;
+    res.governedRoomHasAssignment = governed.hasRoom;
+    return res;
   }
 
   /** Open non-inpatient encounters used for ED numbered-room occupancy checks. */

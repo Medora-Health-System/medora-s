@@ -2,6 +2,10 @@ import { z } from "zod";
 import { marClinicalActionSchema } from "../mar/marClinicalAction.js";
 import { imInjectionSiteValues } from "../mar/medicationAdministrationInjectionSite.js";
 import { MAR_PRN_REASON_CODES } from "../mar/medicationAdministrationPrnGovernance.js";
+import {
+  ENCOUNTER_CARE_UNIT_CODES,
+  ENCOUNTER_ROOM_CHANGE_REASON_CODES,
+} from "../encounters/governedRoomLabel.js";
 import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
@@ -333,6 +337,29 @@ export const encounterOperationalUpdateDtoSchema = z.object({
 });
 
 export type EncounterOperationalUpdateDto = z.infer<typeof encounterOperationalUpdateDtoSchema>;
+
+/** K.10B.10 — lightweight room assignment from dashboards / MAR (no full chart). */
+export const encounterRoomUpdateDtoSchema = z.object({
+  room: z.preprocess(emptyStrToNull, z.union([z.string().max(64), z.null()]).optional()),
+  unitCode: z.preprocess(
+    emptyStrToNull,
+    z.enum(ENCOUNTER_CARE_UNIT_CODES as unknown as [string, ...string[]]).optional()
+  ),
+  reason: z.preprocess(
+    emptyStrToNull,
+    z.enum(ENCOUNTER_ROOM_CHANGE_REASON_CODES as unknown as [string, ...string[]]).optional()
+  ),
+  reasonOther: z.preprocess(emptyStrToNull, z.string().trim().max(500).optional()),
+  confirmOccupiedRoomAssignment: z.boolean().optional(),
+  roomOccupancyOverride: z
+    .object({
+      requestedRoom: z.string().max(64),
+      acceptedRoom: z.string().max(64),
+    })
+    .optional(),
+});
+
+export type EncounterRoomUpdateDto = z.infer<typeof encounterRoomUpdateDtoSchema>;
 
 export const encounterDischargeFieldsSchema = z.object({
   disposition: z.string().max(4000).optional(),
