@@ -41,6 +41,8 @@ export function useFacilityAndRoles() {
   const [allowRnLabResultSubmission, setAllowRnLabResultSubmission] = useState(false);
   /** Null until `/auth/me` resolves facility timezone (K.10B.4 — never default to browser/UTC early). */
   const [facilityTimeZone, setFacilityTimeZone] = useState<string | null>(null);
+  /** MEDUI.AUTH.ROLE.1 — active facility UserRole department assignment (nullable until admin UI wires it). */
+  const [departmentId, setDepartmentId] = useState<string | null>(null);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -68,6 +70,7 @@ export function useFacilityAndRoles() {
       setIsPlatformOperator(false);
       setAllowRnLabResultSubmission(false);
       setFacilityTimeZone(null);
+      setDepartmentId(null);
       setReady(true);
       return;
     }
@@ -82,6 +85,7 @@ export function useFacilityAndRoles() {
         role?: string;
         timezone?: string;
         allowRnLabResultSubmission?: boolean;
+        departmentId?: string | null;
       }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
@@ -98,6 +102,8 @@ export function useFacilityAndRoles() {
         ? activePolicyRow.timezone.trim()
         : "UTC"
     );
+    const activeDepartmentId = activePolicyRow?.departmentId;
+    setDepartmentId(typeof activeDepartmentId === "string" && activeDepartmentId.trim() ? activeDepartmentId : null);
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -195,6 +201,8 @@ export function useFacilityAndRoles() {
     allowRnLabResultSubmission,
     /** IANA timezone for clinical display (M1.8B.7K.10B.1). */
     facilityTimeZone,
+    /** Active facility department assignment from `/auth/me` (`UserRole.departmentId`). */
+    departmentId,
     /**
      * True when planned-administration defaults may use facility wall-clock (K.10B.4).
      * False while session loads; true with no facilityId when user has no active facility.

@@ -1,5 +1,12 @@
 import type { ErWorkspaceSection } from "./erWorkspaceSections.js";
-import { canDocumentEdTriage } from "@medora/shared";
+import {
+  canDocumentEdTriage,
+  filterEdWorkspaceTiles,
+  resolveDepartmentCode,
+  resolveProfessionGroup,
+  resolveWorkspacePermissions,
+  type WorkspaceTileId,
+} from "@medora/shared";
 
 export type EdWorkspaceTileId =
   | "TRIAGE"
@@ -55,55 +62,44 @@ const SECTION_TO_TILE: Record<ErWorkspaceSection, EdWorkspaceTileId> = {
   visitSummary: "SUMMARY",
 };
 
-const ADMIN_TILES: EdWorkspaceTileId[] = [...ED_WORKSPACE_ALL_TILE_IDS];
-
-/** Provider: ME | O | R | Dx | N | D | S */
-const PROVIDER_TILES: EdWorkspaceTileId[] = [
-  "MEDICAL_EXAM",
-  "ORDERS",
-  "RESULTS",
-  "DIAGNOSTICS",
-  "NOTES",
-  "DISPOSITION",
-  "SUMMARY",
-];
-
-/** RN: T | O | M | R | NA | N | D | S */
-const RN_TILES: EdWorkspaceTileId[] = [
-  "TRIAGE",
-  "ORDERS",
-  "MEDICATIONS",
-  "RESULTS",
-  "NURSING_ASSESSMENT",
-  "NOTES",
-  "DISPOSITION",
-  "SUMMARY",
-];
-
-/** Lab / Radiology technician: T | O | R | N | D | S */
-const TECH_TILES: EdWorkspaceTileId[] = [
-  "TRIAGE",
-  "ORDERS",
-  "RESULTS",
-  "NOTES",
-  "DISPOSITION",
-  "SUMMARY",
-];
-
-/** Safe minimal fallback when role group cannot be resolved. */
-const UNKNOWN_TILES: EdWorkspaceTileId[] = ["ORDERS", "RESULTS", "SUMMARY"];
-
-const TECH_ROLE_CODES = new Set(["LAB", "RADIOLOGY"]);
-
 export type EdWorkspaceRoleInput = {
   roleCodes: string[];
   canPrescribe?: boolean;
   canAdministerMedication?: boolean;
   canManageOrders?: boolean;
+  /** MEDUI.AUTH.ROLE.1 — explicit clinical department when assigned on UserRole. */
+  assignedDepartmentCode?: string | null;
+  /** Prisma `Department.code` when departmentId is resolved server-side. */
+  prismaDepartmentCode?: string | null;
+  facilityId?: string | null;
 };
 
 function normalizeRoleCodes(roleCodes: readonly string[]): string[] {
   return roleCodes.map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+function toEdWorkspaceTileIds(tiles: WorkspaceTileId[]): EdWorkspaceTileId[] {
+  return filterEdWorkspaceTiles(tiles) as EdWorkspaceTileId[];
+}
+
+function resolveEdAuthContext(input: EdWorkspaceRoleInput) {
+  const profession = resolveProfessionGroup({
+    roleCodes: input.roleCodes,
+    canPrescribe: input.canPrescribe,
+    canAdministerMedication: input.canAdministerMedication,
+  });
+  const department = resolveDepartmentCode({
+    departmentCode: input.assignedDepartmentCode,
+    prismaDepartmentCode: input.prismaDepartmentCode,
+    roleCodes: input.roleCodes,
+    clinicalWorkspace: "ED",
+  });
+  const permissions = resolveWorkspacePermissions({
+    profession,
+    department,
+    facilityId: input.facilityId ?? null,
+  });
+  return { profession, department, permissions };
 }
 
 /** Derive clinical capability flags from enrolled facility role codes (mirrors useFacilityAndRoles). */
@@ -128,43 +124,28 @@ export function deriveEdWorkspaceCapabilities(roleCodes: readonly string[]): {
 
 /**
  * Resolve ED workspace role group from enrolled facility roles.
- * Priority: ADMIN → PROVIDER → RN → TECH → UNKNOWN.
+ * Backward-compatible alias over {@link resolveProfessionGroup}.
  */
 export function resolveEdWorkspaceRoleGroup(input: EdWorkspaceRoleInput): EdWorkspaceRoleGroup {
-  const roles = normalizeRoleCodes(input.roleCodes);
-  const caps = deriveEdWorkspaceCapabilities(roles);
-  const canPrescribe = input.canPrescribe ?? caps.canPrescribe;
-  const canAdministerMedication =
-    input.canAdministerMedication ?? caps.canAdministerMedication;
-
-  if (roles.includes("ADMIN") || roles.includes("MEDORA_SUPER_ADMIN")) {
-    return "ADMIN";
+  const { profession } = resolveEdAuthContext(input);
+  switch (profession) {
+    case "ADMIN":
+      return "ADMIN";
+    case "PROVIDER":
+      return "PROVIDER";
+    case "RN":
+      return "RN";
+    case "TECHNICIAN":
+      return "TECH";
+    default:
+      return "UNKNOWN";
   }
-  if (roles.includes("PROVIDER") || canPrescribe) {
-    return "PROVIDER";
-  }
-  if (roles.includes("RN") || canAdministerMedication) {
-    return "RN";
-  }
-  if (roles.some((code) => TECH_ROLE_CODES.has(code))) {
-    return "TECH";
-  }
-  return "UNKNOWN";
 }
 
+/** MEDUI.AUTH.ROLE.1 — profession + department workspace tiles, filtered to ED dashboard tiles. */
 export function getVisibleEdWorkspaceTiles(input: EdWorkspaceRoleInput): EdWorkspaceTileId[] {
-  switch (resolveEdWorkspaceRoleGroup(input)) {
-    case "ADMIN":
-      return ADMIN_TILES;
-    case "PROVIDER":
-      return PROVIDER_TILES;
-    case "RN":
-      return RN_TILES;
-    case "TECH":
-      return TECH_TILES;
-    default:
-      return UNKNOWN_TILES;
-  }
+  const { permissions } = resolveEdAuthContext(input);
+  return toEdWorkspaceTileIds(permissions.visibleTiles);
 }
 
 /** Hide triage tile for floor tech when encounter is not ED-eligible (MEDUI.ED.ROLE.1A). */
@@ -191,11 +172,12 @@ export function applyEdWorkspaceEncounterTileFilter(
 }
 
 export function getDefaultEdWorkspaceTile(input: EdWorkspaceRoleInput): EdWorkspaceTileId {
-  switch (resolveEdWorkspaceRoleGroup(input)) {
+  const { profession } = resolveEdAuthContext(input);
+  switch (profession) {
     case "PROVIDER":
       return "MEDICAL_EXAM";
     case "RN":
-    case "TECH":
+    case "TECHNICIAN":
     case "ADMIN":
       return "TRIAGE";
     default:

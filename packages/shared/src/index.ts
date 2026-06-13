@@ -1,5 +1,8 @@
 export * from "./constants/roles.js";
 export * from "./constants/languages.js";
+export * from "./auth/professionResolver.js";
+export * from "./auth/departmentResolver.js";
+export * from "./auth/workspaceAuthorization.js";
 
 export * from "./password-policy.js";
 export * from "./schemas/auth.js";
