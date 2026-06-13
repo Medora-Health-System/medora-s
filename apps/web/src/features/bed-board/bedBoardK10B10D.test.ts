@@ -58,4 +58,20 @@ describe("Interactive bed board integration (K.10B.10D)", () => {
     expect(modal).toContain("prefillFromBedBoard");
     expect(modal).toContain("extractEncounterRoomInput(encounter)");
   });
+
+  it("bed status detail modal uses PATCH beds status — not room assignment", () => {
+    const statusModal = readSrc("components/encounters/BedBoardStatusDetailModal.tsx");
+    expect(statusModal).toContain("updateFacilityBedStatus");
+    expect(statusModal).not.toContain("updateEncounterRoomAssignment");
+  });
+
+  it("ED and hospital boards wire bed status refresh after housekeeping save", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    const board = readSrc("features/hospitalization/HospitalizationBoardView.tsx");
+    expect(trackboard).toContain("canManageBedStatus");
+    expect(trackboard).toContain("onBedStatusUpdated");
+    expect(trackboard).toContain("void refreshEdBedBoard");
+    expect(board).toContain("canManageBedStatus");
+    expect(board).toContain("void refreshFacilityBedBoard");
+  });
 });

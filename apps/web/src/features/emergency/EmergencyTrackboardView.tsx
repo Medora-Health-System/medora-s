@@ -55,6 +55,7 @@ import {
   canAssignEncounterRoom,
   formatEncounterGovernedRoomDisplay,
 } from "@/lib/governedRoomDisplay";
+import { canManageBedOperationalStatus } from "@/lib/bedBoardPermissions";
 import {
   computeLos,
   LOS_ESCALATION_SOFT,
@@ -272,6 +273,7 @@ export function EmergencyTrackboardView() {
     roles.includes("BILLING");
   const isNurse = roles.includes("RN");
   const canAssignRoom = canAssignEncounterRoom(roles);
+  const canManageBedStatus = canManageBedOperationalStatus(roles);
   const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
   const usesCompactCensus = erTrackboardUsesCompactCensus(layoutMode);
 
@@ -636,9 +638,12 @@ export function EmergencyTrackboardView() {
               unit="ED"
               summary={edBedBoardUnit.summary}
               beds={edBedBoardUnit.beds}
+              facilityId={facilityId}
               compact={usesCompactCensus}
               canAssignRoom={canAssignRoom}
+              canManageBedStatus={canManageBedStatus}
               onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
+              onBedStatusUpdated={() => void refreshEdBedBoard()}
             />
           ) : (
             <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>

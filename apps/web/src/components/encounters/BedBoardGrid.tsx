@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { BedOperationalStatus, EncounterBedUnitCode } from "@medora/shared";
+import type { EncounterBedUnitCode } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
 import {
@@ -13,18 +13,17 @@ import {
   isBedBoardTransferPending,
 } from "@/lib/bedStatusDisplay";
 import { emergencyChartPath } from "@/features/emergency/emergencyRoutes";
+import { BedBoardStatusDetailModal } from "@/components/encounters/BedBoardStatusDetailModal";
 
 export type BedBoardGridProps = {
   unit: EncounterBedUnitCode;
   beds: FacilityBedBoardBedRow[];
+  facilityId?: string | null;
   canAssignRoom?: boolean;
+  canManageBedStatus?: boolean;
   onAvailableBedClick?: (bed: FacilityBedBoardBedRow) => void;
+  onBedStatusUpdated?: (bed: FacilityBedBoardBedRow) => void;
   encounterChartPath?: (encounterId: string, unit: EncounterBedUnitCode) => string;
-};
-
-type StatusDetailState = {
-  bed: FacilityBedBoardBedRow;
-  status: BedOperationalStatus;
 };
 
 function TransferIcon() {
@@ -50,16 +49,23 @@ function defaultChartPath(encounterId: string, unit: EncounterBedUnitCode): stri
   return `/app/encounters/${encodeURIComponent(encounterId)}`;
 }
 
+function opensStatusDetailModal(status: FacilityBedBoardBedRow["status"]): boolean {
+  return status === "BLOCKED" || status === "CLEANING" || status === "DIRTY" || status === "RESERVED";
+}
+
 export function BedBoardGrid({
   unit,
   beds,
+  facilityId = null,
   canAssignRoom = false,
+  canManageBedStatus = false,
   onAvailableBedClick,
+  onBedStatusUpdated,
   encounterChartPath = defaultChartPath,
 }: BedBoardGridProps) {
   const { t, language } = useI18n();
   const router = useRouter();
-  const [statusDetail, setStatusDetail] = useState<StatusDetailState | null>(null);
+  const [statusDetailBed, setStatusDetailBed] = useState<FacilityBedBoardBedRow | null>(null);
 
   const handleBedActivate = useCallback(
     (bed: FacilityBedBoardBedRow) => {
@@ -78,7 +84,7 @@ export function BedBoardGrid({
         case "CLEANING":
         case "DIRTY":
         case "RESERVED":
-          setStatusDetail({ bed, status: bed.status });
+          setStatusDetailBed(bed);
           break;
         case "TRANSFER_PENDING":
         case "DISCHARGE_PENDING":
@@ -138,10 +144,7 @@ export function BedBoardGrid({
               : bed.status === "OCCUPIED" ||
                 bed.status === "TRANSFER_PENDING" ||
                 bed.status === "DISCHARGE_PENDING" ||
-                bed.status === "BLOCKED" ||
-                bed.status === "CLEANING" ||
-                bed.status === "DIRTY" ||
-                bed.status === "RESERVED";
+                opensStatusDetailModal(bed.status);
 
           return (
             <button
@@ -225,71 +228,14 @@ export function BedBoardGrid({
         })}
       </div>
 
-      {statusDetail ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="bed-board-status-detail-title"
-          data-testid="bed-board-status-detail"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 60,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(15, 23, 42, 0.35)",
-          }}
-          onClick={() => setStatusDetail(null)}
-        >
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: 12,
-              border: "1px solid #e2e8f0",
-              padding: 16,
-              minWidth: 280,
-              maxWidth: 420,
-              boxShadow: "0 10px 30px rgba(15,23,42,0.12)",
-            }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3
-              id="bed-board-status-detail-title"
-              style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700 }}
-            >
-              {t("bedBoard.statusDetailTitle")}
-            </h3>
-            <p style={{ margin: "0 0 4px", fontSize: 13 }}>
-              <strong>{statusDetail.bed.displayKey || statusDetail.bed.display}</strong>
-              {" — "}
-              {formatHospitalBedStatusLabel(statusDetail.status, language, t)}
-            </p>
-            {statusDetail.bed.reasonText || statusDetail.bed.reasonCode ? (
-              <p style={{ margin: "8px 0 0", fontSize: 12, color: "#475569" }}>
-                {t("bedBoard.statusDetailReason")}:{" "}
-                {statusDetail.bed.reasonText ?? statusDetail.bed.reasonCode}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setStatusDetail(null)}
-              style={{
-                marginTop: 12,
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                background: "#fff",
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              {t("bedBoard.assignPickCancel")}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <BedBoardStatusDetailModal
+        open={Boolean(statusDetailBed)}
+        bed={statusDetailBed}
+        facilityId={facilityId}
+        canManageStatus={canManageBedStatus}
+        onClose={() => setStatusDetailBed(null)}
+        onStatusUpdated={onBedStatusUpdated}
+      />
     </>
   );
 }

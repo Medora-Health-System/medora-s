@@ -10,9 +10,12 @@ export type BedBoardUnitSectionProps = {
   unit: EncounterBedUnitCode;
   summary: BedBoardOccupancySummary;
   beds: FacilityBedBoardBedRow[];
+  facilityId?: string | null;
   compact?: boolean;
   canAssignRoom?: boolean;
+  canManageBedStatus?: boolean;
   onAvailableBedClick?: (bed: FacilityBedBoardBedRow) => void;
+  onBedStatusUpdated?: (bed: FacilityBedBoardBedRow) => void;
   encounterChartPath?: (encounterId: string, unit: EncounterBedUnitCode) => string;
 };
 
@@ -20,9 +23,12 @@ export function BedBoardUnitSection({
   unit,
   summary,
   beds,
+  facilityId,
   compact,
   canAssignRoom,
+  canManageBedStatus,
   onAvailableBedClick,
+  onBedStatusUpdated,
   encounterChartPath,
 }: BedBoardUnitSectionProps) {
   return (
@@ -40,8 +46,11 @@ export function BedBoardUnitSection({
       <BedBoardGrid
         unit={unit}
         beds={beds}
+        facilityId={facilityId}
         canAssignRoom={canAssignRoom}
+        canManageBedStatus={canManageBedStatus}
         onAvailableBedClick={onAvailableBedClick}
+        onBedStatusUpdated={onBedStatusUpdated}
         encounterChartPath={encounterChartPath}
       />
     </section>

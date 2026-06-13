@@ -36,10 +36,16 @@ describe("BedBoardGrid (K.10B.10D)", () => {
     expect(grid).toContain("router.push");
   });
 
-  it("blocked bed shows status detail dialog", () => {
+  it("blocked bed opens status detail modal", () => {
     expect(grid).toContain('case "BLOCKED"');
-    expect(grid).toContain('data-testid="bed-board-status-detail"');
-    expect(grid).toContain("reasonText");
+    expect(grid).toContain("BedBoardStatusDetailModal");
+    expect(grid).toContain("setStatusDetailBed");
+  });
+
+  it("passes bed status management props to modal", () => {
+    expect(grid).toContain("canManageBedStatus");
+    expect(grid).toContain("onBedStatusUpdated");
+    expect(grid).toContain("facilityId");
   });
 
   it("shows transfer and discharge icons for derived statuses", () => {

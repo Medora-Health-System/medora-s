@@ -41,6 +41,7 @@ import {
   type FacilityBedBoardResponse,
 } from "@/lib/bedBoardApi";
 import { lookupBedStatusForEncounter } from "@/lib/bedStatusDisplay";
+import { canManageBedOperationalStatus } from "@/lib/bedBoardPermissions";
 import {
   canAssignEncounterRoom,
   formatEncounterGovernedRoomDisplay,
@@ -508,6 +509,7 @@ export function HospitalizationBoardView() {
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
   const canAssignRoom = canAssignEncounterRoom(roles);
+  const canManageBedStatus = canManageBedOperationalStatus(roles);
 
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -963,9 +965,12 @@ export function HospitalizationBoardView() {
                 unit={unitView.unit}
                 summary={unitView.summary}
                 beds={unitView.beds}
+                facilityId={effectiveFacilityId}
                 compact={usesCompactCensus}
                 canAssignRoom={canAssignRoom}
+                canManageBedStatus={canManageBedStatus}
                 onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
+                onBedStatusUpdated={() => void refreshFacilityBedBoard()}
               />
             ))}
           </section>
