@@ -64,4 +64,16 @@ describe("EmergencyErOrdersPanel technician procedure governance (MEDUI.ED.PROCE
       })
     ).toBe(false);
   });
+
+  it("legacy CARE without enterpriseProcedureId blocked for LAB at freestanding ER", () => {
+    expect(
+      requestorMayPerformEnterpriseProcedureAction({
+        roleCodes: ["LAB"],
+        facilityType: "FREESTANDING_ER",
+        enterpriseProcedureId: null,
+        profile: null,
+        action: "acknowledge",
+      })
+    ).toBe(false);
+  });
 });

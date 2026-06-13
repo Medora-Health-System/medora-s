@@ -126,4 +126,17 @@ describe("MEDUI.ED.PROCEDURE.TECH.1 freestanding ER technician procedure guards"
       assertAckOrStartActor(careItem("iv_fluids_setup"), [RoleCode.LAB], FREESTANDING_ER)
     ).toThrow(ForbiddenException);
   });
+
+  it("blocks LAB from legacy CARE EKG without enterpriseProcedureId", () => {
+    expect(() =>
+      assertAckOrStartActor(careItem(null), [RoleCode.LAB], FREESTANDING_ER)
+    ).toThrow(ForbiddenException);
+    expect(() =>
+      assertCompleteActorForItem(careItem(null), [RoleCode.LAB], FREESTANDING_ER)
+    ).toThrow(ForbiddenException);
+  });
+
+  it("allows RN legacy CARE without enterpriseProcedureId unchanged", () => {
+    expect(() => assertCompleteActorForItem(careItem(null), [RoleCode.RN])).not.toThrow();
+  });
 });

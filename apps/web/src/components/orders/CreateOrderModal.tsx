@@ -584,9 +584,17 @@ function buildPayload(
         catalogItemId: null,
         catalogItemType: "CARE" as const,
         manualLabel: (it.manualLabel ?? it._label).trim(),
-        ...(it._enterpriseProcedureId?.trim()
-          ? { enterpriseProcedureId: it._enterpriseProcedureId.trim() }
-          : {}),
+        ...((): { enterpriseProcedureId?: string } => {
+          const explicit = it._enterpriseProcedureId?.trim();
+          if (explicit) return { enterpriseProcedureId: explicit };
+          const fromQuickKey =
+            it._careQuickKey === "ekg_workflow"
+              ? "ekg_ecg"
+              : it._careQuickKey === "laceration_kit"
+                ? "laceration_repair"
+                : null;
+          return fromQuickKey ? { enterpriseProcedureId: fromQuickKey } : {};
+        })(),
         notes: it.notes?.trim() || undefined,
       })),
     };
@@ -2547,7 +2555,12 @@ export function CreateOrderModal({
                       ))}
                       <button
                         type="button"
-                        onClick={() => addCareLine(t("createOrderModal.careQuickEkgWorkflow"), { quickKey: "ekg_workflow" })}
+                        onClick={() =>
+                          addCareLine(t("createOrderModal.careQuickEkgWorkflow"), {
+                            quickKey: "ekg_workflow",
+                            enterpriseProcedureId: "ekg_ecg",
+                          })
+                        }
                         style={{
                           padding: "8px 12px",
                           fontSize: 13,
@@ -2564,7 +2577,12 @@ export function CreateOrderModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => addCareLine(t("createOrderModal.careQuickLacerationKit"), { quickKey: "laceration_kit" })}
+                        onClick={() =>
+                          addCareLine(t("createOrderModal.careQuickLacerationKit"), {
+                            quickKey: "laceration_kit",
+                            enterpriseProcedureId: "laceration_repair",
+                          })
+                        }
                         style={{
                           padding: "8px 12px",
                           fontSize: 13,

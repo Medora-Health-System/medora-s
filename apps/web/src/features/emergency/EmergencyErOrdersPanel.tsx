@@ -64,6 +64,15 @@ import { formatCancellationReasonForDisplay } from "@/lib/orderCancelReasonDispl
 import { formatOrderAuthority } from "@/lib/orderAuthority";
 import { formatErOrderEventAttributionCell, formatOrderAttributionLines } from "@/lib/orderAttribution";
 import {
+  ER_ORDER_ITEM_WORKFLOW_BUSY_LABEL_KEY,
+  isOrderItemAnyWorkflowPending,
+  isOrderItemWorkflowPending,
+  nextOrderItemStatusAfterWorkflowAction,
+  orderItemWorkflowPendingKey,
+  patchOrderItemStatusInOrdersRaw,
+  type OrderItemLifecycleWorkflowAction,
+} from "@/lib/orderItemWorkflowUi";
+import {
   diagnosisOrdersDomainGridStyle,
   diagnosisOrdersDomainSummaryListStyle,
   diagnosisOrdersDomainSummaryTileStyle,
@@ -122,7 +131,9 @@ function deptAllowsOrderLineAction(
   if (orderType === "IMAGING") return hasAnyRole(roles, "RADIOLOGY", "ADMIN");
   if (orderType === "MEDICATION") return hasAnyRole(roles, "PHARMACY", "ADMIN");
   if (catalogItemType === "SUPPLY") return hasAnyRole(roles, "RN", "ADMIN");
-  if (orderType === "CARE") return careLineAllowsLifecycleAction(item, roles, action, facilityType);
+  if (orderType === "CARE" || catalogItemType === "CARE") {
+    return careLineAllowsLifecycleAction(item, roles, action, facilityType);
+  }
   return false;
 }
 
