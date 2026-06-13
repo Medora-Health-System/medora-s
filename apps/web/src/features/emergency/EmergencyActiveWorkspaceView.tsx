@@ -65,6 +65,13 @@ import {
   parseErWorkspaceSection,
   type ErWorkspaceSection,
 } from "@/features/emergency/erWorkspaceSections";
+import {
+  deriveEdWorkspaceCapabilities,
+  edWorkspaceTileToSection,
+  getDefaultEdWorkspaceTile,
+  getVisibleEdWorkspaceTiles,
+  isErWorkspaceSectionVisible,
+} from "@/features/emergency/edWorkspaceTileVisibility";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
@@ -254,6 +261,26 @@ export function EmergencyActiveWorkspaceView() {
 
   const fid = facilityId || facilityIdFromHook;
   const facilityName = facilities.find((x) => x.id === fid)?.name ?? null;
+
+  const edWorkspaceRoleInput = useMemo(() => {
+    const caps = deriveEdWorkspaceCapabilities(roles);
+    return {
+      roleCodes: roles,
+      canPrescribe,
+      canAdministerMedication: caps.canAdministerMedication,
+      canManageOrders: caps.canManageOrders,
+    };
+  }, [roles, canPrescribe]);
+
+  const visibleEdWorkspaceTileIds = useMemo(
+    () => getVisibleEdWorkspaceTiles(edWorkspaceRoleInput),
+    [edWorkspaceRoleInput]
+  );
+
+  const visibleEdWorkspaceSections = useMemo(
+    () => new Set(visibleEdWorkspaceTileIds.map(edWorkspaceTileToSection)),
+    [visibleEdWorkspaceTileIds]
+  );
 
   const canViewEncounterDetail =
     roles.includes("FRONT_DESK") ||
@@ -553,16 +580,10 @@ export function EmergencyActiveWorkspaceView() {
   const tDxEntry = useCallback((key: string) => t(key), [t]);
 
   useEffect(() => {
-    if (!canFetchEncounterTriage && activeSection === "triage") {
-      setActiveSection("results");
-    }
-  }, [canFetchEncounterTriage, activeSection]);
-
-  useEffect(() => {
-    if (!showNursingTab && activeSection === "providerMse") {
-      setActiveSection("results");
-    }
-  }, [showNursingTab, activeSection]);
+    if (!rolesReady) return;
+    if (isErWorkspaceSectionVisible(activeSection, edWorkspaceRoleInput)) return;
+    setActiveSection(edWorkspaceTileToSection(getDefaultEdWorkspaceTile(edWorkspaceRoleInput)));
+  }, [rolesReady, activeSection, edWorkspaceRoleInput]);
 
   const sectionTitle = useMemo(
     (): Record<ErWorkspaceSection, string> => ({
@@ -580,7 +601,7 @@ export function EmergencyActiveWorkspaceView() {
     [t]
   );
 
-  const erDashboardTiles = useMemo(
+  const erDashboardTilesAll = useMemo(
     (): ErDashboardTile[] => [
       {
         kind: "section",
@@ -664,6 +685,11 @@ export function EmergencyActiveWorkspaceView() {
       },
     ],
     [t, canFetchEncounterTriage, showNursingTab, canFetchMarTab]
+  );
+
+  const erDashboardTiles = useMemo(
+    () => erDashboardTilesAll.filter((tile) => visibleEdWorkspaceSections.has(tile.id)),
+    [erDashboardTilesAll, visibleEdWorkspaceSections]
   );
 
   const closeCreateDx = useCallback(() => {
