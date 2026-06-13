@@ -38,6 +38,11 @@ describe("TrackboardReadAccessGuard (MEDUI.ED.TECH.3)", () => {
     serviceLinesJson: ["EMERGENCY", "OBSERVATION", "LABORATORY", "RADIOLOGY"],
   };
 
+  const freestandingFacilityNullServiceLines = {
+    facilityType: FacilityType.FREESTANDING_ER,
+    serviceLinesJson: null,
+  };
+
   it("allows LAB tech at FREESTANDING_ER for ED trackboard", async () => {
     const ctx = buildContext({ status: "OPEN" });
     const prisma = prismaMock([
@@ -65,6 +70,20 @@ describe("TrackboardReadAccessGuard (MEDUI.ED.TECH.3)", () => {
     const guard = new TrackboardReadAccessGuard(prisma as never);
     const ok = await guard.canActivate(ctx as never);
     expect(ok).toBe(true);
+    expect(ctx.request.trackboardObservationPatientsOnly).toBe(true);
+  });
+
+  it("allows LAB tech at FREESTANDING_ER with NULL serviceLinesJson (Wayne UC case)", async () => {
+    const ctx = buildContext({ status: "OPEN", type: "INPATIENT" });
+    const prisma = prismaMock([
+      {
+        role: { code: RoleCode.LAB },
+        department: { code: "LABORATORY" },
+        facility: freestandingFacilityNullServiceLines,
+      },
+    ]);
+    const guard = new TrackboardReadAccessGuard(prisma as never);
+    await expect(guard.canActivate(ctx as never)).resolves.toBe(true);
     expect(ctx.request.trackboardObservationPatientsOnly).toBe(true);
   });
 

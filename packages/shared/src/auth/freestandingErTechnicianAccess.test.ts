@@ -93,6 +93,28 @@ describe("freestandingErTechnicianAccess (MEDUI.ED.TECH.3)", () => {
     ).toBe(false);
   });
 
+  it("hospital lab tech cannot read observation patients at hospital facility", () => {
+    expect(
+      canReadFreestandingErObservationPatients({
+        roleCodes: ["LAB"],
+        facilityType: "HOSPITAL",
+        facilityServiceLines: ["LABORATORY", "OBSERVATION", "EMERGENCY"],
+        departmentCode: "LABORATORY",
+      })
+    ).toBe(false);
+  });
+
+  it("NULL facilityServiceLines + FREESTANDING_ER resolves observation access (Wayne UC case)", () => {
+    expect(
+      canReadFreestandingErObservationPatients({
+        roleCodes: ["LAB"],
+        facilityType: "FREESTANDING_ER",
+        facilityServiceLines: null,
+        departmentCode: "LABORATORY",
+      })
+    ).toBe(true);
+  });
+
   it("legacy null department still allows freestanding ER lab tech", () => {
     expect(
       canReadFreestandingErTrackboard({

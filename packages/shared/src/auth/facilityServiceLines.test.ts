@@ -25,6 +25,17 @@ describe("facilityServiceLines (MEDUI.FACILITY.TYPE.1)", () => {
     ]);
   });
 
+  it("NULL stored JSON + FREESTANDING_ER uses type defaults (Wayne UC Railway case)", () => {
+    const stored = parseStoredFacilityServiceLines(null);
+    expect(stored).toBeNull();
+    expect(
+      resolveFacilityServiceLines({
+        facilityType: "FREESTANDING_ER",
+        configuredServiceLines: stored,
+      })
+    ).toEqual(["EMERGENCY", "OBSERVATION", "LABORATORY", "RADIOLOGY"]);
+  });
+
   it("normalizes legacy LAB/RAD/INPATIENT tokens", () => {
     expect(
       resolveFacilityServiceLines({

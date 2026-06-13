@@ -124,6 +124,17 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
     ).toEqual(["DASHBOARD", "LABORATORY", "EMERGENCY", "HOSPITAL"]);
   });
 
+  it("freestanding ER lab tech with NULL serviceLinesJson resolves defaults via facilityType", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["LAB"],
+        prismaDepartmentCode: "LABORATORY",
+        facilityType: "FREESTANDING_ER",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "LABORATORY", "EMERGENCY", "HOSPITAL"]);
+  });
+
   it("freestanding ER rad tech sees radiology, emergency, and observation hospital path", () => {
     expect(
       getVisibleNavigationAreas({
@@ -162,6 +173,26 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
         facilityType: "CLINIC",
       })
     ).toEqual(["DASHBOARD", "LABORATORY"]);
+  });
+
+  it("clinic lab tech does not see observation hospital area (MEDUI.OBS.TECH.1)", () => {
+    const areas = getVisibleNavigationAreas({
+      roleCodes: ["LAB"],
+      prismaDepartmentCode: "LABORATORY",
+      facilityType: "CLINIC",
+    });
+    expect(areas).not.toContain("HOSPITAL");
+  });
+
+  it("hospital rad tech does not see freestanding observation board nav (MEDUI.OBS.TECH.1)", () => {
+    const areas = getVisibleNavigationAreas({
+      roleCodes: ["RADIOLOGY"],
+      prismaDepartmentCode: "RADIOLOGY",
+      facilityType: "HOSPITAL",
+      facilityServiceLines: ["RADIOLOGY", "LABORATORY"],
+    });
+    expect(areas).not.toContain("HOSPITAL");
+    expect(areas).not.toContain("EMERGENCY");
   });
 
   it("admin sees all areas regardless of facility type", () => {
