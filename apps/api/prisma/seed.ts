@@ -12,7 +12,8 @@ import {
   InventoryTransactionType,
 } from "@prisma/client";
 import { sexAtBirthToPatientSex } from "../src/utils/patient-sex-map";
-import { ensureFacilityClinicalDepartments } from "../src/admin/facility-department-seed.util";
+import { ensureFacilityClinicalDepartments, ensureFacilityServiceLineDepartments } from "../src/admin/facility-department-seed.util";
+import { parseStoredFacilityServiceLines } from "@medora/shared";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import * as argon2 from "argon2";
@@ -69,14 +70,40 @@ async function main() {
   // Facilities
   const facilityDR = await prisma.facility.upsert({
     where: { code: "DR" },
-    update: { name: "Facility A (DR)", country: "Dominican Republic", timezone: "America/Santo_Domingo" },
-    create: { code: "DR", name: "Facility A (DR)", country: "Dominican Republic", timezone: "America/Santo_Domingo" }
+    update: {
+      name: "Facility A (DR)",
+      country: "Dominican Republic",
+      timezone: "America/Santo_Domingo",
+      facilityType: "CLINIC",
+      serviceLinesJson: ["OBSERVATION", "LABORATORY"],
+    },
+    create: {
+      code: "DR",
+      name: "Facility A (DR)",
+      country: "Dominican Republic",
+      timezone: "America/Santo_Domingo",
+      facilityType: "CLINIC",
+      serviceLinesJson: ["OBSERVATION", "LABORATORY"],
+    },
   });
 
   const facilityHT = await prisma.facility.upsert({
     where: { code: "HT" },
-    update: { name: "Clinique Bon Samaritain (Haiti)", country: "Haiti", timezone: "America/Port-au-Prince" },
-    create: { code: "HT", name: "Clinique Bon Samaritain (Haiti)", country: "Haiti", timezone: "America/Port-au-Prince" }
+    update: {
+      name: "Clinique Bon Samaritain (Haiti)",
+      country: "Haiti",
+      timezone: "America/Port-au-Prince",
+      facilityType: "CLINIC",
+      serviceLinesJson: ["OBSERVATION", "LABORATORY"],
+    },
+    create: {
+      code: "HT",
+      name: "Clinique Bon Samaritain (Haiti)",
+      country: "Haiti",
+      timezone: "America/Port-au-Prince",
+      facilityType: "CLINIC",
+      serviceLinesJson: ["OBSERVATION", "LABORATORY"],
+    },
   });
 
   // Departments per facility
@@ -214,6 +241,11 @@ async function main() {
 
   for (const facility of [facilityDR, facilityHT]) {
     await ensureFacilityClinicalDepartments(prisma, facility.id, { defaultLanguage: "fr" });
+    await ensureFacilityServiceLineDepartments(prisma, facility.id, {
+      facilityType: facility.facilityType,
+      serviceLines: parseStoredFacilityServiceLines(facility.serviceLinesJson),
+      defaultLanguage: "fr",
+    });
   }
 
   const providerRole = roles.find((r) => r.code === RoleCode.PROVIDER)!;

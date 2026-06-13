@@ -191,12 +191,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const getActiveFacilityRoleRow = (): {
     departmentCode?: string | null;
+    facilityType?: string | null;
+    serviceLines?: readonly string[] | null;
   } | null => {
     if (!user || !activeFacility) return null;
-    const rows = (user.facilityRoles as { facilityId?: string; departmentCode?: string | null }[]).filter(
-      (fr) => fr.facilityId === activeFacility
-    );
+    const rows = (
+      user.facilityRoles as {
+        facilityId?: string;
+        departmentCode?: string | null;
+        facilityType?: string | null;
+        serviceLines?: readonly string[] | null;
+      }[]
+    ).filter((fr) => fr.facilityId === activeFacility);
     return rows[0] ?? null;
+  };
+
+  const buildNavigationProfile = () => {
+    const activeRoleRow = getActiveFacilityRoleRow();
+    return {
+      roleCodes: activeRoles,
+      departmentCode: activeRoleRow?.departmentCode ?? null,
+      prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
+      facilityType: activeRoleRow?.facilityType ?? null,
+      facilityServiceLines: activeRoleRow?.serviceLines ?? null,
+    };
   };
 
   const getActiveFacilityLanguage = () => {
@@ -265,12 +283,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (!hasNationalMsppRoles && !isFrontDeskNavRestricted) {
-    const activeRoleRow = getActiveFacilityRoleRow();
-    navItems = filterSidebarNavItemsByNavigationAreas(navItems, {
-      roleCodes: activeRoles,
-      departmentCode: activeRoleRow?.departmentCode ?? null,
-      prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
-    });
+    navItems = filterSidebarNavItemsByNavigationAreas(navItems, buildNavigationProfile());
   }
 
   const groupedNavSections = groupSidebarNavItems(navItems);
@@ -309,11 +322,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     const target = getRouteGuardRedirect(pathname, roles, {
       canCreateFacilities: user?.canCreateFacilities === true,
-      navigationProfile: {
-        roleCodes: facilityRoleCodes,
-        departmentCode: getActiveFacilityRoleRow()?.departmentCode ?? null,
-        prismaDepartmentCode: getActiveFacilityRoleRow()?.departmentCode ?? null,
-      },
+      navigationProfile: buildNavigationProfile(),
     });
     if (target) {
       setRouteRedirecting(true);

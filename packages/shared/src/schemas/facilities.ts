@@ -4,8 +4,35 @@ import {
   facilityBillingClassificationModeSchema,
   facilityBillingWorkflowPatchDtoSchema,
 } from "../encounters/facilityBillingWorkflow.js";
+import { MEDORA_FACILITY_TYPE_REGISTRY } from "../auth/facilityTypeRegistry.js";
 
 export { facilityBillingWorkflowPatchDtoSchema };
+
+const medoraFacilityTypeSchema = z.enum([
+  "HOSPITAL",
+  "FREESTANDING_ER",
+  "URGENT_CARE",
+  "CLINIC",
+  "OUTSIDE_LABORATORY",
+  "OUTSIDE_RADIOLOGY",
+  "OUTSIDE_PHARMACY",
+]);
+
+const medoraServiceLineSchema = z.enum([
+  "EMERGENCY",
+  "ICU",
+  "MEDSURG",
+  "OBSERVATION",
+  "OBGYN",
+  "PEDIATRICS",
+  "BEHAVIORAL_HEALTH",
+  "TELEMETRY",
+  "LABORATORY",
+  "RADIOLOGY",
+  "PHARMACY",
+]);
+
+export const MEDORA_FACILITY_TYPE_CODES = MEDORA_FACILITY_TYPE_REGISTRY.map((entry) => entry.code);
 
 const facilityBillingWorkflowCreateFieldsSchema = z.object({
   billingClassificationMode: facilityBillingClassificationModeSchema.optional().nullable(),
@@ -56,10 +83,18 @@ export const createFacilityDtoSchema = z
   .object({
     name: z.string().trim().min(1, "Le nom est requis.").max(200),
     defaultLanguage: z.enum(["fr", "en"]).optional().default("fr"),
+    facilityType: medoraFacilityTypeSchema.optional().default("CLINIC"),
+    serviceLines: z.array(medoraServiceLineSchema).optional(),
   })
   .merge(facilityBillingIdentityFieldsSchema.partial())
   .merge(facilityBillingWorkflowCreateFieldsSchema.partial())
   .superRefine(refineFacilityBillingNpi);
+
+/** PATCH /admin/facilities/:id/service-config — facility type and service lines (MEDUI.FACILITY.TYPE.1). */
+export const updateFacilityServiceConfigDtoSchema = z.object({
+  facilityType: medoraFacilityTypeSchema.optional(),
+  serviceLines: z.array(medoraServiceLineSchema).optional().nullable(),
+});
 
 export const facilityDtoSchema = z.object({
   id: z.string().uuid(),
@@ -77,6 +112,7 @@ export const setFacilityLanguageDtoSchema = z.object({
 });
 
 export type CreateFacilityDto = z.infer<typeof createFacilityDtoSchema>;
+export type UpdateFacilityServiceConfigDto = z.infer<typeof updateFacilityServiceConfigDtoSchema>;
 export type FacilityDto = z.infer<typeof facilityDtoSchema>;
 export type SetFacilityActiveDto = z.infer<typeof setFacilityActiveDtoSchema>;
 export type SetFacilityLanguageDto = z.infer<typeof setFacilityLanguageDtoSchema>;

@@ -1,5 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from "@nestjs/common";
-import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy } from "@medora/shared";
+import { PASSWORD_POLICY_HINT_FR, passwordMeetsPolicy, parseStoredFacilityServiceLines, resolveFacilityServiceLines } from "@medora/shared";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import * as argon2 from "argon2";
@@ -154,6 +154,8 @@ export class AuthService {
                 defaultLanguage: true,
                 timezone: true,
                 allowRnLabResultSubmission: true,
+                facilityType: true,
+                serviceLinesJson: true,
               },
             },
           },
@@ -195,6 +197,11 @@ export class AuthService {
       departmentId: ur.departmentId ?? null,
       departmentCode: ur.department?.code ?? null,
       departmentName: ur.department?.name ?? null,
+      facilityType: ur.facility?.facilityType ?? "CLINIC",
+      serviceLines: resolveFacilityServiceLines({
+        facilityType: ur.facility?.facilityType ?? "CLINIC",
+        configuredServiceLines: parseStoredFacilityServiceLines(ur.facility?.serviceLinesJson),
+      }),
       /**
        * Phase 1 — facility-scoped clinical policy mirror. Frontend uses this to gate the
        * RN lab-result entry UI; backend (`ResultsService.updateResult`) is still the sole
@@ -222,6 +229,8 @@ export class AuthService {
         departmentId: null,
         departmentCode: null,
         departmentName: null,
+        facilityType: base.facilityType,
+        serviceLines: base.serviceLines,
         allowRnLabResultSubmission: base.allowRnLabResultSubmission,
       });
     }

@@ -6,6 +6,7 @@ import {
   facilityBillingWorkflowPatchDtoSchema,
   setFacilityActiveDtoSchema,
   setFacilityLanguageDtoSchema,
+  updateFacilityServiceConfigDtoSchema,
 } from "@medora/shared";
 import { AdminFacilitiesService } from "./admin-facilities.service";
 
@@ -127,5 +128,22 @@ export class AdminFacilitiesController {
   @UseGuards(AuthGuard("jwt"))
   async listDepartments(@Param("id") id: string, @Req() req: { user: { userId: string } }) {
     return this.facilities.listDepartmentsForAdmin(req.user.userId, id);
+  }
+
+  /** MEDUI.FACILITY.TYPE.1 — facility type and service-line configuration. */
+  @Patch("facilities/:id/service-config")
+  @UseGuards(AuthGuard("jwt"))
+  async updateServiceConfig(
+    @Param("id") id: string,
+    @Body() body: unknown,
+    @Req() req: { user: { userId: string } }
+  ) {
+    const parsed = updateFacilityServiceConfigDtoSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide.", {
+        cause: parsed.error,
+      });
+    }
+    return this.facilities.updateFacilityServiceConfig(id, parsed.data, req.user.userId);
   }
 }

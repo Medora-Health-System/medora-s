@@ -45,6 +45,10 @@ export function useFacilityAndRoles() {
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   /** Prisma `Department.code` for active facility role row (MEDUI.NAV.ROLE.1). */
   const [departmentCode, setDepartmentCode] = useState<string | null>(null);
+  /** MEDUI.FACILITY.TYPE.1 — active facility operational type from `/auth/me`. */
+  const [facilityType, setFacilityType] = useState<string | null>(null);
+  /** Active facility service lines from `/auth/me`. */
+  const [facilityServiceLines, setFacilityServiceLines] = useState<string[]>([]);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -74,6 +78,8 @@ export function useFacilityAndRoles() {
       setFacilityTimeZone(null);
       setDepartmentId(null);
       setDepartmentCode(null);
+      setFacilityType(null);
+      setFacilityServiceLines([]);
       setReady(true);
       return;
     }
@@ -90,6 +96,8 @@ export function useFacilityAndRoles() {
         allowRnLabResultSubmission?: boolean;
         departmentId?: string | null;
         departmentCode?: string | null;
+        facilityType?: string | null;
+        serviceLines?: string[] | null;
       }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
@@ -112,6 +120,10 @@ export function useFacilityAndRoles() {
     setDepartmentCode(
       typeof activeDepartmentCode === "string" && activeDepartmentCode.trim() ? activeDepartmentCode : null
     );
+    const activeFacilityType = activePolicyRow?.facilityType;
+    setFacilityType(typeof activeFacilityType === "string" && activeFacilityType.trim() ? activeFacilityType : null);
+    const lines = activePolicyRow?.serviceLines;
+    setFacilityServiceLines(Array.isArray(lines) ? lines.filter((x): x is string => typeof x === "string") : []);
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -213,6 +225,10 @@ export function useFacilityAndRoles() {
     departmentId,
     /** Prisma department code for active facility role row (`/auth/me`). */
     departmentCode,
+    /** Operational facility type for active facility (`/auth/me`). */
+    facilityType,
+    /** Resolved service lines for active facility (`/auth/me`). */
+    facilityServiceLines,
     /**
      * True when planned-administration defaults may use facility wall-clock (K.10B.4).
      * False while session loads; true with no facilityId when user has no active facility.

@@ -11,6 +11,12 @@ import {
 } from "@medora/shared";
 import { FacilityBillingIdentityModal } from "@/components/admin/FacilityBillingIdentityModal";
 import {
+  FacilityTypeServiceLineFields,
+  emptyFacilityTypeServiceLineForm,
+  facilityTypeServiceLineFormToDto,
+  type FacilityTypeServiceLineFormState,
+} from "@/components/admin/FacilityTypeServiceLineFields";
+import {
   emptyFacilityBillingWorkflowForm,
   FacilityBillingWorkflowFields,
   workflowFormToPatch,
@@ -567,6 +573,9 @@ function AddFacilityModal({
   const [billingWorkflow, setBillingWorkflow] = useState<FacilityBillingWorkflowFormState>(
     emptyFacilityBillingWorkflowForm(),
   );
+  const [facilityTypeConfig, setFacilityTypeConfig] = useState<FacilityTypeServiceLineFormState>(
+    emptyFacilityTypeServiceLineForm(),
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -587,6 +596,7 @@ function AddFacilityModal({
       const payload: CreateFacilityDto = {
         name: name.trim(),
         defaultLanguage,
+        ...facilityTypeServiceLineFormToDto(facilityTypeConfig),
         ...workflowFormToPatch(billingWorkflow),
       };
       if (showOptionalBilling) {
@@ -672,6 +682,7 @@ function AddFacilityModal({
               <option value="en">{t("adminUsers.langEn")}</option>
             </select>
           </div>
+          <FacilityTypeServiceLineFields value={facilityTypeConfig} onChange={setFacilityTypeConfig} />
           <FacilityBillingWorkflowFields form={billingWorkflow} onChange={setBillingWorkflow} disabled={submitting} />
           <label
             style={{

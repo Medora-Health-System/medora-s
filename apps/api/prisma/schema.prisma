@@ -42,6 +42,10 @@ model Facility {
   showEncounterBillingControls           Boolean                                @default(false)
   /// EDOC.4 — optional facility overrides for dual-signature clinical documentation cards.
   clinicalDocumentationWitnessPolicyJson Json?
+  /// MEDUI.FACILITY.TYPE.1 — operational facility taxonomy (navigation + service-line governance).
+  facilityType                           FacilityType                           @default(CLINIC)
+  /// Optional override of default service lines for this facility type (JSON string array).
+  serviceLinesJson                       Json?
   auditLogs                              AuditLog[]
   billingEvents                          BillingEvent[]
   billingReviewDecisions                 BillingReviewDecision[]
@@ -3301,8 +3305,8 @@ enum FollowUpStatus {
   CANCELLED
 }
 
-/// Classification for facilities (for future use on `Facility`; Phase 1 adds enum only).
-enum FacilityType {
+/// Classification for public-health site taxonomy (Phase 1 placeholder — not yet bound to Facility).
+enum PublicHealthSiteType {
   HOSPITAL
   CLINIC
   HEALTH_CENTER
@@ -3319,6 +3323,17 @@ enum FacilityBillingSiteType {
   FREESTANDING_ER
   HOSPITAL
   HYBRID
+}
+
+/// MEDUI.FACILITY.TYPE.1 — operational facility type (navigation + service-line governance).
+enum FacilityType {
+  HOSPITAL
+  FREESTANDING_ER
+  URGENT_CARE
+  CLINIC
+  OUTSIDE_LABORATORY
+  OUTSIDE_RADIOLOGY
+  OUTSIDE_PHARMACY
 }
 
 /// Phase 19UCED.2 — facility-configurable billing workflow mode.

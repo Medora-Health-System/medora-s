@@ -1,5 +1,12 @@
 import type { DepartmentCode } from "./departmentResolver.js";
 import { isClinicalDepartmentCode, resolveDepartmentCode } from "./departmentResolver.js";
+import {
+  facilitySupportsObservationAccessForTechnician,
+  resolveFacilityServiceLines,
+} from "./facilityServiceLines.js";
+import { canReadFreestandingErTrackboard } from "./freestandingErTechnicianAccess.js";
+import type { MedoraFacilityType, MedoraServiceLine } from "./facilityTypeRegistry.js";
+import { normalizeFacilityType } from "./facilityTypeRegistry.js";
 import type { ProfessionGroup } from "./professionResolver.js";
 import { resolveProfessionGroup } from "./professionResolver.js";
 
@@ -39,12 +46,17 @@ const HOSPITAL_DEPARTMENTS = new Set<DepartmentCode>([
 export type ResolveNavigationAreasInput = {
   professionGroup: ProfessionGroup;
   departmentCode?: DepartmentCode | string | null;
+  roleCodes?: readonly string[];
+  facilityType?: MedoraFacilityType | string | null;
+  facilityServiceLines?: readonly string[] | null;
 };
 
 export type NavigationProfileInput = {
   roleCodes: readonly string[];
   departmentCode?: string | null;
   prismaDepartmentCode?: string | null;
+  facilityType?: MedoraFacilityType | string | null;
+  facilityServiceLines?: readonly string[] | null;
 };
 
 function normalizeClinicalDepartment(
@@ -59,62 +71,206 @@ function normalizeClinicalDepartment(
   return null;
 }
 
+function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] {
+  return (roleCodes ?? []).map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | null {
+  switch (line) {
+    case "EMERGENCY":
+      return "EMERGENCY";
+    case "LABORATORY":
+      return "LABORATORY";
+    case "RADIOLOGY":
+      return "RADIOLOGY";
+    case "PHARMACY":
+      return "PHARMACY";
+    case "OBSERVATION":
+    case "ICU":
+    case "MEDSURG":
+    case "OBGYN":
+    case "PEDIATRICS":
+    case "BEHAVIORAL_HEALTH":
+    case "TELEMETRY":
+      return "HOSPITAL";
+    default:
+      return null;
+  }
+}
+
+export function getNavigationAreasForServiceLines(
+  serviceLines: readonly MedoraServiceLine[]
+): Set<NavigationArea> {
+  const areas = new Set<NavigationArea>(["DASHBOARD"]);
+  for (const line of serviceLines) {
+    const area = serviceLineToNavigationArea(line);
+    if (area) areas.add(area);
+  }
+  return areas;
+}
+
+function supplementAssignmentNavigationAreas(
+  baseAreas: NavigationArea[],
+  input: {
+    professionGroup: ProfessionGroup;
+    departmentCode: DepartmentCode | null;
+    roleCodes: readonly string[];
+    facilityServiceLines: readonly MedoraServiceLine[];
+    facilityType?: MedoraFacilityType | string | null;
+  }
+): NavigationArea[] {
+  const areas = new Set(baseAreas);
+  const roles = normalizeRoleCodes(input.roleCodes);
+  const lineSet = new Set(input.facilityServiceLines);
+
+  if (input.professionGroup !== "TECHNICIAN" && input.professionGroup !== "PROVIDER" && input.professionGroup !== "RN") {
+    return baseAreas;
+  }
+
+  if (
+    (input.departmentCode === "EMERGENCY" || input.departmentCode == null) &&
+    lineSet.has("OBSERVATION")
+  ) {
+    areas.add("HOSPITAL");
+  }
+
+  if (roles.includes("LAB") && lineSet.has("LABORATORY")) {
+    areas.add("LABORATORY");
+  }
+  if (roles.includes("RADIOLOGY") && lineSet.has("RADIOLOGY")) {
+    areas.add("RADIOLOGY");
+  }
+  if (
+    input.professionGroup === "TECHNICIAN" &&
+    canReadFreestandingErTrackboard({
+      roleCodes: roles,
+      facilityType: input.facilityType,
+      facilityServiceLines: input.facilityServiceLines,
+      departmentCode: input.departmentCode,
+    })
+  ) {
+    if (lineSet.has("EMERGENCY")) {
+      areas.add("EMERGENCY");
+    }
+  }
+  if (input.departmentCode === "EMERGENCY" && lineSet.has("EMERGENCY")) {
+    areas.add("EMERGENCY");
+  }
+
+  return [...areas];
+}
+
+function applyFacilityServiceLineNavigationFilter(
+  baseAreas: NavigationArea[],
+  input: {
+    professionGroup: ProfessionGroup;
+    departmentCode: DepartmentCode | null;
+    roleCodes: readonly string[];
+    facilityType?: MedoraFacilityType | string | null;
+    facilityServiceLines?: readonly string[] | null;
+  }
+): NavigationArea[] {
+  if (input.professionGroup === "ADMIN") {
+    return baseAreas;
+  }
+
+  const hasFacilityContext =
+    Boolean(input.facilityType) ||
+    Boolean(input.facilityServiceLines && input.facilityServiceLines.length > 0);
+  if (!hasFacilityContext) {
+    return baseAreas;
+  }
+
+  const serviceLines = resolveFacilityServiceLines({
+    facilityType: input.facilityType,
+    configuredServiceLines: input.facilityServiceLines ?? null,
+  });
+  const allowed = getNavigationAreasForServiceLines(serviceLines);
+
+  let filtered = baseAreas.filter((area) => area === "DASHBOARD" || allowed.has(area));
+
+  const supplemented = supplementAssignmentNavigationAreas(filtered, {
+    professionGroup: input.professionGroup,
+    departmentCode: input.departmentCode,
+    roleCodes: input.roleCodes,
+    facilityServiceLines: serviceLines,
+    facilityType: input.facilityType,
+  });
+  filtered = supplemented.filter((area) => area === "DASHBOARD" || allowed.has(area));
+
+  if (
+    facilitySupportsObservationAccessForTechnician({
+      facilityType: input.facilityType,
+      facilityServiceLines: serviceLines,
+      professionGroup: input.professionGroup,
+      departmentCode: input.departmentCode,
+      roleCodes: input.roleCodes,
+    }) &&
+    allowed.has("HOSPITAL") &&
+    !filtered.includes("HOSPITAL")
+  ) {
+    filtered = [...filtered, "HOSPITAL"];
+  }
+
+  return filtered;
+}
+
 /**
  * Profession + department → visible navigation areas (sidebar filtering only).
+ * Facility service lines further restrict areas when supplied (MEDUI.FACILITY.TYPE.1).
  */
 export function resolveNavigationAreas(input: ResolveNavigationAreasInput): NavigationArea[] {
   const { professionGroup } = input;
   const department = normalizeClinicalDepartment(input.departmentCode);
+  const roleCodes = input.roleCodes ?? [];
+
+  let baseAreas: NavigationArea[];
 
   if (professionGroup === "ADMIN") {
-    return ALL_NAVIGATION_AREAS;
-  }
-  if (professionGroup === "UNKNOWN") {
-    return ["DASHBOARD"];
-  }
-  if (professionGroup === "PHARMACY") {
-    return ["DASHBOARD", "PHARMACY"];
-  }
-  if (professionGroup === "BILLING") {
-    return ["DASHBOARD", "BILLING"];
-  }
-  if (professionGroup === "FRONT_DESK") {
-    return ["DASHBOARD"];
-  }
-
-  if (professionGroup === "PROVIDER" || professionGroup === "RN") {
+    baseAreas = ALL_NAVIGATION_AREAS;
+  } else if (professionGroup === "UNKNOWN") {
+    baseAreas = ["DASHBOARD"];
+  } else if (professionGroup === "PHARMACY") {
+    baseAreas = ["DASHBOARD", "PHARMACY"];
+  } else if (professionGroup === "BILLING") {
+    baseAreas = ["DASHBOARD", "BILLING"];
+  } else if (professionGroup === "FRONT_DESK") {
+    baseAreas = ["DASHBOARD"];
+  } else if (professionGroup === "PROVIDER" || professionGroup === "RN") {
     if (department === "EMERGENCY" || department == null) {
-      return ["DASHBOARD", "EMERGENCY"];
+      baseAreas = ["DASHBOARD", "EMERGENCY"];
+    } else if (department && HOSPITAL_DEPARTMENTS.has(department)) {
+      baseAreas = ["DASHBOARD", "HOSPITAL"];
+    } else if (department === "LABORATORY") {
+      baseAreas = ["DASHBOARD", "LABORATORY"];
+    } else if (department === "RADIOLOGY") {
+      baseAreas = ["DASHBOARD", "RADIOLOGY"];
+    } else {
+      baseAreas = ["DASHBOARD", "EMERGENCY"];
     }
-    if (department && HOSPITAL_DEPARTMENTS.has(department)) {
-      return ["DASHBOARD", "HOSPITAL"];
-    }
-    if (department === "LABORATORY") {
-      return ["DASHBOARD", "LABORATORY"];
-    }
-    if (department === "RADIOLOGY") {
-      return ["DASHBOARD", "RADIOLOGY"];
-    }
-    return ["DASHBOARD", "EMERGENCY"];
-  }
-
-  if (professionGroup === "TECHNICIAN") {
+  } else if (professionGroup === "TECHNICIAN") {
     if (department === "EMERGENCY" || department == null) {
-      return ["DASHBOARD", "EMERGENCY"];
+      baseAreas = ["DASHBOARD", "EMERGENCY"];
+    } else if (department && HOSPITAL_DEPARTMENTS.has(department)) {
+      baseAreas = ["DASHBOARD", "HOSPITAL"];
+    } else if (department === "LABORATORY") {
+      baseAreas = ["DASHBOARD", "LABORATORY"];
+    } else if (department === "RADIOLOGY") {
+      baseAreas = ["DASHBOARD", "RADIOLOGY"];
+    } else {
+      baseAreas = ["DASHBOARD"];
     }
-    if (department && HOSPITAL_DEPARTMENTS.has(department)) {
-      return ["DASHBOARD", "HOSPITAL"];
-    }
-    if (department === "LABORATORY") {
-      return ["DASHBOARD", "LABORATORY"];
-    }
-    if (department === "RADIOLOGY") {
-      return ["DASHBOARD", "RADIOLOGY"];
-    }
-    return ["DASHBOARD"];
+  } else {
+    baseAreas = ["DASHBOARD"];
   }
 
-  return ["DASHBOARD"];
+  return applyFacilityServiceLineNavigationFilter(baseAreas, {
+    professionGroup,
+    departmentCode: department,
+    roleCodes,
+    facilityType: input.facilityType,
+    facilityServiceLines: input.facilityServiceLines,
+  });
 }
 
 /** Session adapter — consumes MEDUI.AUTH.ROLE.1 resolvers (no duplicate logic). */
@@ -142,7 +298,13 @@ export function resolveNavigationProfile(input: NavigationProfileInput): {
           : "ED",
   });
 
-  const areas = resolveNavigationAreas({ professionGroup, departmentCode });
+  const areas = resolveNavigationAreas({
+    professionGroup,
+    departmentCode,
+    roleCodes: input.roleCodes,
+    facilityType: input.facilityType,
+    facilityServiceLines: input.facilityServiceLines,
+  });
   return { professionGroup, departmentCode, areas };
 }
 
@@ -202,4 +364,12 @@ export function isNavigationAreaVisible(
   }
   const visible = new Set(visibleAreas);
   return itemAreas.some((area) => visible.has(area));
+}
+
+/** Whether facility type is known for navigation filtering (testing helper). */
+export function hasFacilityNavigationContext(input: NavigationProfileInput): boolean {
+  return (
+    Boolean(input.facilityType && normalizeFacilityType(input.facilityType)) ||
+    Boolean(input.facilityServiceLines && input.facilityServiceLines.length > 0)
+  );
 }

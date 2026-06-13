@@ -12,11 +12,15 @@ export function buildNavigationProfileFromSession(input: {
   roleCodes: readonly string[];
   departmentCode?: string | null;
   prismaDepartmentCode?: string | null;
+  facilityType?: string | null;
+  facilityServiceLines?: readonly string[] | null;
 }): NavigationProfileInput {
   return {
     roleCodes: input.roleCodes,
     departmentCode: input.departmentCode ?? null,
     prismaDepartmentCode: input.prismaDepartmentCode ?? null,
+    facilityType: input.facilityType ?? null,
+    facilityServiceLines: input.facilityServiceLines ?? null,
   };
 }
 

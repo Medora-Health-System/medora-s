@@ -113,4 +113,74 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
     expect(getLandingRouteForNavigationProfile({ roleCodes: ["ADMIN"] })).toBe("/app/trackboard");
     expect(getLandingRouteForNavigationProfile({ roleCodes: ["RN"] })).toBe("/app/emergency/trackboard");
   });
+
+  it("freestanding ER lab tech sees laboratory, emergency, and observation hospital path", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["LAB"],
+        prismaDepartmentCode: "LABORATORY",
+        facilityType: "FREESTANDING_ER",
+      })
+    ).toEqual(["DASHBOARD", "LABORATORY", "EMERGENCY", "HOSPITAL"]);
+  });
+
+  it("freestanding ER rad tech sees radiology, emergency, and observation hospital path", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["RADIOLOGY"],
+        prismaDepartmentCode: "RADIOLOGY",
+        facilityType: "FREESTANDING_ER",
+      })
+    ).toEqual(["DASHBOARD", "RADIOLOGY", "EMERGENCY", "HOSPITAL"]);
+  });
+
+  it("freestanding ER ED tech with lab role sees emergency, lab, and observation", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["LAB"],
+        departmentCode: "EMERGENCY",
+        facilityType: "FREESTANDING_ER",
+      })
+    ).toEqual(["DASHBOARD", "EMERGENCY", "HOSPITAL", "LABORATORY"]);
+  });
+
+  it("outside laboratory user sees lab only", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["LAB"],
+        prismaDepartmentCode: "LAB",
+        facilityType: "OUTSIDE_LABORATORY",
+      })
+    ).toEqual(["DASHBOARD", "LABORATORY"]);
+  });
+
+  it("clinic lab tech does not see emergency when facility lacks ED line", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["LAB"],
+        prismaDepartmentCode: "LAB",
+        facilityType: "CLINIC",
+      })
+    ).toEqual(["DASHBOARD", "LABORATORY"]);
+  });
+
+  it("admin sees all areas regardless of facility type", () => {
+    expect(
+      resolveNavigationAreas({
+        professionGroup: "ADMIN",
+        departmentCode: "ICU",
+        facilityType: "OUTSIDE_LABORATORY",
+        facilityServiceLines: ["LABORATORY"],
+      })
+    ).toEqual([
+      "DASHBOARD",
+      "EMERGENCY",
+      "HOSPITAL",
+      "LABORATORY",
+      "RADIOLOGY",
+      "PHARMACY",
+      "BILLING",
+      "ADMINISTRATION",
+    ]);
+  });
 });
