@@ -4,7 +4,10 @@ import {
   facilitySupportsObservationAccessForTechnician,
   resolveFacilityServiceLines,
 } from "./facilityServiceLines.js";
-import { canReadFreestandingErTrackboard } from "./freestandingErTechnicianAccess.js";
+import {
+  canReadFreestandingErObservationPatients,
+  canReadFreestandingErTrackboard,
+} from "./freestandingErTechnicianAccess.js";
 import type { MedoraFacilityType, MedoraServiceLine } from "./facilityTypeRegistry.js";
 import { normalizeFacilityType } from "./facilityTypeRegistry.js";
 import type { ProfessionGroup } from "./professionResolver.js";
@@ -12,6 +15,7 @@ import { resolveProfessionGroup } from "./professionResolver.js";
 
 export type NavigationArea =
   | "DASHBOARD"
+  | "REGISTRATION"
   | "EMERGENCY"
   | "HOSPITAL"
   | "LABORATORY"
@@ -22,6 +26,7 @@ export type NavigationArea =
 
 export const NAVIGATION_AREAS: readonly NavigationArea[] = [
   "DASHBOARD",
+  "REGISTRATION",
   "EMERGENCY",
   "HOSPITAL",
   "LABORATORY",
@@ -30,6 +35,13 @@ export const NAVIGATION_AREAS: readonly NavigationArea[] = [
   "BILLING",
   "ADMINISTRATION",
 ] as const;
+
+const NAVIGATION_AREA_ORDER: NavigationArea[] = [...NAVIGATION_AREAS];
+
+const FREESTANDING_OPERATIONAL_FACILITY_TYPES = new Set<MedoraFacilityType>([
+  "FREESTANDING_ER",
+  "URGENT_CARE",
+]);
 
 const ALL_NAVIGATION_AREAS: NavigationArea[] = [...NAVIGATION_AREAS];
 
@@ -73,6 +85,58 @@ function normalizeClinicalDepartment(
 
 function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] {
   return (roleCodes ?? []).map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+function isFreestandingErOperationalFacility(
+  facilityType?: MedoraFacilityType | string | null
+): boolean {
+  return FREESTANDING_OPERATIONAL_FACILITY_TYPES.has(normalizeFacilityType(facilityType));
+}
+
+function sortNavigationAreas(areas: readonly NavigationArea[]): NavigationArea[] {
+  const set = new Set(areas);
+  return NAVIGATION_AREA_ORDER.filter((area) => set.has(area));
+}
+
+/**
+ * MEDUI.FSER.ROLE.1 — Freestanding ER / urgent care RN and provider operational menus.
+ * Registration + laboratory + observation visibility without radiology worklist expansion.
+ */
+function supplementFreestandingErRnProviderNavigationAreas(
+  areas: NavigationArea[],
+  input: {
+    professionGroup: ProfessionGroup;
+    facilityType?: MedoraFacilityType | string | null;
+    facilityServiceLines: readonly MedoraServiceLine[];
+    roleCodes: readonly string[];
+  }
+): NavigationArea[] {
+  if (!isFreestandingErOperationalFacility(input.facilityType)) {
+    return areas;
+  }
+  if (input.professionGroup !== "RN" && input.professionGroup !== "PROVIDER") {
+    return areas;
+  }
+
+  const lineSet = new Set(input.facilityServiceLines);
+  const roles = normalizeRoleCodes(input.roleCodes);
+  const result = new Set(areas);
+
+  result.add("REGISTRATION");
+  if (lineSet.has("EMERGENCY")) {
+    result.add("EMERGENCY");
+  }
+  if (lineSet.has("LABORATORY")) {
+    result.add("LABORATORY");
+  }
+  if (lineSet.has("OBSERVATION")) {
+    result.add("HOSPITAL");
+  }
+  if (roles.includes("RADIOLOGY") && lineSet.has("RADIOLOGY")) {
+    result.add("RADIOLOGY");
+  }
+
+  return sortNavigationAreas([...result]);
 }
 
 function serviceLineToNavigationArea(line: MedoraServiceLine): NavigationArea | null {
@@ -153,6 +217,17 @@ function supplementAssignmentNavigationAreas(
       areas.add("EMERGENCY");
     }
   }
+  if (
+    input.professionGroup === "TECHNICIAN" &&
+    canReadFreestandingErObservationPatients({
+      roleCodes: roles,
+      facilityType: input.facilityType,
+      facilityServiceLines: input.facilityServiceLines,
+      departmentCode: input.departmentCode,
+    })
+  ) {
+    areas.add("HOSPITAL");
+  }
   if (input.departmentCode === "EMERGENCY" && lineSet.has("EMERGENCY")) {
     areas.add("EMERGENCY");
   }
@@ -198,19 +273,35 @@ function applyFacilityServiceLineNavigationFilter(
   });
   filtered = supplemented.filter((area) => area === "DASHBOARD" || allowed.has(area));
 
-  if (
-    facilitySupportsObservationAccessForTechnician({
+  const technicianObservationEligible =
+    input.professionGroup === "TECHNICIAN" &&
+    canReadFreestandingErObservationPatients({
+      roleCodes: input.roleCodes,
       facilityType: input.facilityType,
       facilityServiceLines: serviceLines,
-      professionGroup: input.professionGroup,
       departmentCode: input.departmentCode,
-      roleCodes: input.roleCodes,
-    }) &&
+    });
+  if (
+    (technicianObservationEligible ||
+      facilitySupportsObservationAccessForTechnician({
+        facilityType: input.facilityType,
+        facilityServiceLines: serviceLines,
+        professionGroup: input.professionGroup,
+        departmentCode: input.departmentCode,
+        roleCodes: input.roleCodes,
+      })) &&
     allowed.has("HOSPITAL") &&
     !filtered.includes("HOSPITAL")
   ) {
     filtered = [...filtered, "HOSPITAL"];
   }
+
+  filtered = supplementFreestandingErRnProviderNavigationAreas(filtered, {
+    professionGroup: input.professionGroup,
+    facilityType: input.facilityType,
+    facilityServiceLines: serviceLines,
+    roleCodes: input.roleCodes,
+  });
 
   return filtered;
 }
@@ -315,6 +406,7 @@ export function getVisibleNavigationAreas(input: NavigationProfileInput): Naviga
 
 export const NAVIGATION_AREA_LANDING_PATH: Record<NavigationArea, string> = {
   DASHBOARD: "/app/trackboard",
+  REGISTRATION: "/app/registration",
   EMERGENCY: "/app/emergency/trackboard",
   HOSPITAL: "/app/hospitalisation",
   LABORATORY: "/app/lab-worklist",

@@ -9,7 +9,7 @@ const freestandingErProfile = {
   facilityType: "FREESTANDING_ER" as const,
 };
 
-describe("facility navigation visibility (MEDUI.OBS.TECH.1)", () => {
+describe("facility navigation visibility (MEDUI.OBS.TECH.1 + MEDUI.FSER.ROLE.1)", () => {
   it("freestanding ER lab tech menu includes emergency, observation, and laboratory", () => {
     const profile = {
       roleCodes: ["LAB"],
@@ -82,5 +82,56 @@ describe("facility navigation visibility (MEDUI.OBS.TECH.1)", () => {
     };
     const navAreasOnly = filterSidebarNavItemsByNavigationAreas(SIDEBAR_NAV_ITEMS, profile);
     expect(navAreasOnly.some((item) => item.href === "/app/hospitalisation")).toBe(true);
+  });
+
+  it("freestanding ER RN sidebar includes registration, emergency, triage, lab, and observation", () => {
+    const profile = {
+      roleCodes: ["RN"],
+      prismaDepartmentCode: "EMERGENCY",
+      ...freestandingErProfile,
+      facilityServiceLines: null,
+    };
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["RN"],
+      profile,
+    });
+    expect(filtered.some((item) => item.href === "/app/registration")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/emergency/trackboard")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/emergency/triage")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/lab-worklist")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/hospitalisation")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(false);
+  });
+
+  it("freestanding ER provider sidebar includes registration, emergency, triage, lab, and observation", () => {
+    const profile = {
+      roleCodes: ["PROVIDER"],
+      prismaDepartmentCode: "EMERGENCY",
+      ...freestandingErProfile,
+      facilityServiceLines: null,
+    };
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["PROVIDER"],
+      profile,
+    });
+    expect(filtered.some((item) => item.href === "/app/registration")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/emergency/trackboard")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/emergency/triage")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/lab-worklist")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/hospitalisation")).toBe(true);
+    expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(false);
+  });
+
+  it("radiology role still sees radiology worklist at freestanding ER", () => {
+    const profile = {
+      roleCodes: ["RADIOLOGY"],
+      prismaDepartmentCode: "RADIOLOGY",
+      ...freestandingErProfile,
+    };
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["RADIOLOGY"],
+      profile,
+    });
+    expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(true);
   });
 });

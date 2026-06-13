@@ -9,6 +9,7 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
   it("Admin sees all navigation areas", () => {
     expect(resolveNavigationAreas({ professionGroup: "ADMIN", departmentCode: "ICU" })).toEqual([
       "DASHBOARD",
+      "REGISTRATION",
       "EMERGENCY",
       "HOSPITAL",
       "LABORATORY",
@@ -205,6 +206,7 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
       })
     ).toEqual([
       "DASHBOARD",
+      "REGISTRATION",
       "EMERGENCY",
       "HOSPITAL",
       "LABORATORY",
@@ -213,5 +215,92 @@ describe("navigationAuthorization (MEDUI.NAV.ROLE.1)", () => {
       "BILLING",
       "ADMINISTRATION",
     ]);
+  });
+
+  it("RN + FREESTANDING_ER + null serviceLinesJson gets operational freestanding ER menu (MEDUI.FSER.ROLE.1)", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["RN"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "FREESTANDING_ER",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "REGISTRATION", "EMERGENCY", "HOSPITAL", "LABORATORY"]);
+  });
+
+  it("Provider + FREESTANDING_ER + null serviceLinesJson gets operational freestanding ER menu (MEDUI.FSER.ROLE.1)", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["PROVIDER"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "FREESTANDING_ER",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "REGISTRATION", "EMERGENCY", "HOSPITAL", "LABORATORY"]);
+  });
+
+  it("RN + URGENT_CARE gets same freestanding operational menu (MEDUI.FSER.ROLE.1)", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["RN"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "URGENT_CARE",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "REGISTRATION", "EMERGENCY", "HOSPITAL", "LABORATORY"]);
+  });
+
+  it("RN + FREESTANDING_ER does NOT get RADIOLOGY without radiology role (MEDUI.FSER.ROLE.1)", () => {
+    const areas = getVisibleNavigationAreas({
+      roleCodes: ["RN"],
+      prismaDepartmentCode: "EMERGENCY",
+      facilityType: "FREESTANDING_ER",
+      facilityServiceLines: null,
+    });
+    expect(areas).not.toContain("RADIOLOGY");
+  });
+
+  it("Provider + FREESTANDING_ER does NOT get RADIOLOGY without radiology role (MEDUI.FSER.ROLE.1)", () => {
+    const areas = getVisibleNavigationAreas({
+      roleCodes: ["PROVIDER"],
+      prismaDepartmentCode: "EMERGENCY",
+      facilityType: "FREESTANDING_ER",
+      facilityServiceLines: null,
+    });
+    expect(areas).not.toContain("RADIOLOGY");
+  });
+
+  it("RN + HOSPITAL emergency department unchanged without freestanding registration/lab supplement", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["RN"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "HOSPITAL",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "EMERGENCY", "HOSPITAL"]);
+  });
+
+  it("Provider + HOSPITAL emergency department unchanged without freestanding registration/lab supplement", () => {
+    expect(
+      getVisibleNavigationAreas({
+        roleCodes: ["PROVIDER"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "HOSPITAL",
+        facilityServiceLines: null,
+      })
+    ).toEqual(["DASHBOARD", "EMERGENCY", "HOSPITAL"]);
+  });
+
+  it("RN + CLINIC does not get freestanding registration/lab/hospital supplement", () => {
+    const areas = getVisibleNavigationAreas({
+      roleCodes: ["RN"],
+      prismaDepartmentCode: "EMERGENCY",
+      facilityType: "CLINIC",
+      facilityServiceLines: null,
+    });
+    expect(areas).not.toContain("REGISTRATION");
+    expect(areas).not.toContain("LABORATORY");
+    expect(areas).not.toContain("EMERGENCY");
   });
 });

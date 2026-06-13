@@ -17,6 +17,7 @@ import {
 } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
+import { canReadFreestandingErObservationPatients } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
 import {
@@ -492,7 +493,7 @@ export function HospitalizationBoardView() {
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
 
-  const { facilityId: facilityIdFromHook, ready, canManagePharmacy, roles, userId, departmentCode } =
+  const { facilityId: facilityIdFromHook, ready, canManagePharmacy, roles, userId, departmentCode, facilityType, facilityServiceLines } =
     useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
@@ -527,6 +528,16 @@ export function HospitalizationBoardView() {
     [roles, departmentCode]
   );
   const isFloorTechnician = isHospitalFloorTechnicianProfile(hospitalTechnicianSession);
+  const isFreestandingErObservationTechnician = useMemo(
+    () =>
+      canReadFreestandingErObservationPatients({
+        roleCodes: roles,
+        facilityType,
+        facilityServiceLines,
+        departmentCode,
+      }),
+    [roles, facilityType, facilityServiceLines, departmentCode]
+  );
   const resolveEncounterHref = useCallback(
     (encounterId: string) =>
       isFloorTechnician
@@ -597,7 +608,15 @@ export function HospitalizationBoardView() {
       }
     } catch (error) {
       console.error("Failed to load hospitalisation board:", error);
-      setFetchError(t("hospitalizationBoard.loadListError"));
+      const status =
+        typeof error === "object" && error != null && "status" in error
+          ? Number((error as { status?: number }).status)
+          : null;
+      if (status === 403) {
+        setFetchError(t("observationBoard.readAccessDenied"));
+      } else {
+        setFetchError(t("hospitalizationBoard.loadListError"));
+      }
     } finally {
       if (!silent) {
         setLoading(false);
@@ -1278,14 +1297,18 @@ export function HospitalizationBoardView() {
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
               {encounters.length === 0
-                ? t("hospitalizationBoard.emptyNoPatients")
+                ? isFreestandingErObservationTechnician
+                  ? t("observationBoard.emptyNoPatients")
+                  : t("hospitalizationBoard.emptyNoPatients")
                 : t("hospitalizationBoard.emptyFiltered")}
             </p>
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-              {encounters.length === 0
-                ? t("hospitalizationBoard.emptyHintNoPatients")
-                : t("hospitalizationBoard.emptyHintFiltered")}
-            </p>
+            {!(encounters.length === 0 && isFreestandingErObservationTechnician) ? (
+              <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
+                {encounters.length === 0
+                  ? t("hospitalizationBoard.emptyHintNoPatients")
+                  : t("hospitalizationBoard.emptyHintFiltered")}
+              </p>
+            ) : null}
           </div>
         ) : (
           <ul style={observationBoardPatientListStyle(layoutMode)}>

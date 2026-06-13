@@ -244,6 +244,7 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
 /** MEDUI.NAV.ROLE.1 — path prefixes allowed when navigation area is visible (UI route guard only). */
 const NAVIGATION_AREA_ROUTE_PREFIXES: Partial<Record<NavigationArea, readonly string[]>> = {
   DASHBOARD: ["/app/trackboard", "/app/provider", "/app/nursing"],
+  REGISTRATION: ["/app/registration", "/app/patients"],
   EMERGENCY: ["/app/emergency"],
   HOSPITAL: ["/app/hospitalisation"],
   LABORATORY: ["/app/lab-worklist", "/app/lab"],

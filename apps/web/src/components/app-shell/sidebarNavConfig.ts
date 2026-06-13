@@ -138,7 +138,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     accent: "slate",
     navAreas: ["EMERGENCY"],
   },
-  { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
+  { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN", "RN", "PROVIDER"], group: "accueil", accent: "slate", navAreas: ["REGISTRATION"] },
   { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal", navAreas: ["EMERGENCY", "HOSPITAL"] },
   { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue", navAreas: ["EMERGENCY", "HOSPITAL"] },
   { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["DASHBOARD", "EMERGENCY", "HOSPITAL"] },
@@ -153,7 +153,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
   },
   { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["EMERGENCY", "HOSPITAL"] },
   { href: "/app/rad-worklist", labelKey: "nav.radWorklist", roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber", navAreas: ["RADIOLOGY"] },
-  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "RN", "ADMIN"], group: "examens", accent: "purple", navAreas: ["LABORATORY"] },
+  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "RN", "PROVIDER", "ADMIN"], group: "examens", accent: "purple", navAreas: ["LABORATORY"] },
   { href: "/app/pharmacy", labelKey: "nav.pharmacyQueue", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green", navAreas: ["PHARMACY"] },
   { href: "/app/pharmacy-worklist", labelKey: "nav.pharmacyWorklist", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green", navAreas: ["PHARMACY"] },
   {

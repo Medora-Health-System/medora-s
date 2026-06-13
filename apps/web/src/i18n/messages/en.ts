@@ -92,6 +92,7 @@ export default {
     patients: "Patients",
     encounters: "Encounters",
     hospitalisation: "Observation & short stay",
+    observation: "Observation",
     followUps: "Follow-up",
     radWorklist: "Radiology worklist",
     labWorklist: "Lab worklist",
@@ -1070,6 +1071,11 @@ export default {
     successAddOffline: "Follow-up saved offline",
     successAddOnline: "Follow-up added",
     noUpcoming14Days: "No follow-ups in the next 14 days.",
+  },
+  observationBoard: {
+    readAccessDenied:
+      "Observation board access is not authorized for your role or facility.",
+    emptyNoPatients: "No observation patients.",
   },
   hospitalizationBoard: {
     loadListError: "Unable to load the list.",

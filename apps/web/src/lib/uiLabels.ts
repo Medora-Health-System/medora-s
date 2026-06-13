@@ -60,6 +60,7 @@ const fr = {
     patients: "Patients",
     encounters: "Consultations",
     hospitalisation: "Observation et court séjour",
+    observation: "Observation",
     followUps: "Suivis",
     radWorklist: "Liste imagerie",
     labWorklist: "Liste laboratoire",

@@ -1008,6 +1008,11 @@ export default {
     successAddOnline: "Suivi ajouté",
     noUpcoming14Days: "Aucun suivi à venir sur les 14 prochains jours.",
   },
+  observationBoard: {
+    readAccessDenied:
+      "L'accès au plateau d'observation n'est pas autorisé pour votre rôle ou établissement.",
+    emptyNoPatients: "Aucun patient en observation.",
+  },
   hospitalizationBoard: {
     loadListError: "Impossible de charger la liste.",
     pageTitle: "Soins d’observation",

@@ -17,4 +17,30 @@ describe("isAppPathAllowedForRoles — detail paths under trailing-slash prefixe
   it("matches /app/patients/<id>/profile for FRONT_DESK (prefix /app/patients/)", () => {
     expect(isAppPathAllowedForRoles("/app/patients/xyz-789/profile", ["FRONT_DESK"])).toBe(true);
   });
+
+  it("allows freestanding ER provider registration via navigation profile (MEDUI.FSER.ROLE.1)", () => {
+    expect(
+      isAppPathAllowedForRoles("/app/registration", ["PROVIDER"], {
+        navigationProfile: {
+          roleCodes: ["PROVIDER"],
+          prismaDepartmentCode: "EMERGENCY",
+          facilityType: "FREESTANDING_ER",
+          facilityServiceLines: null,
+        },
+      })
+    ).toBe(true);
+  });
+
+  it("allows freestanding ER provider lab worklist via navigation profile (MEDUI.FSER.ROLE.1)", () => {
+    expect(
+      isAppPathAllowedForRoles("/app/lab-worklist", ["PROVIDER"], {
+        navigationProfile: {
+          roleCodes: ["PROVIDER"],
+          prismaDepartmentCode: "EMERGENCY",
+          facilityType: "FREESTANDING_ER",
+          facilityServiceLines: null,
+        },
+      })
+    ).toBe(true);
+  });
 });
