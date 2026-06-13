@@ -28,6 +28,8 @@ import {
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
+import { BedBoardStatusFilterBar } from "@/components/encounters/BedBoardStatusFilterBar";
+import type { BedBoardStatusFilterId } from "@/lib/bedBoardFilters";
 import {
   BedBoardAssignEncounterPicker,
   type BedBoardAssignCandidate,
@@ -64,6 +66,10 @@ import {
   MEDORA_OBSERVATION_ENCOUNTER_REFRESH,
   type ObservationEncounterRefreshDetail,
 } from "@/lib/observationEncounterRefresh";
+import {
+  hospitalTechnicianActiveWorkspacePath,
+} from "./hospitalTechnicianWorkspace";
+import { isHospitalFloorTechnicianProfile } from "./hospitalTechnicianTiles";
 import {
   observationBoardCardInnerStyle,
   observationBoardCensusActionButtonStyle,
@@ -486,7 +492,8 @@ export function HospitalizationBoardView() {
   const searchParams = useSearchParams();
   const mockMode = searchParams.get("mock");
 
-  const { facilityId: facilityIdFromHook, ready, canManagePharmacy, roles, userId } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, canManagePharmacy, roles, userId, departmentCode } =
+    useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [encounters, setEncounters] = useState<HospitalisationBoardEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -505,11 +512,28 @@ export function HospitalizationBoardView() {
   const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
   const [facilityBedBoard, setFacilityBedBoard] = useState<FacilityBedBoardResponse | null>(null);
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
+  const [bedBoardStatusFilter, setBedBoardStatusFilter] = useState<BedBoardStatusFilterId>("all");
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
   const canAssignRoom = canAssignEncounterRoom(roles);
   const canManageBedStatus = canManageBedOperationalStatus(roles);
+  const hospitalTechnicianSession = useMemo(
+    () => ({
+      roleCodes: roles,
+      departmentCode,
+      prismaDepartmentCode: departmentCode,
+    }),
+    [roles, departmentCode]
+  );
+  const isFloorTechnician = isHospitalFloorTechnicianProfile(hospitalTechnicianSession);
+  const resolveEncounterHref = useCallback(
+    (encounterId: string) =>
+      isFloorTechnician
+        ? hospitalTechnicianActiveWorkspacePath(encounterId)
+        : `/app/encounters/${encounterId}`,
+    [isFloorTechnician]
+  );
 
   const [search, setSearch] = useState("");
   const [filterUnit, setFilterUnit] = useState("");
@@ -959,12 +983,18 @@ export function HospitalizationBoardView() {
 
         {hospitalBedBoardUnits.length > 0 ? (
           <section data-testid="hospitalization-bed-board" style={{ marginBottom: 16 }}>
+            <BedBoardStatusFilterBar
+              value={bedBoardStatusFilter}
+              onChange={setBedBoardStatusFilter}
+              compact={usesCompactCensus}
+            />
             {hospitalBedBoardUnits.map((unitView) => (
               <BedBoardUnitSection
                 key={unitView.unit}
                 unit={unitView.unit}
                 summary={unitView.summary}
                 beds={unitView.beds}
+                statusFilter={bedBoardStatusFilter}
                 facilityId={effectiveFacilityId}
                 compact={usesCompactCensus}
                 canAssignRoom={canAssignRoom}
@@ -1403,7 +1433,7 @@ export function HospitalizationBoardView() {
                             )}
                             <div style={observationBoardTouchActionGroupStyle(layoutMode)}>
                               <Link
-                                href={`/app/encounters/${encounter.id}`}
+                                href={resolveEncounterHref(encounter.id)}
                                 style={observationBoardCensusActionButtonStyle(
                                   {
                                     display: "inline-flex",

@@ -82,7 +82,16 @@ const TECHNICIAN_EMERGENCY_TILES: WorkspaceTileId[] = [
   "SUMMARY",
 ];
 
-const TECHNICIAN_ICU_TILES: WorkspaceTileId[] = ["VITALS", "NOTES", "SUMMARY"];
+const TECHNICIAN_FLOOR_TILES: WorkspaceTileId[] = ["VITALS", "NOTES", "SUMMARY"];
+
+const HOSPITAL_FLOOR_DEPARTMENTS = new Set<DepartmentCode>([
+  "ICU",
+  "MEDSURG",
+  "OBGYN",
+  "PEDIATRICS",
+  "OBSERVATION",
+  "TELEMETRY",
+]);
 
 const TECHNICIAN_LAB_TILES: WorkspaceTileId[] = [
   "LAB_QUEUE",
@@ -168,21 +177,27 @@ function resolveEmergencyPermissions(profession: ProfessionGroup): WorkspacePerm
   }
 }
 
+const TECHNICIAN_FLOOR_PERMISSIONS: Omit<WorkspacePermissions, "visibleTiles"> = {
+  canDocumentTriage: false,
+  canDocumentVitals: true,
+  canDocumentNotes: true,
+  canAdministerMedication: false,
+  canPerformMedicalExam: false,
+  canAccessDiagnostics: false,
+  canDischargePatient: false,
+};
+
 function resolveTechnicianDepartmentPermissions(
   department: DepartmentCode
 ): WorkspacePermissions {
+  if (HOSPITAL_FLOOR_DEPARTMENTS.has(department)) {
+    return {
+      visibleTiles: TECHNICIAN_FLOOR_TILES,
+      ...TECHNICIAN_FLOOR_PERMISSIONS,
+    };
+  }
+
   switch (department) {
-    case "ICU":
-      return {
-        visibleTiles: TECHNICIAN_ICU_TILES,
-        canDocumentTriage: false,
-        canDocumentVitals: true,
-        canDocumentNotes: true,
-        canAdministerMedication: false,
-        canPerformMedicalExam: false,
-        canAccessDiagnostics: false,
-        canDischargePatient: false,
-      };
     case "LABORATORY":
       return {
         visibleTiles: TECHNICIAN_LAB_TILES,

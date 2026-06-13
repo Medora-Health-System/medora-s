@@ -11,6 +11,8 @@
 
 import {
   getLandingRouteForNavigationProfile,
+  getVisibleNavigationAreas,
+  type NavigationArea,
   type NavigationProfileInput,
 } from "@medora/shared";
 
@@ -239,6 +241,34 @@ function pathMatchesRule(pathname: string, rule: RouteRule): boolean {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+/** MEDUI.NAV.ROLE.1 — path prefixes allowed when navigation area is visible (UI route guard only). */
+const NAVIGATION_AREA_ROUTE_PREFIXES: Partial<Record<NavigationArea, readonly string[]>> = {
+  DASHBOARD: ["/app/trackboard", "/app/provider", "/app/nursing"],
+  EMERGENCY: ["/app/emergency"],
+  HOSPITAL: ["/app/hospitalisation"],
+  LABORATORY: ["/app/lab-worklist", "/app/lab"],
+  RADIOLOGY: ["/app/rad-worklist", "/app/radiology", "/app/imaging"],
+  PHARMACY: ["/app/pharmacy", "/app/pharmacy-worklist"],
+  BILLING: ["/app/billing"],
+  ADMINISTRATION: ["/app/admin"],
+};
+
+function pathMatchesNavigationAreaPrefix(pathname: string, area: NavigationArea): boolean {
+  const prefixes = NAVIGATION_AREA_ROUTE_PREFIXES[area];
+  if (!prefixes?.length) return false;
+  const normalized = normalizeAppPathnameForRouteRules(pathname);
+  return prefixes.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+}
+
+/** Allows floor/lab/rad technicians to open routes tied to their navigation areas. */
+function isAppPathAllowedForNavigationProfile(
+  pathname: string,
+  profile: NavigationProfileInput
+): boolean {
+  const visibleAreas = getVisibleNavigationAreas(profile);
+  return visibleAreas.some((area) => pathMatchesNavigationAreaPrefix(pathname, area));
+}
+
 /** Legacy EN spelling; redirects to `/app/hospitalisation`. Same RBAC as canonical (no duplicate rule). */
 function normalizeAppPathnameForRouteRules(pathname: string): string {
   if (pathname === "/app/hospitalization") return "/app/hospitalisation";
@@ -314,11 +344,17 @@ export function getLandingRouteForRoles(
 export function isAppPathAllowedForRoles(
   pathname: string,
   roles: string[],
-  options?: { canCreateFacilities?: boolean }
+  options?: { canCreateFacilities?: boolean; navigationProfile?: NavigationProfileInput }
 ): boolean {
   if (!pathname.startsWith("/app")) return false;
   const pathForRules = normalizeAppPathnameForRouteRules(pathname);
   const set = normalizeRoleSet(roles);
+  if (
+    options?.navigationProfile &&
+    isAppPathAllowedForNavigationProfile(pathForRules, options.navigationProfile)
+  ) {
+    return true;
+  }
   if (isPlatformOperatorOnlyAppPath(pathForRules)) {
     return set.has("MEDORA_SUPER_ADMIN");
   }
@@ -373,7 +409,7 @@ export function getRouteGuardRedirect(
     return getLandingRouteForRoles(roles);
   }
   if (set.has("ADMIN")) return null;
-  if (!isAppPathAllowedForRoles(pathname, roles, options)) return getLandingRouteForRoles(roles);
+  if (!isAppPathAllowedForRoles(pathname, roles, options)) return getLandingRouteForRoles(roles, options);
   return null;
 }
 

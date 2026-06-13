@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolveDepartmentCode } from "./departmentResolver.js";
 import { resolveWorkspacePermissions } from "./workspaceAuthorization.js";
 
 function tileLetters(tiles: string[]): string {
@@ -76,6 +77,18 @@ describe("workspaceAuthorization (MEDUI.AUTH.ROLE.1)", () => {
     expect(perms.canDischargePatient).toBe(false);
   });
 
+  it("Technician + Med-Surg floor departments share vitals/notes/summary", () => {
+    for (const department of ["MEDSURG", "OBGYN", "PEDIATRICS", "OBSERVATION", "TELEMETRY"] as const) {
+      const perms = resolveWorkspacePermissions({
+        profession: "TECHNICIAN",
+        department,
+      });
+      expect(tileLetters(perms.visibleTiles)).toBe("V|N|S");
+      expect(perms.canDocumentVitals).toBe(true);
+      expect(perms.canAdministerMedication).toBe(false);
+    }
+  });
+
   it("Technician + Laboratory", () => {
     const perms = resolveWorkspacePermissions({
       profession: "TECHNICIAN",
@@ -111,5 +124,24 @@ describe("workspaceAuthorization (MEDUI.AUTH.ROLE.1)", () => {
       department: null,
     });
     expect(tileLetters(perms.visibleTiles)).toBe("ME|O|R|Dx|N|D|S");
+  });
+
+  it("Technician + null department with LAB role infers laboratory in GENERAL context", () => {
+    const profession = "TECHNICIAN" as const;
+    const department = resolveDepartmentCode({
+      roleCodes: ["LAB"],
+      clinicalWorkspace: "GENERAL",
+    });
+    const perms = resolveWorkspacePermissions({ profession, department, facilityId: null });
+    expect(tileLetters(perms.visibleTiles)).toBe("LQ|O|R|N|S");
+  });
+
+  it("Technician + emergency department maps to ED technician permissions", () => {
+    const perms = resolveWorkspacePermissions({
+      profession: "TECHNICIAN",
+      department: "EMERGENCY",
+    });
+    expect(perms.canDocumentTriage).toBe(true);
+    expect(perms.canAdministerMedication).toBe(false);
   });
 });
