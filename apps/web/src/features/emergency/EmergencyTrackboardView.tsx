@@ -29,10 +29,26 @@ import {
 } from "@/features/emergency/erTrackboardDispositionBadge";
 import { readDischargeSortieExecutionFromEncounter } from "@/features/emergency/emergencyDispositionV1";
 import { emergencyActiveWorkspacePath, emergencyChartPath } from "@/features/emergency/emergencyRoutes";
-import { erHandoffV1SatisfiesInpatientTransferConfirm, sortRowsByRoomLabel } from "@medora/shared";
+import type { EncounterBedUnitCode } from "@medora/shared";
+import {
+  erHandoffV1SatisfiesInpatientTransferConfirm,
+  sortRowsByRoomLabel,
+} from "@medora/shared";
+import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
+import {
+  BedBoardAssignEncounterPicker,
+  type BedBoardAssignCandidate,
+} from "@/components/encounters/BedBoardAssignEncounterPicker";
 import { EdBedStatusChip } from "@/components/encounters/BedOperationalStatusChip";
-import { fetchFacilityBedBoard, indexBedBoardByKey, type FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import {
+  fetchFacilityBedBoard,
+  findBedBoardUnit,
+  indexBedBoardByKey,
+  type FacilityBedBoardBedRow,
+  type FacilityBedBoardResponse,
+} from "@/lib/bedBoardApi";
 import { lookupBedStatusForEncounter } from "@/lib/bedStatusDisplay";
 import {
   canAssignEncounterRoom,
@@ -177,6 +193,24 @@ type OpenEncounterRow = {
   trackboardOps?: TrackboardOpsPayload | null;
 };
 
+type EdRoomAssignmentLaunch = {
+  encounter: OpenEncounterRow;
+  prefillFromBedBoard?: {
+    room: string;
+    unitCode: EncounterBedUnitCode;
+  };
+};
+
+function mergeEncounterAfterRoomSave(
+  row: OpenEncounterRow,
+  patch: EncounterRoomUpdateResponse
+): OpenEncounterRow {
+  return {
+    ...row,
+    roomLabel: patch.roomLabel ?? row.roomLabel,
+  };
+}
+
 function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
   switch (variant) {
     case "discharge":
@@ -216,10 +250,13 @@ export function EmergencyTrackboardView() {
   /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
-  const [roomAssignmentEncounter, setRoomAssignmentEncounter] = useState<OpenEncounterRow | null>(
+  const [roomAssignmentLaunch, setRoomAssignmentLaunch] = useState<EdRoomAssignmentLaunch | null>(
     null
   );
   const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
+  const [edBedBoard, setEdBedBoard] = useState<FacilityBedBoardResponse | null>(null);
+  const [boardViewMode, setBoardViewMode] = useState<"trackboard" | "bedBoard">("trackboard");
+  const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
    * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
@@ -262,10 +299,13 @@ export function EmergencyTrackboardView() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
-  const loadEncounters = useCallback(async () => {
+  const loadEncounters = useCallback(async (opts?: { silent?: boolean }) => {
     if (!facilityId) return;
-    setLoading(true);
-    setFetchError(null);
+    const silent = Boolean(opts?.silent);
+    if (!silent) {
+      setLoading(true);
+      setFetchError(null);
+    }
     try {
       const [data, bedBoard] = await Promise.all([
         fetchOpenEncounters(facilityId),
@@ -274,13 +314,18 @@ export function EmergencyTrackboardView() {
       const arr = Array.isArray(data) ? data : [];
       setRows(arr as OpenEncounterRow[]);
       if (bedBoard) {
+        setEdBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
       }
     } catch (e) {
       console.error("Failed to load emergency trackboard:", e);
-      setFetchError(t("emergencyTrackboard.loadError"));
+      if (!silent) {
+        setFetchError(t("emergencyTrackboard.loadError"));
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [facilityId, t]);
 
@@ -352,6 +397,48 @@ export function EmergencyTrackboardView() {
   }, [emergencyOnly, search, t]);
 
   const sortedFiltered = useMemo(() => sortRowsByRoomLabel(filtered), [filtered]);
+
+  const edBedBoardUnit = useMemo(
+    () => (edBedBoard ? findBedBoardUnit(edBedBoard, "ED") : null),
+    [edBedBoard]
+  );
+
+  const unassignedEdCandidates = useMemo((): BedBoardAssignCandidate[] => {
+    return emergencyOnly
+      .filter((row) => !(row.roomLabel ?? "").trim())
+      .map((row) => ({
+        id: row.id,
+        label: fullPatientName(row.patient, t("common.dash")),
+        roomLabel: row.roomLabel,
+        type: row.type ?? "EMERGENCY",
+        admissionSummaryJson: row.admissionSummaryJson,
+      }));
+  }, [emergencyOnly, t]);
+
+  const refreshEdBedBoard = useCallback(async () => {
+    if (!facilityId) return;
+    const bedBoard = await fetchFacilityBedBoard(facilityId, "ED").catch(() => null);
+    if (bedBoard) {
+      setEdBedBoard(bedBoard);
+      setBedIndex(indexBedBoardByKey(bedBoard));
+    }
+  }, [facilityId]);
+
+  const handleRoomAssignmentSaved = useCallback(
+    async (patch: EncounterRoomUpdateResponse) => {
+      const savedEncounterId = roomAssignmentLaunch?.encounter.id;
+      if (savedEncounterId) {
+        setRows((prev) =>
+          prev.map((row) =>
+            row.id === savedEncounterId ? mergeEncounterAfterRoomSave(row, patch) : row
+          )
+        );
+      }
+      await Promise.all([loadEncounters({ silent: true }), refreshEdBedBoard()]);
+      setRoomAssignmentLaunch(null);
+    },
+    [loadEncounters, refreshEdBedBoard, roomAssignmentLaunch?.encounter.id]
+  );
 
   const inputBase: React.CSSProperties = {
     height: 40,
@@ -473,6 +560,54 @@ export function EmergencyTrackboardView() {
             />
           </div>
           <div style={erTrackboardFilterActionsStyle(layoutMode)}>
+            <div
+              role="group"
+              aria-label={t("bedBoard.viewToggleBedBoard")}
+              data-testid="emergency-trackboard-view-toggle"
+              style={{
+                display: "inline-flex",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
+                overflow: "hidden",
+                background: "#fff",
+              }}
+            >
+              <button
+                type="button"
+                aria-pressed={boardViewMode === "trackboard"}
+                onClick={() => setBoardViewMode("trackboard")}
+                style={{
+                  padding: "0 12px",
+                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                  border: "none",
+                  background: boardViewMode === "trackboard" ? "#eff6ff" : "#fff",
+                  color: boardViewMode === "trackboard" ? "#1d4ed8" : "#475569",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("bedBoard.viewToggleTrackboard")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={boardViewMode === "bedBoard"}
+                onClick={() => setBoardViewMode("bedBoard")}
+                style={{
+                  padding: "0 12px",
+                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                  border: "none",
+                  borderLeft: "1px solid #e2e8f0",
+                  background: boardViewMode === "bedBoard" ? "#eff6ff" : "#fff",
+                  color: boardViewMode === "bedBoard" ? "#1d4ed8" : "#475569",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("bedBoard.viewToggleBedBoard")}
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => void loadEncounters()}
@@ -500,7 +635,22 @@ export function EmergencyTrackboardView() {
           </div>
         </div>
 
-        {fetchError ? (
+        {boardViewMode === "bedBoard" ? (
+          edBedBoardUnit ? (
+            <BedBoardUnitSection
+              unit="ED"
+              summary={edBedBoardUnit.summary}
+              beds={edBedBoardUnit.beds}
+              compact={usesCompactCensus}
+              canAssignRoom={canAssignRoom}
+              onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
+            />
+          ) : (
+            <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
+              {loading ? t("common.loading") : t("bedBoard.refreshBoard")}
+            </div>
+          )
+        ) : fetchError ? (
           <div
             style={{
               borderRadius: 16,
@@ -730,7 +880,7 @@ export function EmergencyTrackboardView() {
                         roomValue={room}
                         roomClickable={canAssignRoom}
                         roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
-                        onRoomClick={() => setRoomAssignmentEncounter(encounter)}
+                        onRoomClick={() => setRoomAssignmentLaunch({ encounter })}
                         centerLeading={
                           los ? (
                             <div
@@ -1042,26 +1192,41 @@ export function EmergencyTrackboardView() {
           </ul>
         )}
       </div>
-      {facilityId && roomAssignmentEncounter ? (
+      {assignPickerBed ? (
+        <BedBoardAssignEncounterPicker
+          open
+          bed={assignPickerBed}
+          candidates={unassignedEdCandidates}
+          onClose={() => setAssignPickerBed(null)}
+          onSelect={(candidate) => {
+            const encounter = emergencyOnly.find((row) => row.id === candidate.id);
+            if (!encounter || !assignPickerBed) return;
+            setRoomAssignmentLaunch({
+              encounter,
+              prefillFromBedBoard: {
+                room: assignPickerBed.room,
+                unitCode: assignPickerBed.unitCode,
+              },
+            });
+            setAssignPickerBed(null);
+          }}
+        />
+      ) : null}
+      {facilityId && roomAssignmentLaunch ? (
         <RoomAssignmentModal
           open
           facilityId={facilityId}
           encounter={{
-            id: roomAssignmentEncounter.id,
-            roomLabel: roomAssignmentEncounter.roomLabel,
-            type: roomAssignmentEncounter.type ?? "EMERGENCY",
-            admissionSummaryJson: roomAssignmentEncounter.admissionSummaryJson,
+            id: roomAssignmentLaunch.encounter.id,
+            roomLabel: roomAssignmentLaunch.encounter.roomLabel,
+            type: roomAssignmentLaunch.encounter.type ?? "EMERGENCY",
+            admissionSummaryJson: roomAssignmentLaunch.encounter.admissionSummaryJson,
           }}
-          onClose={() => setRoomAssignmentEncounter(null)}
-          onSaved={(patch) => {
-            setRows((prev) =>
-              prev.map((row) =>
-                row.id === roomAssignmentEncounter.id
-                  ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
-                  : row
-              )
-            );
-          }}
+          prefillFromBedBoard={Boolean(roomAssignmentLaunch.prefillFromBedBoard)}
+          initialRoom={roomAssignmentLaunch.prefillFromBedBoard?.room ?? null}
+          initialUnitCode={roomAssignmentLaunch.prefillFromBedBoard?.unitCode ?? null}
+          onClose={() => setRoomAssignmentLaunch(null)}
+          onSaved={handleRoomAssignmentSaved}
         />
       ) : null}
     </div>

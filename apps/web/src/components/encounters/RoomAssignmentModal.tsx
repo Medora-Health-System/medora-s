@@ -27,9 +27,20 @@ import {
 } from "@/lib/governedRoomDisplay";
 import {
   updateEncounterRoomAssignment,
+  type EncounterRoomUpdatePayload,
   type EncounterRoomUpdateResponse,
 } from "@/lib/roomAssignmentApi";
 import { extractRoomAssignmentSaveErrorMessage } from "@/lib/roomAssignmentErrorMessage";
+
+function traceRoomAssignmentSave(encounterId: string, payload: EncounterRoomUpdatePayload): void {
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[Medora RoomAssignment] updateEncounterRoomAssignment", {
+      encounterId,
+      path: `/encounters/${encounterId}/room`,
+      payload,
+    });
+  }
+}
 
 export type RoomAssignmentModalProps = {
   open: boolean;
@@ -41,6 +52,8 @@ export type RoomAssignmentModalProps = {
   initialRoom?: string | null;
   /** Override unit when opening from bed board (K.10B.10D). */
   initialUnitCode?: EncounterCareUnitCode | null;
+  /** When true, apply initialRoom/initialUnitCode instead of encounter current room. */
+  prefillFromBedBoard?: boolean;
 };
 
 export function RoomAssignmentModal({
@@ -51,11 +64,15 @@ export function RoomAssignmentModal({
   onSaved,
   initialRoom,
   initialUnitCode,
+  prefillFromBedBoard = false,
 }: RoomAssignmentModalProps) {
   const { t, language } = useI18n();
   const unit = useMemo(
-    () => initialUnitCode ?? resolveEncounterRoomUnit(encounter),
-    [encounter, initialUnitCode]
+    () =>
+      prefillFromBedBoard && initialUnitCode
+        ? initialUnitCode
+        : resolveEncounterRoomUnit(encounter),
+    [encounter, initialUnitCode, prefillFromBedBoard]
   );
   const currentDisplay = useMemo(
     () => formatEncounterGovernedRoomDisplay(encounter, t),
@@ -74,8 +91,8 @@ export function RoomAssignmentModal({
   useEffect(() => {
     if (!open) return;
     const prefill =
-      initialRoom !== undefined && initialRoom !== null
-        ? initialRoom
+      prefillFromBedBoard && initialRoom != null && String(initialRoom).trim()
+        ? String(initialRoom).trim()
         : extractEncounterRoomInput(encounter);
     setRoomInput(prefill);
     setReasonCode("");
@@ -83,7 +100,7 @@ export function RoomAssignmentModal({
     setError(null);
     setOccupancyConflict(null);
     setBedStatusConflict(null);
-  }, [open, encounter, initialRoom]);
+  }, [open, encounter, initialRoom, prefillFromBedBoard]);
 
   const roomOptions = useMemo(
     () => (isEd ? buildEncounterRoomSelectOptions(encounter.roomLabel) : []),
@@ -104,7 +121,7 @@ export function RoomAssignmentModal({
       try {
         const roomValue =
           opts?.roomOverride !== undefined ? opts.roomOverride : roomInput.trim() || null;
-        const res = await updateEncounterRoomAssignment(facilityId, encounter.id, {
+        const payload: EncounterRoomUpdatePayload = {
           room: roomValue,
           unitCode: unit,
           reason: reasonCode || null,
@@ -114,7 +131,9 @@ export function RoomAssignmentModal({
           confirmBedStatusOverride: opts?.confirmBedStatusOverride,
           bedStatusOverrideReasonCode: opts?.bedStatusOverrideReasonCode,
           bedStatusOverrideReasonText: opts?.bedStatusOverrideReasonText,
-        });
+        };
+        traceRoomAssignmentSave(encounter.id, payload);
+        const res = await updateEncounterRoomAssignment(facilityId, encounter.id, payload);
         await onSaved(res);
         onClose();
       } catch (err) {

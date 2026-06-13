@@ -1,0 +1,61 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+
+const webSrcRoot = join(import.meta.dirname, "../..");
+
+function readSrc(relativePath: string): string {
+  return readFileSync(join(webSrcRoot, relativePath), "utf8");
+}
+
+describe("Interactive bed board integration (K.10B.10D)", () => {
+  it("EmergencyTrackboardView adds trackboard / bed board toggle", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    expect(trackboard).toContain('data-testid="emergency-trackboard-view-toggle"');
+    expect(trackboard).toContain('boardViewMode === "bedBoard"');
+    expect(trackboard).toContain("BedBoardUnitSection");
+  });
+
+  it("available bed opens RoomAssignmentModal with bed-board prefill only", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    expect(trackboard).toContain("BedBoardAssignEncounterPicker");
+    expect(trackboard).toContain("prefillFromBedBoard");
+    expect(trackboard).toContain("setRoomAssignmentLaunch");
+  });
+
+  it("successful room save refreshes trackboard and bed board", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    expect(trackboard).toContain("handleRoomAssignmentSaved");
+    expect(trackboard).toContain("loadEncounters({ silent: true })");
+    expect(trackboard).toContain("refreshEdBedBoard");
+  });
+
+  it("save room still uses encounter room PATCH — not bed-board API", () => {
+    const modal = readSrc("components/encounters/RoomAssignmentModal.tsx");
+    expect(modal).toContain("updateEncounterRoomAssignment");
+    expect(modal).not.toContain("fetchFacilityBedBoard");
+    expect(modal).not.toContain("updateFacilityBedStatus");
+  });
+
+  it("HospitalizationBoardView renders MS ICU OBS bed board sections", () => {
+    const board = readSrc("features/hospitalization/HospitalizationBoardView.tsx");
+    expect(board).toContain('data-testid="hospitalization-bed-board"');
+    expect(board).toContain("BedBoardUnitSection");
+    expect(board).toContain('"MS"');
+    expect(board).toContain('"ICU"');
+    expect(board).toContain('"OBS"');
+  });
+
+  it("hospital assignment refresh composes board without page reload", () => {
+    const board = readSrc("features/hospitalization/HospitalizationBoardView.tsx");
+    expect(board).toContain("handleRoomAssignmentSaved");
+    expect(board).toContain("refreshFacilityBedBoard");
+    expect(board).toContain("loadEncounters({ silent: true })");
+  });
+
+  it("RoomAssignmentModal supports explicit bed-board prefill flag", () => {
+    const modal = readSrc("components/encounters/RoomAssignmentModal.tsx");
+    expect(modal).toContain("prefillFromBedBoard");
+    expect(modal).toContain("extractEncounterRoomInput(encounter)");
+  });
+});

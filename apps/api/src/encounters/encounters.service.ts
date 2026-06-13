@@ -118,6 +118,7 @@ import {
   formatCanonicalBedDisplay,
   resolveBedAssignmentForSave,
   ED_CANONICAL_WAITING_ROOM_LABEL,
+  isEdWaitingRoomLabel,
   type EdRoomOccupancyRow,
   type EncounterRoomUpdateDto,
   type EncounterCareUnitCode,
@@ -1921,7 +1922,12 @@ export class EncountersService {
     }
 
     const bedUnit = normalizeBedUnitCode(nextUnit);
-    if (requestedRoomRaw && bedUnit && !validateBedInPool(bedUnit, requestedRoomRaw)) {
+    if (
+      requestedRoomRaw &&
+      bedUnit &&
+      !isEdWaitingRoomLabel(requestedRoomRaw) &&
+      !validateBedInPool(bedUnit, requestedRoomRaw)
+    ) {
       throw new BadRequestException(
         `La chambre ${formatCanonicalBedDisplay(bedUnit, requestedRoomRaw)} n'est pas disponible dans le registre de l'unité.`
       );

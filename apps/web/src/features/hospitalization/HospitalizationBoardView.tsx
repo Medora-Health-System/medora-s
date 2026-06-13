@@ -16,7 +16,8 @@ import {
   fetchHospitalisationEncounters,
 } from "@/lib/clinicalWorklistApi";
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
-import type { ObservationOperationalSnapshot } from "@medora/shared";
+import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
+import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -25,12 +26,24 @@ import {
 } from "@/components/medora-card";
 import { mergeHospitalisationRowAfterAssign } from "./hospitalizationBoardAssignMerge";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
+import {
+  BedBoardAssignEncounterPicker,
+  type BedBoardAssignCandidate,
+} from "@/components/encounters/BedBoardAssignEncounterPicker";
 import { HospitalBedStatusChip } from "@/components/encounters/BedOperationalStatusChip";
-import { fetchFacilityBedBoard, indexBedBoardByKey, type FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import {
+  fetchFacilityBedBoard,
+  findBedBoardUnit,
+  indexBedBoardByKey,
+  type FacilityBedBoardBedRow,
+  type FacilityBedBoardResponse,
+} from "@/lib/bedBoardApi";
 import { lookupBedStatusForEncounter } from "@/lib/bedStatusDisplay";
 import {
   canAssignEncounterRoom,
   formatEncounterGovernedRoomDisplay,
+  resolveEncounterRoomUnit,
 } from "@/lib/governedRoomDisplay";
 import {
   compareObservationBoardRows,
@@ -480,9 +493,16 @@ export function HospitalizationBoardView() {
   /** Phase 14G-B — same self-assign flow as ER trackboard (operational ownership). */
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<{ id: string; message: string } | null>(null);
-  const [roomAssignmentEncounter, setRoomAssignmentEncounter] =
-    useState<HospitalisationBoardEncounterRow | null>(null);
+  const [roomAssignmentLaunch, setRoomAssignmentLaunch] = useState<{
+    encounter: HospitalisationBoardEncounterRow;
+    prefillFromBedBoard?: {
+      room: string;
+      unitCode: EncounterBedUnitCode;
+    };
+  } | null>(null);
   const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
+  const [facilityBedBoard, setFacilityBedBoard] = useState<FacilityBedBoardResponse | null>(null);
+  const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
@@ -545,6 +565,7 @@ export function HospitalizationBoardView() {
       ]);
       setEncounters(data || []);
       if (bedBoard) {
+        setFacilityBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
       }
     } catch (error) {
@@ -673,6 +694,62 @@ export function HospitalizationBoardView() {
 
   const observationCensus = useMemo(() => computeObservationBoardCensus(encounters), [encounters]);
   const observationStaffing = useMemo(() => computeObservationBoardStaffingPressure(encounters), [encounters]);
+
+  const hospitalBedBoardUnits = useMemo(() => {
+    const units: EncounterBedUnitCode[] = ["MS", "ICU", "OBS"];
+    return units
+      .map((unit) => (facilityBedBoard ? findBedBoardUnit(facilityBedBoard, unit) : null))
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+  }, [facilityBedBoard]);
+
+  const refreshFacilityBedBoard = useCallback(async () => {
+    const fid = effectiveFacilityId;
+    if (!fid) return;
+    const bedBoard = await fetchFacilityBedBoard(fid).catch(() => null);
+    if (bedBoard) {
+      setFacilityBedBoard(bedBoard);
+      setBedIndex(indexBedBoardByKey(bedBoard));
+    }
+  }, [effectiveFacilityId]);
+
+  const handleRoomAssignmentSaved = useCallback(
+    async (patch: EncounterRoomUpdateResponse) => {
+      const savedEncounterId = roomAssignmentLaunch?.encounter.id;
+      if (savedEncounterId) {
+        setEncounters((prev) =>
+          prev.map((row) =>
+            row.id === savedEncounterId
+              ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
+              : row
+          )
+        );
+      }
+      await Promise.all([loadEncounters({ silent: true }), refreshFacilityBedBoard()]);
+      setRoomAssignmentLaunch(null);
+    },
+    [loadEncounters, refreshFacilityBedBoard, roomAssignmentLaunch?.encounter.id]
+  );
+
+  const hospitalAssignCandidates = useMemo((): BedBoardAssignCandidate[] => {
+    if (!assignPickerBed) return [];
+    return encounters
+      .filter((row) => {
+        if ((row.roomLabel ?? "").trim()) return false;
+        const unit = resolveEncounterRoomUnit({
+          roomLabel: row.roomLabel,
+          type: row.type,
+          admissionSummaryJson: row.admissionSummaryJson,
+        });
+        return unit === assignPickerBed.unitCode;
+      })
+      .map((row) => ({
+        id: row.id,
+        label: fullPatientName(row.patient),
+        roomLabel: row.roomLabel,
+        type: row.type ?? "INPATIENT",
+        admissionSummaryJson: row.admissionSummaryJson,
+      }));
+  }, [assignPickerBed, encounters]);
 
   const filteredEncounters = useMemo(() => {
     let list = encounters.filter((encounter) =>
@@ -875,6 +952,22 @@ export function HospitalizationBoardView() {
             <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.45 }}>
               {t("hospitalizationBoard.operationalGuidanceFootnote")} {t("hospitalizationBoard.operationalNoAutoFootnote")}
             </p>
+          </section>
+        ) : null}
+
+        {hospitalBedBoardUnits.length > 0 ? (
+          <section data-testid="hospitalization-bed-board" style={{ marginBottom: 16 }}>
+            {hospitalBedBoardUnits.map((unitView) => (
+              <BedBoardUnitSection
+                key={unitView.unit}
+                unit={unitView.unit}
+                summary={unitView.summary}
+                beds={unitView.beds}
+                compact={usesCompactCensus}
+                canAssignRoom={canAssignRoom}
+                onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
+              />
+            ))}
           </section>
         ) : null}
 
@@ -1207,7 +1300,7 @@ export function HospitalizationBoardView() {
                         roomValue={room}
                         roomClickable={canAssignRoom}
                         roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
-                        onRoomClick={() => setRoomAssignmentEncounter(encounter)}
+                        onRoomClick={() => setRoomAssignmentLaunch({ encounter })}
                         centerTrailingMaxWidth={usesCompactCensus ? 200 : 260}
                         centerTrailing={
                           <div
@@ -1484,26 +1577,41 @@ export function HospitalizationBoardView() {
           </ul>
         )}
       </div>
-      {effectiveFacilityId && roomAssignmentEncounter ? (
+      {assignPickerBed ? (
+        <BedBoardAssignEncounterPicker
+          open
+          bed={assignPickerBed}
+          candidates={hospitalAssignCandidates}
+          onClose={() => setAssignPickerBed(null)}
+          onSelect={(candidate) => {
+            const encounter = encounters.find((row) => row.id === candidate.id);
+            if (!encounter || !assignPickerBed) return;
+            setRoomAssignmentLaunch({
+              encounter,
+              prefillFromBedBoard: {
+                room: assignPickerBed.room,
+                unitCode: assignPickerBed.unitCode,
+              },
+            });
+            setAssignPickerBed(null);
+          }}
+        />
+      ) : null}
+      {effectiveFacilityId && roomAssignmentLaunch ? (
         <RoomAssignmentModal
           open
           facilityId={effectiveFacilityId}
           encounter={{
-            id: roomAssignmentEncounter.id,
-            roomLabel: roomAssignmentEncounter.roomLabel,
-            type: roomAssignmentEncounter.type ?? "INPATIENT",
-            admissionSummaryJson: roomAssignmentEncounter.admissionSummaryJson,
+            id: roomAssignmentLaunch.encounter.id,
+            roomLabel: roomAssignmentLaunch.encounter.roomLabel,
+            type: roomAssignmentLaunch.encounter.type ?? "INPATIENT",
+            admissionSummaryJson: roomAssignmentLaunch.encounter.admissionSummaryJson,
           }}
-          onClose={() => setRoomAssignmentEncounter(null)}
-          onSaved={(patch) => {
-            setEncounters((prev) =>
-              prev.map((row) =>
-                row.id === roomAssignmentEncounter.id
-                  ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
-                  : row
-              )
-            );
-          }}
+          prefillFromBedBoard={Boolean(roomAssignmentLaunch.prefillFromBedBoard)}
+          initialRoom={roomAssignmentLaunch.prefillFromBedBoard?.room ?? null}
+          initialUnitCode={roomAssignmentLaunch.prefillFromBedBoard?.unitCode ?? null}
+          onClose={() => setRoomAssignmentLaunch(null)}
+          onSaved={handleRoomAssignmentSaved}
         />
       ) : null}
     </div>

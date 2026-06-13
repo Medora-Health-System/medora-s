@@ -45,8 +45,35 @@ describe("room assignment governance (K.10B.10 web)", () => {
 
   it("room assignment API calls PATCH /encounters/:id/room", () => {
     const api = readSrc("lib/roomAssignmentApi.ts");
-    expect(api).toContain("/encounters/${encounterId}/room");
+    expect(api).toContain("encounterRoomAssignmentPath");
+    expect(api).toContain("/encounters/");
+    expect(api).toContain("/room");
     expect(api).toContain('method: "PATCH"');
+  });
+
+  it("RoomAssignmentModal save calls updateEncounterRoomAssignment only", () => {
+    const modal = readSrc("components/encounters/RoomAssignmentModal.tsx");
+    expect(modal).toContain("updateEncounterRoomAssignment(facilityId, encounter.id, payload)");
+    expect(modal).not.toContain("fetchFacilityBedBoard");
+    expect(modal).not.toContain("updateFacilityBedStatus");
+    expect(modal).toContain("traceRoomAssignmentSave");
+  });
+
+  it("RoomAssignmentModal sends full governed room payload fields", () => {
+    const modal = readSrc("components/encounters/RoomAssignmentModal.tsx");
+    expect(modal).toContain("confirmOccupiedRoomAssignment");
+    expect(modal).toContain("roomOccupancyOverride");
+    expect(modal).toContain("confirmBedStatusOverride");
+    expect(modal).toContain("bedStatusOverrideReasonCode");
+    expect(modal).toContain("bedStatusOverrideReasonText");
+    expect(modal).toContain("reasonOther");
+    expect(modal).toContain("unitCode: unit");
+  });
+
+  it("trackboard row click opens modal without stale bed-board prefill", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    expect(trackboard).toContain('setRoomAssignmentLaunch({ encounter })');
+    expect(trackboard).toContain("prefillFromBedBoard={Boolean(roomAssignmentLaunch.prefillFromBedBoard)}");
   });
 
   it("RoomAssignmentModal surfaces backend API errors", () => {

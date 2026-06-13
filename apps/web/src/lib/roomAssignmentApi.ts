@@ -25,12 +25,17 @@ export type EncounterRoomUpdateResponse = {
   governedRoomHasAssignment?: boolean;
 };
 
+/** Canonical PATCH path for governed room assignment (K.10B.10). */
+export function encounterRoomAssignmentPath(encounterId: string): string {
+  return `/encounters/${encodeURIComponent(encounterId)}/room`;
+}
+
 export async function updateEncounterRoomAssignment(
   facilityId: string,
   encounterId: string,
   payload: EncounterRoomUpdatePayload
 ): Promise<EncounterRoomUpdateResponse> {
-  return apiFetch(`/encounters/${encounterId}/room`, {
+  return apiFetch(encounterRoomAssignmentPath(encounterId), {
     method: "PATCH",
     facilityId,
     body: JSON.stringify(payload),

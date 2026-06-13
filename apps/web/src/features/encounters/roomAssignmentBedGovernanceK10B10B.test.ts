@@ -36,7 +36,7 @@ describe("room assignment bed governance (K.10B.10B web)", () => {
     expect(modal).toContain("roomAssignment.occupancyConflictBody");
     expect(modal).toContain("{occupiedRoom}");
     const assignmentModal = readSrc("components/encounters/RoomAssignmentModal.tsx");
-    expect(assignmentModal).toContain("parseRoomOccupancyApiError");
+    expect(assignmentModal).toContain("parseRoomAssignmentApiError");
     expect(assignmentModal).toContain("EdRoomOccupancyConfirmModal");
   });
 
@@ -60,7 +60,9 @@ describe("room assignment bed governance (K.10B.10B web)", () => {
 
   it("room assignment endpoint remains PATCH /encounters/:id/room", () => {
     const api = readSrc("lib/roomAssignmentApi.ts");
-    expect(api).toContain("/encounters/${encounterId}/room");
+    expect(api).toContain("encounterRoomAssignmentPath");
+    expect(api).toContain("/encounters/");
+    expect(api).toContain("/room");
     expect(api).toContain('method: "PATCH"');
   });
 });
