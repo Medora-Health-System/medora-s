@@ -37,7 +37,7 @@ describe("formatOrderAttributionLines", () => {
         type: "LAB",
         createdByDisplay: { name: "Dr A", role: "PROVIDER", at: "2026-05-16T10:00:00Z" },
         lastActionDisplay: {
-          action: "COMPLETED",
+          action: "RESULTED",
           name: "Tech B",
           role: "LAB",
           at: "2026-05-16T11:00:00Z",
@@ -51,9 +51,68 @@ describe("formatOrderAttributionLines", () => {
     expect(lines[1]).toContain("Resulted by");
     expect(lines[1]).toContain("Tech B");
   });
+
+  it("shows separate provider acknowledgment without replacing resulted by", () => {
+    const lines = formatOrderAttributionLines(
+      {
+        type: "LAB",
+        createdByDisplay: { name: "Dr A", role: "PROVIDER", at: "2026-05-16T10:00:00Z" },
+        lastActionDisplay: {
+          action: "RESULTED",
+          name: "Tech B",
+          role: "LAB",
+          at: "2026-05-16T11:00:00Z",
+        },
+        resultAcknowledgedDisplay: {
+          action: "ACKNOWLEDGED",
+          name: "Dr A",
+          role: "PROVIDER",
+          at: "2026-05-16T12:00:00Z",
+        },
+      },
+      t,
+      "en",
+      "LAB"
+    );
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toContain("Tech B");
+    expect(lines[2]).toContain("Acknowledged by");
+    expect(lines[2]).toContain("Dr A");
+  });
 });
 
 describe("formatErOrderEventAttributionCell", () => {
+  it("prefers resulted by over acknowledged by for completed lab orders", () => {
+    const cell = formatErOrderEventAttributionCell(
+      {
+        type: "LAB",
+        createdByDisplay: { name: "Dr A", role: "PROVIDER", at: "2026-05-16T10:00:00Z" },
+        lastActionDisplay: {
+          action: "RESULTED",
+          name: "Tech B",
+          role: "LAB",
+          at: "2026-05-16T11:00:00Z",
+        },
+        resultAcknowledgedDisplay: {
+          action: "ACKNOWLEDGED",
+          name: "Dr A",
+          role: "PROVIDER",
+          at: "2026-05-16T12:00:00Z",
+        },
+      },
+      {
+        eventType: "COMPLETED",
+        performedByDisplayName: "Dr A",
+        roleSnapshot: "PROVIDER",
+        performedAt: "2026-05-16T12:00:00Z",
+      },
+      t,
+      "en"
+    );
+    expect(cell).toContain("Tech B");
+    expect(cell).toContain("Resulted by");
+  });
+
   it("does not label provider order creator as performer on completed lab order", () => {
     const cell = formatErOrderEventAttributionCell(
       {

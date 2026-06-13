@@ -50,6 +50,16 @@ import {
   type WorklistItemWorkflowAction,
 } from "@/lib/worklistLabRadUi";
 import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
+import {
+  isOrderItemAnyWorkflowPending,
+  isOrderItemWorkflowPending,
+  nextOrderItemStatusAfterWorkflowAction,
+  orderItemWorkflowPendingKey,
+  patchOrderItemStatusInSingleOrder,
+  ORDER_DETAIL_WORKFLOW_BUSY_LABEL_KEY,
+  workflowActionFailureMessageKey,
+  type OrderItemLifecycleWorkflowAction,
+} from "@/lib/orderItemWorkflowUi";
 import { DeptWorklistReadOnlyNotice } from "@/components/worklists/DeptWorklistReadOnlyNotice";
 import { resolveSelectedLineId } from "@/lib/departmentOrderDetailLineSelection";
 
@@ -177,7 +187,7 @@ export default function DepartmentOrderDetail({
   const [dispenseNdc, setDispenseNdc] = useState("");
   const [dispenseBusy, setDispenseBusy] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
-  const [pendingWorkflowItemId, setPendingWorkflowItemId] = useState<string | null>(null);
+  const [pendingWorkflowAction, setPendingWorkflowAction] = useState<string | null>(null);
 
   const labels = useMemo(() => {
     if (kind === "lab") {
@@ -207,9 +217,11 @@ export default function DepartmentOrderDetail({
     };
   }, [kind, t]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { silent?: boolean }) => {
     if (!facilityId || !orderId) return;
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await apiFetch(`/orders/${orderId}`, { facilityId });
@@ -218,9 +230,11 @@ export default function DepartmentOrderDetail({
       setOrder(null);
       setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("orderDetail.loadError"));
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, [facilityId, orderId, t]);
+  }, [facilityId, orderId, t, language]);
 
   useEffect(() => {
     void load();
@@ -258,15 +272,22 @@ export default function DepartmentOrderDetail({
   }, [highlightLineId, order, effectiveSelectedLineId]);
 
   const runWorkflowAction = async (itemId: string, action: WorklistItemWorkflowAction) => {
-    if (!facilityId || order?.status === "CANCELLED" || pendingWorkflowItemId) return;
+    if (!facilityId || order?.status === "CANCELLED" || isOrderItemAnyWorkflowPending(pendingWorkflowAction, itemId)) {
+      return;
+    }
     const item = (order?.items ?? []).find((i: any) => i.id === itemId);
     if (!item) return;
-    setPendingWorkflowItemId(itemId);
+    setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     try {
       await postWorklistItemWorkflowAction(action, itemId, facilityId, item.status);
-      await load();
+      setOrder((prev: unknown) =>
+        patchOrderItemStatusInSingleOrder(prev, itemId, nextOrderItemStatusAfterWorkflowAction(action))
+      );
+      void load({ silent: true });
+    } catch {
+      alert(t(workflowActionFailureMessageKey(action, "orderDetail")));
     } finally {
-      setPendingWorkflowItemId(null);
+      setPendingWorkflowAction(null);
     }
   };
 
@@ -470,7 +491,7 @@ export default function DepartmentOrderDetail({
             onStart={handleStart}
             onComplete={handleComplete}
             onSelectLine={() => setSelectedLineId(item.id)}
-            workflowBusy={pendingWorkflowItemId === item.id}
+            pendingWorkflowAction={pendingWorkflowAction}
             onOpenDispense={kind === "pharmacy" ? openDispense : undefined}
           />
         ))
@@ -638,7 +659,7 @@ function LineCard({
   onStart,
   onComplete,
   onSelectLine,
-  workflowBusy,
+  pendingWorkflowAction,
   onOpenDispense,
 }: {
   item: any;
@@ -670,7 +691,7 @@ function LineCard({
   onStart: (id: string) => Promise<void>;
   onComplete: (id: string) => Promise<void>;
   onSelectLine: () => void;
-  workflowBusy?: boolean;
+  pendingWorkflowAction?: string | null;
   onOpenDispense?: (item: any) => void;
 }) {
   const { t, language } = useI18n();
@@ -893,7 +914,14 @@ function LineCard({
   const showStartButton = nextWorkflowAction === "start";
   const showCompleteButton =
     nextWorkflowAction === "complete" && !(kind === "pharmacy" && !isAlreadyDispensed(item));
-  const workflowDisabled = Boolean(workflowBusy || saving);
+  const workflowDisabled = Boolean(isOrderItemAnyWorkflowPending(pendingWorkflowAction, item.id) || saving);
+
+  const detailWorkflowLabel = (action: OrderItemLifecycleWorkflowAction, idleKey: string): string => {
+    if (isOrderItemWorkflowPending(pendingWorkflowAction, item.id, action)) {
+      return t(ORDER_DETAIL_WORKFLOW_BUSY_LABEL_KEY[action]);
+    }
+    return t(idleKey);
+  };
 
   const workflowButtons = (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -905,7 +933,7 @@ function LineCard({
           onClick={() => onAck(item.id)}
           style={workflowPrimaryBtnStyle}
         >
-          {t("orderDetail.ackReceive")}
+          {detailWorkflowLabel("acknowledge", "orderDetail.ackReceive")}
         </button>
       ) : null}
       {showStartButton ? (
@@ -916,7 +944,7 @@ function LineCard({
           onClick={() => onStart(item.id)}
           style={workflowPrimaryBtnStyle}
         >
-          {t("orderDetail.startExam")}
+          {detailWorkflowLabel("start", "orderDetail.startExam")}
         </button>
       ) : null}
       {showCompleteButton ? (
@@ -927,7 +955,7 @@ function LineCard({
           onClick={() => onComplete(item.id)}
           style={workflowBtnStyle}
         >
-          {t("orderDetail.completeExam")}
+          {detailWorkflowLabel("complete", "orderDetail.completeExam")}
         </button>
       ) : null}
       {kind === "pharmacy" && onOpenDispense && (
@@ -1303,6 +1331,8 @@ function LineCard({
                 resultText={v.resultText}
                 attachments={v.attachments}
                 enteredByDisplayFr={v.enteredByDisplayFr}
+                acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
+                acknowledgedByProviderAt={v.acknowledgedByProviderAt}
                 catalogItemType={v.catalogItemType}
               />
             );
@@ -1336,7 +1366,7 @@ function LineCard({
                     onClick={() => onAck(item.id)}
                     style={workflowPrimaryBtnStyle}
                   >
-                    {t("orderDetail.ackReceive")}
+                    {detailWorkflowLabel("acknowledge", "orderDetail.ackReceive")}
                   </button>
                 </div>
               ) : null}
@@ -1348,7 +1378,7 @@ function LineCard({
                     onClick={() => onStart(item.id)}
                     style={workflowPrimaryBtnStyle}
                   >
-                    {t("orderDetail.startExam")}
+                    {detailWorkflowLabel("start", "orderDetail.startExam")}
                   </button>
                 </div>
               ) : null}

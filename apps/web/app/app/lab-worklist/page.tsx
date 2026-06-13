@@ -18,6 +18,15 @@ import {
   type WorklistItemWorkflowAction,
 } from "@/lib/worklistLabRadUi";
 import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
+import {
+  isOrderItemAnyWorkflowPending,
+  isOrderItemWorkflowPending,
+  nextOrderItemStatusAfterWorkflowAction,
+  orderItemWorkflowPendingKey,
+  patchOrderItemStatusInWorklistQueue,
+  WORKLIST_WORKFLOW_BUSY_LABEL_KEY,
+  workflowActionFailureMessageKey,
+} from "@/lib/orderItemWorkflowUi";
 import { DeptWorklistReadOnlyNotice } from "@/components/worklists/DeptWorklistReadOnlyNotice";
 import { summarizeLabRadWorklistOperational, type LabRadWorklistSortMode } from "@medora/shared";
 import {
@@ -220,7 +229,7 @@ export default function LabWorklistPage() {
   const [loading, setLoading] = useState(true);
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
-  const [pendingWorkflowItemId, setPendingWorkflowItemId] = useState<string | null>(null);
+  const [pendingWorkflowAction, setPendingWorkflowAction] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<LabRadWorklistSortMode>("OLDEST_FIRST");
@@ -267,9 +276,9 @@ export default function LabWorklistPage() {
     return () => clearInterval(interval);
   }, [ready, facilityId]);
 
-  const loadQueue = async () => {
+  const loadQueue = async (options?: { silent?: boolean }) => {
     if (!facilityId) return;
-    setLoading(true);
+    if (!options?.silent) setLoading(true);
     const pendingP = getPendingLabOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/lab", { facilityId });
@@ -280,7 +289,7 @@ export default function LabWorklistPage() {
     }
     const pendingRows = await pendingP;
     setPendingLocal(pendingRows);
-    setLoading(false);
+    if (!options?.silent) setLoading(false);
   };
 
   const filteredQueuePairs = useMemo(() => {
@@ -380,25 +389,33 @@ export default function LabWorklistPage() {
     itemId: string,
     itemStatus: string
   ) => {
-    if (!facilityId || pendingWorkflowItemId) return;
-    setPendingWorkflowItemId(itemId);
+    if (!facilityId || isOrderItemAnyWorkflowPending(pendingWorkflowAction, itemId)) return;
+    setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     setQueuedActionNotice(null);
     try {
       const { queued } = await postWorklistItemWorkflowAction(action, itemId, facilityId, itemStatus);
       setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
-      await loadQueue();
+      setQueue((prev) =>
+        patchOrderItemStatusInWorklistQueue(prev, itemId, nextOrderItemStatusAfterWorkflowAction(action))
+      );
+      void loadQueue({ silent: true });
     } catch (error) {
       console.error("Lab worklist workflow action failed:", error);
-      const errKey =
-        action === "acknowledge"
-          ? "worklistDepartments.shared.worklistActionAckFailed"
-          : action === "start"
-            ? "worklistDepartments.shared.worklistActionStartFailed"
-            : "worklistDepartments.shared.worklistActionCompleteFailed";
-      alert(t(errKey));
+      alert(t(workflowActionFailureMessageKey(action, "worklist")));
     } finally {
-      setPendingWorkflowItemId(null);
+      setPendingWorkflowAction(null);
     }
+  };
+
+  const workflowActionLabel = (
+    action: WorklistItemWorkflowAction,
+    itemId: string,
+    idleKey: string
+  ): string => {
+    if (isOrderItemWorkflowPending(pendingWorkflowAction, itemId, action)) {
+      return t(WORKLIST_WORKFLOW_BUSY_LABEL_KEY[action]);
+    }
+    return t(idleKey);
   };
 
   const renderActions = (order: any, item: any) => {
@@ -414,14 +431,14 @@ export default function LabWorklistPage() {
       orderCancelled: orderIsCancelled(order),
       viewerIsDeptActor: isLabTechActor,
     });
-    const workflowBusy = pendingWorkflowItemId === item.id;
+    const workflowBusy = isOrderItemAnyWorkflowPending(pendingWorkflowAction, item.id);
     const workflowLabel =
       workflowAction === "acknowledge"
-        ? t("worklistDepartments.shared.acknowledge")
+        ? workflowActionLabel("acknowledge", item.id, "worklistDepartments.shared.acknowledge")
         : workflowAction === "start"
-          ? t("worklistDepartments.shared.start")
+          ? workflowActionLabel("start", item.id, "worklistDepartments.shared.start")
           : workflowAction === "complete"
-            ? t("worklistDepartments.shared.complete")
+            ? workflowActionLabel("complete", item.id, "worklistDepartments.shared.complete")
             : null;
 
     if (orderIsCancelled(order) || worklistItemIsTerminal(item.status)) {

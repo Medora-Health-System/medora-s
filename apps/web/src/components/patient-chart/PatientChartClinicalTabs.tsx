@@ -322,6 +322,8 @@ export function PatientResultsTabContent({ chartSummary }: { chartSummary: Chart
               resultText={v.resultText}
               attachments={v.attachments}
               enteredByDisplayFr={v.enteredByDisplayFr}
+              acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
+              acknowledgedByProviderAt={v.acknowledgedByProviderAt}
               catalogItemType={v.catalogItemType}
             />
           );
@@ -401,6 +403,8 @@ export function PatientImagingTabContent({ chartSummary }: { chartSummary: Chart
                     resultText={v.resultText}
                     attachments={v.attachments}
                     enteredByDisplayFr={v.enteredByDisplayFr}
+              acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
+              acknowledgedByProviderAt={v.acknowledgedByProviderAt}
                     catalogItemType={v.catalogItemType}
                   />
                 );

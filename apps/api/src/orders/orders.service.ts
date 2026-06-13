@@ -23,6 +23,7 @@ import {
   type Prisma,
 } from "@prisma/client";
 import { assertCanTransition } from "../common/workflow/status.transitions";
+import { isResultClinicianAckOrderEvent } from "./order-lifecycle-event.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
 import {
@@ -167,6 +168,8 @@ type OrderLastActionDisplay = {
   at: Date | string;
 };
 
+type OrderResultAcknowledgedDisplay = OrderLastActionDisplay;
+
 type OrderAttributionOrder = {
   id: string;
   facilityId: string;
@@ -288,6 +291,14 @@ export class OrdersService {
       metadata: Prisma.JsonValue | null;
       performedBy: { firstName: string | null; lastName: string | null };
     }>;
+    resultAckEvents: Array<{
+      orderId: string;
+      eventType: OrderEventType;
+      performedAt: Date;
+      roleSnapshot: string | null;
+      metadata: Prisma.JsonValue | null;
+      performedBy: { firstName: string | null; lastName: string | null };
+    }>;
   }> {
     const createdMetadataByOrderId = new Map<string, Prisma.JsonValue | null>();
     const lastActionByOrderId = new Map<
@@ -301,9 +312,20 @@ export class OrdersService {
         performedBy: { firstName: string | null; lastName: string | null };
       }
     >();
+    const resultAckByOrderId = new Map<
+      string,
+      {
+        orderId: string;
+        eventType: OrderEventType;
+        performedAt: Date;
+        roleSnapshot: string | null;
+        metadata: Prisma.JsonValue | null;
+        performedBy: { firstName: string | null; lastName: string | null };
+      }
+    >();
 
     if (orderIds.length === 0) {
-      return { createdMetadataByOrderId, lastActionEvents: [] };
+      return { createdMetadataByOrderId, lastActionEvents: [], resultAckEvents: [] };
     }
 
     const attributionLookbackStart = encounterClinicalLookbackStart(
@@ -349,6 +371,12 @@ export class OrdersService {
     }
 
     for (const event of terminalEvents) {
+      if (isResultClinicianAckOrderEvent(event)) {
+        if (!resultAckByOrderId.has(event.orderId)) {
+          resultAckByOrderId.set(event.orderId, event);
+        }
+        continue;
+      }
       if (lastActionByOrderId.has(event.orderId)) continue;
       const action = this.actionFromOrderEvent(event);
       if (!action) continue;
@@ -358,6 +386,7 @@ export class OrdersService {
     return {
       createdMetadataByOrderId,
       lastActionEvents: [...lastActionByOrderId.values()],
+      resultAckEvents: [...resultAckByOrderId.values()],
     };
   }
 
@@ -371,6 +400,7 @@ export class OrdersService {
         authority: OrderAuthority;
         createdByDisplay: OrderCreatedByDisplay | null;
         lastActionDisplay: OrderLastActionDisplay | null;
+        resultAcknowledgedDisplay: OrderResultAcknowledgedDisplay | null;
       }
     >
   > {
@@ -380,6 +410,7 @@ export class OrdersService {
           authority: OrderAuthority;
           createdByDisplay: OrderCreatedByDisplay | null;
           lastActionDisplay: OrderLastActionDisplay | null;
+          resultAcknowledgedDisplay: OrderResultAcknowledgedDisplay | null;
         }
       >;
     }
@@ -409,10 +440,11 @@ export class OrdersService {
       orderIds.length ? this.loadAttributionEventsForOrders(orderIds) : Promise.resolve({
         createdMetadataByOrderId: new Map<string, Prisma.JsonValue | null>(),
         lastActionEvents: [],
+        resultAckEvents: [],
       }),
     ]);
 
-    const { createdMetadataByOrderId, lastActionEvents } = attributionEvents;
+    const { createdMetadataByOrderId, lastActionEvents, resultAckEvents } = attributionEvents;
 
     const creatorById = new Map(creatorRows.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
     const roleByUserFacility = new Map<string, string>();
@@ -436,6 +468,17 @@ export class OrdersService {
       });
     }
 
+    const resultAckByOrderId = new Map<string, OrderResultAcknowledgedDisplay>();
+    for (const event of resultAckEvents) {
+      const name = `${event.performedBy.firstName ?? ""} ${event.performedBy.lastName ?? ""}`.trim();
+      resultAckByOrderId.set(event.orderId, {
+        action: "ACKNOWLEDGED",
+        name,
+        role: event.roleSnapshot ?? null,
+        at: event.performedAt,
+      });
+    }
+
     return orders.map((order) => {
       const creatorName = order.orderedBy ? creatorById.get(order.orderedBy) : null;
       const createdByDisplay =
@@ -452,6 +495,7 @@ export class OrdersService {
         authority: this.authorityFromCreatedEvent(order, createdMetadataByOrderId.get(order.id)),
         createdByDisplay,
         lastActionDisplay: lastActionByOrderId.get(order.id) ?? null,
+        resultAcknowledgedDisplay: resultAckByOrderId.get(order.id) ?? null,
       };
     });
   }
@@ -517,16 +561,30 @@ export class OrdersService {
 
   async attachAttributionToOrders<T extends OrderAttributionOrder>(
     orders: T[]
-  ): Promise<Array<T & { createdByDisplay: OrderCreatedByDisplay | null; lastActionDisplay: OrderLastActionDisplay | null }>> {
+  ): Promise<
+    Array<
+      T & {
+        createdByDisplay: OrderCreatedByDisplay | null;
+        lastActionDisplay: OrderLastActionDisplay | null;
+        resultAcknowledgedDisplay: OrderResultAcknowledgedDisplay | null;
+      }
+    >
+  > {
     if (orders.length === 0) {
-      return [] as Array<T & { createdByDisplay: OrderCreatedByDisplay | null; lastActionDisplay: OrderLastActionDisplay | null }>;
+      return [] as Array<
+        T & {
+          createdByDisplay: OrderCreatedByDisplay | null;
+          lastActionDisplay: OrderLastActionDisplay | null;
+          resultAcknowledgedDisplay: OrderResultAcknowledgedDisplay | null;
+        }
+      >;
     }
 
     const orderIds = [...new Set(orders.map((o) => o.id).filter(Boolean))];
     const creatorIds = [...new Set(orders.map((o) => o.orderedBy).filter((id): id is string => Boolean(id)))];
     const facilityIds = [...new Set(orders.map((o) => o.facilityId).filter(Boolean))];
 
-    const [creatorRows, creatorRoleRows, { lastActionEvents }] = await Promise.all([
+    const [creatorRows, creatorRoleRows, { lastActionEvents, resultAckEvents }] = await Promise.all([
       creatorIds.length
         ? this.prisma.user.findMany({
             where: { id: { in: creatorIds } },
@@ -546,7 +604,7 @@ export class OrdersService {
         : Promise.resolve([]),
       orderIds.length
         ? this.loadAttributionEventsForOrders(orderIds)
-        : Promise.resolve({ createdMetadataByOrderId: new Map(), lastActionEvents: [] }),
+        : Promise.resolve({ createdMetadataByOrderId: new Map(), lastActionEvents: [], resultAckEvents: [] }),
     ]);
 
     const creatorById = new Map(creatorRows.map((u) => [u.id, `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim()]));
@@ -571,6 +629,17 @@ export class OrdersService {
       });
     }
 
+    const resultAckByOrderId = new Map<string, OrderResultAcknowledgedDisplay>();
+    for (const event of resultAckEvents) {
+      const name = `${event.performedBy.firstName ?? ""} ${event.performedBy.lastName ?? ""}`.trim();
+      resultAckByOrderId.set(event.orderId, {
+        action: "ACKNOWLEDGED",
+        name,
+        role: event.roleSnapshot ?? null,
+        at: event.performedAt,
+      });
+    }
+
     return orders.map((order) => {
       const creatorName = order.orderedBy ? creatorById.get(order.orderedBy) : null;
       const createdByDisplay =
@@ -589,6 +658,7 @@ export class OrdersService {
         ...order,
         createdByDisplay,
         lastActionDisplay,
+        resultAcknowledgedDisplay: resultAckByOrderId.get(order.id) ?? null,
       };
     });
   }

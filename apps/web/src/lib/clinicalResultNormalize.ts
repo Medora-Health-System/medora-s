@@ -50,6 +50,9 @@ export type ClinicalResultViewerInput = {
   attachments?: ResultAttachmentRow[] | null;
   /** Nom affichage du professionnel ayant saisi / validé le résultat */
   enteredByDisplayFr?: string | null;
+  /** Clinicien ayant accusé réception du résultat (séparé de l'auteur du résultat). */
+  acknowledgedByDisplayFr?: string | null;
+  acknowledgedByProviderAt?: string | null;
   /** Pour mise en page labo vs imagerie */
   catalogItemType?: "LAB_TEST" | "IMAGING_STUDY";
 };
@@ -70,6 +73,8 @@ export function clinicalResultFromOrderItemLike(item: {
     criticalValue?: boolean | null;
     resultData?: unknown;
     enteredByDisplayFr?: string | null;
+    acknowledgedByDisplayFr?: string | null;
+    acknowledgedByProviderAt?: string | null;
   } | null;
   /** When no display label is available (locale-aware UI). */
   emptyTitleFallback?: string;
@@ -104,6 +109,8 @@ export function clinicalResultFromOrderItemLike(item: {
     resultText: r?.resultText ?? null,
     attachments: attachmentsFromResultDataAll(r?.resultData ?? null),
     enteredByDisplayFr: r?.enteredByDisplayFr ?? null,
+    acknowledgedByDisplayFr: r?.acknowledgedByDisplayFr ?? null,
+    acknowledgedByProviderAt: r?.acknowledgedByProviderAt ?? null,
     catalogItemType:
       item.catalogItemType === "LAB_TEST" || item.catalogItemType === "IMAGING_STUDY"
         ? item.catalogItemType
@@ -128,6 +135,8 @@ export function clinicalResultFromChartOrderItem(
       effectiveFinalizedAtVersion?: number;
       criticalValue: boolean;
       enteredByDisplayFr?: string | null;
+      acknowledgedByDisplayFr?: string | null;
+      acknowledgedByProviderAt?: string | null;
       attachments?: ResultAttachmentRow[] | null;
     } | null;
   },
@@ -160,6 +169,8 @@ export function clinicalResultFromChartOrderItem(
     resultText: r?.resultText ?? null,
     attachments: r?.attachments?.length ? r.attachments : [],
     enteredByDisplayFr: r?.enteredByDisplayFr ?? null,
+    acknowledgedByDisplayFr: r?.acknowledgedByDisplayFr ?? null,
+    acknowledgedByProviderAt: r?.acknowledgedByProviderAt ?? null,
     catalogItemType:
       item.catalogItemType === "LAB_TEST" || item.catalogItemType === "IMAGING_STUDY"
         ? item.catalogItemType

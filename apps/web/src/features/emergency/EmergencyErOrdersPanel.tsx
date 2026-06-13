@@ -889,7 +889,8 @@ export function EmergencyErOrdersPanel({
   }, []);
 
   const runOrderItemLifecycleAction = async (itemId: string, op: "acknowledge" | "start" | "complete" | "nurse") => {
-    const busyKey = `${itemId}:${op}`;
+    if (isOrderItemAnyWorkflowPending(lineActionBusy, itemId)) return;
+    const busyKey = op === "nurse" ? `${itemId}:nurse` : orderItemWorkflowPendingKey(itemId, op);
     setLineActionBusy(busyKey);
     setOrderInfusionError(null);
     let postCompleteDocReminderKey: string | null = null;
@@ -918,14 +919,35 @@ export function EmergencyErOrdersPanel({
           ? `/orders/items/${itemId}/nurse-complete`
           : `/orders/items/${itemId}/${op === "acknowledge" ? "acknowledge" : op}`;
       await apiFetch(path, { method: "POST", facilityId });
+      if (op !== "nurse") {
+        setOrdersRaw((prev) =>
+          patchOrderItemStatusInOrdersRaw(prev, itemId, nextOrderItemStatusAfterWorkflowAction(op))
+        );
+      }
       setOrdersRefresh((x) => x + 1);
       if (postCompleteDocReminderKey) {
         setScheduledSubmitFlash(t(postCompleteDocReminderKey));
         window.setTimeout(() => setScheduledSubmitFlash(null), 8000);
       }
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      setOrderInfusionError(
+        normalizeUserFacingError(raw.trim() || null, language) || t("erEmergencyOrders.lineActionFailed")
+      );
     } finally {
       setLineActionBusy(null);
     }
+  };
+
+  const erLifecycleActionLabel = (
+    itemId: string,
+    action: OrderItemLifecycleWorkflowAction,
+    idleKey: string
+  ): string => {
+    if (isOrderItemWorkflowPending(lineActionBusy, itemId, action)) {
+      return t(ER_ORDER_ITEM_WORKFLOW_BUSY_LABEL_KEY[action]);
+    }
+    return t(idleKey);
   };
 
   const runInfusionAction = async (
@@ -1287,7 +1309,6 @@ export function EmergencyErOrdersPanel({
                               const directionsLine =
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
-                              const busy = lineActionBusy;
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel = shouldShowErOrderLineCancelAction(roles, item);
                               const lineCancelDisabled =
@@ -1331,12 +1352,10 @@ export function EmergencyErOrdersPanel({
                                       key="ack"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:acknowledge`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
                                     >
-                                      {busy === `${itemId}:acknowledge`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                      {erLifecycleActionLabel(itemId, "acknowledge", "erEmergencyOrders.acknowledgeOrder")}
                                     </button>
                                   );
                                 }
@@ -1347,12 +1366,12 @@ export function EmergencyErOrdersPanel({
                                       key="infusion-start"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:infusion-start`}
+                                      disabled={lineActionBusy === `${itemId}:infusion-start`}
                                       onClick={() =>
                                         requestErInfusionStart(itemId, item, routeSnapshot, catRow)
                                       }
                                     >
-                                      {busy === `${itemId}:infusion-start`
+                                      {lineActionBusy === `${itemId}:infusion-start`
                                         ? t("erEmergencyOrders.infusionStarting")
                                         : t("erEmergencyOrders.startInfusion")}
                                     </button>
@@ -1363,10 +1382,10 @@ export function EmergencyErOrdersPanel({
                                       key="infusion-stop"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:infusion-stop`}
+                                      disabled={lineActionBusy === `${itemId}:infusion-stop`}
                                       onClick={() => void runInfusionAction(itemId, "stop")}
                                     >
-                                      {busy === `${itemId}:infusion-stop`
+                                      {lineActionBusy === `${itemId}:infusion-stop`
                                         ? t("erEmergencyOrders.infusionStopping")
                                         : t("erEmergencyOrders.stopInfusion")}
                                     </button>
@@ -1378,10 +1397,10 @@ export function EmergencyErOrdersPanel({
                                     key="nurse"
                                     type="button"
                                     style={touchBtn()}
-                                    disabled={busy === `${itemId}:nurse`}
+                                    disabled={lineActionBusy === `${itemId}:nurse`}
                                     onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
                                   >
-                                    {busy === `${itemId}:nurse`
+                                    {lineActionBusy === `${itemId}:nurse`
                                       ? t("erEmergencyOrders.lineActionBusy")
                                       : t("erEmergencyOrders.nurseMarkBedsideComplete")}
                                   </button>
@@ -1417,12 +1436,10 @@ export function EmergencyErOrdersPanel({
                                       key="ack"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:acknowledge`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
                                     >
-                                      {busy === `${itemId}:acknowledge`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                      {erLifecycleActionLabel(itemId, "acknowledge", "erEmergencyOrders.acknowledgeOrder")}
                                     </button>
                                   );
                                 }
@@ -1432,12 +1449,10 @@ export function EmergencyErOrdersPanel({
                                       key="start"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:start`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
                                     >
-                                      {busy === `${itemId}:start`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.startOrder")}
+                                      {erLifecycleActionLabel(itemId, "start", "erEmergencyOrders.startOrder")}
                                     </button>
                                   );
                                 }
@@ -1447,12 +1462,10 @@ export function EmergencyErOrdersPanel({
                                       key="complete"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:complete`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
                                     >
-                                      {busy === `${itemId}:complete`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.completeOrder")}
+                                      {erLifecycleActionLabel(itemId, "complete", "erEmergencyOrders.completeOrder")}
                                     </button>
                                   );
                                 }
@@ -1690,7 +1703,6 @@ export function EmergencyErOrdersPanel({
                               const directionsLine =
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
-                              const busy = lineActionBusy;
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel = shouldShowErOrderLineCancelAction(roles, item);
                               const lineCancelDisabled =
@@ -1734,12 +1746,10 @@ export function EmergencyErOrdersPanel({
                                       key="ack"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:acknowledge`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
                                     >
-                                      {busy === `${itemId}:acknowledge`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                      {erLifecycleActionLabel(itemId, "acknowledge", "erEmergencyOrders.acknowledgeOrder")}
                                     </button>
                                   );
                                 }
@@ -1750,12 +1760,12 @@ export function EmergencyErOrdersPanel({
                                       key="infusion-start"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:infusion-start`}
+                                      disabled={lineActionBusy === `${itemId}:infusion-start`}
                                       onClick={() =>
                                         requestErInfusionStart(itemId, item, routeSnapshot, catRow)
                                       }
                                     >
-                                      {busy === `${itemId}:infusion-start`
+                                      {lineActionBusy === `${itemId}:infusion-start`
                                         ? t("erEmergencyOrders.infusionStarting")
                                         : t("erEmergencyOrders.startInfusion")}
                                     </button>
@@ -1766,10 +1776,10 @@ export function EmergencyErOrdersPanel({
                                       key="infusion-stop"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:infusion-stop`}
+                                      disabled={lineActionBusy === `${itemId}:infusion-stop`}
                                       onClick={() => void runInfusionAction(itemId, "stop")}
                                     >
-                                      {busy === `${itemId}:infusion-stop`
+                                      {lineActionBusy === `${itemId}:infusion-stop`
                                         ? t("erEmergencyOrders.infusionStopping")
                                         : t("erEmergencyOrders.stopInfusion")}
                                     </button>
@@ -1781,10 +1791,10 @@ export function EmergencyErOrdersPanel({
                                     key="nurse"
                                     type="button"
                                     style={touchBtn()}
-                                    disabled={busy === `${itemId}:nurse`}
+                                    disabled={lineActionBusy === `${itemId}:nurse`}
                                     onClick={() => void runOrderItemLifecycleAction(itemId, "nurse")}
                                   >
-                                    {busy === `${itemId}:nurse`
+                                    {lineActionBusy === `${itemId}:nurse`
                                       ? t("erEmergencyOrders.lineActionBusy")
                                       : t("erEmergencyOrders.nurseMarkBedsideComplete")}
                                   </button>
@@ -1820,12 +1830,10 @@ export function EmergencyErOrdersPanel({
                                       key="ack"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:acknowledge`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "acknowledge")}
                                     >
-                                      {busy === `${itemId}:acknowledge`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.acknowledgeOrder")}
+                                      {erLifecycleActionLabel(itemId, "acknowledge", "erEmergencyOrders.acknowledgeOrder")}
                                     </button>
                                   );
                                 }
@@ -1835,12 +1843,10 @@ export function EmergencyErOrdersPanel({
                                       key="start"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:start`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "start")}
                                     >
-                                      {busy === `${itemId}:start`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.startOrder")}
+                                      {erLifecycleActionLabel(itemId, "start", "erEmergencyOrders.startOrder")}
                                     </button>
                                   );
                                 }
@@ -1850,12 +1856,10 @@ export function EmergencyErOrdersPanel({
                                       key="complete"
                                       type="button"
                                       style={touchBtn()}
-                                      disabled={busy === `${itemId}:complete`}
+                                      disabled={isOrderItemAnyWorkflowPending(lineActionBusy, itemId)}
                                       onClick={() => void runOrderItemLifecycleAction(itemId, "complete")}
                                     >
-                                      {busy === `${itemId}:complete`
-                                        ? t("erEmergencyOrders.lineActionBusy")
-                                        : t("erEmergencyOrders.completeOrder")}
+                                      {erLifecycleActionLabel(itemId, "complete", "erEmergencyOrders.completeOrder")}
                                     </button>
                                   );
                                 }

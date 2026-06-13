@@ -330,6 +330,8 @@ export function EncounterResultsTab({
                 resultText={v.resultText}
                 attachments={v.attachments}
                 enteredByDisplayFr={v.enteredByDisplayFr}
+                acknowledgedByDisplayFr={v.acknowledgedByDisplayFr}
+                acknowledgedByProviderAt={v.acknowledgedByProviderAt}
                 catalogItemType={v.catalogItemType}
                 compact={compactResultViewer}
               />

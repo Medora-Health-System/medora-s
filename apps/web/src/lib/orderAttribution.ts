@@ -21,6 +21,8 @@ export type OrderAttributionCarrier = {
   createdAt?: string | Date | null;
   createdByDisplay?: OrderAttributionDisplay | null;
   lastActionDisplay?: OrderLastActionDisplay | null;
+  /** Provider/RN acknowledgment of a lab/imaging result — separate from result author. */
+  resultAcknowledgedDisplay?: OrderLastActionDisplay | null;
 };
 
 function fillTemplate(template: string, values: Record<string, string>): string {
@@ -108,6 +110,17 @@ export function formatOrderAttributionLines(
     }
   }
 
+  const resultAck = order.resultAcknowledgedDisplay;
+  if (resultAck?.name?.trim()) {
+    lines.push(
+      fillTemplate(t("attribution.acknowledgedBy"), {
+        name: displayName(resultAck.name, t),
+        role: displayRole(resultAck.role),
+        datetime: formatDateTime(resultAck.at, language),
+      })
+    );
+  }
+
   return lines.filter((line) => line.trim().length > 0);
 }
 
@@ -175,8 +188,8 @@ export function formatErOrderEventAttributionCell(
   }
 
   const performerLine =
-    lineForActionKind(lines, "PERFORMED", t) ??
     lineForActionKind(lines, "RESULTED", t) ??
+    lineForActionKind(lines, "PERFORMED", t) ??
     lineForActionKind(lines, "ACKNOWLEDGED", t);
   if (performerLine) return performerLine;
 

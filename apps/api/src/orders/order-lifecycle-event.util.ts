@@ -96,6 +96,19 @@ export async function writeOrderEventForResultLineOutcome(
  * Uses `OrderEventType.COMPLETED` + `metadata.lifecycleOutcome: "ACKNOWLEDGED"` for ER merge / audit.
  * Idempotent per order line via `metadata.dedupeKey`.
  */
+/** Provider/RN acknowledgment of an existing result — not the department result author. */
+export function isResultClinicianAckOrderEvent(input: {
+  eventType: OrderEventType;
+  metadata: Prisma.JsonValue | null;
+}): boolean {
+  if (input.eventType !== OrderEventType.COMPLETED) return false;
+  const metadata =
+    input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata)
+      ? (input.metadata as Record<string, unknown>)
+      : {};
+  return metadata.lifecycleOutcome === "ACKNOWLEDGED" && metadata.source === "RESULT_SERVICE";
+}
+
 export async function writeOrderEventForResultAcknowledgment(
   tx: Prisma.TransactionClient,
   input: {

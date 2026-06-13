@@ -142,6 +142,9 @@ type ClinicalResultViewerProps = {
   attachments?: ResultAttachmentRow[] | null;
   /** Nom du professionnel ayant saisi / validé (API enrichie) */
   enteredByDisplayFr?: string | null;
+  /** Clinicien ayant accusé réception du résultat (séparé de l'auteur). */
+  acknowledgedByDisplayFr?: string | null;
+  acknowledgedByProviderAt?: string | null;
   compact?: boolean;
   /** Mise en page labo (tableau) vs imagerie (sections rapport) */
   catalogItemType?: "LAB_TEST" | "IMAGING_STUDY";
@@ -535,6 +538,8 @@ export function ClinicalResultViewer({
   resultText,
   attachments,
   enteredByDisplayFr,
+  acknowledgedByDisplayFr,
+  acknowledgedByProviderAt,
   compact,
   catalogItemType,
 }: ClinicalResultViewerProps) {
@@ -571,12 +576,23 @@ export function ClinicalResultViewer({
       ) : null}
       {enteredByDisplayFr?.trim() ? (
         <div style={{ fontSize: 12, color: "#37474f", marginTop: 6 }}>
-          <strong>{t("clinicalResultViewer.validatedBy")}</strong> {enteredByDisplayFr.trim()}
+          <strong>
+            {catalogItemType === "LAB_TEST" || catalogItemType === "IMAGING_STUDY"
+              ? t("clinicalResultViewer.resultedBy")
+              : t("clinicalResultViewer.validatedBy")}
+          </strong>{" "}
+          {enteredByDisplayFr.trim()}
           {verifiedAt ? <> {whenTs(verifiedAt)}</> : null}
         </div>
       ) : verifiedAt ? (
         <div style={{ fontSize: 12, color: "#616161", marginTop: 6 }}>
           {fillTemplate(t("clinicalResultViewer.enteredVerifiedOn"), { datetime: new Date(verifiedAt).toLocaleString(dateLocale) })}
+        </div>
+      ) : null}
+      {acknowledgedByDisplayFr?.trim() ? (
+        <div style={{ fontSize: 12, color: "#37474f", marginTop: 6 }}>
+          <strong>{t("clinicalResultViewer.acknowledgedByProvider")}</strong> {acknowledgedByDisplayFr.trim()}
+          {acknowledgedByProviderAt ? <> {whenTs(acknowledgedByProviderAt)}</> : null}
         </div>
       ) : null}
       {(resultDocumentedAt || resultClinicalAt) &&
