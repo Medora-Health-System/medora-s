@@ -100,10 +100,6 @@ async function main() {
     )
   );
 
-  for (const facility of [facilityDR, facilityHT]) {
-    await ensureFacilityClinicalDepartments(prisma, facility.id, { defaultLanguage: "fr" });
-  }
-
   // Haiti geographic departments (MSPP departmental validators; codes ISO 3166-2, labels from haiti-departments.geojson)
   await Promise.all(
     HAITI_GEO_DEPARTMENTS.map((d) =>
@@ -164,23 +160,6 @@ async function main() {
     )
   );
 
-  // Platform principal keeps explicit MEDORA_SUPER_ADMIN role per facility.
-  await Promise.all(
-    [facilityDR.id, facilityHT.id].map((facilityId) =>
-      prisma.userRole.upsert({
-        where: {
-          userId_roleId_facilityId: {
-            userId: platformPrincipalUser.id,
-            roleId: medoraSuperAdminRole.id,
-            facilityId,
-          },
-        },
-        update: { isActive: true },
-        create: { userId: platformPrincipalUser.id, roleId: medoraSuperAdminRole.id, facilityId },
-      })
-    )
-  );
-
   // Platform principal (single account): création d’établissements et contrôles plateforme — atranchant@medora.local uniquement
   const platformPrincipalUser = await prisma.user.upsert({
     where: { email: "atranchant@medora.local" },
@@ -200,6 +179,23 @@ async function main() {
     },
   });
 
+  // Platform principal keeps explicit MEDORA_SUPER_ADMIN role per facility.
+  await Promise.all(
+    [facilityDR.id, facilityHT.id].map((facilityId) =>
+      prisma.userRole.upsert({
+        where: {
+          userId_roleId_facilityId: {
+            userId: platformPrincipalUser.id,
+            roleId: medoraSuperAdminRole.id,
+            facilityId,
+          },
+        },
+        update: { isActive: true },
+        create: { userId: platformPrincipalUser.id, roleId: medoraSuperAdminRole.id, facilityId },
+      })
+    )
+  );
+
   await Promise.all(
     [facilityDR.id, facilityHT.id].map((facilityId) =>
       prisma.userRole.upsert({
@@ -215,6 +211,10 @@ async function main() {
       })
     )
   );
+
+  for (const facility of [facilityDR, facilityHT]) {
+    await ensureFacilityClinicalDepartments(prisma, facility.id, { defaultLanguage: "fr" });
+  }
 
   const providerRole = roles.find((r) => r.code === RoleCode.PROVIDER)!;
   const rnRole = roles.find((r) => r.code === RoleCode.RN)!;
