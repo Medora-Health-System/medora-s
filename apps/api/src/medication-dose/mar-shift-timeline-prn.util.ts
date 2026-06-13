@@ -3,8 +3,10 @@ import {
   formatGovernedRoomDisplay,
   formatMarPrnFrequencyLabel,
   isPrnMedicationOrderClassification,
+  prnTimelineCellPriority,
   resolveMarPrnTimelineColumnKey,
   resolvePrnNextEligibleAt,
+  shouldRetainPrnTimelineItem,
   type MarShiftTimelineColumn,
 } from "@medora/shared";
 import type { PrismaService } from "../prisma/prisma.service";
@@ -62,6 +64,40 @@ export function appendMarShiftTimelineCellItem(
   }
   cell.items.push(item);
 }
+
+/** Replace lower-priority PRN cell for the same order item (K.10B.11 dedup). */
+export function upsertMarShiftTimelinePrnCellItem(
+  row: MarShiftTimelineRowWithKind,
+  columnKey: string,
+  item: MarShiftTimelineCellItem
+): void {
+  const incomingPriority = prnTimelineCellPriority({
+    doseStatus: item.doseStatus,
+    readOnly: item.readOnly,
+    secondaryText: item.secondaryText,
+    hasMedicationDoseInstanceId: Boolean(item.medicationDoseInstanceId?.trim()),
+  });
+
+  for (const cell of row.cells) {
+    cell.items = cell.items.filter((existing) => {
+      if (existing.orderItemId !== item.orderItemId || existing.isPrnBand !== true) {
+        return true;
+      }
+      const existingPriority = prnTimelineCellPriority({
+        doseStatus: existing.doseStatus,
+        readOnly: existing.readOnly,
+        secondaryText: existing.secondaryText,
+        hasMedicationDoseInstanceId: Boolean(existing.medicationDoseInstanceId?.trim()),
+      });
+      return existingPriority > incomingPriority;
+    });
+  }
+
+  row.cells = row.cells.filter((cell) => cell.items.length > 0);
+  appendMarShiftTimelineCellItem(row, columnKey, item);
+}
+
+export { shouldRetainPrnTimelineItem };
 
 export async function loadLastPrnAdministrationByOrderItemId(
   prisma: PrismaService,
@@ -126,6 +162,7 @@ export function buildMarShiftTimelinePrnCellTexts(input: {
   prnLastGivenAt?: string | null;
   prnNextEligibleAt?: string | null;
   facilityTimeZone: string;
+  secondaryTextOverride?: string | null;
 }): Pick<MarShiftTimelineCellItem, "primaryText" | "secondaryText" | "tertiaryText"> & {
   isPrnBand: true;
   prnFrequencyLabel: string;
@@ -142,6 +179,7 @@ export function buildMarShiftTimelinePrnCellTexts(input: {
     prnLastGivenAt: input.prnLastGivenAt,
     prnNextEligibleAt: input.prnNextEligibleAt,
     facilityTimeZone: input.facilityTimeZone,
+    secondaryTextOverride: input.secondaryTextOverride,
   });
   return {
     primaryText: display.primaryText,
@@ -228,6 +266,16 @@ export function mergeScheduledAndPrnMarShiftTimelineRows(
     }
   }
   return merged;
+}
+
+export function prnTerminalMarOverlapsShift(input: {
+  administeredAt: Date | null | undefined;
+  shiftStart: Date;
+  shiftEnd: Date;
+}): boolean {
+  if (!input.administeredAt) return false;
+  const time = input.administeredAt.getTime();
+  return time >= input.shiftStart.getTime() && time < input.shiftEnd.getTime();
 }
 
 export { isPrnMedicationOrderClassification };

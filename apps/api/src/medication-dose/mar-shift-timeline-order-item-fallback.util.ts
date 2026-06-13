@@ -25,8 +25,10 @@ import {
   buildMarShiftTimelinePrnCellTexts,
   isPrnMedicationOrderClassification,
   loadLastPrnAdministrationByOrderItemId,
+  prnTerminalMarOverlapsShift,
   resolveMarShiftTimelinePrnColumnKey,
   resolveMarShiftTimelinePrnTiming,
+  shouldRetainPrnTimelineItem,
 } from "./mar-shift-timeline-prn.util";
 import { OrderStatus } from "@prisma/client";
 import type { PrismaService } from "../prisma/prisma.service";
@@ -298,12 +300,19 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   });
 
   const candidateItems = orderItems.filter((row) => {
-    if (input.orderItemIdsWithDoseInstances.has(row.id)) return false;
     const isPrn = isPrnMedicationOrderClassification({
       frequencyCode: row.frequencyCode,
       directionsSig: row.notes,
     });
-    if (isPrn && input.visiblePrnOrderItemIds?.has(row.id)) return false;
+    if (isPrn) {
+      if (input.visiblePrnOrderItemIds?.has(row.id)) return false;
+      return true;
+    }
+
+    if (input.orderItemIdsWithDoseInstances.has(row.id)) {
+      return false;
+    }
+
     return shouldCreateMarShiftTimelineOrderItemFallback({
       frequencyCode: row.frequencyCode,
       notes: row.notes,
@@ -437,7 +446,47 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       terminalMarNotes: terminalMar?.notes,
     });
 
-    if (doseStatus === "COMPLETED" && !input.includeCompleted) continue;
+    if (
+      (doseStatus === "COMPLETED" || doseStatus === "HELD") &&
+      !input.includeCompleted &&
+      !shouldRetainPrnTimelineItem({
+        isPrnBand: isPrnMedicationOrderClassification({
+          frequencyCode: orderItem.frequencyCode,
+          directionsSig: orderItem.notes,
+        }),
+        doseStatus,
+        includeCompleted: input.includeCompleted,
+        secondaryText:
+          terminalMar?.marAction === "refused" || resolveMarShiftTimelineTerminalOutcome({
+            marAction: terminalMar?.marAction,
+            notes: terminalMar?.notes,
+          }) === "REFUSED"
+            ? "REFUSED"
+            : doseStatus === "HELD"
+              ? "HELD"
+              : null,
+      })
+    ) {
+      continue;
+    }
+
+    const isPrnCandidate = isPrnMedicationOrderClassification({
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig: orderItem.notes,
+    });
+    const terminalInShift = prnTerminalMarOverlapsShift({
+      administeredAt: terminalMar?.administeredAt,
+      shiftStart: input.shiftStart,
+      shiftEnd: input.shiftEnd,
+    });
+    if (
+      isPrnCandidate &&
+      input.visiblePrnOrderItemIds?.has(orderItem.id) &&
+      !terminalInShift &&
+      doseStatus === "DUE"
+    ) {
+      continue;
+    }
 
     const completedAdministration =
       doseStatus === "COMPLETED" &&
@@ -577,6 +626,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       doseValue || (orderItem.quantity != null ? String(orderItem.quantity) : null);
 
     if (isPrnBand) {
+      const prnSecondaryOverride =
+        terminalOutcome === "REFUSED" ? "REFUSED" : parsedStatus === "HELD" ? "HELD" : null;
       const prnCell = buildMarShiftTimelinePrnCellTexts({
         medicationLabel,
         doseAmount,
@@ -589,6 +640,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         prnLastGivenAt: prnTiming.prnLastGivenAt,
         prnNextEligibleAt: prnTiming.prnNextEligibleAt,
         facilityTimeZone: input.facilityTimeZone,
+        secondaryTextOverride: prnSecondaryOverride,
       });
       primaryText = prnCell.primaryText;
       secondaryText = prnCell.secondaryText;

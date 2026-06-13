@@ -60,9 +60,14 @@ describe("marShiftTimelineK10B9 — administration safety governance", () => {
     );
   });
 
-  it("PRN band color unchanged (K.10B.8 non-regression)", () => {
+  it("PRN band color unchanged for due PRN (K.10B.8 non-regression)", () => {
     const prn = marShiftTimelineItemStatusStyle("DUE", false, true, "PRN Q6H");
     expect(prn.backgroundColor).toBe("#FFFBE6");
+  });
+
+  it("completed PRN cell grays out inside PRN band (K.10B.11)", () => {
+    const completedPrn = marShiftTimelineItemStatusStyle("COMPLETED", true, true, "PO");
+    expect(completedPrn.backgroundColor).toBe(MAR_SHIFT_TIMELINE_STATUS_COLORS.administered.backgroundColor);
   });
 
   it("early administration governance exposes minutes delta", () => {

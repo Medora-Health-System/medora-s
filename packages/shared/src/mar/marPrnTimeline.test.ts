@@ -5,8 +5,12 @@ import {
   isPrnAdministrationBeforeNextEligible,
   isPrnMedicationOrderClassification,
   MAR_SHIFT_TIMELINE_STATUS_COLORS,
+  prnTimelineCellPriority,
   resolveMarShiftTimelineStatusColorKey,
   resolvePrnNextEligibleAt,
+  resolvePrnTimelinePlacementInstant,
+  resolvePrnTimelineTerminalDisplay,
+  shouldRetainPrnTimelineItem,
 } from "./marPrnTimeline.js";
 import { isPrnMedicationOrder } from "./medicationAdministrationPrnGovernance.js";
 
@@ -83,6 +87,55 @@ describe("marPrnTimeline (K.10B.8A PRN row)", () => {
   });
 });
 
+describe("marPrnTimeline permanence (K.10B.11)", () => {
+  it("shouldRetainPrnTimelineItem keeps terminal PRN when includeCompleted=false", () => {
+    expect(
+      shouldRetainPrnTimelineItem({
+        isPrnBand: true,
+        doseStatus: "COMPLETED",
+        includeCompleted: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldRetainPrnTimelineItem({
+        isPrnBand: true,
+        doseStatus: "DUE",
+        includeCompleted: false,
+      })
+    ).toBe(false);
+  });
+
+  it("resolvePrnTimelinePlacementInstant uses administeredAt for completed PRN", () => {
+    const placement = resolvePrnTimelinePlacementInstant({
+      doseStatus: "COMPLETED",
+      administeredAt: "2026-06-12T09:16:00.000Z",
+      referenceAt: new Date("2026-06-12T12:00:00.000Z"),
+    });
+    expect(placement.toISOString()).toBe("2026-06-12T09:16:00.000Z");
+  });
+
+  it("resolvePrnTimelineTerminalDisplay maps administered/refused/held", () => {
+    expect(
+      resolvePrnTimelineTerminalDisplay({ doseStatus: "COMPLETED", readOnly: true })?.colorKey
+    ).toBe("administered");
+    expect(
+      resolvePrnTimelineTerminalDisplay({
+        doseStatus: "COMPLETED",
+        secondaryText: "REFUSED",
+      })?.colorKey
+    ).toBe("refused");
+    expect(resolvePrnTimelineTerminalDisplay({ doseStatus: "HELD" })?.colorKey).toBe("held");
+  });
+
+  it("prnTimelineCellPriority prefers terminal over due dose instance", () => {
+    expect(
+      prnTimelineCellPriority({ doseStatus: "COMPLETED", readOnly: true, hasMedicationDoseInstanceId: true })
+    ).toBeGreaterThan(
+      prnTimelineCellPriority({ doseStatus: "DUE", hasMedicationDoseInstanceId: true })
+    );
+  });
+});
+
 describe("marShiftTimelineStatusColors (K.10B.8B)", () => {
   it("DONE/COMPLETED uses administered gray palette", () => {
     expect(resolveMarShiftTimelineStatusColorKey({ doseStatus: "COMPLETED", readOnly: true })).toBe(
@@ -129,5 +182,34 @@ describe("marShiftTimelineStatusColors (K.10B.8B)", () => {
       "prnRow"
     );
     expect(MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.backgroundColor).toBe("#FFFBE6");
+  });
+
+  it("administered PRN cell uses gray inside PRN band (K.10B.11)", () => {
+    expect(
+      resolveMarShiftTimelineStatusColorKey({
+        doseStatus: "COMPLETED",
+        readOnly: true,
+        isPrnBand: true,
+      })
+    ).toBe("administered");
+  });
+
+  it("refused PRN cell uses refused gray inside PRN band (K.10B.11)", () => {
+    expect(
+      resolveMarShiftTimelineStatusColorKey({
+        doseStatus: "COMPLETED",
+        isPrnBand: true,
+        secondaryText: "REFUSED",
+      })
+    ).toBe("refused");
+  });
+
+  it("held PRN cell uses amber inside PRN band (K.10B.11)", () => {
+    expect(
+      resolveMarShiftTimelineStatusColorKey({
+        doseStatus: "HELD",
+        isPrnBand: true,
+      })
+    ).toBe("held");
   });
 });

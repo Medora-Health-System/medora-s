@@ -2170,4 +2170,178 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       }
     );
   });
+
+  describe("PRN row permanence (K.10B.11)", () => {
+    function prnTimelineItems(
+      result: Awaited<ReturnType<MarShiftTimelineService["getMarShiftTimeline"]>>
+    ) {
+      return result.rows
+        .filter((row) => row.rowKind === "PRN")
+        .flatMap((row) => row.cells.flatMap((cell) => cell.items));
+    }
+
+    async function createPrnOrder(encounterId: string) {
+      return createDirectMarOrder(encounterId, {
+        frequencyCode: "Q6H" as MedicationFrequencyCode,
+        route: "PO" as MedicationRoute,
+        catalogItemId: normalSalineCatalogId,
+        notes: "650 mg PO q6h PRN fever",
+      });
+    }
+
+    it("administered PRN at 09:16 remains in PRN row at 09A gray", async () => {
+      const encounter = await createEncounterWithNurse();
+      const administeredAt = new Date("2026-06-11T09:16:00.000Z");
+      const { orderItem } = await createPrnOrder(encounter.id);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      const prnRow = result.rows.find((row) => row.rowKind === "PRN");
+      expect(prnRow).toBeTruthy();
+      const item = prnTimelineItems(result).find((i) => i.orderItemId === orderItem.id);
+      expect(item).toBeTruthy();
+      expect(item?.doseStatus).toBe("COMPLETED");
+      expect(item?.readOnly).toBe(true);
+      expect(item?.isPrnBand).toBe(true);
+      expect(columnLabelForOrderItem(result, orderItem.id)).toBe("09A");
+    });
+
+    it("PRN row remains when only PRN med is terminal (includeCompleted=false)", async () => {
+      const encounter = await createEncounterWithNurse();
+      const administeredAt = new Date("2026-06-11T09:16:00.000Z");
+      const { orderItem } = await createPrnOrder(encounter.id);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: false,
+      });
+
+      expect(result.rows.some((row) => row.rowKind === "PRN")).toBe(true);
+      expect(prnTimelineItems(result).some((i) => i.orderItemId === orderItem.id)).toBe(true);
+    });
+
+    it("PRN fallback is not duplicated when terminal MAR exists in shift", async () => {
+      const encounter = await createEncounterWithNurse();
+      const administeredAt = new Date("2026-06-11T09:16:00.000Z");
+      const { orderItem } = await createPrnOrder(encounter.id);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      expect(prnTimelineItems(result).filter((i) => i.orderItemId === orderItem.id)).toHaveLength(1);
+    });
+
+    it("scheduled MAR row unaffected when PRN administered", async () => {
+      const encounter = await createEncounterWithNurse();
+      const doses = await createBidOrder(encounter.id);
+      const scheduledDose = doses[0]!;
+      await prisma.medicationDoseInstance.update({
+        where: { id: scheduledDose.id },
+        data: {
+          doseStatus: "DUE",
+          scheduledAt: new Date("2026-06-11T10:00:00.000Z"),
+          dueWindowStartAt: new Date("2026-06-11T10:00:00.000Z"),
+          dueWindowEndAt: new Date("2026-06-11T11:00:00.000Z"),
+        },
+      });
+
+      const administeredAt = new Date("2026-06-11T09:16:00.000Z");
+      const { orderItem: prnOrderItem } = await createPrnOrder(encounter.id);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: prnOrderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      const scheduledRow = result.rows.find((row) => row.rowKind !== "PRN");
+      expect(scheduledRow).toBeTruthy();
+      expect(
+        scheduledRow?.cells
+          .flatMap((cell) => cell.items)
+          .some((i) => i.medicationDoseInstanceId === scheduledDose.id)
+      ).toBe(true);
+      expect(result.rows.some((row) => row.rowKind === "PRN")).toBe(true);
+    });
+  });
 });

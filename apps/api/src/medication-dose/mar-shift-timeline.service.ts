@@ -48,11 +48,11 @@ import {
   createEmptyMarShiftTimelineRow,
   isPrnMedicationOrderClassification,
   loadLastPrnAdministrationByOrderItemId,
-  marShiftTimelinePrnRowHasOrderItem,
   mergeScheduledAndPrnMarShiftTimelineRows,
   buildMarShiftTimelinePrnCellTexts,
   resolveMarShiftTimelinePrnColumnKey,
   resolveMarShiftTimelinePrnTiming,
+  upsertMarShiftTimelinePrnCellItem,
   type MarShiftTimelineRowWithKind,
 } from "./mar-shift-timeline-prn.util";
 
@@ -320,16 +320,40 @@ export class MarShiftTimelineService {
       );
 
     const orderItemIdsForDirections = [...new Set(doses.map((d) => d.orderItemId))];
+    const encounterOrderItemNotesRows =
+      query.encounterId != null
+        ? await this.prisma.orderItem.findMany({
+            where: {
+              catalogItemType: "MEDICATION",
+              order: {
+                encounterId: query.encounterId,
+                facilityId,
+                type: "MEDICATION",
+              },
+            },
+            select: { id: true, notes: true, frequencyCode: true },
+          })
+        : [];
     const orderItemNotesRows =
       orderItemIdsForDirections.length > 0
         ? await this.prisma.orderItem.findMany({
             where: { id: { in: orderItemIdsForDirections } },
-            select: { id: true, notes: true },
+            select: { id: true, notes: true, frequencyCode: true },
           })
         : [];
-    const directionsSigByOrderItemId = new Map(
-      orderItemNotesRows.map((row) => [row.id, row.notes?.trim() || null])
-    );
+    const directionsSigByOrderItemId = new Map<string, string | null>();
+    for (const row of [...encounterOrderItemNotesRows, ...orderItemNotesRows]) {
+      directionsSigByOrderItemId.set(row.id, row.notes?.trim() || null);
+    }
+
+    const prnOrderItemIdsFromEncounter = encounterOrderItemNotesRows
+      .filter((row) =>
+        isPrnMedicationOrderClassification({
+          frequencyCode: row.frequencyCode,
+          directionsSig: row.notes,
+        })
+      )
+      .map((row) => row.id);
 
     const orderIds = [...new Set(doses.map((d) => d.orderId))];
     const orderEventRows =
@@ -351,16 +375,17 @@ export class MarShiftTimelineService {
     const orderItemIdsWithDoseInstances = new Set(doses.map((d) => d.orderItemId));
 
     const prnOrderItemIds = [
-      ...new Set(
-        doses
+      ...new Set([
+        ...prnOrderItemIdsFromEncounter,
+        ...doses
           .filter((d) =>
             isPrnMedicationOrderClassification({
               frequencyCode: parseFrequencySnapshot(d.frequencySnapshotJson)?.frequencyCode ?? null,
               directionsSig: directionsSigByOrderItemId.get(d.orderItemId) ?? null,
             })
           )
-          .map((d) => d.orderItemId)
-      ),
+          .map((d) => d.orderItemId),
+      ]),
     ];
     const lastPrnAdminByOrderItemId = await loadLastPrnAdministrationByOrderItemId(
       this.prisma,
@@ -400,6 +425,13 @@ export class MarShiftTimelineService {
       const parsedStatus = parseMedicationDoseStatus(dose.doseStatus);
       if (!parsedStatus) continue;
 
+      const directionsSigEarly = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
+      const frequencySnapshotEarly = parseFrequencySnapshot(dose.frequencySnapshotJson);
+      const isPrnBandEarly = isPrnMedicationOrderClassification({
+        frequencyCode: frequencySnapshotEarly?.frequencyCode ?? null,
+        directionsSig: directionsSigEarly,
+      });
+
       if (
         !shouldIncludeMarShiftTimelineDose({
           doseKind: dose.doseKind,
@@ -407,6 +439,7 @@ export class MarShiftTimelineService {
           ivpbSchedulingEnabled,
           includeCompleted,
           includeUpcoming,
+          isPrnBand: isPrnBandEarly,
         })
       ) {
         continue;
@@ -656,10 +689,11 @@ export class MarShiftTimelineService {
       };
       const { scheduled, prn } = ensureRowMaps(rowMeta);
       const targetRow = isPrnBand ? prn : scheduled;
-      if (isPrnBand && marShiftTimelinePrnRowHasOrderItem(prn, dose.orderItemId)) {
-        continue;
+      if (isPrnBand) {
+        upsertMarShiftTimelinePrnCellItem(targetRow, columnKey, item);
+      } else {
+        appendMarShiftTimelineCellItem(targetRow, columnKey, item);
       }
-      appendMarShiftTimelineCellItem(targetRow, columnKey, item);
     }
 
     const visiblePrnOrderItemIds = collectVisiblePrnOrderItemIds(prnRowMap);
@@ -694,17 +728,16 @@ export class MarShiftTimelineService {
         assignedNurseUserId: placement.assignedNurseUserId,
       });
       const targetRow = isPrnBand ? prn : scheduled;
-      if (isPrnBand && marShiftTimelinePrnRowHasOrderItem(targetRow, placement.item.orderItemId)) {
+      if (isPrnBand) {
+        upsertMarShiftTimelinePrnCellItem(targetRow, placement.columnKey, placement.item);
         continue;
       }
       const existingCell = targetRow.cells.find((c) => c.columnKey === placement.columnKey);
-      const duplicate = isPrnBand
-        ? existingCell?.items.some((existing) => existing.orderItemId === placement.item.orderItemId)
-        : existingCell?.items.some(
-            (existing) =>
-              existing.orderItemId === placement.item.orderItemId &&
-              !existing.medicationDoseInstanceId?.trim()
-          );
+      const duplicate = existingCell?.items.some(
+        (existing) =>
+          existing.orderItemId === placement.item.orderItemId &&
+          !existing.medicationDoseInstanceId?.trim()
+      );
       if (!duplicate) {
         appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
       }

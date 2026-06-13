@@ -46,7 +46,15 @@ export function resolveMarShiftTimelineStatusColorKey(input: {
   isPrnBand?: boolean;
   secondaryText?: string | null;
 }): MarShiftTimelineStatusColorKey {
-  if (input.isPrnBand) return "prnRow";
+  if (input.isPrnBand) {
+    const terminal = resolvePrnTimelineTerminalDisplay({
+      doseStatus: input.doseStatus,
+      readOnly: input.readOnly,
+      secondaryText: input.secondaryText,
+    });
+    if (terminal) return terminal.colorKey;
+    return "prnRow";
+  }
 
   const status = input.doseStatus.trim().toUpperCase();
   const secondary = input.secondaryText?.trim().toUpperCase() ?? "";
@@ -206,6 +214,7 @@ export function buildMarPrnTimelineCellDisplay(input: {
   prnLastGivenAt?: string | null;
   prnNextEligibleAt?: string | null;
   facilityTimeZone?: string;
+  secondaryTextOverride?: string | null;
 }): {
   primaryText: string;
   secondaryText: string;
@@ -223,6 +232,11 @@ export function buildMarPrnTimelineCellDisplay(input: {
   const primaryText = buildPrnMedPrimaryLabel(input.medicationLabel, input.route ?? null);
   const doseRouteLine = buildPrnDoseRouteLine(input.doseAmount ?? null, input.route ?? null);
 
+  const terminal = resolvePrnTimelineTerminalDisplay({
+    doseStatus: input.doseStatus,
+    secondaryText: input.secondaryTextOverride,
+  });
+
   if (status === "COMPLETED" && input.administeredAt) {
     const timeLabel = formatPrnTimelineTime(input.administeredAt, tz);
     const initials = input.administeredByInitials?.trim();
@@ -230,6 +244,27 @@ export function buildMarPrnTimelineCellDisplay(input: {
       primaryText,
       secondaryText: doseRouteLine,
       tertiaryText: initials ? `GIVEN ${timeLabel} ${initials}` : `GIVEN ${timeLabel}`,
+      availability: "given",
+    };
+  }
+
+  if (terminal?.colorKey === "refused" && input.administeredAt) {
+    const timeLabel = formatPrnTimelineTime(input.administeredAt, tz);
+    return {
+      primaryText,
+      secondaryText: "REFUSED",
+      tertiaryText: timeLabel ? `REFUSED ${timeLabel}` : "REFUSED",
+      availability: "given",
+    };
+  }
+
+  if (terminal?.colorKey === "held") {
+    const actedAt = input.administeredAt ?? input.prnLastGivenAt;
+    const timeLabel = actedAt ? formatPrnTimelineTime(actedAt, tz) : "";
+    return {
+      primaryText,
+      secondaryText: "HELD",
+      tertiaryText: timeLabel ? `HELD ${timeLabel}` : "HELD",
       availability: "given",
     };
   }
@@ -283,6 +318,14 @@ export function resolveMarPrnTimelinePlacementInstant(input: {
     if (!Number.isNaN(admin.getTime())) return admin;
   }
 
+  if (status === "HELD" || status === "REFUSED") {
+    const acted = input.administeredAt ?? input.prnLastGivenAt;
+    if (acted) {
+      const actedDate = new Date(acted);
+      if (!Number.isNaN(actedDate.getTime())) return actedDate;
+    }
+  }
+
   const nextEligibleMs = parseInstant(input.prnNextEligibleAt);
   if (nextEligibleMs != null && nextEligibleMs > input.referenceAt.getTime()) {
     return new Date(nextEligibleMs);
@@ -294,6 +337,64 @@ export function resolveMarPrnTimelinePlacementInstant(input: {
   }
 
   return input.referenceAt;
+}
+
+export type PrnTimelineTerminalDisplay = {
+  colorKey: Exclude<MarShiftTimelineStatusColorKey, "prnRow">;
+  availability: MarPrnTimelineCellAvailability;
+};
+
+/** Terminal PRN cell palette inside the yellow PRN band (K.10B.11). */
+export function resolvePrnTimelineTerminalDisplay(input: {
+  doseStatus: string;
+  readOnly?: boolean;
+  secondaryText?: string | null;
+}): PrnTimelineTerminalDisplay | null {
+  const status = input.doseStatus.trim().toUpperCase();
+  const secondary = input.secondaryText?.trim().toUpperCase() ?? "";
+
+  if (secondary === "REFUSED") {
+    return { colorKey: "refused", availability: "given" };
+  }
+  if (status === "HELD" || secondary === "HELD") {
+    return { colorKey: "held", availability: "given" };
+  }
+  if (status === "COMPLETED" || input.readOnly === true || secondary === "DONE") {
+    return { colorKey: "administered", availability: "given" };
+  }
+  return null;
+}
+
+/** PRN items remain on the timeline after terminal MAR even when includeCompleted=false. */
+export function shouldRetainPrnTimelineItem(input: {
+  isPrnBand: boolean;
+  doseStatus: string;
+  includeCompleted: boolean;
+  secondaryText?: string | null;
+}): boolean {
+  if (!input.isPrnBand) return false;
+  if (input.includeCompleted) return false;
+  return resolvePrnTimelineTerminalDisplay({
+    doseStatus: input.doseStatus,
+    secondaryText: input.secondaryText,
+  }) != null;
+}
+
+/** Alias for placement helper used by K.10B.11 specs. */
+export const resolvePrnTimelinePlacementInstant = resolveMarPrnTimelinePlacementInstant;
+
+export function prnTimelineCellPriority(input: {
+  doseStatus: string;
+  readOnly?: boolean;
+  secondaryText?: string | null;
+  hasMedicationDoseInstanceId?: boolean;
+}): number {
+  const terminal = resolvePrnTimelineTerminalDisplay(input);
+  if (terminal) return 300;
+  const status = input.doseStatus.trim().toUpperCase();
+  if (status === "DUE" || status === "IN_PROGRESS" || status === "PLANNED") return 200;
+  if (input.hasMedicationDoseInstanceId) return 100;
+  return 50;
 }
 
 export function resolveMarPrnTimelineColumnKey(input: {

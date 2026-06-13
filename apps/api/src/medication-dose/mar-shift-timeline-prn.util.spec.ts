@@ -2,6 +2,7 @@ import {
   collectVisiblePrnOrderItemIds,
   createEmptyMarShiftTimelineRow,
   marShiftTimelinePrnRowHasOrderItem,
+  upsertMarShiftTimelinePrnCellItem,
 } from "./mar-shift-timeline-prn.util";
 import type { MarShiftTimelineCellItem } from "./mar-shift-timeline.service";
 
@@ -95,5 +96,31 @@ describe("mar-shift-timeline-prn.util (K.10B.8B deduplication)", () => {
 
     expect(visible.has("oi-tylenol")).toBe(true);
     expect(marShiftTimelinePrnRowHasOrderItem(prnRow, "oi-tylenol")).toBe(true);
+  });
+
+  it("upsertMarShiftTimelinePrnCellItem prefers terminal cell over due dose instance", () => {
+    const prnRow = createEmptyMarShiftTimelineRow({
+      patientId: "p1",
+      encounterId: "e1",
+      patientDisplay: "PRN",
+      roomLabel: "2",
+      assignedNurseUserId: null,
+      rowKind: "PRN",
+    });
+    upsertMarShiftTimelinePrnCellItem(prnRow, "09A", {
+      ...prnItem("oi-tylenol", "dose-due"),
+      doseStatus: "DUE",
+    });
+    upsertMarShiftTimelinePrnCellItem(prnRow, "09A", {
+      ...prnItem("oi-tylenol", "dose-done"),
+      doseStatus: "COMPLETED",
+      readOnly: true,
+      administeredAt: "2026-06-12T09:16:00.000Z",
+      tertiaryText: "GIVEN 09:16 EP",
+    });
+    const items = prnRow.cells.flatMap((cell) => cell.items);
+    expect(items).toHaveLength(1);
+    expect(items[0]?.doseStatus).toBe("COMPLETED");
+    expect(items[0]?.readOnly).toBe(true);
   });
 });
