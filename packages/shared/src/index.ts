@@ -3,6 +3,8 @@ export * from "./constants/languages.js";
 export * from "./auth/professionResolver.js";
 export * from "./auth/departmentResolver.js";
 export * from "./auth/workspaceAuthorization.js";
+export * from "./auth/adminUserAssignment.js";
+export * from "./auth/navigationAuthorization.js";
 
 export * from "./password-policy.js";
 export * from "./schemas/auth.js";

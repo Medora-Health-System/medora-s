@@ -4,8 +4,15 @@
  * FRONT_DESK (seul) : accueil administratif — inscription, liste patients, suivis, facturation uniquement (voir APP_ROUTE_RULES).
  * Backend RBAC unchanged; this avoids pointless 403s in the UI.
  *
+ * MEDUI.NAV.ROLE.1 — when `navigationProfile` is supplied, `/app` landing uses profession + department navigation areas.
+ *
  * `APP_ROLE_CODES` must stay aligned with Prisma `RoleCode` and admin user assignment.
  */
+
+import {
+  getLandingRouteForNavigationProfile,
+  type NavigationProfileInput,
+} from "@medora/shared";
 
 /** Assignable / known app roles (single source for admin UI + docs). */
 export const APP_ROLE_CODES = [
@@ -259,9 +266,12 @@ function sortedRouteRules(): RouteRule[] {
 
 /**
  * Default landing path after login / when opening /app root.
- * First matching role in ROLE_LANDING order wins.
+ * First matching role in ROLE_LANDING order wins unless navigationProfile is supplied.
  */
-export function getLandingRouteForRoles(roles: string[]): string {
+export function getLandingRouteForRoles(
+  roles: string[],
+  options?: LandingRouteOptions
+): string {
   const set = normalizeRoleSet(roles);
   const hasFacilityAppRole = APP_ROLE_CODES.some((r) => set.has(r));
   const hasMsppOperational = MSPP_OPERATIONAL_ROLE_CODES.some((r) => set.has(r));
@@ -282,6 +292,9 @@ export function getLandingRouteForRoles(roles: string[]): string {
       if (set.has("MSPP_VACCINATIONS")) return "/app/public-health/vaccinations";
     }
     return "/app/mspp/dashboard";
+  }
+  if (options?.navigationProfile && hasFacilityAppRole) {
+    return getLandingRouteForNavigationProfile(options.navigationProfile);
   }
   if (hasTrackboardDefaultLanding(set)) {
     return DEFAULT_POST_LOGIN_PATH;
@@ -348,11 +361,11 @@ export function isAppPathAllowedForRoles(
 export function getRouteGuardRedirect(
   pathname: string,
   roles: string[],
-  options?: { canCreateFacilities?: boolean }
+  options?: LandingRouteOptions
 ): string | null {
   if (!pathname.startsWith("/app")) return null;
   if (pathname === "/app") {
-    return getLandingRouteForRoles(roles);
+    return getLandingRouteForRoles(roles, options);
   }
   const set = normalizeRoleSet(roles);
   const pathForRules = normalizeAppPathnameForRouteRules(pathname);
@@ -393,7 +406,17 @@ export function getPostLoginDestination(roles: string[], redirectParam: string |
 }
 
 /** Entrée `facilityRoles` telle que renvoyée par `/auth/login` et `/auth/me`. */
-export type AuthFacilityRole = { facilityId: string; role: string };
+export type AuthFacilityRole = {
+  facilityId: string;
+  role: string;
+  departmentCode?: string | null;
+};
+
+export type LandingRouteOptions = {
+  canCreateFacilities?: boolean;
+  /** MEDUI.NAV.ROLE.1 — profession + department landing for `/app` root only. */
+  navigationProfile?: NavigationProfileInput;
+};
 
 /** Tri stable (identique au tri côté API) pour choisir l’établissement de session. */
 export function sortAuthFacilityRoles<T extends { facilityId: string }>(entries: T[]): T[] {
@@ -432,5 +455,14 @@ export function getPostLoginDestinationForAuthUser(
   const roles = getRoleCodesForSessionFacility(facilityRoles, fid);
   const mspp = (msppRoles ?? []).map((r) => String(r).trim()).filter(Boolean);
   const merged = [...roles, ...mspp];
-  return getPostLoginDestination(merged, redirectParam);
+  const parsed = parseLoginRedirectParam(redirectParam ?? null);
+  if (parsed && isAppPathAllowedForRoles(parsed, merged)) return parsed;
+  const activeRow = fid ? facilityRoles.find((fr) => fr.facilityId === fid) : undefined;
+  return getLandingRouteForRoles(merged, {
+    navigationProfile: {
+      roleCodes: roles,
+      departmentCode: activeRow?.departmentCode ?? null,
+      prismaDepartmentCode: activeRow?.departmentCode ?? null,
+    },
+  });
 }

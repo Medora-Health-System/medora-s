@@ -8,6 +8,7 @@ import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
 } from "@/lib/jwtAccessTtl";
+import { filterSidebarNavItemsByNavigationAreas } from "@/features/navigation/navigationVisibility";
 /**
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
@@ -188,6 +189,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       .map((fr: any) => fr.role);
   };
 
+  const getActiveFacilityRoleRow = (): {
+    departmentCode?: string | null;
+  } | null => {
+    if (!user || !activeFacility) return null;
+    const rows = (user.facilityRoles as { facilityId?: string; departmentCode?: string | null }[]).filter(
+      (fr) => fr.facilityId === activeFacility
+    );
+    return rows[0] ?? null;
+  };
+
   const getActiveFacilityLanguage = () => {
     if (!user || !activeFacility) return undefined;
 
@@ -253,6 +264,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     navItems = navItems.filter((item) => pharmacyNavHrefs.has(item.href));
   }
 
+  if (!hasNationalMsppRoles && !isFrontDeskNavRestricted) {
+    const activeRoleRow = getActiveFacilityRoleRow();
+    navItems = filterSidebarNavItemsByNavigationAreas(navItems, {
+      roleCodes: activeRoles,
+      departmentCode: activeRoleRow?.departmentCode ?? null,
+      prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
+    });
+  }
+
   const groupedNavSections = groupSidebarNavItems(navItems);
 
   const pathname = usePathname() ?? "";
@@ -289,6 +309,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     const target = getRouteGuardRedirect(pathname, roles, {
       canCreateFacilities: user?.canCreateFacilities === true,
+      navigationProfile: {
+        roleCodes: facilityRoleCodes,
+        departmentCode: getActiveFacilityRoleRow()?.departmentCode ?? null,
+        prismaDepartmentCode: getActiveFacilityRoleRow()?.departmentCode ?? null,
+      },
     });
     if (target) {
       setRouteRedirecting(true);

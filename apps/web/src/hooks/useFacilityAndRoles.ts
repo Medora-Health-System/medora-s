@@ -43,6 +43,8 @@ export function useFacilityAndRoles() {
   const [facilityTimeZone, setFacilityTimeZone] = useState<string | null>(null);
   /** MEDUI.AUTH.ROLE.1 — active facility UserRole department assignment (nullable until admin UI wires it). */
   const [departmentId, setDepartmentId] = useState<string | null>(null);
+  /** Prisma `Department.code` for active facility role row (MEDUI.NAV.ROLE.1). */
+  const [departmentCode, setDepartmentCode] = useState<string | null>(null);
 
   const applySessionFromMe = useCallback((d: Record<string, unknown>) => {
     const meId = typeof d.id === "string" ? d.id : "";
@@ -71,6 +73,7 @@ export function useFacilityAndRoles() {
       setAllowRnLabResultSubmission(false);
       setFacilityTimeZone(null);
       setDepartmentId(null);
+      setDepartmentCode(null);
       setReady(true);
       return;
     }
@@ -86,6 +89,7 @@ export function useFacilityAndRoles() {
         timezone?: string;
         allowRnLabResultSubmission?: boolean;
         departmentId?: string | null;
+        departmentCode?: string | null;
       }[]) ?? [];
     setIsPlatformOperator(frsTyped.some((fr) => fr.role === "MEDORA_SUPER_ADMIN"));
     const r =
@@ -104,6 +108,10 @@ export function useFacilityAndRoles() {
     );
     const activeDepartmentId = activePolicyRow?.departmentId;
     setDepartmentId(typeof activeDepartmentId === "string" && activeDepartmentId.trim() ? activeDepartmentId : null);
+    const activeDepartmentCode = activePolicyRow?.departmentCode;
+    setDepartmentCode(
+      typeof activeDepartmentCode === "string" && activeDepartmentCode.trim() ? activeDepartmentCode : null
+    );
     const map = new Map<string, string>();
     for (const fr of (d.facilityRoles as { facilityId?: string; facilityName?: string }[]) ?? []) {
       const id = String(fr.facilityId);
@@ -203,6 +211,8 @@ export function useFacilityAndRoles() {
     facilityTimeZone,
     /** Active facility department assignment from `/auth/me` (`UserRole.departmentId`). */
     departmentId,
+    /** Prisma department code for active facility role row (`/auth/me`). */
+    departmentCode,
     /**
      * True when planned-administration defaults may use facility wall-clock (K.10B.4).
      * False while session loads; true with no facilityId when user has no active facility.

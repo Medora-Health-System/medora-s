@@ -2,7 +2,10 @@
  * Menu latéral du shell authentifié — consommé uniquement via `AppShell` (`app/app/layout.tsx`).
  * Libellés : clés i18n (`nav.*`, `navGroups.*`) ; résolution dans `AppShell` via `t()`.
  * Le filtrage RBAC reste dans `app/app/layout.tsx`.
+ * MEDUI.NAV.ROLE.1 : `navAreas` filtre la visibilité par profession + département (routes inchangées).
  */
+
+import type { NavigationArea } from "@medora/shared";
 
 export type NavAccent =
   | "slate"
@@ -111,49 +114,55 @@ export type SidebarNavItem = {
   accent: NavAccent;
   /** Si vrai : afficher seulement pour le compte principal plateforme (`/auth/me` → canCreateFacilities). */
   platformAdminOnly?: boolean;
+  /** MEDUI.NAV.ROLE.1 — when set, item requires at least one visible navigation area. */
+  navAreas?: NavigationArea[];
 };
 
 type SidebarNavItemDef = Omit<SidebarNavItem, "label"> & { labelKey: string };
 
 const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
-  { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate" },
+  { href: "/app/trackboard", labelKey: "nav.trackboard", roles: ["ADMIN", "PROVIDER", "RN"], group: "accueil", accent: "slate", navAreas: ["DASHBOARD"] },
   {
     href: "/app/emergency/trackboard",
     labelKey: "nav.emergency",
-    roles: ["ADMIN", "PROVIDER", "RN"],
+    roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"],
     group: "accueil",
     accent: "slate",
+    navAreas: ["EMERGENCY"],
   },
   {
     href: "/app/emergency/triage",
     labelKey: "nav.emergencyTriage",
-    roles: ["ADMIN", "PROVIDER", "RN"],
+    roles: ["ADMIN", "PROVIDER", "RN", "LAB", "RADIOLOGY"],
     group: "accueil",
     accent: "slate",
+    navAreas: ["EMERGENCY"],
   },
   { href: "/app/registration", labelKey: "nav.registration", roles: ["FRONT_DESK", "ADMIN"], group: "accueil", accent: "slate" },
-  { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal" },
-  { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue" },
-  { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
-  { href: "/app/encounters", labelKey: "nav.encounters", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate" },
+  { href: "/app/nursing", labelKey: "nav.nursing", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "teal", navAreas: ["EMERGENCY", "HOSPITAL"] },
+  { href: "/app/provider", labelKey: "nav.provider", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "blue", navAreas: ["EMERGENCY", "HOSPITAL"] },
+  { href: "/app/patients", labelKey: "nav.patients", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["DASHBOARD", "EMERGENCY", "HOSPITAL"] },
+  { href: "/app/encounters", labelKey: "nav.encounters", roles: ["RN", "PROVIDER", "ADMIN"], group: "soins_dossiers", accent: "slate", navAreas: ["EMERGENCY", "HOSPITAL"] },
   {
     href: "/app/hospitalisation",
     labelKey: "nav.hospitalisation",
     roles: ["ADMIN", "PROVIDER", "RN"],
     group: "soins_dossiers",
     accent: "slate",
+    navAreas: ["HOSPITAL"],
   },
-  { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate" },
-  { href: "/app/rad-worklist", labelKey: "nav.radWorklist", roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber" },
-  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "RN", "ADMIN"], group: "examens", accent: "purple" },
-  { href: "/app/pharmacy", labelKey: "nav.pharmacyQueue", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
-  { href: "/app/pharmacy-worklist", labelKey: "nav.pharmacyWorklist", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green" },
+  { href: "/app/follow-ups", labelKey: "nav.followUps", roles: ["RN", "PROVIDER", "ADMIN", "FRONT_DESK"], group: "soins_dossiers", accent: "slate", navAreas: ["EMERGENCY", "HOSPITAL"] },
+  { href: "/app/rad-worklist", labelKey: "nav.radWorklist", roles: ["RADIOLOGY", "ADMIN"], group: "examens", accent: "amber", navAreas: ["RADIOLOGY"] },
+  { href: "/app/lab-worklist", labelKey: "nav.labWorklist", roles: ["LAB", "RN", "ADMIN"], group: "examens", accent: "purple", navAreas: ["LABORATORY"] },
+  { href: "/app/pharmacy", labelKey: "nav.pharmacyQueue", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green", navAreas: ["PHARMACY"] },
+  { href: "/app/pharmacy-worklist", labelKey: "nav.pharmacyWorklist", roles: ["PHARMACY", "ADMIN"], group: "pharmacie", accent: "green", navAreas: ["PHARMACY"] },
   {
     href: "/app/pharmacy/inventory",
     labelKey: "nav.pharmacyInventory",
     roles: ["PHARMACY", "ADMIN"],
     group: "pharmacie",
     accent: "green",
+    navAreas: ["PHARMACY"],
   },
   {
     href: "/app/pharmacy/dispense",
@@ -161,6 +170,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["PHARMACY", "ADMIN"],
     group: "pharmacie",
     accent: "green",
+    navAreas: ["PHARMACY"],
   },
   {
     href: "/app/pharmacy/low-stock",
@@ -168,6 +178,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["PHARMACY", "ADMIN"],
     group: "pharmacie",
     accent: "green",
+    navAreas: ["PHARMACY"],
   },
   {
     href: "/app/pharmacy/expiring",
@@ -175,9 +186,10 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["PHARMACY", "ADMIN"],
     group: "pharmacie",
     accent: "green",
+    navAreas: ["PHARMACY"],
   },
-  { href: "/app/billing", labelKey: "nav.billing", roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo" },
-  { href: "/app/fracture", labelKey: "nav.fracture", roles: ["ADMIN"], group: "facturation", accent: "slate" },
+  { href: "/app/billing", labelKey: "nav.billing", roles: ["BILLING", "ADMIN", "FRONT_DESK"], group: "facturation", accent: "indigo", navAreas: ["BILLING"] },
+  { href: "/app/fracture", labelKey: "nav.fracture", roles: ["ADMIN"], group: "facturation", accent: "slate", navAreas: ["ADMINISTRATION"] },
   {
     href: "/app/public-health/summary",
     labelKey: "nav.publicHealth",
@@ -290,6 +302,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN", "MEDORA_SUPER_ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/admin/users",
@@ -297,6 +310,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN", "MEDORA_SUPER_ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/admin/audit",
@@ -304,6 +318,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN", "MEDORA_SUPER_ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/reports",
@@ -311,6 +326,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN", "MEDORA_SUPER_ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/admin/go-live",
@@ -318,6 +334,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN", "MEDORA_SUPER_ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/admin/exports",
@@ -332,6 +349,7 @@ const SIDEBAR_NAV_DEFS: SidebarNavItemDef[] = [
     roles: ["ADMIN"],
     group: "admin",
     accent: "redGray",
+    navAreas: ["ADMINISTRATION"],
   },
   {
     href: "/app/admin/roi-monitoring",
@@ -381,6 +399,7 @@ export const SIDEBAR_NAV_ITEMS: SidebarNavItem[] = SIDEBAR_NAV_DEFS.map((d) => (
   accent: d.accent,
   label: d.labelKey,
   platformAdminOnly: d.platformAdminOnly,
+  navAreas: d.navAreas,
 }));
 
 export function getSidebarNavItems(t: (key: string) => string): SidebarNavItem[] {
@@ -391,6 +410,7 @@ export function getSidebarNavItems(t: (key: string) => string): SidebarNavItem[]
     accent: d.accent,
     label: t(d.labelKey),
     platformAdminOnly: d.platformAdminOnly,
+    navAreas: d.navAreas,
   }));
 }
 
