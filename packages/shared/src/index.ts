@@ -37,6 +37,7 @@ export * from "./encounters/governedRoomLabel.js";
 export * from "./encounters/facilityBedGovernance.js";
 export * from "./encounters/bedOperationalStatus.js";
 export * from "./encounters/bedBoardComposition.js";
+export * from "./encounters/bedBoardView.js";
 export * from "./schemas/bedStatus.js";
 export * from "./clinicalDocumentation/clinicalDocumentationRegistry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationEntry.js";

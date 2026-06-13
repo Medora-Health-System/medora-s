@@ -1,28 +1,41 @@
 import { apiFetch } from "./apiClient";
-import type { BedOperationalStatus, BedStatusUpdateDto, EncounterBedUnitCode } from "@medora/shared";
+import type {
+  BedBoardOccupancySummary,
+  BedOperationalStatus,
+  BedStatusUpdateDto,
+  EncounterBedUnitCode,
+} from "@medora/shared";
 
 export type FacilityBedBoardBedRow = {
   bedKey: string;
   display: string;
+  storageKey: string;
+  displayKey: string;
   room: string;
   unitCode: EncounterBedUnitCode;
+  unit: EncounterBedUnitCode;
   status: BedOperationalStatus;
   statusSource: "derived" | "operational";
   occupantEncounterId: string | null;
   occupantPatientName: string | null;
+  patientDisplay: string | null;
   occupantMrn: string | null;
   reasonCode: string | null;
   reasonText: string | null;
   updatedAt: string | null;
 };
 
+export type FacilityBedBoardUnit = {
+  unit: EncounterBedUnitCode;
+  unitCode: EncounterBedUnitCode;
+  summary: BedBoardOccupancySummary;
+  beds: FacilityBedBoardBedRow[];
+};
+
 export type FacilityBedBoardResponse = {
   facilityId: string;
   generatedAt: string;
-  units: Array<{
-    unitCode: EncounterBedUnitCode;
-    beds: FacilityBedBoardBedRow[];
-  }>;
+  units: FacilityBedBoardUnit[];
 };
 
 export async function fetchFacilityBedBoard(
@@ -54,7 +67,15 @@ export function indexBedBoardByKey(
   for (const unit of board.units) {
     for (const bed of unit.beds) {
       map.set(bed.bedKey, bed);
+      map.set(bed.storageKey, bed);
     }
   }
   return map;
+}
+
+export function findBedBoardUnit(
+  board: FacilityBedBoardResponse,
+  unit: EncounterBedUnitCode
+): FacilityBedBoardUnit | null {
+  return board.units.find((row) => row.unit === unit || row.unitCode === unit) ?? null;
 }

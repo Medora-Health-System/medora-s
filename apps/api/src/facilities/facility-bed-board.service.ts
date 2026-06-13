@@ -12,6 +12,7 @@ import {
   type EncounterBedUnitCode,
   type BedOperationalStatus,
   buildCanonicalBedKey,
+  buildFacilityBedBoardView,
   composeFacilityBedBoard,
   findComposedBedBoardRow,
   formatCanonicalBedDisplay,
@@ -41,25 +42,31 @@ export class FacilityBedBoardService {
     if (unitFilter && !unit) {
       throw new BadRequestException("Invalid unit filter");
     }
-
-    const [encounters, overlays] = await Promise.all([
-      this.loadBedBoardOccupancyRows(facilityId),
-      this.loadOperationalOverlays(facilityId),
-    ]);
-
-    return composeFacilityBedBoard({
-      facilityId,
-      unitFilter: unit,
-      encounters,
-      overlays,
-    });
+    const composed = await this.loadComposedBedBoard(facilityId, unit);
+    return buildFacilityBedBoardView(composed);
   }
 
   async getEffectiveBedRow(facilityId: string, bedKey: string): Promise<ComposedBedBoardRow | null> {
     const parsed = parseCanonicalBedKey(bedKey);
     if (!parsed) return null;
-    const board = await this.getBedBoard(facilityId, parsed.unit);
+    const board = await this.loadComposedBedBoard(facilityId, parsed.unit);
     return findComposedBedBoardRow(board, bedKey);
+  }
+
+  private async loadComposedBedBoard(
+    facilityId: string,
+    unitFilter?: EncounterBedUnitCode | null
+  ) {
+    const [encounters, overlays] = await Promise.all([
+      this.loadBedBoardOccupancyRows(facilityId),
+      this.loadOperationalOverlays(facilityId),
+    ]);
+    return composeFacilityBedBoard({
+      facilityId,
+      unitFilter: unitFilter ?? null,
+      encounters,
+      overlays,
+    });
   }
 
   async updateBedStatus(
