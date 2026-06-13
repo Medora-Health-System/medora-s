@@ -79,6 +79,10 @@ import {
   EncounterGovernedRoomInline,
 } from "@/components/encounters/EncounterGovernedRoomChip";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import {
+  applyEncounterRoomAssignmentUpdate,
+  dispatchEncounterRoomAssignmentRefresh,
+} from "@/lib/applyEncounterRoomAssignmentUpdate";
 import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
 import { ObservationOrderTemplateModal } from "@/components/encounters/ObservationOrderTemplateModal";
 import { ObservationEncounterDisplayPill } from "@/components/encounters/ObservationEncounterDisplayPill";
@@ -1712,6 +1716,9 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
     roomLabel: encounter.roomLabel,
     type: encounter.type,
     admissionSummaryJson: encounter.admissionSummaryJson,
+    governedRoomDisplay: encounter.governedRoomDisplay,
+    governedRoomUnit: encounter.governedRoomUnit,
+    governedRoomHasAssignment: encounter.governedRoomHasAssignment,
   };
   const openRoomAssignmentModal = canAssignRoom ? () => setShowRoomAssignmentModal(true) : undefined;
 
@@ -3472,8 +3479,16 @@ function EncounterDetailPageInner({ session }: { session: ReturnType<typeof useF
           onClose={() => setShowRoomAssignmentModal(false)}
           onSaved={(patch) => {
             setEncounter((prev: typeof encounter) =>
-              prev ? { ...prev, roomLabel: patch.roomLabel ?? prev.roomLabel } : prev
+              prev ? applyEncounterRoomAssignmentUpdate(prev, patch) : prev
             );
+            if (facilityId) {
+              dispatchEncounterRoomAssignmentRefresh({
+                encounterId: encounter.id,
+                facilityId,
+                patch,
+              });
+            }
+            void loadEncounter({ silent: true });
           }}
         />
       ) : null}

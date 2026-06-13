@@ -25,9 +25,9 @@ describe("Interactive bed board integration (K.10B.10D)", () => {
 
   it("successful room save refreshes trackboard and bed board", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("handleRoomAssignmentSaved");
-    expect(trackboard).toContain("loadEncounters({ silent: true })");
-    expect(trackboard).toContain("refreshEdBedBoard");
+    expect(trackboard).toContain("applyEncounterRoomAssignmentUpdate");
+    expect(trackboard).toContain("void loadEncounters({ silent: true })");
+    expect(trackboard).toContain("void refreshEdBedBoard");
   });
 
   it("save room still uses encounter room PATCH — not bed-board API", () => {
@@ -48,9 +48,9 @@ describe("Interactive bed board integration (K.10B.10D)", () => {
 
   it("hospital assignment refresh composes board without page reload", () => {
     const board = readSrc("features/hospitalization/HospitalizationBoardView.tsx");
-    expect(board).toContain("handleRoomAssignmentSaved");
-    expect(board).toContain("refreshFacilityBedBoard");
-    expect(board).toContain("loadEncounters({ silent: true })");
+    expect(board).toContain("applyEncounterRoomAssignmentUpdate");
+    expect(board).toContain("void refreshFacilityBedBoard");
+    expect(board).toContain("void loadEncounters({ silent: true })");
   });
 
   it("RoomAssignmentModal supports explicit bed-board prefill flag", () => {

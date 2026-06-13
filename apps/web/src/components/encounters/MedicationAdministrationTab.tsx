@@ -36,6 +36,7 @@ import {
   type MedicationSafetyGovernanceDisplayInput,
 } from "@medora/shared";
 import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
+import { MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH } from "@/lib/applyEncounterRoomAssignmentUpdate";
 import {
   MarControlledSubstanceFields,
   marControlledWorkflowVisible,
@@ -595,6 +596,15 @@ export function MedicationAdministrationTab({
   });
   const timelineRefreshRef = useRef<(() => Promise<void>) | null>(null);
   const timelineCloseDrawerRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    const onRoomAssignmentRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ encounterId?: string }>).detail;
+      if (detail?.encounterId && detail.encounterId !== encounterId) return;
+      void timelineRefreshRef.current?.();
+    };
+    window.addEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+    return () => window.removeEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+  }, [encounterId]);
   const timelineReopenDrawerRef = useRef<
     ((orderItemId: string, medicationDoseInstanceId?: string | null, scheduledAt?: string | null) => void) | null
   >(null);

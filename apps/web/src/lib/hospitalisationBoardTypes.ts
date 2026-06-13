@@ -62,4 +62,7 @@ export type HospitalisationBoardEncounterRow = {
   nursingAssessment?: unknown;
   /** Phase 13B — server-computed observation / short-stay operational snapshot (INPATIENT only). */
   observationOps?: ObservationOperationalSnapshot | null;
+  governedRoomDisplay?: string | null;
+  governedRoomUnit?: string | null;
+  governedRoomHasAssignment?: boolean;
 };

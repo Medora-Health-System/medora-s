@@ -66,6 +66,10 @@ import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patien
 import { EncounterOperationalPanel } from "@/components/encounters/EncounterOperationalPanel";
 import { EncounterGovernedRoomChip } from "@/components/encounters/EncounterGovernedRoomChip";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
+import {
+  applyEncounterRoomAssignmentUpdate,
+  dispatchEncounterRoomAssignmentRefresh,
+} from "@/lib/applyEncounterRoomAssignmentUpdate";
 import { canAssignEncounterRoom } from "@/lib/governedRoomDisplay";
 import { ErHandoffV1NursingSection } from "@/components/encounters/ErHandoffV1Panel";
 import { isEncounterLocked } from "@/lib/encounterLock";
@@ -105,6 +109,9 @@ type EncounterShell = {
   createdAt?: string | null;
   updatedAt?: string | null;
   roomLabel?: string | null;
+  governedRoomDisplay?: string | null;
+  governedRoomUnit?: string | null;
+  governedRoomHasAssignment?: boolean;
   visitReason?: string | null;
   chiefComplaint?: string | null;
   admittedAt?: string | null;
@@ -487,6 +494,9 @@ export function EmergencyChartView() {
     roomLabel: encounter.roomLabel,
     type: encounter.type,
     admissionSummaryJson: encounter.admissionSummaryJson,
+    governedRoomDisplay: encounter.governedRoomDisplay,
+    governedRoomUnit: encounter.governedRoomUnit,
+    governedRoomHasAssignment: encounter.governedRoomHasAssignment,
   };
   const vitalsQuickEditEnabled =
     canFetchEncounterTriage && encounter.status === "OPEN" && !isLocked;
@@ -1114,8 +1124,15 @@ export function EmergencyChartView() {
           onClose={() => setShowRoomAssignmentModal(false)}
           onSaved={(patch) => {
             setEncounter((prev) =>
-              prev ? { ...prev, roomLabel: patch.roomLabel ?? prev.roomLabel } : prev
+              prev ? applyEncounterRoomAssignmentUpdate(prev, patch) : prev
             );
+            if (fid) {
+              dispatchEncounterRoomAssignmentRefresh({
+                encounterId: encounter.id,
+                facilityId: fid,
+                patch,
+              });
+            }
           }}
         />
       ) : null}

@@ -52,6 +52,15 @@ describe("governedRoomDisplay (K.10B.10 web)", () => {
     );
   });
 
+  it("prefers cached governedRoomDisplay from room assignment PATCH", () => {
+    expect(
+      formatEncounterGovernedRoomDisplay(
+        { roomLabel: "1", type: "EMERGENCY", governedRoomDisplay: "ED-5" },
+        t
+      )
+    ).toBe("ED-5");
+  });
+
   it("canAssignEncounterRoom allows RN/PROVIDER/ADMIN only", () => {
     expect(canAssignEncounterRoom(["RN"])).toBe(true);
     expect(canAssignEncounterRoom(["PROVIDER"])).toBe(true);

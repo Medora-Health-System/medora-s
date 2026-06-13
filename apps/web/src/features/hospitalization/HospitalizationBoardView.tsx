@@ -18,6 +18,7 @@ import {
 import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoardTypes";
 import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
+import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -713,19 +714,18 @@ export function HospitalizationBoardView() {
   }, [effectiveFacilityId]);
 
   const handleRoomAssignmentSaved = useCallback(
-    async (patch: EncounterRoomUpdateResponse) => {
-      const savedEncounterId = roomAssignmentLaunch?.encounter.id;
+    (patch: EncounterRoomUpdateResponse) => {
+      const savedEncounterId = patch.id || roomAssignmentLaunch?.encounter.id;
       if (savedEncounterId) {
         setEncounters((prev) =>
           prev.map((row) =>
-            row.id === savedEncounterId
-              ? { ...row, roomLabel: patch.roomLabel ?? row.roomLabel }
-              : row
+            row.id === savedEncounterId ? applyEncounterRoomAssignmentUpdate(row, patch) : row
           )
         );
       }
-      await Promise.all([loadEncounters({ silent: true }), refreshFacilityBedBoard()]);
       setRoomAssignmentLaunch(null);
+      void loadEncounters({ silent: true });
+      void refreshFacilityBedBoard();
     },
     [loadEncounters, refreshFacilityBedBoard, roomAssignmentLaunch?.encounter.id]
   );
@@ -1266,6 +1266,9 @@ export function HospitalizationBoardView() {
                   roomLabel: encounter.roomLabel,
                   type: encounter.type ?? "INPATIENT",
                   admissionSummaryJson: encounter.admissionSummaryJson,
+                  governedRoomDisplay: encounter.governedRoomDisplay,
+                  governedRoomUnit: encounter.governedRoomUnit,
+                  governedRoomHasAssignment: encounter.governedRoomHasAssignment,
                 },
                 t
               );

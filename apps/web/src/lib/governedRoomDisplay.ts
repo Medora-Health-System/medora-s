@@ -11,6 +11,9 @@ export type EncounterRoomContext = {
   type?: string | null;
   admissionSummaryJson?: unknown;
   unitCode?: EncounterCareUnitCode | null;
+  governedRoomDisplay?: string | null;
+  governedRoomUnit?: string | null;
+  governedRoomHasAssignment?: boolean;
 };
 
 /** Governed room label for dashboards, MAR, and headers (K.10B.10). */
@@ -18,11 +21,14 @@ export function formatEncounterGovernedRoomDisplay(
   encounter: EncounterRoomContext,
   t: (key: string) => string
 ): string {
+  const cached = encounter.governedRoomDisplay?.trim();
+  if (cached) return cached;
+
   return formatGovernedRoomDisplay({
     roomLabel: encounter.roomLabel,
     encounterType: encounter.type,
     admissionSummaryJson: encounter.admissionSummaryJson,
-    unitCode: encounter.unitCode ?? undefined,
+    unitCode: encounter.unitCode ?? encounter.governedRoomUnit ?? undefined,
     emptyLabel: t("roomAssignment.noRoomAssigned"),
     waitingRoomLabel: t("encounterRoom.waitingRoom"),
   }).display;

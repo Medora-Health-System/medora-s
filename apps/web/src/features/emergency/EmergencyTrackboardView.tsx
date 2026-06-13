@@ -35,6 +35,7 @@ import {
   sortRowsByRoomLabel,
 } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
+import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
 import {
@@ -191,6 +192,9 @@ type OpenEncounterRow = {
   nursingAssessment?: unknown;
   /** Phase 10B — read-only aggregates from `/trackboard` (no result text). */
   trackboardOps?: TrackboardOpsPayload | null;
+  governedRoomDisplay?: string | null;
+  governedRoomUnit?: string | null;
+  governedRoomHasAssignment?: boolean;
 };
 
 type EdRoomAssignmentLaunch = {
@@ -200,16 +204,6 @@ type EdRoomAssignmentLaunch = {
     unitCode: EncounterBedUnitCode;
   };
 };
-
-function mergeEncounterAfterRoomSave(
-  row: OpenEncounterRow,
-  patch: EncounterRoomUpdateResponse
-): OpenEncounterRow {
-  return {
-    ...row,
-    roomLabel: patch.roomLabel ?? row.roomLabel,
-  };
-}
 
 function dispositionBadgeSoft(variant: ErDispositionBadgeVariant): PriorityBadgeSoft {
   switch (variant) {
@@ -425,17 +419,18 @@ export function EmergencyTrackboardView() {
   }, [facilityId]);
 
   const handleRoomAssignmentSaved = useCallback(
-    async (patch: EncounterRoomUpdateResponse) => {
-      const savedEncounterId = roomAssignmentLaunch?.encounter.id;
+    (patch: EncounterRoomUpdateResponse) => {
+      const savedEncounterId = patch.id || roomAssignmentLaunch?.encounter.id;
       if (savedEncounterId) {
         setRows((prev) =>
           prev.map((row) =>
-            row.id === savedEncounterId ? mergeEncounterAfterRoomSave(row, patch) : row
+            row.id === savedEncounterId ? applyEncounterRoomAssignmentUpdate(row, patch) : row
           )
         );
       }
-      await Promise.all([loadEncounters({ silent: true }), refreshEdBedBoard()]);
       setRoomAssignmentLaunch(null);
+      void loadEncounters({ silent: true });
+      void refreshEdBedBoard();
     },
     [loadEncounters, refreshEdBedBoard, roomAssignmentLaunch?.encounter.id]
   );
@@ -741,6 +736,9 @@ export function EmergencyTrackboardView() {
                   roomLabel: encounter.roomLabel,
                   type: encounter.type ?? "EMERGENCY",
                   admissionSummaryJson: encounter.admissionSummaryJson,
+                  governedRoomDisplay: encounter.governedRoomDisplay,
+                  governedRoomUnit: encounter.governedRoomUnit,
+                  governedRoomHasAssignment: encounter.governedRoomHasAssignment,
                 },
                 t
               );
