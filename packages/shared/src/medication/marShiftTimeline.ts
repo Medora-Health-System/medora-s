@@ -1032,10 +1032,16 @@ export function shouldIncludeMarShiftTimelineDose(input: {
   ivpbSchedulingEnabled: boolean;
   includeCompleted: boolean;
   includeUpcoming: boolean;
+  isPrnBand?: boolean;
 }): boolean {
   const status = parseMedicationDoseStatus(input.doseStatus);
   if (!status) return false;
   if (status === "CANCELLED" || status === "SUPERSEDED") return false;
+
+  if (input.isPrnBand === true && isTerminalMedicationDoseStatus(status)) {
+    return true;
+  }
+
   if (status === "COMPLETED" && !input.includeCompleted) return false;
   if (status === "PLANNED" && !input.includeUpcoming) return false;
   if (isIvpbSessionDoseKind(input.doseKind) && !input.ivpbSchedulingEnabled) return false;
