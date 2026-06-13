@@ -18,6 +18,7 @@ import {
   emergencyChartCompactBadgeRowStyle,
   emergencyChartCompactClinicalPairGridStyle,
   emergencyChartCompactIdentityRowStyle,
+  emergencyChartCompactRoomChipStyle,
   emergencyChartCompactScrollBodyStyle,
   emergencyChartCompactStickyStripStyle,
 } from "@/features/emergency/emergencyChartCompactTabletHeader";
@@ -166,14 +167,16 @@ export function EmergencyWorkspaceCompactTabletSummary({
               {formatPatientAgeSexLine(patient?.dob ?? null, patient?.sexAtBirth ?? null, patient?.sex ?? null, t)}
             </p>
           </div>
-          <EncounterGovernedRoomChip
-            encounter={encounterRoom}
-            clickable={Boolean(onRoomClick)}
-            onClick={onRoomClick}
-            labelKey="printOutput.patientChart.room"
-            compact
-            alignSelf="auto"
-          />
+          <div style={emergencyChartCompactRoomChipStyle()}>
+            <EncounterGovernedRoomChip
+              encounter={encounterRoom}
+              clickable={Boolean(onRoomClick)}
+              onClick={onRoomClick}
+              labelKey="printOutput.patientChart.room"
+              compact
+              alignSelf="auto"
+            />
+          </div>
         </div>
         <div style={emergencyChartCompactBadgeRowStyle()}>
           <MedoraCardBadge soft={statusSoft(statusKey)}>{tEncounterStatus(t, statusKey)}</MedoraCardBadge>
