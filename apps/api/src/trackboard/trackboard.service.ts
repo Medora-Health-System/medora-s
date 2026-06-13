@@ -12,7 +12,12 @@ import {
 export class TrackboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getActiveEncounters(facilityId: string, status?: string, type?: string) {
+  async getActiveEncounters(
+    facilityId: string,
+    status?: string,
+    type?: string,
+    options?: { observationPatientsOnly?: boolean }
+  ) {
     const where: any = {
       facilityId,
       status: status === "OPEN" ? EncounterStatus.OPEN : undefined,
@@ -61,9 +66,9 @@ export class TrackboardService {
     const encounterIds = encounters.map((e) => e.id);
     const opMap = await this.getOperationalAggregatesForEncounterIds(facilityId, encounterIds);
     const merged = mergeOperationalIntoEncounters(encounters, opMap);
-    return merged.map((e) => {
+    const enriched = merged.map((e) => {
       if (e.type !== EncounterType.INPATIENT) {
-        return e;
+        return { ...e, observationOps: null };
       }
       const ops = e.trackboardOps;
       const observationOps = computeObservationOperationalSnapshot({
@@ -88,6 +93,12 @@ export class TrackboardService {
       });
       return { ...e, observationOps };
     });
+
+    if (options?.observationPatientsOnly) {
+      return enriched.filter((row) => row.observationOps != null);
+    }
+
+    return enriched;
   }
 
   /**

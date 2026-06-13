@@ -1,27 +1,31 @@
 import { Controller, Get, Query, Req, UseGuards, BadRequestException } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { TrackboardService } from "./trackboard.service";
-import { RoleCode } from "@prisma/client";
+import { TrackboardReadAccessGuard } from "./trackboard-read-access.guard";
 
 @Controller("trackboard")
-@UseGuards(AuthGuard("jwt"), RolesGuard)
+@UseGuards(AuthGuard("jwt"))
 export class TrackboardController {
   constructor(private readonly trackboardService: TrackboardService) {}
 
   @Get()
-  @RequireRoles(RoleCode.FRONT_DESK, RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @UseGuards(TrackboardReadAccessGuard)
   async getActiveEncounters(
     @Query("status") status: string,
     @Query("type") type: string | undefined,
-    @Req() req: any
+    @Req() req: {
+      facilityId?: string;
+      trackboardObservationPatientsOnly?: boolean;
+    }
   ) {
     const facilityId = req.facilityId;
     if (!facilityId) {
       throw new BadRequestException("Facility ID required");
     }
 
-    return this.trackboardService.getActiveEncounters(facilityId, status, type);
+    return this.trackboardService.getActiveEncounters(facilityId, status, type, {
+      observationPatientsOnly: req.trackboardObservationPatientsOnly === true,
+    });
   }
 }
 

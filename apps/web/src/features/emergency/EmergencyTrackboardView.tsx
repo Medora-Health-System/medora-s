@@ -319,7 +319,12 @@ export function EmergencyTrackboardView() {
     } catch (e) {
       console.error("Failed to load emergency trackboard:", e);
       if (!silent) {
-        setFetchError(t("emergencyTrackboard.loadError"));
+        const status = typeof e === "object" && e != null && "status" in e ? Number((e as { status?: number }).status) : null;
+        if (status === 403) {
+          setFetchError(t("emergencyTrackboard.readAccessDenied"));
+        } else {
+          setFetchError(t("emergencyTrackboard.loadError"));
+        }
       }
     } finally {
       if (!silent) {
