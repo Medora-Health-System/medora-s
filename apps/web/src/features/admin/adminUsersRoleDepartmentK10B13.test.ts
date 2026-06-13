@@ -65,6 +65,34 @@ describe("adminUsersRoleDepartmentK10B13", () => {
     expect(key).toBe("adminUsers.workspacePreview.technicianEd");
   });
 
+  it("shows ICU technician workspace preview when ICU department assigned", () => {
+    const key = workspacePreviewKeyForRow(
+      {
+        clientId: "1",
+        facilityId: "fac-1",
+        profession: "TECHNICIAN",
+        technicianType: "LAB",
+        departmentId: "dept-icu",
+      },
+      [{ id: "dept-icu", code: "ICU", name: "Soins intensifs" }]
+    );
+    expect(key).toBe("adminUsers.workspacePreview.technicianIcu");
+  });
+
+  it("shows laboratory workspace preview for clinical LABORATORY department", () => {
+    const key = workspacePreviewKeyForRow(
+      {
+        clientId: "1",
+        facilityId: "fac-1",
+        profession: "TECHNICIAN",
+        technicianType: "LAB",
+        departmentId: "dept-lab",
+      },
+      [{ id: "dept-lab", code: "LABORATORY", name: "Laboratoire" }]
+    );
+    expect(key).toBe("adminUsers.workspacePreview.technicianLab");
+  });
+
   it("shows provider ED workspace preview", () => {
     const key = workspacePreviewKeyForRow(
       {

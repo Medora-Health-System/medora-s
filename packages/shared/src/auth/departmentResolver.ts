@@ -1,34 +1,22 @@
-/** Clinical department taxonomy for workspace authorization (logical, not Prisma enum). */
-export type DepartmentCode =
-  | "EMERGENCY"
-  | "ICU"
-  | "MEDSURG"
-  | "OBSERVATION"
-  | "OBGYN"
-  | "PEDIATRICS"
-  | "BEHAVIORAL_HEALTH"
-  | "TELEMETRY"
-  | "LABORATORY"
-  | "RADIOLOGY";
+import {
+  CLINICAL_DEPARTMENT_CODES,
+  isClinicalDepartmentCode,
+  mapLegacyPrismaDepartmentCodeToClinicalDepartment,
+  type ClinicalDepartmentCode,
+  type LegacyPrismaDepartmentCode,
+} from "./clinicalDepartmentRegistry.js";
 
-export const CLINICAL_DEPARTMENT_CODES: readonly DepartmentCode[] = [
-  "EMERGENCY",
-  "ICU",
-  "MEDSURG",
-  "OBSERVATION",
-  "OBGYN",
-  "PEDIATRICS",
-  "BEHAVIORAL_HEALTH",
-  "TELEMETRY",
-  "LABORATORY",
-  "RADIOLOGY",
-] as const;
+/** @deprecated Prefer {@link ClinicalDepartmentCode} from clinicalDepartmentRegistry. */
+export type DepartmentCode = ClinicalDepartmentCode;
 
-/** Prisma `DepartmentCode` values stored on facility department rows today. */
-export type PrismaDepartmentCode = "PRIMARY_CARE" | "LAB" | "RAD" | "PHARM" | "INPATIENT";
+/** Re-export registry clinical codes for backward-compatible imports. */
+export { CLINICAL_DEPARTMENT_CODES };
+
+/** Prisma `DepartmentCode` values stored on facility department rows (legacy + clinical). */
+export type PrismaDepartmentCode = LegacyPrismaDepartmentCode | ClinicalDepartmentCode;
 
 export type ResolveDepartmentCodeInput = {
-  /** Explicit clinical department when assigned (future admin UI / session enrichment). */
+  /** Explicit clinical department when assigned (admin UI / session enrichment). */
   departmentCode?: DepartmentCode | string | null;
   /** Prisma department row code when `departmentId` is resolved server-side. */
   prismaDepartmentCode?: PrismaDepartmentCode | string | null;
@@ -45,33 +33,15 @@ function normalizeRoleCodes(roleCodes: readonly string[] | undefined): string[] 
   return (roleCodes ?? []).map((code) => code.trim().toUpperCase()).filter(Boolean);
 }
 
-export function isClinicalDepartmentCode(value: string): value is DepartmentCode {
-  return (CLINICAL_DEPARTMENT_CODES as readonly string[]).includes(value.trim().toUpperCase());
-}
+export { isClinicalDepartmentCode };
 
 /**
  * Map Prisma facility department codes to clinical department taxonomy.
- * Does not require a migration — adapter only.
  */
 export function mapPrismaDepartmentCodeToClinical(
   prismaCode: string | null | undefined
 ): DepartmentCode | null {
-  const code = String(prismaCode ?? "")
-    .trim()
-    .toUpperCase();
-  if (!code) return null;
-  switch (code) {
-    case "LAB":
-      return "LABORATORY";
-    case "RAD":
-      return "RADIOLOGY";
-    case "INPATIENT":
-      return "MEDSURG";
-    case "PRIMARY_CARE":
-      return "OBSERVATION";
-    default:
-      return null;
-  }
+  return mapLegacyPrismaDepartmentCodeToClinicalDepartment(prismaCode);
 }
 
 function inferDepartmentFromLegacyRoles(

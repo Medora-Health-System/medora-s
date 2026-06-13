@@ -4,6 +4,9 @@ import React from "react";
 import {
   ADMIN_PROFESSION_CODES,
   TECHNICIAN_TYPE_CODES,
+  getClinicalDepartmentLabel,
+  isClinicalDepartmentCode,
+  mapLegacyPrismaDepartmentCodeToClinicalDepartment,
   type AdminProfessionCode,
   type TechnicianTypeCode,
 } from "@medora/shared";
@@ -40,7 +43,21 @@ function technicianTypeLabel(type: TechnicianTypeCode, t: (key: string) => strin
   return label === key ? type : label;
 }
 
-function departmentDisplayLabel(dept: FacilityDepartmentOption, t: (key: string) => string): string {
+function departmentDisplayLabel(
+  dept: FacilityDepartmentOption,
+  t: (key: string) => string,
+  language: "en" | "fr"
+): string {
+  const clinical =
+    mapLegacyPrismaDepartmentCodeToClinicalDepartment(dept.code) ??
+    (isClinicalDepartmentCode(dept.code) ? dept.code : null);
+  if (clinical) {
+    const registryLabel = getClinicalDepartmentLabel(clinical, language);
+    if (dept.name.trim() && dept.name.trim() !== registryLabel) {
+      return dept.name.trim();
+    }
+    return registryLabel;
+  }
   if (dept.name.trim()) return dept.name.trim();
   const key = `adminUsers.departmentLabels.${dept.code}`;
   const label = t(key);
@@ -56,7 +73,7 @@ export function AdminUserAssignmentSection({
   showFacilityColumn = true,
   disabled = false,
 }: Props) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
 
   const updateRow = (clientId: string, patch: Partial<AssignmentDraftRow>) => {
     onChangeRows(
@@ -221,7 +238,7 @@ export function AdminUserAssignmentSection({
                     <option value="">{t("adminUsers.noDepartmentOption")}</option>
                     {departments.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {departmentDisplayLabel(dept, t)}
+                        {departmentDisplayLabel(dept, t, language)}
                       </option>
                     ))}
                   </select>

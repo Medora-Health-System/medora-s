@@ -12,6 +12,7 @@ import { randomBytes } from "crypto";
 import { isPlatformPrincipalAdminEmail } from "../auth/platform-principal";
 import { BillingIdentityService } from "../billing/billing-identity.service";
 import { FacilityBillingWorkflowService } from "../encounters/facility-billing-workflow.service";
+import { ensureFacilityClinicalDepartments } from "./facility-department-seed.util";
 
 /** Valeurs par défaut — le schéma Prisma exige country et timezone ; non exposés sur POST minimal (nom seul). */
 const DEFAULT_NEW_FACILITY_COUNTRY = "Haiti";
@@ -106,6 +107,10 @@ export class AdminFacilitiesService {
         },
       });
 
+      await ensureFacilityClinicalDepartments(tx, facility.id, {
+        defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+      });
+
       return {
         id: facility.id,
         name: facility.name,
@@ -146,6 +151,16 @@ export class AdminFacilitiesService {
   /** MEDUI.AUTH.ROLE.2 — active clinical departments for admin user assignment UI. */
   async listDepartmentsForAdmin(actorUserId: string, facilityId: string) {
     await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    const facility = await this.prisma.facility.findUnique({
+      where: { id: facilityId },
+      select: { defaultLanguage: true },
+    });
+    if (!facility) {
+      throw new NotFoundException("Établissement introuvable.");
+    }
+    await ensureFacilityClinicalDepartments(this.prisma, facilityId, {
+      defaultLanguage: (facility.defaultLanguage as "fr" | "en") ?? "fr",
+    });
     const items = await this.prisma.department.findMany({
       where: { facilityId, isActive: true },
       orderBy: { name: "asc" },

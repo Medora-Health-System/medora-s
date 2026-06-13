@@ -12,6 +12,7 @@ import {
   InventoryTransactionType,
 } from "@prisma/client";
 import { sexAtBirthToPatientSex } from "../src/utils/patient-sex-map";
+import { ensureFacilityClinicalDepartments } from "../src/admin/facility-department-seed.util";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import * as argon2 from "argon2";
@@ -98,6 +99,10 @@ async function main() {
       )
     )
   );
+
+  for (const facility of [facilityDR, facilityHT]) {
+    await ensureFacilityClinicalDepartments(prisma, facility.id, { defaultLanguage: "fr" });
+  }
 
   // Haiti geographic departments (MSPP departmental validators; codes ISO 3166-2, labels from haiti-departments.geojson)
   await Promise.all(

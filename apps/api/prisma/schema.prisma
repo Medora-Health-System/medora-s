@@ -2820,6 +2820,16 @@ enum DepartmentCode {
   RAD
   PHARM
   INPATIENT
+  EMERGENCY
+  ICU
+  MEDSURG
+  OBSERVATION
+  OBGYN
+  PEDIATRICS
+  BEHAVIORAL_HEALTH
+  TELEMETRY
+  LABORATORY
+  RADIOLOGY
 }
 
 /// Clinical / legacy shorthand stored alongside `Patient.sex` (canonical demographic enum).

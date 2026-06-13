@@ -19,6 +19,26 @@ describe("departmentResolver (MEDUI.AUTH.ROLE.1)", () => {
     expect(mapPrismaDepartmentCodeToClinical("INPATIENT")).toBe("MEDSURG");
     expect(mapPrismaDepartmentCodeToClinical("PRIMARY_CARE")).toBe("OBSERVATION");
     expect(mapPrismaDepartmentCodeToClinical("PHARM")).toBeNull();
+    expect(mapPrismaDepartmentCodeToClinical("ICU")).toBe("ICU");
+    expect(mapPrismaDepartmentCodeToClinical("OBGYN")).toBe("OBGYN");
+    expect(mapPrismaDepartmentCodeToClinical("LABORATORY")).toBe("LABORATORY");
+  });
+
+  it("resolves technician floor departments from explicit prisma codes", () => {
+    expect(
+      resolveDepartmentCode({
+        roleCodes: ["LAB"],
+        prismaDepartmentCode: "ICU",
+        clinicalWorkspace: "GENERAL",
+      })
+    ).toBe("ICU");
+    expect(
+      resolveDepartmentCode({
+        roleCodes: ["RADIOLOGY"],
+        prismaDepartmentCode: "PEDIATRICS",
+        clinicalWorkspace: "GENERAL",
+      })
+    ).toBe("PEDIATRICS");
   });
 
   it("prefers explicit department over Prisma mapping", () => {
