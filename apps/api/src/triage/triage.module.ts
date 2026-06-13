@@ -5,11 +5,12 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { TriageCarryForwardService } from "./triage-carry-forward.service";
 import { AuditService } from "../common/services/audit.service";
 import { PatientsModule } from "../patients/patients.module";
+import { EdTriageAccessGuard } from "./ed-triage-access.guard";
 
 @Module({
   imports: [PrismaModule, forwardRef(() => PatientsModule)],
   controllers: [TriageController],
-  providers: [TriageService, TriageCarryForwardService, AuditService],
+  providers: [TriageService, TriageCarryForwardService, AuditService, EdTriageAccessGuard],
   exports: [TriageService],
 })
 export class TriageModule {}

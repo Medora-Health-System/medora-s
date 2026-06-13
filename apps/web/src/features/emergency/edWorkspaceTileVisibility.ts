@@ -1,4 +1,5 @@
 import type { ErWorkspaceSection } from "./erWorkspaceSections.js";
+import { canDocumentEdTriage } from "@medora/shared";
 
 export type EdWorkspaceTileId =
   | "TRIAGE"
@@ -164,6 +165,29 @@ export function getVisibleEdWorkspaceTiles(input: EdWorkspaceRoleInput): EdWorks
     default:
       return UNKNOWN_TILES;
   }
+}
+
+/** Hide triage tile for floor tech when encounter is not ED-eligible (MEDUI.ED.ROLE.1A). */
+export function applyEdWorkspaceEncounterTileFilter(
+  tiles: EdWorkspaceTileId[],
+  input: EdWorkspaceRoleInput & {
+    encounterType?: string | null;
+    departmentCode?: string | null;
+    facilityUnit?: string | null;
+  }
+): EdWorkspaceTileId[] {
+  if (!tiles.includes("TRIAGE")) return tiles;
+  if (
+    canDocumentEdTriage({
+      roleCodes: input.roleCodes,
+      encounterType: input.encounterType,
+      departmentCode: input.departmentCode,
+      facilityUnit: input.facilityUnit,
+    })
+  ) {
+    return tiles;
+  }
+  return tiles.filter((id) => id !== "TRIAGE");
 }
 
 export function getDefaultEdWorkspaceTile(input: EdWorkspaceRoleInput): EdWorkspaceTileId {

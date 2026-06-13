@@ -1,12 +1,11 @@
 import { Controller, Get, Put, Param, Body, Req, UseGuards, BadRequestException } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
-import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { TriageService } from "./triage.service";
 import { TriageCarryForwardService } from "./triage-carry-forward.service";
-import { RoleCode } from "@prisma/client";
+import { EdTriageAccessGuard } from "./ed-triage-access.guard";
 
 @Controller("encounters")
-@UseGuards(AuthGuard("jwt"), RolesGuard)
+@UseGuards(AuthGuard("jwt"))
 export class TriageController {
   constructor(
     private readonly triageService: TriageService,
@@ -14,7 +13,7 @@ export class TriageController {
   ) {}
 
   @Get(":id/triage/carry-forward")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @UseGuards(EdTriageAccessGuard)
   async getTriageCarryForward(@Param("id") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
@@ -31,7 +30,7 @@ export class TriageController {
   }
 
   @Get(":id/triage")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @UseGuards(EdTriageAccessGuard)
   async getTriage(@Param("id") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
     if (!facilityId) {
@@ -42,7 +41,7 @@ export class TriageController {
   }
 
   @Put(":id/triage")
-  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  @UseGuards(EdTriageAccessGuard)
   async upsertTriage(
     @Param("id") encounterId: string,
     @Body() body: any,

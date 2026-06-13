@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyEdWorkspaceEncounterTileFilter,
   edWorkspaceTileToSection,
   getDefaultEdWorkspaceTile,
   getVisibleEdWorkspaceTiles,
@@ -163,6 +164,24 @@ describe("edWorkspaceTileVisibility (MEDUI.ED.ROLE.1)", () => {
 
     it("Admin default = TRIAGE", () => {
       expect(getDefaultEdWorkspaceTile({ roleCodes: ["ADMIN"] })).toBe("TRIAGE");
+    });
+  });
+
+  describe("ED technician encounter filter (MEDUI.ED.ROLE.1A)", () => {
+    it("TECH keeps triage tile on EMERGENCY encounter", () => {
+      const tiles = applyEdWorkspaceEncounterTileFilter(
+        getVisibleEdWorkspaceTiles({ roleCodes: ["LAB"] }),
+        { roleCodes: ["LAB"], encounterType: "EMERGENCY" }
+      );
+      expect(tiles).toContain("TRIAGE");
+    });
+
+    it("TECH hides triage tile on INPATIENT encounter", () => {
+      const tiles = applyEdWorkspaceEncounterTileFilter(
+        getVisibleEdWorkspaceTiles({ roleCodes: ["LAB"] }),
+        { roleCodes: ["LAB"], encounterType: "INPATIENT" }
+      );
+      expect(tiles).not.toContain("TRIAGE");
     });
   });
 });
