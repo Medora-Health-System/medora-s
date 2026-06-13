@@ -1,11 +1,20 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { OrderItem, RoleCode } from "@prisma/client";
 import {
-  requestorMayAcknowledgeEnterpriseProcedure,
-  requestorMayCompleteEnterpriseProcedure,
+  requestorMayPerformEnterpriseProcedureAction,
   resolveProcedureExecutionProfile,
   roleCodesIncludeLabImagingClinicalWorkflow,
 } from "@medora/shared";
+
+export type OrderItemActionGuardContext = {
+  facilityType?: string | null;
+};
+
+export function orderItemProcedureGuardContext(orderItem: {
+  order?: { facility?: { facilityType?: string | null } | null } | null;
+}): OrderItemActionGuardContext {
+  return { facilityType: orderItem.order?.facility?.facilityType ?? null };
+}
 
 function assertLabImagingClinicalWorkflowRole(roleCodes: RoleCode[]) {
   if (roleCodesIncludeLabImagingClinicalWorkflow(roleCodes)) return;
@@ -50,11 +59,12 @@ function roleCodesAsStrings(roleCodes: RoleCode[]): string[] {
   return roleCodes.map((code) => String(code));
 }
 
-/** MEDPROC.4 — enterprise procedure CARE lines use catalog execution roles. */
+/** MEDPROC.4 + MEDUI.ED.PROCEDURE.TECH.1 — enterprise procedure CARE lines use catalog + facility scope. */
 function assertEnterpriseProcedureCareActor(
   orderItem: Pick<OrderItem, "catalogItemType" | "enterpriseProcedureId">,
   roleCodes: RoleCode[],
-  action: "acknowledge" | "complete"
+  action: "acknowledge" | "complete",
+  context?: OrderItemActionGuardContext
 ) {
   if (orderItem.catalogItemType !== "CARE") return false;
   const enterpriseProcedureId = orderItem.enterpriseProcedureId?.trim();
@@ -65,10 +75,14 @@ function assertEnterpriseProcedureCareActor(
 
   if (roleCodes.includes(RoleCode.ADMIN)) return true;
 
-  const allowed =
-    action === "complete"
-      ? requestorMayCompleteEnterpriseProcedure(roleCodesAsStrings(roleCodes), profile)
-      : requestorMayAcknowledgeEnterpriseProcedure(roleCodesAsStrings(roleCodes), profile);
+  const technicianAction = action === "complete" ? "complete" : "acknowledge";
+  const allowed = requestorMayPerformEnterpriseProcedureAction({
+    roleCodes: roleCodesAsStrings(roleCodes),
+    facilityType: context?.facilityType,
+    enterpriseProcedureId,
+    profile,
+    action: technicianAction,
+  });
 
   if (!allowed) {
     throw new ForbiddenException(
@@ -83,9 +97,10 @@ function assertEnterpriseProcedureCareActor(
 /** MEDPROC.4 — completion actor for order item lines. */
 export function assertCompleteActorForItem(
   orderItem: Pick<OrderItem, "catalogItemType" | "enterpriseProcedureId">,
-  roleCodes: RoleCode[]
+  roleCodes: RoleCode[],
+  context?: OrderItemActionGuardContext
 ) {
-  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "complete")) return;
+  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "complete", context)) return;
   assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
 }
 
@@ -119,7 +134,11 @@ export function isMedicationAdministerChart(orderItem: {
 }
 
 /** Accusé / démarrage : infirmier pour médicament au lit ; sinon file départementale (labo, etc.). */
-export function assertAckOrStartActor(orderItem: OrderItem, roleCodes: RoleCode[]) {
+export function assertAckOrStartActor(
+  orderItem: OrderItem,
+  roleCodes: RoleCode[],
+  context?: OrderItemActionGuardContext
+) {
   const admin = roleCodes.includes(RoleCode.ADMIN);
   if (admin) return;
   if (isMedicationAdministerChart(orderItem)) {
@@ -128,6 +147,6 @@ export function assertAckOrStartActor(orderItem: OrderItem, roleCodes: RoleCode[
     }
     return;
   }
-  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "acknowledge")) return;
+  if (assertEnterpriseProcedureCareActor(orderItem, roleCodes, "acknowledge", context)) return;
   assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
 }

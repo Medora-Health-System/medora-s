@@ -77,6 +77,6 @@ describe("MEDPROC.5 procedure billing readiness UI guards", () => {
 
   it("MEDPROC.4 role execution still works", () => {
     expect(erOrdersPanelSource).toContain("resolveProcedureExecutionProfile");
-    expect(erOrdersPanelSource).toContain("requestorMayCompleteEnterpriseProcedure");
+    expect(erOrdersPanelSource).toContain("requestorMayPerformEnterpriseProcedureAction");
   });
 });

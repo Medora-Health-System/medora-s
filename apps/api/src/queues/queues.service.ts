@@ -20,6 +20,7 @@ import {
   assertCompleteActorForItem,
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
+  orderItemProcedureGuardContext,
 } from "../common/workflow/order-item-action-guards.util";
 import { AuditService } from "../common/services/audit.service";
 import {
@@ -608,6 +609,7 @@ export class QueuesService {
       include: {
         order: {
           include: {
+            facility: { select: { facilityType: true } },
             encounter: true,
           },
         },
@@ -628,18 +630,19 @@ export class QueuesService {
     assertParentOrderNotCancelled(orderItem.order.status);
 
     const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    const procedureGuardContext = orderItemProcedureGuardContext(orderItem);
 
     assertCanTransition(orderItem.status, status);
 
     if (status === OrderStatus.ACKNOWLEDGED || status === OrderStatus.IN_PROGRESS) {
-      assertAckOrStartActor(orderItem, roleCodes);
+      assertAckOrStartActor(orderItem, roleCodes, procedureGuardContext);
     } else if (status === OrderStatus.COMPLETED) {
       if (isMedicationAdministerChart(orderItem)) {
         throw new BadRequestException(
           "Cette ligne est destinée à l'administration infirmière ; utilisez la fin d'administration au lit."
         );
       }
-      assertCompleteActorForItem(orderItem, roleCodes);
+      assertCompleteActorForItem(orderItem, roleCodes, procedureGuardContext);
     } else {
       assertDepartmentRoleForItem(orderItem.catalogItemType, roleCodes);
     }

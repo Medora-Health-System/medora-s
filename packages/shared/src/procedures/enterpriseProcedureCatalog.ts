@@ -312,6 +312,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     chargeMapping: INSTITUTION_POLICY_CPT,
     performerRoleHints: ["RN", "TECH"],
     completionRoleHints: ["RN", "TECH"],
+    executionRoleCategory: "MULTI_ROLE",
+    acknowledgeRoles: ["RN", "LAB_TECH", "RADIOLOGY_TECH"],
+    completeRoles: ["RN", "LAB_TECH", "RADIOLOGY_TECH"],
   }),
   procedure({
     id: "ekg_rhythm_strip",
@@ -323,6 +326,9 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     billingMappingStatus: "REVIEW_REQUIRED",
     performerRoleHints: ["RN", "TECH"],
     completionRoleHints: ["RN", "TECH"],
+    executionRoleCategory: "MULTI_ROLE",
+    acknowledgeRoles: ["RN", "LAB_TECH", "RADIOLOGY_TECH"],
+    completeRoles: ["RN", "LAB_TECH", "RADIOLOGY_TECH"],
   }),
   procedure({
     id: "continuous_cardiac_monitoring",
@@ -379,7 +385,10 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     category: "CARDIAC_RESPIRATORY",
     chargeMapping: INSTITUTION_POLICY_CPT,
     billingMappingStatus: "FUTURE_CHARGE_MASTER",
-    performerRoleHints: ["RN", "TECH"],
+    performerRoleHints: ["RN"],
+    executionRoleCategory: "NURSING",
+    acknowledgeRoles: ["RN"],
+    completeRoles: ["RN"],
   }),
   procedure({
     id: "defibrillation_assist",
@@ -688,7 +697,10 @@ export const ENTERPRISE_PROCEDURE_CATALOG: EnterpriseProcedureDefinition[] = [
     displayNameFr: "Transport du patient",
     aliases: ["transport", "transfer preparation", "intrahospital transport"],
     category: "NURSING_TASK",
-    performerRoleHints: ["RN", "TECH"],
+    performerRoleHints: ["RN"],
+    executionRoleCategory: "NURSING",
+    acknowledgeRoles: ["RN"],
+    completeRoles: ["RN"],
   }),
   procedure({
     id: "procedure_assist",

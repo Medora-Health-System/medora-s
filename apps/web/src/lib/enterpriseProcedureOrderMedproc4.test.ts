@@ -20,7 +20,7 @@ const sharedProfileSource = readFileSync(
 describe("MEDPROC.4 web procedure execution guards", () => {
   it("uses resolveProcedureExecutionProfile for CARE lifecycle buttons", () => {
     expect(erOrdersPanelSource).toContain("resolveProcedureExecutionProfile");
-    expect(erOrdersPanelSource).toContain("requestorMayCompleteEnterpriseProcedure");
+    expect(erOrdersPanelSource).toContain("requestorMayPerformEnterpriseProcedureAction");
     expect(erOrdersPanelSource).toContain("deptAllowsOrderLineAction");
   });
 

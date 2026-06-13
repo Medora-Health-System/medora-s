@@ -37,6 +37,7 @@ import {
   assertCompleteActorForItem,
   assertDepartmentRoleForItem,
   isMedicationAdministerChart,
+  orderItemProcedureGuardContext,
 } from "../common/workflow/order-item-action-guards.util";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { maybeCreateMedicationOrderScheduleForOrderItem } from "../medication-scheduling/medication-order-schedule.persistence";
@@ -2310,6 +2311,7 @@ export class OrdersService {
       include: {
         order: {
           include: {
+            facility: { select: { facilityType: true } },
             encounter: { include: { patient: true } },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
@@ -2329,7 +2331,11 @@ export class OrdersService {
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
-    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    assertAckOrStartActor(
+      orderItem,
+      requestorRoleCodes,
+      orderItemProcedureGuardContext(orderItem)
+    );
 
     if (orderItem.status === OrderStatus.ACKNOWLEDGED) {
       return orderItem;
@@ -2441,6 +2447,7 @@ export class OrdersService {
       include: {
         order: {
           include: {
+            facility: { select: { facilityType: true } },
             encounter: { include: { patient: true } },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
@@ -2460,7 +2467,11 @@ export class OrdersService {
     assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
     assertEncounterNotSigned(orderItem.order.encounter);
     assertParentOrderNotCancelled(orderItem.order.status);
-    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    assertAckOrStartActor(
+      orderItem,
+      requestorRoleCodes,
+      orderItemProcedureGuardContext(orderItem)
+    );
 
     if (
       orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
@@ -2591,6 +2602,7 @@ export class OrdersService {
       include: {
         order: {
           include: {
+            facility: { select: { facilityType: true } },
             encounter: { include: { patient: true } },
             orderEvents: {
               where: { eventType: OrderEventType.CREATED },
@@ -2633,7 +2645,11 @@ export class OrdersService {
         "Cette ligne doit être dispensée par la pharmacie avant d'être terminée."
       );
     }
-    assertCompleteActorForItem(orderItem, requestorRoleCodes);
+    assertCompleteActorForItem(
+      orderItem,
+      requestorRoleCodes,
+      orderItemProcedureGuardContext(orderItem)
+    );
     assertCanTransition(orderItem.status, OrderStatus.COMPLETED);
 
     const lifecycleState = applyLifecycleWithStatus(

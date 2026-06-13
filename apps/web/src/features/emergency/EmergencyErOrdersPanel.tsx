@@ -46,8 +46,7 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
   documentationTemplateIdToLauncherStep,
   isMedicationInfusionCandidate,
-  requestorMayAcknowledgeEnterpriseProcedure,
-  requestorMayCompleteEnterpriseProcedure,
+  requestorMayPerformEnterpriseProcedureAction,
   resolveProcedureDocumentationLinkage,
   resolveProcedureBillingReadiness,
   resolveProcedureExecutionProfile,
@@ -92,7 +91,8 @@ function careItemEnterpriseProcedureId(item: Record<string, unknown>): string | 
 function careLineAllowsLifecycleAction(
   item: Record<string, unknown>,
   roles: string[] | undefined,
-  action: "acknowledge" | "complete"
+  action: "acknowledge" | "start" | "complete",
+  facilityType?: string | null
 ): boolean {
   if (hasAnyRole(roles, "ADMIN")) return true;
   const roleList = roles ?? [];
@@ -100,10 +100,14 @@ function careLineAllowsLifecycleAction(
   const profile = enterpriseProcedureId
     ? resolveProcedureExecutionProfile({ enterpriseProcedureId })
     : null;
-  if (action === "complete") {
-    return requestorMayCompleteEnterpriseProcedure(roleList, profile);
-  }
-  return requestorMayAcknowledgeEnterpriseProcedure(roleList, profile);
+  const mappedAction = action === "complete" ? "complete" : action === "start" ? "start" : "acknowledge";
+  return requestorMayPerformEnterpriseProcedureAction({
+    roleCodes: roleList,
+    facilityType,
+    enterpriseProcedureId,
+    profile,
+    action: mappedAction,
+  });
 }
 
 function deptAllowsOrderLineAction(
@@ -111,13 +115,14 @@ function deptAllowsOrderLineAction(
   catalogItemType: string,
   item: Record<string, unknown>,
   roles: string[] | undefined,
-  action: "acknowledge" | "complete"
+  action: "acknowledge" | "start" | "complete",
+  facilityType?: string | null
 ): boolean {
   if (orderType === "LAB") return hasAnyRole(roles, "LAB", "ADMIN");
   if (orderType === "IMAGING") return hasAnyRole(roles, "RADIOLOGY", "ADMIN");
   if (orderType === "MEDICATION") return hasAnyRole(roles, "PHARMACY", "ADMIN");
   if (catalogItemType === "SUPPLY") return hasAnyRole(roles, "RN", "ADMIN");
-  if (orderType === "CARE") return careLineAllowsLifecycleAction(item, roles, action);
+  if (orderType === "CARE") return careLineAllowsLifecycleAction(item, roles, action, facilityType);
   return false;
 }
 
@@ -499,7 +504,7 @@ export function EmergencyErOrdersPanel({
   onConsumeIntent?: () => void;
 }) {
   const { t, language } = useI18n();
-  const { userId: currentUserId, facilityTimeZone } = useFacilityAndRoles();
+  const { userId: currentUserId, facilityTimeZone, facilityType } = useFacilityAndRoles();
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
   const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
@@ -1376,14 +1381,24 @@ export function EmergencyErOrdersPanel({
                                   cat,
                                   item,
                                   roles,
-                                  "acknowledge"
+                                  "acknowledge",
+                                  facilityType
+                                );
+                                const deptOkStart = deptAllowsOrderLineAction(
+                                  o.type,
+                                  cat,
+                                  item,
+                                  roles,
+                                  "start",
+                                  facilityType
                                 );
                                 const deptOkComplete = deptAllowsOrderLineAction(
                                   o.type,
                                   cat,
                                   item,
                                   roles,
-                                  "complete"
+                                  "complete",
+                                  facilityType
                                 );
                                 if (deptOkAck && itemStatusAllowsAcknowledge(st)) {
                                   lineBtns.push(
@@ -1400,7 +1415,7 @@ export function EmergencyErOrdersPanel({
                                     </button>
                                   );
                                 }
-                                if (deptOkAck && itemStatusAllowsStart(st)) {
+                                if (deptOkStart && itemStatusAllowsStart(st)) {
                                   lineBtns.push(
                                     <button
                                       key="start"
@@ -1769,14 +1784,24 @@ export function EmergencyErOrdersPanel({
                                   cat,
                                   item,
                                   roles,
-                                  "acknowledge"
+                                  "acknowledge",
+                                  facilityType
+                                );
+                                const deptOkStart = deptAllowsOrderLineAction(
+                                  o.type,
+                                  cat,
+                                  item,
+                                  roles,
+                                  "start",
+                                  facilityType
                                 );
                                 const deptOkComplete = deptAllowsOrderLineAction(
                                   o.type,
                                   cat,
                                   item,
                                   roles,
-                                  "complete"
+                                  "complete",
+                                  facilityType
                                 );
                                 if (deptOkAck && itemStatusAllowsAcknowledge(st)) {
                                   lineBtns.push(
@@ -1793,7 +1818,7 @@ export function EmergencyErOrdersPanel({
                                     </button>
                                   );
                                 }
-                                if (deptOkAck && itemStatusAllowsStart(st)) {
+                                if (deptOkStart && itemStatusAllowsStart(st)) {
                                   lineBtns.push(
                                     <button
                                       key="start"

@@ -77,4 +77,14 @@ describe("enterprise procedure execution role authorization (MEDPROC.4)", () => 
     expect(requestorMayCompleteEnterpriseProcedure(["RN"], profile)).toBe(true);
     expect(requestorMayCompleteEnterpriseProcedure(["PROVIDER"], profile)).toBe(false);
   });
+
+  it("aligns EKG catalog roles for LAB and RADIOLOGY technicians (MEDUI.ED.PROCEDURE.TECH.1)", () => {
+    const profile = resolveProcedureExecutionProfile({ enterpriseProcedureId: "ekg_ecg" });
+    expect(profile?.acknowledgeRoles).toEqual(expect.arrayContaining(["LAB_TECH", "RADIOLOGY_TECH", "RN"]));
+    expect(profile?.completeRoles).toEqual(expect.arrayContaining(["LAB_TECH", "RADIOLOGY_TECH", "RN"]));
+    expect(requestorMayAcknowledgeEnterpriseProcedure(["LAB"], profile)).toBe(true);
+    expect(requestorMayAcknowledgeEnterpriseProcedure(["RADIOLOGY"], profile)).toBe(true);
+    expect(requestorMayCompleteEnterpriseProcedure(["LAB"], profile)).toBe(true);
+    expect(requestorMayCompleteEnterpriseProcedure(["RADIOLOGY"], profile)).toBe(true);
+  });
 });

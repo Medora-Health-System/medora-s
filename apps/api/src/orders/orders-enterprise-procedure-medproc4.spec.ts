@@ -5,6 +5,9 @@ import {
   assertCompleteActorForItem,
 } from "../common/workflow/order-item-action-guards.util";
 
+const FREESTANDING_ER = { facilityType: "FREESTANDING_ER" as const };
+const HOSPITAL = { facilityType: "HOSPITAL" as const };
+
 function careItem(enterpriseProcedureId: string | null) {
   return {
     catalogItemType: "CARE",
@@ -50,9 +53,13 @@ describe("MEDPROC.4 enterprise procedure execution guards", () => {
     ).toThrow(ForbiddenException);
   });
 
-  it("allows LAB and RN completion for specimen collection", () => {
+  it("allows LAB and RN completion for specimen collection at freestanding ER", () => {
     expect(() =>
-      assertCompleteActorForItem(careItem("blood_draw_specimen_collection"), [RoleCode.LAB])
+      assertCompleteActorForItem(
+        careItem("blood_draw_specimen_collection"),
+        [RoleCode.LAB],
+        FREESTANDING_ER
+      )
     ).not.toThrow();
     expect(() =>
       assertCompleteActorForItem(careItem("blood_draw_specimen_collection"), [RoleCode.RN])
@@ -70,5 +77,53 @@ describe("MEDPROC.4 enterprise procedure execution guards", () => {
     expect(() => assertCompleteActorForItem(careItem(null), [RoleCode.PROVIDER])).toThrow(
       ForbiddenException
     );
+  });
+});
+
+describe("MEDUI.ED.PROCEDURE.TECH.1 freestanding ER technician procedure guards", () => {
+  it("allows LAB ack → start → complete for EKG at freestanding ER", () => {
+    const item = careItem("ekg_ecg");
+    expect(() =>
+      assertAckOrStartActor(item, [RoleCode.LAB], FREESTANDING_ER)
+    ).not.toThrow();
+    expect(() =>
+      assertCompleteActorForItem(item, [RoleCode.LAB], FREESTANDING_ER)
+    ).not.toThrow();
+  });
+
+  it("allows RADIOLOGY ack → complete for EKG at freestanding ER", () => {
+    const item = careItem("ekg_ecg");
+    expect(() =>
+      assertAckOrStartActor(item, [RoleCode.RADIOLOGY], FREESTANDING_ER)
+    ).not.toThrow();
+    expect(() =>
+      assertCompleteActorForItem(item, [RoleCode.RADIOLOGY], FREESTANDING_ER)
+    ).not.toThrow();
+  });
+
+  it("blocks LAB EKG workflow at hospital facility", () => {
+    const item = careItem("ekg_ecg");
+    expect(() => assertAckOrStartActor(item, [RoleCode.LAB], HOSPITAL)).toThrow(ForbiddenException);
+    expect(() =>
+      assertCompleteActorForItem(item, [RoleCode.LAB], HOSPITAL)
+    ).toThrow(ForbiddenException);
+  });
+
+  it("blocks LAB from foley at freestanding ER", () => {
+    expect(() =>
+      assertCompleteActorForItem(careItem("foley_catheter"), [RoleCode.LAB], FREESTANDING_ER)
+    ).toThrow(ForbiddenException);
+  });
+
+  it("blocks RADIOLOGY from wound care at freestanding ER", () => {
+    expect(() =>
+      assertCompleteActorForItem(careItem("wound_care"), [RoleCode.RADIOLOGY], FREESTANDING_ER)
+    ).toThrow(ForbiddenException);
+  });
+
+  it("blocks LAB from IV fluids setup at freestanding ER", () => {
+    expect(() =>
+      assertAckOrStartActor(careItem("iv_fluids_setup"), [RoleCode.LAB], FREESTANDING_ER)
+    ).toThrow(ForbiddenException);
   });
 });
