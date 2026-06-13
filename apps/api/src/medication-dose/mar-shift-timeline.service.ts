@@ -45,6 +45,7 @@ import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-en
 import {
   appendMarShiftTimelineCellItem,
   collectVisiblePrnOrderItemIds,
+  appendMarShiftTimelinePrnAvailabilityProjections,
   createEmptyMarShiftTimelineRow,
   isPrnMedicationOrderClassification,
   loadLastPrnAdministrationByOrderItemId,
@@ -101,6 +102,7 @@ export type MarShiftTimelineCellItem = {
   prnFrequencyLabel?: string | null;
   prnLastGivenAt?: string | null;
   prnNextEligibleAt?: string | null;
+  prnProjectionKey?: string | null;
   continuousFluidStatus?: string | null;
   fluidRateLabel?: string | null;
   fluidVolumeInfusedMl?: number | null;
@@ -331,7 +333,18 @@ export class MarShiftTimelineService {
                 type: "MEDICATION",
               },
             },
-            select: { id: true, notes: true, frequencyCode: true },
+            select: {
+              id: true,
+              notes: true,
+              frequencyCode: true,
+              createdAt: true,
+              intendedAdministrationAt: true,
+              strength: true,
+              quantity: true,
+              route: true,
+              catalogItemId: true,
+              order: { select: { encounterId: true } },
+            },
           })
         : [];
     const orderItemNotesRows =
@@ -636,6 +649,12 @@ export class MarShiftTimelineService {
         prnFrequencyLabel,
         prnLastGivenAt: prnTiming.prnLastGivenAt,
         prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+        prnProjectionKey:
+          isPrnBand &&
+          enrichment?.administeredAt &&
+          (parsedStatus === "COMPLETED" || isMarShiftTimelineItemReadOnly(clinicalAction))
+            ? `terminal:${dose.orderItemId}:${enrichment.administeredAt}`
+            : null,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
         fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
         fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,
@@ -740,6 +759,136 @@ export class MarShiftTimelineService {
       );
       if (!duplicate) {
         appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
+      }
+    }
+
+    if (prnOrderItemIds.length > 0) {
+      const prnProjectionOrderItems = await this.prisma.orderItem.findMany({
+        where: { id: { in: prnOrderItemIds } },
+        select: {
+          id: true,
+          notes: true,
+          frequencyCode: true,
+          createdAt: true,
+          intendedAdministrationAt: true,
+          strength: true,
+          quantity: true,
+          route: true,
+          catalogItemId: true,
+          manualLabel: true,
+          order: {
+            select: {
+              encounterId: true,
+              encounter: {
+                select: {
+                  id: true,
+                  type: true,
+                  roomLabel: true,
+                  admissionSummaryJson: true,
+                  nurseAssignedUserId: true,
+                  patient: { select: { id: true, firstName: true, lastName: true } },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const prnProjectionCatalogIds = [
+        ...new Set(
+          prnProjectionOrderItems
+            .map((row) => row.catalogItemId?.trim())
+            .filter((id): id is string => Boolean(id))
+        ),
+      ];
+      const prnProjectionCatalogRows =
+        prnProjectionCatalogIds.length > 0
+          ? await this.prisma.catalogMedication.findMany({
+              where: { id: { in: prnProjectionCatalogIds } },
+              select: {
+                id: true,
+                code: true,
+                displayNameEn: true,
+                displayNameFr: true,
+                genericName: true,
+              },
+            })
+          : [];
+      const prnProjectionCatalogById = new Map(
+        prnProjectionCatalogRows.map((row) => [row.id, row])
+      );
+
+      for (const orderItem of prnProjectionOrderItems) {
+        if (
+          !isPrnMedicationOrderClassification({
+            frequencyCode: orderItem.frequencyCode,
+            directionsSig: orderItem.notes,
+          })
+        ) {
+          continue;
+        }
+
+        const encounter = orderItem.order.encounter;
+        const { prn } = ensureRowMaps({
+          patientId: encounter.patient.id,
+          encounterId: encounter.id,
+          patientDisplay: formatPatientDisplay(
+            encounter.patient.firstName,
+            encounter.patient.lastName
+          ),
+          roomLabel: encounter.roomLabel,
+          encounterType: encounter.type,
+          admissionSummaryJson: encounter.admissionSummaryJson,
+          assignedNurseUserId: encounter.nurseAssignedUserId,
+        });
+
+        const catalogRow = orderItem.catalogItemId
+          ? prnProjectionCatalogById.get(orderItem.catalogItemId) ?? null
+          : null;
+        const medicationLabel = resolveMarShiftTimelineMedicationLabel({
+          locale: displayLocale,
+          manualLabel: orderItem.manualLabel,
+          catalogSnapshot: catalogRow
+            ? {
+                catalogItemId: catalogRow.id,
+                catalogItemCode: catalogRow.code,
+                displayNameEn: catalogRow.displayNameEn,
+                displayNameFr: catalogRow.displayNameFr,
+                genericName: catalogRow.genericName,
+              }
+            : null,
+        });
+        const doseAmount =
+          orderItem.strength?.trim() ||
+          (orderItem.quantity != null ? String(orderItem.quantity) : null);
+        const lastAdmin = lastPrnAdminByOrderItemId.get(orderItem.id);
+        const prnTiming = resolveMarShiftTimelinePrnTiming({
+          orderItemId: orderItem.id,
+          frequencyCode: orderItem.frequencyCode,
+          lastAdminByOrderItemId: lastPrnAdminByOrderItemId,
+        });
+
+        appendMarShiftTimelinePrnAvailabilityProjections({
+          row: prn,
+          prnLastGivenAt: prnTiming.prnLastGivenAt,
+          context: {
+            orderItemId: orderItem.id,
+            medicationLabel,
+            doseAmount,
+            route: orderItem.route,
+            frequencyCode: orderItem.frequencyCode,
+            directionsSig: orderItem.notes,
+            createdAt: orderItem.createdAt,
+            intendedAdministrationAt: orderItem.intendedAdministrationAt,
+            lastAdministeredAt: lastAdmin?.administeredAt ?? null,
+            terminalAdministeredAt: lastAdmin?.administeredAt ?? null,
+            shiftStart: shiftWindow.startAt,
+            shiftEnd: shiftWindow.endAt,
+            columns,
+            facilityTimeZone: shiftWindow.facilityTimeZone,
+            referenceAt,
+          },
+        });
       }
     }
 

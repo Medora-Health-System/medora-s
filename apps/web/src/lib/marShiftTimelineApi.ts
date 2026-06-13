@@ -61,6 +61,7 @@ export type MarShiftTimelineCellItem = {
   prnFrequencyLabel?: string | null;
   prnLastGivenAt?: string | null;
   prnNextEligibleAt?: string | null;
+  prnProjectionKey?: string | null;
   continuousFluidStatus?: string | null;
   fluidRateLabel?: string | null;
   fluidVolumeInfusedMl?: number | null;

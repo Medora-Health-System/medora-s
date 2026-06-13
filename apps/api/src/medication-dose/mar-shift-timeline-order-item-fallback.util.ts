@@ -17,6 +17,7 @@ import {
   shouldCreateMarShiftTimelineOrderItemFallback,
   resolveMarShiftTimelineMedicationLabel,
   resolveMarShiftTimelineTerminalOutcome,
+  resolvePrnTimelineTerminalDisplay,
   type MarShiftTimelineColumn,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
@@ -681,6 +682,19 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
 
     const encounter = orderItem.order.encounter;
 
+    const prnSecondaryOverride =
+      terminalOutcome === "REFUSED" ? "REFUSED" : parsedStatus === "HELD" ? "HELD" : null;
+    const isPrnTerminal =
+      isPrnBand &&
+      resolvePrnTimelineTerminalDisplay({
+        doseStatus: parsedStatus,
+        secondaryText: prnSecondaryOverride,
+      }) != null;
+
+    if (isPrnBand && !isPrnTerminal) {
+      continue;
+    }
+
     placements.push({
       columnKey,
       patientId: encounter.patient.id,
@@ -721,6 +735,9 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         prnFrequencyLabel,
         prnLastGivenAt: prnTiming.prnLastGivenAt,
         prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+        prnProjectionKey: isPrnTerminal
+          ? `terminal:${orderItem.id}:${enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? pseudo.scheduledAt.toISOString()}`
+          : null,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
         fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
         fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,

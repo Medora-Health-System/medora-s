@@ -63,7 +63,7 @@ export function resolveMarShiftTimelineStatusColorKey(input: {
   if (status === "HELD" || secondary === "HELD") return "held";
   if (status === "MISSED") return "missed";
   if (status === "OVERDUE") return "overdue";
-  if (status === "COMPLETED" || input.readOnly === true || secondary === "DONE") {
+  if (status === "COMPLETED" || secondary === "DONE") {
     return "administered";
   }
 
@@ -215,6 +215,7 @@ export function buildMarPrnTimelineCellDisplay(input: {
   prnNextEligibleAt?: string | null;
   facilityTimeZone?: string;
   secondaryTextOverride?: string | null;
+  projectedEligibleAt?: string | null;
 }): {
   primaryText: string;
   secondaryText: string;
@@ -270,10 +271,29 @@ export function buildMarPrnTimelineCellDisplay(input: {
   }
 
   const secondaryText = doseRouteLine || prnFreq;
+  const nowMs = Date.now();
+
+  const projectedEligibleMs = parseInstant(input.projectedEligibleAt);
+  if (projectedEligibleMs != null && status === "DUE") {
+    if (projectedEligibleMs > nowMs) {
+      const nextLabel = formatPrnTimelineTime(new Date(projectedEligibleMs), tz);
+      return {
+        primaryText,
+        secondaryText,
+        tertiaryText: `Next: ${nextLabel}`,
+        availability: "next_eligible",
+      };
+    }
+    return {
+      primaryText,
+      secondaryText,
+      tertiaryText: prnFreq,
+      availability: "available",
+    };
+  }
 
   const lastGiven = input.prnLastGivenAt ?? input.administeredAt ?? null;
   const nextEligible = input.prnNextEligibleAt ?? null;
-  const nowMs = Date.now();
   const nextEligibleMs = nextEligible ? parseInstant(nextEligible) : null;
 
   if (nextEligibleMs != null && nextEligibleMs > nowMs && nextEligible) {
@@ -359,7 +379,7 @@ export function resolvePrnTimelineTerminalDisplay(input: {
   if (status === "HELD" || secondary === "HELD") {
     return { colorKey: "held", availability: "given" };
   }
-  if (status === "COMPLETED" || input.readOnly === true || secondary === "DONE") {
+  if (status === "COMPLETED" || secondary === "DONE") {
     return { colorKey: "administered", availability: "given" };
   }
   return null;
@@ -388,9 +408,12 @@ export function prnTimelineCellPriority(input: {
   readOnly?: boolean;
   secondaryText?: string | null;
   hasMedicationDoseInstanceId?: boolean;
+  prnProjectionKey?: string | null;
 }): number {
   const terminal = resolvePrnTimelineTerminalDisplay(input);
   if (terminal) return 300;
+  if (input.prnProjectionKey?.startsWith("terminal:")) return 300;
+  if (input.prnProjectionKey?.trim()) return 175;
   const status = input.doseStatus.trim().toUpperCase();
   if (status === "DUE" || status === "IN_PROGRESS" || status === "PLANNED") return 200;
   if (input.hasMedicationDoseInstanceId) return 100;
@@ -411,5 +434,113 @@ export function resolveMarPrnTimelineColumnKey(input: {
     scheduledAt: placement,
     columns: input.columns,
     facilityTimeZone: input.facilityTimeZone,
+  });
+}
+
+export type PrnTimelineAvailabilityProjection = {
+  projectionKey: string;
+  orderItemId: string;
+  eligibleAt: string;
+  doseStatus: "DUE";
+  prnNextEligibleAt: string | null;
+};
+
+const PRN_PROJECTABLE_INTERVAL_CODES = new Set(["Q4H", "Q6H", "Q8H", "Q12H"]);
+
+function resolvePrnProjectionIntervalMinutes(
+  frequencyCode: string | null | undefined
+): number | null {
+  const code = frequencyCode?.trim().toUpperCase() ?? "";
+  if (!code || !PRN_PROJECTABLE_INTERVAL_CODES.has(code)) return null;
+  const def = getMedicationFrequencyDefinition(code);
+  if (def?.intervalMinutes == null || def.intervalMinutes <= 0) return null;
+  return def.intervalMinutes;
+}
+
+function resolvePrnAvailabilityAnchorMs(input: {
+  firstEligibleAt?: Date | string | null;
+  plannedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+}): number | null {
+  return (
+    parseInstant(input.firstEligibleAt) ??
+    parseInstant(input.plannedAt) ??
+    parseInstant(input.createdAt)
+  );
+}
+
+/** Project recurring PRN availability slots inside a shift (K.10B.11A). */
+export function buildPrnTimelineAvailabilityProjections(input: {
+  orderItemId: string;
+  frequencyCode?: string | null;
+  firstEligibleAt?: Date | string | null;
+  plannedAt?: Date | string | null;
+  createdAt?: Date | string | null;
+  lastAdministeredAt?: Date | string | null;
+  shiftStartAt: Date | string;
+  shiftEndAt: Date | string;
+  maxProjectionsPerShift?: number;
+  terminalAdministeredAt?: Date | string | null;
+}): PrnTimelineAvailabilityProjection[] {
+  const shiftStartMs = parseInstant(input.shiftStartAt);
+  const shiftEndMs = parseInstant(input.shiftEndAt);
+  if (shiftStartMs == null || shiftEndMs == null || shiftEndMs <= shiftStartMs) {
+    return [];
+  }
+
+  const max = input.maxProjectionsPerShift ?? 4;
+  const terminalMs = parseInstant(input.terminalAdministeredAt);
+  const lastAdminMs = parseInstant(input.lastAdministeredAt);
+  const intervalMinutes = resolvePrnProjectionIntervalMinutes(input.frequencyCode);
+  const intervalMs =
+    intervalMinutes != null ? intervalMinutes * 60_000 : null;
+
+  const slotTimes: number[] = [];
+  const isOncePrn = input.frequencyCode?.trim().toUpperCase() === "ONCE";
+
+  const pushSlot = (ms: number) => {
+    if (ms < shiftStartMs || ms >= shiftEndMs) return;
+    if (terminalMs != null && ms === terminalMs) return;
+    if (slotTimes.includes(ms)) return;
+    slotTimes.push(ms);
+  };
+
+  if (intervalMs == null || isOncePrn) {
+    const anchorMs = lastAdminMs ?? resolvePrnAvailabilityAnchorMs(input);
+    if (anchorMs != null) pushSlot(anchorMs);
+  } else if (lastAdminMs != null) {
+    let cursor = lastAdminMs + intervalMs;
+    while (cursor < shiftEndMs && slotTimes.length < max) {
+      pushSlot(cursor);
+      cursor += intervalMs;
+    }
+  } else {
+    const anchorMs = resolvePrnAvailabilityAnchorMs(input);
+    if (anchorMs == null) return [];
+    let cursor = anchorMs;
+    if (cursor < shiftStartMs) {
+      while (cursor < shiftStartMs) {
+        cursor += intervalMs;
+      }
+    }
+    while (cursor < shiftEndMs && slotTimes.length < max) {
+      pushSlot(cursor);
+      cursor += intervalMs;
+    }
+  }
+
+  slotTimes.sort((a, b) => a - b);
+  const capped = slotTimes.slice(0, max);
+
+  return capped.map((ms, index) => {
+    const eligibleAt = new Date(ms).toISOString();
+    const nextMs = capped[index + 1] ?? null;
+    return {
+      projectionKey: `${input.orderItemId}:${eligibleAt}`,
+      orderItemId: input.orderItemId,
+      eligibleAt,
+      doseStatus: "DUE" as const,
+      prnNextEligibleAt: nextMs != null ? new Date(nextMs).toISOString() : null,
+    };
   });
 }

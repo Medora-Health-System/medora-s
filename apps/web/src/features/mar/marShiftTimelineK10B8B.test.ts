@@ -23,6 +23,7 @@ describe("marShiftTimelineK10B8B — PRN dedup + clinical status colors", () => 
   it("API suppresses PRN fallback when visible dose-instance PRN cell exists", () => {
     expect(service).toContain("collectVisiblePrnOrderItemIds");
     expect(service).toContain("visiblePrnOrderItemIds");
+    expect(service).toContain("appendMarShiftTimelinePrnAvailabilityProjections");
     expect(service).toContain("upsertMarShiftTimelinePrnCellItem");
   });
 

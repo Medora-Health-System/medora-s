@@ -1,13 +1,17 @@
 import {
   buildMarPrnTimelineCellDisplay,
+  buildPrnTimelineAvailabilityProjections,
   formatGovernedRoomDisplay,
   formatMarPrnFrequencyLabel,
   isPrnMedicationOrderClassification,
   prnTimelineCellPriority,
   resolveMarPrnTimelineColumnKey,
+  resolveMarShiftTimelineColumnKey,
   resolvePrnNextEligibleAt,
+  resolvePrnTimelineTerminalDisplay,
   shouldRetainPrnTimelineItem,
   type MarShiftTimelineColumn,
+  type PrnTimelineAvailabilityProjection,
 } from "@medora/shared";
 import type { PrismaService } from "../prisma/prisma.service";
 import type {
@@ -65,29 +69,52 @@ export function appendMarShiftTimelineCellItem(
   cell.items.push(item);
 }
 
-/** Replace lower-priority PRN cell for the same order item (K.10B.11 dedup). */
+/** Stable dedupe key for PRN row cells (K.10B.11A). */
+export function resolveMarShiftTimelinePrnCellDedupeKey(
+  item: MarShiftTimelineCellItem
+): string {
+  if (item.prnProjectionKey?.trim()) return item.prnProjectionKey.trim();
+  if (
+    resolvePrnTimelineTerminalDisplay({
+      doseStatus: item.doseStatus,
+      readOnly: item.readOnly,
+      secondaryText: item.secondaryText,
+    })
+  ) {
+    return `terminal:${item.orderItemId}:${item.administeredAt ?? item.medicationDoseInstanceId ?? "unknown"}`;
+  }
+  if (item.medicationDoseInstanceId?.trim()) {
+    return `dose:${item.orderItemId}:${item.medicationDoseInstanceId}`;
+  }
+  return `fallback:${item.orderItemId}:${item.scheduledAt}`;
+}
+
+/** Replace PRN cell with the same dedupe key; keep terminal and other projections (K.10B.11A). */
 export function upsertMarShiftTimelinePrnCellItem(
   row: MarShiftTimelineRowWithKind,
   columnKey: string,
   item: MarShiftTimelineCellItem
 ): void {
+  const incomingKey = resolveMarShiftTimelinePrnCellDedupeKey(item);
   const incomingPriority = prnTimelineCellPriority({
     doseStatus: item.doseStatus,
     readOnly: item.readOnly,
     secondaryText: item.secondaryText,
     hasMedicationDoseInstanceId: Boolean(item.medicationDoseInstanceId?.trim()),
+    prnProjectionKey: item.prnProjectionKey,
   });
 
   for (const cell of row.cells) {
     cell.items = cell.items.filter((existing) => {
-      if (existing.orderItemId !== item.orderItemId || existing.isPrnBand !== true) {
-        return true;
-      }
+      if (existing.isPrnBand !== true) return true;
+      const existingKey = resolveMarShiftTimelinePrnCellDedupeKey(existing);
+      if (existingKey !== incomingKey) return true;
       const existingPriority = prnTimelineCellPriority({
         doseStatus: existing.doseStatus,
         readOnly: existing.readOnly,
         secondaryText: existing.secondaryText,
         hasMedicationDoseInstanceId: Boolean(existing.medicationDoseInstanceId?.trim()),
+        prnProjectionKey: existing.prnProjectionKey,
       });
       return existingPriority > incomingPriority;
     });
@@ -163,6 +190,7 @@ export function buildMarShiftTimelinePrnCellTexts(input: {
   prnNextEligibleAt?: string | null;
   facilityTimeZone: string;
   secondaryTextOverride?: string | null;
+  projectedEligibleAt?: string | null;
 }): Pick<MarShiftTimelineCellItem, "primaryText" | "secondaryText" | "tertiaryText"> & {
   isPrnBand: true;
   prnFrequencyLabel: string;
@@ -180,6 +208,7 @@ export function buildMarShiftTimelinePrnCellTexts(input: {
     prnNextEligibleAt: input.prnNextEligibleAt,
     facilityTimeZone: input.facilityTimeZone,
     secondaryTextOverride: input.secondaryTextOverride,
+    projectedEligibleAt: input.projectedEligibleAt,
   });
   return {
     primaryText: display.primaryText,
@@ -276,6 +305,138 @@ export function prnTerminalMarOverlapsShift(input: {
   if (!input.administeredAt) return false;
   const time = input.administeredAt.getTime();
   return time >= input.shiftStart.getTime() && time < input.shiftEnd.getTime();
+}
+
+export type MarShiftTimelinePrnProjectionContext = {
+  orderItemId: string;
+  medicationLabel: string | null;
+  doseAmount: string | null;
+  route: string | null;
+  frequencyCode: string | null;
+  directionsSig: string | null;
+  createdAt: Date | string;
+  intendedAdministrationAt?: Date | string | null;
+  lastAdministeredAt?: Date | string | null;
+  terminalAdministeredAt?: Date | string | null;
+  shiftStart: Date;
+  shiftEnd: Date;
+  columns: readonly MarShiftTimelineColumn[];
+  facilityTimeZone: string;
+  referenceAt: Date;
+};
+
+export function buildMarShiftTimelinePrnProjectionCellItem(input: {
+  projection: PrnTimelineAvailabilityProjection;
+  context: MarShiftTimelinePrnProjectionContext;
+  prnLastGivenAt?: string | null;
+}): { columnKey: string; item: MarShiftTimelineCellItem } | null {
+  const eligibleAt = new Date(input.projection.eligibleAt);
+  if (Number.isNaN(eligibleAt.getTime())) return null;
+  const columnKey = resolveMarShiftTimelineColumnKey({
+    scheduledAt: eligibleAt,
+    columns: input.context.columns,
+    facilityTimeZone: input.context.facilityTimeZone,
+  });
+  if (!columnKey) return null;
+
+  const prnCell = buildMarShiftTimelinePrnCellTexts({
+    medicationLabel: input.context.medicationLabel,
+    doseAmount: input.context.doseAmount,
+    route: input.context.route,
+    frequencyCode: input.context.frequencyCode,
+    directionsSig: input.context.directionsSig,
+    doseStatus: "DUE",
+    prnLastGivenAt: input.prnLastGivenAt ?? null,
+    prnNextEligibleAt: input.projection.prnNextEligibleAt,
+    facilityTimeZone: input.context.facilityTimeZone,
+    projectedEligibleAt: input.projection.eligibleAt,
+  });
+
+  const windowEnd = new Date(eligibleAt.getTime() + 60 * 60 * 1000);
+  return {
+    columnKey,
+    item: {
+      type: "MEDICATION",
+      medicationDoseInstanceId: "",
+      orderItemId: input.context.orderItemId,
+      medicationLabel: input.context.medicationLabel,
+      primaryText: prnCell.primaryText,
+      secondaryText: prnCell.secondaryText,
+      tertiaryText: prnCell.tertiaryText,
+      doseStatus: "DUE",
+      readOnly: false,
+      startedAt: null,
+      startedByDisplay: null,
+      startedByInitials: null,
+      stoppedAt: null,
+      stoppedByDisplay: null,
+      stoppedByInitials: null,
+      administeredAt: null,
+      administeredByDisplay: null,
+      administeredByInitials: null,
+      completionSummary: prnCell.tertiaryText || null,
+      isPrnBand: true,
+      prnFrequencyLabel: prnCell.prnFrequencyLabel,
+      prnLastGivenAt: input.prnLastGivenAt ?? null,
+      prnNextEligibleAt: input.projection.prnNextEligibleAt,
+      prnProjectionKey: input.projection.projectionKey,
+      doseKind: "FIXED_ADMINISTRATION",
+      route: input.context.route,
+      frequencyCode: input.context.frequencyCode,
+      scheduledAt: eligibleAt.toISOString(),
+      dueWindowStartAt: eligibleAt.toISOString(),
+      dueWindowEndAt: windowEnd.toISOString(),
+      requiresWitness: false,
+      clinicalAction: "ADMINISTER",
+      hover: {
+        title: input.context.medicationLabel ?? "Medication",
+        due: prnCell.tertiaryText,
+        dose: input.context.doseAmount,
+        route: input.context.route,
+        witness: null,
+        status: "Due",
+      },
+      actions: ["ADMINISTER", "REFUSE", "HOLD", "VIEW_ORDER"],
+    },
+  };
+}
+
+export function appendMarShiftTimelinePrnAvailabilityProjections(input: {
+  row: MarShiftTimelineRowWithKind;
+  context: MarShiftTimelinePrnProjectionContext;
+  prnLastGivenAt?: string | null;
+}): void {
+  const projections = buildPrnTimelineAvailabilityProjections({
+    orderItemId: input.context.orderItemId,
+    frequencyCode: input.context.frequencyCode,
+    firstEligibleAt: input.context.intendedAdministrationAt ?? input.context.createdAt,
+    plannedAt: input.context.intendedAdministrationAt,
+    createdAt: input.context.createdAt,
+    lastAdministeredAt: input.context.lastAdministeredAt,
+    shiftStartAt: input.context.shiftStart,
+    shiftEndAt: input.context.shiftEnd,
+    terminalAdministeredAt: input.context.terminalAdministeredAt,
+  });
+
+  for (const projection of projections) {
+    const built = buildMarShiftTimelinePrnProjectionCellItem({
+      projection,
+      context: input.context,
+      prnLastGivenAt: input.prnLastGivenAt,
+    });
+    if (!built) continue;
+
+    const existingCell = input.row.cells.find((cell) => cell.columnKey === built.columnKey);
+    const hasNonProjectionCell = existingCell?.items.some(
+      (existing) =>
+        existing.orderItemId === input.context.orderItemId &&
+        existing.isPrnBand === true &&
+        !existing.prnProjectionKey?.trim()
+    );
+    if (hasNonProjectionCell) continue;
+
+    upsertMarShiftTimelinePrnCellItem(input.row, built.columnKey, built.item);
+  }
 }
 
 export { isPrnMedicationOrderClassification };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMarPrnTimelineCellDisplay,
+  buildPrnTimelineAvailabilityProjections,
   formatMarPrnFrequencyLabel,
   isPrnAdministrationBeforeNextEligible,
   isPrnMedicationOrderClassification,
@@ -133,6 +134,73 @@ describe("marPrnTimeline permanence (K.10B.11)", () => {
     ).toBeGreaterThan(
       prnTimelineCellPriority({ doseStatus: "DUE", hasMedicationDoseInstanceId: true })
     );
+  });
+});
+
+describe("marPrnTimeline availability projections (K.10B.11A)", () => {
+  const shiftStart = "2026-06-11T19:00:00.000Z";
+  const shiftEnd = "2026-06-12T08:00:00.000Z";
+
+  it("Q6H PRN projects 21:00 and 03:00 inside 7P–7A shift", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-1",
+      frequencyCode: "Q6H",
+      createdAt: "2026-06-11T21:00:00.000Z",
+      shiftStartAt: shiftStart,
+      shiftEndAt: shiftEnd,
+    });
+    expect(projections.map((p) => p.eligibleAt)).toEqual([
+      "2026-06-11T21:00:00.000Z",
+      "2026-06-12T03:00:00.000Z",
+    ]);
+    expect(projections[0]?.projectionKey).toBe("oi-1:2026-06-11T21:00:00.000Z");
+    expect(projections[0]?.prnNextEligibleAt).toBe("2026-06-12T03:00:00.000Z");
+  });
+
+  it("Q4H PRN projects multiple eligible cells", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-q4h",
+      frequencyCode: "Q4H",
+      createdAt: "2026-06-11T20:00:00.000Z",
+      shiftStartAt: shiftStart,
+      shiftEndAt: shiftEnd,
+    });
+    expect(projections.length).toBeGreaterThanOrEqual(3);
+    expect(projections[0]?.eligibleAt).toBe("2026-06-11T20:00:00.000Z");
+  });
+
+  it("ONCE PRN projects only one cell", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-once",
+      frequencyCode: "ONCE",
+      createdAt: "2026-06-11T21:00:00.000Z",
+      shiftStartAt: shiftStart,
+      shiftEndAt: shiftEnd,
+    });
+    expect(projections).toHaveLength(1);
+  });
+
+  it("unknown PRN interval projects one cell", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-prn",
+      frequencyCode: "PRN",
+      createdAt: "2026-06-11T21:00:00.000Z",
+      shiftStartAt: shiftStart,
+      shiftEndAt: shiftEnd,
+    });
+    expect(projections).toHaveLength(1);
+  });
+
+  it("terminal cell does not remove future projection slots", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-1",
+      frequencyCode: "Q6H",
+      lastAdministeredAt: "2026-06-11T22:00:00.000Z",
+      terminalAdministeredAt: "2026-06-11T22:00:00.000Z",
+      shiftStartAt: shiftStart,
+      shiftEndAt: shiftEnd,
+    });
+    expect(projections.map((p) => p.eligibleAt)).toEqual(["2026-06-12T04:00:00.000Z"]);
   });
 });
 
