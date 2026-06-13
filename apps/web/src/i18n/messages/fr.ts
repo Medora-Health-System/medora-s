@@ -5822,6 +5822,8 @@ export default {
     cardTitle: "Synthèse de visite (urgences)",
     cardSubline:
       "Vue unique lecture seule — agrégation des données déjà enregistrées (triage, soins, médecin, disposition, résultats). Aucune modification ici.",
+    readOnlySummarySubline:
+      "Synthèse en lecture seule — agrégation légale complète (triage, soins infirmiers, médecin, ordres, résultats, médicaments, procédures, disposition). Aucune modification depuis ce rôle.",
     linkResultsTab: "Onglet résultats",
     linkDiagnosticsTab: "Diagnostics",
     resultsPreviewTitle: "Résultats & examens (aperçu)",

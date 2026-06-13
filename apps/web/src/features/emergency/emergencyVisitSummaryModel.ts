@@ -39,6 +39,7 @@ import {
   type TriageCarryForwardFieldKey,
 } from "@medora/shared";
 import { buildTriageDocumentationPreviewModel, triagePreviewSliceFromTriageGet } from "./emergencyTriageDocPreview";
+import { formatResultAttributionPair } from "@/lib/documentationAttribution";
 import { buildErResultsCockpitModel } from "./emergencyResultsCockpitModel";
 import { erTriageT } from "./erTriageI18nLookup";
 import {
@@ -322,18 +323,35 @@ function oneLineFromRow(row: EncounterLabRadRow | null, locale: SupportedLanguag
   const label = v.title.trim() || vs(locale, "examDefaultLabel");
   const rt = (v.resultText ?? "").trim();
   const crit = v.criticalValue ? vs(locale, "criticalValueSuffix") : "";
+  let base: string;
   if (rt) {
-    return interpolate(vs(locale, "resultWithValue"), {
+    base = interpolate(vs(locale, "resultWithValue"), {
       label,
       crit,
       value: trunc(rt, 200),
     });
+  } else {
+    base = interpolate(vs(locale, "resultStatusOnly"), {
+      label,
+      crit,
+      status: v.itemStatus ?? "",
+    }).trim();
   }
-  return interpolate(vs(locale, "resultStatusOnly"), {
-    label,
-    crit,
-    status: v.itemStatus ?? "",
-  }).trim();
+  const resultRaw = row.item.result;
+  const ackLines =
+    resultRaw && typeof resultRaw === "object" && !Array.isArray(resultRaw)
+      ? formatResultAttributionPair({
+          resultedBy: (resultRaw as { enteredByDisplayFr?: string | null }).enteredByDisplayFr,
+          resultedAt: (resultRaw as { verifiedAt?: string | null }).verifiedAt,
+          acknowledgedBy: (resultRaw as { acknowledgedByDisplayFr?: string | null }).acknowledgedByDisplayFr,
+          acknowledgedAt: (resultRaw as { acknowledgedByProviderAt?: string | null }).acknowledgedByProviderAt,
+          language: locale,
+        })
+      : [];
+  if (ackLines.length > 0) {
+    return `${base} · ${ackLines.join(" · ")}`;
+  }
+  return base;
 }
 
 /** Build compact lab/rad lines from the same snapshot as EmergencyResultsPanel. */

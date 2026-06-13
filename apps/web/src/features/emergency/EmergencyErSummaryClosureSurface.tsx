@@ -107,6 +107,8 @@ export type EmergencyErSummaryClosureSurfaceProps = {
   sectionId?: string;
   ivAccessFetchEnabled?: boolean;
   proceduresFetchEnabled?: boolean;
+  medicationMarSummaryEnabled?: boolean;
+  summaryReadOnly?: boolean;
   canOpenProcedureDocumentation?: boolean;
   onOpenProcedureDocumentation?: ComponentProps<typeof EmergencyVisitSummaryPanel>["onOpenProcedureDocumentation"];
 };
@@ -126,6 +128,8 @@ export function EmergencyErSummaryClosureSurface({
   sectionId,
   ivAccessFetchEnabled,
   proceduresFetchEnabled,
+  medicationMarSummaryEnabled = true,
+  summaryReadOnly = false,
   canOpenProcedureDocumentation,
   onOpenProcedureDocumentation,
 }: EmergencyErSummaryClosureSurfaceProps) {
@@ -562,6 +566,8 @@ export function EmergencyErSummaryClosureSurface({
         diagnosticsTabHref={diagnosticsTabHref}
         ivAccessFetchEnabled={canFetchIvAccess}
         proceduresFetchEnabled={canFetchProcedures}
+        medicationMarSummaryEnabled
+        summaryReadOnly={summaryReadOnly}
         canOpenProcedureDocumentation={canOpenProcedureDocumentation ?? false}
         onOpenProcedureDocumentation={onOpenProcedureDocumentation}
       />

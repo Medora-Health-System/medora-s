@@ -73,6 +73,7 @@ import {
   getDefaultEdWorkspaceTile,
   getVisibleEdWorkspaceTiles,
   isErWorkspaceSectionVisible,
+  resolveEdWorkspaceRoleGroup,
 } from "@/features/emergency/edWorkspaceTileVisibility";
 import { EncounterDiagnosticsPanel } from "@/components/encounters/EncounterDiagnosticsPanel";
 import { parseAdmissionSummaryForChart } from "@/components/patient-chart/patientChartHelpers";
@@ -273,6 +274,12 @@ export function EmergencyActiveWorkspaceView() {
       canManageOrders: caps.canManageOrders,
     };
   }, [roles, canPrescribe]);
+
+  const edWorkspaceRoleGroup = useMemo(
+    () => resolveEdWorkspaceRoleGroup(edWorkspaceRoleInput),
+    [edWorkspaceRoleInput]
+  );
+  const summaryReadOnly = edWorkspaceRoleGroup === "TECH";
 
   const visibleEdWorkspaceTileIds = useMemo(() => {
     const base = getVisibleEdWorkspaceTiles(edWorkspaceRoleInput);
@@ -1260,6 +1267,8 @@ export function EmergencyActiveWorkspaceView() {
               onReload={onEmbeddedEncounterUpdate}
               ivAccessFetchEnabled={canDocumentIvAccess}
               proceduresFetchEnabled={canDocumentIvAccess}
+              medicationMarSummaryEnabled
+              summaryReadOnly={summaryReadOnly}
             />
           ) : null}
 

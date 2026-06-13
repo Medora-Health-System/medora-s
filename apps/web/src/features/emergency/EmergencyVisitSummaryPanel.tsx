@@ -491,6 +491,8 @@ export function EmergencyVisitSummaryPanel({
   diagnosticsTabHref,
   ivAccessFetchEnabled = false,
   proceduresFetchEnabled = false,
+  medicationMarSummaryEnabled = true,
+  summaryReadOnly = false,
   canOpenProcedureDocumentation = false,
   onOpenProcedureDocumentation,
 }: {
@@ -505,6 +507,10 @@ export function EmergencyVisitSummaryPanel({
   ivAccessFetchEnabled?: boolean;
   /** When true, loads GET /encounters/:id/procedures (same role set as IV quick actions). */
   proceduresFetchEnabled?: boolean;
+  /** When true (default), Summary always loads medication orders + MAR events for legal aggregation. */
+  medicationMarSummaryEnabled?: boolean;
+  /** Read-only Summary mode (e.g. ED technician) — suppresses edit affordances in child panels. */
+  summaryReadOnly?: boolean;
   /** MEDPROC.3 — may open existing procedure documentation launcher from order hints. */
   canOpenProcedureDocumentation?: boolean;
   onOpenProcedureDocumentation?: (step: ErProcedureLauncherStep) => void;
@@ -720,7 +726,9 @@ export function EmergencyVisitSummaryPanel({
               title={t("emergencyVisitSummaryPanel.cardTitle")}
               subline={
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                  {t("emergencyVisitSummaryPanel.cardSubline")}
+                  {summaryReadOnly
+                    ? t("emergencyVisitSummaryPanel.readOnlySummarySubline")
+                    : t("emergencyVisitSummaryPanel.cardSubline")}
                 </p>
               }
             />
@@ -772,7 +780,7 @@ export function EmergencyVisitSummaryPanel({
         encounterId={encounterId}
         facilityId={facilityId}
         refreshToken={resultsRefresh}
-        enabled={proceduresFetchEnabled}
+        enabled={medicationMarSummaryEnabled}
       />
 
       <EnterpriseEncounterCommandTimeline

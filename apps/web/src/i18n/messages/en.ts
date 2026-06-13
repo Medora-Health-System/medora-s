@@ -5853,7 +5853,10 @@ export default {
   },
   emergencyVisitSummaryPanel: {
     cardTitle: "ED visit summary",
-    cardSubline: "",
+    cardSubline:
+      "Read-only unified view — aggregates data already recorded (triage, nursing, provider, disposition, results). No edits here.",
+    readOnlySummarySubline:
+      "Read-only summary — full legal aggregation (triage, nursing, provider, orders, results, medications, procedures, disposition). This role cannot edit from here.",
     linkResultsTab: "Results tab",
     linkDiagnosticsTab: "Diagnoses",
     resultsPreviewTitle: "Results & studies (preview)",
