@@ -8,7 +8,7 @@ import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
 } from "@/lib/jwtAccessTtl";
-import { filterSidebarNavItemsByNavigationAreas } from "@/features/navigation/navigationVisibility";
+import { filterSidebarNavItemsByNavigationAreas, buildNavigationProfileFromSession } from "@/features/navigation/navigationVisibility";
 /**
  * Shell authentifié unique : `AppShell` + nav (`sidebarNavConfig`).
  * Imports directs vers les fichiers (pas de barrel `app-shell/index`) — évite manifest / chunks client incorrects.
@@ -208,13 +208,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const buildNavigationProfile = () => {
     const activeRoleRow = getActiveFacilityRoleRow();
-    return {
+    return buildNavigationProfileFromSession({
       roleCodes: activeRoles,
       departmentCode: activeRoleRow?.departmentCode ?? null,
       prismaDepartmentCode: activeRoleRow?.departmentCode ?? null,
       facilityType: activeRoleRow?.facilityType ?? null,
       facilityServiceLines: activeRoleRow?.serviceLines ?? null,
-    };
+    });
   };
 
   const getActiveFacilityLanguage = () => {

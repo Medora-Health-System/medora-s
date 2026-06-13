@@ -7,6 +7,7 @@ export * from "./auth/facilityTypeRegistry.js";
 export * from "./auth/facilityServiceLines.js";
 export * from "./auth/freestandingErTechnicianAccess.js";
 export * from "./auth/freestandingErTechnicianProcedureGovernance.js";
+export * from "./auth/freestandingErRnProviderNavigation.js";
 export * from "./auth/workspaceAuthorization.js";
 export * from "./auth/adminUserAssignment.js";
 export * from "./auth/navigationAuthorization.js";

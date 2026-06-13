@@ -1,5 +1,6 @@
 import {
   canReadFreestandingErObservationPatients,
+  filterHrefListForFreestandingErRnProviderSidebar,
   getVisibleNavigationAreas,
   isNavigationAreaVisible,
   type NavigationArea,
@@ -33,9 +34,13 @@ export function filterSidebarNavItemsByNavigationAreas(
   profile: NavigationProfileInput
 ): SidebarNavItem[] {
   const visibleAreas = getVisibleNavigationAreas(profile);
-  return items
+  const areaFiltered = items
     .filter((item) => isNavigationAreaVisible(visibleAreas, item.navAreas))
     .map((item) => applyObservationBoardNavLabel(item, profile));
+  return filterHrefListForFreestandingErRnProviderSidebar(areaFiltered, {
+    roleCodes: profile.roleCodes,
+    facilityType: profile.facilityType,
+  });
 }
 
 /** Freestanding ER lab/rad technicians see "Observation" instead of hospitalisation label. */

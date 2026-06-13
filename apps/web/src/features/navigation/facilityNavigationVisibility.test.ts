@@ -134,4 +134,34 @@ describe("facility navigation visibility (MEDUI.OBS.TECH.1 + MEDUI.FSER.ROLE.1)"
     });
     expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(true);
   });
+
+  it("freestanding ER RN does not see hospital trackboard, nursing, or provider pages (MEDUI.ED.PROCEDURE.TECH.1A)", () => {
+    const profile = {
+      roleCodes: ["RN"],
+      prismaDepartmentCode: "EMERGENCY",
+      ...freestandingErProfile,
+      facilityServiceLines: null,
+    };
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["RN"],
+      profile,
+    });
+    expect(filtered.some((item) => item.href === "/app/trackboard")).toBe(false);
+    expect(filtered.some((item) => item.href === "/app/nursing")).toBe(false);
+    expect(filtered.some((item) => item.href === "/app/provider")).toBe(false);
+    expect(filtered.some((item) => item.href === "/app/rad-worklist")).toBe(false);
+  });
+
+  it("hospital RN still sees nursing dashboard (MEDUI.ED.PROCEDURE.TECH.1A)", () => {
+    const filtered = filterSidebarNavItemsForSession(SIDEBAR_NAV_ITEMS, {
+      roleCodes: ["RN"],
+      profile: {
+        roleCodes: ["RN"],
+        prismaDepartmentCode: "EMERGENCY",
+        facilityType: "HOSPITAL",
+        facilityServiceLines: null,
+      },
+    });
+    expect(filtered.some((item) => item.href === "/app/nursing")).toBe(true);
+  });
 });
