@@ -6,6 +6,7 @@ import {
   toMedicationAdministrationEffectiveTimeIsoUtc,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcIso,
+  isMarShiftTimelineItemActionable,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -27,7 +28,15 @@ export function isMarShiftTimelineMutationAction(action: MarShiftTimelineDrawerA
 }
 
 export function isMarShiftTimelineDrawerReadOnly(item: MarShiftTimelineCellItem): boolean {
-  return item.readOnly === true;
+  return !isMarShiftTimelineItemActionable(item);
+}
+
+export function isMarShiftTimelineDrawerScheduledActionable(
+  item: MarShiftTimelineCellItem
+): boolean {
+  if (!isMarShiftTimelineItemActionable(item)) return false;
+  const status = item.doseStatus.trim().toUpperCase();
+  return status === "PLANNED" || item.clinicalAction === "VIEW_UPCOMING";
 }
 
 /** Locate a timeline cell item after refresh (K.10B.2 drawer resync). */
@@ -112,6 +121,11 @@ export function marShiftTimelinePrimaryDrawerAction(
   if (item.clinicalAction === "STOP_FLUID") return "STOP_FLUID";
   if (item.clinicalAction === "PAUSE_FLUID") return "PAUSE_FLUID";
   if (item.clinicalAction === "ADMINISTER") return "ADMINISTER";
+  if (item.clinicalAction === "VIEW_UPCOMING") {
+    const route = item.route?.trim().toUpperCase() ?? "";
+    if (item.doseKind === "IVPB_SESSION" || route === "IVPB") return "START_INFUSION";
+    return "ADMINISTER";
+  }
   return null;
 }
 

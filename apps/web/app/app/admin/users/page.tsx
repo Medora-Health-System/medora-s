@@ -26,8 +26,17 @@ import {
   patchAdminUserStatus,
   fetchAdminUserBillingIdentity,
   patchAdminUserBillingIdentity,
+  fetchAdminFacilityDepartments,
   type AdminUserRow,
 } from "@/lib/adminUsersApi";
+import { AdminUserAssignmentSection } from "@/features/admin/AdminUserAssignmentSection";
+import {
+  assignmentRowsFromExistingUser,
+  buildAssignmentsPayload,
+  createEmptyAssignmentRow,
+  type AssignmentDraftRow,
+  type FacilityDepartmentOption,
+} from "@/features/admin/adminUserAssignmentForm";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
 import { useI18n } from "@/lib/i18n";
@@ -46,36 +55,17 @@ function formatRoleList(codes: string[], t: (key: string) => string): string {
   return codes.map((code) => roleLabelForCode(code, t)).join(", ");
 }
 
-function roleCheckboxes(
-  selected: Set<string>,
-  onToggle: (code: string) => void,
-  t: (key: string) => string,
-  disabled?: boolean
-) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {ADMIN_ASSIGNABLE_ROLE_CODES.map((code) => (
-        <label
-          key={code}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 14,
-            cursor: disabled ? "default" : "pointer",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={selected.has(code)}
-            disabled={disabled}
-            onChange={() => onToggle(code)}
-          />
-          <span>{roleLabelForCode(code, t)}</span>
-        </label>
-      ))}
-    </div>
-  );
+async function loadDepartmentsForFacility(
+  headerFacilityId: string,
+  targetFacilityId: string
+): Promise<FacilityDepartmentOption[]> {
+  if (!targetFacilityId.trim()) return [];
+  try {
+    const { items } = await fetchAdminFacilityDepartments(headerFacilityId, targetFacilityId);
+    return items;
+  } catch {
+    return [];
+  }
 }
 
 /** Statut d’accès pour l’établissement affiché (colonne Statut). */
@@ -860,23 +850,45 @@ function CreateUserModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [accountActive, setAccountActive] = useState(true);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [assignmentRows, setAssignmentRows] = useState<AssignmentDraftRow[]>(() => [
+    createEmptyAssignmentRow(defaultFacilityId),
+  ]);
+  const [departmentsByFacility, setDepartmentsByFacility] = useState<
+    Record<string, FacilityDepartmentOption[]>
+  >({});
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [billingNpi, setBillingNpi] = useState("");
   const [billingTaxonomyCode, setBillingTaxonomyCode] = useState("");
   const [billingNameOverride, setBillingNameOverride] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const toggle = (code: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  };
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      if (!selectedFacilityId.trim()) return;
+      setDepartmentsLoading(true);
+      const items = await loadDepartmentsForFacility(selectedFacilityId, selectedFacilityId);
+      if (!cancelled) {
+        setDepartmentsByFacility((prev) => ({ ...prev, [selectedFacilityId]: items }));
+        setDepartmentsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedFacilityId]);
 
-  const previewPath = getLandingRouteForRoles(Array.from(selected));
+  useEffect(() => {
+    setAssignmentRows((rows) =>
+      rows.map((row) => ({ ...row, facilityId: selectedFacilityId }))
+    );
+  }, [selectedFacilityId]);
+
+  const payloadPreview = buildAssignmentsPayload(assignmentRows);
+  const previewRoleCodes = payloadPreview.ok ? payloadPreview.roleCodes : [];
+  const previewPath = getLandingRouteForRoles(previewRoleCodes);
   const previewLabel = getLandingHomeLabel(previewPath, t);
+  const isProvider = previewRoleCodes.includes("PROVIDER");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -904,11 +916,11 @@ function CreateUserModal({
       onError(t("adminUsers.valFacilityRequired"));
       return;
     }
-    if (selected.size === 0) {
-      onError(t("adminUsers.valAtLeastOneRole"));
+    const built = buildAssignmentsPayload(assignmentRows);
+    if (!built.ok) {
+      onError(t(built.errorKey));
       return;
     }
-    const isProvider = selected.has("PROVIDER");
     if (isProvider && billingNpi.trim()) {
       const d = billingNpi.replace(/\D/g, "").slice(0, 10);
       if (d.length !== 10) {
@@ -924,7 +936,7 @@ function CreateUserModal({
         email: email.trim(),
         password,
         facilityId: selectedFacilityId,
-        roles: Array.from(selected) as CreateAdminUserDto["roles"],
+        assignments: built.assignments,
         isActive: accountActive,
       };
       if (isProvider) {
@@ -1072,13 +1084,16 @@ function CreateUserModal({
             {t("adminUsers.accountActiveLabel")}
           </label>
 
-          <div style={{ marginBottom: 16 }}>
-            <span style={{ fontWeight: 600, fontSize: 13, display: "block", marginBottom: 8 }}>
-              {t("adminUsers.rolesSectionLabel")}
-            </span>
-            {roleCheckboxes(selected, toggle, t)}
-          </div>
-          {selected.has("PROVIDER") ? (
+          <AdminUserAssignmentSection
+            facilities={facilities}
+            rows={assignmentRows}
+            onChangeRows={setAssignmentRows}
+            departmentsByFacility={departmentsByFacility}
+            departmentsLoading={departmentsLoading}
+            showFacilityColumn={false}
+            disabled={submitting}
+          />
+          {isProvider ? (
             <div
               style={{
                 marginBottom: 16,
@@ -1172,28 +1187,49 @@ function EditRolesModal({
 }) {
   const { t, language } = useI18n();
   const platformOnlyAtFacility = user.roles.filter((r) => !ADMIN_ASSIGNABLE_SET.has(r));
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(user.roles.filter((r) => ADMIN_ASSIGNABLE_SET.has(r)))
+  const [assignmentRows, setAssignmentRows] = useState<AssignmentDraftRow[]>(() =>
+    assignmentRowsFromExistingUser({
+      facilityId,
+      roles: user.roles.filter((r) => ADMIN_ASSIGNABLE_SET.has(r)),
+      assignments: user.assignments?.filter((a) => ADMIN_ASSIGNABLE_SET.has(a.roleCode)),
+    })
   );
+  const [departmentsByFacility, setDepartmentsByFacility] = useState<
+    Record<string, FacilityDepartmentOption[]>
+  >({});
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const toggle = (code: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  };
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setDepartmentsLoading(true);
+      const items = await loadDepartmentsForFacility(facilityId, facilityId);
+      if (!cancelled) {
+        setDepartmentsByFacility({ [facilityId]: items });
+        setDepartmentsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [facilityId]);
 
-  const effectiveRoleCodes = [...new Set([...selected, ...platformOnlyAtFacility])].sort();
+  const built = buildAssignmentsPayload(assignmentRows);
+  const effectiveRoleCodes = built.ok
+    ? [...new Set([...built.roleCodes, ...platformOnlyAtFacility])].sort()
+    : [...platformOnlyAtFacility].sort();
   const previewPath = getLandingRouteForRoles(effectiveRoleCodes);
   const previewLabel = getLandingHomeLabel(previewPath, t);
   const effectiveRoles = formatRoleList(effectiveRoleCodes, t);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selected.size === 0 && platformOnlyAtFacility.length === 0) {
+    if (!built.ok) {
+      onError(t(built.errorKey));
+      return;
+    }
+    if (built.roleCodes.length === 0 && platformOnlyAtFacility.length === 0) {
       onError(t("adminUsers.valAtLeastOneRole"));
       return;
     }
@@ -1201,7 +1237,7 @@ function EditRolesModal({
     try {
       await patchAdminUserRoles(facilityId, user.id, {
         facilityId,
-        roles: Array.from(selected),
+        assignments: built.assignments,
       });
       await onSuccess();
     } catch (err: unknown) {
@@ -1280,7 +1316,15 @@ function EditRolesModal({
           {t("adminUsers.homePreviewLine")} <strong>{previewLabel}</strong>
         </p>
         <form onSubmit={submit}>
-          <div style={{ marginBottom: 16 }}>{roleCheckboxes(selected, toggle, t)}</div>
+          <AdminUserAssignmentSection
+            facilities={[{ id: facilityId, name: facilityDisplayName }]}
+            rows={assignmentRows}
+            onChangeRows={setAssignmentRows}
+            departmentsByFacility={departmentsByFacility}
+            departmentsLoading={departmentsLoading}
+            showFacilityColumn={false}
+            disabled={submitting}
+          />
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
             <button
               type="button"

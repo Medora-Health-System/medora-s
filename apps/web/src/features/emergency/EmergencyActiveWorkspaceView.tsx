@@ -16,6 +16,7 @@ import {
 } from "@/lib/encounterChromeI18n";
 import { BillingClassificationBadgeInteractive } from "@/components/encounters/BillingClassificationBadgeInteractive";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { canDocumentEdTriage } from "@medora/shared";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import type { PatientTriageVitalsResponse } from "@/lib/patientVitals";
 import {
@@ -67,6 +68,7 @@ import {
 } from "@/features/emergency/erWorkspaceSections";
 import {
   deriveEdWorkspaceCapabilities,
+  applyEdWorkspaceEncounterTileFilter,
   edWorkspaceTileToSection,
   getDefaultEdWorkspaceTile,
   getVisibleEdWorkspaceTiles,
@@ -272,10 +274,14 @@ export function EmergencyActiveWorkspaceView() {
     };
   }, [roles, canPrescribe]);
 
-  const visibleEdWorkspaceTileIds = useMemo(
-    () => getVisibleEdWorkspaceTiles(edWorkspaceRoleInput),
-    [edWorkspaceRoleInput]
-  );
+  const visibleEdWorkspaceTileIds = useMemo(() => {
+    const base = getVisibleEdWorkspaceTiles(edWorkspaceRoleInput);
+    return applyEdWorkspaceEncounterTileFilter(base, {
+      ...edWorkspaceRoleInput,
+      encounterType: encounter?.type ?? null,
+      facilityUnit: encounter?.governedRoomUnit ?? null,
+    });
+  }, [edWorkspaceRoleInput, encounter?.type, encounter?.governedRoomUnit]);
 
   const visibleEdWorkspaceSections = useMemo(
     () => new Set(visibleEdWorkspaceTileIds.map(edWorkspaceTileToSection)),
@@ -291,8 +297,15 @@ export function EmergencyActiveWorkspaceView() {
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY");
 
-  const canFetchEncounterTriage =
-    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canFetchEncounterTriage = useMemo(
+    () =>
+      canDocumentEdTriage({
+        roleCodes: roles,
+        encounterType: encounter?.type ?? null,
+        facilityUnit: encounter?.governedRoomUnit ?? null,
+      }),
+    [roles, encounter?.type, encounter?.governedRoomUnit]
+  );
 
   /** Lab/Radiology techniciens : accès workspace urgences en lecture seule (workflow technicien). */
   const isReadOnlyTechnicianViewer =

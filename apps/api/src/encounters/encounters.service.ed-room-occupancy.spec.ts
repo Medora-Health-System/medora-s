@@ -2,16 +2,25 @@ import { ConflictException } from "@nestjs/common";
 import { AuditAction, EncounterType } from "@prisma/client";
 import {
   ED_CANONICAL_WAITING_ROOM_LABEL,
-  ED_ROOM_OCCUPIED_CODE,
+  ROOM_ALREADY_OCCUPIED_CODE,
   resolveEdRoomAssignmentForSave,
 } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
+import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 
 const facilityId = "fac-a";
 const patientId = "pat-1";
 const encounterId = "enc-new";
 
-type OpenRow = { id: string; facilityId: string; roomLabel: string | null; status: string };
+type OpenRow = {
+  id: string;
+  facilityId: string;
+  roomLabel: string | null;
+  status: string;
+  type?: string;
+  admissionSummaryJson?: unknown;
+  patient?: { firstName: string; lastName: string };
+};
 
 function buildCreateMocks(openRows: OpenRow[]) {
   const encounterCreate = jest.fn().mockImplementation(async ({ data }) => ({
@@ -64,19 +73,25 @@ function buildUpdateMocks(
 }
 
 describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () => {
-  it("create ED encounter into occupied room returns 409 ED_ROOM_OCCUPIED with suggestedRoom", async () => {
+  it("create ED encounter into occupied room returns 409 ROOM_ALREADY_OCCUPIED with suggestedRoom", async () => {
     const { prisma, auditLog, encounterCreate } = buildCreateMocks([
-      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN" },
+      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN", type: "EMERGENCY" },
     ]);
-    const svc = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+    const svc = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(
       svc.create(patientId, facilityId, { type: "EMERGENCY", roomLabel: "4" }, "user-1")
     ).rejects.toMatchObject({
       response: {
-        code: ED_ROOM_OCCUPIED_CODE,
+        code: ROOM_ALREADY_OCCUPIED_CODE,
         requestedRoom: "4",
         suggestedRoom: "4A",
+        occupiedRoom: "ED-4",
       },
     });
     expect(encounterCreate).not.toHaveBeenCalled();
@@ -85,9 +100,14 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
 
   it("create with confirm/accepted suffix saves 4A when 4 is occupied", async () => {
     const { prisma, auditLog, encounterCreate } = buildCreateMocks([
-      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN" },
+      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN", type: "EMERGENCY" },
     ]);
-    const svc = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+    const svc = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.create(
       patientId,
@@ -111,8 +131,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
 
   it("updateOperational into occupied room returns 409 ED_ROOM_OCCUPIED", async () => {
     const openRows = [
-      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN" },
-      { id: encounterId, facilityId, roomLabel: "2", status: "OPEN" },
+      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN", type: "EMERGENCY" },
+      { id: encounterId, facilityId, roomLabel: "2", status: "OPEN", type: "EMERGENCY" },
     ];
     const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(
       {
@@ -131,7 +151,12 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       },
       openRows
     );
-    const svc = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+    const svc = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(
       svc.updateOperational(facilityId, encounterId, { roomLabel: "4" }, "user-1")
@@ -141,8 +166,8 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
 
   it("updateOperational confirm saves accepted suffix", async () => {
     const openRows = [
-      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN" },
-      { id: encounterId, facilityId, roomLabel: "2", status: "OPEN" },
+      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN", type: "EMERGENCY" },
+      { id: encounterId, facilityId, roomLabel: "2", status: "OPEN", type: "EMERGENCY" },
     ];
     const { prisma, auditLog, encounterUpdateMany } = buildUpdateMocks(
       {
@@ -160,7 +185,12 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
       },
       openRows
     );
-    const svc = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+    const svc = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.updateOperational(
       facilityId,
@@ -183,9 +213,14 @@ describe("EncountersService — ED room occupancy enforcement (ROOMS.ED.2)", () 
 
   it("waiting room labels do not trigger numbered room conflict", async () => {
     const { prisma, auditLog, encounterCreate } = buildCreateMocks([
-      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN" },
+      { id: "enc-occupied", facilityId, roomLabel: "4", status: "OPEN", type: "EMERGENCY" },
     ]);
-    const svc = new EncountersService(prisma as never, { log: auditLog } as never, {} as never);
+    const svc = new EncountersService(
+      prisma as never,
+      { log: auditLog } as never,
+      {} as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.create(
       patientId,

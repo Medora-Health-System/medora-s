@@ -12,6 +12,7 @@ import {
   resolveMarShiftTimelineWindow,
   shouldIncludeMarShiftTimelineDose,
   isMarShiftTimelineItemReadOnly,
+  isMarShiftTimelineTerminalClinicalAction,
   buildMarShiftTimelineTertiaryText,
   resolveMarShiftTimelineMedicationLabel,
   normalizeMarShiftTimelineLocale,
@@ -630,7 +631,7 @@ export class MarShiftTimelineService {
         secondaryText,
         tertiaryText: resolvedTertiaryText,
         doseStatus: parsedStatus,
-        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction),
+        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction, parsedStatus, secondaryText),
         startedAt: enrichment?.startedAt ?? null,
         startedByDisplay: enrichment?.startedByDisplay ?? null,
         startedByInitials: enrichment?.startedByInitials ?? null,
@@ -652,7 +653,8 @@ export class MarShiftTimelineService {
         prnProjectionKey:
           isPrnBand &&
           enrichment?.administeredAt &&
-          (parsedStatus === "COMPLETED" || isMarShiftTimelineItemReadOnly(clinicalAction))
+          (parsedStatus === "COMPLETED" ||
+            isMarShiftTimelineTerminalClinicalAction(clinicalAction))
             ? `terminal:${dose.orderItemId}:${enrichment.administeredAt}`
             : null,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,

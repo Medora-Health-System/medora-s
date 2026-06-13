@@ -147,6 +147,7 @@ export class AuthService {
           where: { isActive: true, facility: { isActive: true } },
           include: {
             role: true,
+            department: { select: { code: true, name: true } },
             facility: {
               select: {
                 name: true,
@@ -192,6 +193,8 @@ export class AuthService {
       timezone: ur.facility?.timezone ?? "UTC",
       role: ur.role.code,
       departmentId: ur.departmentId ?? null,
+      departmentCode: ur.department?.code ?? null,
+      departmentName: ur.department?.name ?? null,
       /**
        * Phase 1 — facility-scoped clinical policy mirror. Frontend uses this to gate the
        * RN lab-result entry UI; backend (`ResultsService.updateResult`) is still the sole
@@ -217,6 +220,8 @@ export class AuthService {
         timezone: base.timezone,
         role: "MEDORA_SUPER_ADMIN",
         departmentId: null,
+        departmentCode: null,
+        departmentName: null,
         allowRnLabResultSubmission: base.allowRnLabResultSubmission,
       });
     }

@@ -15,6 +15,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuditAction } from "@prisma/client";
 import { EncountersService } from "./encounters.service";
+import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 
 type AnyMock = jest.Mock;
 
@@ -61,7 +62,12 @@ function makeService(prisma: unknown, audit: unknown) {
   const trackboard = {
     getOperationalAggregatesForEncounterIds: jest.fn().mockResolvedValue(new Map()),
   };
-  return new EncountersService(prisma as never, audit as never, trackboard as never);
+  return new EncountersService(
+    prisma as never,
+    audit as never,
+    trackboard as never,
+    createMockBedBoardService() as never
+  );
 }
 
 describe("EncountersService — Phase 10A self-assignment", () => {

@@ -143,6 +143,17 @@ export class AdminFacilitiesService {
     return this.facilityBillingWorkflow.updateForFacility(facilityId, dto);
   }
 
+  /** MEDUI.AUTH.ROLE.2 — active clinical departments for admin user assignment UI. */
+  async listDepartmentsForAdmin(actorUserId: string, facilityId: string) {
+    await this.assertCanManageFacilityBilling(actorUserId, facilityId);
+    const items = await this.prisma.department.findMany({
+      where: { facilityId, isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, code: true, name: true },
+    });
+    return { items };
+  }
+
   private async assertCanManageFacilityBilling(actorUserId: string, facilityId: string) {
     const actor = await this.prisma.user.findUnique({
       where: { id: actorUserId },

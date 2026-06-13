@@ -2,6 +2,7 @@ import type { MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import type { MedicationPassQueueItem } from "@/lib/medicationPassQueueApi";
 import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
+import { isMarShiftTimelineItemActionable } from "@medora/shared";
 import { marInfusionStartWitnessRequired, type MarHighAlertRouteOptions } from "@/components/medication/MarHighAlertFields";
 import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
 
@@ -170,8 +171,13 @@ function isMarShiftTimelineRefuseHoldEligible(item: MarShiftTimelineCellItem): b
   return (
     item.clinicalAction === "ADMINISTER" ||
     item.clinicalAction === "START_INFUSION" ||
-    item.clinicalAction === "START_BOLUS"
+    item.clinicalAction === "START_BOLUS" ||
+    item.clinicalAction === "VIEW_UPCOMING"
   );
+}
+
+function isMarShiftTimelineUpcomingActionable(item: MarShiftTimelineCellItem): boolean {
+  return item.clinicalAction === "VIEW_UPCOMING";
 }
 
 export function isMarShiftTimelineActionEnabled(
@@ -180,9 +186,13 @@ export function isMarShiftTimelineActionEnabled(
   handlers: MarShiftTimelineActionHandlers | null | undefined
 ): boolean {
   if (!handlers || handlers.disabled || handlers.busy) return false;
-  if (item.readOnly) return false;
-  if (action === "ADMINISTER") return item.clinicalAction === "ADMINISTER";
-  if (action === "START_INFUSION") return item.clinicalAction === "START_INFUSION";
+  if (!isMarShiftTimelineItemActionable(item)) return false;
+  if (action === "ADMINISTER") {
+    return item.clinicalAction === "ADMINISTER" || isMarShiftTimelineUpcomingActionable(item);
+  }
+  if (action === "START_INFUSION") {
+    return item.clinicalAction === "START_INFUSION" || isMarShiftTimelineUpcomingActionable(item);
+  }
   if (action === "STOP_INFUSION") return item.clinicalAction === "STOP_INFUSION";
   if (action === "START_FLUID") return item.clinicalAction === "START_FLUID";
   if (action === "PAUSE_FLUID") {

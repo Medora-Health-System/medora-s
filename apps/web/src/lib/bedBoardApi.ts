@@ -60,6 +60,28 @@ export async function updateFacilityBedStatus(
   }) as Promise<FacilityBedBoardBedRow>;
 }
 
+export type FacilityBedStatusHistoryEntry = {
+  id: string;
+  occurredAt: string;
+  actorDisplay: string | null;
+  oldStatus: BedOperationalStatus | null;
+  newStatus: BedOperationalStatus;
+  reasonText: string | null;
+  reasonCode: string | null;
+};
+
+export async function fetchBedStatusHistory(
+  facilityId: string,
+  bedKey: string,
+  limit = 10
+): Promise<FacilityBedStatusHistoryEntry[]> {
+  const query = limit !== 10 ? `?limit=${encodeURIComponent(String(limit))}` : "";
+  return apiFetch(
+    `/facilities/${facilityId}/beds/${encodeURIComponent(bedKey)}/status-history${query}`,
+    { facilityId }
+  ) as Promise<FacilityBedStatusHistoryEntry[]>;
+}
+
 export function indexBedBoardByKey(
   board: FacilityBedBoardResponse
 ): Map<string, FacilityBedBoardBedRow> {

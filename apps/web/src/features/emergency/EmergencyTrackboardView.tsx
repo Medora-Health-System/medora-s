@@ -38,6 +38,8 @@ import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
 import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
+import { BedBoardStatusFilterBar } from "@/components/encounters/BedBoardStatusFilterBar";
+import type { BedBoardStatusFilterId } from "@/lib/bedBoardFilters";
 import {
   BedBoardAssignEncounterPicker,
   type BedBoardAssignCandidate,
@@ -252,6 +254,7 @@ export function EmergencyTrackboardView() {
   const [edBedBoard, setEdBedBoard] = useState<FacilityBedBoardResponse | null>(null);
   const [boardViewMode, setBoardViewMode] = useState<"trackboard" | "bedBoard">("trackboard");
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
+  const [bedBoardStatusFilter, setBedBoardStatusFilter] = useState<BedBoardStatusFilterId>("all");
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
    * Phase 10A — minute-tick driver for LOS updates. We only need to re-render
@@ -634,17 +637,25 @@ export function EmergencyTrackboardView() {
 
         {boardViewMode === "bedBoard" ? (
           edBedBoardUnit ? (
-            <BedBoardUnitSection
-              unit="ED"
-              summary={edBedBoardUnit.summary}
-              beds={edBedBoardUnit.beds}
-              facilityId={facilityId}
-              compact={usesCompactCensus}
-              canAssignRoom={canAssignRoom}
-              canManageBedStatus={canManageBedStatus}
-              onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
-              onBedStatusUpdated={() => void refreshEdBedBoard()}
-            />
+            <>
+              <BedBoardStatusFilterBar
+                value={bedBoardStatusFilter}
+                onChange={setBedBoardStatusFilter}
+                compact={usesCompactCensus}
+              />
+              <BedBoardUnitSection
+                unit="ED"
+                summary={edBedBoardUnit.summary}
+                beds={edBedBoardUnit.beds}
+                statusFilter={bedBoardStatusFilter}
+                facilityId={facilityId}
+                compact={usesCompactCensus}
+                canAssignRoom={canAssignRoom}
+                canManageBedStatus={canManageBedStatus}
+                onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
+                onBedStatusUpdated={() => void refreshEdBedBoard()}
+              />
+            </>
           ) : (
             <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
               {loading ? t("common.loading") : t("bedBoard.refreshBoard")}

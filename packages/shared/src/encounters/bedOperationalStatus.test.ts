@@ -6,6 +6,7 @@ import {
   getBedOperationalStatusVisual,
   isBedAssignableWithoutOverride,
   isManualBedOperationalStatusWritable,
+  manualStatusBlockedByOccupancy,
   normalizeBedOperationalStatus,
   rejectDerivedBedOperationalStatusWrite,
   requiresBedAssignmentOverride,
@@ -79,5 +80,22 @@ describe("bedOperationalStatus (K.10B.10C)", () => {
   it("precedence list starts with BLOCKED", () => {
     expect(BED_OPERATIONAL_STATUS_PRECEDENCE[0]).toBe("BLOCKED");
     expect(BED_OPERATIONAL_STATUS_PRECEDENCE.at(-1)).toBe("AVAILABLE");
+  });
+
+  it("blocks reserve/block housekeeping when bed is occupied (K.10B.10E)", () => {
+    expect(
+      manualStatusBlockedByOccupancy({
+        targetStatus: "RESERVED",
+        bedStatus: "OCCUPIED",
+        occupantEncounterId: "enc-1",
+      })
+    ).toBe(true);
+    expect(
+      manualStatusBlockedByOccupancy({
+        targetStatus: "DIRTY",
+        bedStatus: "OCCUPIED",
+        occupantEncounterId: "enc-1",
+      })
+    ).toBe(false);
   });
 });

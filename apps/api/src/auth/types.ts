@@ -15,6 +15,9 @@ export type FacilityRoleDto = {
   defaultLanguage: string;
   role: string;
   departmentId: string | null;
+  /** Prisma department row code when assigned (MEDUI.AUTH.ROLE.2). */
+  departmentCode?: string | null;
+  departmentName?: string | null;
   /**
    * Phase 1 — freestanding-ER policy mirror : autorise la saisie d'un résultat de
    * `LAB_TEST` par un infirmier (RN) sur cet établissement. Optionnel pour rétrocompatibilité ;

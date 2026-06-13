@@ -5,11 +5,13 @@ import type { BedBoardOccupancySummary, EncounterBedUnitCode } from "@medora/sha
 import { BedBoardCensusHeader } from "@/components/encounters/BedBoardCensusHeader";
 import { BedBoardGrid } from "@/components/encounters/BedBoardGrid";
 import type { FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import type { BedBoardStatusFilterId } from "@/lib/bedBoardFilters";
 
 export type BedBoardUnitSectionProps = {
   unit: EncounterBedUnitCode;
   summary: BedBoardOccupancySummary;
   beds: FacilityBedBoardBedRow[];
+  statusFilter?: BedBoardStatusFilterId;
   facilityId?: string | null;
   compact?: boolean;
   canAssignRoom?: boolean;
@@ -23,6 +25,7 @@ export function BedBoardUnitSection({
   unit,
   summary,
   beds,
+  statusFilter = "all",
   facilityId,
   compact,
   canAssignRoom,
@@ -46,6 +49,7 @@ export function BedBoardUnitSection({
       <BedBoardGrid
         unit={unit}
         beds={beds}
+        statusFilter={statusFilter}
         facilityId={facilityId}
         canAssignRoom={canAssignRoom}
         canManageBedStatus={canManageBedStatus}

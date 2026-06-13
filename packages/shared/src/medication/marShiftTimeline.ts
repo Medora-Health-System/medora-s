@@ -5,6 +5,9 @@ import {
   wallClockToUtc,
 } from "./medicationDoseExpansionPlanner.js";
 import {
+  isMarShiftTimelineItemActionable,
+} from "./marShiftTimelineActionability.js";
+import {
   resolveMarShiftTimelineTerminalOutcome,
   type MarShiftTimelineTerminalOutcome,
 } from "./marShiftTimelineTerminalActions.js";
@@ -517,6 +520,7 @@ export function resolveMarShiftTimelineDrawerActions(
     case "COMPLETE_BOLUS":
       return ["COMPLETE_BOLUS", "VIEW_ORDER"];
     case "VIEW_UPCOMING":
+      return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "VIEW_ADMINISTRATION":
     case "VIEW_HELD":
     case "VIEW_MISSED":
@@ -676,14 +680,15 @@ export function buildMarShiftTimelineTertiaryText(input: {
 }
 
 export function isMarShiftTimelineItemReadOnly(
-  clinicalAction: MarShiftTimelineClinicalAction | null
+  clinicalAction: MarShiftTimelineClinicalAction | null,
+  doseStatus?: MedicationDoseStatus | string,
+  secondaryText?: string | null
 ): boolean {
-  return (
-    clinicalAction === "VIEW_ADMINISTRATION" ||
-    clinicalAction === "VIEW_UPCOMING" ||
-    clinicalAction === "VIEW_HELD" ||
-    clinicalAction === "VIEW_MISSED"
-  );
+  return !isMarShiftTimelineItemActionable({
+    doseStatus: doseStatus ?? "",
+    clinicalAction,
+    secondaryText,
+  });
 }
 
 export function buildMarShiftTimelineCellDisplay(input: {

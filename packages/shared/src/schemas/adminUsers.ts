@@ -20,6 +20,34 @@ function uniqueRoleCodes<T extends string>(arr: T[]): T[] {
   return [...new Set(arr)];
 }
 
+/** MEDUI.AUTH.ROLE.2 — facility role row with optional department assignment. */
+export const adminUserAssignmentSchema = z.object({
+  facilityId: z.string().uuid({ message: "L’établissement est invalide." }).optional(),
+  roleCode: adminUserRoleCodeSchema,
+  departmentId: z
+    .string()
+    .uuid({ message: "Le département est invalide." })
+    .nullable()
+    .optional(),
+});
+
+export type AdminUserAssignmentDto = z.infer<typeof adminUserAssignmentSchema>;
+
+function refineRolesOrAssignments(
+  d: { roles?: string[]; assignments?: AdminUserAssignmentDto[] },
+  ctx: z.RefinementCtx
+) {
+  const roleCount = d.roles?.length ?? 0;
+  const assignmentCount = d.assignments?.length ?? 0;
+  if (roleCount === 0 && assignmentCount === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Au moins un rôle ou une affectation est requis.",
+      path: ["roles"],
+    });
+  }
+}
+
 /** Shared field shape for PATCH and optional POST user create. */
 export const userBillingIdentityFieldsSchema = z.object({
   billingNpi: z
@@ -66,14 +94,19 @@ const createAdminUserBaseSchema = z.object({
   isActive: z.boolean().optional().default(true),
   roles: z
     .array(adminUserRoleCodeSchema)
-    .min(1, "Au moins un rôle est requis")
-    .transform((roles) => uniqueRoleCodes(roles)),
+    .optional()
+    .transform((roles) => (roles ? uniqueRoleCodes(roles) : undefined)),
+  /** Structured profession + department assignment rows (preferred). */
+  assignments: z.array(adminUserAssignmentSchema).optional(),
 });
 
 /** POST /admin/users — optional provider billing identity (stored when provided). */
 export const createAdminUserDtoSchema = createAdminUserBaseSchema
   .merge(userBillingIdentityFieldsSchema.partial())
-  .superRefine(refineUserBillingNpi);
+  .superRefine((d, ctx) => {
+    refineRolesOrAssignments(d, ctx);
+    refineUserBillingNpi(d, ctx);
+  });
 
 export type CreateAdminUserDto = z.infer<typeof createAdminUserDtoSchema>;
 
@@ -95,11 +128,18 @@ export type UpdateAdminUserDto = z.infer<typeof updateAdminUserDtoSchema>;
 export type UpdateUserDto = UpdateAdminUserDto;
 
 /** PATCH /admin/users/:id/roles */
-export const updateAdminUserRolesDtoSchema = z.object({
-  facilityId: z.string().uuid(),
-  /** Facility-assignable roles only; API may merge platform-only roles (e.g. MEDORA_SUPER_ADMIN) server-side. */
-  roles: z.array(adminUserRoleCodeSchema).transform((roles) => uniqueRoleCodes(roles)),
-});
+export const updateAdminUserRolesDtoSchema = z
+  .object({
+    facilityId: z.string().uuid(),
+    /** Legacy flat role codes — still supported when `assignments` is omitted. */
+    roles: z
+      .array(adminUserRoleCodeSchema)
+      .optional()
+      .transform((roles) => (roles ? uniqueRoleCodes(roles) : undefined)),
+    /** Structured assignment rows with optional departmentId. */
+    assignments: z.array(adminUserAssignmentSchema).optional(),
+  })
+  .superRefine(refineRolesOrAssignments);
 
 export type UpdateAdminUserRolesDto = z.infer<typeof updateAdminUserRolesDtoSchema>;
 export type UpdateUserRolesDto = UpdateAdminUserRolesDto;

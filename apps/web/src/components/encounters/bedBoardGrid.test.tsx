@@ -9,7 +9,7 @@ function readSrc(relativePath: string): string {
   return readFileSync(join(webSrcRoot, relativePath), "utf8");
 }
 
-describe("BedBoardGrid (K.10B.10D)", () => {
+describe("BedBoardGrid (K.10B.10D / K.10B.10E)", () => {
   const grid = readSrc("components/encounters/BedBoardGrid.tsx");
 
   it("renders bed label, status chip, and patient name", () => {
@@ -19,33 +19,21 @@ describe("BedBoardGrid (K.10B.10D)", () => {
     expect(grid).toContain("patientDisplay");
   });
 
-  it("uses centralized bed status colors", () => {
-    expect(grid).toContain("bedStatusBadgeSoft");
-    expect(grid).toContain("bedStatusCellBorderColor");
+  it("uses centralized bed status presentation helpers", () => {
+    expect(grid).toContain("resolveBedStatusBadge");
+    expect(grid).toContain("resolveBedStatusBorder");
     expect(grid).not.toMatch(/#[0-9a-fA-F]{6}.*AVAILABLE/s);
   });
 
-  it("available bed opens assignment callback", () => {
-    expect(grid).toContain('case "AVAILABLE"');
-    expect(grid).toContain("onAvailableBedClick");
-  });
-
-  it("occupied bed navigates to chart", () => {
-    expect(grid).toContain('case "OCCUPIED"');
-    expect(grid).toContain("occupantEncounterId");
-    expect(grid).toContain("router.push");
-  });
-
-  it("blocked bed opens status detail modal", () => {
-    expect(grid).toContain('case "BLOCKED"');
-    expect(grid).toContain("BedBoardStatusDetailModal");
+  it("opens status detail modal for any bed click", () => {
     expect(grid).toContain("setStatusDetailBed");
+    expect(grid).toContain("BedBoardStatusDetailModal");
+    expect(grid).not.toContain("router.push");
   });
 
-  it("passes bed status management props to modal", () => {
-    expect(grid).toContain("canManageBedStatus");
-    expect(grid).toContain("onBedStatusUpdated");
-    expect(grid).toContain("facilityId");
+  it("supports client-side status filter", () => {
+    expect(grid).toContain("filterBedBoardByStatus");
+    expect(grid).toContain("statusFilter");
   });
 
   it("shows transfer and discharge icons for derived statuses", () => {
@@ -55,10 +43,11 @@ describe("BedBoardGrid (K.10B.10D)", () => {
     expect(grid).toContain("DischargeIcon");
   });
 
-  it("grid cells are keyboard accessible buttons", () => {
+  it("grid cells are keyboard accessible buttons with 44px touch minimum", () => {
     expect(grid).toContain('role="grid"');
     expect(grid).toContain('role="gridcell"');
     expect(grid).toContain('event.key === "Enter"');
+    expect(grid).toContain("minWidth: 44");
     expect(grid).toContain("aria-label");
   });
 

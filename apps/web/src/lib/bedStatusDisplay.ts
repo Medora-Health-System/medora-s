@@ -7,31 +7,20 @@ import {
 import type { SupportedLanguage } from "@/i18n/config";
 import type { FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
 
-/** K.10B.10C / K.10B.10D centralized bed status colors — no inline palette elsewhere. */
-export const BED_STATUS_DISPLAY_COLORS: Record<
-  BedOperationalStatus,
-  { bg: string; text: string; border: string }
-> = {
-  AVAILABLE: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0" },
-  OCCUPIED: { bg: "#eff6ff", text: "#1e3a8a", border: "#bfdbfe" },
-  BLOCKED: { bg: "#fee2e2", text: "#991b1b", border: "#fecaca" },
-  DIRTY: { bg: "#ffedd5", text: "#c2410c", border: "#fed7aa" },
-  CLEANING: { bg: "#fef3c7", text: "#92400e", border: "#fde68a" },
-  RESERVED: { bg: "#f3e8ff", text: "#7e22ce", border: "#e9d5ff" },
-  TRANSFER_PENDING: { bg: "#ccfbf1", text: "#0f766e", border: "#99f6e4" },
-  DISCHARGE_PENDING: { bg: "#f1f5f9", text: "#64748b", border: "#e2e8f0" },
-};
+/** K.10B.10C / K.10B.10D centralized bed status colors — delegates to K.10B.10E presentation. */
+export { BED_STATUS_PRESENTATION_COLORS as BED_STATUS_DISPLAY_COLORS } from "@/lib/bedStatusPresentation";
+import { resolveBedStatusBadge, resolveBedStatusBorder } from "@/lib/bedStatusPresentation";
 
 export function bedStatusBadgeSoft(status: BedOperationalStatus): {
   bg: string;
   text: string;
   border: string;
 } {
-  return BED_STATUS_DISPLAY_COLORS[status];
+  return resolveBedStatusBadge(status);
 }
 
 export function bedStatusCellBorderColor(status: BedOperationalStatus): string {
-  return BED_STATUS_DISPLAY_COLORS[status].border;
+  return resolveBedStatusBorder(status);
 }
 
 export function resolveEncounterBedKey(encounterLike: {

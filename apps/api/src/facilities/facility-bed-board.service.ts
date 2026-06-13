@@ -17,6 +17,7 @@ import {
   findComposedBedBoardRow,
   formatCanonicalBedDisplay,
   isManualBedOperationalStatusWritable,
+  manualStatusBlockedByOccupancy,
   normalizeBedBoardUnitFilter,
   normalizeBedOperationalStatus,
   parseBedKeyParam,
@@ -29,6 +30,17 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { throwBedStatusBlocksAssignmentConflict } from "./bed-status-blocks.util";
+import { throwBedOccupiedBlocksStatusChange } from "./bed-occupied-blocks-status.util";
+
+export type BedStatusHistoryEntry = {
+  id: string;
+  occurredAt: string;
+  actorDisplay: string | null;
+  oldStatus: BedOperationalStatus | null;
+  newStatus: BedOperationalStatus;
+  reasonText: string | null;
+  reasonCode: string | null;
+};
 
 @Injectable()
 export class FacilityBedBoardService {
@@ -94,6 +106,25 @@ export class FacilityBedBoardService {
     }
 
     const bedDisplay = formatCanonicalBedDisplay(parsed.bedKey);
+    const currentRow = await this.getEffectiveBedRow(facilityId, parsed.bedKey);
+    const oldStatus = currentRow?.status ?? "AVAILABLE";
+
+    if (
+      manualStatusBlockedByOccupancy({
+        targetStatus: status,
+        bedStatus: oldStatus,
+        occupantEncounterId: currentRow?.occupantEncounterId,
+      })
+    ) {
+      throwBedOccupiedBlocksStatusChange({
+        bedKey: parsed.bedKey,
+        bedDisplay,
+        status: oldStatus,
+        targetStatus: status,
+        occupantEncounterId: currentRow?.occupantEncounterId,
+      });
+    }
+
     const cleared = status === "AVAILABLE";
     const metadata = {
       event: BED_STATUS_UPDATE_EVENT,
@@ -102,6 +133,8 @@ export class FacilityBedBoardService {
       unitCode: parsed.unit,
       room: parsed.room,
       status,
+      oldStatus,
+      newStatus: status,
       reasonCode: data.reasonCode?.trim() || null,
       reasonText: data.reasonText?.trim() || null,
       cleared,
@@ -261,5 +294,72 @@ export class FacilityBedBoardService {
 
   buildBedKeyForAssignment(unit: EncounterBedUnitCode, room: string): string {
     return buildCanonicalBedKey(unit, room);
+  }
+
+  async getBedStatusHistory(
+    facilityId: string,
+    bedKeyRaw: string,
+    limit = 10
+  ): Promise<BedStatusHistoryEntry[]> {
+    const parsed = parseBedKeyParam(bedKeyRaw);
+    if (!parsed) {
+      throw new BadRequestException("Invalid bed key");
+    }
+
+    const rows = await this.prisma.auditLog.findMany({
+      where: {
+        facilityId,
+        entityType: FACILITY_BED_ENTITY_TYPE,
+        entityId: parsed.bedKey,
+      },
+      orderBy: { createdAt: "desc" },
+      take: Math.min(Math.max(limit, 1), 10),
+      select: {
+        id: true,
+        createdAt: true,
+        metadata: true,
+        user: { select: { firstName: true, lastName: true } },
+      },
+    });
+
+    return rows
+      .map((row) => this.parseHistoryEntryFromAudit(row))
+      .filter((entry): entry is BedStatusHistoryEntry => Boolean(entry));
+  }
+
+  private parseHistoryEntryFromAudit(row: {
+    id: string;
+    createdAt: Date;
+    metadata: unknown;
+    user: { firstName: string; lastName: string } | null;
+  }): BedStatusHistoryEntry | null {
+    if (!row.metadata || typeof row.metadata !== "object" || Array.isArray(row.metadata)) {
+      return null;
+    }
+    const meta = row.metadata as Record<string, unknown>;
+    if (meta.event !== BED_STATUS_UPDATE_EVENT) return null;
+
+    const newStatus =
+      normalizeBedOperationalStatus(meta.newStatus) ??
+      normalizeBedOperationalStatus(meta.status);
+    if (!newStatus) return null;
+
+    const oldStatus =
+      normalizeBedOperationalStatus(meta.oldStatus) ??
+      null;
+
+    const actorDisplay = row.user
+      ? `${row.user.firstName} ${row.user.lastName}`.trim()
+      : null;
+
+    return {
+      id: row.id,
+      occurredAt: row.createdAt.toISOString(),
+      actorDisplay,
+      oldStatus,
+      newStatus,
+      reasonText: typeof meta.reasonText === "string" ? meta.reasonText : null,
+      reasonCode: typeof meta.reasonCode === "string" ? meta.reasonCode : null,
+    };
   }
 }

@@ -74,4 +74,19 @@ describe("Interactive bed board integration (K.10B.10D)", () => {
     expect(board).toContain("canManageBedStatus");
     expect(board).toContain("void refreshFacilityBedBoard");
   });
+
+  it("bed board views expose client-side status filters (K.10B.10E)", () => {
+    const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
+    const board = readSrc("features/hospitalization/HospitalizationBoardView.tsx");
+    expect(trackboard).toContain("BedBoardStatusFilterBar");
+    expect(trackboard).toContain("bedBoardStatusFilter");
+    expect(board).toContain("BedBoardStatusFilterBar");
+    expect(board).toContain("statusFilter={bedBoardStatusFilter}");
+  });
+
+  it("status detail modal opens from any bed via grid (K.10B.10E)", () => {
+    const grid = readSrc("components/encounters/BedBoardGrid.tsx");
+    expect(grid).toContain("setStatusDetailBed(bed)");
+    expect(grid).not.toContain("router.push");
+  });
 });

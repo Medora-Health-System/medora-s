@@ -12,6 +12,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "@nes
 import { AuditAction, EncounterClinicalEventType } from "@prisma/client";
 import { OBSERVATION_REASSESSMENT_EVENT_SOURCE } from "@medora/shared";
 import { EncountersService } from "./encounters.service";
+import { createMockBedBoardService } from "./encounters.service.test-bed-board.mock";
 
 const facilityId = "fac-1";
 const encounterId = "enc-1";
@@ -72,7 +73,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       openInpatientObservationEncounter,
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     const res = await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
 
@@ -102,7 +108,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       openInpatientObservationEncounter,
       ["RN"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.appendObservationReassessment(
       facilityId,
@@ -121,7 +132,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       { ...openInpatientObservationEncounter, status: "CLOSED", workflowState: "CLOSED" },
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
       BadRequestException
@@ -134,7 +150,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       { ...openInpatientObservationEncounter, type: "EMERGENCY" },
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
       /Observation reassessment applies only to inpatient encounters/i
@@ -151,7 +172,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       },
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toThrow(
       /Observation reassessment is only available for an open observation or short-stay stay/i
@@ -168,7 +194,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       },
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
 
@@ -180,7 +211,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       openInpatientObservationEncounter,
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(
       svc.appendObservationReassessment(facilityId, encounterId, { ...baseDto, role: "RN" }, userId)
@@ -193,7 +229,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       openInpatientObservationEncounter,
       ["RN"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
       ForbiddenException
@@ -206,7 +247,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
       openInpatientObservationEncounter,
       ["PROVIDER"]
     );
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, undefined)).rejects.toThrow(
       /Authentication required to save observation reassessment/i
@@ -216,7 +262,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
 
   it("returns NotFound when encounter missing", async () => {
     const { prisma, audit, trackboard, encounterClinicalEventCreate } = buildMocks(null, ["PROVIDER"]);
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await expect(svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId)).rejects.toBeInstanceOf(
       NotFoundException
@@ -226,7 +277,12 @@ describe("EncountersService.appendObservationReassessment (13G-B)", () => {
 
   it("logs ENCOUNTER_UPDATE audit action", async () => {
     const { prisma, audit, trackboard, auditLog } = buildMocks(openInpatientObservationEncounter, ["ADMIN"]);
-    const svc = new EncountersService(prisma as never, audit as never, trackboard as never);
+    const svc = new EncountersService(
+      prisma as never,
+      audit as never,
+      trackboard as never,
+      createMockBedBoardService() as never
+    );
 
     await svc.appendObservationReassessment(facilityId, encounterId, baseDto, userId);
 

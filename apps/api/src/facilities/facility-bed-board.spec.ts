@@ -1,6 +1,7 @@
 import { AuditAction } from "@prisma/client";
 import {
   BED_STATUS_BLOCKS_ASSIGNMENT_CODE,
+  BED_OCCUPIED_BLOCKS_STATUS_CHANGE_CODE,
   BED_STATUS_UPDATE_EVENT,
   FACILITY_BED_ENTITY_TYPE,
   ROOM_ALREADY_OCCUPIED_CODE,
@@ -131,10 +132,37 @@ describe("FacilityBedBoardService (K.10B.10C)", () => {
         metadata: expect.objectContaining({
           event: BED_STATUS_UPDATE_EVENT,
           status: "DIRTY",
+          oldStatus: "AVAILABLE",
+          newStatus: "DIRTY",
           cleared: false,
         }),
       })
     );
+  });
+
+  it("PATCH RESERVED rejected when bed is occupied", async () => {
+    const { service } = buildBedBoardMocks({
+      encounters: [
+        {
+          id: "enc-ed",
+          facilityId,
+          roomLabel: "2",
+          status: "OPEN",
+          type: "EMERGENCY",
+          workflowState: "IN_TREATMENT",
+          disposition: null,
+          admissionSummaryJson: null,
+          patient: { firstName: "Stephanie", lastName: "Knight", mrn: "MRN2" },
+        },
+      ],
+    });
+    await expect(
+      service.updateBedStatus(facilityId, "ED:2", { status: "RESERVED" }, "user-1")
+    ).rejects.toMatchObject({
+      response: {
+        code: BED_OCCUPIED_BLOCKS_STATUS_CHANGE_CODE,
+      },
+    });
   });
 
   it("PATCH AVAILABLE clears overlay", async () => {

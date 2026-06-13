@@ -2461,4 +2461,158 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       expect(new Set(keys).size).toBe(keys.length);
     });
   });
+
+  describe("MAR actionability (K.10B.11B)", () => {
+    it("future Q12H IVPB dose with VIEW_UPCOMING remains PLANNED and actionable", async () => {
+      const encounter = await createEncounterWithNurse();
+      const doses = await createRecurringIvpbOrder(encounter.id);
+      expect(doses.length).toBeGreaterThan(1);
+      const completedDose = doses[0]!;
+      const futureDose = doses[1]!;
+
+      await prisma.medicationDoseInstance.update({
+        where: { id: completedDose.id },
+        data: {
+          doseStatus: "DUE",
+          scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+          dueWindowStartAt: new Date("2026-06-11T07:00:00.000Z"),
+          dueWindowEndAt: new Date("2026-06-11T09:00:00.000Z"),
+        },
+      });
+      await ordersService.startMedicationInfusion(
+        facilityId,
+        completedDose.orderItemId,
+        {},
+        [RoleCode.RN],
+        nurseUserId
+      );
+      await ordersService.stopMedicationInfusion(
+        facilityId,
+        completedDose.orderItemId,
+        {},
+        [RoleCode.RN],
+        nurseUserId
+      );
+
+      await prisma.medicationDoseInstance.update({
+        where: { id: futureDose.id },
+        data: {
+          doseStatus: "PLANNED",
+          scheduledAt: new Date("2026-06-11T14:00:00.000Z"),
+          dueWindowStartAt: new Date("2026-06-11T14:00:00.000Z"),
+          dueWindowEndAt: new Date("2026-06-11T15:00:00.000Z"),
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeUpcoming: true,
+        includeCompleted: true,
+      });
+
+      const futureItem = allTimelineItems(result).find(
+        (i) => i.medicationDoseInstanceId === futureDose.id
+      );
+      expect(futureItem).toBeTruthy();
+      expect(futureItem?.doseStatus).toBe("PLANNED");
+      expect(futureItem?.clinicalAction).toBe("VIEW_UPCOMING");
+      expect(futureItem?.readOnly).toBe(false);
+    });
+
+    it("prior completed IVPB does not make future IVPB read-only", async () => {
+      const encounter = await createEncounterWithNurse();
+      const doses = await createRecurringIvpbOrder(encounter.id);
+      const completedDose = doses[0]!;
+      const futureDose = doses[1]!;
+
+      await prisma.medicationDoseInstance.update({
+        where: { id: completedDose.id },
+        data: {
+          doseStatus: "DUE",
+          scheduledAt: new Date("2026-06-11T08:00:00.000Z"),
+          dueWindowStartAt: new Date("2026-06-11T07:00:00.000Z"),
+          dueWindowEndAt: new Date("2026-06-11T09:00:00.000Z"),
+        },
+      });
+      await ordersService.startMedicationInfusion(
+        facilityId,
+        completedDose.orderItemId,
+        {},
+        [RoleCode.RN],
+        nurseUserId
+      );
+      await ordersService.stopMedicationInfusion(
+        facilityId,
+        completedDose.orderItemId,
+        {},
+        [RoleCode.RN],
+        nurseUserId
+      );
+
+      await prisma.medicationDoseInstance.update({
+        where: { id: futureDose.id },
+        data: {
+          doseStatus: "PLANNED",
+          scheduledAt: new Date("2026-06-11T14:00:00.000Z"),
+          dueWindowStartAt: new Date("2026-06-11T14:00:00.000Z"),
+          dueWindowEndAt: new Date("2026-06-11T15:00:00.000Z"),
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeUpcoming: true,
+        includeCompleted: true,
+      });
+
+      const completedItem = allTimelineItems(result).find(
+        (i) => i.medicationDoseInstanceId === completedDose.id
+      );
+      const futureItem = allTimelineItems(result).find(
+        (i) => i.medicationDoseInstanceId === futureDose.id
+      );
+      expect(completedItem?.readOnly).toBe(true);
+      expect(futureItem).toBeTruthy();
+      expect(futureItem?.readOnly).toBe(false);
+      expect(futureItem?.clinicalAction).toBe("VIEW_UPCOMING");
+    });
+
+    it("future PRN projection remains actionable", async () => {
+      const encounter = await createEncounterWithNurse();
+      const createdAt = new Date("2026-06-11T21:00:00.000Z");
+      const { orderItem } = await createDirectMarOrder(encounter.id, {
+        frequencyCode: "Q6H" as MedicationFrequencyCode,
+        route: "PO" as MedicationRoute,
+        catalogItemId: normalSalineCatalogId,
+        notes: "650 mg PO q6h PRN fever",
+      }).then(async (created) => {
+        await prisma.orderItem.update({ where: { id: created.orderItem.id }, data: { createdAt } });
+        return created;
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7P_7A",
+        shiftStart: new Date("2026-06-11T19:00:00.000Z"),
+        shiftEnd: new Date("2026-06-12T08:00:00.000Z"),
+        encounterId: encounter.id,
+      });
+
+      const projections = result.rows
+        .filter((row) => row.rowKind === "PRN")
+        .flatMap((row) => row.cells.flatMap((cell) => cell.items))
+        .filter((i) => i.orderItemId === orderItem.id && i.prnProjectionKey?.trim());
+
+      expect(projections.length).toBeGreaterThan(0);
+      for (const projection of projections) {
+        expect(projection.readOnly).toBe(false);
+        expect(projection.clinicalAction).not.toBe("VIEW_ADMINISTRATION");
+      }
+    });
+  });
 });

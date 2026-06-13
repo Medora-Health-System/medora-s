@@ -1,23 +1,24 @@
 "use client";
 
 import React, { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { EncounterBedUnitCode } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { FacilityBedBoardBedRow } from "@/lib/bedBoardApi";
+import type { BedBoardStatusFilterId } from "@/lib/bedBoardFilters";
+import { filterBedBoardByStatus } from "@/lib/bedBoardFilters";
 import {
-  bedStatusBadgeSoft,
-  bedStatusCellBorderColor,
-  formatHospitalBedStatusLabel,
-  isBedBoardDischargePending,
-  isBedBoardTransferPending,
-} from "@/lib/bedStatusDisplay";
+  resolveBedStatusBadge,
+  resolveBedStatusBorder,
+  resolveBedStatusLabel,
+} from "@/lib/bedStatusPresentation";
+import { isBedBoardDischargePending, isBedBoardTransferPending } from "@/lib/bedStatusDisplay";
 import { emergencyChartPath } from "@/features/emergency/emergencyRoutes";
 import { BedBoardStatusDetailModal } from "@/components/encounters/BedBoardStatusDetailModal";
 
 export type BedBoardGridProps = {
   unit: EncounterBedUnitCode;
   beds: FacilityBedBoardBedRow[];
+  statusFilter?: BedBoardStatusFilterId;
   facilityId?: string | null;
   canAssignRoom?: boolean;
   canManageBedStatus?: boolean;
@@ -28,7 +29,7 @@ export type BedBoardGridProps = {
 
 function TransferIcon() {
   return (
-    <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }} title="">
+    <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>
       ⇄
     </span>
   );
@@ -36,7 +37,7 @@ function TransferIcon() {
 
 function DischargeIcon() {
   return (
-    <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }} title="">
+    <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>
       ↗
     </span>
   );
@@ -49,13 +50,10 @@ function defaultChartPath(encounterId: string, unit: EncounterBedUnitCode): stri
   return `/app/encounters/${encodeURIComponent(encounterId)}`;
 }
 
-function opensStatusDetailModal(status: FacilityBedBoardBedRow["status"]): boolean {
-  return status === "BLOCKED" || status === "CLEANING" || status === "DIRTY" || status === "RESERVED";
-}
-
 export function BedBoardGrid({
   unit,
   beds,
+  statusFilter = "all",
   facilityId = null,
   canAssignRoom = false,
   canManageBedStatus = false,
@@ -64,40 +62,13 @@ export function BedBoardGrid({
   encounterChartPath = defaultChartPath,
 }: BedBoardGridProps) {
   const { t, language } = useI18n();
-  const router = useRouter();
   const [statusDetailBed, setStatusDetailBed] = useState<FacilityBedBoardBedRow | null>(null);
 
-  const handleBedActivate = useCallback(
-    (bed: FacilityBedBoardBedRow) => {
-      switch (bed.status) {
-        case "AVAILABLE":
-          if (canAssignRoom && onAvailableBedClick) {
-            onAvailableBedClick(bed);
-          }
-          break;
-        case "OCCUPIED":
-          if (bed.occupantEncounterId) {
-            router.push(encounterChartPath(bed.occupantEncounterId, unit));
-          }
-          break;
-        case "BLOCKED":
-        case "CLEANING":
-        case "DIRTY":
-        case "RESERVED":
-          setStatusDetailBed(bed);
-          break;
-        case "TRANSFER_PENDING":
-        case "DISCHARGE_PENDING":
-          if (bed.occupantEncounterId) {
-            router.push(encounterChartPath(bed.occupantEncounterId, unit));
-          }
-          break;
-        default:
-          break;
-      }
-    },
-    [canAssignRoom, encounterChartPath, onAvailableBedClick, router, unit]
-  );
+  const visibleBeds = filterBedBoardByStatus(beds, statusFilter);
+
+  const handleBedActivate = useCallback((bed: FacilityBedBoardBedRow) => {
+    setStatusDetailBed(bed);
+  }, []);
 
   const cellAriaLabel = (bed: FacilityBedBoardBedRow): string => {
     const label = bed.displayKey || bed.display;
@@ -135,16 +106,9 @@ export function BedBoardGrid({
           gap: 8,
         }}
       >
-        {beds.map((bed) => {
-          const colors = bedStatusBadgeSoft(bed.status);
-          const statusLabel = formatHospitalBedStatusLabel(bed.status, language, t);
-          const isInteractive =
-            bed.status === "AVAILABLE"
-              ? canAssignRoom && Boolean(onAvailableBedClick)
-              : bed.status === "OCCUPIED" ||
-                bed.status === "TRANSFER_PENDING" ||
-                bed.status === "DISCHARGE_PENDING" ||
-                opensStatusDetailModal(bed.status);
+        {visibleBeds.map((bed) => {
+          const colors = resolveBedStatusBadge(bed.status);
+          const statusLabel = resolveBedStatusLabel(bed.status, language, t);
 
           return (
             <button
@@ -154,7 +118,6 @@ export function BedBoardGrid({
               data-testid={`bed-board-cell-${bed.storageKey || bed.bedKey}`}
               data-status={bed.status}
               aria-label={cellAriaLabel(bed)}
-              disabled={!isInteractive}
               onClick={() => handleBedActivate(bed)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
@@ -169,13 +132,13 @@ export function BedBoardGrid({
                 gap: 4,
                 padding: "8px 10px",
                 minHeight: 72,
+                minWidth: 44,
                 borderRadius: 10,
-                border: `1px solid ${bedStatusCellBorderColor(bed.status)}`,
+                border: `1px solid ${resolveBedStatusBorder(bed.status)}`,
                 background: colors.bg,
                 color: colors.text,
                 textAlign: "left",
-                cursor: isInteractive ? "pointer" : "default",
-                opacity: isInteractive ? 1 : 0.92,
+                cursor: "pointer",
               }}
             >
               <span
@@ -231,10 +194,14 @@ export function BedBoardGrid({
       <BedBoardStatusDetailModal
         open={Boolean(statusDetailBed)}
         bed={statusDetailBed}
+        unit={unit}
         facilityId={facilityId}
         canManageStatus={canManageBedStatus}
+        canAssignRoom={canAssignRoom}
         onClose={() => setStatusDetailBed(null)}
         onStatusUpdated={onBedStatusUpdated}
+        onAssignPatient={onAvailableBedClick}
+        encounterChartPath={encounterChartPath}
       />
     </>
   );

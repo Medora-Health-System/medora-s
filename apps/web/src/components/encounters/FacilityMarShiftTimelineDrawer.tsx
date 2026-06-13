@@ -9,6 +9,7 @@ import {
   defaultMarShiftTimelineStopTimeValue,
   formatMarShiftTimelineDueWindow,
   isMarShiftTimelineDrawerReadOnly,
+  isMarShiftTimelineDrawerScheduledActionable,
   marShiftTimelineDrawerPerformerValue,
   marShiftTimelineItemStatusStyle,
   marShiftTimelinePrimaryDrawerAction,
@@ -77,8 +78,12 @@ export function FacilityMarShiftTimelineDrawer({
   const [reasonTimeValue, setReasonTimeValue] = useState("");
 
   const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
+  const scheduledActionable = item ? isMarShiftTimelineDrawerScheduledActionable(item) : false;
   const primaryAction = item ? marShiftTimelinePrimaryDrawerAction(item) : null;
-  const showStartTimeField = item?.clinicalAction === "START_INFUSION";
+  const showStartTimeField =
+    item?.clinicalAction === "START_INFUSION" ||
+    (item?.clinicalAction === "VIEW_UPCOMING" &&
+      (item.doseKind === "IVPB_SESSION" || item.route?.trim().toUpperCase() === "IVPB"));
   const showStopTimeField =
     item?.clinicalAction === "STOP_INFUSION" ||
     item?.clinicalAction === "STOP_FLUID" ||
@@ -603,6 +608,13 @@ export function FacilityMarShiftTimelineDrawer({
             style={{ margin: "12px 0 0", fontSize: 13, color: "#64748b" }}
           >
             {t("marShiftTimeline.drawer.readOnlyNotice")}
+          </p>
+        ) : scheduledActionable ? (
+          <p
+            data-testid="mar-shift-timeline-drawer-scheduled-notice"
+            style={{ margin: "12px 0 0", fontSize: 13, color: "#047857" }}
+          >
+            {t("marShiftTimeline.drawer.scheduledActionNotice")}
           </p>
         ) : null}
 

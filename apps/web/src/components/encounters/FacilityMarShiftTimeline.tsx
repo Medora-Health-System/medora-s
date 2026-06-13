@@ -5,6 +5,7 @@ import {
   MAR_SHIFT_TIMELINE_SHIFT_CODES,
   MAR_SHIFT_TIMELINE_SHIFT_LABELS,
   type MarShiftTimelineShiftCode,
+  isMarShiftTimelineItemActionable,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -392,7 +393,7 @@ export function FacilityMarShiftTimeline({
                           }}
                         >
                           {(cell?.items ?? []).map((item) => {
-                            const readOnly = item.readOnly === true || item.doseStatus === "COMPLETED";
+                            const readOnly = !isMarShiftTimelineItemActionable(item);
                             const statusStyle = marShiftTimelineItemStatusStyle(
                               item.doseStatus,
                               readOnly,

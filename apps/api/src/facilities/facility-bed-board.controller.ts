@@ -72,4 +72,27 @@ export class FacilityBedBoardController {
       req.headers["user-agent"]
     );
   }
+
+  @Get(":facilityId/beds/:bedKey/status-history")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async getBedStatusHistory(
+    @Param("facilityId") facilityId: string,
+    @Param("bedKey") bedKey: string,
+    @Query("limit") limitRaw: string | undefined,
+    @Req() req: any
+  ) {
+    const scopedFacilityId = this.resolveFacilityId(req, facilityId);
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : 10;
+    return this.bedBoardService.getBedStatusHistory(
+      scopedFacilityId,
+      bedKey,
+      Number.isFinite(limit) ? limit : 10
+    );
+  }
 }

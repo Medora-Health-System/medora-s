@@ -313,3 +313,21 @@ export function compareBedOperationalStatusPrecedence(
 export function isEdSimplifiedBlockedBedStatus(status: BedOperationalStatus): boolean {
   return ["BLOCKED", "DIRTY", "CLEANING", "RESERVED"].includes(status);
 }
+
+export const BED_OCCUPIED_BLOCKS_STATUS_CHANGE_CODE = "BED_OCCUPIED_BLOCKS_STATUS_CHANGE" as const;
+
+export function isActiveBedOccupancyStatus(status: BedOperationalStatus): boolean {
+  return status === "OCCUPIED" || status === "TRANSFER_PENDING" || status === "DISCHARGE_PENDING";
+}
+
+export function manualStatusBlockedByOccupancy(input: {
+  targetStatus: ManualBedOperationalStatus;
+  bedStatus: BedOperationalStatus;
+  occupantEncounterId?: string | null;
+}): boolean {
+  if (input.targetStatus !== "RESERVED" && input.targetStatus !== "BLOCKED") {
+    return false;
+  }
+  return Boolean(input.occupantEncounterId) || isActiveBedOccupancyStatus(input.bedStatus);
+}
+

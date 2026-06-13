@@ -77,4 +77,18 @@ describe("bed operational status governance (K.10B.10C web)", () => {
     expect(timeline).toContain("governedRoomDisplay");
     expect(timeline).not.toContain("fetchFacilityBedBoard");
   });
+
+  it("bed status history reads audit via GET beds status-history (K.10B.10E)", () => {
+    const api = readSrc("lib/bedBoardApi.ts");
+    expect(api).toContain("fetchBedStatusHistory");
+    expect(api).toContain("/status-history");
+    expect(api).not.toContain("updateEncounterRoomAssignment");
+  });
+
+  it("bed status presentation module centralizes palette (K.10B.10E)", () => {
+    const presentation = readSrc("lib/bedStatusPresentation.ts");
+    expect(presentation).toContain("resolveBedStatusColor");
+    expect(presentation).toContain("resolveBedStatusBorder");
+    expect(presentation).toContain("resolveBedStatusLabel");
+  });
 });

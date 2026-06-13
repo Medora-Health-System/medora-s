@@ -12,6 +12,7 @@ import {
   tEncounterType,
 } from "@/lib/encounterChromeI18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
+import { canDocumentEdTriage } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { getCachedRecord, setCachedRecord } from "@/lib/offline/offlineCache";
 import {
@@ -231,8 +232,15 @@ export function EmergencyChartView() {
     roles.includes("LAB") ||
     roles.includes("RADIOLOGY");
 
-  const canFetchEncounterTriage =
-    roles.includes("RN") || roles.includes("PROVIDER") || roles.includes("ADMIN");
+  const canFetchEncounterTriage = useMemo(
+    () =>
+      canDocumentEdTriage({
+        roleCodes: roles,
+        encounterType: encounter?.type ?? null,
+        facilityUnit: encounter?.governedRoomUnit ?? null,
+      }),
+    [roles, encounter?.type, encounter?.governedRoomUnit]
+  );
 
   /** Lab/Radiology techniciens : accès dossier urgences en lecture seule (workflow technicien). */
   const isReadOnlyTechnicianViewer =

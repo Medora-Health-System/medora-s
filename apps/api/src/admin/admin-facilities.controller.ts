@@ -121,4 +121,11 @@ export class AdminFacilitiesController {
     }
     return this.facilities.updateFacilityBillingWorkflowForAdmin(req.user.userId, id, parsed.data);
   }
+
+  /** MEDUI.AUTH.ROLE.2 — departments for admin user assignment (read-only). */
+  @Get("facilities/:id/departments")
+  @UseGuards(AuthGuard("jwt"))
+  async listDepartments(@Param("id") id: string, @Req() req: { user: { userId: string } }) {
+    return this.facilities.listDepartmentsForAdmin(req.user.userId, id);
+  }
 }

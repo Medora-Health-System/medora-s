@@ -716,7 +716,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         secondaryText,
         tertiaryText: resolvedTertiaryText,
         doseStatus: parsedStatus,
-        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction),
+        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction, parsedStatus, secondaryText),
         startedAt: enrichment?.startedAt ?? null,
         startedByDisplay: enrichment?.startedByDisplay ?? null,
         startedByInitials: enrichment?.startedByInitials ?? null,

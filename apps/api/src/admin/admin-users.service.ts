@@ -8,13 +8,23 @@ import {
 import * as argon2 from "argon2";
 import { PrismaService } from "../prisma/prisma.service";
 import { RoleCode } from "@prisma/client";
+import {
+  dedupeAdminUserAssignments,
+  findDuplicateRoleCodeDepartmentConflict,
+} from "@medora/shared";
 import type {
+  AdminUserAssignmentDto,
   CreateAdminUserDto,
   UpdateAdminUserDto,
   UpdateAdminUserRolesDto,
   UpdateAdminUserStatusDto,
   UserBillingIdentityPatchDto,
 } from "@medora/shared";
+
+type ResolvedUserRoleAssignment = {
+  roleCode: RoleCode;
+  departmentId: string | null;
+};
 
 @Injectable()
 export class AdminUsersService {
@@ -28,31 +38,14 @@ export class AdminUsersService {
       include: {
         userRoles: {
           where: { facilityId },
-          include: { role: true },
+          include: { role: true, department: true },
         },
       },
       orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
     });
 
     return {
-      items: users.map((u) => {
-        const facilityAccessActive = u.userRoles.some((ur) => ur.isActive);
-        return {
-          id: u.id,
-          email: u.email,
-          firstName: u.firstName,
-          lastName: u.lastName,
-          isActive: u.isActive,
-          facilityAccessActive,
-          roles: u.userRoles
-            .filter((ur) => ur.isActive)
-            .map((ur) => ur.role.code as RoleCode)
-            .sort(),
-          rolesInactive: u.userRoles
-            .filter((ur) => !ur.isActive)
-            .map((ur) => ur.role.code as RoleCode),
-        };
-      }),
+      items: users.map((u) => this.mapUserListItem(u, facilityId)),
     };
   }
 
@@ -68,13 +61,16 @@ export class AdminUsersService {
     }
 
     const passwordHash = await argon2.hash(dto.password);
+    const resolvedAssignments = await this.resolveAssignmentsForFacility(facilityIdHeader, dto);
 
     const roleRows = await this.prisma.role.findMany({
-      where: { code: { in: dto.roles } },
+      where: { code: { in: resolvedAssignments.map((a) => a.roleCode) } },
     });
-    if (roleRows.length !== dto.roles.length) {
+    if (roleRows.length !== resolvedAssignments.length) {
       throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
     }
+
+    const roleByCode = new Map(roleRows.map((r) => [r.code, r]));
 
     const user = await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -90,12 +86,17 @@ export class AdminUsersService {
         },
       });
 
-      for (const r of roleRows) {
+      for (const assignment of resolvedAssignments) {
+        const r = roleByCode.get(assignment.roleCode);
+        if (!r) {
+          throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
+        }
         await tx.userRole.create({
           data: {
             userId: created.id,
             roleId: r.id,
             facilityId: facilityIdHeader,
+            departmentId: assignment.departmentId,
             isActive: true,
           },
         });
@@ -171,12 +172,15 @@ export class AdminUsersService {
     });
     const hadActiveSuperAdmin = activeAtFacility.some((ur) => ur.role.code === RoleCode.MEDORA_SUPER_ADMIN);
 
-    /**
-     * Facility admin UI only submits assignable clinical/facility roles (see `ADMIN_ASSIGNABLE_ROLE_CODES`).
-     * `MEDORA_SUPER_ADMIN` is platform-managed; preserve an existing active assignment so saves do not strip it.
-     */
-    const mergedRoleCodes: RoleCode[] = [...dto.roles];
+    const resolvedAssignments = await this.resolveAssignmentsForFacility(facilityIdHeader, dto);
+
+    const mergedAssignments: ResolvedUserRoleAssignment[] = [...resolvedAssignments];
+    const mergedRoleCodes: RoleCode[] = mergedAssignments.map((a) => a.roleCode);
     if (hadActiveSuperAdmin && !mergedRoleCodes.includes(RoleCode.MEDORA_SUPER_ADMIN)) {
+      mergedAssignments.push({
+        roleCode: RoleCode.MEDORA_SUPER_ADMIN,
+        departmentId: null,
+      });
       mergedRoleCodes.push(RoleCode.MEDORA_SUPER_ADMIN);
     }
 
@@ -191,19 +195,24 @@ export class AdminUsersService {
       throw new BadRequestException("Un ou plusieurs rôles sont invalides.");
     }
 
+    const assignmentByRole = new Map(
+      mergedAssignments.map((a) => [a.roleCode, a.departmentId] as const)
+    );
+
     await this.prisma.$transaction(async (tx) => {
       await tx.userRole.updateMany({
         where: { userId, facilityId: facilityIdHeader },
         data: { isActive: false },
       });
       for (const r of roleRows) {
+        const departmentId = assignmentByRole.get(r.code) ?? null;
         const existingUr = await tx.userRole.findFirst({
           where: { userId, facilityId: facilityIdHeader, roleId: r.id },
         });
         if (existingUr) {
           await tx.userRole.update({
             where: { id: existingUr.id },
-            data: { isActive: true },
+            data: { isActive: true, departmentId },
           });
         } else {
           await tx.userRole.create({
@@ -211,6 +220,7 @@ export class AdminUsersService {
               userId,
               roleId: r.id,
               facilityId: facilityIdHeader,
+              departmentId,
               isActive: true,
             },
           });
@@ -365,18 +375,24 @@ export class AdminUsersService {
     });
   }
 
-  private async getOneSummary(facilityId: string, userId: string) {
-    const u = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        userRoles: {
-          where: { facilityId },
-          include: { role: true },
-        },
-      },
-    });
-    if (!u) throw new NotFoundException();
+  private mapUserListItem(
+    u: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      isActive: boolean;
+      userRoles: {
+        isActive: boolean;
+        departmentId: string | null;
+        role: { code: RoleCode };
+        department: { id: string; code: string; name: string } | null;
+      }[];
+    },
+    facilityId: string
+  ) {
     const facilityAccessActive = u.userRoles.some((ur) => ur.isActive);
+    const activeRoles = u.userRoles.filter((ur) => ur.isActive);
     return {
       id: u.id,
       email: u.email,
@@ -384,10 +400,103 @@ export class AdminUsersService {
       lastName: u.lastName,
       isActive: u.isActive,
       facilityAccessActive,
-      roles: u.userRoles
-        .filter((ur) => ur.isActive)
-        .map((ur) => ur.role.code as RoleCode)
-        .sort(),
+      roles: activeRoles.map((ur) => ur.role.code as RoleCode).sort(),
+      rolesInactive: u.userRoles
+        .filter((ur) => !ur.isActive)
+        .map((ur) => ur.role.code as RoleCode),
+      assignments: activeRoles.map((ur) => ({
+        facilityId,
+        roleCode: ur.role.code as RoleCode,
+        departmentId: ur.departmentId ?? null,
+        departmentCode: ur.department?.code ?? null,
+        departmentName: ur.department?.name ?? null,
+      })),
     };
+  }
+
+  private async resolveAssignmentsForFacility(
+    facilityId: string,
+    dto: { roles?: RoleCode[] | string[]; assignments?: AdminUserAssignmentDto[] }
+  ): Promise<ResolvedUserRoleAssignment[]> {
+    if (dto.assignments?.length) {
+      const normalized = dedupeAdminUserAssignments(
+        dto.assignments.map((row) => ({
+          facilityId: row.facilityId ?? facilityId,
+          roleCode: row.roleCode,
+          departmentId: row.departmentId ?? null,
+        }))
+      );
+
+      const conflict = findDuplicateRoleCodeDepartmentConflict(normalized);
+      if (conflict) {
+        throw new BadRequestException(
+          `Le rôle ${conflict} ne peut pas être assigné à plusieurs départements dans le même établissement.`
+        );
+      }
+
+      for (const row of normalized) {
+        if (row.facilityId !== facilityId) {
+          throw new BadRequestException(
+            "Chaque affectation doit correspondre à l’établissement actif."
+          );
+        }
+      }
+
+      await this.assertDepartmentsBelongToFacility(
+        facilityId,
+        normalized.map((row) => row.departmentId)
+      );
+
+      return normalized.map((row) => ({
+        roleCode: row.roleCode as RoleCode,
+        departmentId: row.departmentId ?? null,
+      }));
+    }
+
+    const legacyRoles = dto.roles ?? [];
+    if (legacyRoles.length === 0) {
+      throw new BadRequestException("Sélectionnez au moins un rôle pour cet établissement.");
+    }
+
+    return legacyRoles.map((roleCode) => ({
+      roleCode: roleCode as RoleCode,
+      departmentId: null,
+    }));
+  }
+
+  private async assertDepartmentsBelongToFacility(
+    facilityId: string,
+    departmentIds: (string | null | undefined)[]
+  ) {
+    const ids = [
+      ...new Set(
+        departmentIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+      ),
+    ];
+    if (ids.length === 0) {
+      return;
+    }
+    const count = await this.prisma.department.count({
+      where: { facilityId, id: { in: ids }, isActive: true },
+    });
+    if (count !== ids.length) {
+      throw new BadRequestException(
+        "Le département sélectionné n’appartient pas à cet établissement."
+      );
+    }
+  }
+
+  private async getOneSummary(facilityId: string, userId: string) {
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        userRoles: {
+          where: { facilityId },
+          include: { role: true, department: true },
+        },
+      },
+    });
+    if (!u) throw new NotFoundException();
+    return this.mapUserListItem(u, facilityId);
   }
 }

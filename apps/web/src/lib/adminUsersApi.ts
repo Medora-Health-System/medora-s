@@ -54,6 +54,14 @@ async function adminApiFetch(
   return await parseApiResponse(response);
 }
 
+export type AdminUserAssignmentRow = {
+  facilityId: string;
+  roleCode: string;
+  departmentId: string | null;
+  departmentCode?: string | null;
+  departmentName?: string | null;
+};
+
 export type AdminUserRow = {
   id: string;
   email: string;
@@ -64,7 +72,24 @@ export type AdminUserRow = {
   facilityAccessActive: boolean;
   roles: string[];
   rolesInactive?: string[];
+  assignments?: AdminUserAssignmentRow[];
 };
+
+export type FacilityDepartmentRow = {
+  id: string;
+  code: string;
+  name: string;
+};
+
+export async function fetchAdminFacilityDepartments(
+  headerFacilityId: string,
+  targetFacilityId: string
+): Promise<{ items: FacilityDepartmentRow[] }> {
+  return adminApiFetch(`/facilities/${targetFacilityId}/departments`, {
+    method: "GET",
+    facilityId: headerFacilityId,
+  }) as Promise<{ items: FacilityDepartmentRow[] }>;
+}
 
 export async function fetchAdminUsers(facilityId: string): Promise<{ items: AdminUserRow[] }> {
   return adminApiFetch("/users", { facilityId }) as Promise<{ items: AdminUserRow[] }>;
@@ -98,7 +123,15 @@ export async function patchAdminUserProfile(
 export async function patchAdminUserRoles(
   facilityId: string,
   userId: string,
-  body: { facilityId: string; roles: string[] }
+  body: {
+    facilityId: string;
+    roles?: string[];
+    assignments?: {
+      facilityId?: string;
+      roleCode: string;
+      departmentId?: string | null;
+    }[];
+  }
 ): Promise<AdminUserRow> {
   return adminApiFetch(`/users/${userId}/roles`, {
     method: "PATCH",
