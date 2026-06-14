@@ -15,6 +15,12 @@ import {
   resolveDiarrheaHpiChipGroupsForTemplate,
   resolveDiarrheaRosChipGroupsForTemplate,
 } from "./providerDocumentationDiarrheaGovernance";
+import {
+  filterNauseaVomitingMdmTemplateOptionsForTemplate,
+  resolveNauseaVomitingExamChipGroupsForTemplate,
+  resolveNauseaVomitingHpiChipGroupsForTemplate,
+  resolveNauseaVomitingRosChipGroupsForTemplate,
+} from "./providerDocumentationNauseaVomitingGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -28,9 +34,12 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDiarrheaRosChipGroupsForTemplate(
+  return resolveNauseaVomitingRosChipGroupsForTemplate(
     templateId,
-    resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+    resolveDiarrheaRosChipGroupsForTemplate(
+      templateId,
+      resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+    )
   );
 }
 
@@ -38,9 +47,12 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDiarrheaExamChipGroupsForTemplate(
+  return resolveNauseaVomitingExamChipGroupsForTemplate(
     templateId,
-    resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+    resolveDiarrheaExamChipGroupsForTemplate(
+      templateId,
+      resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+    )
   );
 }
 
@@ -48,15 +60,21 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups);
+  return resolveNauseaVomitingHpiChipGroupsForTemplate(
+    templateId,
+    resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+  );
 }
 
 export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterDiarrheaMdmTemplateOptionsForTemplate(
+  return filterNauseaVomitingMdmTemplateOptionsForTemplate(
     templateId,
-    filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+    filterDiarrheaMdmTemplateOptionsForTemplate(
+      templateId,
+      filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+    )
   );
 }

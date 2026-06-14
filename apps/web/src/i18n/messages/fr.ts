@@ -10433,6 +10433,8 @@ export default {
       diffPancreatitis: "pancréatite envisagée",
       diffDkaMetabolicAbnormality: "ACD / trouble métabolique envisagé",
       diffPregnancyRelatedVomiting: "vomissements liés à la grossesse envisagés",
+      diffHyperemesisGravidarum: "hyperémèse gravidique envisagée",
+      diffCannabinoidHyperemesis: "hyperémèse cannabinoïde envisagée",
       mdmLabsReviewedIfObtained: "bilan biologique revu si obtenu",
       mdmElectrolytesReviewed: "électrolytes revus",
       mdmPregnancyTestingReviewedIfApplicable: "test de grossesse revu si applicable",

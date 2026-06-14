@@ -10454,6 +10454,8 @@ export default {
       diffPancreatitis: "pancreatitis considered",
       diffDkaMetabolicAbnormality: "DKA / metabolic abnormality considered",
       diffPregnancyRelatedVomiting: "pregnancy-related vomiting considered",
+      diffHyperemesisGravidarum: "hyperemesis gravidarum considered",
+      diffCannabinoidHyperemesis: "cannabinoid hyperemesis considered",
       mdmLabsReviewedIfObtained: "labs reviewed if obtained",
       mdmElectrolytesReviewed: "electrolytes reviewed",
       mdmPregnancyTestingReviewedIfApplicable: "pregnancy testing reviewed if applicable",

@@ -872,7 +872,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateNauseaVomitingHelp",
     ["erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting", "erMseHpiChipsPediatric.intakeOutputReviewed"],
     ["erMseRosChips.posVomiting"],
-    ["erMseRosChips.negDeniesChestPain", "providerDocumentationWorkspace.stickerRosNoBloodInEmesis"],
+    ["providerDocumentationWorkspace.stickerRosNoBloodInEmesis", "erMseRosChips.negDeniesFever"],
     ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
     { mdmPlanSummary: ["erMseMdmChips.actAntiemetic", "erMseMdmChips.actFluids", "erMseMdmChips.planReassess"] },
     { abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"], heent: ["erMseExamChips.heentDryMm"] },
@@ -1170,7 +1170,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateAdultNauseaVomitingHelp",
     ["erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting", "erMseHpiChips.timStartedToday"],
     ["erMseRosChips.posVomiting", "erMseRosChips.posAbdominalPain"],
-    ["erMseRosChips.negDeniesChestPain", "erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoBloodInEmesis"],
+    ["erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoBloodInEmesis"],
     ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
     {
       mdmWorkingAssessment: ["erMseMdmChips.waAbdominal", "erMseMdmChips.waInfectious"],
@@ -1929,11 +1929,37 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     "providerDocumentationWorkspace.templateGeneralizedWeaknessMetabolicComplaintV1Help",
     GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL
   ),
-  endocrineMetabolicComplaintV1Template(
+  adultTemplate(
     "nausea_vomiting_metabolic_complaint_v1",
     "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1",
     "providerDocumentationWorkspace.templateNauseaVomitingMetabolicComplaintV1Help",
-    NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL
+    ["erMseHpiChips.timStartedToday", "erMseHpiChips.assocNausea", "erMseHpiChips.assocVomiting"],
+    ["erMseRosChips.posVomiting", "erMseRosChips.posWeakness", "erMseRosChips.posDizziness"],
+    ["erMseRosChips.negDeniesFever", "erMseRosChips.negDeniesVomiting"],
+    ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfSeverePain"],
+    {
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waAbdominal"],
+      mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmGuidance.prescriptionDrugManagementReviewed"],
+      mdmImmediateActionsRationale: ["erMseMdmChips.actFluids"],
+      mdmPlanSummary: ["erMseMdmChips.actAntiemetic", "erMseMdmChips.planReassess"],
+      mdmAdmitObserveDischarge: ["erMseMdmChips.dispReturnPrecautions"],
+    },
+    {
+      general: ["erMseExamChips.genAlert", "erMseExamChips.genNoAcuteDistress"],
+      heent: ["erMseExamChips.heentDryMm"],
+      abdomen: ["erMseExamChips.abdSoft", "erMseExamChips.abdNonTender"],
+    },
+    {
+      mdmDifferentialSynthesis: ["erMseMdmGuidance.acuteIllnessDocumented"],
+      reassessment: ["providerDocumentationSmartSentences.reassessedAfterAnalgesia"],
+      followUpDisposition: ["providerDocumentationSmartSentences.returnPrecautionsWorseningPain"],
+    },
+    [
+      "providerDocumentationPromptReminders.adultHyperglycemiaDkaReminder",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL,
+    "endocrine_metabolic"
   ),
   neuroExpansionComplaintV1Template(
     "seizure_complaint_v1",

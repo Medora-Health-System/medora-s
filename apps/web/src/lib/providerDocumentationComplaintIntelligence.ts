@@ -2703,6 +2703,8 @@ export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL: ProviderDocumentationComplai
     adultNv("diffPancreatitis"),
     adultNv("diffDkaMetabolicAbnormality"),
     adultNv("diffPregnancyRelatedVomiting"),
+    adultNv("diffHyperemesisGravidarum"),
+    adultNv("diffCannabinoidHyperemesis"),
   ],
   mdmDataReviewed: [
     adultNv("mdmLabsReviewedIfObtained"),
