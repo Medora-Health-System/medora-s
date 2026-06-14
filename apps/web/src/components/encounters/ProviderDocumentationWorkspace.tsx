@@ -64,11 +64,11 @@ import {
   isDocumentationChipSelected,
   resolveDocumentationChipStyles,
 } from "@/lib/providerDocumentationChipSelection";
-import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateHpiDimensions";
 import {
   resolveExamChipGroupsForTemplate,
+  resolveHpiChipGroupsForTemplate,
   resolveRosChipGroupsForTemplate,
-} from "@/lib/providerDocumentationUrinarySymptomsGovernance";
+} from "@/lib/providerDocumentationComplaintStickyNoteGovernance";
 import {
   DYNAMIC_SUGGESTION_CATEGORY_ORDER,
   DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS,

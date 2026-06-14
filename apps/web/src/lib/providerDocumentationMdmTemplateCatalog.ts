@@ -5,7 +5,7 @@ import type {
 } from "./providerDocumentationModel";
 import { toggleDocumentationFragment } from "./providerDocumentationModel";
 import { isDocumentationChipSelected } from "./providerDocumentationChipSelection";
-import { filterMdmTemplateOptionsForTemplate } from "./providerDocumentationUrinarySymptomsGovernance";
+import { filterMdmTemplateOptionsForTemplate } from "./providerDocumentationComplaintStickyNoteGovernance";
 
 export type MdmTemplateOptionGroup = "highValue" | "existing";
 
