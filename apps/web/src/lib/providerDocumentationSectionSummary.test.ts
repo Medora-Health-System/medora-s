@@ -118,7 +118,8 @@ describe("ProviderDocumentationWorkspace accordion UI (19N.2)", () => {
     expect(workspaceSource).not.toContain("WorkspaceSection");
     expect(workspaceSource).toContain('sectionId="hpi"');
     expect(workspaceSource).toContain("hpiChipGroups.map");
-    expect(workspaceSource).toContain("ROS_CHIPS.map");
+    expect(workspaceSource).toContain("rosChipGroups.map");
+    expect(workspaceSource).toContain("examChipGroups.map");
     expect(workspaceSource).toContain("ProviderDocumentationMdmTemplateDropdown");
     expect(workspaceSource).toContain("templateGuidanceChips");
     expect(workspaceSource).toContain('sectionId="actions"');

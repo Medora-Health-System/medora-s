@@ -5,6 +5,7 @@ import type {
 } from "./providerDocumentationModel";
 import { toggleDocumentationFragment } from "./providerDocumentationModel";
 import { isDocumentationChipSelected } from "./providerDocumentationChipSelection";
+import { filterMdmTemplateOptionsForTemplate } from "./providerDocumentationUrinarySymptomsGovernance";
 
 export type MdmTemplateOptionGroup = "highValue" | "existing";
 
@@ -164,7 +165,7 @@ export function buildMdmTemplateDropdownOptions(
     }
   }
 
-  return [...highValue, ...existing];
+  return filterMdmTemplateOptionsForTemplate(template?.id ?? null, [...highValue, ...existing]);
 }
 
 export function applyMdmTemplatePendingSelections({

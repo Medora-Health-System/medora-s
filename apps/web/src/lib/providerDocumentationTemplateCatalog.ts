@@ -1348,7 +1348,7 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesFever", "providerDocumentationWorkspace.stickerRosNoVomiting"],
     ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfPregnancyConcern", "erMseRosChips.rfAlteredMs"],
     {
-      mdmWorkingAssessment: ["erMseMdmChips.waInfectious", "erMseMdmChips.waAbdominal"],
+      mdmWorkingAssessment: ["erMseMdmChips.waInfectious"],
       mdmDataReviewed: ["erMseMdmChips.planLabs"],
       mdmPlanSummary: ["erMseMdmChips.planMeds", "erMseMdmChips.planReassess"],
     },

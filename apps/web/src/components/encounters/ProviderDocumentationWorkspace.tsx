@@ -66,6 +66,10 @@ import {
 } from "@/lib/providerDocumentationChipSelection";
 import { resolveHpiChipGroupsForTemplate } from "@/lib/providerDocumentationTemplateHpiDimensions";
 import {
+  resolveExamChipGroupsForTemplate,
+  resolveRosChipGroupsForTemplate,
+} from "@/lib/providerDocumentationUrinarySymptomsGovernance";
+import {
   DYNAMIC_SUGGESTION_CATEGORY_ORDER,
   DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS,
   getProviderDocumentationDynamicSuggestions,
@@ -473,6 +477,14 @@ export function ProviderDocumentationWorkspace({
   );
   const hpiChipGroups = useMemo(
     () => resolveHpiChipGroupsForTemplate(value.activeTemplateId, HPI_CHIPS),
+    [value.activeTemplateId]
+  );
+  const rosChipGroups = useMemo(
+    () => resolveRosChipGroupsForTemplate(value.activeTemplateId, ROS_CHIPS),
+    [value.activeTemplateId]
+  );
+  const examChipGroups = useMemo(
+    () => resolveExamChipGroupsForTemplate(value.activeTemplateId, EXAM_CHIPS),
     [value.activeTemplateId]
   );
   const mdmTemplateOptions = useMemo(
@@ -1897,7 +1909,7 @@ export function ProviderDocumentationWorkspace({
               ["rosFocusedImpression", "rosImportantPositives", "rosImportantNegatives", "rosRedFlags"],
               "providerDocumentationWorkspace.activeTemplateRos"
             )}
-            {ROS_CHIPS.map((group) => (
+            {rosChipGroups.map((group) => (
               <ChipGroupView key={group.titleKey} title={t(group.titleKey)}>
                 {group.field === "rosImportantNegatives" ? (
                   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#92400e" }}>{t("providerDocumentationWorkspace.negativesWarning")}</p>
@@ -1940,7 +1952,7 @@ export function ProviderDocumentationWorkspace({
               </button>
             </div>
             {templateExamChips(activeTemplate)}
-            {EXAM_CHIPS.map((group) => (
+            {examChipGroups.map((group) => (
               <ProviderDocumentationChipPanel
                 key={group.sectionId}
                 title={t(group.titleKey)}
