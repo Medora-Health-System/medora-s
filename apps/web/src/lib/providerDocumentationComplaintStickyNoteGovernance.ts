@@ -27,6 +27,12 @@ import {
   resolveNauseaVomitingHpiChipGroupsForTemplate,
   resolveNauseaVomitingRosChipGroupsForTemplate,
 } from "./providerDocumentationNauseaVomitingGovernance";
+import {
+  filterShortnessOfBreathMdmTemplateOptionsForTemplate,
+  resolveShortnessOfBreathExamChipGroupsForTemplate,
+  resolveShortnessOfBreathHpiChipGroupsForTemplate,
+  resolveShortnessOfBreathRosChipGroupsForTemplate,
+} from "./providerDocumentationShortnessOfBreathGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -40,13 +46,16 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveAbdominalPainRosChipGroupsForTemplate(
+  return resolveShortnessOfBreathRosChipGroupsForTemplate(
     templateId,
-    resolveNauseaVomitingRosChipGroupsForTemplate(
+    resolveAbdominalPainRosChipGroupsForTemplate(
       templateId,
-      resolveDiarrheaRosChipGroupsForTemplate(
+      resolveNauseaVomitingRosChipGroupsForTemplate(
         templateId,
-        resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+        resolveDiarrheaRosChipGroupsForTemplate(
+          templateId,
+          resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+        )
       )
     )
   );
@@ -56,13 +65,16 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveAbdominalPainExamChipGroupsForTemplate(
+  return resolveShortnessOfBreathExamChipGroupsForTemplate(
     templateId,
-    resolveNauseaVomitingExamChipGroupsForTemplate(
+    resolveAbdominalPainExamChipGroupsForTemplate(
       templateId,
-      resolveDiarrheaExamChipGroupsForTemplate(
+      resolveNauseaVomitingExamChipGroupsForTemplate(
         templateId,
-        resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+        resolveDiarrheaExamChipGroupsForTemplate(
+          templateId,
+          resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+        )
       )
     )
   );
@@ -72,11 +84,14 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveAbdominalPainHpiChipGroupsForTemplate(
+  return resolveShortnessOfBreathHpiChipGroupsForTemplate(
     templateId,
-    resolveNauseaVomitingHpiChipGroupsForTemplate(
+    resolveAbdominalPainHpiChipGroupsForTemplate(
       templateId,
-      resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+      resolveNauseaVomitingHpiChipGroupsForTemplate(
+        templateId,
+        resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+      )
     )
   );
 }
@@ -85,13 +100,16 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterAbdominalPainMdmTemplateOptionsForTemplate(
+  return filterShortnessOfBreathMdmTemplateOptionsForTemplate(
     templateId,
-    filterNauseaVomitingMdmTemplateOptionsForTemplate(
+    filterAbdominalPainMdmTemplateOptionsForTemplate(
       templateId,
-      filterDiarrheaMdmTemplateOptionsForTemplate(
+      filterNauseaVomitingMdmTemplateOptionsForTemplate(
         templateId,
-        filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+        filterDiarrheaMdmTemplateOptionsForTemplate(
+          templateId,
+          filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+        )
       )
     )
   );
