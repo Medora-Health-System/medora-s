@@ -34,6 +34,16 @@ export type SurgicalHistoryCatalogEntry = {
 
 export const SURGICAL_HISTORY_SEARCH_MIN_CHARS = 2;
 
+function safeSearchQuery(query: unknown): string {
+  if (query == null) return "";
+  if (typeof query === "string") return query.trim();
+  return String(query).trim();
+}
+
+function safeText(value: unknown): string {
+  return safeSearchQuery(value);
+}
+
 export const SURGICAL_HISTORY_CATALOG: readonly SurgicalHistoryCatalogEntry[] = [
   {
     id: "appendectomy",
@@ -134,7 +144,7 @@ export function resolveSurgicalHistoryDisplayName(
 }
 
 export function surgicalHistoryById(id: string): SurgicalHistoryCatalogEntry | undefined {
-  const needle = id.trim();
+  const needle = safeSearchQuery(id);
   if (!needle) return undefined;
   return SURGICAL_HISTORY_CATALOG.find((e) => e.id === needle && !e.inactive);
 }
@@ -170,7 +180,7 @@ export function searchSurgicalHistoryCatalog(
   locale: SurgicalHistorySearchLocale,
   catalog: readonly SurgicalHistoryCatalogEntry[] = SURGICAL_HISTORY_CATALOG
 ): SurgicalHistoryCatalogEntry[] {
-  const q = query.trim();
+  const q = safeSearchQuery(query);
   if (q.length < SURGICAL_HISTORY_SEARCH_MIN_CHARS) return [];
   const needle = normalizeSurgicalHistorySearchText(q);
   if (!needle) return [];
@@ -188,10 +198,10 @@ export function applySurgicalHistoryCatalogSelection(
   entry: SurgicalHistoryCatalogEntry,
   locale: SurgicalHistorySearchLocale
 ): string {
-  const label = resolveSurgicalHistoryDisplayName(entry, locale).trim();
-  if (!label) return currentText;
+  const label = safeText(resolveSurgicalHistoryDisplayName(entry, locale));
+  if (!label) return safeText(currentText);
   if (entry.replacesExisting) return label;
-  const base = currentText.trim();
+  const base = safeText(currentText);
   if (!base) return label;
   if (base.toLowerCase().includes(label.toLowerCase())) return base;
   return `${base}; ${label}`;

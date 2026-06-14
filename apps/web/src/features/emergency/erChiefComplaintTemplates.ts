@@ -369,12 +369,18 @@ function matchesChiefComplaintQuery(
   return terms.some((s) => s.toLowerCase().includes(q));
 }
 
+function safeSearchQuery(query: unknown): string {
+  if (query == null) return "";
+  if (typeof query === "string") return query.trim();
+  return String(query).trim();
+}
+
 export function filterErChiefComplaintTemplates(
   query: string,
   locale: SupportedLanguage,
   catalog: readonly ErChiefComplaintTemplate[] = ER_CHIEF_COMPLAINT_TEMPLATES
 ): ErChiefComplaintTemplate[] {
-  const q = query.trim().toLowerCase();
+  const q = safeSearchQuery(query).toLowerCase();
   if (!q) return [...catalog];
   return catalog.filter((tpl) => matchesChiefComplaintQuery(tpl, q, locale));
 }
@@ -385,7 +391,7 @@ export function searchErChiefComplaintTemplates(
   locale: SupportedLanguage,
   catalog: readonly ErChiefComplaintTemplate[] = ER_CHIEF_COMPLAINT_TEMPLATES
 ): ErChiefComplaintTemplate[] {
-  const q = query.trim();
+  const q = safeSearchQuery(query);
   if (q.length < ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS) return [];
   const needle = q.toLowerCase();
   return catalog.filter((tpl) => matchesChiefComplaintQuery(tpl, needle, locale));

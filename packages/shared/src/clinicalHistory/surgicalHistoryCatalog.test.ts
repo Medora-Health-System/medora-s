@@ -31,6 +31,7 @@ describe("surgicalHistoryCatalog (TRIAGE.2A)", () => {
     expect(SURGICAL_HISTORY_SEARCH_MIN_CHARS).toBe(2);
     expect(searchSurgicalHistoryCatalog("", "en")).toEqual([]);
     expect(searchSurgicalHistoryCatalog("a", "en")).toEqual([]);
+    expect(searchSurgicalHistoryCatalog(undefined as unknown as string, "en")).toEqual([]);
   });
 
   it("finds appendectomy by English alias", () => {

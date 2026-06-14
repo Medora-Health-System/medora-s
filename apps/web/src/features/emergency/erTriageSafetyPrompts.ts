@@ -12,8 +12,8 @@ const CHEST_PAIN_MARKERS = [
 ] as const;
 
 /** True when chief complaint text suggests chest pain (templates apply plain text). */
-export function chiefComplaintSuggestsChestPain(chiefComplaint: string): boolean {
-  const s = chiefComplaint.trim().toLowerCase();
+export function chiefComplaintSuggestsChestPain(chiefComplaint: unknown): boolean {
+  const s = String(chiefComplaint ?? "").trim().toLowerCase();
   if (!s) return false;
   return CHEST_PAIN_MARKERS.some((m) => s.includes(m));
 }
@@ -33,9 +33,9 @@ const HIGH_ACUITY_REFERRAL_NEEDLES = [
 
 /** Structured routing codes or free-text referral hints for ambulance / EMS / transfer. */
 export function erTriageV1HasHighAcuityArrivalSource(er: ErTriageV1Form): boolean {
-  const codes = er.sourceRoutingSelections;
+  const codes = Array.isArray(er.sourceRoutingSelections) ? er.sourceRoutingSelections : [];
   if (codes.includes("AMBULANCE") || codes.includes("TRANSFER")) return true;
-  const ref = er.referralSource.trim().toLowerCase();
+  const ref = String(er.referralSource ?? "").trim().toLowerCase();
   if (!ref) return false;
   return HIGH_ACUITY_REFERRAL_NEEDLES.some((n) => ref.includes(n));
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { apiFetch } from "@/lib/apiClient";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -227,6 +227,8 @@ export default function RadWorklistPage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
   /** Dernière action worklist mise en file hors ligne uniquement. */
   const [queuedActionNotice, setQueuedActionNotice] = useState<string | null>(null);
   const [pendingWorkflowAction, setPendingWorkflowAction] = useState<string | null>(null);
@@ -267,25 +269,35 @@ export default function RadWorklistPage() {
 
   useEffect(() => {
     if (!ready || !facilityId) return;
-    loadQueue();
-    const interval = setInterval(loadQueue, 10000);
+    void loadQueue();
+    const interval = setInterval(() => void loadQueue({ silent: true }), 10000);
     return () => clearInterval(interval);
   }, [ready, facilityId]);
 
   const loadQueue = async (options?: { silent?: boolean }) => {
     if (!facilityId) return;
-    if (!options?.silent) setLoading(true);
+    const silent = Boolean(options?.silent) || hasLoadedOnceRef.current;
+    if (silent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     const pendingP = getPendingImagingOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/radiology", { facilityId });
       setQueue(Array.isArray(data) ? data : []);
+      hasLoadedOnceRef.current = true;
     } catch (error) {
       console.error("Failed to load radiology worklist:", error);
-      setQueue([]);
+      if (!silent) setQueue([]);
     }
     const pendingRows = await pendingP;
     setPendingLocal(pendingRows);
-    if (!options?.silent) setLoading(false);
+    if (silent) {
+      setRefreshing(false);
+    } else {
+      setLoading(false);
+    }
   };
 
   const filteredQueuePairs = useMemo(() => {
@@ -595,6 +607,9 @@ export default function RadWorklistPage() {
 
         {!loading && (queue.length > 0 || pendingLocal.length > 0) ? (
           <>
+            {refreshing ? (
+              <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#64748b" }}>{t("common.refreshing")}</p>
+            ) : null}
             <LabRadiologyWorklistSummaryStrip summary={operationalSummary} t={t} />
             <div style={ancillaryWorklistFiltersRowStyle(layoutMode)}>
             <input

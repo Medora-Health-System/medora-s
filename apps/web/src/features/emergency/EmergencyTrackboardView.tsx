@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { assignNurseSelf, assignProviderSelf, fetchOpenEncounters } from "@/lib/clinicalWorklistApi";
@@ -242,6 +242,8 @@ export function EmergencyTrackboardView() {
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
@@ -300,8 +302,10 @@ export function EmergencyTrackboardView() {
 
   const loadEncounters = useCallback(async (opts?: { silent?: boolean }) => {
     if (!facilityId) return;
-    const silent = Boolean(opts?.silent);
-    if (!silent) {
+    const silent = Boolean(opts?.silent) || hasLoadedOnceRef.current;
+    if (silent) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
       setFetchError(null);
     }
@@ -312,6 +316,7 @@ export function EmergencyTrackboardView() {
       ]);
       const arr = Array.isArray(data) ? data : [];
       setRows(arr as OpenEncounterRow[]);
+      hasLoadedOnceRef.current = true;
       if (bedBoard) {
         setEdBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
@@ -327,7 +332,9 @@ export function EmergencyTrackboardView() {
         }
       }
     } finally {
-      if (!silent) {
+      if (silent) {
+        setRefreshing(false);
+      } else {
         setLoading(false);
       }
     }
@@ -373,7 +380,7 @@ export function EmergencyTrackboardView() {
     if (!ready || !facilityId) return;
     void loadEncounters();
     const interval = window.setInterval(() => {
-      void loadEncounters();
+      void loadEncounters({ silent: true });
     }, 10000);
     return () => clearInterval(interval);
   }, [ready, facilityId, loadEncounters]);
@@ -615,8 +622,8 @@ export function EmergencyTrackboardView() {
             </div>
             <button
               type="button"
-              onClick={() => void loadEncounters()}
-              disabled={loading}
+              onClick={() => void loadEncounters({ silent: hasLoadedOnceRef.current })}
+              disabled={loading && !hasLoadedOnceRef.current}
               style={erTrackboardTouchControlStyle(
                 {
                   height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
@@ -626,7 +633,7 @@ export function EmergencyTrackboardView() {
                   color: "#334155",
                   border: "1px solid #e2e8f0",
                   borderRadius: 12,
-                  cursor: loading ? "not-allowed" : "pointer",
+                  cursor: loading && !hasLoadedOnceRef.current ? "not-allowed" : "pointer",
                   fontSize: 13,
                   fontWeight: 500,
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
@@ -635,7 +642,11 @@ export function EmergencyTrackboardView() {
                 layoutMode
               )}
             >
-              {loading ? t("common.loading") : t("common.refresh")}
+              {loading && !hasLoadedOnceRef.current
+                ? t("common.loading")
+                : refreshing
+                  ? t("common.refreshing")
+                  : t("common.refresh")}
             </button>
           </div>
         </div>

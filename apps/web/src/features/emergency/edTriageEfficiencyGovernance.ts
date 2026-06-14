@@ -11,7 +11,7 @@ import {
   type SurgicalHistorySearchLocale,
 } from "@medora/shared";
 import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
-import { appendIfNotPresent, type ErTriageV1Form, type ErYesNoUnknown } from "./medoraErTriageV1";
+import { appendIfNotPresent, safeTrim, type ErTriageV1Form, type ErYesNoUnknown } from "./medoraErTriageV1";
 
 export const ER_TRIAGE_PPE_NONE_CODE = "NONE";
 
@@ -34,16 +34,16 @@ export function safetyAssessmentHasDocumentedConcern(er: ErTriageV1Form): boolea
     er.safetyHumanTrafficking === "yes" ||
     er.safetySelfHarm === "yes" ||
     er.safetyNeedsSocialWork === "yes" ||
-    er.safetyAssessmentNotes.trim() !== ""
+    safeTrim(er.safetyAssessmentNotes) !== ""
   );
 }
 
 export function travelDetailsHasContent(er: ErTriageV1Form): boolean {
   return (
-    er.travelDestinationCountry.trim() !== "" ||
-    er.travelDateOrReturn.trim() !== "" ||
-    er.travelExposureConcern.trim() !== "" ||
-    er.travelScreeningNotes.trim() !== ""
+    safeTrim(er.travelDestinationCountry) !== "" ||
+    safeTrim(er.travelDateOrReturn) !== "" ||
+    safeTrim(er.travelExposureConcern) !== "" ||
+    safeTrim(er.travelScreeningNotes) !== ""
   );
 }
 

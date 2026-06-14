@@ -60,6 +60,8 @@ import { temperatureHintPairCelsiusFahrenheit, weightHintPairKgPounds } from "@m
 import {
   emptyErTriageV1Form,
   erTriageV1FormFromVitalsJson,
+  normalizeErTriageV1Form,
+  safeTrim,
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
 import {
@@ -394,7 +396,7 @@ export function EmergencyTriagePanel({
         const s = parsed?.slice;
         const v = (d.vitalsJson || {}) as Record<string, number | string | null>;
         const nextForm = {
-          chiefComplaint: (d.chiefComplaint as string) || "",
+          chiefComplaint: String(d.chiefComplaint ?? ""),
           onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString().slice(0, 16) : "",
           esi: d.esi != null ? String(d.esi) : "",
           tempC: s?.tempC ?? v.tempC?.toString() ?? "",
@@ -416,7 +418,7 @@ export function EmergencyTriagePanel({
           triageCompleteAt: d.triageCompleteAt
             ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
             : "",
-          erV1: erTriageV1FormFromVitalsJson(d.vitalsJson),
+          erV1: normalizeErTriageV1Form(erTriageV1FormFromVitalsJson(d.vitalsJson)),
         };
         serverFormSignatureRef.current = triageFormSignature(nextForm);
         setFormData(nextForm);
@@ -446,8 +448,9 @@ export function EmergencyTriagePanel({
           if (canRestore && draft?.payload.formData) {
             setFormData({
               ...draft.payload.formData,
-              // Never restore completion state from an unsaved local triage draft.
+              chiefComplaint: String(draft.payload.formData.chiefComplaint ?? nextForm.chiefComplaint ?? ""),
               triageCompleteAt: nextForm.triageCompleteAt,
+              erV1: normalizeErTriageV1Form(draft.payload.formData.erV1 ?? nextForm.erV1),
             });
             setDraftRestoredAt(draft.metadata.savedLocallyAt);
             setDraftSavedLocallyAt(draft.metadata.savedLocallyAt);
@@ -585,7 +588,7 @@ export function EmergencyTriagePanel({
             : null;
 
       const payload: Record<string, unknown> = {
-        chiefComplaint: formData.chiefComplaint.trim() || null,
+        chiefComplaint: safeTrim(formData.chiefComplaint) || null,
         onsetAt: formData.onsetAt ? new Date(formData.onsetAt).toISOString() : null,
         esi: formData.esi ? parseInt(formData.esi, 10) : null,
         vitalsJson: vitalsMerged,
@@ -767,12 +770,12 @@ export function EmergencyTriagePanel({
   );
 
   const documentationReviewMissing = useMemo(() => {
-    const er = formData.erV1;
-    const anyGcs = Boolean(er.gcsEye.trim() || er.gcsVerbal.trim() || er.gcsMotor.trim());
+    const er = normalizeErTriageV1Form(formData.erV1);
+    const anyGcs = Boolean(safeTrim(er.gcsEye) || safeTrim(er.gcsVerbal) || safeTrim(er.gcsMotor));
     const gcsTriad = gcsEvmTriadForTriagePreview(er);
     return {
-      chiefComplaint: !formData.chiefComplaint.trim(),
-      triageCompleteAt: !formData.triageCompleteAt.trim(),
+      chiefComplaint: !safeTrim(formData.chiefComplaint),
+      triageCompleteAt: !safeTrim(formData.triageCompleteAt),
       allergies: !draftTriageHasAllergyDocumentation(triage?.vitalsJson, triageDraftMergeInput),
       gcsIncomplete: anyGcs && gcsTriad == null,
     };

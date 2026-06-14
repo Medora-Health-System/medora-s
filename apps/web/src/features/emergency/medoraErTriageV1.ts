@@ -161,6 +161,45 @@ export function emptyErTriageV1NursingCarePersistSlice(): ErTriageV1NursingCareP
   };
 }
 
+/** Safe trim for triage form fields that may be undefined/null from legacy JSON or drafts. */
+export function safeTrim(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value).trim();
+  return "";
+}
+
+/** Merge partial / legacy ER V1 blobs with defaults so UI helpers never see undefined strings. */
+export function normalizeErTriageV1Form(partial?: Partial<ErTriageV1Form> | null): ErTriageV1Form {
+  const base = emptyErTriageV1Form();
+  if (!partial || typeof partial !== "object") return base;
+  const taPartial = partial.traumaActivation;
+  const traumaActivation: ErTraumaActivationForm =
+    taPartial && typeof taPartial === "object"
+      ? {
+          ...base.traumaActivation,
+          ...taPartial,
+          criteria: Array.isArray(taPartial.criteria) ? [...taPartial.criteria] : base.traumaActivation.criteria,
+        }
+      : base.traumaActivation;
+  const pickSelections = (raw: unknown, fallback: string[]): string[] =>
+    Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : fallback;
+  return {
+    ...base,
+    ...partial,
+    traumaActivation,
+    sourceRoutingSelections: pickSelections(partial.sourceRoutingSelections, base.sourceRoutingSelections),
+    ppeSelections: pickSelections(partial.ppeSelections, base.ppeSelections),
+    socialHistorySelections: pickSelections(partial.socialHistorySelections, base.socialHistorySelections),
+    medicationSummarySelections: pickSelections(
+      partial.medicationSummarySelections,
+      base.medicationSummarySelections
+    ),
+    allergyDetailSelections: pickSelections(partial.allergyDetailSelections, base.allergyDetailSelections),
+    nursingCareSelections: pickSelections(partial.nursingCareSelections, base.nursingCareSelections),
+  };
+}
+
 export function emptyErTriageV1Form(): ErTriageV1Form {
   return {
     triageNarrative: "",
@@ -309,9 +348,9 @@ export function nextGcsStateAfterComponentChange(
  * is not already present (substring check on trimmed current). Does not replace nurse text.
  */
 export function appendIfNotPresent(current: string, value: string): string {
-  const fragment = value.trim();
-  if (!fragment) return current;
-  const trimmed = current.trim();
+  const fragment = safeTrim(value);
+  if (!fragment) return safeTrim(current);
+  const trimmed = safeTrim(current);
   if (!trimmed) return fragment;
   if (trimmed.includes(fragment)) return current;
   return `${trimmed}, ${fragment}`;
