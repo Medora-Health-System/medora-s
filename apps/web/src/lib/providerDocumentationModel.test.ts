@@ -187,9 +187,15 @@ describe("providerDocumentationModel", () => {
     expect(previewText).toContain("Free text reassessment");
   });
 
-  it("chip/template insertion does not erase manual free text afterward", () => {
+  it("template apply preserves manual free text without inserting template fragments", () => {
     const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Manual HPI narrative";
+    state.rosImportantPositives = "Manual ROS positive";
+    state.rosImportantNegatives = "Manual ROS negative";
+    state.rosRedFlags = "Manual ROS red flag";
+    state.physicalExam.cardiovascular = "Manual PE cardiovascular";
     state.mdmWorkingAssessment = "Manual working assessment";
+    state.mdmPlanSummary = "Manual plan summary";
     state.clinicalImpression = "Manual impression";
     state.treatmentPlan = "Manual treatment plan";
     const next = applyProviderDocumentationTemplate({
@@ -197,11 +203,45 @@ describe("providerDocumentationModel", () => {
       templateId: "chest_pain",
       resolveFragment: (key) => key,
     });
-    next.mdmWorkingAssessment = appendDocumentationFragment(next.mdmWorkingAssessment, "Manual addition after chip");
-    expect(next.mdmWorkingAssessment).toContain("Manual working assessment");
-    expect(next.mdmWorkingAssessment).toContain("Manual addition after chip");
+    expect(next.activeTemplateId).toBe("chest_pain");
+    expect(next.hpi).toBe("Manual HPI narrative");
+    expect(next.rosImportantPositives).toBe("Manual ROS positive");
+    expect(next.rosImportantNegatives).toBe("Manual ROS negative");
+    expect(next.rosRedFlags).toBe("Manual ROS red flag");
+    expect(next.physicalExam.cardiovascular).toBe("Manual PE cardiovascular");
+    expect(next.mdmWorkingAssessment).toBe("Manual working assessment");
+    expect(next.mdmPlanSummary).toBe("Manual plan summary");
     expect(next.clinicalImpression).toBe("Manual impression");
     expect(next.treatmentPlan).toBe("Manual treatment plan");
+  });
+
+  it("chip toggle still adds and removes documentation fragments", () => {
+    const added = toggleDocumentationFragment("", "exertional chest pain");
+    expect(added).toBe("exertional chest pain");
+    const removed = toggleDocumentationFragment(added, "exertional chest pain");
+    expect(removed).toBe("");
+  });
+
+  it("manual text survives template switch without auto-insertion", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "Provider-authored HPI";
+    state.mdmWorkingAssessment = "Provider-authored MDM";
+    const chestPain = applyProviderDocumentationTemplate({
+      state,
+      templateId: "chest_pain",
+      resolveFragment: (key) => key,
+    });
+    expect(chestPain.hpi).toBe("Provider-authored HPI");
+    expect(chestPain.mdmWorkingAssessment).toBe("Provider-authored MDM");
+    const abdominal = applyProviderDocumentationTemplate({
+      state: chestPain,
+      templateId: "abdominal_pain",
+      resolveFragment: (key) => key,
+    });
+    expect(abdominal.activeTemplateId).toBe("abdominal_pain");
+    expect(abdominal.hpi).toBe("Provider-authored HPI");
+    expect(abdominal.mdmWorkingAssessment).toBe("Provider-authored MDM");
+    expect(abdominal.hpi).not.toContain("erMseHpiChips");
   });
 
   it("live preview data is empty until fields are entered and has no side effects", () => {
@@ -885,7 +925,7 @@ describe("providerDocumentationModel", () => {
     expect("providerDocumentationWorkspace.completeNormalRosText").toMatch(/^providerDocumentationWorkspace\./);
   });
 
-  it("applies a complaint template into visible editable fields only", () => {
+  it("activates a complaint template without auto-inserting documentation fields", () => {
     const state = emptyProviderDocumentationWorkspaceState();
     state.hpi = "custom history";
     const next = applyProviderDocumentationTemplate({
@@ -893,17 +933,24 @@ describe("providerDocumentationModel", () => {
       templateId: "chest_pain",
       resolveFragment: (key) => key,
     });
-    expect(next.hpi).toContain("custom history");
-    expect(next.hpi).toContain("erMseHpiChips.locChestPain");
-    expect(next.rosImportantPositives).toContain("erMseRosChips.posChestPain");
-    expect(next.physicalExam.cardiovascular).toContain("erMseExamChips.cardioRrr");
+    expect(next.activeTemplateId).toBe("chest_pain");
+    expect(next.hpi).toBe("custom history");
+    expect(next.rosImportantPositives).toBe("");
+    expect(next.rosImportantNegatives).toBe("");
+    expect(next.rosRedFlags).toBe("");
+    expect(next.physicalExam.cardiovascular).toBe("");
+    expect(next.mdmWorkingAssessment).toBe("");
+    expect(next.mdmDataReviewed).toBe("");
+    expect(next.mdmPlanSummary).toBe("");
     expect(next.clinicalImpression).toBe("");
     expect(next.treatmentPlan).toBe("");
   });
 
-  it("does not duplicate template fragments on repeated application", () => {
+  it("repeated template apply does not duplicate or alter documentation", () => {
+    const state = emptyProviderDocumentationWorkspaceState();
+    state.hpi = "existing HPI";
     const first = applyProviderDocumentationTemplate({
-      state: emptyProviderDocumentationWorkspaceState(),
+      state,
       templateId: "observation_reassessment",
       resolveFragment: (key) => key,
     });
@@ -912,8 +959,8 @@ describe("providerDocumentationModel", () => {
       templateId: "observation_reassessment",
       resolveFragment: (key) => key,
     });
-    expect(second.hpi).toBe(first.hpi);
-    expect(second.mdmPlanSummary).toBe(first.mdmPlanSummary);
+    expect(second).toEqual(first);
+    expect(second.hpi).toBe("existing HPI");
   });
 
   it("tracks completed and missing overview sections without blocking save", () => {
@@ -929,12 +976,18 @@ describe("providerDocumentationModel", () => {
     ]);
   });
 
-  it("templates do not create diagnoses, orders, billing, or preview-only content", () => {
+  it("templates do not create diagnoses, orders, billing, or preview-only content on apply", () => {
     const next = applyProviderDocumentationTemplate({
       state: emptyProviderDocumentationWorkspaceState(),
       templateId: "trauma_musculoskeletal",
       resolveFragment: (key) => key,
     });
+    expect(next.activeTemplateId).toBe("trauma_musculoskeletal");
+    expect(buildProviderDocumentationPreviewSections(next)).toEqual([]);
+    next.hpi = "Focused trauma history";
+    next.rosImportantPositives = "limb pain";
+    next.physicalExam.musculoskeletal = "tenderness present";
+    next.mdmWorkingAssessment = "acute injury";
     const payload = buildProviderDocumentationSavePayload({
       previousNursingAssessment: {},
       state: next,
@@ -942,6 +995,7 @@ describe("providerDocumentationModel", () => {
         encounterMode: "ED",
         savedAt: "2026-05-17T12:00:00.000Z",
         savedBy: "Dr Test",
+        activeTemplateId: "trauma_musculoskeletal",
       }),
     });
     expect(JSON.stringify(payload)).not.toMatch(/diagnosisId|orderId|billing|billingLevel/i);

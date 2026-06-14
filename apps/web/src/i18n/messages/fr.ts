@@ -7220,6 +7220,8 @@ export default {
     stickerExamBurnWoundPresent: "lésion de brûlure présente",
     activeTemplate: "Modèle actif : {template}",
     activeTemplateLabel: "Modèle actif :",
+    templateActivationHelper:
+      "Modèle sélectionné. Choisissez les éléments ci-dessous pour les ajouter à la documentation.",
     noActiveTemplate: "Aucun sélectionné",
     activeTemplateStickerHelp: "Pastilles ciblées du modèle actif. Cliquer seulement ce qui a été vérifié ; tout le texte reste modifiable.",
     activeTemplateHpi: "Pastilles HPI du modèle actif",

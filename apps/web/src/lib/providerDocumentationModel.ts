@@ -936,41 +936,18 @@ export function providerDocumentationCanSubmitSignature(input: {
   );
 }
 
+/** Activates a complaint template without mutating documentation fields (MEDUI.ED.ME.1). */
 export function applyProviderDocumentationTemplate(input: {
   state: ProviderDocumentationWorkspaceState;
   templateId: ProviderDocumentationTemplateId;
-  resolveFragment: (key: string) => string;
+  /** Kept for call-site compatibility; fragments are click-inserted only, never on apply. */
+  resolveFragment?: (key: string) => string;
 }): ProviderDocumentationWorkspaceState {
-  const template = providerDocumentationTemplateById(input.templateId);
-  const next: ProviderDocumentationWorkspaceState = {
+  providerDocumentationTemplateById(input.templateId);
+  return {
     ...input.state,
     activeTemplateId: input.templateId,
-    physicalExam: { ...input.state.physicalExam },
   };
-
-  for (const [field, fragmentKeys] of Object.entries(template.fields) as Array<
-    [ProviderDocumentationTemplateStringField, string[] | undefined]
-  >) {
-    if (!fragmentKeys) continue;
-    let current = next[field];
-    for (const key of fragmentKeys) {
-      current = appendDocumentationFragment(current, input.resolveFragment(key));
-    }
-    next[field] = current;
-  }
-
-  for (const [sectionId, fragmentKeys] of Object.entries(template.physicalExam) as Array<
-    [ProviderDocumentationExamSectionId, string[] | undefined]
-  >) {
-    if (!fragmentKeys) continue;
-    let current = next.physicalExam[sectionId];
-    for (const key of fragmentKeys) {
-      current = appendDocumentationFragment(current, input.resolveFragment(key));
-    }
-    next.physicalExam[sectionId] = current;
-  }
-
-  return next;
 }
 
 export function applyCompleteNormalRosPrefill(input: {

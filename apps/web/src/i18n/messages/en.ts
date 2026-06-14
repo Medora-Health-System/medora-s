@@ -7247,6 +7247,8 @@ export default {
     stickerExamBurnWoundPresent: "burn wound present",
     activeTemplate: "Active template: {template}",
     activeTemplateLabel: "Active template:",
+    templateActivationHelper:
+      "Template selected. Choose findings below to add them to documentation.",
     noActiveTemplate: "None selected",
     activeTemplateStickerHelp: "",
     activeTemplateHpi: "Active template HPI stickers",

@@ -1422,10 +1422,20 @@ export function ProviderDocumentationWorkspace({
             gap: 8,
           }}
         >
-          <div style={{ fontSize: 12, fontWeight: 600, color: "#0f766e", minWidth: 0, lineHeight: 1.3 }}>
-            {activeTemplate
-              ? t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))
-              : t("providerDocumentationWorkspace.noActiveTemplate")}
+          <div style={{ minWidth: 0, flex: "1 1 200px" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#0f766e", lineHeight: 1.3 }}>
+              {activeTemplate
+                ? t("providerDocumentationWorkspace.activeTemplate").replace("{template}", t(activeTemplate.labelKey))
+                : t("providerDocumentationWorkspace.noActiveTemplate")}
+            </div>
+            {activeTemplate ? (
+              <p
+                data-testid="provider-template-activation-helper"
+                style={{ margin: "4px 0 0", fontSize: 11, fontWeight: 500, color: "#475569", lineHeight: 1.35 }}
+              >
+                {t("providerDocumentationWorkspace.templateActivationHelper")}
+              </p>
+            ) : null}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: isStackedLayout ? 8 : 6, alignItems: "center", justifyContent: "flex-end" }}>
             <button
