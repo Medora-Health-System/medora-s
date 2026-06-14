@@ -39,6 +39,12 @@ import {
   resolveCoughUriHpiChipGroupsForTemplate,
   resolveCoughUriRosChipGroupsForTemplate,
 } from "./providerDocumentationCoughUriGovernance";
+import {
+  filterAdultFeverMdmTemplateOptionsForTemplate,
+  resolveAdultFeverExamChipGroupsForTemplate,
+  resolveAdultFeverHpiChipGroupsForTemplate,
+  resolveAdultFeverRosChipGroupsForTemplate,
+} from "./providerDocumentationAdultFeverGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -52,17 +58,20 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveCoughUriRosChipGroupsForTemplate(
+  return resolveAdultFeverRosChipGroupsForTemplate(
     templateId,
-    resolveShortnessOfBreathRosChipGroupsForTemplate(
+    resolveCoughUriRosChipGroupsForTemplate(
       templateId,
-      resolveAbdominalPainRosChipGroupsForTemplate(
+      resolveShortnessOfBreathRosChipGroupsForTemplate(
         templateId,
-        resolveNauseaVomitingRosChipGroupsForTemplate(
+        resolveAbdominalPainRosChipGroupsForTemplate(
           templateId,
-          resolveDiarrheaRosChipGroupsForTemplate(
+          resolveNauseaVomitingRosChipGroupsForTemplate(
             templateId,
-            resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+            resolveDiarrheaRosChipGroupsForTemplate(
+              templateId,
+              resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+            )
           )
         )
       )
@@ -74,17 +83,20 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveCoughUriExamChipGroupsForTemplate(
+  return resolveAdultFeverExamChipGroupsForTemplate(
     templateId,
-    resolveShortnessOfBreathExamChipGroupsForTemplate(
+    resolveCoughUriExamChipGroupsForTemplate(
       templateId,
-      resolveAbdominalPainExamChipGroupsForTemplate(
+      resolveShortnessOfBreathExamChipGroupsForTemplate(
         templateId,
-        resolveNauseaVomitingExamChipGroupsForTemplate(
+        resolveAbdominalPainExamChipGroupsForTemplate(
           templateId,
-          resolveDiarrheaExamChipGroupsForTemplate(
+          resolveNauseaVomitingExamChipGroupsForTemplate(
             templateId,
-            resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+            resolveDiarrheaExamChipGroupsForTemplate(
+              templateId,
+              resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+            )
           )
         )
       )
@@ -96,15 +108,18 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveCoughUriHpiChipGroupsForTemplate(
+  return resolveAdultFeverHpiChipGroupsForTemplate(
     templateId,
-    resolveShortnessOfBreathHpiChipGroupsForTemplate(
+    resolveCoughUriHpiChipGroupsForTemplate(
       templateId,
-      resolveAbdominalPainHpiChipGroupsForTemplate(
+      resolveShortnessOfBreathHpiChipGroupsForTemplate(
         templateId,
-        resolveNauseaVomitingHpiChipGroupsForTemplate(
+        resolveAbdominalPainHpiChipGroupsForTemplate(
           templateId,
-          resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+          resolveNauseaVomitingHpiChipGroupsForTemplate(
+            templateId,
+            resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+          )
         )
       )
     )
@@ -115,17 +130,20 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterCoughUriMdmTemplateOptionsForTemplate(
+  return filterAdultFeverMdmTemplateOptionsForTemplate(
     templateId,
-    filterShortnessOfBreathMdmTemplateOptionsForTemplate(
+    filterCoughUriMdmTemplateOptionsForTemplate(
       templateId,
-      filterAbdominalPainMdmTemplateOptionsForTemplate(
+      filterShortnessOfBreathMdmTemplateOptionsForTemplate(
         templateId,
-        filterNauseaVomitingMdmTemplateOptionsForTemplate(
+        filterAbdominalPainMdmTemplateOptionsForTemplate(
           templateId,
-          filterDiarrheaMdmTemplateOptionsForTemplate(
+          filterNauseaVomitingMdmTemplateOptionsForTemplate(
             templateId,
-            filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+            filterDiarrheaMdmTemplateOptionsForTemplate(
+              templateId,
+              filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+            )
           )
         )
       )
