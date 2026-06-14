@@ -153,7 +153,11 @@ describe("provider documentation GI complaint intelligence (19MDM.2)", () => {
     const options = buildMdmTemplateDropdownOptions(template ?? null);
     const existing = options.filter((option) => option.group === "existing");
     expect(existing.some((option) => option.fragmentKey.includes("abdominalPainComplaintV1"))).toBe(true);
-    expect(options.filter((option) => option.group === "highValue").length).toBe(6);
+    const highValue = options.filter((option) => option.group === "highValue");
+    expect(highValue.length).toBe(5);
+    expect(highValue.some((option) => option.fragmentKey === "providerDocumentationMdmHighValue.ekgNormal")).toBe(
+      false
+    );
   });
 
   it("renders template picker subgroup in workspace", () => {
