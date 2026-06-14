@@ -330,6 +330,45 @@ export const ER_CHIEF_COMPLAINT_TEMPLATES: readonly ErChiefComplaintTemplate[] =
   },
 ];
 
+/** Minimum typed characters before full-template search (TRIAGE.2). */
+export const ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS = 2;
+
+/** Common quick picks shown by default — overflow templates require search. */
+export const ER_CHIEF_COMPLAINT_QUICK_PICK_IDS = [
+  "chest_pain",
+  "dyspnea",
+  "abdominal_pain",
+  "headache",
+  "fever",
+  "weakness",
+  "dizziness",
+  "trauma",
+  "gastro",
+  "urinary",
+] as const;
+
+export function getErChiefComplaintQuickPicks(
+  locale: SupportedLanguage,
+  catalog: readonly ErChiefComplaintTemplate[] = ER_CHIEF_COMPLAINT_TEMPLATES
+): ErChiefComplaintTemplate[] {
+  const byId = new Map(catalog.map((tpl) => [tpl.id, tpl]));
+  return ER_CHIEF_COMPLAINT_QUICK_PICK_IDS.map((id) => byId.get(id)).filter(
+    (tpl): tpl is ErChiefComplaintTemplate => tpl != null
+  );
+}
+
+function matchesChiefComplaintQuery(
+  tpl: ErChiefComplaintTemplate,
+  q: string,
+  locale: SupportedLanguage
+): boolean {
+  const label = pickChiefComplaintLocale(tpl.label, locale);
+  const terms = locale === "en" ? tpl.searchTermsEn : tpl.searchTermsFr;
+  if (label.toLowerCase().includes(q)) return true;
+  if (tpl.id.toLowerCase().includes(q)) return true;
+  return terms.some((s) => s.toLowerCase().includes(q));
+}
+
 export function filterErChiefComplaintTemplates(
   query: string,
   locale: SupportedLanguage,
@@ -337,11 +376,17 @@ export function filterErChiefComplaintTemplates(
 ): ErChiefComplaintTemplate[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...catalog];
-  return catalog.filter((tpl) => {
-    const label = pickChiefComplaintLocale(tpl.label, locale);
-    const terms = locale === "en" ? tpl.searchTermsEn : tpl.searchTermsFr;
-    if (label.toLowerCase().includes(q)) return true;
-    if (tpl.id.toLowerCase().includes(q)) return true;
-    return terms.some((s) => s.toLowerCase().includes(q));
-  });
+  return catalog.filter((tpl) => matchesChiefComplaintQuery(tpl, q, locale));
+}
+
+/** Search-only picker: empty or short query returns no chip overflow. */
+export function searchErChiefComplaintTemplates(
+  query: string,
+  locale: SupportedLanguage,
+  catalog: readonly ErChiefComplaintTemplate[] = ER_CHIEF_COMPLAINT_TEMPLATES
+): ErChiefComplaintTemplate[] {
+  const q = query.trim();
+  if (q.length < ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS) return [];
+  const needle = q.toLowerCase();
+  return catalog.filter((tpl) => matchesChiefComplaintQuery(tpl, needle, locale));
 }

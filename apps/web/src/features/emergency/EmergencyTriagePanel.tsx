@@ -63,7 +63,9 @@ import {
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
 import {
-  filterErChiefComplaintTemplates,
+  getErChiefComplaintQuickPicks,
+  searchErChiefComplaintTemplates,
+  ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS,
   pickChiefComplaintLocale,
   type ErChiefComplaintBilingual,
   type ErChiefComplaintTemplate,
@@ -303,8 +305,10 @@ export function EmergencyTriagePanel({
     [t]
   );
 
+  const complaintQuickPicks = useMemo(() => getErChiefComplaintQuickPicks(language), [language]);
+
   const complaintTemplateMatches = useMemo(
-    () => filterErChiefComplaintTemplates(complaintTemplateQuery, language),
+    () => searchErChiefComplaintTemplates(complaintTemplateQuery, language),
     [complaintTemplateQuery, language]
   );
 
@@ -983,20 +987,42 @@ export function EmergencyTriagePanel({
                           }}
                           autoComplete="off"
                         />
-                        {complaintTemplateMatches.length === 0 ? (
+                        {complaintTemplateQuery.trim().length > 0 &&
+                        complaintTemplateQuery.trim().length < ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS ? (
+                          <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
+                            {t("erTriageComplaintTemplates.minCharsHint")}
+                          </p>
+                        ) : null}
+                        {complaintTemplateQuery.trim().length >= ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS &&
+                        complaintTemplateMatches.length === 0 ? (
                           <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
                             {t("erTriageComplaintTemplates.noResults")}
                           </p>
+                        ) : null}
+                        {complaintTemplateQuery.trim().length < ER_CHIEF_COMPLAINT_SEARCH_MIN_CHARS ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {complaintQuickPicks.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                type="button"
+                                onClick={() => applyChiefComplaintTemplate(tpl)}
+                                style={{
+                                  border: "1px solid #e2e8f0",
+                                  background: "#f8fafc",
+                                  borderRadius: 9999,
+                                  padding: "4px 10px",
+                                  fontSize: 12,
+                                  color: "#334155",
+                                  cursor: "pointer",
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {pickChiefComplaintLocale(tpl.label, language)}
+                              </button>
+                            ))}
+                          </div>
                         ) : (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 6,
-                              maxHeight: 132,
-                              overflowY: "auto",
-                            }}
-                          >
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 132, overflowY: "auto" }}>
                             {complaintTemplateMatches.map((tpl) => (
                               <button
                                 key={tpl.id}

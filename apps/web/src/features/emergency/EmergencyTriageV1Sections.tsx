@@ -5,8 +5,26 @@ import { useI18n } from "@/lib/i18n";
 import { getCatalogSearchItemDisplayLabel } from "@/lib/catalogDisplayLabel";
 import { searchCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
+import { searchIcd10Catalog, type Icd10SearchHit } from "@/lib/chartApi";
 import { HomeMedicationEntryModal } from "./HomeMedicationEntryModal";
 import { DrugAllergySearchPanel } from "./DrugAllergySearchPanel";
+import {
+  appendDiagnosisToPmh,
+  applySurgicalHistoryPick,
+  shouldShowSafetyAssessment,
+  shouldShowTravelDetails,
+  togglePpeSelection,
+} from "./edTriageEfficiencyGovernance";
+import {
+  diagnosisMatchesLocalizedSearch,
+  resolveLocalizedDiagnosisSearchQueries,
+} from "./diagnosisFrenchSearchAliases";
+import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
+import {
+  resolveSurgicalHistoryDisplayName,
+  searchSurgicalHistoryCatalog,
+  SURGICAL_HISTORY_SEARCH_MIN_CHARS,
+} from "@medora/shared";
 import {
   formatHomeMedicationSummaryLine,
   formatHomeMedicationSearchSubtitle,
@@ -135,6 +153,9 @@ function toggleStructuredTriageChip(
 const MED_HOME_SEARCH_MIN_CHARS = 2;
 const MED_HOME_SEARCH_DEBOUNCE_MS = 320;
 const MED_HOME_SEARCH_LIMIT = 12;
+const PMH_DIAGNOSIS_SEARCH_MIN_CHARS = 2;
+const PMH_DIAGNOSIS_SEARCH_DEBOUNCE_MS = 280;
+const PMH_DIAGNOSIS_SEARCH_LIMIT = 12;
 
 /** i18n keys under `erTriage.v1.*` — legacy reaction quick-picks removed in 19T.1. */
 
@@ -152,18 +173,6 @@ const HISTORY_PMH_I18N_KEYS = [
   "historyPmhAnticoagulant",
   "historyPmhNoChronic",
   "historyPmhOther",
-] as const;
-
-const HISTORY_PSH_I18N_KEYS = [
-  "historyPshAppendectomy",
-  "historyPshCholecystectomy",
-  "historyPshCsection",
-  "historyPshHysterectomy",
-  "historyPshOrthopedic",
-  "historyPshCardiacStent",
-  "historyPshAbdominal",
-  "historyPshNoPrior",
-  "historyPshOther",
 ] as const;
 
 const HISTORY_FH_I18N_KEYS = [
@@ -385,8 +394,78 @@ export function EmergencyTriageV1Sections({
   );
 
   const [historyPmhFilter, setHistoryPmhFilter] = useState("");
-  const [historyPshFilter, setHistoryPshFilter] = useState("");
   const [historyFhFilter, setHistoryFhFilter] = useState("");
+  const [pmhDiagnosisSearchInput, setPmhDiagnosisSearchInput] = useState("");
+  const [pmhDiagnosisSearchResults, setPmhDiagnosisSearchResults] = useState<Icd10SearchHit[]>([]);
+  const [pmhDiagnosisSearchLoading, setPmhDiagnosisSearchLoading] = useState(false);
+  const pmhDiagnosisSearchReq = useRef(0);
+  const [pshTemplateSearchInput, setPshTemplateSearchInput] = useState("");
+  const pshTemplateMatches = useMemo(
+    () => searchSurgicalHistoryCatalog(pshTemplateSearchInput, language),
+    [pshTemplateSearchInput, language]
+  );
+
+  useEffect(() => {
+    const q = pmhDiagnosisSearchInput.trim();
+    if (q.length < PMH_DIAGNOSIS_SEARCH_MIN_CHARS) {
+      setPmhDiagnosisSearchResults([]);
+      setPmhDiagnosisSearchLoading(false);
+      return;
+    }
+    setPmhDiagnosisSearchLoading(true);
+    const reqId = ++pmhDiagnosisSearchReq.current;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const apiQueries = resolveLocalizedDiagnosisSearchQueries(q, language);
+          const merged: Icd10SearchHit[] = [];
+          const seen = new Set<string>();
+          for (const apiQ of apiQueries) {
+            const res = await searchIcd10Catalog(apiQ, PMH_DIAGNOSIS_SEARCH_LIMIT);
+            for (const hit of Array.isArray(res.items) ? res.items : []) {
+              if (seen.has(hit.id)) continue;
+              seen.add(hit.id);
+              merged.push(hit);
+            }
+            if (merged.length >= PMH_DIAGNOSIS_SEARCH_LIMIT) break;
+          }
+          const items =
+            language === "fr"
+              ? merged.filter((hit) => diagnosisMatchesLocalizedSearch(hit, q, language)).slice(0, PMH_DIAGNOSIS_SEARCH_LIMIT)
+              : merged.slice(0, PMH_DIAGNOSIS_SEARCH_LIMIT);
+          if (pmhDiagnosisSearchReq.current === reqId) {
+            setPmhDiagnosisSearchResults(items);
+          }
+        } catch {
+          if (pmhDiagnosisSearchReq.current === reqId) {
+            setPmhDiagnosisSearchResults([]);
+          }
+        } finally {
+          if (pmhDiagnosisSearchReq.current === reqId) {
+            setPmhDiagnosisSearchLoading(false);
+          }
+        }
+      })();
+    }, PMH_DIAGNOSIS_SEARCH_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [language, pmhDiagnosisSearchInput]);
+
+  const pickPmhDiagnosis = useCallback(
+    (hit: Icd10SearchHit) => {
+      patchErV1({ pastMedicalHistory: appendDiagnosisToPmh(er.pastMedicalHistory, hit, language) });
+      setPmhDiagnosisSearchInput("");
+      setPmhDiagnosisSearchResults([]);
+    },
+    [er.pastMedicalHistory, language, patchErV1]
+  );
+
+  const pickSurgicalHistoryTemplate = useCallback(
+    (tpl: (typeof pshTemplateMatches)[number]) => {
+      patchErV1({ pastSurgicalHistory: applySurgicalHistoryPick(er.pastSurgicalHistory, tpl, language) });
+      setPshTemplateSearchInput("");
+    },
+    [er.pastSurgicalHistory, language, patchErV1]
+  );
 
   const appendHistoryQuick = useCallback(
     (field: ErHistoryTextField, i18nSuffix: string) => {
@@ -486,9 +565,10 @@ export function EmergencyTriageV1Sections({
                     label={label}
                     active={er.ppeSelections.includes(def.code)}
                     disabled={formDisabled}
-                    onClick={() =>
-                      toggleStructuredTriageChip(patchErV1, er, "ppeSelections", "ppeNote", def.code, label)
-                    }
+                    onClick={() => {
+                      const label = t(`erTriage.v1.${def.i18nKey}`);
+                      patchErV1(togglePpeSelection(er, def.code, label));
+                    }}
                   />
                 );
               })}
@@ -799,6 +879,98 @@ export function EmergencyTriageV1Sections({
             {sel("travelOutsideCountry14d", ynuOptions)}
           </div>
         </div>
+        {shouldShowTravelDetails(er.travelOutsideCountry14d) ? (
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ ...sectionHeading, margin: 0 }}>{t("erTriage.v1.travelDetailsTitle")}</p>
+            <div style={grid2}>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.travelDestination")}</label>
+                <input
+                  type="text"
+                  value={er.travelDestinationCountry}
+                  onChange={(e) => patchErV1({ travelDestinationCountry: e.target.value })}
+                  disabled={formDisabled}
+                  required
+                  style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.travelDateOrReturn")}</label>
+                <input
+                  type="text"
+                  value={er.travelDateOrReturn}
+                  onChange={(e) => patchErV1({ travelDateOrReturn: e.target.value })}
+                  disabled={formDisabled}
+                  required
+                  style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                  placeholder={t("erTriage.v1.travelDateOrReturnPlaceholder")}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>{t("erTriage.v1.travelExposureConcern")}</label>
+                <textarea
+                  value={er.travelExposureConcern}
+                  onChange={(e) => patchErV1({ travelExposureConcern: e.target.value })}
+                  disabled={formDisabled}
+                  required
+                  rows={2}
+                  maxLength={4000}
+                  style={{ ...inputBase, minHeight: 52, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                />
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>{t("erTriage.v1.travelScreeningNotes")}</label>
+                <textarea
+                  value={er.travelScreeningNotes}
+                  onChange={(e) => patchErV1({ travelScreeningNotes: e.target.value })}
+                  disabled={formDisabled}
+                  rows={2}
+                  maxLength={4000}
+                  style={{ ...inputBase, minHeight: 52, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {shouldShowSafetyAssessment(er.feelsSafeAtHome) ? (
+          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ ...sectionHeading, margin: 0 }}>{t("erTriage.v1.safetyAssessmentTitle")}</p>
+            <div style={grid2}>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.safetyImmediateDanger")}</label>
+                {sel("safetyImmediateDanger", ynuOptions)}
+              </div>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.safetyAbuseNeglect")}</label>
+                {sel("safetyAbuseNeglect", ynuOptions)}
+              </div>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.safetyHumanTrafficking")}</label>
+                {sel("safetyHumanTrafficking", ynuOptions)}
+              </div>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.safetySelfHarm")}</label>
+                {sel("safetySelfHarm", ynuOptions)}
+              </div>
+              <div>
+                <label style={labelStyle}>{t("erTriage.v1.safetyNeedsSocialWork")}</label>
+                {sel("safetyNeedsSocialWork", ynuOptions)}
+              </div>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>{t("erTriage.v1.safetyAssessmentNotes")}</label>
+                <textarea
+                  value={er.safetyAssessmentNotes}
+                  onChange={(e) => patchErV1({ safetyAssessmentNotes: e.target.value })}
+                  disabled={formDisabled}
+                  rows={2}
+                  maxLength={4000}
+                  style={{ ...inputBase, minHeight: 52, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                  placeholder={t("erTriage.v1.safetyAssessmentNotesPlaceholder")}
+                />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </details>
 
       <details style={detailsShell}>
@@ -961,18 +1133,6 @@ export function EmergencyTriageV1Sections({
                 onSaveAllergies={(patch) => patchErV1(patch)}
               />
             ) : null}
-          </div>
-          <div>
-            <label style={labelStyle}>{t("erTriage.v1.allergyExtra")}</label>
-            <textarea
-              value={er.additionalAllergyInfo}
-              onChange={(e) => patchErV1({ additionalAllergyInfo: e.target.value })}
-              disabled={formDisabled}
-              rows={3}
-              maxLength={4000}
-              style={{ ...inputBase, minHeight: 72, resize: "vertical", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
-              placeholder={t("erTriage.v1.allergyExtraPlaceholder")}
-            />
             <ErTriageDocChipRow>
               {ER_TRIAGE_ALLERGY_CHIP_DEFS.filter((def) => def.code !== "DRUG_ALLERGY").map((def) => {
                 const label = t(`erTriage.v1.${def.i18nKey}`);
@@ -1077,6 +1237,74 @@ export function EmergencyTriageV1Sections({
               />
               <input
                 type="search"
+                value={pmhDiagnosisSearchInput}
+                onChange={(e) => setPmhDiagnosisSearchInput(e.target.value)}
+                disabled={formDisabled}
+                placeholder={t("erTriage.v1.pmhDiagnosisSearchPlaceholder")}
+                autoComplete="off"
+                style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+              />
+              {pmhDiagnosisSearchInput.trim().length > 0 &&
+              pmhDiagnosisSearchInput.trim().length < PMH_DIAGNOSIS_SEARCH_MIN_CHARS ? (
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("erTriage.v1.medsCatalogMinCharsHint")}
+                </p>
+              ) : null}
+              {pmhDiagnosisSearchLoading ? (
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("erTriage.v1.medsCatalogSearching")}
+                </p>
+              ) : null}
+              {!pmhDiagnosisSearchLoading &&
+              pmhDiagnosisSearchInput.trim().length >= PMH_DIAGNOSIS_SEARCH_MIN_CHARS &&
+              pmhDiagnosisSearchResults.length === 0 ? (
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("erTriage.v1.medsCatalogNoResults")}
+                </p>
+              ) : null}
+              {pmhDiagnosisSearchResults.length > 0 ? (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    margin: "8px 0 0",
+                    padding: 0,
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {pmhDiagnosisSearchResults.map((hit) => (
+                    <li key={hit.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <button
+                        type="button"
+                        disabled={formDisabled}
+                        onClick={() => pickPmhDiagnosis(hit)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          border: "none",
+                          background: "transparent",
+                          cursor: formDisabled ? "not-allowed" : "pointer",
+                          fontSize: 13,
+                          color: "#334155",
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, color: "#0f172a" }}>
+                          {getLocalizedDiagnosisDisplayLabel(hit, language)}
+                        </div>
+                        {hit.code ? (
+                          <div style={{ marginTop: 2, fontSize: 11, color: "#64748b" }}>{hit.code}</div>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <input
+                type="search"
                 value={historyPmhFilter}
                 onChange={(e) => setHistoryPmhFilter(e.target.value)}
                 disabled={formDisabled}
@@ -1084,20 +1312,22 @@ export function EmergencyTriageV1Sections({
                 autoComplete="off"
                 style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <ErTriageDocChipRow>
-                {HISTORY_PMH_I18N_KEYS.filter((k) => {
-                  const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
-                  const q = historyPmhFilter.trim().toLowerCase();
-                  return !q || lab.includes(q);
-                }).map((k) => (
-                  <ErTriageDocChip
-                    key={k}
-                    label={t(`erTriage.v1.${k}`)}
-                    disabled={formDisabled}
-                    onClick={() => appendHistoryQuick("pastMedicalHistory", k)}
-                  />
-                ))}
-              </ErTriageDocChipRow>
+              {historyPmhFilter.trim().length >= 2 ? (
+                <ErTriageDocChipRow>
+                  {HISTORY_PMH_I18N_KEYS.filter((k) => {
+                    const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
+                    const q = historyPmhFilter.trim().toLowerCase();
+                    return lab.includes(q);
+                  }).map((k) => (
+                    <ErTriageDocChip
+                      key={k}
+                      label={t(`erTriage.v1.${k}`)}
+                      disabled={formDisabled}
+                      onClick={() => appendHistoryQuick("pastMedicalHistory", k)}
+                    />
+                  ))}
+                </ErTriageDocChipRow>
+              ) : null}
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.psh")}</label>
@@ -1111,27 +1341,61 @@ export function EmergencyTriageV1Sections({
               />
               <input
                 type="search"
-                value={historyPshFilter}
-                onChange={(e) => setHistoryPshFilter(e.target.value)}
+                value={pshTemplateSearchInput}
+                onChange={(e) => setPshTemplateSearchInput(e.target.value)}
                 disabled={formDisabled}
-                placeholder={t("erTriage.v1.historyQuickFilterPlaceholder")}
+                placeholder={t("erTriage.v1.pshSearchPlaceholder")}
                 autoComplete="off"
                 style={{ ...inputBase, marginTop: 6, fontSize: 12, padding: "6px 8px", backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
               />
-              <ErTriageDocChipRow>
-                {HISTORY_PSH_I18N_KEYS.filter((k) => {
-                  const lab = t(`erTriage.v1.${k}`).trim().toLowerCase();
-                  const q = historyPshFilter.trim().toLowerCase();
-                  return !q || lab.includes(q);
-                }).map((k) => (
-                  <ErTriageDocChip
-                    key={k}
-                    label={t(`erTriage.v1.${k}`)}
-                    disabled={formDisabled}
-                    onClick={() => appendHistoryQuick("pastSurgicalHistory", k)}
-                  />
-                ))}
-              </ErTriageDocChipRow>
+              {pshTemplateSearchInput.trim().length > 0 &&
+              pshTemplateSearchInput.trim().length < SURGICAL_HISTORY_SEARCH_MIN_CHARS ? (
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("erTriage.v1.medsCatalogMinCharsHint")}
+                </p>
+              ) : null}
+              {pshTemplateSearchInput.trim().length >= SURGICAL_HISTORY_SEARCH_MIN_CHARS &&
+              pshTemplateMatches.length === 0 ? (
+                <p style={{ margin: "6px 0 0", fontSize: 11, color: "#94a3b8" }}>
+                  {t("erTriage.v1.medsCatalogNoResults")}
+                </p>
+              ) : null}
+              {pshTemplateMatches.length > 0 ? (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    margin: "8px 0 0",
+                    padding: 0,
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    maxHeight: 180,
+                    overflowY: "auto",
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {pshTemplateMatches.map((tpl) => (
+                    <li key={tpl.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                      <button
+                        type="button"
+                        disabled={formDisabled}
+                        onClick={() => pickSurgicalHistoryTemplate(tpl)}
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "8px 10px",
+                          border: "none",
+                          background: "transparent",
+                          cursor: formDisabled ? "not-allowed" : "pointer",
+                          fontSize: 13,
+                          color: "#334155",
+                        }}
+                      >
+                        {resolveSurgicalHistoryDisplayName(tpl, language)}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           </div>
           <div>

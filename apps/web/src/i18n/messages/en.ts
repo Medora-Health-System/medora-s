@@ -11729,6 +11729,7 @@ export default {
   erTriageComplaintTemplates: {
     helper: "",
     searchPlaceholder: "Search templates…",
+    minCharsHint: "Type at least 2 characters to search more templates.",
     noResults: "No matching templates.",
   },
 

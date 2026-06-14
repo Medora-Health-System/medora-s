@@ -29,6 +29,10 @@ import {
   type ErTraumaLevel,
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
+import {
+  safetyAssessmentHasDocumentedConcern,
+  travelDetailsHasContent,
+} from "./edTriageEfficiencyGovernance";
 import { buildEdHeaderAllergySummary } from "./edHeaderAllergySummary";
 
 function interpolatePreview(template: string, params: Record<string, string | number>): string {
@@ -876,6 +880,28 @@ export function buildTriageDocumentationPreviewModel(
         value: ynuPreview(locale, er.feelsSafeAtHome),
       })
     );
+    if (er.feelsSafeAtHome === "no" || er.feelsSafeAtHome === "unknown") {
+      if (safetyAssessmentHasDocumentedConcern(er)) {
+        if (er.safetyImmediateDanger === "yes") {
+          securite.push(erTriageT(locale, "erTriage.preview.safetyImmediateDanger"));
+        }
+        if (er.safetyAbuseNeglect === "yes") {
+          securite.push(erTriageT(locale, "erTriage.preview.safetyAbuseNeglect"));
+        }
+        if (er.safetyHumanTrafficking === "yes") {
+          securite.push(erTriageT(locale, "erTriage.preview.safetyHumanTrafficking"));
+        }
+        if (er.safetySelfHarm === "yes") {
+          securite.push(erTriageT(locale, "erTriage.preview.safetySelfHarm"));
+        }
+        if (er.safetyNeedsSocialWork === "yes") {
+          securite.push(erTriageT(locale, "erTriage.preview.safetyNeedsSocialWork"));
+        }
+        pushIf(securite, erTriageT(locale, "erTriage.preview.prefixSafetyNotes"), er.safetyAssessmentNotes);
+      } else if (er.feelsSafeAtHome === "no") {
+        securite.push(erTriageT(locale, "erTriage.preview.safetyHomeConcern"));
+      }
+    }
   }
   if (er.travelOutsideCountry14d) {
     securite.push(
@@ -883,6 +909,12 @@ export function buildTriageDocumentationPreviewModel(
         value: ynuPreview(locale, er.travelOutsideCountry14d),
       })
     );
+    if (er.travelOutsideCountry14d === "yes" && travelDetailsHasContent(er)) {
+      pushIf(securite, erTriageT(locale, "erTriage.preview.prefixTravelDestination"), er.travelDestinationCountry);
+      pushIf(securite, erTriageT(locale, "erTriage.preview.prefixTravelDate"), er.travelDateOrReturn);
+      pushIf(securite, erTriageT(locale, "erTriage.preview.prefixTravelExposure"), er.travelExposureConcern);
+      pushIf(securite, erTriageT(locale, "erTriage.preview.prefixTravelNotes"), er.travelScreeningNotes);
+    }
   }
   const strokeLines = strokeScreenToPreviewLines(opts.strokeScreen, locale);
   if (strokeLines.length) {

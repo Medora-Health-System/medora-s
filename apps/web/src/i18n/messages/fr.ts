@@ -11714,6 +11714,7 @@ export default {
   erTriageComplaintTemplates: {
     helper: "Modèles de motifs fréquents — cliquez pour préremplir le motif (et le récit triage si vide).",
     searchPlaceholder: "Rechercher un motif…",
+    minCharsHint: "Saisissez au moins 2 caractères pour rechercher d'autres motifs.",
     noResults: "Aucun motif correspondant.",
   },
 

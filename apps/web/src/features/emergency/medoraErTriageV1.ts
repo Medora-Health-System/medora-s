@@ -91,6 +91,16 @@ export type ErTriageV1Form = {
   nursingNotesAddendum: string;
   feelsSafeAtHome: ErYesNoUnknown;
   travelOutsideCountry14d: ErYesNoUnknown;
+  travelDestinationCountry: string;
+  travelDateOrReturn: string;
+  travelExposureConcern: string;
+  travelScreeningNotes: string;
+  safetyImmediateDanger: ErYesNoUnknown;
+  safetyAbuseNeglect: ErYesNoUnknown;
+  safetyHumanTrafficking: ErYesNoUnknown;
+  safetySelfHarm: ErYesNoUnknown;
+  safetyNeedsSocialWork: ErYesNoUnknown;
+  safetyAssessmentNotes: string;
 
   medicationsSummary: string;
   medicationAllergiesDetail: string;
@@ -180,6 +190,16 @@ export function emptyErTriageV1Form(): ErTriageV1Form {
     nursingNotesAddendum: "",
     feelsSafeAtHome: "",
     travelOutsideCountry14d: "",
+    travelDestinationCountry: "",
+    travelDateOrReturn: "",
+    travelExposureConcern: "",
+    travelScreeningNotes: "",
+    safetyImmediateDanger: "",
+    safetyAbuseNeglect: "",
+    safetyHumanTrafficking: "",
+    safetySelfHarm: "",
+    safetyNeedsSocialWork: "",
+    safetyAssessmentNotes: "",
 
     medicationsSummary: "",
     medicationAllergiesDetail: "",
@@ -308,6 +328,7 @@ export const ER_TRIAGE_ROUTING_CHIP_DEFS = [
 
 /** PPE quick-picks (parallel to `ppeNote`). */
 export const ER_TRIAGE_PPE_CHIP_DEFS = [
+  { code: "NONE", i18nKey: "chipsPpeNone" },
   { code: "MASK", i18nKey: "chipsPpeMask" },
   { code: "GLOVES", i18nKey: "chipsPpeGloves" },
   { code: "ISOLATION", i18nKey: "chipsPpeIsolation" },
@@ -517,6 +538,16 @@ export function erTriageV1FormFromVitalsJson(vitalsJson: unknown): ErTriageV1For
     nursingNotesAddendum: stringFromStorage(g("nursingNotesAddendum")),
     feelsSafeAtHome: ynuFromStorage(g("feelsSafeAtHome")),
     travelOutsideCountry14d: ynuFromStorage(g("travelOutsideCountry14d")),
+    travelDestinationCountry: stringFromStorage(g("travelDestinationCountry")),
+    travelDateOrReturn: stringFromStorage(g("travelDateOrReturn")),
+    travelExposureConcern: stringFromStorage(g("travelExposureConcern")),
+    travelScreeningNotes: stringFromStorage(g("travelScreeningNotes")),
+    safetyImmediateDanger: ynuFromStorage(g("safetyImmediateDanger")),
+    safetyAbuseNeglect: ynuFromStorage(g("safetyAbuseNeglect")),
+    safetyHumanTrafficking: ynuFromStorage(g("safetyHumanTrafficking")),
+    safetySelfHarm: ynuFromStorage(g("safetySelfHarm")),
+    safetyNeedsSocialWork: ynuFromStorage(g("safetyNeedsSocialWork")),
+    safetyAssessmentNotes: stringFromStorage(g("safetyAssessmentNotes")),
 
     medicationsSummary: stringFromStorage(g("medicationsSummary")),
     medicationAllergiesDetail: stringFromStorage(g("medicationAllergiesDetail")),
@@ -599,6 +630,16 @@ const FLAT_FORM_KEYS: ErTriageV1FlatKey[] = [
   "nursingNotesAddendum",
   "feelsSafeAtHome",
   "travelOutsideCountry14d",
+  "travelDestinationCountry",
+  "travelDateOrReturn",
+  "travelExposureConcern",
+  "travelScreeningNotes",
+  "safetyImmediateDanger",
+  "safetyAbuseNeglect",
+  "safetyHumanTrafficking",
+  "safetySelfHarm",
+  "safetyNeedsSocialWork",
+  "safetyAssessmentNotes",
   "medicationsSummary",
   "medicationAllergiesDetail",
   "foodAllergiesDetail",
@@ -667,7 +708,12 @@ function valueForStorageFlat(key: ErTriageV1FlatKey, form: ErTriageV1Form): unkn
     key === "patientUpdatedOnPlan" ||
     key === "comfortMeasuresProvided" ||
     key === "feelsSafeAtHome" ||
-    key === "travelOutsideCountry14d"
+    key === "travelOutsideCountry14d" ||
+    key === "safetyImmediateDanger" ||
+    key === "safetyAbuseNeglect" ||
+    key === "safetyHumanTrafficking" ||
+    key === "safetySelfHarm" ||
+    key === "safetyNeedsSocialWork"
   ) {
     if (t === "yes" || t === "no" || t === "unknown") return t;
     return undefined;

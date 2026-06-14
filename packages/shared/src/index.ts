@@ -271,4 +271,5 @@ export * from "./procedures/enterpriseProcedureBillableReview.js";
 export * from "./procedures/enterpriseProcedureRevenueReviewTypes.js";
 export * from "./procedures/enterpriseProcedureRevenueReview.js";
 export * from "./patient/patientClinicalHistoryProfile.js";
+export * from "./clinicalHistory/surgicalHistoryCatalog.js";
 
