@@ -118,18 +118,11 @@ describe("providerDocumentationShortnessOfBreathGovernance — MEDUI.ED.ME.2E", 
   it("governs all respiratory template IDs discovered in catalog", () => {
     expect(SHORTNESS_OF_BREATH_GOVERNED_TEMPLATE_IDS).toEqual([
       "sob",
-      "adult_uri_respiratory",
-      "uri_respiratory",
       "asthma_wheezing",
-      "cough_complaint_v1",
-      "uri_congestion_complaint_v1",
-      "sore_throat_complaint_v1",
       "asthma_wheezing_complaint_v1",
       "copd_exacerbation_complaint_v1",
       "pneumonia_symptoms_complaint_v1",
       "hemoptysis_complaint_v1",
-      "chest_congestion_complaint_v1",
-      "flu_like_illness_complaint_v1",
     ]);
     for (const templateId of SHORTNESS_OF_BREATH_GOVERNED_TEMPLATE_IDS) {
       expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === templateId)).toBe(true);

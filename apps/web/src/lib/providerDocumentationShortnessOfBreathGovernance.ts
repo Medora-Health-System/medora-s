@@ -11,15 +11,26 @@ import {
 } from "./providerDocumentationTemplateHpiDimensions";
 import {
   SOB_COMPLAINT_INTEL,
-  URI_RESPIRATORY_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
   type ProviderDocumentationComplaintIntelligence,
 } from "./providerDocumentationComplaintIntelligence";
 import {
   RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
-  RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS,
 } from "./providerDocumentationRespiratoryComplaintIntelligence19Mdm3";
+
+export const SHORTNESS_OF_BREATH_HIGH_ACUITY_TEMPLATE_IDS = [
+  "asthma_wheezing_complaint_v1",
+  "copd_exacerbation_complaint_v1",
+  "pneumonia_symptoms_complaint_v1",
+  "hemoptysis_complaint_v1",
+] as const satisfies readonly ProviderDocumentationTemplateId[];
+
+export const SHORTNESS_OF_BREATH_GOVERNED_TEMPLATE_IDS = [
+  "sob",
+  "asthma_wheezing",
+  ...SHORTNESS_OF_BREATH_HIGH_ACUITY_TEMPLATE_IDS,
+] as const satisfies readonly ProviderDocumentationTemplateId[];
 
 type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -28,14 +39,6 @@ type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
 type StickyNoteExamChipGroup<TChip extends { fragmentKey: string }> = StickyNoteChipGroup<TChip> & {
   sectionId: string;
 };
-
-export const SHORTNESS_OF_BREATH_GOVERNED_TEMPLATE_IDS = [
-  "sob",
-  "adult_uri_respiratory",
-  "uri_respiratory",
-  "asthma_wheezing",
-  ...RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS,
-] as const satisfies readonly ProviderDocumentationTemplateId[];
 
 export type ShortnessOfBreathGovernedTemplateId = (typeof SHORTNESS_OF_BREATH_GOVERNED_TEMPLATE_IDS)[number];
 
@@ -141,10 +144,11 @@ const COMPLAINT_INTEL_BY_SHORTNESS_OF_BREATH_TEMPLATE_ID: Partial<
   Record<ShortnessOfBreathGovernedTemplateId, ProviderDocumentationComplaintIntelligence>
 > = {
   sob: SOB_COMPLAINT_INTEL,
-  adult_uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
-  uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
   asthma_wheezing: PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
-  ...RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
+  asthma_wheezing_complaint_v1: RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID.asthma_wheezing_complaint_v1,
+  copd_exacerbation_complaint_v1: RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID.copd_exacerbation_complaint_v1,
+  pneumonia_symptoms_complaint_v1: RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID.pneumonia_symptoms_complaint_v1,
+  hemoptysis_complaint_v1: RESPIRATORY_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID.hemoptysis_complaint_v1,
 };
 
 export function templateUsesShortnessOfBreathStickyNoteGovernance(
