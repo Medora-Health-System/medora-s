@@ -312,7 +312,7 @@ describe("providerDocumentationDentalOralGovernance — MEDUI.ED.ME.2Q", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(chestPainVisible.has("providerDocumentationComplaintIntel.chestPain.diffAcs")).toBe(true);
+    expect(chestPainVisible.has("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome")).toBe(true);
 
     const headacheVisible = collectHeadacheVisibleStickyNoteFragmentKeys({
       templateId: "headache",

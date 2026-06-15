@@ -70,7 +70,7 @@ describe("providerDocumentationDynamicClinicalClusters (19P)", () => {
     expect(clusters[0]?.severity).toBe("high");
     expect(clusters[0]?.matchedTriggerReasonKeys).toHaveLength(3);
     const keys = clusters[0]?.suggestions.map((item) => item.fragmentKey) ?? [];
-    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.diffAcs");
+    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome");
     expect(keys).toContain("providerDocumentationDynamicClusters.fragments.unstableAnginaConsidered");
   });
 

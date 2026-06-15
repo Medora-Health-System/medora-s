@@ -34,6 +34,7 @@ import {
   buildAdultAbdominalPainComplaintIntel,
   buildPediatricAbdominalPainComplaintIntel,
 } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
+import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
   buildPediatricAsthmaSobComplaintIntel,
@@ -137,106 +138,7 @@ const maleGenIntel = (key: string) => `providerDocumentationComplaintIntel.maleG
 const femaleGynIntel = (key: string) => `providerDocumentationComplaintIntel.femalePelvicGynComplaint.${key}`;
 
 /** Chest pain — ACS / cardiopulmonary risk stratification (ACEP HEART / ACC-AHA). */
-export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    cp("hpiExertional"),
-    cp("hpiPleuritic"),
-    cp("hpiPressureLike"),
-    cp("hpiSharp"),
-    cp("hpiRadiationLeftArm"),
-    cp("hpiRadiationJaw"),
-    cp("hpiAssocDiaphoresis"),
-    cp("hpiAssocSob"),
-    cp("hpiAssocNausea"),
-    cp("hpiAssocDizziness"),
-    cp("hpiSuddenOnset"),
-    cp("hpiGradualOnset"),
-    cp("hpiReproduciblePalpation"),
-    cp("hpiPositional"),
-    cp("hpiWorseInspiration"),
-    cp("hpiCocaineUse"),
-    cp("hpiSmokingHistory"),
-    cp("hpiCardiacHistory"),
-    cp("hpiPriorMi"),
-    cp("hpiRecentTravel"),
-    cp("hpiUnilateralLegSwellingHistory"),
-  ],
-  rosImportantPositives: [
-    cp("rosSob"),
-    cp("rosDiaphoresis"),
-    cp("rosNausea"),
-    cp("rosVomiting"),
-    cp("rosDizziness"),
-    cp("rosPalpitations"),
-    cp("rosSyncope"),
-    cp("rosWeakness"),
-  ],
-  rosImportantNegatives: [
-    cp("rosDeniesFever"),
-    cp("rosDeniesTrauma"),
-    cp("rosDeniesHemoptysis"),
-    cp("rosDeniesUnilateralLegSwelling"),
-    cp("rosDeniesRecentSurgery"),
-    cp("rosDeniesCalfPain"),
-  ],
-  rosRedFlags: [cp("rfRecurrentPain"), cp("rfHypotensionConcern")],
-  physicalExam: {
-    cardiovascular: [
-      cp("examCardioRrr"),
-      cp("examCardioTachycardic"),
-      cp("examMurmurAppreciated"),
-      cp("examPeripheralPulsesPresent"),
-    ],
-    respiratory: [
-      cp("examNoRespDistress"),
-      cp("examClearBreathSounds"),
-      cp("examWheezing"),
-      cp("examCrackles"),
-    ],
-    general: [cp("examUncomfortableAppearing"), cp("examDiaphoretic"), cp("examAnxiousAppearing")],
-    musculoskeletal: [cp("examChestWallTendernessReproduced")],
-  },
-  mdmWorkingAssessment: [cp("mdmAcsConsidered"), cp("mdmPeRiskEvaluated")],
-  mdmDifferentialSynthesis: [
-    cp("diffAcs"),
-    cp("diffStemiNstemi"),
-    cp("diffPe"),
-    cp("diffAorticDissection"),
-    cp("diffPneumothorax"),
-    cp("diffPneumonia"),
-    cp("diffPericarditis"),
-    cp("diffGerd"),
-    cp("diffMusculoskeletal"),
-    cp("diffAnxietyPanic"),
-  ],
-  mdmDataReviewed: [
-    cp("mdmTroponinReviewed"),
-    cp("mdmRepeatTroponinPlanned"),
-    cp("mdmCxrReviewed"),
-    cp("mdmExternalRecordsReviewed"),
-  ],
-  mdmClinicalRationale: [
-    cp("mdmHeartScoreConsidered"),
-    cp("mdmEcgReviewed"),
-    cp("mdmLifeThreateningCausesEvaluated"),
-  ],
-  mdmPlanSummary: [cp("mdmSharedDecisionMakingDocumented")],
-  mdmImmediateActionsRationale: [cp("mdmAspirinConsidered")],
-  mdmAdmitObserveDischarge: [cp("mdmAdmissionConsidered"), cp("mdmObservationConsidered")],
-  reassessment: [
-    cp("reassessChestPainImproved"),
-    cp("reassessRepeatExamUnchanged"),
-    cp("reassessHemodynamicallyStable"),
-    cp("reassessSerialReassessmentPerformed"),
-  ],
-  followUpDisposition: [
-    cp("dispReturnPrecautionsDiscussed"),
-    cp("dispReturnWorseningChestPain"),
-    cp("dispReturnWorseningSob"),
-    cp("dispCardiologyFollowUp"),
-    cp("dispPcpFollowUp"),
-  ],
-});
+export const CHEST_PAIN_COMPLAINT_INTEL = buildChestPainComplaintIntel(cp);
 
 /** Shortness of breath (adult) — cardiopulmonary / obstructive / PE framework. */
 export const SOB_COMPLAINT_INTEL = buildAdultSobComplaintIntel(sob);

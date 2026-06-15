@@ -173,12 +173,12 @@ describe("providerDocumentationChestPainGovernance — MEDUI.ED.ME.2L", () => {
     expect(visible.has("providerDocumentationTemplateLocation.chestPain.midChest")).toBe(true);
     expect(visible.has("providerDocumentationTemplateLocation.chestPain.radiatingToLeftArm")).toBe(true);
     expect(visible.has("providerDocumentationTemplateHpiDimensions.chestPain.timExertional")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.hpiExertional")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.hpiRadiationLeftArm")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffAcs")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffStemiNstemi")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffPe")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.mdmPeRiskEvaluated")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.hpiPainRadiatesToLeftArm")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffStemi")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffPulmonaryEmbolism")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.waLowSuspicionPulmonaryEmbolism")).toBe(true);
     expect(visible.has("providerDocumentationWorkspace.stickerExamChestWallTenderness")).toBe(true);
     expect(visible.has("erMseRosChips.rfSyncope")).toBe(true);
     expect(visible.has("erMseRosChips.rfHypotensionConcern")).toBe(true);
@@ -214,7 +214,7 @@ describe("providerDocumentationChestPainGovernance — MEDUI.ED.ME.2L", () => {
     expect(chestMdm).toContain("erMseMdmChips.waCardiopulmonary");
     expect(chestMdm).toContain("erMseMdmChips.planEcg");
     expect(chestMdm).toContain("providerDocumentationComplaintIntel.chestPain.mdmTroponinReviewed");
-    expect(chestMdm).toContain("providerDocumentationComplaintIntel.chestPain.mdmEcgReviewed");
+    expect(chestMdm).toContain("providerDocumentationComplaintIntel.chestPain.mdmEkgReviewed");
     expect(chestMdm).toContain("providerDocumentationComplaintIntel.chestPain.diffAorticDissection");
     expect(chestMdm).not.toContain("erMseMdmChips.waAbdominal");
     expect(chestMdm).not.toContain("erMseMdmChips.waTrauma");
@@ -229,7 +229,7 @@ describe("providerDocumentationChestPainGovernance — MEDUI.ED.ME.2L", () => {
     expect(next.hpi).toBe("");
     expect(next.physicalExam.cardiovascular).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.chestPain.diffStemiNstemi";
+    const fragmentKey = "providerDocumentationComplaintIntel.chestPain.diffStemi";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
   });
 

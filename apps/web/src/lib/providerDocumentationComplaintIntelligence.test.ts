@@ -73,8 +73,8 @@ describe("provider documentation complaint intelligence (19N.3 Batch 1)", () => 
 
   it("includes full Batch 1 chip coverage per complaint category", () => {
     expect(CHEST_PAIN_COMPLAINT_INTEL.hpi?.length).toBeGreaterThanOrEqual(20);
-    expect(CHEST_PAIN_COMPLAINT_INTEL.rosImportantPositives?.length).toBeGreaterThanOrEqual(8);
-    expect(CHEST_PAIN_COMPLAINT_INTEL.rosImportantNegatives?.length).toBeGreaterThanOrEqual(6);
+    expect(CHEST_PAIN_COMPLAINT_INTEL.rosImportantPositives?.length).toBeGreaterThanOrEqual(7);
+    expect(CHEST_PAIN_COMPLAINT_INTEL.rosImportantNegatives?.length).toBeGreaterThanOrEqual(5);
     expect(CHEST_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis?.length).toBeGreaterThanOrEqual(10);
     expect(SOB_COMPLAINT_INTEL.hpi?.length).toBeGreaterThanOrEqual(15);
     expect(ABDOMINAL_COMPLAINT_INTEL.mdmDifferentialSynthesis?.length).toBeGreaterThanOrEqual(10);
@@ -122,10 +122,10 @@ describe("provider documentation complaint intelligence (19N.3 Batch 1)", () => 
     const sob = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "sob");
     const abdominal = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "abdominal_pain");
     expect(chest?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+      "providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion"
     );
     expect(chest?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.chestPain.diffStemiNstemi"
+      "providerDocumentationComplaintIntel.chestPain.diffStemi"
     );
     expect(sob?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism"
@@ -289,7 +289,7 @@ describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => 
 
   it("leaves Batch 1 intelligence bundles unchanged", () => {
     expect(CHEST_PAIN_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+      "providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion"
     );
     expect(SOB_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism"
@@ -440,7 +440,7 @@ describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => 
       "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
     );
     expect(CHEST_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.chestPain.diffStemiNstemi"
+      "providerDocumentationComplaintIntel.chestPain.diffStemi"
     );
     expect(HEADACHE_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage"

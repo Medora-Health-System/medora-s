@@ -167,7 +167,7 @@ describe("provider documentation cardiac / vascular complaint intelligence (19MD
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.sob).toBe(SOB_COMPLAINT_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.stroke_symptoms).toBe(STROKE_SYMPTOMS_COMPLAINT_INTEL);
     expect(CHEST_PAIN_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+      "providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion"
     );
     expect(GI_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);

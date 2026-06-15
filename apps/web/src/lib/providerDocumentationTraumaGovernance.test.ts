@@ -160,7 +160,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
     expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.diffViralGastroenteritis")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiRashOnsetReviewed")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffAcs")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
   });
 
@@ -291,7 +291,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(chestPainVisible.has("providerDocumentationComplaintIntel.chestPain.diffAcs")).toBe(true);
+    expect(chestPainVisible.has("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome")).toBe(true);
 
     const headacheVisible = collectHeadacheVisibleStickyNoteFragmentKeys({
       templateId: "headache",

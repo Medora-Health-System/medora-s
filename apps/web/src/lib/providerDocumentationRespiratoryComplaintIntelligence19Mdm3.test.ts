@@ -131,7 +131,7 @@ describe("provider documentation respiratory complaint intelligence (19MDM.3)", 
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.chest_pain).toBe(CHEST_PAIN_COMPLAINT_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.sob).toBe(SOB_COMPLAINT_INTEL);
     expect(CHEST_PAIN_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+      "providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion"
     );
     expect(GI_COMPLAINT_V1_TEMPLATE_IDS).toHaveLength(9);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.abdominal_pain_complaint_v1).toBeDefined();

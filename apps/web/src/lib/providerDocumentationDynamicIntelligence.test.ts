@@ -51,10 +51,10 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
       state,
     });
     const keys = suggestions.map((item) => item.fragmentKey);
-    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.diffAcs");
-    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.mdmAcsConsidered");
-    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.mdmHeartScoreConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome");
+    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.waConcernForAcs");
     expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.mdmTroponinReviewed");
+    expect(keys).toContain("providerDocumentationComplaintIntel.chestPain.planSerialTroponinsOrdered");
   });
 
   it("suggests appendicitis and serial abdominal exams for RLQ pain with guarding", () => {
@@ -143,7 +143,7 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
       templateId: "chest_pain",
       resolveFragment: (key) => key,
     });
-    expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel.chestPain.mdmAcsConsidered");
+    expect(JSON.stringify(next)).not.toContain("providerDocumentationComplaintIntel.chestPain.waConcernForAcs");
     expect(JSON.stringify(next)).not.toContain("providerDocumentationDynamicIntel");
   });
 
@@ -160,14 +160,14 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
       templateId: "chest_pain",
       state: stateWithHpi(hpi),
     });
-    expect(suggestions.some((item) => item.fragmentKey.includes("mdmHeartScoreConsidered"))).toBe(true);
+    expect(suggestions.some((item) => item.fragmentKey.includes("planSerialTroponinsOrdered"))).toBe(true);
 
     hpi = toggleDocumentationFragment(hpi, "exertional chest pain");
     suggestions = getProviderDocumentationDynamicSuggestions({
       templateId: "chest_pain",
       state: stateWithHpi(hpi),
     });
-    expect(suggestions.some((item) => item.fragmentKey.includes("mdmHeartScoreConsidered"))).toBe(false);
+    expect(suggestions.some((item) => item.fragmentKey.includes("planSerialTroponinsOrdered"))).toBe(false);
   });
 
   it("does not leak chest pain suggestions into abdominal pain template", () => {

@@ -142,7 +142,7 @@ describe("provider documentation GI complaint intelligence (19MDM.2)", () => {
   it("leaves Batch 1 chest pain intelligence unchanged", () => {
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.chest_pain).toBe(CHEST_PAIN_COMPLAINT_INTEL);
     expect(CHEST_PAIN_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.chestPain.hpiExertional"
+      "providerDocumentationComplaintIntel.chestPain.hpiWorseningWithExertion"
     );
     const chestKeysBefore = flattenComplaintIntelligenceKeys(CHEST_PAIN_COMPLAINT_INTEL).length;
     expect(chestKeysBefore).toBeGreaterThan(15);

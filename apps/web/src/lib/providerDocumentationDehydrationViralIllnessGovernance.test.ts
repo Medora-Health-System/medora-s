@@ -115,7 +115,7 @@ describe("providerDocumentationDehydrationViralIllnessGovernance — MEDUI.ED.ME
       "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
     )).toBe(true);
     expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
-      "providerDocumentationComplaintIntel.chestPain.diffAcs"
+      "providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome"
     )).toBe(true);
     expect(isDehydrationViralIllnessDeniedStickyNoteFragment(`${INTEL}.hpiSymptomsBeganToday`)).toBe(false);
   });
