@@ -69,6 +69,7 @@ import {
   resolveHpiChipGroupsForTemplate,
   resolveRosChipGroupsForTemplate,
 } from "@/lib/providerDocumentationComplaintStickyNoteGovernance";
+import { complaintIntelligenceMdmChipBindingsForTemplate } from "@/lib/providerDocumentationComplaintIntelligenceWorkspaceChips";
 import {
   DYNAMIC_SUGGESTION_CATEGORY_ORDER,
   DYNAMIC_SUGGESTION_CATEGORY_TITLE_KEYS,
@@ -1290,7 +1291,7 @@ export function ProviderDocumentationWorkspace({
   };
   const complaintIntelligenceFieldChips = (
     template: ProviderDocumentationTemplateDefinition | null,
-    field:
+    intelField:
       | "hpi"
       | "rosImportantPositives"
       | "rosImportantNegatives"
@@ -1298,14 +1299,18 @@ export function ProviderDocumentationWorkspace({
       | "mdmWorkingAssessment"
       | "mdmDifferentialSynthesis"
       | "mdmDataReviewed"
+      | "mdmRiskStratification"
       | "mdmClinicalRationale"
       | "mdmPlanSummary"
+      | "clinicalImpression"
       | "mdmImmediateActionsRationale"
       | "mdmAdmitObserveDischarge",
-    titleKey: string
+    titleKey: string,
+    workspaceField?: ProviderDocumentationTemplateStringField
   ) => {
-    const keys = template?.complaintIntelligence?.[field];
+    const keys = template?.complaintIntelligence?.[intelField];
     if (!keys?.length) return null;
+    const field = workspaceField ?? (intelField as ProviderDocumentationTemplateStringField);
     const chips = keys.map((fragmentKey) => ({ labelKey: fragmentKey, fragmentKey }));
     return (
       <ChipGroupView title={t(titleKey)}>
@@ -1313,6 +1318,18 @@ export function ProviderDocumentationWorkspace({
       </ChipGroupView>
     );
   };
+  const complaintIntelligenceMdmChipPanels = (template: ProviderDocumentationTemplateDefinition | null) => (
+    <>
+      {complaintIntelligenceMdmChipBindingsForTemplate(template).map((binding) =>
+        complaintIntelligenceFieldChips(
+          template,
+          binding.intelField,
+          binding.titleKey,
+          binding.workspaceField
+        )
+      )}
+    </>
+  );
   const complaintIntelligenceExamChips = (template: ProviderDocumentationTemplateDefinition | null) => {
     const exam = template?.complaintIntelligence?.physicalExam;
     if (!exam) return null;
@@ -2035,6 +2052,7 @@ export function ProviderDocumentationWorkspace({
               onToggleField={toggleField}
               onApplyFieldPatches={patch}
             />
+            {complaintIntelligenceMdmChipPanels(activeTemplate)}
             {dynamicClusters.length > 0 ? (
               <ProviderDocumentationChipPanel title={t("providerDocumentationWorkspace.dynamicClustersTitle")}>
                 {dynamicClusters.map((cluster) => {
