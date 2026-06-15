@@ -31,6 +31,10 @@ import type {
   ProviderDocumentationTemplateStringField,
 } from "./providerDocumentationModel";
 import {
+  buildAdultAbdominalPainComplaintIntel,
+  buildPediatricAbdominalPainComplaintIntel,
+} from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
+import {
   buildAdultNauseaVomitingComplaintIntel,
   buildPediatricNauseaVomitingComplaintIntel,
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
@@ -315,99 +319,7 @@ export const SOB_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = i
 });
 
 /** Abdominal pain — surgical / OB-GYN red flags (SAEM / StatPearls / ECAT). */
-export const ABDOMINAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    abd("hpiDiffusePain"),
-    abd("hpiRlqPain"),
-    abd("hpiRuqPain"),
-    abd("hpiEpigastricPain"),
-    abd("hpiFlankPain"),
-    abd("hpiSuddenOnset"),
-    abd("hpiGradualOnset"),
-    abd("hpiNausea"),
-    abd("hpiVomiting"),
-    abd("hpiDiarrhea"),
-    abd("hpiConstipation"),
-    abd("hpiUrinarySymptoms"),
-    abd("hpiFeverSymptoms"),
-    abd("hpiPriorAbdominalSurgery"),
-    abd("hpiPregnancyConcern"),
-    abd("hpiGiBleedConcern"),
-  ],
-  rosImportantPositives: [
-    abd("rosNausea"),
-    abd("rosVomiting"),
-    abd("rosDiarrhea"),
-    abd("rosConstipation"),
-    abd("rosDysuria"),
-    abd("rosHematuria"),
-    abd("rosFever"),
-    abd("rosFlankPain"),
-  ],
-  rosImportantNegatives: [
-    abd("rosDeniesGiBleeding"),
-    abd("rosDeniesChestPain"),
-    abd("rosDeniesSyncope"),
-    abd("rosDeniesPregnancyConcern"),
-    abd("rosDeniesTesticularPain"),
-  ],
-  rosRedFlags: [
-    abd("rfRigidAbdomenConcern"),
-    abd("rfSyncope"),
-    abd("rfGiBleedingConcern"),
-  ],
-  physicalExam: {
-    abdomen: [
-      abd("examSoftNonTender"),
-      abd("examRlqTenderness"),
-      abd("examRuqTenderness"),
-      abd("examGuarding"),
-      abd("examReboundTenderness"),
-      abd("examCvaTenderness"),
-    ],
-    general: [abd("examUncomfortableAppearing"), abd("examDehydratedAppearance")],
-  },
-  mdmWorkingAssessment: [
-    abd("mdmSurgicalPathologyConsidered"),
-    abd("mdmAppendicitisConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    abd("diffAppendicitis"),
-    abd("diffCholecystitis"),
-    abd("diffPancreatitis"),
-    abd("diffBowelObstruction"),
-    abd("diffGastroenteritis"),
-    abd("diffKidneyStone"),
-    abd("diffPyelonephritis"),
-    abd("diffEctopicPregnancy"),
-    abd("diffGiBleed"),
-    abd("diffDiverticulitis"),
-  ],
-  mdmDataReviewed: [
-    abd("mdmCtAbdomenPelvisReviewed"),
-    abd("mdmUltrasoundReviewed"),
-    abd("mdmLabsReviewed"),
-    abd("mdmBetaHcgIfIndicated"),
-  ],
-  mdmClinicalRationale: [
-    abd("mdmSerialAbdominalExamsPerformed"),
-    abd("mdmEctopicExcludedClinicallyLab"),
-    abd("mdmIvFluidsAdministered"),
-  ],
-  mdmPlanSummary: [abd("mdmSurgeryConsultIfIndicated")],
-  mdmImmediateActionsRationale: [abd("mdmIvFluidsAnalgesiaPlan")],
-  mdmAdmitObserveDischarge: [abd("mdmAdmissionConsidered"), abd("mdmObservationConsidered")],
-  reassessment: [
-    abd("reassessSerialAbdominalExam"),
-    abd("reassessAfterAnalgesia"),
-  ],
-  followUpDisposition: [
-    abd("dispReturnPrecautionsReviewed"),
-    abd("dispWorseningPainPrecautions"),
-    abd("dispSurgicalFollowUp"),
-    abd("dispPcpGiFollowUp"),
-  ],
-});
+export const ABDOMINAL_COMPLAINT_INTEL = buildAdultAbdominalPainComplaintIntel(abd);
 
 /** Acute neuro symptoms / stroke concern — AHA/ASA time-sensitive workflow elements. */
 export const STROKE_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -1984,101 +1896,7 @@ export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintInte
 });
 
 /** Pediatric abdominal pain — appendicitis / surgical red flag documentation framework. */
-export const PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    pedAbd("hpiCaregiverHistorianUsed"),
-    pedAbd("hpiPainLocationReviewed"),
-    pedAbd("hpiPainDurationReviewed"),
-    pedAbd("hpiVomitingReviewed"),
-    pedAbd("hpiDiarrheaReviewed"),
-    pedAbd("hpiFeverReviewed"),
-    pedAbd("hpiAppetiteReviewed"),
-    pedAbd("hpiUrinarySymptomsReviewed"),
-    pedAbd("hpiBowelMovementHistoryReviewed"),
-    pedAbd("hpiTraumaReviewed"),
-    pedAbd("hpiTesticularGynecologicSymptomsReviewedIfApplicable"),
-    pedAbd("hpiPriorAbdominalSurgeryReviewed"),
-  ],
-  rosImportantPositives: [
-    pedAbd("rosAbdominalPain"),
-    pedAbd("rosVomiting"),
-    pedAbd("rosDiarrhea"),
-    pedAbd("rosFever"),
-    pedAbd("rosDecreasedAppetite"),
-    pedAbd("rosDysuria"),
-    pedAbd("rosConstipation"),
-  ],
-  rosImportantNegatives: [
-    pedAbd("rosDeniesBiliousVomiting"),
-    pedAbd("rosDeniesBloodyStool"),
-    pedAbd("rosDeniesTesticularPainIfApplicable"),
-    pedAbd("rosDeniesUrinarySymptoms"),
-    pedAbd("rosDeniesTrauma"),
-    pedAbd("rosDeniesPersistentSeverePain"),
-  ],
-  rosRedFlags: [
-    pedAbd("rfPeritonealSigns"),
-    pedAbd("rfBiliousVomiting"),
-    pedAbd("rfSevereLocalizedRlqPain"),
-    pedAbd("rfTesticularTorsionConcern"),
-    pedAbd("rfDehydrationConcern"),
-    pedAbd("rfAppendicitisConcern"),
-    pedAbd("rfOvarianTesticularPathologyConcern"),
-  ],
-  physicalExam: {
-    general: [pedAbd("examNonToxicAppearing"), pedAbd("examHydrationStatusAssessed")],
-    abdomen: [
-      pedAbd("examAbdomenSoft"),
-      pedAbd("examAbdomenNonTender"),
-      pedAbd("examRlqTenderness"),
-      pedAbd("examGuarding"),
-      pedAbd("examReboundTenderness"),
-      pedAbd("examNoPeritonealSigns"),
-      pedAbd("examCvaTenderness"),
-    ],
-    musculoskeletal: [pedAbd("examAbleToJumpAmbulateIfAppropriate")],
-  },
-  mdmWorkingAssessment: [pedAbd("mdmAppendicitisConsidered"), pedAbd("mdmSurgicalAbdomenConsidered")],
-  mdmDifferentialSynthesis: [
-    pedAbd("diffAppendicitis"),
-    pedAbd("diffGastroenteritis"),
-    pedAbd("diffConstipation"),
-    pedAbd("diffUti"),
-    pedAbd("diffMesentericAdenitis"),
-    pedAbd("diffTesticularTorsion"),
-    pedAbd("diffOvarianTorsionCyst"),
-    pedAbd("diffIntussusception"),
-    pedAbd("diffObstruction"),
-    pedAbd("diffTraumaRelatedPain"),
-  ],
-  mdmDataReviewed: [
-    pedAbd("mdmUrinalysisReviewed"),
-    pedAbd("mdmUltrasoundConsideredReviewed"),
-    pedAbd("mdmLabsReviewedIfObtained"),
-  ],
-  mdmClinicalRationale: [
-    pedAbd("mdmSerialAbdominalExamsPerformed"),
-    pedAbd("mdmCtConsideredOnlyIfClinicallyIndicated"),
-    pedAbd("mdmSurgicalConsultationConsidered"),
-    pedAbd("mdmHydrationStatusReassessed"),
-    pedAbd("mdmCaregiverSharedDecisionMakingDocumented"),
-  ],
-  mdmPlanSummary: [pedAbd("mdmSerialReassessmentPerformed")],
-  mdmImmediateActionsRationale: [pedAbd("mdmIvFluidsIfIndicated")],
-  mdmAdmitObserveDischarge: [pedAbd("mdmAdmissionConsidered")],
-  reassessment: [
-    pedAbd("reassessAbdominalPainImproved"),
-    pedAbd("reassessRepeatAbdominalExamUnchanged"),
-    pedAbd("reassessToleratingOralIntake"),
-    pedAbd("reassessRemainsNonToxicAppearing"),
-  ],
-  followUpDisposition: [
-    pedAbd("dispReturnWorseningPain"),
-    pedAbd("dispReturnPersistentVomitingOrFever"),
-    pedAbd("dispPediatricianFollowUpRecommended"),
-    pedAbd("dispSurgicalReturnPrecautionsIfApplicable"),
-  ],
-});
+export const PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL = buildPediatricAbdominalPainComplaintIntel(pedAbd);
 
 /** Pediatric asthma / wheezing — pediatric bronchospasm documentation framework. */
 export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({

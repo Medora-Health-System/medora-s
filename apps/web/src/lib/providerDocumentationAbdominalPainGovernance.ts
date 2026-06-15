@@ -102,17 +102,17 @@ export const ABDOMINAL_PAIN_ALLOWED_EXAM_SECTION_IDS = ["general", "heent", "abd
 
 export const ABDOMINAL_PAIN_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
   "providerDocumentationTemplateLocation.abdominal.rightLowerQuadrant",
-  "providerDocumentationComplaintIntel.abdominal.hpiRlqPain",
-  "providerDocumentationComplaintIntel.abdominal.examGuarding",
-  "providerDocumentationComplaintIntel.abdominal.examReboundTenderness",
+  "providerDocumentationComplaintIntel.abdominal.hpiRightLowerQuadrantPain",
+  "providerDocumentationComplaintIntel.abdominal.examGuardingPresent",
+  "providerDocumentationComplaintIntel.abdominal.examReboundTendernessPresent",
   "providerDocumentationComplaintIntel.abdominal.diffAppendicitis",
   "providerDocumentationComplaintIntel.abdominal.diffCholecystitis",
   "providerDocumentationComplaintIntel.abdominal.diffGiBleed",
   "providerDocumentationComplaintIntel.abdominal.hpiPregnancyConcern",
   "providerDocumentationComplaintIntel.abdominal.rfGiBleedingConcern",
-  "providerDocumentationComplaintIntel.pediatricAbdominalPain.examGuarding",
-  "providerDocumentationComplaintIntel.pediatricAbdominalPain.examReboundTenderness",
-  "providerDocumentationComplaintIntel.abdominalPainComplaintV1.examGuardingRebound",
+  "providerDocumentationComplaintIntel.pediatricAbdominalPain.examGuardingPresent",
+  "providerDocumentationComplaintIntel.pediatricAbdominalPain.examReboundTendernessPresent",
+  "providerDocumentationComplaintIntel.abdominalPainComplaintV1.examGuardingPresent",
   "providerDocumentationComplaintIntel.abdominalPainComplaintV1.diffAppendicitis",
   "providerDocumentationComplaintIntel.abdominalPainComplaintV1.rfGiBleedingConcern",
 ] as const;

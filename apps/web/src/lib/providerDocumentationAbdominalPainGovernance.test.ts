@@ -163,9 +163,9 @@ describe("providerDocumentationAbdominalPainGovernance — MEDUI.ED.ME.2D", () =
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(visible.has("providerDocumentationTemplateLocation.abdominal.rightLowerQuadrant")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.abdominal.hpiRlqPain")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.abdominal.examGuarding")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.abdominal.examReboundTenderness")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.abdominal.hpiRightLowerQuadrantPain")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.abdominal.examGuardingPresent")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.abdominal.examReboundTendernessPresent")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.abdominal.diffAppendicitis")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.abdominal.diffCholecystitis")).toBe(true);
   });
@@ -221,7 +221,7 @@ describe("providerDocumentationAbdominalPainGovernance — MEDUI.ED.ME.2D", () =
   });
 
   it("inserts documentation when an allowed abdominal pain sticky note is toggled", () => {
-    const fragmentKey = "providerDocumentationComplaintIntel.abdominal.examGuarding";
+    const fragmentKey = "providerDocumentationComplaintIntel.abdominal.examGuardingPresent";
     const next = toggleDocumentationFragment("", fragmentKey);
     expect(next).toContain(fragmentKey);
   });

@@ -1,5 +1,6 @@
 /** Phase 19MDM.2 — GI / abdominal complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildAbdominalPainComplaintV1Intel } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildNauseaVomitingComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const abdominalPain = (key: string) => `providerDocumentationComplaintIntel.abdominalPainComplaintV1.${key}`;
@@ -12,20 +13,7 @@ const hernia = (key: string) => `providerDocumentationComplaintIntel.herniaCompl
 const rectalPain = (key: string) => `providerDocumentationComplaintIntel.rectalPainComplaintV1.${key}`;
 const dysphagia = (key: string) => `providerDocumentationComplaintIntel.dysphagiaComplaintV1.${key}`;
 
-export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [abdominalPain("hpiOnsetTiming"), abdominalPain("hpiLocationRadiation"), abdominalPain("hpiMigrationSeverity"), abdominalPain("hpiAssocNauseaVomiting"), abdominalPain("hpiAssocBowelUrinary"), abdominalPain("hpiFeverGiBleedSyncope"), abdominalPain("hpiPregnancyGynConsiderations")],
-  rosImportantPositives: [abdominalPain("rosNauseaVomiting"), abdominalPain("rosFever"), abdominalPain("rosGiBleedingConcern"), abdominalPain("rosUrinarySymptoms")],
-  rosImportantNegatives: [abdominalPain("rosDeniesChestPain"), abdominalPain("rosDeniesSyncope")],
-  rosRedFlags: [abdominalPain("rfPeritonealSigns"), abdominalPain("rfGiBleedingConcern"), abdominalPain("rfPregnancyConcern")],
-  physicalExam: { abdomen: [abdominalPain("examTendernessLocation"), abdominalPain("examGuardingRebound"), abdominalPain("examDistension"), abdominalPain("examCvaTenderness")], general: [abdominalPain("examGeneralAppearance")] },
-  mdmWorkingAssessment: [abdominalPain("mdmUndifferentiatedAbdominalPain")],
-  mdmDifferentialSynthesis: [abdominalPain("diffAppendicitis"), abdominalPain("diffBiliary"), abdominalPain("diffPancreatitis"), abdominalPain("diffObstruction"), abdominalPain("diffGastroenteritis"), abdominalPain("diffRenalColic"), abdominalPain("diffUtiPyelo"), abdominalPain("diffGynecologic"), abdominalPain("diffVascular")],
-  mdmDataReviewed: [abdominalPain("mdmLabsReviewedIfObtained"), abdominalPain("mdmImagingReviewedIfObtained")],
-  mdmClinicalRationale: [abdominalPain("mdmSerialAbdominalExams"), abdominalPain("mdmRiskBenefitDiscussed")],
-  mdmAdmitObserveDischarge: [abdominalPain("mdmAdmissionObservationIfIndicated")],
-  reassessment: [abdominalPain("reassessSerialExam"), abdominalPain("reassessPoTolerance")],
-  followUpDisposition: [abdominalPain("dispReturnPrecautions"), abdominalPain("dispDispositionReflectsCourse")],
-});
+export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL = buildAbdominalPainComplaintV1Intel(abdominalPain);
 
 export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL = buildNauseaVomitingComplaintV1Intel(nauseaVomiting);
 
