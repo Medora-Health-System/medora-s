@@ -156,7 +156,7 @@ describe("providerDocumentationChestPainGovernance — MEDUI.ED.ME.2L", () => {
     expect(visible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiRashOnsetReviewed")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.backPainTrauma.diffRadiculopathy")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiThunderclapConcern")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiSuddenOnsetHeadache")).toBe(false);
   });
 
   it("exposes ACS, PE, chest pain characterization, and cardiopulmonary exam chips", () => {

@@ -92,9 +92,9 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
     });
     const keys = suggestions.map((item) => item.fragmentKey);
     expect(keys).toContain("providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage");
-    expect(keys).toContain("providerDocumentationComplaintIntel.headache.mdmSahConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.headache.waConcernForIntracranialProcess");
     expect(keys).toContain("providerDocumentationComplaintIntel.headache.mdmCtHeadReviewed");
-    expect(keys).toContain("providerDocumentationComplaintIntel.headache.mdmLpConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.headache.mdmLumbarPunctureReviewed");
   });
 
   it("suggests admission and repeat lung exam for pediatric asthma with hypoxia and retractions", () => {

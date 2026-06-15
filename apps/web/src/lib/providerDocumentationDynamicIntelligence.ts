@@ -288,9 +288,10 @@ const HEADACHE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("headacheThunderclap"),
     suggestions: [
       sug("differential", headache("diffSubarachnoidHemorrhage"), "mdmDifferentialSynthesis"),
-      sug("mdm", headache("mdmSahConsidered"), "mdmWorkingAssessment"),
+      sug("mdm", headache("waConcernForIntracranialProcess"), "mdmWorkingAssessment"),
       sug("mdm", headache("mdmCtHeadReviewed"), "mdmDataReviewed"),
-      sug("mdm", headache("mdmLpConsidered"), "mdmPlanSummary"),
+      sug("mdm", headache("mdmLumbarPunctureReviewed"), "mdmDataReviewed"),
+      sug("mdm", headache("planNeurologyFollowUpRecommended"), "mdmPlanSummary"),
     ],
   },
   {
@@ -298,8 +299,9 @@ const HEADACHE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("headacheNeckStiffness"),
     suggestions: [
       sug("differential", headache("diffMeningitis"), "mdmDifferentialSynthesis"),
-      sug("mdm", headache("mdmMeningitisConsidered"), "mdmWorkingAssessment"),
-      sug("mdm", headache("mdmLpConsidered"), "mdmPlanSummary"),
+      sug("mdm", headache("waConcernForIntracranialProcess"), "mdmWorkingAssessment"),
+      sug("mdm", headache("mdmLumbarPunctureReviewed"), "mdmDataReviewed"),
+      sug("mdm", headache("reasoningLowSuspicionMeningitis"), "mdmClinicalRationale"),
     ],
   },
   {
@@ -307,7 +309,7 @@ const HEADACHE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("headacheFever"),
     suggestions: [
       sug("differential", headache("diffMeningitis"), "mdmDifferentialSynthesis"),
-      sug("mdm", headache("mdmLabsReviewed"), "mdmDataReviewed"),
+      sug("mdm", headache("mdmCbcReviewed"), "mdmDataReviewed"),
       sug("mdm", headache("mdmCtHeadReviewed"), "mdmDataReviewed"),
     ],
   },
@@ -317,7 +319,7 @@ const HEADACHE_RULES: DynamicIntelligenceRule[] = [
     suggestions: [
       sug("differential", headache("diffIntracranialHemorrhage"), "mdmDifferentialSynthesis"),
       sug("mdm", headache("mdmCtHeadReviewed"), "mdmDataReviewed"),
-      sug("reassessment", headache("mdmNeurologicExamReassessed"), "treatmentPlan"),
+      sug("reassessment", headache("reassessRepeatNeurologicExaminationUnchanged"), "treatmentPlan"),
     ],
   },
 ];

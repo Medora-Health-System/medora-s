@@ -35,6 +35,7 @@ import {
   buildPediatricAbdominalPainComplaintIntel,
 } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainComplaintIntelGoldStandard";
+import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
   buildPediatricAsthmaSobComplaintIntel,
@@ -98,10 +99,10 @@ export type ProviderDocumentationComplaintIntelligence = {
 
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const cp = (key: string) => `providerDocumentationComplaintIntel.chestPain.${key}`;
+const ha = (key: string) => `providerDocumentationComplaintIntel.headache.${key}`;
 const sob = (key: string) => `providerDocumentationComplaintIntel.sob.${key}`;
 const abd = (key: string) => `providerDocumentationComplaintIntel.abdominal.${key}`;
 const stroke = (key: string) => `providerDocumentationComplaintIntel.stroke.${key}`;
-const headache = (key: string) => `providerDocumentationComplaintIntel.headache.${key}`;
 const dizz = (key: string) => `providerDocumentationComplaintIntel.dizzinessSyncope.${key}`;
 const psych = (key: string) => `providerDocumentationComplaintIntel.psychiatricBehavioral.${key}`;
 const weak = (key: string) => `providerDocumentationComplaintIntel.weakness.${key}`;
@@ -285,120 +286,7 @@ export const STROKE_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintInte
 });
 
 /** Headache — ACEP red flags / secondary headache workup framework. */
-export const HEADACHE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    headache("hpiThunderclapConcern"),
-    headache("hpiSuddenSevereOnset"),
-    headache("hpiGradualOnset"),
-    headache("hpiPriorMigraineHistory"),
-    headache("hpiPhotophobia"),
-    headache("hpiPhonophobia"),
-    headache("hpiNeckPain"),
-    headache("hpiNeckStiffnessConcern"),
-    headache("hpiFeverSymptoms"),
-    headache("hpiVisualChanges"),
-    headache("hpiWorstHeadacheOfLife"),
-    headache("hpiTraumaReviewed"),
-    headache("hpiAnticoagulantUse"),
-    headache("hpiNauseaVomiting"),
-    headache("hpiSimilarPriorHeadaches"),
-    headache("hpiHeadacheImproving"),
-    headache("hpiHeadachePersistent"),
-    headache("hpiPositional"),
-    headache("hpiWorseWithValsalva"),
-    headache("hpiExertionalOnset"),
-    headache("hpiRecentLpReviewed"),
-    headache("hpiPregnancyConcern"),
-    headache("hpiImmunocompromised"),
-  ],
-  rosImportantPositives: [
-    headache("rosHeadache"),
-    headache("rosPhotophobia"),
-    headache("rosVomiting"),
-    headache("rosVisualChanges"),
-    headache("rosDizziness"),
-    headache("rosNeckPain"),
-    headache("rosFever"),
-  ],
-  rosImportantNegatives: [
-    headache("rosDeniesFocalWeakness"),
-    headache("rosDeniesSeizure"),
-    headache("rosDeniesSyncope"),
-    headache("rosDeniesTrauma"),
-    headache("rosDeniesConfusion"),
-  ],
-  rosRedFlags: [
-    headache("rfMeningitisConcern"),
-    headache("rfSahConcern"),
-    headache("rfAlteredMentalStatus"),
-    headache("rfNeuroDeficit"),
-    headache("rfPapilledemaConcern"),
-  ],
-  physicalExam: {
-    heent: [headache("examPerrla"), headache("examNeckSupple"), headache("examMeningealSignsAbsent")],
-    neuroPsych: [
-      headache("examAlertOriented"),
-      headache("examCranialNervesIntact"),
-      headache("examPhotophobiaPresent"),
-      headache("examNoFocalNeuroDeficit"),
-      headache("examNormalGait"),
-      headache("examNeckStiffnessNoted"),
-      headache("examFocalDeficitNoted"),
-    ],
-    general: [headache("examUncomfortableAppearing")],
-  },
-  mdmWorkingAssessment: [
-    headache("mdmSecondaryHeadacheConsidered"),
-    headache("mdmSahConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    headache("diffMigraine"),
-    headache("diffTensionHeadache"),
-    headache("diffSubarachnoidHemorrhage"),
-    headache("diffMeningitis"),
-    headache("diffIntracranialHemorrhage"),
-    headache("diffMassLesion"),
-    headache("diffTemporalArteritis"),
-    headache("diffHypertensiveEmergency"),
-    headache("diffSinusitis"),
-    headache("diffPostTraumaticHeadache"),
-  ],
-  mdmDataReviewed: [
-    headache("mdmCtHeadReviewed"),
-    headache("mdmLpConsidered"),
-    headache("mdmLabsReviewed"),
-    headache("mdmEsrCrpIfIndicated"),
-  ],
-  mdmClinicalRationale: [
-    headache("mdmRedFlagsEvaluated"),
-    headache("mdmMeningitisConsidered"),
-    headache("mdmNeurologicExamReassessed"),
-  ],
-  mdmPlanSummary: [
-    headache("mdmMigraineTreatmentInitiated"),
-    headache("mdmSerialReassessmentPerformed"),
-    headache("mdmReturnPrecautionsDiscussed"),
-  ],
-  mdmImmediateActionsRationale: [headache("mdmIvFluidsAnalgesiaPlan")],
-  mdmAdmitObserveDischarge: [
-    headache("mdmAdmissionConsidered"),
-    headache("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    headache("reassessPainImprovedAfterTreatment"),
-    headache("reassessRepeatNeuroExam"),
-    headache("reassessToleratingPo"),
-    headache("reassessAmbulatoryWithoutDifficulty"),
-  ],
-  followUpDisposition: [
-    headache("dispDischargeAfterImprovement"),
-    headache("dispObservationConsidered"),
-    headache("dispAdmissionConsidered"),
-    headache("dispNeurologyConsultConsidered"),
-    headache("dispReturnThunderclapPrecautions"),
-    headache("dispReturnWorseningHeadache"),
-  ],
-});
+export const HEADACHE_COMPLAINT_INTEL = buildHeadacheComplaintIntel(ha);
 
 /** Dizziness / syncope — ACEP serious-cause evaluation framework. */
 export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({

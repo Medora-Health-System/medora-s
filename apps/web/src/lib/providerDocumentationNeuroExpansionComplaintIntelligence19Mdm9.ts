@@ -1,5 +1,6 @@
 /** Phase 19MDM.9 — Neurology expansion complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildMigraineHeadacheComplaintV1Intel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const seizure = (key: string) => `providerDocumentationComplaintIntel.seizureComplaintV1.${key}`;
 const alteredMentalStatus = (key: string) => `providerDocumentationComplaintIntel.alteredMentalStatusComplaintV1.${key}`;
@@ -102,20 +103,7 @@ export const VERTIGO_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntellige
   followUpDisposition: [vertigo("dispReturnNeuroRedFlagsInabilityToAmbulate")],
 });
 
-export const MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [migraineHeadache("hpiPatternVsPriorOnsetSeverity"), migraineHeadache("hpiPhotophobiaNausea"), migraineHeadache("hpiNeuroDeficitsFeverNeckStiffness"), migraineHeadache("hpiPregnancyPostpartumRiskIfApplicable")],
-  rosImportantPositives: [migraineHeadache("rosHeadache"), migraineHeadache("rosPhotophobia"), migraineHeadache("rosNausea")],
-  rosImportantNegatives: [migraineHeadache("rosDeniesFever")],
-  rosRedFlags: [migraineHeadache("rfThunderclapConcern"), migraineHeadache("rfNeuroDeficitConcern")],
-  physicalExam: { neuroPsych: [migraineHeadache("examNeuroScreenIfDocumented"), migraineHeadache("examMeningismusIfDocumented"), migraineHeadache("examHydrationIfDocumented")], general: [migraineHeadache("examGeneralAppearance")] },
-  mdmWorkingAssessment: [migraineHeadache("mdmMigraineHeadachePresentation")],
-  mdmDifferentialSynthesis: [migraineHeadache("diffMigraine"), migraineHeadache("diffTensionHeadache"), migraineHeadache("diffIntracranialHemorrhageConcern"), migraineHeadache("diffMeningitisConcern"), migraineHeadache("diffSecondaryHeadacheCause")],
-  mdmDataReviewed: [migraineHeadache("mdmCtLabsReviewedIfObtained")],
-  mdmClinicalRationale: [migraineHeadache("mdmAnalgesicPlanIfGiven"), migraineHeadache("mdmNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [migraineHeadache("mdmObservationIfHighRisk")],
-  reassessment: [migraineHeadache("reassessHeadacheAfterTreatment")],
-  followUpDisposition: [migraineHeadache("dispReturnWorseningHeadacheNeuroSymptomsFever")],
-});
+export const MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL = buildMigraineHeadacheComplaintV1Intel(migraineHeadache);
 
 export const CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [concussionFollowup("hpiMechanismLocAmnesia"), concussionFollowup("hpiHeadacheDizzinessNausea"), concussionFollowup("hpiCognitiveSymptoms"), concussionFollowup("hpiAnticoagulantsRepeatedInjury")],

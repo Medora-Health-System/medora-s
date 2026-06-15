@@ -166,14 +166,14 @@ describe("providerDocumentationHeadacheGovernance — MEDUI.ED.ME.2K", () => {
     expect(visible.has("providerDocumentationTemplateHpiDimensions.headache.qualThrobbing")).toBe(true);
     expect(visible.has("providerDocumentationTemplateHpiDimensions.headache.assocPhotophobia")).toBe(true);
     expect(visible.has("providerDocumentationTemplateHpiDimensions.headache.assocVisionChanges")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiThunderclapConcern")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiVisualChanges")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiSuddenOnsetHeadache")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.hpiVisualDisturbance")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.headache.hpiPhotophobia")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.rfSahConcern")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.rfNeuroDeficit")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.rfMeningitisConcern")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.rfWorstHeadacheOfLife")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.rfFocalNeurologicDeficit")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.rfMeningealSymptoms")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.headache.diffMigraine")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.diffHypertensiveEmergency")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.diffHypertensiveHeadache")).toBe(true);
 
     const migraineVisible = collectHeadacheVisibleStickyNoteFragmentKeys({
       templateId: "migraine_headache_complaint_v1",
@@ -184,11 +184,11 @@ describe("providerDocumentationHeadacheGovernance — MEDUI.ED.ME.2K", () => {
     expect(migraineVisible.has("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.diffMigraine")).toBe(
       true
     );
+    expect(migraineVisible.has("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.hpiPhotophobia")).toBe(
+      true
+    );
     expect(
-      migraineVisible.has("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.hpiPhotophobiaNausea")
-    ).toBe(true);
-    expect(
-      migraineVisible.has("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.rfThunderclapConcern")
+      migraineVisible.has("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.rfWorstHeadacheOfLife")
     ).toBe(true);
   });
 
@@ -222,14 +222,14 @@ describe("providerDocumentationHeadacheGovernance — MEDUI.ED.ME.2K", () => {
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(visible.has("providerDocumentationComplaintIntel.headache.examCranialNervesIntact")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.headache.examPerrla")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.examPupilsEqualAndReactive")).toBe(true);
   });
 
   it("exposes CT/LP/neuro consult MDM while hiding EKG and wrong-domain pathways", () => {
     const headacheTemplate = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "headache") ?? null;
     const headacheMdm = buildMdmTemplateDropdownOptions(headacheTemplate).map((option) => option.fragmentKey);
     expect(headacheMdm).toContain("providerDocumentationComplaintIntel.headache.mdmCtHeadReviewed");
-    expect(headacheMdm).toContain("providerDocumentationComplaintIntel.headache.mdmLpConsidered");
+    expect(headacheMdm).toContain("providerDocumentationComplaintIntel.headache.mdmLumbarPunctureReviewed");
     expect(headacheMdm).toContain("providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage");
     expect(headacheMdm).toContain("erMseMdmChips.waNeurologic");
     expect(headacheMdm).not.toContain("erMseMdmChips.planEcg");
@@ -243,14 +243,14 @@ describe("providerDocumentationHeadacheGovernance — MEDUI.ED.ME.2K", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.headache.dispNeurologyConsultConsidered")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.headache.dispNeurologyFollowUpRecommended")).toBe(true);
 
     const migraineTemplate =
       PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "migraine_headache_complaint_v1") ?? null;
     const migraineMdm = buildMdmTemplateDropdownOptions(migraineTemplate).map((option) => option.fragmentKey);
-    expect(migraineMdm).toContain("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.mdmCtLabsReviewedIfObtained");
+    expect(migraineMdm).toContain("providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.mdmCtHeadReviewed");
     expect(migraineMdm).toContain(
-      "providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.mdmNeurologyFollowUpIfIndicated"
+      "providerDocumentationComplaintIntel.migraineHeadacheComplaintV1.planNeurologyFollowUpRecommended"
     );
   });
 
