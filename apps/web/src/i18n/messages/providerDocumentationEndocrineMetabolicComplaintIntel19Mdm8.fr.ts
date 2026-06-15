@@ -244,33 +244,5 @@ export const providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr = {
     "mdmAdmissionIfIndicated": "Revoir si pertinent : admission if indicated were obtained and incorporated into MDM.",
     "reassessFunctionalStatusWeakness": "Réévaluer et documenter : functional status weakness.",
     "dispReturnWorseningWeaknessInabilityToAmbulate": "La sortie doit refléter l'évolution clinique, l'hydratation et le risque patient; return worsening weakness inability to ambulate."
-  },
-  "nauseaVomitingMetabolicComplaintV1": {
-    "examGeneralAppearance": "Documenter l'aspect général et l'hydratation si évalués.",
-    "hpiDurationFrequencyOralIntake": "À documenter si pertinent : uration frequency oral intake.",
-    "hpiAbdominalPainDiabetesHistory": "À documenter si pertinent : bdominal pain diabetes history.",
-    "hpiPregnancyPossibilityIfApplicable": "À documenter si pertinent : regnancy possibility if applicable.",
-    "hpiMedicationToxinExposureDehydration": "À documenter si pertinent : edication toxin exposure dehydration.",
-    "rosNausea": "Évaluer : nausea.",
-    "rosVomiting": "Évaluer : vomiting.",
-    "rosAbdominalPain": "Évaluer : abdominal pain.",
-    "rosDeniesBloodInVomit": "Documenter si vérifié: denies Blood In Vomit.",
-    "rfSevereDehydrationConcern": "Revoir si pertinent : severe dehydration concern is present.",
-    "rfAlteredMentalStatus": "Revoir si pertinent : altered mental status is present.",
-    "examHydrationIfDocumented": "Documenter à l'examen si présent :  hydration if documented.",
-    "examAbdominalExamIfDocumented": "Documenter à l'examen si présent :  abdominal exam if documented.",
-    "examMentalStatusIfDocumented": "Documenter à l'examen si présent :  mental status if documented.",
-    "mdmNauseaVomitingMetabolicPresentation": "À documenter si pertinent : ausea vomiting metabolic presentation.",
-    "diffGiIllness": "Gi Illness à considérer dans le différentiel.",
-    "diffMetabolicDerangement": "Metabolic Derangement à considérer dans le différentiel.",
-    "diffDkaHhsConcern": "Dka Hhs Concern à considérer dans le différentiel.",
-    "diffPregnancyRelated": "Pregnancy Related à considérer dans le différentiel.",
-    "diffMedicationToxin": "Medication Toxin à considérer dans le différentiel.",
-    "mdmGlucoseMetabolicLabsReviewedIfObtained": "Revoir si pertinent : glucose metabolic labs reviewed if obtained were obtained and incorporated into MDM.",
-    "mdmAntiemeticFluidPlanIfGiven": "Revoir si pertinent : antiemetic fluid plan if given were obtained and incorporated into MDM.",
-    "mdmObGynEndocrinologyFollowUpIfIndicated": "Revoir si pertinent : ob gyn endocrinology follow up if indicated were obtained and incorporated into MDM.",
-    "mdmObservationIfHighRisk": "À documenter si pertinent : bservation if high risk.",
-    "reassessOralToleranceHydrationVomiting": "Réévaluer et documenter : oral tolerance hydration vomiting.",
-    "dispReturnInabilityToKeepFluidsWorseningSymptoms": "La sortie doit refléter l'évolution clinique, l'hydratation et le risque patient; return inability to keep fluids worsening symptoms."
   }
 } as const;

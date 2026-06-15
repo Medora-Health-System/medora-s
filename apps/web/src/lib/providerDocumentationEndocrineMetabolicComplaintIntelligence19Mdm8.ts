@@ -1,5 +1,6 @@
 /** Phase 19MDM.8 — Endocrine / metabolic complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildNauseaVomitingMetabolicComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const hyperglycemia = (key: string) => `providerDocumentationComplaintIntel.hyperglycemiaComplaintV1.${key}`;
 const hypoglycemia = (key: string) => `providerDocumentationComplaintIntel.hypoglycemiaComplaintV1.${key}`;
@@ -147,20 +148,9 @@ export const GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL: ProviderDocument
   followUpDisposition: [generalizedWeaknessMetabolic("dispReturnWorseningWeaknessInabilityToAmbulate")],
 });
 
-export const NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [nauseaVomitingMetabolic("hpiDurationFrequencyOralIntake"), nauseaVomitingMetabolic("hpiAbdominalPainDiabetesHistory"), nauseaVomitingMetabolic("hpiPregnancyPossibilityIfApplicable"), nauseaVomitingMetabolic("hpiMedicationToxinExposureDehydration")],
-  rosImportantPositives: [nauseaVomitingMetabolic("rosNausea"), nauseaVomitingMetabolic("rosVomiting"), nauseaVomitingMetabolic("rosAbdominalPain")],
-  rosImportantNegatives: [nauseaVomitingMetabolic("rosDeniesBloodInVomit")],
-  rosRedFlags: [nauseaVomitingMetabolic("rfSevereDehydrationConcern"), nauseaVomitingMetabolic("rfAlteredMentalStatus")],
-  physicalExam: { general: [nauseaVomitingMetabolic("examHydrationIfDocumented"), nauseaVomitingMetabolic("examAbdominalExamIfDocumented"), nauseaVomitingMetabolic("examMentalStatusIfDocumented"), nauseaVomitingMetabolic("examGeneralAppearance")] },
-  mdmWorkingAssessment: [nauseaVomitingMetabolic("mdmNauseaVomitingMetabolicPresentation")],
-  mdmDifferentialSynthesis: [nauseaVomitingMetabolic("diffGiIllness"), nauseaVomitingMetabolic("diffMetabolicDerangement"), nauseaVomitingMetabolic("diffDkaHhsConcern"), nauseaVomitingMetabolic("diffPregnancyRelated"), nauseaVomitingMetabolic("diffMedicationToxin")],
-  mdmDataReviewed: [nauseaVomitingMetabolic("mdmGlucoseMetabolicLabsReviewedIfObtained")],
-  mdmClinicalRationale: [nauseaVomitingMetabolic("mdmAntiemeticFluidPlanIfGiven"), nauseaVomitingMetabolic("mdmObGynEndocrinologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [nauseaVomitingMetabolic("mdmObservationIfHighRisk")],
-  reassessment: [nauseaVomitingMetabolic("reassessOralToleranceHydrationVomiting")],
-  followUpDisposition: [nauseaVomitingMetabolic("dispReturnInabilityToKeepFluidsWorseningSymptoms")],
-});
+export const NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL = buildNauseaVomitingMetabolicComplaintV1Intel(
+  nauseaVomitingMetabolic
+);
 
 export const ENDOCRINE_METABOLIC_COMPLAINT_V1_TEMPLATE_IDS = [
   "hyperglycemia_complaint_v1",

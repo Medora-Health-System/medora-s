@@ -168,9 +168,9 @@ describe("providerDocumentationNauseaVomitingGovernance — MEDUI.ED.ME.2C", () 
     });
     expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.rosNausea")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.rosVomiting")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiInabilityToToleratePo")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.diffDehydration")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiPregnancyConcernReviewed")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiUnableToTolerateOralIntake")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiConcernForDehydration")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiBeganToday")).toBe(true);
   });
 
   it("exposes hematemesis and bilious emesis coverage", () => {
@@ -181,7 +181,7 @@ describe("providerDocumentationNauseaVomitingGovernance — MEDUI.ED.ME.2C", () 
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(adultVisible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.rosDeniesHematemesis")).toBe(true);
-    expect(adultVisible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.rosDeniesBiliousEmesis")).toBe(true);
+    expect(adultVisible.has("providerDocumentationComplaintIntel.adultNauseaVomiting.hpiBiliousEmesis")).toBe(true);
 
     const pediatricVisible = collectNauseaVomitingVisibleStickyNoteFragmentKeys({
       templateId: "nausea_vomiting",
@@ -189,9 +189,8 @@ describe("providerDocumentationNauseaVomitingGovernance — MEDUI.ED.ME.2C", () 
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(
-      pediatricVisible.has("providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiBiliousEmesisReviewed")
-    ).toBe(true);
+    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiBiliousEmesis")).toBe(true);
+    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiStillMakingWetDiapers")).toBe(true);
   });
 
   it("exposes hydration and abdominal exam chips without wrong-domain global PE groups", () => {
@@ -213,20 +212,14 @@ describe("providerDocumentationNauseaVomitingGovernance — MEDUI.ED.ME.2C", () 
     expect(examSectionIds).toEqual(["general", "heent", "abdomen", "reassessment"]);
   });
 
-  it("exposes gastroenteritis, hyperemesis gravidarum, and cannabinoid hyperemesis MDM chips", () => {
+  it("exposes gastroenteritis MDM and gold-standard plan chips", () => {
     const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "adult_nausea_vomiting") ?? null;
     const options = buildMdmTemplateDropdownOptions(template);
     const fragmentKeys = options.map((option) => option.fragmentKey);
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.diffViralGastroenteritis");
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.diffHyperemesisGravidarum");
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.diffCannabinoidHyperemesis");
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.mdmPoChallengePerformed");
-    expect(fragmentKeys).toContain(
-      "providerDocumentationComplaintIntel.adultNauseaVomiting.mdmAntiemeticTherapyAdministeredConsidered"
-    );
-    expect(fragmentKeys).toContain(
-      "providerDocumentationComplaintIntel.adultNauseaVomiting.mdmIvFluidsAdministeredConsidered"
-    );
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.diffGastroenteritis");
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.planIvFluidsAdministered");
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.planOndansetronPrescribed");
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultNauseaVomiting.impViralGastroenteritis");
   });
 
   it("keeps template activation sticky-note only with no auto-population", () => {

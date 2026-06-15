@@ -833,7 +833,7 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
       "providerDocumentationComplaintIntel.pediatricAsthmaWheezing.diffAsthmaExacerbation"
     );
     expect(vomiting?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.diffViralGastroenteritis"
+      "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.diffGastroenteritis"
     );
     expect(diarrhea?.complaintIntelligence).toBe(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL);
     expect(fever?.promptReminderKeys).toContain("providerDocumentationPromptReminders.pediatricFeverSourceReminder");
@@ -1106,7 +1106,7 @@ describe("provider documentation complaint intelligence (19N.11 Batch 8)", () =>
     const refill = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "medication_refill");
     const obs = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "observation_reassessment");
     expect(nv?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiNauseaDurationReviewed"
+      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiBeganToday"
     );
     expect(nv?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.adultNauseaVomiting.diffBowelObstruction"
@@ -1134,7 +1134,7 @@ describe("provider documentation complaint intelligence (19N.11 Batch 8)", () =>
 
   it("leaves Batch 1–7 intelligence bundles unchanged", () => {
     expect(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiCaregiverHistorianUsed"
+      "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiCaregiverPresent"
     );
     expect(ALLERGIC_REACTION_RASH_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.allergicReactionRash.diffAnaphylaxis"
@@ -1281,7 +1281,7 @@ describe("provider documentation complaint intelligence (19N.12 Batch 9)", () =>
       "providerDocumentationComplaintIntel.headInjury.diffConcussion"
     );
     expect(ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiNauseaDurationReviewed"
+      "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiBeganToday"
     );
   });
 

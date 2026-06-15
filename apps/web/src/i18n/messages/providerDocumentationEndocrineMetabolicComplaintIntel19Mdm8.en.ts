@@ -244,33 +244,5 @@ export const providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En = {
     "mdmAdmissionIfIndicated": "Review whether admission if indicated were obtained and incorporated into MDM.",
     "reassessFunctionalStatusWeakness": "Reassess and document functional status weakness.",
     "dispReturnWorseningWeaknessInabilityToAmbulate": "Disposition should reflect clinical course, reassessment, medication access/adherence, hydration status, available results, and patient-specific risk; return worsening weakness inability to ambulate."
-  },
-  "nauseaVomitingMetabolicComplaintV1": {
-    "examGeneralAppearance": "Document general appearance and hydration if assessed.",
-    "hpiDurationFrequencyOralIntake": "Consider documenting duration frequency oral intake.",
-    "hpiAbdominalPainDiabetesHistory": "Consider documenting abdominal pain diabetes history.",
-    "hpiPregnancyPossibilityIfApplicable": "Consider documenting pregnancy possibility if applicable.",
-    "hpiMedicationToxinExposureDehydration": "Consider documenting medication toxin exposure dehydration.",
-    "rosNausea": "Assess for nausea.",
-    "rosVomiting": "Assess for vomiting.",
-    "rosAbdominalPain": "Assess for abdominal pain.",
-    "rosDeniesBloodInVomit": "Document if verified: denies Blood In Vomit.",
-    "rfSevereDehydrationConcern": "Review whether severe dehydration concern is present.",
-    "rfAlteredMentalStatus": "Review whether altered mental status is present.",
-    "examHydrationIfDocumented": "Document if present on exam: hydration if documented.",
-    "examAbdominalExamIfDocumented": "Document if present on exam: abdominal exam if documented.",
-    "examMentalStatusIfDocumented": "Document if present on exam: mental status if documented.",
-    "mdmNauseaVomitingMetabolicPresentation": "Consider documenting nausea vomiting metabolic presentation.",
-    "diffGiIllness": "Gi Illness considered in differential.",
-    "diffMetabolicDerangement": "Metabolic Derangement considered in differential.",
-    "diffDkaHhsConcern": "Dka Hhs Concern considered in differential.",
-    "diffPregnancyRelated": "Pregnancy Related considered in differential.",
-    "diffMedicationToxin": "Medication Toxin considered in differential.",
-    "mdmGlucoseMetabolicLabsReviewedIfObtained": "Review whether glucose metabolic labs reviewed if obtained were obtained and incorporated into MDM.",
-    "mdmAntiemeticFluidPlanIfGiven": "Review whether antiemetic fluid plan if given were obtained and incorporated into MDM.",
-    "mdmObGynEndocrinologyFollowUpIfIndicated": "Review whether ob gyn endocrinology follow up if indicated were obtained and incorporated into MDM.",
-    "mdmObservationIfHighRisk": "Consider documenting observation if high risk.",
-    "reassessOralToleranceHydrationVomiting": "Reassess and document oral tolerance hydration vomiting.",
-    "dispReturnInabilityToKeepFluidsWorseningSymptoms": "Disposition should reflect clinical course, reassessment, medication access/adherence, hydration status, available results, and patient-specific risk; return inability to keep fluids worsening symptoms."
   }
 } as const;

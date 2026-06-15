@@ -31,6 +31,10 @@ import type {
   ProviderDocumentationTemplateStringField,
 } from "./providerDocumentationModel";
 import {
+  buildAdultNauseaVomitingComplaintIntel,
+  buildPediatricNauseaVomitingComplaintIntel,
+} from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
+import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
 } from "./providerDocumentationGiComplaintIntelligence19Mdm2";
@@ -2172,109 +2176,7 @@ export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationCom
 });
 
 /** Pediatric vomiting / diarrhea — gastroenteritis / dehydration documentation framework. */
-export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    pedGastro("hpiCaregiverHistorianUsed"),
-    pedGastro("hpiVomitingDurationReviewed"),
-    pedGastro("hpiDiarrheaDurationReviewed"),
-    pedGastro("hpiFrequencyReviewed"),
-    pedGastro("hpiBloodInStoolReviewed"),
-    pedGastro("hpiBiliousEmesisReviewed"),
-    pedGastro("hpiFeverReviewed"),
-    pedGastro("hpiSickContactsReviewed"),
-    pedGastro("hpiOralIntakeReviewed"),
-    pedGastro("hpiUrineOutputReviewed"),
-    pedGastro("hpiAbdominalPainReviewed"),
-    pedGastro("hpiRecentTravelFoodExposureReviewed"),
-  ],
-  rosImportantPositives: [
-    pedGastro("rosVomiting"),
-    pedGastro("rosDiarrhea"),
-    pedGastro("rosAbdominalPain"),
-    pedGastro("rosFever"),
-    pedGastro("rosDecreasedOralIntake"),
-    pedGastro("rosDecreasedUrineOutput"),
-  ],
-  rosImportantNegatives: [
-    pedGastro("rosDeniesBiliousEmesis"),
-    pedGastro("rosDeniesBloodyStool"),
-    pedGastro("rosDeniesSevereAbdominalPain"),
-    pedGastro("rosDeniesLethargy"),
-    pedGastro("rosDeniesRash"),
-  ],
-  rosRedFlags: [
-    pedGastro("rfDehydrationConcern"),
-    pedGastro("rfBiliousVomiting"),
-    pedGastro("rfBloodyStool"),
-    pedGastro("rfSevereAbdominalPain"),
-    pedGastro("rfLethargy"),
-    pedGastro("rfInabilityToTolerateOralIntake"),
-    pedGastro("rfIntussusceptionObstructionConcern"),
-  ],
-  physicalExam: {
-    general: [
-      pedGastro("examNonToxicAppearing"),
-      pedGastro("examHydrationStatusAssessed"),
-      pedGastro("examActiveInteractiveWithCaregiver"),
-    ],
-    heent: [
-      pedGastro("examMoistMucousMembranes"),
-      pedGastro("examDryMucousMembranes"),
-      pedGastro("examCapillaryRefillNormal"),
-    ],
-    abdomen: [
-      pedGastro("examAbdomenSoft"),
-      pedGastro("examAbdomenNonTender"),
-      pedGastro("examNoGuarding"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    pedGastro("mdmGastroenteritisConsidered"),
-    pedGastro("mdmDehydrationConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    pedGastro("diffViralGastroenteritis"),
-    pedGastro("diffDehydration"),
-    pedGastro("diffFoodborneIllness"),
-    pedGastro("diffAppendicitis"),
-    pedGastro("diffUti"),
-    pedGastro("diffIntussusception"),
-    pedGastro("diffBowelObstruction"),
-    pedGastro("diffElectrolyteAbnormality"),
-    pedGastro("diffDkaIfClinicallyIndicated"),
-  ],
-  mdmDataReviewed: [
-    pedGastro("mdmUrinalysisConsideredIfUrinarySymptoms"),
-    pedGastro("mdmGlucoseConsideredIfConcerningFeatures"),
-    pedGastro("mdmLabsConsideredForDehydration"),
-  ],
-  mdmClinicalRationale: [
-    pedGastro("mdmHydrationStatusAssessed"),
-    pedGastro("mdmOralRehydrationTrialPerformed"),
-    pedGastro("mdmAntiemeticTherapyConsideredAdministered"),
-    pedGastro("mdmAbdominalRedFlagsReviewed"),
-    pedGastro("mdmCaregiverReturnPrecautionsDiscussed"),
-  ],
-  mdmPlanSummary: [
-    pedGastro("mdmIvFluidsConsideredAdministered"),
-    pedGastro("mdmSerialReassessmentPerformed"),
-  ],
-  mdmImmediateActionsRationale: [pedGastro("mdmAntiemeticIfIndicated")],
-  mdmAdmitObserveDischarge: [pedGastro("mdmAdmissionConsideredIfDehydrated")],
-  reassessment: [
-    pedGastro("reassessToleratingOralIntake"),
-    pedGastro("reassessVomitingImproved"),
-    pedGastro("reassessHydrationStatusImproved"),
-    pedGastro("reassessAbdominalExamReassuring"),
-    pedGastro("reassessCaregiverComfortableWithPlan"),
-  ],
-  followUpDisposition: [
-    pedGastro("dispOralHydrationInstructionsProvided"),
-    pedGastro("dispReturnDehydrationSigns"),
-    pedGastro("dispReturnBiliousVomitingBloodyStoolSeverePain"),
-    pedGastro("dispPediatricianFollowUpRecommended"),
-  ],
-});
+export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL = buildPediatricNauseaVomitingComplaintIntel(pedGastro);
 
 /** UTI / urinary symptoms — cystitis / pyelonephritis documentation framework. */
 export const UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -2637,109 +2539,7 @@ export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationCompla
 });
 
 /** Adult nausea / vomiting — GI red flag and dehydration documentation framework. */
-export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    adultNv("hpiNauseaDurationReviewed"),
-    adultNv("hpiVomitingDurationReviewed"),
-    adultNv("hpiNumberOfEpisodesReviewed"),
-    adultNv("hpiInabilityToToleratePo"),
-    adultNv("hpiAbdominalPainReviewed"),
-    adultNv("hpiFeverReviewed"),
-    adultNv("hpiDiarrheaReviewed"),
-    adultNv("hpiHeadacheReviewed"),
-    adultNv("hpiPregnancyConcernReviewed"),
-    adultNv("hpiSickContactsReviewed"),
-    adultNv("hpiRecentFoodExposureReviewed"),
-    adultNv("hpiRecentMedicationChangeReviewed"),
-    adultNv("hpiAlcoholSubstanceUseReviewed"),
-  ],
-  rosImportantPositives: [
-    adultNv("rosNausea"),
-    adultNv("rosVomiting"),
-    adultNv("rosAbdominalPain"),
-    adultNv("rosDiarrhea"),
-    adultNv("rosFever"),
-    adultNv("rosDizziness"),
-    adultNv("rosDecreasedOralIntake"),
-  ],
-  rosImportantNegatives: [
-    adultNv("rosDeniesSevereAbdominalPain"),
-    adultNv("rosDeniesHematemesis"),
-    adultNv("rosDeniesBiliousEmesis"),
-    adultNv("rosDeniesChestPain"),
-    adultNv("rosDeniesSevereHeadache"),
-    adultNv("rosDeniesPregnancyConcern"),
-  ],
-  rosRedFlags: [
-    adultNv("rfDehydrationConcern"),
-    adultNv("rfGiBleedConcern"),
-    adultNv("rfBowelObstructionConcern"),
-    adultNv("rfSurgicalAbdomenConcern"),
-    adultNv("rfIntracranialProcessConcern"),
-    adultNv("rfDkaMetabolicConcern"),
-    adultNv("rfPregnancyRelatedVomitingConcern"),
-  ],
-  physicalExam: {
-    general: [adultNv("examUncomfortableAppearing"), adultNv("examNonToxicAppearing")],
-    heent: [adultNv("examDryMucousMembranes")],
-    abdomen: [
-      adultNv("examAbdomenSoft"),
-      adultNv("examAbdomenNonTender"),
-      adultNv("examEpigastricTenderness"),
-      adultNv("examNoGuarding"),
-      adultNv("examNoReboundTenderness"),
-    ],
-    neuroPsych: [adultNv("examNeurologicallyIntact")],
-  },
-  mdmWorkingAssessment: [
-    adultNv("mdmSurgicalAbdomenConsidered"),
-    adultNv("mdmDehydrationConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    adultNv("diffViralGastroenteritis"),
-    adultNv("diffGastritis"),
-    adultNv("diffFoodborneIllness"),
-    adultNv("diffDehydration"),
-    adultNv("diffBowelObstruction"),
-    adultNv("diffAppendicitis"),
-    adultNv("diffCholecystitis"),
-    adultNv("diffPancreatitis"),
-    adultNv("diffDkaMetabolicAbnormality"),
-    adultNv("diffPregnancyRelatedVomiting"),
-    adultNv("diffHyperemesisGravidarum"),
-    adultNv("diffCannabinoidHyperemesis"),
-  ],
-  mdmDataReviewed: [
-    adultNv("mdmLabsReviewedIfObtained"),
-    adultNv("mdmElectrolytesReviewed"),
-    adultNv("mdmPregnancyTestingReviewedIfApplicable"),
-  ],
-  mdmClinicalRationale: [
-    adultNv("mdmHydrationStatusAssessed"),
-    adultNv("mdmAbdominalImagingConsideredIfRedFlags"),
-    adultNv("mdmPoChallengePerformed"),
-    adultNv("mdmSerialReassessmentPerformed"),
-  ],
-  mdmPlanSummary: [
-    adultNv("mdmAntiemeticTherapyAdministeredConsidered"),
-    adultNv("mdmIvFluidsAdministeredConsidered"),
-  ],
-  mdmAdmitObserveDischarge: [adultNv("mdmAdmissionConsideredPersistentVomitingDehydration")],
-  reassessment: [
-    adultNv("reassessNauseaImproved"),
-    adultNv("reassessVomitingControlled"),
-    adultNv("reassessToleratingOralIntake"),
-    adultNv("reassessAbdominalExamReassuring"),
-    adultNv("reassessHydrationStatusImproved"),
-  ],
-  followUpDisposition: [
-    adultNv("dispDischargeAfterSuccessfulPoChallenge"),
-    adultNv("dispReturnPersistentVomiting"),
-    adultNv("dispReturnSevereAbdominalPain"),
-    adultNv("dispReturnBloodInVomitOrStool"),
-    adultNv("dispFollowUpRecommended"),
-  ],
-});
+export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL = buildAdultNauseaVomitingComplaintIntel(adultNv);
 
 /** Adult diarrhea — infectious diarrhea / C. diff documentation framework. */
 export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -4049,6 +3849,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH18_NEURO_EXPANSION_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
+  "ear_pain",
 ] as const;
 
 export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationComplaintIntelligence): string[] {

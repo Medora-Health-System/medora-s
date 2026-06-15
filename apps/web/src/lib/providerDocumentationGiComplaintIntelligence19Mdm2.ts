@@ -1,5 +1,6 @@
 /** Phase 19MDM.2 — GI / abdominal complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildNauseaVomitingComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const abdominalPain = (key: string) => `providerDocumentationComplaintIntel.abdominalPainComplaintV1.${key}`;
 const nauseaVomiting = (key: string) => `providerDocumentationComplaintIntel.nauseaVomitingComplaintV1.${key}`;
@@ -26,21 +27,7 @@ export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIn
   followUpDisposition: [abdominalPain("dispReturnPrecautions"), abdominalPain("dispDispositionReflectsCourse")],
 });
 
-export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [nauseaVomiting("hpiDurationFrequency"), nauseaVomiting("hpiEmesisCharacter"), nauseaVomiting("hpiOralIntakeDehydration"), nauseaVomiting("hpiAssocAbdominalPain"), nauseaVomiting("hpiPregnancyDiabetesRisk")],
-  rosImportantPositives: [nauseaVomiting("rosVomiting"), nauseaVomiting("rosAbdominalPain"), nauseaVomiting("rosFever")],
-  rosImportantNegatives: [nauseaVomiting("rosDeniesChestPain")],
-  rosRedFlags: [nauseaVomiting("rfDehydration"), nauseaVomiting("rfGiBleedConcern"), nauseaVomiting("rfObstructionConcern")],
-  physicalExam: { abdomen: [nauseaVomiting("examHydrationStatus"), nauseaVomiting("examAbdominalExam"), nauseaVomiting("examNeuroScreen")], general: [nauseaVomiting("examGeneralAppearance")] },
-  mdmWorkingAssessment: [nauseaVomiting("mdmNauseaVomitingSyndrome")],
-  mdmDifferentialSynthesis: [nauseaVomiting("diffGastroenteritis"), nauseaVomiting("diffObstruction"), nauseaVomiting("diffPregnancyRelated"), nauseaVomiting("diffMetabolic"), nauseaVomiting("diffCns"), nauseaVomiting("diffMedicationToxin")],
-  mdmDataReviewed: [nauseaVomiting("mdmLabsReviewedIfObtained")],
-  mdmClinicalRationale: [nauseaVomiting("mdmAntiemeticFluidsPlan")],
-  mdmPlanSummary: [nauseaVomiting("mdmSymptomaticSupportPlan")],
-  mdmAdmitObserveDischarge: [nauseaVomiting("mdmObservationIfPersistent")],
-  reassessment: [nauseaVomiting("reassessVomitingControlled"), nauseaVomiting("reassessHydration")],
-  followUpDisposition: [nauseaVomiting("dispFluidToleranceFollowUp")],
-});
+export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL = buildNauseaVomitingComplaintV1Intel(nauseaVomiting);
 
 export const DIARRHEA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [diarrhea("hpiFrequencyDuration"), diarrhea("hpiBloodMucusTravel"), diarrhea("hpiDehydrationImmunocompromised")],

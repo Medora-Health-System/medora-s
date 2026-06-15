@@ -101,30 +101,33 @@ export const NAUSEA_VOMITING_DENIED_HPI_FRAGMENT_PREFIXES = [
   "providerDocumentationComplaintIntel.ankleFootInjuryComplaintV1.",
 ] as const;
 
-export const NAUSEA_VOMITING_ALLOWED_EXAM_SECTION_IDS = ["general", "heent", "abdomen", "reassessment"] as const;
+export const NAUSEA_VOMITING_ALLOWED_EXAM_SECTION_IDS = [
+  "general",
+  "heent",
+  "abdomen",
+  "neuroPsych",
+  "reassessment",
+] as const;
 
 export const NAUSEA_VOMITING_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiNauseaDurationReviewed",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiVomitingDurationReviewed",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiInabilityToToleratePo",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiPregnancyConcernReviewed",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiBeganToday",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiMultipleEpisodesVomiting",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiUnableToTolerateOralIntake",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.hpiConcernForDehydration",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.rosNausea",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.rosVomiting",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.rosDeniesHematemesis",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.rosDeniesBiliousEmesis",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.examDryMucousMembranes",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.examEpigastricTenderness",
   "providerDocumentationComplaintIntel.adultNauseaVomiting.examNoGuarding",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.examNoReboundTenderness",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffViralGastroenteritis",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffDehydration",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffHyperemesisGravidarum",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffCannabinoidHyperemesis",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.mdmPoChallengePerformed",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.mdmAntiemeticTherapyAdministeredConsidered",
-  "providerDocumentationComplaintIntel.adultNauseaVomiting.mdmIvFluidsAdministeredConsidered",
-  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiBiliousEmesisReviewed",
-  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiUrineOutputReviewed",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffGastroenteritis",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.diffBowelObstruction",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.riskSelfLimitedIllnessLow",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.impViralGastroenteritis",
+  "providerDocumentationComplaintIntel.adultNauseaVomiting.planIvFluidsAdministered",
+  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiParentReportsVomiting",
+  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiBiliousEmesis",
+  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiStillMakingWetDiapers",
 ] as const;
 
 const DENIED_STICKY_NOTE_FRAGMENT_KEY_SET = new Set<string>(NAUSEA_VOMITING_DENIED_STICKY_NOTE_FRAGMENT_KEYS);
