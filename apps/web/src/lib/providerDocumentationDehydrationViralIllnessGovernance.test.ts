@@ -106,6 +106,7 @@ describe("providerDocumentationDehydrationViralIllnessGovernance — MEDUI.ED.ME
       "mdmDataReviewed",
       "mdmRiskStratification",
       "mdmClinicalRationale",
+      "clinicalImpression",
       "mdmPlanSummary",
     ]);
   });
