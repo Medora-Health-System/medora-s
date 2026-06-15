@@ -14,6 +14,7 @@ import { providerDocumentationShortnessOfBreathComplaintIntelFr } from "./provid
 import { providerDocumentationChestPainComplaintIntelFr } from "./providerDocumentationChestPainComplaintIntel.fr";
 import { providerDocumentationHeadacheComplaintIntelFr } from "./providerDocumentationHeadacheComplaintIntel.fr";
 import { providerDocumentationCoughUriComplaintIntelFr } from "./providerDocumentationCoughUriComplaintIntel.fr";
+import { providerDocumentationAdultFeverComplaintIntelFr } from "./providerDocumentationAdultFeverComplaintIntel.fr";
 import { providerDocumentationDizzinessVertigoComplaintIntelFr } from "./providerDocumentationDizzinessVertigoComplaintIntel.fr";
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.fr";
 
@@ -10499,6 +10500,7 @@ export default {
     ...providerDocumentationChestPainComplaintIntelFr,
     ...providerDocumentationHeadacheComplaintIntelFr,
     ...providerDocumentationCoughUriComplaintIntelFr,
+    ...providerDocumentationAdultFeverComplaintIntelFr,
     ...providerDocumentationDizzinessVertigoComplaintIntelFr,
     ...providerDocumentationGiComplaintIntel19Mdm2Fr,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,

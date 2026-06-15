@@ -93,24 +93,24 @@ export const ADULT_FEVER_ALLOWED_EXAM_SECTION_IDS = [
 ] as const;
 
 export const ADULT_FEVER_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
-  "providerDocumentationComplaintIntel.feverComplaintV1.hpiDurationTmaxAntipyretics",
-  "providerDocumentationComplaintIntel.feverComplaintV1.hpiCoughSoreThroatUri",
-  "providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinaryAbdominalRash",
-  "providerDocumentationComplaintIntel.feverComplaintV1.hpiImmunocompromisedTravelContacts",
+  "providerDocumentationComplaintIntel.feverComplaintV1.hpiFeverBeganToday",
+  "providerDocumentationComplaintIntel.feverComplaintV1.hpiCough",
+  "providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinarySymptoms",
+  "providerDocumentationComplaintIntel.feverComplaintV1.hpiImmunocompromisedHistory",
   "providerDocumentationComplaintIntel.feverComplaintV1.rosFever",
   "providerDocumentationComplaintIntel.feverComplaintV1.rfPersistentHighFever",
   "providerDocumentationComplaintIntel.feverComplaintV1.rfAlteredMentalStatus",
-  "providerDocumentationComplaintIntel.feverComplaintV1.examGeneralAppearance",
-  "providerDocumentationComplaintIntel.feverComplaintV1.examSkinFindingsIfDocumented",
-  "providerDocumentationComplaintIntel.feverComplaintV1.examMentalStatusIfDocumented",
+  "providerDocumentationComplaintIntel.feverComplaintV1.examWellAppearing",
+  "providerDocumentationComplaintIntel.feverComplaintV1.examRashPresent",
+  "providerDocumentationComplaintIntel.feverComplaintV1.examAlertAndOriented",
   "providerDocumentationComplaintIntel.feverComplaintV1.diffViralSyndrome",
   "providerDocumentationComplaintIntel.feverComplaintV1.diffPneumonia",
-  "providerDocumentationComplaintIntel.feverComplaintV1.diffUti",
+  "providerDocumentationComplaintIntel.feverComplaintV1.diffUrinaryTractInfection",
   "providerDocumentationComplaintIntel.feverComplaintV1.diffCellulitis",
-  "providerDocumentationComplaintIntel.feverComplaintV1.diffSepsisConsideration",
-  "providerDocumentationComplaintIntel.feverComplaintV1.diffMeningitisConsideration",
-  "providerDocumentationComplaintIntel.feverComplaintV1.mdmLabsImagingReviewedIfObtained",
-  "providerDocumentationComplaintIntel.feverComplaintV1.mdmAntipyreticFluidPlanIfGiven",
+  "providerDocumentationComplaintIntel.feverComplaintV1.diffSepsis",
+  "providerDocumentationComplaintIntel.feverComplaintV1.diffMeningitis",
+  "providerDocumentationComplaintIntel.feverComplaintV1.mdmCbcReviewed",
+  "providerDocumentationComplaintIntel.feverComplaintV1.planAntipyreticTherapyAdministered",
 ] as const;
 
 const DENIED_STICKY_NOTE_FRAGMENT_KEY_SET = new Set<string>(ADULT_FEVER_DENIED_STICKY_NOTE_FRAGMENT_KEYS);

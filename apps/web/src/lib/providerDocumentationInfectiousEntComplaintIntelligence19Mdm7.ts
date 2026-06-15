@@ -1,5 +1,6 @@
 /** Phase 19MDM.7 — Infectious / ENT complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildFeverComplaintV1Intel } from "./providerDocumentationAdultFeverComplaintIntelGoldStandard";
 import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
 import { buildDehydrationViralIllnessComplaintIntel } from "./providerDocumentationDehydrationViralIllnessComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
@@ -14,20 +15,7 @@ const rashSkin = (key: string) => `providerDocumentationComplaintIntel.rashSkinC
 const soreThroatInfectious = (key: string) => `providerDocumentationComplaintIntel.soreThroatInfectiousComplaintV1.${key}`;
 const dehydrationViralIllness = (key: string) => `providerDocumentationComplaintIntel.dehydrationViralIllnessComplaintV1.${key}`;
 
-export const FEVER_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [fever("hpiDurationTmaxAntipyretics"), fever("hpiCoughSoreThroatUri"), fever("hpiUrinaryAbdominalRash"), fever("hpiImmunocompromisedTravelContacts")],
-  rosImportantPositives: [fever("rosFever"), fever("rosCough"), fever("rosSoreThroat")],
-  rosImportantNegatives: [fever("rosDeniesAlteredMentalStatus")],
-  rosRedFlags: [fever("rfPersistentHighFever"), fever("rfAlteredMentalStatus")],
-  physicalExam: { skin: [fever("examHydrationIfDocumented"), fever("examRespiratoryStatusIfDocumented"), fever("examMentalStatusIfDocumented"), fever("examSkinFindingsIfDocumented")], general: [fever("examGeneralAppearance")] },
-  mdmWorkingAssessment: [fever("mdmFeverPresentation")],
-  mdmDifferentialSynthesis: [fever("diffViralSyndrome"), fever("diffPneumonia"), fever("diffUti"), fever("diffCellulitis"), fever("diffSepsisConsideration"), fever("diffMeningitisConsideration")],
-  mdmDataReviewed: [fever("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [fever("mdmAntipyreticFluidPlanIfGiven"), fever("mdmInfectiousDiseaseFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [fever("mdmObservationIfHighRisk")],
-  reassessment: [fever("reassessFeverHydrationStatus")],
-  followUpDisposition: [fever("dispReturnWorseningFeverConfusionDehydration")],
-});
+export const FEVER_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = buildFeverComplaintV1Intel(fever);
 
 export const CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [cellulitisSkinInfection("hpiRednessSwellingWarmth"), cellulitisSkinInfection("hpiDrainageTraumaInsectBite"), cellulitisSkinInfection("hpiFeverStreakingImmunocompromised")],

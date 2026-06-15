@@ -133,11 +133,11 @@ describe("providerDocumentationAdultFeverGovernance — MEDUI.ED.ME.2G", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiDurationTmaxAntipyretics")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiFeverBeganToday")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.rosFever")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiCoughSoreThroatUri")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinaryAbdominalRash")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiImmunocompromisedTravelContacts")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiCough")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinarySymptoms")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiImmunocompromisedHistory")).toBe(
       true
     );
     expect(visible.has("erMseRosChips.posFever")).toBe(true);
@@ -193,9 +193,9 @@ describe("providerDocumentationAdultFeverGovernance — MEDUI.ED.ME.2G", () => {
     expect(visible.has("erMseExamChips.skinRashPresent")).toBe(true);
     expect(visible.has("erMseExamChips.mskTendernessPresent")).toBe(false);
     expect(visible.has("erMseExamChips.skinLacerationPresent")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.examMentalStatusIfDocumented")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffMeningitisConsideration")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinaryAbdominalRash")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.examAlertAndOriented")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffMeningitis")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.hpiUrinarySymptoms")).toBe(true);
   });
 
   it("exposes infectious differentials, sepsis workup, and infection diagnostics without ACS pathways", () => {
@@ -217,13 +217,11 @@ describe("providerDocumentationAdultFeverGovernance — MEDUI.ED.ME.2G", () => {
     });
     expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffViralSyndrome")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffPneumonia")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffUti")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffUrinaryTractInfection")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffCellulitis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffSepsisConsideration")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.mdmLabsImagingReviewedIfObtained")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.mdmAntipyreticFluidPlanIfGiven")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.diffSepsis")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.mdmCbcReviewed")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.feverComplaintV1.planAntipyreticTherapyAdministered")).toBe(
       true
     );
   });

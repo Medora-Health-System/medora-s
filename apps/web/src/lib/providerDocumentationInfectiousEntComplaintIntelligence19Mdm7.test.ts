@@ -167,7 +167,7 @@ describe("provider documentation infectious / ENT complaint intelligence (19MDM.
     const options = buildMdmTemplateDropdownOptions(template ?? null);
     const existing = options.filter((option) => option.group === "existing");
     expect(existing.some((option) => option.fragmentKey.includes("feverComplaintV1"))).toBe(true);
-    expect(options.filter((option) => option.group === "highValue").length).toBe(6);
+    expect(options.filter((option) => option.group === "highValue").length).toBe(5);
   });
 
   it("renders template picker subgroup support in workspace", () => {
