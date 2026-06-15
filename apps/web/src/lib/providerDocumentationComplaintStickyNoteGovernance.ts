@@ -81,6 +81,12 @@ import {
   resolveDizzinessVertigoHpiChipGroupsForTemplate,
   resolveDizzinessVertigoRosChipGroupsForTemplate,
 } from "./providerDocumentationDizzinessVertigoGovernance";
+import {
+  filterTraumaMdmTemplateOptionsForTemplate,
+  resolveTraumaExamChipGroupsForTemplate,
+  resolveTraumaHpiChipGroupsForTemplate,
+  resolveTraumaRosChipGroupsForTemplate,
+} from "./providerDocumentationTraumaGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -94,31 +100,34 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDizzinessVertigoRosChipGroupsForTemplate(
+  return resolveTraumaRosChipGroupsForTemplate(
     templateId,
-    resolveChestPainRosChipGroupsForTemplate(
+    resolveDizzinessVertigoRosChipGroupsForTemplate(
       templateId,
-      resolveHeadacheRosChipGroupsForTemplate(
+      resolveChestPainRosChipGroupsForTemplate(
         templateId,
-        resolveRashRosChipGroupsForTemplate(
+        resolveHeadacheRosChipGroupsForTemplate(
           templateId,
-          resolveFemalePelvicGynRosChipGroupsForTemplate(
+          resolveRashRosChipGroupsForTemplate(
             templateId,
-            resolveBackPainRosChipGroupsForTemplate(
+            resolveFemalePelvicGynRosChipGroupsForTemplate(
               templateId,
-              resolveAdultFeverRosChipGroupsForTemplate(
+              resolveBackPainRosChipGroupsForTemplate(
                 templateId,
-                resolveCoughUriRosChipGroupsForTemplate(
+                resolveAdultFeverRosChipGroupsForTemplate(
                   templateId,
-                  resolveShortnessOfBreathRosChipGroupsForTemplate(
+                  resolveCoughUriRosChipGroupsForTemplate(
                     templateId,
-                    resolveAbdominalPainRosChipGroupsForTemplate(
+                    resolveShortnessOfBreathRosChipGroupsForTemplate(
                       templateId,
-                      resolveNauseaVomitingRosChipGroupsForTemplate(
+                      resolveAbdominalPainRosChipGroupsForTemplate(
                         templateId,
-                        resolveDiarrheaRosChipGroupsForTemplate(
+                        resolveNauseaVomitingRosChipGroupsForTemplate(
                           templateId,
-                          resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+                          resolveDiarrheaRosChipGroupsForTemplate(
+                            templateId,
+                            resolveUrinaryRosChipGroupsForTemplate(templateId, baseGroups)
+                          )
                         )
                       )
                     )
@@ -137,31 +146,34 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDizzinessVertigoExamChipGroupsForTemplate(
+  return resolveTraumaExamChipGroupsForTemplate(
     templateId,
-    resolveChestPainExamChipGroupsForTemplate(
+    resolveDizzinessVertigoExamChipGroupsForTemplate(
       templateId,
-      resolveHeadacheExamChipGroupsForTemplate(
+      resolveChestPainExamChipGroupsForTemplate(
         templateId,
-        resolveRashExamChipGroupsForTemplate(
+        resolveHeadacheExamChipGroupsForTemplate(
           templateId,
-          resolveFemalePelvicGynExamChipGroupsForTemplate(
+          resolveRashExamChipGroupsForTemplate(
             templateId,
-            resolveBackPainExamChipGroupsForTemplate(
+            resolveFemalePelvicGynExamChipGroupsForTemplate(
               templateId,
-              resolveAdultFeverExamChipGroupsForTemplate(
+              resolveBackPainExamChipGroupsForTemplate(
                 templateId,
-                resolveCoughUriExamChipGroupsForTemplate(
+                resolveAdultFeverExamChipGroupsForTemplate(
                   templateId,
-                  resolveShortnessOfBreathExamChipGroupsForTemplate(
+                  resolveCoughUriExamChipGroupsForTemplate(
                     templateId,
-                    resolveAbdominalPainExamChipGroupsForTemplate(
+                    resolveShortnessOfBreathExamChipGroupsForTemplate(
                       templateId,
-                      resolveNauseaVomitingExamChipGroupsForTemplate(
+                      resolveAbdominalPainExamChipGroupsForTemplate(
                         templateId,
-                        resolveDiarrheaExamChipGroupsForTemplate(
+                        resolveNauseaVomitingExamChipGroupsForTemplate(
                           templateId,
-                          resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+                          resolveDiarrheaExamChipGroupsForTemplate(
+                            templateId,
+                            resolveUrinaryExamChipGroupsForTemplate(templateId, baseGroups)
+                          )
                         )
                       )
                     )
@@ -180,29 +192,32 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDizzinessVertigoHpiChipGroupsForTemplate(
+  return resolveTraumaHpiChipGroupsForTemplate(
     templateId,
-    resolveChestPainHpiChipGroupsForTemplate(
+    resolveDizzinessVertigoHpiChipGroupsForTemplate(
       templateId,
-      resolveHeadacheHpiChipGroupsForTemplate(
+      resolveChestPainHpiChipGroupsForTemplate(
         templateId,
-        resolveRashHpiChipGroupsForTemplate(
+        resolveHeadacheHpiChipGroupsForTemplate(
           templateId,
-          resolveFemalePelvicGynHpiChipGroupsForTemplate(
+          resolveRashHpiChipGroupsForTemplate(
             templateId,
-            resolveBackPainHpiChipGroupsForTemplate(
+            resolveFemalePelvicGynHpiChipGroupsForTemplate(
               templateId,
-              resolveAdultFeverHpiChipGroupsForTemplate(
+              resolveBackPainHpiChipGroupsForTemplate(
                 templateId,
-                resolveCoughUriHpiChipGroupsForTemplate(
+                resolveAdultFeverHpiChipGroupsForTemplate(
                   templateId,
-                  resolveShortnessOfBreathHpiChipGroupsForTemplate(
+                  resolveCoughUriHpiChipGroupsForTemplate(
                     templateId,
-                    resolveAbdominalPainHpiChipGroupsForTemplate(
+                    resolveShortnessOfBreathHpiChipGroupsForTemplate(
                       templateId,
-                      resolveNauseaVomitingHpiChipGroupsForTemplate(
+                      resolveAbdominalPainHpiChipGroupsForTemplate(
                         templateId,
-                        resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+                        resolveNauseaVomitingHpiChipGroupsForTemplate(
+                          templateId,
+                          resolveDiarrheaHpiChipGroupsForTemplate(templateId, baseGroups)
+                        )
                       )
                     )
                   )
@@ -220,31 +235,34 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterDizzinessVertigoMdmTemplateOptionsForTemplate(
+  return filterTraumaMdmTemplateOptionsForTemplate(
     templateId,
-    filterChestPainMdmTemplateOptionsForTemplate(
+    filterDizzinessVertigoMdmTemplateOptionsForTemplate(
       templateId,
-      filterHeadacheMdmTemplateOptionsForTemplate(
+      filterChestPainMdmTemplateOptionsForTemplate(
         templateId,
-        filterRashMdmTemplateOptionsForTemplate(
+        filterHeadacheMdmTemplateOptionsForTemplate(
           templateId,
-          filterFemalePelvicGynMdmTemplateOptionsForTemplate(
+          filterRashMdmTemplateOptionsForTemplate(
             templateId,
-            filterBackPainMdmTemplateOptionsForTemplate(
+            filterFemalePelvicGynMdmTemplateOptionsForTemplate(
               templateId,
-              filterAdultFeverMdmTemplateOptionsForTemplate(
+              filterBackPainMdmTemplateOptionsForTemplate(
                 templateId,
-                filterCoughUriMdmTemplateOptionsForTemplate(
+                filterAdultFeverMdmTemplateOptionsForTemplate(
                   templateId,
-                  filterShortnessOfBreathMdmTemplateOptionsForTemplate(
+                  filterCoughUriMdmTemplateOptionsForTemplate(
                     templateId,
-                    filterAbdominalPainMdmTemplateOptionsForTemplate(
+                    filterShortnessOfBreathMdmTemplateOptionsForTemplate(
                       templateId,
-                      filterNauseaVomitingMdmTemplateOptionsForTemplate(
+                      filterAbdominalPainMdmTemplateOptionsForTemplate(
                         templateId,
-                        filterDiarrheaMdmTemplateOptionsForTemplate(
+                        filterNauseaVomitingMdmTemplateOptionsForTemplate(
                           templateId,
-                          filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+                          filterDiarrheaMdmTemplateOptionsForTemplate(
+                            templateId,
+                            filterUrinaryMdmTemplateOptionsForTemplate(templateId, options)
+                          )
                         )
                       )
                     )
