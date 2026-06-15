@@ -35,6 +35,7 @@ import {
   buildPediatricAbdominalPainComplaintIntel,
 } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainComplaintIntelGoldStandard";
+import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
@@ -289,134 +290,7 @@ export const STROKE_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintInte
 export const HEADACHE_COMPLAINT_INTEL = buildHeadacheComplaintIntel(ha);
 
 /** Dizziness / syncope — ACEP serious-cause evaluation framework. */
-export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    dizz("hpiTrueVertigo"),
-    dizz("hpiLightheadedness"),
-    dizz("hpiSyncopeEvent"),
-    dizz("hpiPresyncope"),
-    dizz("hpiExertionalSyncope"),
-    dizz("hpiPalpitationsBeforeEvent"),
-    dizz("hpiOrthostaticSymptoms"),
-    dizz("hpiFallAssociated"),
-    dizz("hpiHeadInjuryReviewed"),
-    dizz("hpiSuddenOnset"),
-    dizz("hpiPositional"),
-    dizz("hpiPersistentDizziness"),
-    dizz("hpiIntermittentEpisodes"),
-    dizz("hpiCardiacHistory"),
-    dizz("hpiNeurologicSymptomsReviewed"),
-    dizz("hpiProdromeReviewed"),
-    dizz("hpiChestPainBeforeEvent"),
-    dizz("hpiSeizureLikeActivityReviewed"),
-    dizz("hpiMedicationReview"),
-    dizz("hpiPriorSyncope"),
-    dizz("hpiVolumeDepletion"),
-    dizz("hpiPostEventConfusion"),
-    dizz("hpiInjuryFromFallReviewed"),
-  ],
-  rosImportantPositives: [
-    dizz("rosDizziness"),
-    dizz("rosSyncope"),
-    dizz("rosPalpitations"),
-    dizz("rosWeakness"),
-    dizz("rosNausea"),
-    dizz("rosGaitInstability"),
-  ],
-  rosImportantNegatives: [
-    dizz("rosDeniesChestPain"),
-    dizz("rosDeniesShortnessOfBreath"),
-    dizz("rosDeniesSeizure"),
-    dizz("rosDeniesFocalWeakness"),
-    dizz("rosDeniesFever"),
-  ],
-  rosRedFlags: [
-    dizz("rfCardiogenicSyncopeConcern"),
-    dizz("rfArrhythmiaConcern"),
-    dizz("rfStrokeConcern"),
-    dizz("rfPersistentNeuroDeficit"),
-    dizz("rfUnstableGait"),
-  ],
-  physicalExam: {
-    cardiovascular: [
-      dizz("examNormalCardiacRhythm"),
-      dizz("examCardioTachycardic"),
-      dizz("examMurmurAppreciated"),
-      dizz("examOrthostaticVitalsReviewed"),
-      dizz("examPeripheralPulsesPresent"),
-    ],
-    neuroPsych: [
-      dizz("examSteadyGait"),
-      dizz("examUnsteadyGait"),
-      dizz("examNormalCerebellarTesting"),
-      dizz("examNystagmusPresent"),
-      dizz("examAlertOriented"),
-      dizz("examNoFocalNeuroDeficit"),
-      dizz("examFollowsCommands"),
-    ],
-    general: [dizz("examAlert"), dizz("examDiaphoretic")],
-  },
-  mdmWorkingAssessment: [
-    dizz("mdmCardiacCauseConsidered"),
-    dizz("mdmNeurologicCauseConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    dizz("diffVasovagal"),
-    dizz("diffOrthostaticHypotension"),
-    dizz("diffCardiacArrhythmia"),
-    dizz("diffAcsEquivalent"),
-    dizz("diffPosteriorStroke"),
-    dizz("diffBppv"),
-    dizz("diffVestibularNeuritis"),
-    dizz("diffDehydration"),
-    dizz("diffAnemia"),
-    dizz("diffMedicationEffect"),
-  ],
-  mdmDataReviewed: [
-    dizz("mdmEcgReviewed"),
-    dizz("mdmOrthostaticVitalsPerformed"),
-    dizz("mdmTelemetryConsidered"),
-    dizz("mdmTroponinIfIndicated"),
-    dizz("mdmGlucoseReviewed"),
-    dizz("mdmHemoglobinIfIndicated"),
-    dizz("mdmCtHeadIfIndicated"),
-  ],
-  mdmClinicalRationale: [
-    dizz("mdmPosteriorStrokeConsidered"),
-    dizz("mdmSeriousCauseEvaluationDocumented"),
-    dizz("mdmVolumeStatusAssessed"),
-    dizz("mdmFallRiskDiscussed"),
-    dizz("mdmSharedDecisionMakingDocumented"),
-  ],
-  mdmPlanSummary: [
-    dizz("mdmCardiacMonitoringInitiated"),
-    dizz("mdmIvFluidsIfIndicated"),
-    dizz("mdmSerialReassessmentPerformed"),
-  ],
-  mdmImmediateActionsRationale: [
-    dizz("mdmFallPrecautions"),
-    dizz("mdmCardiacMonitoringIfIndicated"),
-  ],
-  mdmAdmitObserveDischarge: [
-    dizz("mdmAdmissionConsidered"),
-    dizz("mdmObservationConsidered"),
-    dizz("mdmDischargeAfterNegativeWorkup"),
-  ],
-  reassessment: [
-    dizz("reassessAmbulatoryReassessment"),
-    dizz("reassessDizzinessImproved"),
-    dizz("reassessRepeatNeuroExamStable"),
-    dizz("reassessHemodynamicallyStable"),
-    dizz("reassessRepeatOrthostatics"),
-  ],
-  followUpDisposition: [
-    dizz("dispSafeDischargeAfterReassessment"),
-    dizz("dispAdmissionTelemetryMonitoring"),
-    dizz("dispTransferConsidered"),
-    dizz("dispReturnPrecautionsDiscussed"),
-    dizz("dispNoDrivingUntilCleared"),
-  ],
-});
+export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL = buildDizzinessSyncopeComplaintIntel(dizz);
 
 /** Psychiatric / behavioral — ACEP psychiatric emergency / safety documentation framework. */
 export const PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({

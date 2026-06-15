@@ -253,7 +253,7 @@ describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => 
       "providerDocumentationComplaintIntel.headache.diffPostTraumaticHeadache"
     );
     expect(dizz?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.dizzinessSyncope.diffBppv"
+      "providerDocumentationComplaintIntel.dizzinessSyncope.diffBenignParoxysmalPositionalVertigo"
     );
     expect(stroke?.complaintIntelligence?.reassessment?.length).toBeGreaterThanOrEqual(4);
     expect(headache?.complaintIntelligence?.followUpDisposition?.length).toBeGreaterThanOrEqual(5);

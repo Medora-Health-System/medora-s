@@ -1,5 +1,6 @@
 /** Phase 19MDM.4 — Cardiac / vascular complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildNearSyncopeComplaintV1Intel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const palpitations = (key: string) => `providerDocumentationComplaintIntel.palpitationsComplaintV1.${key}`;
 const hypertension = (key: string) => `providerDocumentationComplaintIntel.hypertensionComplaintV1.${key}`;
@@ -8,6 +9,8 @@ const chfSymptoms = (key: string) => `providerDocumentationComplaintIntel.chfSym
 const afibRapidRate = (key: string) => `providerDocumentationComplaintIntel.afibRapidRateComplaintV1.${key}`;
 const generalizedWeaknessCardiacEquivalent = (key: string) => `providerDocumentationComplaintIntel.generalizedWeaknessCardiacEquivalentComplaintV1.${key}`;
 const nearSyncope = (key: string) => `providerDocumentationComplaintIntel.nearSyncopeComplaintV1.${key}`;
+
+export const NEAR_SYNCOPE_COMPLAINT_V1_INTEL = buildNearSyncopeComplaintV1Intel(nearSyncope);
 const exertionalDyspnea = (key: string) => `providerDocumentationComplaintIntel.exertionalDyspneaComplaintV1.${key}`;
 const edemaVolumeOverload = (key: string) => `providerDocumentationComplaintIntel.edemaVolumeOverloadComplaintV1.${key}`;
 
@@ -99,21 +102,6 @@ export const GENERALIZED_WEAKNESS_CARDIAC_EQUIVALENT_COMPLAINT_V1_INTEL: Provide
   mdmAdmitObserveDischarge: [generalizedWeaknessCardiacEquivalent("mdmAdmissionIfHighRisk")],
   reassessment: [generalizedWeaknessCardiacEquivalent("reassessFunctionalStatus")],
   followUpDisposition: [generalizedWeaknessCardiacEquivalent("dispFollowUpAdmissionIfIndicated")],
-});
-
-export const NEAR_SYNCOPE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [nearSyncope("hpiProdromeTriggers"), nearSyncope("hpiExertionalPositionalEvent"), nearSyncope("hpiInjuryFall"), nearSyncope("hpiChestPainSobPalpitations")],
-  rosImportantPositives: [nearSyncope("rosNearSyncope"), nearSyncope("rosDizziness"), nearSyncope("rosPalpitations")],
-  rosImportantNegatives: [nearSyncope("rosDeniesChestPain")],
-  rosRedFlags: [nearSyncope("rfInjuryFromFall"), nearSyncope("rfRecurrentEvents")],
-  physicalExam: { cardiovascular: [nearSyncope("examNeuroCardiacAssessment"), nearSyncope("examVolumeStatus"), nearSyncope("examInjuryAssessment")], general: [nearSyncope("examGeneralAppearance")] },
-  mdmWorkingAssessment: [nearSyncope("mdmNearSyncopePresentation")],
-  mdmDifferentialSynthesis: [nearSyncope("diffArrhythmia"), nearSyncope("diffVasovagalOrthostatic"), nearSyncope("diffDehydration"), nearSyncope("diffAcsPe"), nearSyncope("diffAnemiaGiBleed"), nearSyncope("diffNeurologicCause")],
-  mdmDataReviewed: [nearSyncope("mdmEkgLabsMonitoringIfObtained")],
-  mdmClinicalRationale: [nearSyncope("mdmFallRiskDiscussed"), nearSyncope("mdmCardiologyConsultIfIndicated")],
-  mdmAdmitObserveDischarge: [nearSyncope("mdmObservationIfHighRisk")],
-  reassessment: [nearSyncope("reassessRecurrenceInjury")],
-  followUpDisposition: [nearSyncope("dispDrivingPrecautionsAsDirected")],
 });
 
 export const EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({

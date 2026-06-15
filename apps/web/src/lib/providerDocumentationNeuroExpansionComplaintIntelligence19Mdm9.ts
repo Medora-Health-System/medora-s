@@ -1,6 +1,7 @@
 /** Phase 19MDM.9 — Neurology expansion complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildMigraineHeadacheComplaintV1Intel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
+import { buildVertigoComplaintV1Intel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const seizure = (key: string) => `providerDocumentationComplaintIntel.seizureComplaintV1.${key}`;
 const alteredMentalStatus = (key: string) => `providerDocumentationComplaintIntel.alteredMentalStatusComplaintV1.${key}`;
@@ -88,20 +89,7 @@ export const TREMOR_MOVEMENT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintI
   followUpDisposition: [tremorMovement("dispReturnWorseningTremorWeakness")],
 });
 
-export const VERTIGO_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [vertigo("hpiPositionalVsPersistentOnset"), vertigo("hpiNauseaVomiting"), vertigo("hpiHearingSymptomsHeadache"), vertigo("hpiFocalNeuroGaitInstability")],
-  rosImportantPositives: [vertigo("rosVertigo"), vertigo("rosNausea"), vertigo("rosGaitInstability")],
-  rosImportantNegatives: [vertigo("rosDeniesHearingLoss")],
-  rosRedFlags: [vertigo("rfPersistentVertigo"), vertigo("rfFocalNeuroSymptoms")],
-  physicalExam: { neuroPsych: [vertigo("examGaitIfDocumented"), vertigo("examNystagmusIfDocumented"), vertigo("examNeuroScreenIfDocumented")], general: [vertigo("examGeneralAppearance")] },
-  mdmWorkingAssessment: [vertigo("mdmVertigoPresentation")],
-  mdmDifferentialSynthesis: [vertigo("diffPeripheralVertigo"), vertigo("diffCentralVertigoConcern"), vertigo("diffVestibularNeuritis"), vertigo("diffMigraine"), vertigo("diffStrokeTiaConcern")],
-  mdmDataReviewed: [vertigo("mdmImagingReviewedIfObtained")],
-  mdmClinicalRationale: [vertigo("mdmAntiemeticPlanIfGiven"), vertigo("mdmEntNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [vertigo("mdmObservationIfHighRisk")],
-  reassessment: [vertigo("reassessAmbulationVomiting")],
-  followUpDisposition: [vertigo("dispReturnNeuroRedFlagsInabilityToAmbulate")],
-});
+export const VERTIGO_COMPLAINT_V1_INTEL = buildVertigoComplaintV1Intel(vertigo);
 
 export const MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL = buildMigraineHeadacheComplaintV1Intel(migraineHeadache);
 

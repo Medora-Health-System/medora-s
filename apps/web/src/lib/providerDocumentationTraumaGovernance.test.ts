@@ -161,7 +161,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
     expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.diffViralGastroenteritis")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiRashOnsetReviewed")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.chestPain.diffAcuteCoronarySyndrome")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(false);
   });
 
   it("exposes mechanism-of-injury, MVC, fall, concussion, and fracture chips", () => {
@@ -283,7 +283,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(true);
+    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(true);
 
     const chestPainVisible = collectChestPainVisibleStickyNoteFragmentKeys({
       templateId: "chest_pain",

@@ -188,7 +188,7 @@ describe("providerDocumentationSinusSymptomsGovernance — MEDUI.ED.ME.2S", () =
     expect(visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiPelvicPain")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.fall.hpiMechanicalFall")).toBe(false);
 
     const rosKeys = flattenFragmentKeys(

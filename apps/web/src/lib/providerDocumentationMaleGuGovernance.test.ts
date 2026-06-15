@@ -214,7 +214,7 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
     expect(visible.has("erMseHpiChips.assocDizziness")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiPelvicPain")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion")).toBe(false);
     expect(visible.has("erMseRosChips.rfPregnancyConcern")).toBe(false);
 
@@ -319,7 +319,7 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(true);
+    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(true);
 
     const chestPainVisible = collectChestPainVisibleStickyNoteFragmentKeys({
       templateId: "chest_pain",

@@ -329,19 +329,19 @@ const DIZZINESS_SYNCOPE_RULES: DynamicIntelligenceRule[] = [
     triggerTerms: ["true syncope", "syncope", "syncope event", "syncope complète"],
     reasonKey: reason("dizzinessSyncopeEvent"),
     suggestions: [
-      sug("mdm", dizz("mdmEcgReviewed"), "mdmDataReviewed"),
+      sug("mdm", dizz("mdmEkgReviewed"), "mdmDataReviewed"),
       sug("differential", dizz("diffCardiacArrhythmia"), "mdmDifferentialSynthesis"),
-      sug("mdm", dizz("mdmTelemetryConsidered"), "mdmPlanSummary"),
-      sug("mdm", dizz("mdmAdmissionConsidered"), "mdmAdmitObserveDischarge"),
+      sug("mdm", dizz("planCardiologyFollowUpRecommended"), "mdmPlanSummary"),
+      sug("mdm", dizz("dispAdmission"), "mdmAdmitObserveDischarge"),
     ],
   },
   {
     triggerTerms: ["exertional", "à l'effort", "with exertion"],
     reasonKey: reason("dizzinessExertional"),
     suggestions: [
-      sug("differential", dizz("diffAcsEquivalent"), "mdmDifferentialSynthesis"),
-      sug("mdm", dizz("mdmEcgReviewed"), "mdmDataReviewed"),
-      sug("mdm", dizz("mdmTroponinIfIndicated"), "mdmDataReviewed"),
+      sug("differential", dizz("diffAcuteCoronarySyndrome"), "mdmDifferentialSynthesis"),
+      sug("mdm", dizz("mdmEkgReviewed"), "mdmDataReviewed"),
+      sug("mdm", dizz("mdmTroponinReviewed"), "mdmDataReviewed"),
     ],
   },
   {
@@ -349,17 +349,17 @@ const DIZZINESS_SYNCOPE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("dizzinessPalpitations"),
     suggestions: [
       sug("differential", dizz("diffCardiacArrhythmia"), "mdmDifferentialSynthesis"),
-      sug("mdm", dizz("mdmEcgReviewed"), "mdmDataReviewed"),
-      sug("mdm", dizz("mdmTelemetryConsidered"), "mdmPlanSummary"),
+      sug("mdm", dizz("mdmEkgReviewed"), "mdmDataReviewed"),
+      sug("mdm", dizz("planCardiologyFollowUpRecommended"), "mdmPlanSummary"),
     ],
   },
   {
     triggerTerms: ["chest pain", "douleur thoracique"],
     reasonKey: reason("dizzinessChestPain"),
     suggestions: [
-      sug("differential", dizz("diffAcsEquivalent"), "mdmDifferentialSynthesis"),
-      sug("mdm", dizz("mdmEcgReviewed"), "mdmDataReviewed"),
-      sug("reassessment", dizz("reassessAmbulatoryReassessment"), "treatmentPlan"),
+      sug("differential", dizz("diffAcuteCoronarySyndrome"), "mdmDifferentialSynthesis"),
+      sug("mdm", dizz("mdmEkgReviewed"), "mdmDataReviewed"),
+      sug("reassessment", dizz("reassessAmbulatingSafely"), "treatmentPlan"),
     ],
   },
 ];

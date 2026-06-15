@@ -223,7 +223,7 @@ describe("providerDocumentationSoreThroatGovernance — MEDUI.ED.ME.2T", () => {
     expect(visible.has("providerDocumentationComplaintIntel.sinusSymptomsComplaintV1.diffAcuteBacterialSinusitis")).toBe(
       false
     );
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.fall.hpiMechanicalFall")).toBe(false);
 
     const rosKeys = flattenFragmentKeys(

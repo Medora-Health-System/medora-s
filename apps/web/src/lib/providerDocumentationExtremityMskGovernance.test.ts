@@ -239,7 +239,7 @@ describe("providerDocumentationExtremityMskGovernance — MEDUI.ED.ME.2O", () =>
     expect(visible.has("providerDocumentationComplaintIntel.utiUrinarySymptoms.hpiDysuria")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiPelvicPain")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.headache.diffSubarachnoidHemorrhage")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion")).toBe(false);
 
     const rosKeys = flattenFragmentKeys(resolveExtremityMskRosChipGroupsForTemplate(MSK_TEMPLATE_ID, WORKSPACE_ROS_CHIP_GROUPS));
@@ -323,7 +323,7 @@ describe("providerDocumentationExtremityMskGovernance — MEDUI.ED.ME.2O", () =>
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(true);
+    expect(dizzinessVisible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(true);
 
     const chestPainVisible = collectChestPainVisibleStickyNoteFragmentKeys({
       templateId: "chest_pain",

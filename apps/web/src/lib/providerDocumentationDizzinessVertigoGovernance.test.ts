@@ -177,10 +177,10 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
     expect(visible.has("providerDocumentationTemplateHpiDimensions.dizzinessSyncope.ctxCompleteSyncope")).toBe(true);
     expect(visible.has("providerDocumentationTemplateHpiDimensions.dizzinessSyncope.qualVertigo")).toBe(true);
     expect(visible.has("providerDocumentationTemplateHpiDimensions.dizzinessSyncope.assocChestPain")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiSyncopeEvent")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.diffBppv")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.diffPosteriorStroke")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiRoomSpinningSensation")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiSyncope")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.diffBenignParoxysmalPositionalVertigo")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.diffPosteriorCirculationStroke")).toBe(true);
     expect(visible.has("erMseRosChips.rfNeuroDeficit")).toBe(true);
     expect(visible.has("erMseRosChips.rfAlteredMs")).toBe(true);
     expect(visible.has("erMseRosChips.rfSyncope")).toBe(true);
@@ -192,7 +192,7 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(vertigoVisible.has("providerDocumentationComplaintIntel.vertigoComplaintV1.rosVertigo")).toBe(true);
-    expect(vertigoVisible.has("providerDocumentationComplaintIntel.vertigoComplaintV1.diffPeripheralVertigo")).toBe(true);
+    expect(vertigoVisible.has("providerDocumentationComplaintIntel.vertigoComplaintV1.diffBenignParoxysmalPositionalVertigo")).toBe(true);
 
     const nearSyncopeVisible = collectDizzinessVertigoVisibleStickyNoteFragmentKeys({
       templateId: "near_syncope_complaint_v1",
@@ -203,7 +203,7 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
     expect(nearSyncopeVisible.has("providerDocumentationComplaintIntel.nearSyncopeComplaintV1.rosNearSyncope")).toBe(
       true
     );
-    expect(nearSyncopeVisible.has("providerDocumentationComplaintIntel.nearSyncopeComplaintV1.diffArrhythmia")).toBe(
+    expect(nearSyncopeVisible.has("providerDocumentationComplaintIntel.nearSyncopeComplaintV1.diffCardiacArrhythmia")).toBe(
       true
     );
     expect(nearSyncopeVisible.has("erMseHpiChips.assocChestPain")).toBe(true);
@@ -241,8 +241,8 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
     expect(dizzMdm).toContain("erMseMdmChips.waNeurologic");
     expect(dizzMdm).toContain("erMseMdmChips.waCardiopulmonary");
     expect(dizzMdm).toContain("erMseMdmChips.planEcg");
-    expect(dizzMdm).toContain("providerDocumentationComplaintIntel.dizzinessSyncope.mdmEcgReviewed");
-    expect(dizzMdm).toContain("providerDocumentationComplaintIntel.dizzinessSyncope.mdmCtHeadIfIndicated");
+    expect(dizzMdm).toContain("providerDocumentationComplaintIntel.dizzinessSyncope.mdmEkgReviewed");
+    expect(dizzMdm).toContain("providerDocumentationComplaintIntel.dizzinessSyncope.mdmCtHeadReviewed");
     expect(dizzMdm).toContain("providerDocumentationComplaintIntel.dizzinessSyncope.diffCardiacArrhythmia");
     expect(dizzMdm).not.toContain("erMseMdmChips.waAbdominal");
     expect(dizzMdm).not.toContain("erMseMdmChips.waTrauma");
@@ -250,7 +250,7 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
 
     const vertigoTemplate = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "vertigo_complaint_v1") ?? null;
     const vertigoMdm = buildMdmTemplateDropdownOptions(vertigoTemplate).map((option) => option.fragmentKey);
-    expect(vertigoMdm).toContain("providerDocumentationComplaintIntel.vertigoComplaintV1.mdmImagingReviewedIfObtained");
+    expect(vertigoMdm).toContain("providerDocumentationComplaintIntel.vertigoComplaintV1.mdmCtHeadReviewed");
   });
 
   it("preserves sticky-note-only activation and click-to-insert", () => {
@@ -260,7 +260,7 @@ describe("providerDocumentationDizzinessVertigoGovernance — MEDUI.ED.ME.2M", (
     expect(next.hpi).toBe("");
     expect(next.physicalExam.neuroPsych).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.dizzinessSyncope.diffPosteriorStroke";
+    const fragmentKey = "providerDocumentationComplaintIntel.dizzinessSyncope.diffPosteriorCirculationStroke";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
   });
 
