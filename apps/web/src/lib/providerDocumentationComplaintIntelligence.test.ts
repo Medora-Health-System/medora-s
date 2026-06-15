@@ -128,7 +128,7 @@ describe("provider documentation complaint intelligence (19N.3 Batch 1)", () => 
       "providerDocumentationComplaintIntel.chestPain.diffStemiNstemi"
     );
     expect(sob?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.sob.diffPe"
+      "providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism"
     );
     expect(abdominal?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.abdominal.diffAppendicitis"
@@ -292,7 +292,7 @@ describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => 
       "providerDocumentationComplaintIntel.chestPain.hpiExertional"
     );
     expect(SOB_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.sob.diffPe"
+      "providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism"
     );
     expect(ABDOMINAL_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.abdominal.diffAppendicitis"

@@ -35,6 +35,10 @@ import {
   buildPediatricAbdominalPainComplaintIntel,
 } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import {
+  buildAdultSobComplaintIntel,
+  buildPediatricAsthmaSobComplaintIntel,
+} from "./providerDocumentationShortnessOfBreathComplaintIntelGoldStandard";
+import {
   buildAdultNauseaVomitingComplaintIntel,
   buildPediatricNauseaVomitingComplaintIntel,
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
@@ -235,88 +239,7 @@ export const CHEST_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntellige
 });
 
 /** Shortness of breath (adult) — cardiopulmonary / obstructive / PE framework. */
-export const SOB_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    sob("hpiSuddenOnsetDyspnea"),
-    sob("hpiGradualOnsetDyspnea"),
-    sob("hpiExertionalDyspnea"),
-    sob("hpiOrthopnea"),
-    sob("hpiWheezing"),
-    sob("hpiProductiveCough"),
-    sob("hpiChestTightness"),
-    sob("hpiPleuriticSymptoms"),
-    sob("hpiFeverSymptoms"),
-    sob("hpiRecentIllness"),
-    sob("hpiSmoker"),
-    sob("hpiCopdHistory"),
-    sob("hpiAsthmaHistory"),
-    sob("hpiChfHistory"),
-    sob("hpiOxygenDependent"),
-    sob("hpiIncreasedWorkOfBreathing"),
-  ],
-  rosImportantPositives: [
-    sob("rosCough"),
-    sob("rosChestPain"),
-    sob("rosFever"),
-    sob("rosWheezing"),
-    sob("rosDizziness"),
-    sob("rosFatigue"),
-  ],
-  rosImportantNegatives: [
-    sob("rosDeniesHemoptysis"),
-    sob("rosDeniesUnilateralLegSwelling"),
-    sob("rosDeniesRecentSurgery"),
-    sob("rosDeniesChestTrauma"),
-  ],
-  rosRedFlags: [sob("rfRespiratoryDistress"), sob("rfAlteredMentalStatus")],
-  physicalExam: {
-    respiratory: [
-      sob("examNoRespDistress"),
-      sob("examIncreasedWorkOfBreathing"),
-      sob("examWheezing"),
-      sob("examCrackles"),
-      sob("examDiminishedBreathSounds"),
-    ],
-    cardiovascular: [sob("examTachycardic"), sob("examPeripheralEdema")],
-    general: [sob("examSpeakingFullSentences"), sob("examHypoxicAppearance"), sob("examAnxiousAppearing")],
-  },
-  mdmWorkingAssessment: [sob("mdmPeConsidered"), sob("mdmSepsisConsidered")],
-  mdmDifferentialSynthesis: [
-    sob("diffAsthmaExacerbation"),
-    sob("diffCopdExacerbation"),
-    sob("diffChfExacerbation"),
-    sob("diffPneumonia"),
-    sob("diffPe"),
-    sob("diffPneumothorax"),
-    sob("diffViralSyndrome"),
-    sob("diffAcsEquivalent"),
-    sob("diffAnxietyReaction"),
-  ],
-  mdmDataReviewed: [
-    sob("mdmCxrReviewed"),
-    sob("mdmEcgReviewed"),
-    sob("mdmTroponinReviewed"),
-    sob("mdmBnpReviewed"),
-  ],
-  mdmClinicalRationale: [
-    sob("mdmOxygenRequirementEvaluated"),
-    sob("mdmRespiratoryReassessmentPerformed"),
-  ],
-  mdmPlanSummary: [sob("mdmNebulizerTherapyAdministered")],
-  mdmImmediateActionsRationale: [sob("mdmSupplementalOxygen")],
-  mdmAdmitObserveDischarge: [sob("mdmAdmissionConsidered")],
-  reassessment: [
-    sob("reassessAfterBronchodilator"),
-    sob("reassessSpo2AfterTreatment"),
-    sob("reassessAfterDiuresisIfChf"),
-  ],
-  followUpDisposition: [
-    sob("dispReturnWorseningBreathing"),
-    sob("dispInhalerInstructionsReviewed"),
-    sob("dispOutpatientFollowUpAdvised"),
-    sob("dispAdmissionDiscussed"),
-  ],
-});
+export const SOB_COMPLAINT_INTEL = buildAdultSobComplaintIntel(sob);
 
 /** Abdominal pain — surgical / OB-GYN red flags (SAEM / StatPearls / ECAT). */
 export const ABDOMINAL_COMPLAINT_INTEL = buildAdultAbdominalPainComplaintIntel(abd);
@@ -1899,99 +1822,7 @@ export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintInte
 export const PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL = buildPediatricAbdominalPainComplaintIntel(pedAbd);
 
 /** Pediatric asthma / wheezing — pediatric bronchospasm documentation framework. */
-export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    pedAsthma("hpiCaregiverHistorianUsed"),
-    pedAsthma("hpiWheezingReported"),
-    pedAsthma("hpiCoughReported"),
-    pedAsthma("hpiShortnessOfBreathReported"),
-    pedAsthma("hpiTriggerExposureReviewed"),
-    pedAsthma("hpiUriTriggerSuspected"),
-    pedAsthma("hpiRescueInhalerUseReviewed"),
-    pedAsthma("hpiPriorHospitalizationReviewed"),
-    pedAsthma("hpiPriorIcuIntubationReviewed"),
-    pedAsthma("hpiSteroidUseReviewed"),
-    pedAsthma("hpiMedicationAccessReviewed"),
-    pedAsthma("hpiOralIntakeReviewed"),
-  ],
-  rosImportantPositives: [
-    pedAsthma("rosWheezing"),
-    pedAsthma("rosCough"),
-    pedAsthma("rosShortnessOfBreath"),
-    pedAsthma("rosChestTightness"),
-    pedAsthma("rosFever"),
-    pedAsthma("rosDecreasedActivity"),
-  ],
-  rosImportantNegatives: [
-    pedAsthma("rosDeniesCyanosis"),
-    pedAsthma("rosDeniesApnea"),
-    pedAsthma("rosDeniesChestPain"),
-    pedAsthma("rosDeniesForeignBodyChokingEpisode"),
-    pedAsthma("rosDeniesPersistentVomiting"),
-  ],
-  rosRedFlags: [
-    pedAsthma("rfSevereRespiratoryDistress"),
-    pedAsthma("rfHypoxia"),
-    pedAsthma("rfPoorAirMovement"),
-    pedAsthma("rfRetractions"),
-    pedAsthma("rfInabilityToSpeakCryNormally"),
-    pedAsthma("rfPriorIcuIntubation"),
-    pedAsthma("rfPoorBronchodilatorResponse"),
-  ],
-  physicalExam: {
-    general: [pedAsthma("examHydrationStatusAssessed")],
-    respiratory: [
-      pedAsthma("examNoRespiratoryDistress"),
-      pedAsthma("examIncreasedWorkOfBreathing"),
-      pedAsthma("examRetractionsPresent"),
-      pedAsthma("examWheezingPresent"),
-      pedAsthma("examDiminishedBreathSounds"),
-      pedAsthma("examImprovedAerationAfterTreatment"),
-      pedAsthma("examSpeakingCryingComfortably"),
-      pedAsthma("examOxygenSaturationReviewed"),
-    ],
-  },
-  mdmWorkingAssessment: [pedAsthma("mdmAsthmaExacerbationConsidered"), pedAsthma("mdmViralWheezingConsidered")],
-  mdmDifferentialSynthesis: [
-    pedAsthma("diffAsthmaExacerbation"),
-    pedAsthma("diffViralWheezing"),
-    pedAsthma("diffBronchiolitis"),
-    pedAsthma("diffPneumonia"),
-    pedAsthma("diffForeignBodyAspiration"),
-    pedAsthma("diffAllergicReaction"),
-    pedAsthma("diffCroup"),
-    pedAsthma("diffRespiratoryFailure"),
-  ],
-  mdmDataReviewed: [pedAsthma("mdmChestXrayConsideredIfAtypical")],
-  mdmClinicalRationale: [
-    pedAsthma("mdmResponseToTreatmentReassessed"),
-    pedAsthma("mdmOxygenRequirementAssessed"),
-    pedAsthma("mdmRepeatLungExamPerformed"),
-    pedAsthma("mdmWeightBasedMedicationDosingReviewed"),
-    pedAsthma("mdmCaregiverInhalerSpacerEducationReviewed"),
-  ],
-  mdmPlanSummary: [
-    pedAsthma("mdmBronchodilatorTreatmentAdministered"),
-    pedAsthma("mdmSystemicSteroidConsideredAdministered"),
-    pedAsthma("mdmSerialReassessmentPerformed"),
-  ],
-  mdmImmediateActionsRationale: [pedAsthma("mdmOxygenIfIndicated")],
-  mdmAdmitObserveDischarge: [pedAsthma("mdmAdmissionConsideredPersistentDistress")],
-  reassessment: [
-    pedAsthma("reassessWheezingImproved"),
-    pedAsthma("reassessWorkOfBreathingImproved"),
-    pedAsthma("reassessOxygenSaturationStable"),
-    pedAsthma("reassessChildActiveComfortable"),
-    pedAsthma("reassessCaregiverComfortableWithPlan"),
-  ],
-  followUpDisposition: [
-    pedAsthma("dispDischargeAsthmaActionPlanInhalerInstructions"),
-    pedAsthma("dispReturnIncreasedWorkOfBreathing"),
-    pedAsthma("dispReturnPoorOralIntakeWorseningSymptoms"),
-    pedAsthma("dispPediatricianFollowUpRecommended"),
-    pedAsthma("dispAdmissionPersistentHypoxiaDistressConsidered"),
-  ],
-});
+export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL = buildPediatricAsthmaSobComplaintIntel(pedAsthma);
 
 /** Pediatric vomiting / diarrhea — gastroenteritis / dehydration documentation framework. */
 export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL = buildPediatricNauseaVomitingComplaintIntel(pedGastro);

@@ -1,6 +1,12 @@
 /** Phase 19MDM.3 — Respiratory / ENT complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
+import {
+  buildAsthmaWheezingComplaintV1Intel,
+  buildCopdExacerbationComplaintV1Intel,
+  buildPneumoniaSymptomsComplaintV1Intel,
+  buildHemoptysisComplaintV1Intel,
+} from "./providerDocumentationShortnessOfBreathComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const cough = (key: string) => `providerDocumentationComplaintIntel.coughComplaintV1.${key}`;
 const uriCongestion = (key: string) => `providerDocumentationComplaintIntel.uriCongestionComplaintV1.${key}`;
@@ -44,65 +50,13 @@ export const URI_CONGESTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIn
 
 export const SORE_THROAT_COMPLAINT_V1_INTEL = buildSoreThroatComplaintIntel(soreThroat);
 
-export const ASTHMA_WHEEZING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [asthmaWheezing("hpiTriggerPriorAsthma"), asthmaWheezing("hpiInhalerUsePriorAdmissions"), asthmaWheezing("hpiChestTightnessSobCough"), asthmaWheezing("hpiFeverTriggerReview")],
-  rosImportantPositives: [asthmaWheezing("rosWheezing"), asthmaWheezing("rosSob"), asthmaWheezing("rosChestTightness")],
-  rosImportantNegatives: [asthmaWheezing("rosDeniesFever")],
-  rosRedFlags: [asthmaWheezing("rfSevereRespiratoryDistress"), asthmaWheezing("rfUnableToSpeakSentences")],
-  physicalExam: { respiratory: [asthmaWheezing("examWheeze"), asthmaWheezing("examAccessoryMuscleUse"), asthmaWheezing("examWorkOfBreathing")], general: [asthmaWheezing("examGeneralAppearance")]},
-  mdmWorkingAssessment: [asthmaWheezing("mdmAsthmaExacerbationConsidered")],
-  mdmDifferentialSynthesis: [asthmaWheezing("diffAsthmaExacerbation"), asthmaWheezing("diffViralTrigger"), asthmaWheezing("diffPneumonia"), asthmaWheezing("diffAllergicReaction"), asthmaWheezing("diffChfPeWhenRelevant")],
-  mdmDataReviewed: [asthmaWheezing("mdmPeakFlowIfUsed"), asthmaWheezing("mdmLabsImagingIfObtained")],
-  mdmClinicalRationale: [asthmaWheezing("mdmBronchodilatorTherapyIfGiven")],
-  mdmAdmitObserveDischarge: [asthmaWheezing("mdmObservationAfterTreatment")],
-  reassessment: [asthmaWheezing("reassessAfterBronchodilator"), asthmaWheezing("reassessWorkOfBreathing")],
-  followUpDisposition: [asthmaWheezing("dispReturnWorseningBreathing")],
-});
+export const ASTHMA_WHEEZING_COMPLAINT_V1_INTEL = buildAsthmaWheezingComplaintV1Intel(asthmaWheezing);
 
-export const COPD_EXACERBATION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [copdExacerbation("hpiBaselineRespiratoryStatus"), copdExacerbation("hpiOxygenUseSputumChanges"), copdExacerbation("hpiFeverChestPain"), copdExacerbation("hpiSmokingPriorAdmissions")],
-  rosImportantPositives: [copdExacerbation("rosIncreasedSob"), copdExacerbation("rosSputumChange"), copdExacerbation("rosWheezing")],
-  rosImportantNegatives: [copdExacerbation("rosDeniesChestPain")],
-  rosRedFlags: [copdExacerbation("rfHypercapniaConcern"), copdExacerbation("rfRespiratoryFailureConcern")],
-  physicalExam: { respiratory: [copdExacerbation("examWheezeRhonchi"), copdExacerbation("examWorkOfBreathing"), copdExacerbation("examOxygenRequirement")], general: [copdExacerbation("examGeneralAppearance")]},
-  mdmWorkingAssessment: [copdExacerbation("mdmCopdExacerbationConsidered")],
-  mdmDifferentialSynthesis: [copdExacerbation("diffCopdExacerbation"), copdExacerbation("diffPneumonia"), copdExacerbation("diffChf"), copdExacerbation("diffPe"), copdExacerbation("diffAcs"), copdExacerbation("diffViralIllness")],
-  mdmDataReviewed: [copdExacerbation("mdmAbgIfObtained"), copdExacerbation("mdmCxrIfObtained")],
-  mdmClinicalRationale: [copdExacerbation("mdmOxygenBronchodilatorPlan")],
-  mdmAdmitObserveDischarge: [copdExacerbation("mdmAdmissionObservationIfIndicated")],
-  reassessment: [copdExacerbation("reassessOxygenationWorkOfBreathing")],
-  followUpDisposition: [copdExacerbation("dispReturnWorseningBreathing")],
-});
+export const COPD_EXACERBATION_COMPLAINT_V1_INTEL = buildCopdExacerbationComplaintV1Intel(copdExacerbation);
 
-export const PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [pneumoniaSymptoms("hpiCoughFeverSputum"), pneumoniaSymptoms("hpiPleuriticPainSob"), pneumoniaSymptoms("hpiComorbiditiesImmunocompromised"), pneumoniaSymptoms("hpiOralIntakeWeakness")],
-  rosImportantPositives: [pneumoniaSymptoms("rosCough"), pneumoniaSymptoms("rosFever"), pneumoniaSymptoms("rosSob"), pneumoniaSymptoms("rosPleuriticPain")],
-  rosImportantNegatives: [pneumoniaSymptoms("rosDeniesHemoptysis")],
-  rosRedFlags: [pneumoniaSymptoms("rfSevereHypoxia"), pneumoniaSymptoms("rfAlteredMentalStatus")],
-  physicalExam: { respiratory: [pneumoniaSymptoms("examWorkOfBreathing"), pneumoniaSymptoms("examLungFindings"), pneumoniaSymptoms("examHydration")], general: [pneumoniaSymptoms("examGeneralAppearance")]},
-  mdmWorkingAssessment: [pneumoniaSymptoms("mdmLowerRespiratoryInfectionConsidered")],
-  mdmDifferentialSynthesis: [pneumoniaSymptoms("diffPneumonia"), pneumoniaSymptoms("diffViralInfection"), pneumoniaSymptoms("diffBronchitis"), pneumoniaSymptoms("diffChf"), pneumoniaSymptoms("diffPeAcsWhenRelevant")],
-  mdmDataReviewed: [pneumoniaSymptoms("mdmCxrReviewedIfObtained"), pneumoniaSymptoms("mdmLabsReviewedIfObtained")],
-  mdmClinicalRationale: [pneumoniaSymptoms("mdmAntibioticStewardshipIfConsidered")],
-  mdmAdmitObserveDischarge: [pneumoniaSymptoms("mdmAdmissionIfHighRisk")],
-  reassessment: [pneumoniaSymptoms("reassessRespiratoryOralTolerance")],
-  followUpDisposition: [pneumoniaSymptoms("dispReturnWorseningBreathingFever")],
-});
+export const PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL = buildPneumoniaSymptomsComplaintV1Intel(pneumoniaSymptoms);
 
-export const HEMOPTYSIS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [hemoptysis("hpiAmountFrequency"), hemoptysis("hpiBrightRedVsStreaking"), hemoptysis("hpiChestPainSobFever"), hemoptysis("hpiAnticoagulantsTbPeRisk")],
-  rosImportantPositives: [hemoptysis("rosHemoptysis"), hemoptysis("rosSob"), hemoptysis("rosChestPain")],
-  rosImportantNegatives: [hemoptysis("rosDeniesFever")],
-  rosRedFlags: [hemoptysis("rfMassiveHemoptysis"), hemoptysis("rfRespiratoryDistress")],
-  physicalExam: { respiratory: [hemoptysis("examRespiratoryDistress"), hemoptysis("examLungExam"), hemoptysis("examHemodynamicsIfDocumented")], general: [hemoptysis("examGeneralAppearance")]},
-  mdmWorkingAssessment: [hemoptysis("mdmHemoptysisPresentation")],
-  mdmDifferentialSynthesis: [hemoptysis("diffBronchitis"), hemoptysis("diffPneumonia"), hemoptysis("diffPe"), hemoptysis("diffMalignancy"), hemoptysis("diffTb"), hemoptysis("diffAnticoagulation")],
-  mdmDataReviewed: [hemoptysis("mdmCxrCtIfObtained"), hemoptysis("mdmCoagulationReviewedIfRelevant")],
-  mdmClinicalRationale: [hemoptysis("mdmConsultAdmissionIfIndicated")],
-  mdmAdmitObserveDischarge: [hemoptysis("mdmObservationIfBleedingContinues")],
-  reassessment: [hemoptysis("reassessBleedingRespiratoryStatus")],
-  followUpDisposition: [hemoptysis("dispReturnWorseningBleedingBreathing")],
-});
+export const HEMOPTYSIS_COMPLAINT_V1_INTEL = buildHemoptysisComplaintV1Intel(hemoptysis);
 
 export const CHEST_CONGESTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [chestCongestion("hpiCongestionDuration"), chestCongestion("hpiSputumFeverWheezing"), chestCongestion("hpiSobAsthmaCopdChfHistory"), chestCongestion("hpiSickContactsSmoking")],

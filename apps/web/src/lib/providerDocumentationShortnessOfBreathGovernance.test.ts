@@ -137,13 +137,13 @@ describe("providerDocumentationShortnessOfBreathGovernance — MEDUI.ED.ME.2E", 
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(visible.has("providerDocumentationTemplateLocation.sob.withExertion")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.sob.hpiSuddenOnsetDyspnea")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.sob.hpiSuddenOnsetShortnessOfBreath")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.hpiOrthopnea")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.hpiWheezing")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.hpiProductiveCough")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.rosCough")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.sob.diffPe")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.sob.mdmPeConsidered")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.sob.waLowSuspicionPulmonaryEmbolism")).toBe(true);
   });
 
   it("exposes respiratory exam chips and cardiopulmonary differentials", () => {
@@ -167,11 +167,11 @@ describe("providerDocumentationShortnessOfBreathGovernance — MEDUI.ED.ME.2E", 
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.sob.examWheezing")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.sob.examDiffuseWheezing")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.diffPneumonia")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.diffAsthmaExacerbation")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.sob.diffCopdExacerbation")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.sob.diffChfExacerbation")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.sob.diffHeartFailureExacerbation")).toBe(true);
   });
 
   it("does not expose abdominal pain, urinary, or GI chips for sob", () => {
@@ -237,7 +237,7 @@ describe("providerDocumentationShortnessOfBreathGovernance — MEDUI.ED.ME.2E", 
   });
 
   it("inserts documentation when an allowed sob sticky note is toggled", () => {
-    const fragmentKey = "providerDocumentationComplaintIntel.sob.examWheezing";
+    const fragmentKey = "providerDocumentationComplaintIntel.sob.examDiffuseWheezing";
     const next = toggleDocumentationFragment("", fragmentKey);
     expect(next).toContain(fragmentKey);
   });

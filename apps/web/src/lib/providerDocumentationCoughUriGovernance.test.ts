@@ -264,8 +264,8 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffPe")).toBe(true);
-    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffChfExacerbation")).toBe(true);
+    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism")).toBe(true);
+    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffHeartFailureExacerbation")).toBe(true);
     expect(sobVisible.has("providerDocumentationComplaintIntel.sob.hpiOrthopnea")).toBe(true);
 
     const sobMdm = buildMdmTemplateDropdownOptions(

@@ -330,7 +330,7 @@ describe("providerDocumentationHeadacheGovernance — MEDUI.ED.ME.2K", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffPe")).toBe(true);
+    expect(sobVisible.has("providerDocumentationComplaintIntel.sob.diffPulmonaryEmbolism")).toBe(true);
 
     const abdominalVisible = collectAbdominalPainVisibleStickyNoteFragmentKeys({
       templateId: "abdominal_pain",
