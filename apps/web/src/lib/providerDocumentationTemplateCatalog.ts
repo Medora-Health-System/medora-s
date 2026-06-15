@@ -913,7 +913,10 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesSob"],
     ["erMseRosChips.rfAlteredMs"],
     { mdmWorkingAssessment: ["erMseMdmChips.waInfectious"] },
-    { heent: ["erMseExamChips.heentOropharynxClear"] }
+    { heent: ["erMseExamChips.heentOropharynxClear"] },
+    undefined,
+    undefined,
+    EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL
   ),
   pediatricTemplate(
     "asthma_wheezing",
