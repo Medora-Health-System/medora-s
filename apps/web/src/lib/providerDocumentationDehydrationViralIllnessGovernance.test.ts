@@ -11,12 +11,16 @@ import {
   DEHYDRATION_VIRAL_ILLNESS_ALLOWED_EXAM_SECTION_IDS,
   DEHYDRATION_VIRAL_ILLNESS_GOVERNED_TEMPLATE_IDS,
   filterDehydrationViralIllnessMdmTemplateOptionsForTemplate,
+  isDehydrationViralIllnessDeniedStickyNoteFragment,
   resolveDehydrationViralIllnessExamChipGroupsForTemplate,
   resolveDehydrationViralIllnessRosChipGroupsForTemplate,
   templateUsesDehydrationViralIllnessStickyNoteGovernance,
 } from "@/lib/providerDocumentationDehydrationViralIllnessGovernance";
 import { complaintIntelligenceMdmChipBindingsForTemplate } from "@/lib/providerDocumentationComplaintIntelligenceWorkspaceChips";
-import { assertTrackCCompliance } from "@/lib/providerDocumentationComplaintIntelligenceTrackC";
+import {
+  assertTrackCCompliance,
+  collectTrackCViolations,
+} from "@/lib/providerDocumentationComplaintIntelligenceTrackC";
 import { DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL } from "./providerDocumentationInfectiousEntComplaintIntelligence19Mdm7";
 import { collectSoreThroatVisibleStickyNoteFragmentKeys } from "./providerDocumentationSoreThroatGovernance";
 
@@ -68,7 +72,52 @@ describe("providerDocumentationDehydrationViralIllnessGovernance — MEDUI.ED.ME
   });
 
   it("passes Track C gold standard from inception", () => {
+    expect(collectTrackCViolations(DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL)).toEqual([]);
     expect(() => assertTrackCCompliance(DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL)).not.toThrow();
+  });
+
+  it("covers cannot-miss and serious differentials", () => {
+    const diffs = DEHYDRATION_VIRAL_ILLNESS_COMPLAINT_V1_INTEL.mdmDifferentialSynthesis ?? [];
+    const suffixes = diffs.map((key) => key.split(".").pop() ?? "");
+    expect(suffixes).toEqual(
+      expect.arrayContaining([
+        "diffViralIllness",
+        "diffViralGastroenteritis",
+        "diffDehydration",
+        "diffInfluenzaLikeIllness",
+        "diffSepsis",
+        "diffMeningitis",
+        "diffPyelonephritis",
+        "diffOccultBacterialInfection",
+        "diffSepticShock",
+        "diffSevereDehydration",
+        "diffElectrolyteAbnormality",
+        "diffDiabeticKetoacidosis",
+        "diffAdrenalCrisis",
+      ])
+    );
+  });
+
+  it("denies unrelated complaint-intel domains", () => {
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.earPainOtitisComplaintV1.hpiEarPainBeganToday"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.sinusSymptomsComplaintV1.hpiFacialPressure"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.soreThroatComplaintV1.hpiPainfulSwallowing"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiOnsetSpreadItchingPain"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
+      "providerDocumentationComplaintIntel.chestPain.diffAcs"
+    )).toBe(true);
+    expect(isDehydrationViralIllnessDeniedStickyNoteFragment(`${INTEL}.hpiSymptomsBeganToday`)).toBe(false);
   });
 
   it("exposes chart-ready dehydration HPI, exam, and MDM chips", () => {
@@ -78,7 +127,14 @@ describe("providerDocumentationDehydrationViralIllnessGovernance — MEDUI.ED.ME
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
+    expect(visible.has(`${INTEL}.hpiSymptomsBeganToday`)).toBe(true);
     expect(visible.has(`${INTEL}.hpiDecreasedOralIntake`)).toBe(true);
+    expect(visible.has(`${INTEL}.hpiConcernForDehydration`)).toBe(true);
+    expect(visible.has(`${INTEL}.examMildlyDryMucousMembranes`)).toBe(true);
+    expect(visible.has(`${INTEL}.examAppearsDehydrated`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffSepticShock`)).toBe(true);
+    expect(visible.has(`${INTEL}.mdmBloodCultureReviewed`)).toBe(true);
+    expect(visible.has(`${INTEL}.planEdReturnAdvisedForWorseningSymptoms`)).toBe(true);
     expect(visible.has(`${INTEL}.examDryMucousMembranes`)).toBe(true);
     expect(visible.has(`${INTEL}.diffViralGastroenteritis`)).toBe(true);
     expect(visible.has(`${INTEL}.riskLowSuspicionSevereDehydration`)).toBe(true);
