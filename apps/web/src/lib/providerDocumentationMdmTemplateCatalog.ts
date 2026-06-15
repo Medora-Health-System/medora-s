@@ -54,15 +54,20 @@ const MDM_TEMPLATE_FIELD_KEYS: ProviderDocumentationTemplateStringField[] = [
   "mdmAdmitObserveDischarge",
 ];
 
-const MDM_COMPLAINT_INTEL_FIELDS = [
-  "mdmWorkingAssessment",
-  "mdmDifferentialSynthesis",
-  "mdmDataReviewed",
-  "mdmClinicalRationale",
-  "mdmPlanSummary",
-  "mdmImmediateActionsRationale",
-  "mdmAdmitObserveDischarge",
-] as const;
+const MDM_COMPLAINT_INTEL_FIELDS: Array<{
+  intelField: keyof import("./providerDocumentationComplaintIntelligence").ProviderDocumentationComplaintIntelligence;
+  workspaceField: ProviderDocumentationTemplateStringField;
+}> = [
+  { intelField: "mdmWorkingAssessment", workspaceField: "mdmWorkingAssessment" },
+  { intelField: "mdmDifferentialSynthesis", workspaceField: "mdmDifferentialSynthesis" },
+  { intelField: "mdmDataReviewed", workspaceField: "mdmDataReviewed" },
+  { intelField: "mdmRiskStratification", workspaceField: "mdmClinicalRationale" },
+  { intelField: "mdmClinicalRationale", workspaceField: "mdmClinicalRationale" },
+  { intelField: "clinicalImpression", workspaceField: "clinicalImpression" },
+  { intelField: "mdmPlanSummary", workspaceField: "mdmPlanSummary" },
+  { intelField: "mdmImmediateActionsRationale", workspaceField: "mdmImmediateActionsRationale" },
+  { intelField: "mdmAdmitObserveDischarge", workspaceField: "mdmAdmitObserveDischarge" },
+];
 
 export const HIGH_VALUE_MDM_TEMPLATES: Array<{
   id: string;
@@ -153,9 +158,11 @@ export function buildMdmTemplateDropdownOptions(
     }
   }
 
-  for (const field of MDM_COMPLAINT_INTEL_FIELDS) {
-    for (const fragmentKey of template?.complaintIntelligence?.[field] ?? []) {
-      add(field, fragmentKey);
+  for (const { intelField, workspaceField } of MDM_COMPLAINT_INTEL_FIELDS) {
+    const fragments = template?.complaintIntelligence?.[intelField];
+    if (!Array.isArray(fragments)) continue;
+    for (const fragmentKey of fragments) {
+      add(workspaceField, fragmentKey);
     }
   }
 

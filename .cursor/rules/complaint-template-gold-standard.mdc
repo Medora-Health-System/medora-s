@@ -1,0 +1,54 @@
+---
+description: Medora gold standard for complaint sticky notes, intelligence, and MDM (chart-ready documentation)
+globs: apps/web/src/lib/providerDocumentation*ComplaintIntelligence*.ts,apps/web/src/lib/providerDocumentation*Governance*.ts,apps/web/src/i18n/messages/providerDocumentation*ComplaintIntel*.ts
+alwaysApply: false
+---
+
+# Complaint Template Gold Standard
+
+Every sticky note must be **chart-ready**: click-to-insert without editing. If it does not sound like real clinician documentation, it fails.
+
+## Section rules
+
+| Section | Must be | Prohibited |
+|---------|---------|------------|
+| **HPI** | Patient story (onset, location, quality, duration, associated symptoms) | `*Reviewed`, `*Considered`, provider reasoning |
+| **ROS** | Present symptoms, denied symptoms, red flags | Provider reasoning, `reviewed` |
+| **Physical exam** | Observed findings only | History items, `reviewed` |
+| **Reassessment** | Treatment response (improved, tolerated PO, resolved) | Data review language |
+| **MDM — data reviewed** | `CBC reviewed`, `CT reviewed`, `troponin reviewed` | — |
+| **MDM — reasoning/plan** | Working assessment, risk, impression, provider actions | Generic MDM only |
+
+`reviewed` belongs only in **mdmDataReviewed** and **reassessment** (treatment response), not HPI/ROS/exam.
+
+## Mandatory MDM stack (complaint-specific)
+
+Every complaint family needs dedicated chips for: Working Assessment, Differential (common + serious + cannot-miss), Data Reviewed, Risk Stratification, Medical Reasoning, Impression, Plan.
+
+Reference patterns: `providerDocumentationGiComplaintIntelligence19Mdm2.ts`, `providerDocumentationDehydrationViralIllnessComplaintIntelGoldStandard.ts`, `providerDocumentationComplaintIntelligenceWorkspaceChips.ts`.
+
+## Workspace rendering (MDM.1)
+
+Complaint-intelligence MDM chips must render as first-class click-to-insert groups in `ProviderDocumentationWorkspace` via `COMPLAINT_INTEL_MDM_CHIP_BINDINGS` and `COMPLAINT_INTEL_IMPRESSION_CHIP_BINDINGS`. No gold-standard MDM content may exist only in intel bundles without workspace chip rendering.
+
+## Three-track hardening (required for ME.2* and beyond)
+
+- **Track A** — Sticky-note governance (wrong-domain denial)
+- **Track B** — MDM reinforcement (full complaint-specific MDM stack)
+- **Track C** — Human documentation audit (patient story, ROS, exam, reassessment, reasoning, plan tests)
+
+## Good vs bad HPI examples
+
+```
+✅ began today | sudden onset | sore throat | odynophagia | drooling
+❌ dysphagia reviewed | fever reviewed | symptom duration reviewed
+```
+
+## Good vs bad exam examples
+
+```
+✅ tonsillar erythema | uvular deviation | peritonsillar fullness | airway patent
+❌ tonsillar findings if documented | airway findings reviewed
+```
+
+When adding or changing complaint intel keys, update matching `en.ts` and `fr.ts` message files. French product strings in `fr.ts`.

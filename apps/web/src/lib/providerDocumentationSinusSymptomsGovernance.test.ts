@@ -7,20 +7,20 @@ import {
 } from "@/lib/providerDocumentationModel";
 import { buildMdmTemplateDropdownOptions } from "@/lib/providerDocumentationMdmTemplateCatalog";
 import {
-  collectEarPainVisibleStickyNoteFragmentKeys,
-  EAR_PAIN_ALLOWED_EXAM_SECTION_IDS,
-  EAR_PAIN_GOVERNED_TEMPLATE_IDS,
-  filterEarPainMdmTemplateOptionsForTemplate,
-  resolveEarPainExamChipGroupsForTemplate,
-  resolveEarPainRosChipGroupsForTemplate,
-  templateUsesEarPainStickyNoteGovernance,
-} from "@/lib/providerDocumentationEarPainGovernance";
-import { collectDentalOralVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationDentalOralGovernance";
+  collectSinusSymptomsVisibleStickyNoteFragmentKeys,
+  filterSinusSymptomsMdmTemplateOptionsForTemplate,
+  resolveSinusSymptomsExamChipGroupsForTemplate,
+  resolveSinusSymptomsRosChipGroupsForTemplate,
+  SINUS_SYMPTOMS_ALLOWED_EXAM_SECTION_IDS,
+  SINUS_SYMPTOMS_GOVERNED_TEMPLATE_IDS,
+  templateUsesSinusSymptomsStickyNoteGovernance,
+} from "@/lib/providerDocumentationSinusSymptomsGovernance";
+import { collectEarPainVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationEarPainGovernance";
 import { collectUrinarySymptomsVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationUrinarySymptomsGovernance";
-import { EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL } from "./providerDocumentationInfectiousEntComplaintIntelligence19Mdm7";
+import { SINUS_SYMPTOMS_COMPLAINT_V1_INTEL } from "./providerDocumentationInfectiousEntComplaintIntelligence19Mdm7";
 
-const ADULT_EAR_TEMPLATE_ID = "ear_pain_otitis_complaint_v1" as const;
-const PEDIATRIC_EAR_TEMPLATE_ID = "ear_pain" as const;
+const SINUS_TEMPLATE_ID = "sinus_symptoms_complaint_v1" as const;
+const INTEL = "providerDocumentationComplaintIntel.sinusSymptomsComplaintV1";
 
 const WORKSPACE_ROS_CHIP_GROUPS = [
   {
@@ -127,62 +127,57 @@ function flattenFragmentKeys(groups: Array<{ chips: Array<{ fragmentKey: string 
   return groups.flatMap((group) => group.chips.map((chip) => chip.fragmentKey));
 }
 
-describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
-  it("governs all discovered ear pain / otitis template IDs in catalog", () => {
-    expect(EAR_PAIN_GOVERNED_TEMPLATE_IDS).toEqual(["ear_pain_otitis_complaint_v1", "ear_pain"]);
-    for (const templateId of EAR_PAIN_GOVERNED_TEMPLATE_IDS) {
-      expect(templateUsesEarPainStickyNoteGovernance(templateId)).toBe(true);
+describe("providerDocumentationSinusSymptomsGovernance — MEDUI.ED.ME.2S", () => {
+  it("governs all discovered sinus symptoms template IDs in catalog", () => {
+    expect(SINUS_SYMPTOMS_GOVERNED_TEMPLATE_IDS).toEqual(["sinus_symptoms_complaint_v1"]);
+    for (const templateId of SINUS_SYMPTOMS_GOVERNED_TEMPLATE_IDS) {
+      expect(templateUsesSinusSymptomsStickyNoteGovernance(templateId)).toBe(true);
       expect(PROVIDER_DOCUMENTATION_TEMPLATES.some((template) => template.id === templateId)).toBe(true);
     }
   });
 
-  it("exposes ear pain, otitis, mastoiditis, and foreign body complaint-intel chips", () => {
-    const visible = collectEarPainVisibleStickyNoteFragmentKeys({
-      templateId: ADULT_EAR_TEMPLATE_ID,
+  it("exposes sinus pain, congestion, drainage, and orbital complication complaint-intel chips", () => {
+    const visible = collectSinusSymptomsVisibleStickyNoteFragmentKeys({
+      templateId: SINUS_TEMPLATE_ID,
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.rosEarPain")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffOtitisExterna")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffMastoiditis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffForeignBody")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.examErythematousTympanicMembrane")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.hpiPossibleForeignBody")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.hpiSwimmingExposure")).toBe(true);
+    expect(visible.has(`${INTEL}.hpiFacialPressure`)).toBe(true);
+    expect(visible.has(`${INTEL}.hpiMaxillaryPain`)).toBe(true);
+    expect(visible.has(`${INTEL}.hpiFrontalPain`)).toBe(true);
+    expect(visible.has(`${INTEL}.rosCongestion`)).toBe(true);
+    expect(visible.has(`${INTEL}.rosPostNasalDrip`)).toBe(true);
+    expect(visible.has(`${INTEL}.hpiPostNasalDrainage`)).toBe(true);
+    expect(visible.has(`${INTEL}.rfPeriorbitalSwelling`)).toBe(true);
+    expect(visible.has(`${INTEL}.rfVisionChange`)).toBe(true);
+    expect(visible.has(`${INTEL}.examPeriorbitalSwelling`)).toBe(true);
+    expect(visible.has(`${INTEL}.examMaxillarySinusTenderness`)).toBe(true);
   });
 
   it("includes reinforced cannot-miss differential and disposition chips", () => {
-    const visible = collectEarPainVisibleStickyNoteFragmentKeys({
-      templateId: ADULT_EAR_TEMPLATE_ID,
+    const visible = collectSinusSymptomsVisibleStickyNoteFragmentKeys({
+      templateId: SINUS_TEMPLATE_ID,
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffMalignantOtitisExterna")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffIntracranialExtension")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffSepsis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.mdmCtTemporalBoneReviewed")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.dispAdmission")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.impAcuteOtitisMedia")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.riskLowSuspicionMastoiditis")).toBe(
-      true
-    );
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.dispUrgentEntFollowUp")).toBe(true);
+    expect(visible.has(`${INTEL}.diffOrbitalCellulitis`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffPeriorbitalCellulitis`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffIntracranialExtension`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffCavernousSinusThrombosis`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffInvasiveFungalSinusitis`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffSepsis`)).toBe(true);
+    expect(visible.has(`${INTEL}.diffMeningitis`)).toBe(true);
+    expect(visible.has(`${INTEL}.mdmCtSinusReviewed`)).toBe(true);
+    expect(visible.has(`${INTEL}.impAcuteBacterialSinusitis`)).toBe(true);
+    expect(visible.has(`${INTEL}.riskLowSuspicionOrbitalSpread`)).toBe(true);
+    expect(visible.has(`${INTEL}.dispUrgentEntFollowUp`)).toBe(true);
   });
 
-  it("hides chest pain, UTI, pelvic, dental, vertigo, and trauma wrong-domain chips", () => {
-    const visible = collectEarPainVisibleStickyNoteFragmentKeys({
-      templateId: ADULT_EAR_TEMPLATE_ID,
+  it("hides chest pain, UTI, pelvic, primary headache, vertigo, dental, and trauma wrong-domain chips", () => {
+    const visible = collectSinusSymptomsVisibleStickyNoteFragmentKeys({
+      templateId: SINUS_TEMPLATE_ID,
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
@@ -192,29 +187,27 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
     expect(visible.has("providerDocumentationComplaintIntel.utiUrinarySymptoms.hpiDysuria")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiPelvicPain")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.dizzinessSyncope.hpiTrueVertigo")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.vertigoComplaintV1.diffPeripheralVertigo")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.fall.hpiMechanicalFall")).toBe(false);
 
     const rosKeys = flattenFragmentKeys(
-      resolveEarPainRosChipGroupsForTemplate(ADULT_EAR_TEMPLATE_ID, WORKSPACE_ROS_CHIP_GROUPS)
+      resolveSinusSymptomsRosChipGroupsForTemplate(SINUS_TEMPLATE_ID, WORKSPACE_ROS_CHIP_GROUPS)
     );
     expect(rosKeys).not.toContain("erMseRosChips.posChestPain");
     expect(rosKeys).not.toContain("erMseRosChips.posSob");
-    expect(rosKeys).not.toContain("erMseRosChips.posHeadache");
     expect(rosKeys).not.toContain("erMseRosChips.posDizziness");
     expect(rosKeys).not.toContain("erMseRosChips.posSyncope");
     expect(rosKeys).toContain("erMseRosChips.rfAlteredMs");
-    expect(rosKeys).toContain("erMseRosChips.rfHypotensionConcern");
     expect(rosKeys).toContain("erMseRosChips.posFever");
   });
 
-  it("restricts exam sections to ear-relevant sections including neuroPsych for hearing/mastoid concerns", () => {
-    const examSectionIds = resolveEarPainExamChipGroupsForTemplate(
-      ADULT_EAR_TEMPLATE_ID,
+  it("restricts exam sections to sinus-relevant sections including neuroPsych for complication concerns", () => {
+    const examSectionIds = resolveSinusSymptomsExamChipGroupsForTemplate(
+      SINUS_TEMPLATE_ID,
       WORKSPACE_EXAM_CHIP_GROUPS
     ).map((group) => group.sectionId);
-    expect(examSectionIds).toEqual([...EAR_PAIN_ALLOWED_EXAM_SECTION_IDS]);
+    expect(examSectionIds).toEqual([...SINUS_SYMPTOMS_ALLOWED_EXAM_SECTION_IDS]);
     expect(examSectionIds).not.toContain("respiratory");
     expect(examSectionIds).not.toContain("cardiovascular");
     expect(examSectionIds).not.toContain("abdomen");
@@ -222,7 +215,7 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
     expect(examSectionIds).not.toContain("skin");
 
     const examKeys = flattenFragmentKeys(
-      resolveEarPainExamChipGroupsForTemplate(ADULT_EAR_TEMPLATE_ID, WORKSPACE_EXAM_CHIP_GROUPS)
+      resolveSinusSymptomsExamChipGroupsForTemplate(SINUS_TEMPLATE_ID, WORKSPACE_EXAM_CHIP_GROUPS)
     );
     expect(examKeys).toContain("erMseExamChips.heentOropharynxClear");
     expect(examKeys).toContain("erMseExamChips.neuroAlertOriented");
@@ -231,9 +224,9 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
   });
 
   it("keeps infectious MDM while hiding EKG and wrong-domain pathways", () => {
-    const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === ADULT_EAR_TEMPLATE_ID) ?? null;
-    const mdmKeys = filterEarPainMdmTemplateOptionsForTemplate(
-      ADULT_EAR_TEMPLATE_ID,
+    const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === SINUS_TEMPLATE_ID) ?? null;
+    const mdmKeys = filterSinusSymptomsMdmTemplateOptionsForTemplate(
+      SINUS_TEMPLATE_ID,
       buildMdmTemplateDropdownOptions(template)
     ).map((option) => option.fragmentKey);
     expect(mdmKeys).toContain("erMseMdmChips.waInfectious");
@@ -242,7 +235,7 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
     expect(mdmKeys).toContain("erMseMdmChips.planImaging");
     expect(mdmKeys).toContain("erMseMdmChips.planMeds");
     expect(mdmKeys).toContain("erMseMdmChips.planReassess");
-    expect(mdmKeys.some((key) => key.includes("earPainOtitisComplaintV1"))).toBe(true);
+    expect(mdmKeys.some((key) => key.includes("sinusSymptomsComplaintV1"))).toBe(true);
     expect(mdmKeys).not.toContain("erMseMdmChips.waCardiopulmonary");
     expect(mdmKeys).not.toContain("erMseMdmChips.waAbdominal");
     expect(mdmKeys).not.toContain("erMseMdmChips.waTrauma");
@@ -252,69 +245,55 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
     expect(mdmKeys).not.toContain("providerDocumentationMdmHighValue.ekgNormal");
   });
 
-  it("governs pediatric ear_pain with reinforced complaint intelligence", () => {
-    const visible = collectEarPainVisibleStickyNoteFragmentKeys({
-      templateId: PEDIATRIC_EAR_TEMPLATE_ID,
-      rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
-      examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
-      hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
-    });
-    expect(visible.has("erMseHpiChipsPediatric.earPainLaterality")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffMastoiditis")).toBe(true);
-  });
-
   it("preserves sticky-note-only activation and click-to-insert", () => {
     const state = emptyProviderDocumentationWorkspaceState();
-    const next = applyProviderDocumentationTemplate({ state, templateId: ADULT_EAR_TEMPLATE_ID });
-    expect(next.activeTemplateId).toBe(ADULT_EAR_TEMPLATE_ID);
+    const next = applyProviderDocumentationTemplate({ state, templateId: SINUS_TEMPLATE_ID });
+    expect(next.activeTemplateId).toBe(SINUS_TEMPLATE_ID);
     expect(next.hpi).toBe("");
     expect(next.physicalExam.heent).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia";
+    const fragmentKey = `${INTEL}.diffAcuteBacterialSinusitis`;
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
   });
 
   it("does not affect unrelated templates", () => {
     const rosKeys = flattenFragmentKeys(
-      resolveEarPainRosChipGroupsForTemplate("chest_pain", WORKSPACE_ROS_CHIP_GROUPS)
+      resolveSinusSymptomsRosChipGroupsForTemplate("chest_pain", WORKSPACE_ROS_CHIP_GROUPS)
     );
     expect(rosKeys).toContain("erMseRosChips.posChestPain");
 
-    const examSectionIds = resolveEarPainExamChipGroupsForTemplate("headache", WORKSPACE_EXAM_CHIP_GROUPS).map(
+    const examSectionIds = resolveSinusSymptomsExamChipGroupsForTemplate("headache", WORKSPACE_EXAM_CHIP_GROUPS).map(
       (group) => group.sectionId
     );
     expect(examSectionIds.length).toBe(WORKSPACE_EXAM_CHIP_GROUPS.length);
   });
 
-  it("does not regress UTI or dental governance", () => {
+  it("does not regress UTI or ear pain governance", () => {
     const utiVisible = collectUrinarySymptomsVisibleStickyNoteFragmentKeys({
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
     });
     expect(utiVisible.has("providerDocumentationComplaintIntel.utiUrinarySymptoms.hpiDysuria")).toBe(true);
 
-    const dentalVisible = collectDentalOralVisibleStickyNoteFragmentKeys({
-      templateId: "dental_pain_infection_complaint_v1",
+    const earVisible = collectEarPainVisibleStickyNoteFragmentKeys({
+      templateId: "ear_pain_otitis_complaint_v1",
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(dentalVisible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess")).toBe(
-      true
-    );
+    expect(earVisible.has("providerDocumentationComplaintIntel.earPainOtitisComplaintV1.diffAcuteOtitisMedia")).toBe(true);
   });
 
-  it("reinforces full MDM stack on ear pain complaint intelligence", () => {
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmWorkingAssessment?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmDifferentialSynthesis?.length).toBeGreaterThanOrEqual(14);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmDataReviewed?.length).toBeGreaterThanOrEqual(5);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmRiskStratification?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmClinicalRationale?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.clinicalImpression?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmPlanSummary?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.reassessment?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.mdmAdmitObserveDischarge?.length).toBeGreaterThan(0);
-    expect(EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL.followUpDisposition?.length).toBeGreaterThan(0);
+  it("reinforces full MDM stack on sinus symptoms complaint intelligence", () => {
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmWorkingAssessment?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmDifferentialSynthesis?.length).toBeGreaterThanOrEqual(15);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmDataReviewed?.length).toBeGreaterThanOrEqual(5);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmRiskStratification?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmClinicalRationale?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.clinicalImpression?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmPlanSummary?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.reassessment?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.mdmAdmitObserveDischarge?.length).toBeGreaterThan(0);
+    expect(SINUS_SYMPTOMS_COMPLAINT_V1_INTEL.followUpDisposition?.length).toBeGreaterThan(0);
   });
 });

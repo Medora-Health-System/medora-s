@@ -100,6 +100,24 @@ import {
   resolveMaleGuRosChipGroupsForTemplate,
 } from "./providerDocumentationMaleGuGovernance";
 import {
+  filterSoreThroatMdmTemplateOptionsForTemplate,
+  resolveSoreThroatExamChipGroupsForTemplate,
+  resolveSoreThroatHpiChipGroupsForTemplate,
+  resolveSoreThroatRosChipGroupsForTemplate,
+} from "./providerDocumentationSoreThroatGovernance";
+import {
+  filterDehydrationViralIllnessMdmTemplateOptionsForTemplate,
+  resolveDehydrationViralIllnessExamChipGroupsForTemplate,
+  resolveDehydrationViralIllnessHpiChipGroupsForTemplate,
+  resolveDehydrationViralIllnessRosChipGroupsForTemplate,
+} from "./providerDocumentationDehydrationViralIllnessGovernance";
+import {
+  filterSinusSymptomsMdmTemplateOptionsForTemplate,
+  resolveSinusSymptomsExamChipGroupsForTemplate,
+  resolveSinusSymptomsHpiChipGroupsForTemplate,
+  resolveSinusSymptomsRosChipGroupsForTemplate,
+} from "./providerDocumentationSinusSymptomsGovernance";
+import {
   filterEarPainMdmTemplateOptionsForTemplate,
   resolveEarPainExamChipGroupsForTemplate,
   resolveEarPainHpiChipGroupsForTemplate,
@@ -124,7 +142,13 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveEarPainRosChipGroupsForTemplate(
+  return resolveDehydrationViralIllnessRosChipGroupsForTemplate(
+    templateId,
+    resolveSoreThroatRosChipGroupsForTemplate(
+    templateId,
+    resolveSinusSymptomsRosChipGroupsForTemplate(
+    templateId,
+    resolveEarPainRosChipGroupsForTemplate(
     templateId,
     resolveDentalOralRosChipGroupsForTemplate(
     templateId,
@@ -175,6 +199,9 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
     )
+    )
+    )
+    )
   );
 }
 
@@ -182,7 +209,13 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveEarPainExamChipGroupsForTemplate(
+  return resolveDehydrationViralIllnessExamChipGroupsForTemplate(
+    templateId,
+    resolveSoreThroatExamChipGroupsForTemplate(
+    templateId,
+    resolveSinusSymptomsExamChipGroupsForTemplate(
+    templateId,
+    resolveEarPainExamChipGroupsForTemplate(
     templateId,
     resolveDentalOralExamChipGroupsForTemplate(
     templateId,
@@ -233,6 +266,9 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
     )
+    )
+    )
+    )
   );
 }
 
@@ -240,7 +276,13 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveEarPainHpiChipGroupsForTemplate(
+  return resolveDehydrationViralIllnessHpiChipGroupsForTemplate(
+    templateId,
+    resolveSoreThroatHpiChipGroupsForTemplate(
+    templateId,
+    resolveSinusSymptomsHpiChipGroupsForTemplate(
+    templateId,
+    resolveEarPainHpiChipGroupsForTemplate(
     templateId,
     resolveDentalOralHpiChipGroupsForTemplate(
     templateId,
@@ -282,7 +324,10 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
             )
           )
         )
+        )
       )
+    )
+    )
     )
     )
     )
@@ -295,7 +340,13 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterEarPainMdmTemplateOptionsForTemplate(
+  return filterDehydrationViralIllnessMdmTemplateOptionsForTemplate(
+    templateId,
+    filterSoreThroatMdmTemplateOptionsForTemplate(
+    templateId,
+    filterSinusSymptomsMdmTemplateOptionsForTemplate(
+    templateId,
+    filterEarPainMdmTemplateOptionsForTemplate(
     templateId,
     filterDentalOralMdmTemplateOptionsForTemplate(
     templateId,
@@ -341,6 +392,9 @@ export function filterMdmTemplateOptionsForTemplate(
           )
         )
       )
+    )
+    )
+    )
     )
     )
     )

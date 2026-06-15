@@ -73,7 +73,9 @@ export type ProviderDocumentationComplaintIntelligence = {
   mdmWorkingAssessment?: string[];
   mdmDifferentialSynthesis?: string[];
   mdmDataReviewed?: string[];
+  mdmRiskStratification?: string[];
   mdmClinicalRationale?: string[];
+  clinicalImpression?: string[];
   mdmPlanSummary?: string[];
   mdmImmediateActionsRationale?: string[];
   mdmAdmitObserveDischarge?: string[];
@@ -4059,7 +4061,9 @@ export function flattenComplaintIntelligenceKeys(bundle: ProviderDocumentationCo
     ...(bundle.mdmWorkingAssessment ?? []),
     ...(bundle.mdmDifferentialSynthesis ?? []),
     ...(bundle.mdmDataReviewed ?? []),
+    ...(bundle.mdmRiskStratification ?? []),
     ...(bundle.mdmClinicalRationale ?? []),
+    ...(bundle.clinicalImpression ?? []),
     ...(bundle.mdmPlanSummary ?? []),
     ...(bundle.mdmImmediateActionsRationale ?? []),
     ...(bundle.mdmAdmitObserveDischarge ?? []),

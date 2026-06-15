@@ -18,11 +18,9 @@ import {
 import {
   COUGH_COMPLAINT_V1_INTEL,
   URI_CONGESTION_COMPLAINT_V1_INTEL,
-  SORE_THROAT_COMPLAINT_V1_INTEL,
   CHEST_CONGESTION_COMPLAINT_V1_INTEL,
   FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL,
 } from "./providerDocumentationRespiratoryComplaintIntelligence19Mdm3";
-import { SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL } from "./providerDocumentationInfectiousEntComplaintIntelligence19Mdm7";
 
 type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -38,8 +36,6 @@ export const COUGH_URI_GOVERNED_TEMPLATE_IDS = [
   "uri_respiratory",
   "cough_complaint_v1",
   "uri_congestion_complaint_v1",
-  "sore_throat_complaint_v1",
-  "sore_throat_infectious_complaint_v1",
   "chest_congestion_complaint_v1",
   "flu_like_illness_complaint_v1",
 ] as const satisfies readonly ProviderDocumentationTemplateId[];
@@ -167,14 +163,12 @@ export const COUGH_URI_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
   "providerDocumentationComplaintIntel.uriRespiratory.hpiCovidFluExposureReviewed",
   "providerDocumentationComplaintIntel.coughComplaintV1.hpiProductiveVsDry",
   "providerDocumentationComplaintIntel.uriCongestionComplaintV1.hpiCongestionRhinorrhea",
-  "providerDocumentationComplaintIntel.soreThroatComplaintV1.hpiExposureSickContacts",
   "providerDocumentationComplaintIntel.fluLikeIllnessComplaintV1.hpiFeverChillsMyalgias",
   "providerDocumentationComplaintIntel.cough.examWheezing",
   "providerDocumentationComplaintIntel.uriRespiratory.examNasalCongestionPresent",
   "providerDocumentationComplaintIntel.uriRespiratory.diffViralUri",
   "providerDocumentationComplaintIntel.uriRespiratory.diffInfluenza",
   "providerDocumentationComplaintIntel.coughComplaintV1.diffUri",
-  "providerDocumentationComplaintIntel.soreThroatComplaintV1.diffStrepPharyngitis",
 ] as const;
 
 const DENIED_STICKY_NOTE_FRAGMENT_KEY_SET = new Set<string>(COUGH_URI_DENIED_STICKY_NOTE_FRAGMENT_KEYS);
@@ -187,8 +181,6 @@ const COMPLAINT_INTEL_BY_COUGH_URI_TEMPLATE_ID: Partial<
   uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
   cough_complaint_v1: COUGH_COMPLAINT_V1_INTEL,
   uri_congestion_complaint_v1: URI_CONGESTION_COMPLAINT_V1_INTEL,
-  sore_throat_complaint_v1: SORE_THROAT_COMPLAINT_V1_INTEL,
-  sore_throat_infectious_complaint_v1: SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL,
   chest_congestion_complaint_v1: CHEST_CONGESTION_COMPLAINT_V1_INTEL,
   flu_like_illness_complaint_v1: FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL,
 };

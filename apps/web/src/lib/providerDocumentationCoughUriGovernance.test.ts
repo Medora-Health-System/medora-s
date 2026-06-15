@@ -121,8 +121,6 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       "uri_respiratory",
       "cough_complaint_v1",
       "uri_congestion_complaint_v1",
-      "sore_throat_complaint_v1",
-      "sore_throat_infectious_complaint_v1",
       "chest_congestion_complaint_v1",
       "flu_like_illness_complaint_v1",
     ]);

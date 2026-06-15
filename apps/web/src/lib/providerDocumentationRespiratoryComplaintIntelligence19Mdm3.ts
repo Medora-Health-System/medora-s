@@ -1,5 +1,6 @@
 /** Phase 19MDM.3 — Respiratory / ENT complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const cough = (key: string) => `providerDocumentationComplaintIntel.coughComplaintV1.${key}`;
 const uriCongestion = (key: string) => `providerDocumentationComplaintIntel.uriCongestionComplaintV1.${key}`;
@@ -41,20 +42,7 @@ export const URI_CONGESTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIn
   followUpDisposition: [uriCongestion("dispReturnWorseningBreathingFever")],
 });
 
-export const SORE_THROAT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [soreThroat("hpiOnsetFever"), soreThroat("hpiSwallowingVoiceDrooling"), soreThroat("hpiExposureSickContacts"), soreThroat("hpiNeckSwellingRash")],
-  rosImportantPositives: [soreThroat("rosSoreThroat"), soreThroat("rosFever"), soreThroat("rosDysphagia")],
-  rosImportantNegatives: [soreThroat("rosDeniesDrooling")],
-  rosRedFlags: [soreThroat("rfAirwayCompromise"), soreThroat("rfDehydration")],
-  physicalExam: { respiratory: [soreThroat("examOropharynxTonsils"), soreThroat("examAirwayAssessment"), soreThroat("examCervicalNodes")], general: [soreThroat("examGeneralAppearance")]},
-  mdmWorkingAssessment: [soreThroat("mdmSoreThroatPresentation")],
-  mdmDifferentialSynthesis: [soreThroat("diffViralPharyngitis"), soreThroat("diffStrepPharyngitis"), soreThroat("diffTonsillitis"), soreThroat("diffPtaRpaConcern"), soreThroat("diffMono")],
-  mdmDataReviewed: [soreThroat("mdmRapidStrepTestingIfIndicated")],
-  mdmClinicalRationale: [soreThroat("mdmAirwayPrecautionsDiscussed")],
-  mdmAdmitObserveDischarge: [soreThroat("mdmAdmissionIfAirwayConcern")],
-  reassessment: [soreThroat("reassessSwallowingHydration")],
-  followUpDisposition: [soreThroat("dispReturnAirwayRedFlags")],
-});
+export const SORE_THROAT_COMPLAINT_V1_INTEL = buildSoreThroatComplaintIntel(soreThroat);
 
 export const ASTHMA_WHEEZING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [asthmaWheezing("hpiTriggerPriorAsthma"), asthmaWheezing("hpiInhalerUsePriorAdmissions"), asthmaWheezing("hpiChestTightnessSobCough"), asthmaWheezing("hpiFeverTriggerReview")],
