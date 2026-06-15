@@ -99,6 +99,12 @@ import {
   resolveMaleGuHpiChipGroupsForTemplate,
   resolveMaleGuRosChipGroupsForTemplate,
 } from "./providerDocumentationMaleGuGovernance";
+import {
+  filterDentalOralMdmTemplateOptionsForTemplate,
+  resolveDentalOralExamChipGroupsForTemplate,
+  resolveDentalOralHpiChipGroupsForTemplate,
+  resolveDentalOralRosChipGroupsForTemplate,
+} from "./providerDocumentationDentalOralGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -112,7 +118,9 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveMaleGuRosChipGroupsForTemplate(
+  return resolveDentalOralRosChipGroupsForTemplate(
+    templateId,
+    resolveMaleGuRosChipGroupsForTemplate(
     templateId,
     resolveExtremityMskRosChipGroupsForTemplate(
     templateId,
@@ -157,6 +165,7 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
     )
+    )
   );
 }
 
@@ -164,7 +173,9 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveMaleGuExamChipGroupsForTemplate(
+  return resolveDentalOralExamChipGroupsForTemplate(
+    templateId,
+    resolveMaleGuExamChipGroupsForTemplate(
     templateId,
     resolveExtremityMskExamChipGroupsForTemplate(
     templateId,
@@ -209,6 +220,7 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
     )
+    )
   );
 }
 
@@ -216,7 +228,9 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveMaleGuHpiChipGroupsForTemplate(
+  return resolveDentalOralHpiChipGroupsForTemplate(
+    templateId,
+    resolveMaleGuHpiChipGroupsForTemplate(
     templateId,
     resolveExtremityMskHpiChipGroupsForTemplate(
     templateId,
@@ -258,6 +272,7 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
     )
+    )
   );
 }
 
@@ -265,7 +280,9 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterMaleGuMdmTemplateOptionsForTemplate(
+  return filterDentalOralMdmTemplateOptionsForTemplate(
+    templateId,
+    filterMaleGuMdmTemplateOptionsForTemplate(
     templateId,
     filterExtremityMskMdmTemplateOptionsForTemplate(
     templateId,
@@ -307,6 +324,7 @@ export function filterMdmTemplateOptionsForTemplate(
           )
         )
       )
+    )
     )
     )
     )
