@@ -151,12 +151,11 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiCoughDurationReviewed")).toBe(true);
-    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiProductiveCough")).toBe(true);
     expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiDryCough")).toBe(true);
-    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiSickContactsReviewed")).toBe(true);
-    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.rosWheezing")).toBe(true);
-    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.rosShortnessOfBreath")).toBe(true);
+    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiProductiveCough")).toBe(true);
+    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiSickContacts")).toBe(true);
+    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.hpiDeniesHemoptysis")).toBe(true);
+    expect(coughVisible.has("providerDocumentationComplaintIntel.cough.rosCongestion")).toBe(true);
 
     const uriVisible = collectCoughUriVisibleStickyNoteFragmentKeys({
       templateId: "adult_uri_respiratory",
@@ -165,11 +164,11 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiNasalCongestion")).toBe(true);
-    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiRhinorrhea")).toBe(true);
+    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiRunnyNose")).toBe(true);
     expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiSoreThroat")).toBe(true);
-    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiCovidFluExposureReviewed")).toBe(true);
+    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiRecentViralExposure")).toBe(true);
     expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.hpiSickContacts")).toBe(true);
-    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.rosMyalgias")).toBe(true);
+    expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.rosBodyAches")).toBe(true);
     expect(uriVisible.has("providerDocumentationComplaintIntel.uriRespiratory.diffInfluenza")).toBe(true);
   });
 
@@ -190,7 +189,7 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.examNasalCongestionPresent")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.examClearBreathSounds")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.uriRespiratory.examLungsClearBilaterally")).toBe(true);
     expect(visible.has("erMseExamChips.respWheezing")).toBe(true);
   });
 
@@ -212,8 +211,7 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
     });
     expect(visible.has("erMseHpiChips.locAbdominalPain")).toBe(false);
     expect(visible.has("providerDocumentationComplaintIntel.cough.diffPulmonaryEmbolism")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.cough.diffChf")).toBe(false);
-    expect(visible.has("providerDocumentationComplaintIntel.cough.mdmPeConsideredBasedOnRiskFactors")).toBe(false);
+    expect(visible.has("providerDocumentationComplaintIntel.cough.diffSepsis")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.cough.diffPneumonia")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.cough.diffInfluenza")).toBe(true);
 
@@ -232,7 +230,7 @@ describe("providerDocumentationCoughUriGovernance — MEDUI.ED.ME.2F", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(fluVisible.has("providerDocumentationComplaintIntel.fluLikeIllnessComplaintV1.hpiFeverChillsMyalgias")).toBe(
+    expect(fluVisible.has("providerDocumentationComplaintIntel.fluLikeIllnessComplaintV1.hpiFever")).toBe(
       true
     );
     expect(fluVisible.has("erMseRosChips.posVomiting")).toBe(true);

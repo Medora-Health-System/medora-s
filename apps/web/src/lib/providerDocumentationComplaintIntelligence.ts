@@ -35,6 +35,7 @@ import {
   buildPediatricAbdominalPainComplaintIntel,
 } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainComplaintIntelGoldStandard";
+import { buildCoughComplaintIntel, buildUriRespiratoryComplaintIntel } from "./providerDocumentationCoughUriComplaintIntelGoldStandard";
 import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import {
@@ -616,90 +617,7 @@ export const FLANK_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntellige
 });
 
 /** URI / respiratory symptoms — viral URI / upper respiratory infection documentation framework. */
-export const URI_RESPIRATORY_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    uri("hpiNasalCongestion"),
-    uri("hpiRhinorrhea"),
-    uri("hpiSoreThroat"),
-    uri("hpiCough"),
-    uri("hpiSinusPressure"),
-    uri("hpiEarPain"),
-    uri("hpiFeverSymptoms"),
-    uri("hpiSickContacts"),
-    uri("hpiRecentTravel"),
-    uri("hpiSymptomDurationReviewed"),
-    uri("hpiCovidFluExposureReviewed"),
-    uri("hpiImmunocompromisedStatusReviewed"),
-  ],
-  rosImportantPositives: [
-    uri("rosCongestion"),
-    uri("rosSoreThroat"),
-    uri("rosCough"),
-    uri("rosFever"),
-    uri("rosMyalgias"),
-    uri("rosEarPain"),
-  ],
-  rosImportantNegatives: [
-    uri("rosDeniesShortnessOfBreath"),
-    uri("rosDeniesChestPain"),
-    uri("rosDeniesNeckStiffness"),
-    uri("rosDeniesInabilityToToleratePo"),
-    uri("rosDeniesSevereHeadache"),
-  ],
-  rosRedFlags: [
-    uri("rfRespiratoryDistress"),
-    uri("rfHypoxia"),
-    uri("rfImmunocompromisedPatient"),
-    uri("rfPersistentFever"),
-    uri("rfDehydrationConcern"),
-    uri("rfAirwaySwellingConcern"),
-  ],
-  physicalExam: {
-    general: [uri("examWellAppearing")],
-    heent: [
-      uri("examNasalCongestionPresent"),
-      uri("examPharyngealErythema"),
-      uri("examTonsillarExudate"),
-      uri("examTympanicMembraneAbnormality"),
-      uri("examCervicalLymphadenopathy"),
-      uri("examNoMeningismus"),
-    ],
-    respiratory: [uri("examNoRespiratoryDistress"), uri("examClearBreathSounds")],
-  },
-  mdmWorkingAssessment: [uri("mdmViralSyndromeConsidered"), uri("mdmPneumoniaConsidered")],
-  mdmDifferentialSynthesis: [
-    uri("diffViralUri"),
-    uri("diffCovid19"),
-    uri("diffInfluenza"),
-    uri("diffRsvLikeIllness"),
-    uri("diffStrepPharyngitis"),
-    uri("diffOtitisMedia"),
-    uri("diffSinusitis"),
-    uri("diffPneumonia"),
-    uri("diffAllergicRhinitis"),
-  ],
-  mdmDataReviewed: [uri("mdmCovidFluStrepTestingConsidered")],
-  mdmClinicalRationale: [
-    uri("mdmAntibioticStewardshipDiscussed"),
-    uri("mdmHydrationStatusAssessed"),
-    uri("mdmReturnPrecautionsDiscussed"),
-  ],
-  mdmPlanSummary: [uri("mdmSymptomaticTreatmentRecommended")],
-  mdmImmediateActionsRationale: [uri("mdmOxygenIfIndicated")],
-  mdmAdmitObserveDischarge: [uri("mdmAdmissionConsideredIfRedFlags")],
-  reassessment: [
-    uri("reassessRemainsWellAppearing"),
-    uri("reassessToleratingOralIntake"),
-    uri("reassessRespiratoryStatusStable"),
-    uri("reassessFeverImprovedAfterTreatment"),
-  ],
-  followUpDisposition: [
-    uri("dispDischargeSupportiveCare"),
-    uri("dispReturnForRespiratoryDistress"),
-    uri("dispReturnForDehydration"),
-    uri("dispPcpFollowUpRecommended"),
-  ],
-});
+export const URI_RESPIRATORY_COMPLAINT_INTEL = buildUriRespiratoryComplaintIntel(uri);
 
 /** Fever — ED fever source / sepsis red-flag documentation framework. */
 export const FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -798,99 +716,7 @@ export const FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
 });
 
 /** Cough — ED cough / bronchitis / pneumonia workup documentation framework. */
-export const COUGH_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    coughIntel("hpiCoughDurationReviewed"),
-    coughIntel("hpiProductiveCough"),
-    coughIntel("hpiDryCough"),
-    coughIntel("hpiHemoptysisReviewed"),
-    coughIntel("hpiChestPainReviewed"),
-    coughIntel("hpiShortnessOfBreathReviewed"),
-    coughIntel("hpiFeverReviewed"),
-    coughIntel("hpiWheezingReviewed"),
-    coughIntel("hpiSmokingHistoryReviewed"),
-    coughIntel("hpiAsthmaCopdHistoryReviewed"),
-    coughIntel("hpiSickContactsReviewed"),
-  ],
-  rosImportantPositives: [
-    coughIntel("rosCough"),
-    coughIntel("rosFever"),
-    coughIntel("rosWheezing"),
-    coughIntel("rosShortnessOfBreath"),
-    coughIntel("rosChestTightness"),
-    coughIntel("rosMyalgias"),
-  ],
-  rosImportantNegatives: [
-    coughIntel("rosDeniesHemoptysis"),
-    coughIntel("rosDeniesChestPain"),
-    coughIntel("rosDeniesSevereShortnessOfBreath"),
-    coughIntel("rosDeniesLegSwelling"),
-    coughIntel("rosDeniesSyncope"),
-  ],
-  rosRedFlags: [
-    coughIntel("rfHypoxia"),
-    coughIntel("rfHemoptysis"),
-    coughIntel("rfRespiratoryDistress"),
-    coughIntel("rfPneumoniaConcern"),
-    coughIntel("rfPeConcern"),
-    coughIntel("rfChfConcern"),
-  ],
-  physicalExam: {
-    general: [coughIntel("examSpeakingFullSentences")],
-    respiratory: [
-      coughIntel("examNoRespiratoryDistress"),
-      coughIntel("examClearBreathSounds"),
-      coughIntel("examWheezing"),
-      coughIntel("examRhonchi"),
-      coughIntel("examCrackles"),
-      coughIntel("examDiminishedBreathSounds"),
-      coughIntel("examOxygenSaturationReviewed"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    coughIntel("mdmPneumoniaConsidered"),
-    coughIntel("mdmPeConsideredBasedOnRiskFactors"),
-  ],
-  mdmDifferentialSynthesis: [
-    coughIntel("diffViralBronchitis"),
-    coughIntel("diffPneumonia"),
-    coughIntel("diffAsthmaExacerbation"),
-    coughIntel("diffCopdExacerbation"),
-    coughIntel("diffCovid19"),
-    coughIntel("diffInfluenza"),
-    coughIntel("diffChf"),
-    coughIntel("diffPulmonaryEmbolism"),
-    coughIntel("diffGerdPostnasalDrip"),
-  ],
-  mdmDataReviewed: [
-    coughIntel("mdmChestXrayConsideredReviewed"),
-    coughIntel("mdmViralTestingConsideredReviewed"),
-  ],
-  mdmClinicalRationale: [
-    coughIntel("mdmBronchodilatorTherapyConsidered"),
-    coughIntel("mdmAntibioticsConsideredIfBacterialConcern"),
-    coughIntel("mdmOxygenRequirementAssessed"),
-    coughIntel("mdmDischargeSafetyAssessed"),
-  ],
-  mdmPlanSummary: [coughIntel("mdmSerialReassessmentPerformed")],
-  mdmImmediateActionsRationale: [coughIntel("mdmOxygenIfIndicated")],
-  mdmAdmitObserveDischarge: [
-    coughIntel("mdmAdmissionConsidered"),
-    coughIntel("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    coughIntel("reassessCoughRespiratorySymptomsStable"),
-    coughIntel("reassessBreathingImprovedAfterTreatment"),
-    coughIntel("reassessOxygenSaturationStable"),
-    coughIntel("reassessNoIncreasedWorkOfBreathing"),
-  ],
-  followUpDisposition: [
-    coughIntel("dispSupportiveCareDiscussed"),
-    coughIntel("dispReturnWorseningShortnessOfBreath"),
-    coughIntel("dispReturnChestPainOrHemoptysis"),
-    coughIntel("dispPcpFollowUpRecommended"),
-  ],
-});
+export const COUGH_COMPLAINT_INTEL = buildCoughComplaintIntel(coughIntel);
 
 /** Asthma / wheezing — GINA/NHLBI exacerbation documentation framework. */
 export const ASTHMA_WHEEZING_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({

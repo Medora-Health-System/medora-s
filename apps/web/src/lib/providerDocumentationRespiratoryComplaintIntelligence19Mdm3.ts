@@ -1,5 +1,11 @@
 /** Phase 19MDM.3 — Respiratory / ENT complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import {
+  buildChestCongestionComplaintV1Intel,
+  buildCoughComplaintV1Intel,
+  buildFluLikeIllnessComplaintV1Intel,
+  buildUriCongestionComplaintV1Intel,
+} from "./providerDocumentationCoughUriComplaintIntelGoldStandard";
 import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
 import {
   buildAsthmaWheezingComplaintV1Intel,
@@ -18,35 +24,9 @@ const hemoptysis = (key: string) => `providerDocumentationComplaintIntel.hemopty
 const chestCongestion = (key: string) => `providerDocumentationComplaintIntel.chestCongestionComplaintV1.${key}`;
 const fluLikeIllness = (key: string) => `providerDocumentationComplaintIntel.fluLikeIllnessComplaintV1.${key}`;
 
-export const COUGH_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [cough("hpiOnsetDuration"), cough("hpiProductiveVsDry"), cough("hpiSputumCharacter"), cough("hpiAssocFeverChestPain"), cough("hpiAssocSobWheezeHemoptysis"), cough("hpiSickContactsSmokingHistory"), cough("hpiImmunocompromisedStatus")],
-  rosImportantPositives: [cough("rosCough"), cough("rosFever"), cough("rosSob"), cough("rosChestPain")],
-  rosImportantNegatives: [cough("rosDeniesHemoptysis")],
-  rosRedFlags: [cough("rfRespiratoryDistress"), cough("rfSignificantHemoptysis")],
-  physicalExam: { respiratory: [cough("examWorkOfBreathing"), cough("examLungSounds"), cough("examOxygenRequirement")], general: [cough("examGeneralAppearance")] },
-  mdmWorkingAssessment: [cough("mdmCoughPresentation")],
-  mdmDifferentialSynthesis: [cough("diffUri"), cough("diffBronchitis"), cough("diffPneumonia"), cough("diffAsthmaCopd"), cough("diffChf"), cough("diffPeAcsWhenRelevant")],
-  mdmDataReviewed: [cough("mdmCxrReviewedIfObtained"), cough("mdmLabsReviewedIfObtained")],
-  mdmClinicalRationale: [cough("mdmRespiratoryReassessment")],
-  mdmAdmitObserveDischarge: [cough("mdmObservationIfIndicated")],
-  reassessment: [cough("reassessWorkOfBreathing"), cough("reassessOxygenation")],
-  followUpDisposition: [cough("dispReturnWorseningBreathing"), cough("dispDispositionReflectsRespiratoryCourse")],
-});
+export const COUGH_COMPLAINT_V1_INTEL = buildCoughComplaintV1Intel(cough);
 
-export const URI_CONGESTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [uriCongestion("hpiCongestionRhinorrhea"), uriCongestion("hpiSoreThroatCough"), uriCongestion("hpiFeverSinusSymptoms"), uriCongestion("hpiBreathingDifficultyDehydration")],
-  rosImportantPositives: [uriCongestion("rosCongestion"), uriCongestion("rosSoreThroat"), uriCongestion("rosCough"), uriCongestion("rosFever")],
-  rosImportantNegatives: [uriCongestion("rosDeniesSevereSob")],
-  rosRedFlags: [uriCongestion("rfDehydration"), uriCongestion("rfRespiratoryDistress")],
-  physicalExam: { respiratory: [uriCongestion("examEntFindings"), uriCongestion("examLungExam"), uriCongestion("examHydration")], general: [uriCongestion("examGeneralAppearance")]},
-  mdmWorkingAssessment: [uriCongestion("mdmUriPresentation")],
-  mdmDifferentialSynthesis: [uriCongestion("diffViralUri"), uriCongestion("diffSinusitis"), uriCongestion("diffAllergicRhinitis"), uriCongestion("diffInfluenzaLike"), uriCongestion("diffPneumoniaWhenLowerRespiratory")],
-  mdmDataReviewed: [uriCongestion("mdmViralTestingIfIndicated")],
-  mdmClinicalRationale: [uriCongestion("mdmSymptomaticCarePlan")],
-  mdmAdmitObserveDischarge: [uriCongestion("mdmObservationIfHighRisk")],
-  reassessment: [uriCongestion("reassessRespiratoryStatus")],
-  followUpDisposition: [uriCongestion("dispReturnWorseningBreathingFever")],
-});
+export const URI_CONGESTION_COMPLAINT_V1_INTEL = buildUriCongestionComplaintV1Intel(uriCongestion);
 
 export const SORE_THROAT_COMPLAINT_V1_INTEL = buildSoreThroatComplaintIntel(soreThroat);
 
@@ -58,35 +38,9 @@ export const PNEUMONIA_SYMPTOMS_COMPLAINT_V1_INTEL = buildPneumoniaSymptomsCompl
 
 export const HEMOPTYSIS_COMPLAINT_V1_INTEL = buildHemoptysisComplaintV1Intel(hemoptysis);
 
-export const CHEST_CONGESTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [chestCongestion("hpiCongestionDuration"), chestCongestion("hpiSputumFeverWheezing"), chestCongestion("hpiSobAsthmaCopdChfHistory"), chestCongestion("hpiSickContactsSmoking")],
-  rosImportantPositives: [chestCongestion("rosCongestion"), chestCongestion("rosCough"), chestCongestion("rosWheezing")],
-  rosImportantNegatives: [chestCongestion("rosDeniesChestPain")],
-  rosRedFlags: [chestCongestion("rfRespiratoryDistress"), chestCongestion("rfChestPainConcern")],
-  physicalExam: { respiratory: [chestCongestion("examLungSounds"), chestCongestion("examWorkOfBreathing"), chestCongestion("examHydration")], general: [chestCongestion("examGeneralAppearance")]},
-  mdmWorkingAssessment: [chestCongestion("mdmChestCongestionPresentation")],
-  mdmDifferentialSynthesis: [chestCongestion("diffUri"), chestCongestion("diffBronchitis"), chestCongestion("diffPneumonia"), chestCongestion("diffAsthmaCopd"), chestCongestion("diffChf")],
-  mdmDataReviewed: [chestCongestion("mdmCxrIfObtained")],
-  mdmClinicalRationale: [chestCongestion("mdmSymptomaticTreatmentPlan")],
-  mdmAdmitObserveDischarge: [chestCongestion("mdmObservationIfIndicated")],
-  reassessment: [chestCongestion("reassessBreathingStatus")],
-  followUpDisposition: [chestCongestion("dispReturnWorseningBreathingChestPain")],
-});
+export const CHEST_CONGESTION_COMPLAINT_V1_INTEL = buildChestCongestionComplaintV1Intel(chestCongestion);
 
-export const FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [fluLikeIllness("hpiFeverChillsMyalgias"), fluLikeIllness("hpiCoughSoreThroatHeadache"), fluLikeIllness("hpiDehydrationSobChestPain"), fluLikeIllness("hpiHighRiskConditions")],
-  rosImportantPositives: [fluLikeIllness("rosFever"), fluLikeIllness("rosMyalgias"), fluLikeIllness("rosCough"), fluLikeIllness("rosSoreThroat")],
-  rosImportantNegatives: [fluLikeIllness("rosDeniesSevereSob")],
-  rosRedFlags: [fluLikeIllness("rfDehydration"), fluLikeIllness("rfRespiratoryDistress")],
-  physicalExam: { respiratory: [fluLikeIllness("examHydration"), fluLikeIllness("examRespiratoryEntFindings")], general: [fluLikeIllness("examGeneralAppearance")]},
-  mdmWorkingAssessment: [fluLikeIllness("mdmFluLikeIllnessPresentation")],
-  mdmDifferentialSynthesis: [fluLikeIllness("diffInfluenzaLike"), fluLikeIllness("diffCovidLike"), fluLikeIllness("diffViralSyndrome"), fluLikeIllness("diffPneumonia"), fluLikeIllness("diffDehydration")],
-  mdmDataReviewed: [fluLikeIllness("mdmViralTestingIfIndicated"), fluLikeIllness("mdmLabsIfObtained")],
-  mdmClinicalRationale: [fluLikeIllness("mdmHydrationSymptomaticCare")],
-  mdmAdmitObserveDischarge: [fluLikeIllness("mdmObservationIfHighRisk")],
-  reassessment: [fluLikeIllness("reassessHydrationFever")],
-  followUpDisposition: [fluLikeIllness("dispReturnPersistentFeverBreathing")],
-});
+export const FLU_LIKE_ILLNESS_COMPLAINT_V1_INTEL = buildFluLikeIllnessComplaintV1Intel(fluLikeIllness);
 
 export const RESPIRATORY_COMPLAINT_V1_TEMPLATE_IDS = [
   "cough_complaint_v1",
