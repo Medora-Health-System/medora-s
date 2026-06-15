@@ -27,7 +27,6 @@ export const TRAUMA_MAJOR_GROUP_TEMPLATE_IDS = [
   "assault",
   "head_injury",
   "laceration",
-  "trauma_musculoskeletal",
   "back_pain",
   "neck_pain_trauma",
   "crush_injury",

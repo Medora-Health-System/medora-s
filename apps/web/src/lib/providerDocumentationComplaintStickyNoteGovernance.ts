@@ -87,6 +87,12 @@ import {
   resolveTraumaHpiChipGroupsForTemplate,
   resolveTraumaRosChipGroupsForTemplate,
 } from "./providerDocumentationTraumaGovernance";
+import {
+  filterExtremityMskMdmTemplateOptionsForTemplate,
+  resolveExtremityMskExamChipGroupsForTemplate,
+  resolveExtremityMskHpiChipGroupsForTemplate,
+  resolveExtremityMskRosChipGroupsForTemplate,
+} from "./providerDocumentationExtremityMskGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -100,7 +106,9 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveTraumaRosChipGroupsForTemplate(
+  return resolveExtremityMskRosChipGroupsForTemplate(
+    templateId,
+    resolveTraumaRosChipGroupsForTemplate(
     templateId,
     resolveDizzinessVertigoRosChipGroupsForTemplate(
       templateId,
@@ -139,6 +147,7 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
         )
       )
     )
+    )
   );
 }
 
@@ -146,7 +155,9 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveTraumaExamChipGroupsForTemplate(
+  return resolveExtremityMskExamChipGroupsForTemplate(
+    templateId,
+    resolveTraumaExamChipGroupsForTemplate(
     templateId,
     resolveDizzinessVertigoExamChipGroupsForTemplate(
       templateId,
@@ -185,6 +196,7 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
         )
       )
     )
+    )
   );
 }
 
@@ -192,7 +204,9 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveTraumaHpiChipGroupsForTemplate(
+  return resolveExtremityMskHpiChipGroupsForTemplate(
+    templateId,
+    resolveTraumaHpiChipGroupsForTemplate(
     templateId,
     resolveDizzinessVertigoHpiChipGroupsForTemplate(
       templateId,
@@ -228,6 +242,7 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
         )
       )
     )
+    )
   );
 }
 
@@ -235,7 +250,9 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterTraumaMdmTemplateOptionsForTemplate(
+  return filterExtremityMskMdmTemplateOptionsForTemplate(
+    templateId,
+    filterTraumaMdmTemplateOptionsForTemplate(
     templateId,
     filterDizzinessVertigoMdmTemplateOptionsForTemplate(
       templateId,
@@ -273,6 +290,7 @@ export function filterMdmTemplateOptionsForTemplate(
           )
         )
       )
+    )
     )
   );
 }
