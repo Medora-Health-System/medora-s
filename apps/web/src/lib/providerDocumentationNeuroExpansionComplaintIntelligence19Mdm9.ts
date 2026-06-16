@@ -1,5 +1,4 @@
 /** Phase 19MDM.9 — Neurology expansion complaint intelligence (click-to-insert only). */
-import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildMigraineHeadacheComplaintV1Intel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import { buildVertigoComplaintV1Intel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildConcussionFollowupComplaintV1Intel } from "./providerDocumentationTraumaInjuryComplaintIntelGoldStandard";
@@ -10,8 +9,11 @@ import {
   buildGaitInstabilityFallsNeuroComplaintV1Intel,
   buildNumbnessTinglingComplaintV1Intel,
 } from "./providerDocumentationNeuroStrokeWeaknessComplaintIntelGoldStandard";
+import {
+  buildSeizureComplaintV1Intel,
+  buildTremorMovementComplaintV1Intel,
+} from "./providerDocumentationNeuroSeizureTremorGoldStandard";
 
-const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const seizure = (key: string) => `providerDocumentationComplaintIntel.seizureComplaintV1.${key}`;
 const alteredMentalStatus = (key: string) => `providerDocumentationComplaintIntel.alteredMentalStatusComplaintV1.${key}`;
 const focalWeakness = (key: string) => `providerDocumentationComplaintIntel.focalWeaknessComplaintV1.${key}`;
@@ -23,34 +25,7 @@ const concussionFollowup = (key: string) => `providerDocumentationComplaintIntel
 const gaitInstabilityFallsNeuro = (key: string) => `providerDocumentationComplaintIntel.gaitInstabilityFallsNeuroComplaintV1.${key}`;
 const backPainNeuroRedFlags = (key: string) => `providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.${key}`;
 
-export const SEIZURE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    seizure("hpiWitnessedEventDurationPostictal"),
-    seizure("hpiPriorSeizureHistoryMeds"),
-    seizure("hpiTraumaFeverSubstanceUse"),
-    seizure("hpiPregnancyConcern"),
-  ],
-  rosImportantPositives: [seizure("rosSeizureEvent"), seizure("rosPostictalConfusion"), seizure("rosHeadache")],
-  rosImportantNegatives: [seizure("rosDeniesFever")],
-  rosRedFlags: [seizure("rfRecurrentSeizures"), seizure("rfProlongedPostictalState")],
-  physicalExam: {
-    neuroPsych: [seizure("examAlertAndOriented"), seizure("examNoFocalNeurologicDeficit"), seizure("examNoTraumaticInjury")],
-    general: [seizure("examGeneralAppearance")],
-  },
-  mdmWorkingAssessment: [seizure("mdmSeizurePresentation")],
-  mdmDifferentialSynthesis: [
-    seizure("diffSeizure"),
-    seizure("diffSyncope"),
-    seizure("diffMetabolicToxic"),
-    seizure("diffInfection"),
-    seizure("diffIntracranialProcess"),
-  ],
-  mdmDataReviewed: [seizure("mdmCtHeadReviewed")],
-  mdmClinicalRationale: [seizure("planAntiepilepticTherapy"), seizure("planNeurologyFollowUp")],
-  mdmAdmitObserveDischarge: [seizure("dispObservationInEd")],
-  reassessment: [seizure("reassessMentalStatusRecurrence")],
-  followUpDisposition: [seizure("dispReturnRecurrenceDrivingRestrictionsAsDirected")],
-});
+export const SEIZURE_COMPLAINT_V1_INTEL = buildSeizureComplaintV1Intel(seizure);
 
 export const ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL = buildAlteredMentalStatusComplaintV1Intel(alteredMentalStatus);
 export const FOCAL_WEAKNESS_COMPLAINT_V1_INTEL = buildFocalWeaknessComplaintV1Intel(focalWeakness);
@@ -58,38 +33,7 @@ export const NUMBNESS_TINGLING_COMPLAINT_V1_INTEL = buildNumbnessTinglingComplai
 export const GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL = buildGaitInstabilityFallsNeuroComplaintV1Intel(gaitInstabilityFallsNeuro);
 export const BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL = buildBackPainNeuroRedFlagsComplaintV1Intel(backPainNeuroRedFlags);
 
-export const TREMOR_MOVEMENT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    tremorMovement("hpiOnsetRestVsActionTremor"),
-    tremorMovement("hpiMedicationSubstanceTriggers"),
-    tremorMovement("hpiWeaknessGaitChangeFever"),
-    tremorMovement("hpiThyroidSymptoms"),
-  ],
-  rosImportantPositives: [tremorMovement("rosTremor"), tremorMovement("rosWeakness"), tremorMovement("rosGaitChange")],
-  rosImportantNegatives: [tremorMovement("rosDeniesFever")],
-  rosRedFlags: [tremorMovement("rfFunctionalImpairment"), tremorMovement("rfRapidProgression")],
-  physicalExam: {
-    neuroPsych: [
-      tremorMovement("examNoRestingTremor"),
-      tremorMovement("examNonfocalNeurologicExam"),
-      tremorMovement("examNormalGait"),
-    ],
-    general: [tremorMovement("examGeneralAppearance")],
-  },
-  mdmWorkingAssessment: [tremorMovement("mdmTremorMovementPresentation")],
-  mdmDifferentialSynthesis: [
-    tremorMovement("diffMedicationEffect"),
-    tremorMovement("diffMetabolicThyroid"),
-    tremorMovement("diffWithdrawal"),
-    tremorMovement("diffEssentialTremor"),
-    tremorMovement("diffNeurologicDisorder"),
-  ],
-  mdmDataReviewed: [tremorMovement("mdmLabsReviewed")],
-  mdmClinicalRationale: [tremorMovement("reasoningMedicationEffectAddressed"), tremorMovement("planNeurologyFollowUp")],
-  mdmAdmitObserveDischarge: [tremorMovement("dispObservationInEd")],
-  reassessment: [tremorMovement("reassessFunctionalImpairment")],
-  followUpDisposition: [tremorMovement("dispReturnWorseningTremorWeakness")],
-});
+export const TREMOR_MOVEMENT_COMPLAINT_V1_INTEL = buildTremorMovementComplaintV1Intel(tremorMovement);
 
 export const VERTIGO_COMPLAINT_V1_INTEL = buildVertigoComplaintV1Intel(vertigo);
 
