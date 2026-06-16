@@ -11,7 +11,7 @@ import {
 } from "./providerDocumentationTemplateHpiDimensions";
 import {
   ADULT_DIARRHEA_COMPLAINT_INTEL,
-  PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  PEDIATRIC_DIARRHEA_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
 } from "./providerDocumentationComplaintIntelligence";
 import { DIARRHEA_COMPLAINT_V1_INTEL } from "./providerDocumentationGiComplaintIntelligence19Mdm2";
@@ -99,24 +99,22 @@ export const DIARRHEA_DENIED_HPI_FRAGMENT_PREFIXES = [
 export const DIARRHEA_ALLOWED_EXAM_SECTION_IDS = ["general", "heent", "abdomen", "reassessment"] as const;
 
 export const DIARRHEA_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiDiarrheaDurationReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiStoolFrequencyReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiBloodyDiarrheaReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentTravelReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiSickContactsReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiFoodExposureReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentAntibioticsReviewed",
-  "providerDocumentationComplaintIntel.adultDiarrhea.hpiHydrationOralIntakeReviewed",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiWateryDiarrhea",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiBloodInStool",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentTravel",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiSickContacts",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentAntibioticUse",
+  "providerDocumentationComplaintIntel.adultDiarrhea.hpiConcernForDehydration",
   "providerDocumentationComplaintIntel.adultDiarrhea.examDryMucousMembranes",
   "providerDocumentationComplaintIntel.adultDiarrhea.examNoGuarding",
   "providerDocumentationComplaintIntel.adultDiarrhea.examNoReboundTenderness",
   "providerDocumentationComplaintIntel.adultDiarrhea.diffViralGastroenteritis",
   "providerDocumentationComplaintIntel.adultDiarrhea.diffCDifficileColitis",
   "providerDocumentationComplaintIntel.adultDiarrhea.diffDehydration",
-  "providerDocumentationComplaintIntel.adultDiarrhea.mdmStoolTestingConsideredBasedOnRisk",
-  "providerDocumentationComplaintIntel.adultDiarrhea.mdmIvFluidsConsideredAdministered",
-  "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiUrineOutputReviewed",
-  "providerDocumentationComplaintIntel.diarrheaComplaintV1.hpiBloodMucusTravel",
+  "providerDocumentationComplaintIntel.adultDiarrhea.mdmStoolStudiesReviewed",
+  "providerDocumentationComplaintIntel.adultDiarrhea.planIvFluidsAdministered",
+  "providerDocumentationComplaintIntel.pediatricDiarrhea.hpiStillMakingWetDiapers",
+  "providerDocumentationComplaintIntel.diarrheaComplaintV1.hpiBloodInStool",
 ] as const;
 
 const DENIED_STICKY_NOTE_FRAGMENT_KEY_SET = new Set<string>(DIARRHEA_DENIED_STICKY_NOTE_FRAGMENT_KEYS);
@@ -125,7 +123,7 @@ const COMPLAINT_INTEL_BY_DIARRHEA_TEMPLATE_ID: Partial<
   Record<DiarrheaGovernedTemplateId, typeof ADULT_DIARRHEA_COMPLAINT_INTEL>
 > = {
   adult_diarrhea: ADULT_DIARRHEA_COMPLAINT_INTEL,
-  diarrhea: PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  diarrhea: PEDIATRIC_DIARRHEA_COMPLAINT_INTEL,
   diarrhea_complaint_v1: DIARRHEA_COMPLAINT_V1_INTEL,
 };
 

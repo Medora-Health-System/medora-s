@@ -21,6 +21,7 @@ const flankPainRenalComplaintIntelKeys = {
   dispAdmission: "admission",
   dispDischarge: "discharge",
   dispObservation: "observation",
+  dispPcpFollowUpRecommended: "PCP follow-up recommended",
   dispReturnFeverVomitingUncontrolledPain: "return for fever, vomiting, or uncontrolled pain",
   dispReturnPrecautionsDiscussed: "return precautions discussed",
   dispUrineStrainerInstructionsDiscussed: "urine strainer instructions discussed",

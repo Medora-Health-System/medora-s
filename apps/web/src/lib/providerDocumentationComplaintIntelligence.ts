@@ -47,6 +47,10 @@ import {
   buildPediatricAsthmaSobComplaintIntel,
 } from "./providerDocumentationShortnessOfBreathComplaintIntelGoldStandard";
 import {
+  buildAdultDiarrheaComplaintIntel,
+  buildPediatricDiarrheaComplaintIntel,
+} from "./providerDocumentationDiarrheaComplaintIntelGoldStandard";
+import {
   buildAdultNauseaVomitingComplaintIntel,
   buildPediatricNauseaVomitingComplaintIntel,
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
@@ -125,6 +129,7 @@ const pedFeb = (key: string) => `providerDocumentationComplaintIntel.pediatricFe
 const pedAbd = (key: string) => `providerDocumentationComplaintIntel.pediatricAbdominalPain.${key}`;
 const pedAsthma = (key: string) => `providerDocumentationComplaintIntel.pediatricAsthmaWheezing.${key}`;
 const pedGastro = (key: string) => `providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.${key}`;
+const pedDiarrhea = (key: string) => `providerDocumentationComplaintIntel.pediatricDiarrhea.${key}`;
 const uti = (key: string) => `providerDocumentationComplaintIntel.utiUrinarySymptoms.${key}`;
 const hyper = (key: string) => `providerDocumentationComplaintIntel.hyperglycemia.${key}`;
 const ht = (key: string) => `providerDocumentationComplaintIntel.hypertension.${key}`;
@@ -1219,6 +1224,9 @@ export const PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL = buildPediatricAsthmaSob
 /** Pediatric vomiting / diarrhea — gastroenteritis / dehydration documentation framework. */
 export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL = buildPediatricNauseaVomitingComplaintIntel(pedGastro);
 
+/** Pediatric diarrhea — dedicated gold-standard bundle (ME.2B-R). */
+export const PEDIATRIC_DIARRHEA_COMPLAINT_INTEL = buildPediatricDiarrheaComplaintIntel(pedDiarrhea);
+
 /** UTI / urinary symptoms — cystitis / pyelonephritis documentation framework. */
 export const UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [
@@ -1496,102 +1504,8 @@ export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationCompla
 export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL = buildAdultNauseaVomitingComplaintIntel(adultNv);
 
 /** Adult diarrhea — infectious diarrhea / C. diff documentation framework. */
-export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    adultDiarrhea("hpiDiarrheaDurationReviewed"),
-    adultDiarrhea("hpiStoolFrequencyReviewed"),
-    adultDiarrhea("hpiWateryDiarrhea"),
-    adultDiarrhea("hpiBloodyDiarrheaReviewed"),
-    adultDiarrhea("hpiFeverReviewed"),
-    adultDiarrhea("hpiAbdominalPainReviewed"),
-    adultDiarrhea("hpiRecentAntibioticsReviewed"),
-    adultDiarrhea("hpiRecentTravelReviewed"),
-    adultDiarrhea("hpiSickContactsReviewed"),
-    adultDiarrhea("hpiFoodExposureReviewed"),
-    adultDiarrhea("hpiImmunocompromisedStatusReviewed"),
-    adultDiarrhea("hpiHydrationOralIntakeReviewed"),
-  ],
-  rosImportantPositives: [
-    adultDiarrhea("rosDiarrhea"),
-    adultDiarrhea("rosAbdominalCramping"),
-    adultDiarrhea("rosFever"),
-    adultDiarrhea("rosNausea"),
-    adultDiarrhea("rosVomiting"),
-    adultDiarrhea("rosDecreasedOralIntake"),
-  ],
-  rosImportantNegatives: [
-    adultDiarrhea("rosDeniesBloodyStool"),
-    adultDiarrhea("rosDeniesSevereAbdominalPain"),
-    adultDiarrhea("rosDeniesPersistentVomiting"),
-    adultDiarrhea("rosDeniesSyncope"),
-    adultDiarrhea("rosDeniesRecentAntibiotics"),
-    adultDiarrhea("rosDeniesTravelExposure"),
-  ],
-  rosRedFlags: [
-    adultDiarrhea("rfBloodyDiarrhea"),
-    adultDiarrhea("rfSevereDehydrationConcern"),
-    adultDiarrhea("rfSepsisConcern"),
-    adultDiarrhea("rfCDifficileConcern"),
-    adultDiarrhea("rfImmunocompromisedPatient"),
-    adultDiarrhea("rfSevereAbdominalPainPeritonealSigns"),
-  ],
-  physicalExam: {
-    general: [
-      adultDiarrhea("examNonToxicAppearing"),
-      adultDiarrhea("examNormalPerfusion"),
-      adultDiarrhea("examNoAcuteDistress"),
-    ],
-    heent: [adultDiarrhea("examDryMucousMembranes")],
-    abdomen: [
-      adultDiarrhea("examAbdomenSoft"),
-      adultDiarrhea("examMildDiffuseTenderness"),
-      adultDiarrhea("examNoGuarding"),
-      adultDiarrhea("examNoReboundTenderness"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    adultDiarrhea("mdmCDifficileRiskReviewed"),
-    adultDiarrhea("mdmSepsisConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    adultDiarrhea("diffViralGastroenteritis"),
-    adultDiarrhea("diffBacterialEnteritis"),
-    adultDiarrhea("diffFoodborneIllness"),
-    adultDiarrhea("diffCDifficileColitis"),
-    adultDiarrhea("diffDehydration"),
-    adultDiarrhea("diffInflammatoryBowelDiseaseFlare"),
-    adultDiarrhea("diffAppendicitis"),
-    adultDiarrhea("diffDiverticulitis"),
-    adultDiarrhea("diffMedicationRelatedDiarrhea"),
-  ],
-  mdmDataReviewed: [
-    adultDiarrhea("mdmStoolTestingConsideredBasedOnRisk"),
-    adultDiarrhea("mdmLabsReviewedIfObtained"),
-  ],
-  mdmClinicalRationale: [
-    adultDiarrhea("mdmHydrationStatusAssessed"),
-    adultDiarrhea("mdmAbdominalImagingConsideredIfRedFlags"),
-    adultDiarrhea("mdmReturnPrecautionsDiscussed"),
-    adultDiarrhea("mdmSerialReassessmentPerformed"),
-  ],
-  mdmPlanSummary: [
-    adultDiarrhea("mdmIvFluidsConsideredAdministered"),
-    adultDiarrhea("mdmAntibioticsConsideredOnlyIfIndicated"),
-  ],
-  reassessment: [
-    adultDiarrhea("reassessSymptomsStableImproved"),
-    adultDiarrhea("reassessToleratingOralIntake"),
-    adultDiarrhea("reassessHydrationStatusReassessed"),
-    adultDiarrhea("reassessAbdominalExamReassuring"),
-  ],
-  followUpDisposition: [
-    adultDiarrhea("dispDischargeHydrationInstructions"),
-    adultDiarrhea("dispReturnBloodyStool"),
-    adultDiarrhea("dispReturnWorseningAbdominalPain"),
-    adultDiarrhea("dispReturnDehydrationSymptoms"),
-    adultDiarrhea("dispFollowUpRecommended"),
-  ],
-});
+export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildAdultDiarrheaComplaintIntel(adultDiarrhea);
 
 /** Medication refill — medico-legal refill documentation framework. */
 export const MEDICATION_REFILL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
@@ -2521,7 +2435,7 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   asthma_wheezing: PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   abdominal_pain_pediatric: PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   nausea_vomiting: PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
-  diarrhea: PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  diarrhea: PEDIATRIC_DIARRHEA_COMPLAINT_INTEL,
   ear_pain: EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL,
   fall: FALL_COMPLAINT_INTEL,
   head_injury: HEAD_INJURY_COMPLAINT_INTEL,

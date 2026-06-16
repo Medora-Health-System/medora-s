@@ -201,6 +201,7 @@ function sharedReassessment(ha: (key: string) => string) {
     followUpDisposition: [
       ha("dispReturnWorseningHeadache"),
       ha("dispReturnThunderclapHeadache"),
+      ha("dispReturnNeurologicSymptoms"),
       ha("dispNeurologyFollowUpRecommended"),
       ha("dispReturnPrecautionsDiscussed"),
     ],

@@ -2,6 +2,7 @@
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildAbdominalPainComplaintV1Intel } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildNauseaVomitingComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
+import { buildDiarrheaComplaintV1Intel } from "./providerDocumentationDiarrheaComplaintIntelGoldStandard";
 import { buildFlankPainComplaintV1GiIntel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const abdominalPain = (key: string) => `providerDocumentationComplaintIntel.abdominalPainComplaintV1.${key}`;
@@ -18,20 +19,8 @@ export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL = buildAbdominalPainComplaintV1In
 
 export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL = buildNauseaVomitingComplaintV1Intel(nauseaVomiting);
 
-export const DIARRHEA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [diarrhea("hpiFrequencyDuration"), diarrhea("hpiBloodMucusTravel"), diarrhea("hpiDehydrationImmunocompromised")],
-  rosImportantPositives: [diarrhea("rosDiarrhea"), diarrhea("rosFever"), diarrhea("rosAbdominalPain")],
-  rosImportantNegatives: [diarrhea("rosDeniesSeverePain")],
-  rosRedFlags: [diarrhea("rfBloodyStool"), diarrhea("rfDehydration")],
-  physicalExam: { abdomen: [diarrhea("examHydration"), diarrhea("examAbdominalTenderness")], general: [diarrhea("examGeneralAppearance")] },
-  mdmWorkingAssessment: [diarrhea("mdmAcuteDiarrhea")],
-  mdmDifferentialSynthesis: [diarrhea("diffViralBacterial"), diarrhea("diffCdiff"), diarrhea("diffIbd"), diarrhea("diffFoodborne"), diarrhea("diffMedication")],
-  mdmDataReviewed: [diarrhea("mdmStoolTestingIfIndicated")],
-  mdmClinicalRationale: [diarrhea("mdmHydrationAssessed")],
-  mdmAdmitObserveDischarge: [diarrhea("mdmAdmissionIfSevereDehydration")],
-  reassessment: [diarrhea("reassessHydrationStatus")],
-  followUpDisposition: [diarrhea("dispReturnWorseningBleedingFever")],
-});
+export const DIARRHEA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildDiarrheaComplaintV1Intel(diarrhea);
 
 export const CONSTIPATION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [constipation("hpiDurationPattern"), constipation("hpiPassingGasVomiting"), constipation("hpiOpioidSurgeryHistory")],

@@ -262,6 +262,7 @@ function flankReassessment(fp: (key: string) => string) {
     ],
     followUpDisposition: [
       fp("dispUrologyFollowUpRecommended"),
+      fp("dispPcpFollowUpRecommended"),
       fp("dispReturnFeverVomitingUncontrolledPain"),
       fp("dispReturnPrecautionsDiscussed"),
       fp("dispUrineStrainerInstructionsDiscussed"),

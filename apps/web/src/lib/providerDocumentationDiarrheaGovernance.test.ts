@@ -149,9 +149,9 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiStoolFrequencyReviewed")).toBe(true);
-    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiDiarrheaDurationReviewed")).toBe(true);
-    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiBloodyDiarrheaReviewed")).toBe(true);
+    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiFrequentDiarrhea")).toBe(true);
+    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiBloodInStool")).toBe(true);
+    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiMucusInStool")).toBe(true);
 
     const v1Visible = collectDiarrheaVisibleStickyNoteFragmentKeys({
       templateId: "diarrhea_complaint_v1",
@@ -159,7 +159,7 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(v1Visible.has("providerDocumentationComplaintIntel.diarrheaComplaintV1.hpiBloodMucusTravel")).toBe(true);
+    expect(v1Visible.has("providerDocumentationComplaintIntel.diarrheaComplaintV1.hpiBloodInStool")).toBe(true);
   });
 
   it("exposes travel, food exposure, sick contacts, and C. difficile risk", () => {
@@ -169,10 +169,10 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentTravelReviewed")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiFoodExposureReviewed")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiSickContactsReviewed")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentAntibioticsReviewed")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentTravel")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiQuestionableFoodExposure")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiSickContacts")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiRecentAntibioticUse")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.adultDiarrhea.rfCDifficileConcern")).toBe(true);
   });
 
@@ -183,7 +183,7 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiHydrationOralIntakeReviewed")).toBe(true);
+    expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.hpiConcernForDehydration")).toBe(true);
     expect(adultVisible.has("providerDocumentationComplaintIntel.adultDiarrhea.diffDehydration")).toBe(true);
 
     const pediatricVisible = collectDiarrheaVisibleStickyNoteFragmentKeys({
@@ -192,10 +192,10 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiUrineOutputReviewed")).toBe(
+    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricDiarrhea.hpiStillMakingWetDiapers")).toBe(
       true
     );
-    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.hpiOralIntakeReviewed")).toBe(
+    expect(pediatricVisible.has("providerDocumentationComplaintIntel.pediatricDiarrhea.hpiDecreasedWetDiapers")).toBe(
       true
     );
   });
@@ -228,8 +228,8 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
     expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.diffViralGastroenteritis");
     expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.diffCDifficileColitis");
     expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.diffDehydration");
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.mdmStoolTestingConsideredBasedOnRisk");
-    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.mdmIvFluidsConsideredAdministered");
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.planIvFluidsAdministered");
+    expect(fragmentKeys).toContain("providerDocumentationComplaintIntel.adultDiarrhea.mdmStoolStudiesReviewed");
   });
 
   it("keeps template activation sticky-note only with no auto-population", () => {
@@ -251,7 +251,7 @@ describe("providerDocumentationDiarrheaGovernance — MEDUI.ED.ME.2B", () => {
   });
 
   it("inserts documentation when an allowed diarrhea sticky note is toggled", () => {
-    const fragmentKey = "providerDocumentationComplaintIntel.adultDiarrhea.hpiStoolFrequencyReviewed";
+    const fragmentKey = "providerDocumentationComplaintIntel.adultDiarrhea.hpiWateryDiarrhea";
     const next = toggleDocumentationFragment("", fragmentKey);
     expect(next).toContain(fragmentKey);
     expect(isDiarrheaDeniedStickyNoteFragment(fragmentKey)).toBe(false);

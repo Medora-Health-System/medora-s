@@ -28,6 +28,7 @@ import {
   PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
+  PEDIATRIC_DIARRHEA_COMPLAINT_INTEL,
   UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL,
   HYPERGLYCEMIA_COMPLAINT_INTEL,
   HYPERTENSION_COMPLAINT_INTEL,
@@ -744,7 +745,7 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
     );
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.asthma_wheezing).toBe(PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL);
     expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.nausea_vomiting).toBe(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL);
-    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.diarrhea).toBe(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL);
+    expect(COMPLAINT_INTEL_BY_TEMPLATE_ID.diarrhea).toBe(PEDIATRIC_DIARRHEA_COMPLAINT_INTEL);
   });
 
   it("includes all 7 required intelligence categories per Batch 6 template", () => {
@@ -783,10 +784,12 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
     const abdKeys = flattenComplaintIntelligenceKeys(PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL);
     const asthmaKeys = flattenComplaintIntelligenceKeys(PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL);
     const gastroKeys = flattenComplaintIntelligenceKeys(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL);
+    const diarrheaKeys = flattenComplaintIntelligenceKeys(PEDIATRIC_DIARRHEA_COMPLAINT_INTEL);
     for (const key of feverKeys) expect(key).toContain(".pediatricFever.");
     for (const key of abdKeys) expect(key).toContain(".pediatricAbdominalPain.");
     for (const key of asthmaKeys) expect(key).toContain(".pediatricAsthmaWheezing.");
     for (const key of gastroKeys) expect(key).toContain(".pediatricVomitingDiarrhea.");
+    for (const key of diarrheaKeys) expect(key).toContain(".pediatricDiarrhea.");
   });
 
   it("does not leak adult or unrelated complaint chips into Batch 6 pediatric bundles", () => {
@@ -835,7 +838,10 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
     expect(vomiting?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.diffGastroenteritis"
     );
-    expect(diarrhea?.complaintIntelligence).toBe(PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL);
+    expect(diarrhea?.complaintIntelligence).toBe(PEDIATRIC_DIARRHEA_COMPLAINT_INTEL);
+    expect(diarrhea?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.pediatricDiarrhea.diffViralGastroenteritis"
+    );
     expect(fever?.promptReminderKeys).toContain("providerDocumentationPromptReminders.pediatricFeverSourceReminder");
     expect(abd?.promptReminderKeys).toContain("providerDocumentationPromptReminders.pediatricAbdominalRedFlags");
     expect(asthma?.promptReminderKeys).toContain("providerDocumentationPromptReminders.pediatricAsthmaWheezingReminder");
