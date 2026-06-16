@@ -369,8 +369,8 @@ const PEDIATRIC_FEVER_RULES: DynamicIntelligenceRule[] = [
     triggerTerms: ["decreased urine output", "diminution diurèse", "urine output", "diurèse"],
     reasonKey: reason("pediatricFeverDecreasedUrineOutput"),
     suggestions: [
-      sug("reassessment", pedFeb("reassessHydrationStatusReassessed"), "treatmentPlan"),
-      sug("mdm", pedFeb("mdmHydrationStatusAssessed"), "mdmClinicalRationale"),
+      sug("reassessment", pedFeb("reassessHydrationStatusImproved"), "treatmentPlan"),
+      sug("mdm", pedFeb("reasoningHydrationStatusAcceptable"), "mdmClinicalRationale"),
       sug("disposition", pedFeb("dispReturnLethargyBreathingDehydrationFever"), "followUpDisposition"),
     ],
   },
@@ -379,8 +379,8 @@ const PEDIATRIC_FEVER_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("pediatricFeverToxicAppearing"),
     suggestions: [
       sug("differential", pedFeb("diffSepsis"), "mdmDifferentialSynthesis"),
-      sug("mdm", pedFeb("mdmSepsisConsidered"), "mdmWorkingAssessment"),
-      sug("mdm", pedFeb("mdmAdmissionConsideredToxicAppearanceDehydration"), "mdmAdmitObserveDischarge"),
+      sug("mdm", pedFeb("waConcernForSepsis"), "mdmWorkingAssessment"),
+      sug("mdm", pedFeb("dispAdmission"), "mdmAdmitObserveDischarge"),
     ],
   },
   {
@@ -388,8 +388,8 @@ const PEDIATRIC_FEVER_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("pediatricFeverRespiratoryDistress"),
     suggestions: [
       sug("differential", pedFeb("diffPneumonia"), "mdmDifferentialSynthesis"),
-      sug("mdm", pedFeb("mdmChestImagingConsideredIfRespiratoryFindings"), "mdmDataReviewed"),
-      sug("disposition", pedFeb("dispCaregiverReturnPrecautionsDiscussed"), "followUpDisposition"),
+      sug("mdm", pedFeb("mdmChestXrayReviewed"), "mdmDataReviewed"),
+      sug("disposition", pedFeb("dispReturnPrecautionsDiscussed"), "followUpDisposition"),
     ],
   },
 ];

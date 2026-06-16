@@ -103,6 +103,14 @@ import {
   NEURO_EXPANSION_COMPLAINT_V1_TEMPLATE_IDS,
 } from "./providerDocumentationNeuroExpansionComplaintIntelligence19Mdm9";
 import { buildExtremityMskComplaintIntel } from "./providerDocumentationExtremityMskComplaintIntelGoldStandard";
+import {
+  buildPediatricCroupComplaintIntel,
+  buildPediatricDehydrationComplaintIntel,
+  buildPediatricFeverComplaintIntel,
+  buildPediatricRashComplaintIntel,
+  buildPediatricRsvLikeIllnessComplaintIntel,
+  buildPediatricSeizureComplaintIntel,
+} from "./providerDocumentationPediatricLegacyComplaintIntelGoldStandard";
 
 export type ProviderDocumentationComplaintIntelligence = {
   hpi?: string[];
@@ -142,6 +150,11 @@ const headInj = (key: string) => `providerDocumentationComplaintIntel.headInjury
 const lac = (key: string) => `providerDocumentationComplaintIntel.laceration.${key}`;
 const frac = (key: string) => `providerDocumentationComplaintIntel.fractureConcern.${key}`;
 const pedFeb = (key: string) => `providerDocumentationComplaintIntel.pediatricFever.${key}`;
+const pedSeizure = (key: string) => `providerDocumentationComplaintIntel.pediatricSeizure.${key}`;
+const pedRash = (key: string) => `providerDocumentationComplaintIntel.pediatricRash.${key}`;
+const pedDehydration = (key: string) => `providerDocumentationComplaintIntel.pediatricDehydration.${key}`;
+const pedCroup = (key: string) => `providerDocumentationComplaintIntel.pediatricCroup.${key}`;
+const pedRsv = (key: string) => `providerDocumentationComplaintIntel.pediatricRsvLikeIllness.${key}`;
 const pedAbd = (key: string) => `providerDocumentationComplaintIntel.pediatricAbdominalPain.${key}`;
 const pedAsthma = (key: string) => `providerDocumentationComplaintIntel.pediatricAsthmaWheezing.${key}`;
 const pedGastro = (key: string) => `providerDocumentationComplaintIntel.pediatricVomitingDiarrhea.${key}`;
@@ -749,115 +762,29 @@ const extremityMsk = (key: string) => `providerDocumentationComplaintIntel.extre
 /** Extremity / MSK — ME.2O-R gold-standard builder (`trauma_musculoskeletal` only). */
 export const EXTREMITY_MSK_COMPLAINT_INTEL = buildExtremityMskComplaintIntel(extremityMsk);
 
-/** Pediatric fever — AAP pediatric fever / toxic appearance documentation framework. */
-export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    pedFeb("hpiCaregiverHistorianUsed"),
-    pedFeb("hpiFeverDurationReviewed"),
-    pedFeb("hpiMaximumTemperatureReviewed"),
-    pedFeb("hpiAntipyreticUseReviewed"),
-    pedFeb("hpiVaccinationStatusReviewed"),
-    pedFeb("hpiSickContactsReviewed"),
-    pedFeb("hpiDaycareSchoolExposureReviewed"),
-    pedFeb("hpiOralIntakeReviewed"),
-    pedFeb("hpiUrineOutputReviewed"),
-    pedFeb("hpiActivityLevelReviewed"),
-    pedFeb("hpiRashReviewed"),
-    pedFeb("hpiRespiratorySymptomsReviewed"),
-    pedFeb("hpiVomitingDiarrheaReviewed"),
-    pedFeb("hpiEarPainReviewed"),
-  ],
-  rosImportantPositives: [
-    pedFeb("rosFever"),
-    pedFeb("rosDecreasedAppetite"),
-    pedFeb("rosDecreasedUrineOutput"),
-    pedFeb("rosCough"),
-    pedFeb("rosCongestion"),
-    pedFeb("rosVomiting"),
-    pedFeb("rosDiarrhea"),
-    pedFeb("rosRash"),
-    pedFeb("rosEarPain"),
-  ],
-  rosImportantNegatives: [
-    pedFeb("rosDeniesNeckStiffness"),
-    pedFeb("rosDeniesDifficultyBreathing"),
-    pedFeb("rosDeniesPersistentVomiting"),
-    pedFeb("rosDeniesLethargy"),
-    pedFeb("rosDeniesSeizureActivity"),
-    pedFeb("rosDeniesRash"),
-  ],
-  rosRedFlags: [
-    pedFeb("rfToxicAppearingChild"),
-    pedFeb("rfLethargy"),
-    pedFeb("rfRespiratoryDistress"),
-    pedFeb("rfDehydrationConcern"),
-    pedFeb("rfMeningitisConcern"),
-    pedFeb("rfSepsisConcern"),
-    pedFeb("rfFeverInYoungInfant"),
-    pedFeb("rfImmunocompromisedChild"),
-  ],
-  physicalExam: {
-    general: [
-      pedFeb("examNonToxicAppearing"),
-      pedFeb("examToxicAppearing"),
-      pedFeb("examInteractiveWithCaregiver"),
-      pedFeb("examConsolable"),
-    ],
-    heent: [
-      pedFeb("examMoistMucousMembranes"),
-      pedFeb("examDryMucousMembranes"),
-      pedFeb("examCapillaryRefillNormal"),
-      pedFeb("examNoMeningismus"),
-      pedFeb("examRashPresent"),
-    ],
-    respiratory: [pedFeb("examNoRespiratoryDistress"), pedFeb("examLungsClear")],
-    abdomen: [pedFeb("examAbdomenSoft")],
-  },
-  mdmWorkingAssessment: [
-    pedFeb("mdmPediatricFeverSourceEvaluated"),
-    pedFeb("mdmSepsisConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    pedFeb("diffViralSyndrome"),
-    pedFeb("diffUri"),
-    pedFeb("diffOtitisMedia"),
-    pedFeb("diffPneumonia"),
-    pedFeb("diffUti"),
-    pedFeb("diffGastroenteritis"),
-    pedFeb("diffMeningitis"),
-    pedFeb("diffSepsis"),
-    pedFeb("diffCellulitis"),
-    pedFeb("diffFeverWithoutSource"),
-  ],
-  mdmDataReviewed: [
-    pedFeb("mdmUrinalysisConsideredReviewed"),
-    pedFeb("mdmViralTestingConsideredReviewed"),
-    pedFeb("mdmChestImagingConsideredIfRespiratoryFindings"),
-  ],
-  mdmClinicalRationale: [
-    pedFeb("mdmHydrationStatusAssessed"),
-    pedFeb("mdmCaregiverHistorianUsed"),
-    pedFeb("mdmAntipyreticResponseReviewed"),
-    pedFeb("mdmAntibioticsConsideredBasedOnSourceRisk"),
-    pedFeb("mdmWeightBasedDosingReviewed"),
-  ],
-  mdmPlanSummary: [pedFeb("mdmSerialReassessmentPerformed")],
-  mdmImmediateActionsRationale: [pedFeb("mdmAntipyreticProvidedIfIndicated")],
-  mdmAdmitObserveDischarge: [pedFeb("mdmAdmissionConsideredToxicAppearanceDehydration")],
-  reassessment: [
-    pedFeb("reassessFeverImprovedAfterAntipyretic"),
-    pedFeb("reassessRemainsNonToxicAppearing"),
-    pedFeb("reassessToleratingOralIntake"),
-    pedFeb("reassessHydrationStatusReassessed"),
-    pedFeb("reassessCaregiverComfortableWithPlan"),
-  ],
-  followUpDisposition: [
-    pedFeb("dispCaregiverReturnPrecautionsDiscussed"),
-    pedFeb("dispReturnLethargyBreathingDehydrationFever"),
-    pedFeb("dispPediatricianFollowUpRecommended"),
-    pedFeb("dispSupportiveCareDiscussed"),
-  ],
-});
+/** Pediatric fever — ME.2V-R gold standard (AAP pediatric fever / toxic appearance). */
+export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricFeverComplaintIntel(pedFeb);
+
+/** Pediatric seizure — ME.2V-R gold standard. */
+export const PEDIATRIC_SEIZURE_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricSeizureComplaintIntel(pedSeizure);
+
+/** Pediatric rash — ME.2V-R gold standard. */
+export const PEDIATRIC_RASH_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricRashComplaintIntel(pedRash);
+
+/** Pediatric dehydration — ME.2V-R gold standard. */
+export const PEDIATRIC_DEHYDRATION_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricDehydrationComplaintIntel(pedDehydration);
+
+/** Pediatric croup — ME.2V-R gold standard. */
+export const PEDIATRIC_CROUP_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricCroupComplaintIntel(pedCroup);
+
+/** Pediatric RSV-like illness — ME.2V-R gold standard. */
+export const PEDIATRIC_RSV_LIKE_ILLNESS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPediatricRsvLikeIllnessComplaintIntel(pedRsv);
 
 /** Pediatric abdominal pain — appendicitis / surgical red flag documentation framework. */
 export const PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL = buildPediatricAbdominalPainComplaintIntel(pedAbd);
@@ -1263,6 +1190,11 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   adult_uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
   uri_respiratory: URI_RESPIRATORY_COMPLAINT_INTEL,
   fever: PEDIATRIC_FEVER_COMPLAINT_INTEL,
+  seizure: PEDIATRIC_SEIZURE_COMPLAINT_INTEL,
+  pediatric_rash: PEDIATRIC_RASH_COMPLAINT_INTEL,
+  dehydration: PEDIATRIC_DEHYDRATION_COMPLAINT_INTEL,
+  croup: PEDIATRIC_CROUP_COMPLAINT_INTEL,
+  rsv_like_illness: PEDIATRIC_RSV_LIKE_ILLNESS_COMPLAINT_INTEL,
   cough: COUGH_COMPLAINT_INTEL,
   asthma_wheezing: PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   abdominal_pain_pediatric: PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
@@ -1325,6 +1257,13 @@ export const BATCH6_COMPLAINT_TEMPLATE_IDS = [
   "asthma_wheezing",
   "nausea_vomiting",
 ] as const;
+export const BATCH19_PEDIATRIC_LEGACY_COMPLAINT_TEMPLATE_IDS = [
+  "seizure",
+  "pediatric_rash",
+  "dehydration",
+  "croup",
+  "rsv_like_illness",
+] as const;
 export const BATCH7_COMPLAINT_TEMPLATE_IDS = [
   "urinary_symptoms",
   "hyperglycemia",
@@ -1378,6 +1317,7 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH16_INFECTIOUS_ENT_COMPLAINT_TEMPLATE_IDS,
   ...BATCH17_ENDOCRINE_METABOLIC_COMPLAINT_TEMPLATE_IDS,
   ...BATCH18_NEURO_EXPANSION_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH19_PEDIATRIC_LEGACY_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
   "ear_pain",

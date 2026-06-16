@@ -261,11 +261,9 @@ export const DYNAMIC_CLINICAL_CLUSTER_DEFINITIONS: ClusterDefinition[] = [
       sug("differential", pvd("diffDehydration"), "mdmDifferentialSynthesis"),
       sug("mdm", pvd("mdmOralRehydrationTrialPerformed"), "mdmImmediateActionsRationale"),
       sug("mdm", pvd("mdmIvFluidsConsideredAdministered"), "mdmImmediateActionsRationale"),
-      sug("mdm", pedFeb("mdmWeightBasedDosingReviewed"), "mdmClinicalRationale"),
-      sug("reassessment", pvd("mdmHydrationStatusAssessed"), "mdmPlanSummary"),
-      sug("reassessment", pvd("examCapillaryRefillNormal"), "mdmPlanSummary"),
+      sug("mdm", pedFeb("reasoningWeightBasedDosingUsed"), "mdmClinicalRationale"),
       sug("reassessment", pvd("reassessToleratingOralIntake"), "mdmPlanSummary"),
-      sug("disposition", pedFeb("mdmAdmissionConsideredToxicAppearanceDehydration"), "mdmAdmitObserveDischarge"),
+      sug("disposition", pedFeb("dispAdmission"), "mdmAdmitObserveDischarge"),
     ],
   },
   {

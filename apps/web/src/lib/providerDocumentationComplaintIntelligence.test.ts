@@ -824,7 +824,7 @@ describe("provider documentation complaint intelligence (19N.9 Batch 6)", () => 
     const vomiting = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "nausea_vomiting");
     const diarrhea = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "diarrhea");
     expect(fever?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.pediatricFever.hpiCaregiverHistorianUsed"
+      "providerDocumentationComplaintIntel.pediatricFever.hpiCaregiverPresent"
     );
     expect(fever?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.pediatricFever.diffSepsis"
@@ -997,7 +997,7 @@ describe("provider documentation complaint intelligence (19N.10 Batch 7)", () =>
       "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
     );
     expect(PEDIATRIC_FEVER_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.pediatricFever.hpiCaregiverHistorianUsed"
+      "providerDocumentationComplaintIntel.pediatricFever.hpiCaregiverPresent"
     );
     expect(FRACTURE_CONCERN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.fractureConcern.diffFracture"

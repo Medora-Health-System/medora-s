@@ -135,6 +135,12 @@ import {
   resolveFlankPainRenalHpiChipGroupsForTemplate,
   resolveFlankPainRenalRosChipGroupsForTemplate,
 } from "./providerDocumentationFlankPainRenalGovernance";
+import {
+  filterPediatricLegacyMdmTemplateOptionsForTemplate,
+  resolvePediatricLegacyExamChipGroupsForTemplate,
+  resolvePediatricLegacyHpiChipGroupsForTemplate,
+  resolvePediatricLegacyRosChipGroupsForTemplate,
+} from "./providerDocumentationPediatricLegacyGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -148,7 +154,7 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveFlankPainRenalRosChipGroupsForTemplate(
+  const groups = resolveFlankPainRenalRosChipGroupsForTemplate(
     templateId,
     resolveDehydrationViralIllnessRosChipGroupsForTemplate(
     templateId,
@@ -212,13 +218,14 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
   );
+  return resolvePediatricLegacyRosChipGroupsForTemplate(templateId, groups);
 }
 
 export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGroup<{ fragmentKey: string }>>(
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveFlankPainRenalExamChipGroupsForTemplate(
+  const groups = resolveFlankPainRenalExamChipGroupsForTemplate(
     templateId,
     resolveDehydrationViralIllnessExamChipGroupsForTemplate(
     templateId,
@@ -282,13 +289,14 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
   );
+  return resolvePediatricLegacyExamChipGroupsForTemplate(templateId, groups);
 }
 
 export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationHpiDimensionGroup>(
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveFlankPainRenalHpiChipGroupsForTemplate(
+  const groups = resolveFlankPainRenalHpiChipGroupsForTemplate(
     templateId,
     resolveDehydrationViralIllnessHpiChipGroupsForTemplate(
     templateId,
@@ -349,13 +357,14 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
   );
+  return resolvePediatricLegacyHpiChipGroupsForTemplate(templateId, groups);
 }
 
 export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterFlankPainRenalMdmTemplateOptionsForTemplate(
+  const optionsAfterDomainFilters = filterFlankPainRenalMdmTemplateOptionsForTemplate(
     templateId,
     filterDehydrationViralIllnessMdmTemplateOptionsForTemplate(
     templateId,
@@ -419,4 +428,5 @@ export function filterMdmTemplateOptionsForTemplate(
     )
     )
   );
+  return filterPediatricLegacyMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters);
 }

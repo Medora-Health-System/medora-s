@@ -1,0 +1,118 @@
+---
+description: Medical Exam chief complaint Gold Standard requires Track C plus Human Documentation Audit — paste-ready clinician language for every sticky note
+globs: apps/web/src/lib/providerDocumentation*.ts,apps/web/src/i18n/messages/providerDocumentation*.ts
+alwaysApply: false
+---
+
+# Medical Exam Human Documentation Governance
+
+## Gold Standard gate (required)
+
+Every Medical Exam chief complaint template remediation must pass **both**:
+
+1. **Structural Gold Standard / Track C** — MDM.1 coverage, i18n parity, prohibited key tokens, cannot-miss differentials.
+2. **Human Documentation Audit** — rendered EN chip text is paste-ready emergency physician documentation.
+
+**Not one or the other. Both.**
+
+Applies to: ME.2V-R, ME.2W-R, ME.2Y-R, ME.2Z-R, ME.2AA-R, ME.2X-R, ME.2AB-R, ENTERPRISE-CLEANUP, and all future Medical Exam chief complaint remediation phases.
+
+## Core rule
+
+Every sticky-note chip must render **chart-ready, human-sounding clinician documentation**. The provider must be able to click any chip and paste the rendered text into the chart **without editing**.
+
+## Required human documentation checks
+
+- No workflow language (`discussed`, `recommended`, `advised`, `if indicated`)
+- No governance / meta-documentation language (`historian used`, `assessment completed`, `exam completed`, `evaluation completed`)
+- No internal terminology (`chip`, `sticky note`, `fragment`, `template`, `governance`, `workflow`)
+- No chip terminology leaking into rendered values
+- No `reviewed` outside **mdmDataReviewed** (diagnostic review phrases only)
+- No `assessed` outside clinically valid physical-exam phrasing when truly needed
+- No `considered`
+- No `historian used`
+- No `if documented` / `if given` / `if performed`
+- No noun-chain return precautions
+- Must read naturally when rendered
+- Must be paste-ready clinician documentation
+
+## Section-specific rules
+
+| Section | Rule |
+|---------|------|
+| HPI / ROS / Exam / Reassessment | Clinical facts only; no review/assessment meta-language |
+| mdmWorkingAssessment / Impression | Working diagnosis language (`suspected`, `low suspicion for`, `concern for`) |
+| mdmDifferentialSynthesis | Diagnosis names, not `considered` |
+| mdmDataReviewed | **Only** section where `reviewed` is allowed (`CBC reviewed`, `CT reviewed`, etc.) |
+| mdmRiskStratification | Risk framing (`low risk; …`, `high risk for …`), not stub tokens |
+| mdmClinicalRationale | Clinical reasoning, not process documentation |
+| Plan / Disposition | Actions and instructions (`given`, `arranged`, `encouraged`), not `discussed` / `recommended` |
+
+## FAIL examples (rendered values)
+
+- `nausea today reviewed`
+- `fever reviewed`
+- `abdominal pain reviewed`
+- `exam completed`
+- `assessment completed`
+- `hydration status assessed`
+- `differential considered`
+- `specialist consult if indicated`
+- `caregiver historian used`
+- `return lethargy breathing dehydration fever`
+- `pediatrician follow-up recommended`
+- `return precautions discussed`
+
+## PASS examples (rendered values)
+
+- `nausea began today`
+- `multiple episodes of vomiting`
+- `unable to tolerate oral intake`
+- `fever began yesterday`
+- `reported Tmax 102°F at home`
+- `abdomen soft and non-tender`
+- `hydration improved after treatment`
+- `low suspicion for meningitis`
+- `parent at bedside`
+- `return for lethargy, difficulty breathing, dehydration, or persistent fever`
+- `CBC reviewed` (mdmDataReviewed only)
+
+## Sample rendering requirement
+
+For each registered template, generate **≥ 20 deterministic rendered note samples** including all sections:
+
+HPI, ROS+, ROS−, Exam, Reassessment, MDM Working Assessment, MDM Differential, MDM Data Reviewed, MDM Risk Stratification, MDM Reasoning, Clinical Impression, Plan, Disposition.
+
+Each sample must pass: *Would an emergency physician sign this note without editing the generated text?*
+
+## Implementation
+
+- Governance module: `apps/web/src/lib/providerDocumentationHumanDocumentationAudit.ts`
+- Permanent test gate: `apps/web/src/lib/providerDocumentationHumanDocumentationAudit.test.ts`
+- Register new families in `HUMAN_DOCUMENTATION_AUDIT_FAMILIES`
+- Run: `pnpm --filter @medora/web exec vitest run src/lib/providerDocumentationHumanDocumentationAudit.test.ts`
+
+## Required remediation report sections
+
+Every Medical Exam remediation report must include:
+
+1. Repo readiness audit
+2. Discovery table
+3. Scope decision
+4. Files changed
+5. HPI summary
+6. ROS summary
+7. Physical exam summary
+8. Reassessment summary
+9. MDM reinforcement summary
+10. Cannot-miss coverage
+11. **Human Documentation Audit result**
+12. **Rendered sample note result**
+13. Track C result
+14. MDM.1 verification
+15. Governance result
+16. Compatibility audit result
+17. Verification results
+18. Migration assessment
+19. Exact unstaged file list
+20. Suggested commit message

@@ -19,6 +19,11 @@ import {
   FRACTURE_CONCERN_COMPLAINT_INTEL,
   EXTREMITY_MSK_COMPLAINT_INTEL,
   PEDIATRIC_FEVER_COMPLAINT_INTEL,
+  PEDIATRIC_SEIZURE_COMPLAINT_INTEL,
+  PEDIATRIC_RASH_COMPLAINT_INTEL,
+  PEDIATRIC_DEHYDRATION_COMPLAINT_INTEL,
+  PEDIATRIC_CROUP_COMPLAINT_INTEL,
+  PEDIATRIC_RSV_LIKE_ILLNESS_COMPLAINT_INTEL,
   PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
   PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL,
@@ -954,7 +959,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesFever"],
     ["erMseRosChips.rfAlteredMs", "erMseRosChips.rfNeuroDeficit"],
     { mdmWorkingAssessment: ["erMseMdmChips.waNeurologic"], mdmDataReviewed: ["erMseMdmChips.planLabs", "erMseMdmChips.planImaging"] },
-    { neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroFollowsCommands"] }
+    { neuroPsych: ["erMseExamChips.neuroAlertOriented", "erMseExamChips.neuroFollowsCommands"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_SEIZURE_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "pediatric_rash",
@@ -965,7 +976,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesSob"],
     ["erMseRosChips.rfRespDistress"],
     { mdmWorkingAssessment: ["providerDocumentationWorkspace.stickerMdmAllergicProcess"] },
-    { skin: ["erMseExamChips.skinRashPresent"] }
+    { skin: ["erMseExamChips.skinRashPresent"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_RASH_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "dehydration",
@@ -976,7 +993,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesSob"],
     ["erMseRosChips.rfHypotensionConcern", "erMseRosChips.rfAlteredMs"],
     { mdmPlanSummary: ["erMseMdmChips.actFluids", "erMseMdmChips.planReassess"] },
-    { heent: ["erMseExamChips.heentDryMm"], abdomen: ["erMseExamChips.abdSoft"] }
+    { heent: ["erMseExamChips.heentDryMm"], abdomen: ["erMseExamChips.abdSoft"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricGastroDehydrationReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_DEHYDRATION_COMPLAINT_INTEL
   ),
   {
     id: "pediatric_trauma",
@@ -1051,7 +1076,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesFever"],
     ["erMseRosChips.rfRespDistress"],
     { mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"], mdmWorkingAssessment: ["erMseMdmChips.waInfectious"] },
-    { respiratory: ["erMseExamChips.respIncreasedWob", "erMseExamChips.respWheezing"], heent: ["erMseExamChips.heentOropharynxClear"] }
+    { respiratory: ["erMseExamChips.respIncreasedWob", "erMseExamChips.respWheezing"], heent: ["erMseExamChips.heentOropharynxClear"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricAsthmaWheezingReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_CROUP_COMPLAINT_INTEL
   ),
   pediatricTemplate(
     "rsv_like_illness",
@@ -1062,7 +1095,15 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
     ["erMseRosChips.negDeniesChestPain"],
     ["erMseRosChips.rfRespDistress", "erMseRosChips.rfHypotensionConcern"],
     { mdmImmediateActionsRationale: ["erMseMdmChips.actOxygen"], mdmWorkingAssessment: ["erMseMdmChips.waInfectious"] },
-    { respiratory: ["erMseExamChips.respWheezing", "erMseExamChips.respIncreasedWob"] }
+    { respiratory: ["erMseExamChips.respWheezing", "erMseExamChips.respIncreasedWob"] },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.pediatricAsthmaWheezingReminder",
+      "providerDocumentationPromptReminders.pediatricHydration",
+      "providerDocumentationPromptReminders.pediatricCaregiverHistorian",
+      "providerDocumentationPromptReminders.emtalaReassessment",
+    ],
+    PEDIATRIC_RSV_LIKE_ILLNESS_COMPLAINT_INTEL
   ),
 
   // ── ADULT ───────────────────────────────────────────────────────────────
