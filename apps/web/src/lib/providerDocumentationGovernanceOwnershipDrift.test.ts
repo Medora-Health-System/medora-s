@@ -5,36 +5,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderDocumentationTemplateId } from "./providerDocumentationModel";
 import { HUMAN_DOCUMENTATION_AUDIT_FAMILIES } from "./providerDocumentationHumanDocumentationAudit";
-import { templateUsesBackPainStickyNoteGovernance } from "./providerDocumentationBackPainGovernance";
-import { templateUsesChestPainStickyNoteGovernance } from "./providerDocumentationChestPainGovernance";
-import { isGiExtensionsGovernedTemplate } from "./providerDocumentationGiExtensionsGovernance";
-import { isCardiacNonChestPainGovernedTemplate } from "./providerDocumentationCardiacNonChestPainGovernance";
-import { isNeuroStrokeWeaknessGovernedTemplate } from "./providerDocumentationNeuroStrokeWeaknessGovernance";
-import { isRenalMetabolicEndocrineGovernedTemplate } from "./providerDocumentationRenalMetabolicEndocrineGovernance";
-import { templateUsesPediatricLegacyStickyNoteGovernance } from "./providerDocumentationPediatricLegacyGovernance";
-import { isPsychBehavioralGovernedTemplate } from "./providerDocumentationPsychBehavioralGovernance";
-import { isMedicationRefillGovernedTemplate } from "./providerDocumentationMedicationRefillGovernance";
-import { isObservationReassessmentGovernedTemplate } from "./providerDocumentationObservationReassessmentGovernance";
-import { templateUsesTraumaStickyNoteGovernance } from "./providerDocumentationTraumaGovernance";
-import { templateUsesAbdominalPainStickyNoteGovernance } from "./providerDocumentationAbdominalPainGovernance";
-import { templateUsesDizzinessVertigoStickyNoteGovernance } from "./providerDocumentationDizzinessVertigoGovernance";
-import { templateUsesHeadacheStickyNoteGovernance } from "./providerDocumentationHeadacheGovernance";
-import { templateUsesShortnessOfBreathStickyNoteGovernance } from "./providerDocumentationShortnessOfBreathGovernance";
-import { templateUsesUrinarySymptomsStickyNoteGovernance } from "./providerDocumentationUrinarySymptomsGovernance";
-import { templateUsesFemalePelvicGynStickyNoteGovernance } from "./providerDocumentationFemalePelvicGynGovernance";
-import { templateUsesRashStickyNoteGovernance } from "./providerDocumentationRashGovernance";
-import { templateUsesEarPainStickyNoteGovernance } from "./providerDocumentationEarPainGovernance";
-import { templateUsesDentalOralStickyNoteGovernance } from "./providerDocumentationDentalOralGovernance";
-import { templateUsesExtremityMskStickyNoteGovernance } from "./providerDocumentationExtremityMskGovernance";
-import { templateUsesAdultFeverStickyNoteGovernance } from "./providerDocumentationAdultFeverGovernance";
-import { templateUsesCoughUriStickyNoteGovernance } from "./providerDocumentationCoughUriGovernance";
-import { templateUsesDiarrheaStickyNoteGovernance } from "./providerDocumentationDiarrheaGovernance";
-import { templateUsesNauseaVomitingStickyNoteGovernance } from "./providerDocumentationNauseaVomitingGovernance";
-import { templateUsesFlankPainRenalStickyNoteGovernance } from "./providerDocumentationFlankPainRenalGovernance";
-import { templateUsesMaleGuStickyNoteGovernance } from "./providerDocumentationMaleGuGovernance";
-import { templateUsesSoreThroatStickyNoteGovernance } from "./providerDocumentationSoreThroatGovernance";
-import { templateUsesSinusSymptomsStickyNoteGovernance } from "./providerDocumentationSinusSymptomsGovernance";
-import { templateUsesDehydrationViralIllnessStickyNoteGovernance } from "./providerDocumentationDehydrationViralIllnessGovernance";
 import { BACK_PAIN_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationBackPainGovernance";
 import { CHEST_PAIN_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationChestPainGovernance";
 import { GI_EXTENSIONS_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationGiExtensionsGovernance";
@@ -43,38 +13,9 @@ import { NEURO_STROKE_WEAKNESS_GOVERNED_TEMPLATE_IDS } from "./providerDocumenta
 import { RENAL_METABOLIC_ENDOCRINE_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationRenalMetabolicEndocrineGovernance";
 import { PEDIATRIC_LEGACY_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationPediatricLegacyGovernance";
 import { PSYCH_BEHAVIORAL_GOVERNED_TEMPLATE_IDS } from "./providerDocumentationPsychBehavioralGovernance";
+import { ENTERPRISE_GOVERNANCE_OWNER_ASSERTIONS, type EnterpriseGovernanceOwnerId } from "./providerDocumentationEnterpriseGovernanceV2";
 
-type GovernanceOwnerId =
-  | "ChestPainGovernance"
-  | "CardiacNonChestPainGovernance"
-  | "NeuroStrokeWeaknessGovernance"
-  | "BackPainGovernance"
-  | "GiExtensionsGovernance"
-  | "RenalMetabolicEndocrineGovernance"
-  | "PediatricLegacyGovernance"
-  | "PsychBehavioralGovernance"
-  | "MedicationRefillGovernance"
-  | "ObservationReassessmentGovernance"
-  | "TraumaGovernance"
-  | "AbdominalPainGovernance"
-  | "DizzinessVertigoGovernance"
-  | "HeadacheGovernance"
-  | "ShortnessOfBreathGovernance"
-  | "UrinarySymptomsGovernance"
-  | "FemalePelvicGynGovernance"
-  | "RashGovernance"
-  | "EarPainGovernance"
-  | "DentalOralGovernance"
-  | "ExtremityMskGovernance"
-  | "AdultFeverGovernance"
-  | "CoughUriGovernance"
-  | "DiarrheaGovernance"
-  | "NauseaVomitingGovernance"
-  | "FlankPainRenalGovernance"
-  | "MaleGuGovernance"
-  | "SoreThroatGovernance"
-  | "SinusSymptomsGovernance"
-  | "DehydrationViralIllnessGovernance";
+type GovernanceOwnerId = EnterpriseGovernanceOwnerId;
 
 type GovernanceOwnershipEntry = {
   templateId: string;
@@ -128,41 +69,7 @@ export const GOVERNANCE_OWNERSHIP_MATRIX: readonly GovernanceOwnershipEntry[] = 
   { templateId: "dehydration_viral_illness_complaint_v1", primaryOwner: "DehydrationViralIllnessGovernance", collector: "resolveDehydrationViralIllness*ChipGroupsForTemplate", filter: "filterDehydrationViralIllnessMdmTemplateOptionsForTemplate" },
 ] as const;
 
-const OWNER_ASSERTIONS: Record<
-  GovernanceOwnerId,
-  (templateId: ProviderDocumentationTemplateId | null) => boolean
-> = {
-  ChestPainGovernance: (id) => templateUsesChestPainStickyNoteGovernance(id),
-  CardiacNonChestPainGovernance: (id) => isCardiacNonChestPainGovernedTemplate(id),
-  NeuroStrokeWeaknessGovernance: (id) => isNeuroStrokeWeaknessGovernedTemplate(id),
-  BackPainGovernance: (id) => templateUsesBackPainStickyNoteGovernance(id),
-  GiExtensionsGovernance: (id) => isGiExtensionsGovernedTemplate(id),
-  RenalMetabolicEndocrineGovernance: (id) => isRenalMetabolicEndocrineGovernedTemplate(id),
-  PediatricLegacyGovernance: (id) => templateUsesPediatricLegacyStickyNoteGovernance(id),
-  PsychBehavioralGovernance: (id) => isPsychBehavioralGovernedTemplate(id),
-  MedicationRefillGovernance: (id) => isMedicationRefillGovernedTemplate(id),
-  ObservationReassessmentGovernance: (id) => isObservationReassessmentGovernedTemplate(id),
-  TraumaGovernance: (id) => templateUsesTraumaStickyNoteGovernance(id),
-  AbdominalPainGovernance: (id) => templateUsesAbdominalPainStickyNoteGovernance(id),
-  DizzinessVertigoGovernance: (id) => templateUsesDizzinessVertigoStickyNoteGovernance(id),
-  HeadacheGovernance: (id) => templateUsesHeadacheStickyNoteGovernance(id),
-  ShortnessOfBreathGovernance: (id) => templateUsesShortnessOfBreathStickyNoteGovernance(id),
-  UrinarySymptomsGovernance: (id) => templateUsesUrinarySymptomsStickyNoteGovernance(id),
-  FemalePelvicGynGovernance: (id) => templateUsesFemalePelvicGynStickyNoteGovernance(id),
-  RashGovernance: (id) => templateUsesRashStickyNoteGovernance(id),
-  EarPainGovernance: (id) => templateUsesEarPainStickyNoteGovernance(id),
-  DentalOralGovernance: (id) => templateUsesDentalOralStickyNoteGovernance(id),
-  ExtremityMskGovernance: (id) => templateUsesExtremityMskStickyNoteGovernance(id),
-  AdultFeverGovernance: (id) => templateUsesAdultFeverStickyNoteGovernance(id),
-  CoughUriGovernance: (id) => templateUsesCoughUriStickyNoteGovernance(id),
-  DiarrheaGovernance: (id) => templateUsesDiarrheaStickyNoteGovernance(id),
-  NauseaVomitingGovernance: (id) => templateUsesNauseaVomitingStickyNoteGovernance(id),
-  FlankPainRenalGovernance: (id) => templateUsesFlankPainRenalStickyNoteGovernance(id),
-  MaleGuGovernance: (id) => templateUsesMaleGuStickyNoteGovernance(id),
-  SoreThroatGovernance: (id) => templateUsesSoreThroatStickyNoteGovernance(id),
-  SinusSymptomsGovernance: (id) => templateUsesSinusSymptomsStickyNoteGovernance(id),
-  DehydrationViralIllnessGovernance: (id) => templateUsesDehydrationViralIllnessStickyNoteGovernance(id),
-};
+const OWNER_ASSERTIONS = ENTERPRISE_GOVERNANCE_OWNER_ASSERTIONS;
 
 describe("providerDocumentationGovernanceOwnershipDrift — MEDUI.ED.POSTCERT.3", () => {
   function resolveActiveGovernanceOwners(templateId: ProviderDocumentationTemplateId): GovernanceOwnerId[] {
