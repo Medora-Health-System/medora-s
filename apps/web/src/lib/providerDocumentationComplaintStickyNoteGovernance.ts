@@ -153,6 +153,12 @@ import {
   resolveCardiacNonChestPainHpiChipGroupsForTemplate,
   resolveCardiacNonChestPainRosChipGroupsForTemplate,
 } from "./providerDocumentationCardiacNonChestPainGovernance";
+import {
+  filterRenalMetabolicEndocrineMdmTemplateOptionsForTemplate,
+  resolveRenalMetabolicEndocrineExamChipGroupsForTemplate,
+  resolveRenalMetabolicEndocrineHpiChipGroupsForTemplate,
+  resolveRenalMetabolicEndocrineRosChipGroupsForTemplate,
+} from "./providerDocumentationRenalMetabolicEndocrineGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -230,11 +236,14 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
   );
-  return resolveCardiacNonChestPainRosChipGroupsForTemplate(
+  return resolveRenalMetabolicEndocrineRosChipGroupsForTemplate(
     templateId,
-    resolvePediatricLegacyRosChipGroupsForTemplate(
+    resolveCardiacNonChestPainRosChipGroupsForTemplate(
       templateId,
-      resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+      resolvePediatricLegacyRosChipGroupsForTemplate(
+        templateId,
+        resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+      )
     )
   );
 }
@@ -307,11 +316,14 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
   );
-  return resolveCardiacNonChestPainExamChipGroupsForTemplate(
+  return resolveRenalMetabolicEndocrineExamChipGroupsForTemplate(
     templateId,
-    resolvePediatricLegacyExamChipGroupsForTemplate(
+    resolveCardiacNonChestPainExamChipGroupsForTemplate(
       templateId,
-      resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+      resolvePediatricLegacyExamChipGroupsForTemplate(
+        templateId,
+        resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+      )
     )
   );
 }
@@ -381,11 +393,14 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
   );
-  return resolveCardiacNonChestPainHpiChipGroupsForTemplate(
+  return resolveRenalMetabolicEndocrineHpiChipGroupsForTemplate(
     templateId,
-    resolvePediatricLegacyHpiChipGroupsForTemplate(
+    resolveCardiacNonChestPainHpiChipGroupsForTemplate(
       templateId,
-      resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+      resolvePediatricLegacyHpiChipGroupsForTemplate(
+        templateId,
+        resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+      )
     )
   );
 }
@@ -458,11 +473,14 @@ export function filterMdmTemplateOptionsForTemplate(
     )
     )
   );
-  return filterCardiacNonChestPainMdmTemplateOptionsForTemplate(
+  return filterRenalMetabolicEndocrineMdmTemplateOptionsForTemplate(
     templateId,
-    filterPediatricLegacyMdmTemplateOptionsForTemplate(
+    filterCardiacNonChestPainMdmTemplateOptionsForTemplate(
       templateId,
-      filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+      filterPediatricLegacyMdmTemplateOptionsForTemplate(
+        templateId,
+        filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+      )
     )
   );
 }

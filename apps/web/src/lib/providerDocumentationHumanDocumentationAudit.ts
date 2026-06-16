@@ -32,11 +32,26 @@ import {
   NEAR_SYNCOPE_COMPLAINT_V1_INTEL,
   PALPITATIONS_COMPLAINT_V1_INTEL,
 } from "./providerDocumentationCardiacComplaintIntelligence19Mdm4";
+import {
+  DEHYDRATION_METABOLIC_COMPLAINT_V1_INTEL,
+  DIABETES_SICK_DAY_COMPLAINT_V1_INTEL,
+  ELECTROLYTE_ABNORMALITY_COMPLAINT_V1_INTEL,
+  GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL,
+  HYPERGLYCEMIA_COMPLAINT_V1_INTEL,
+  HYPOGLYCEMIA_COMPLAINT_V1_INTEL,
+  INSULIN_MEDICATION_ISSUE_COMPLAINT_V1_INTEL,
+  NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL,
+  POLYURIA_POLYDYPSIA_COMPLAINT_V1_INTEL,
+  THYROID_SYMPTOMS_COMPLAINT_V1_INTEL,
+} from "./providerDocumentationEndocrineMetabolicComplaintIntelligence19Mdm8";
+import { RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL } from "./providerDocumentationGuRenalComplaintIntelligence19Mdm5";
 import { auditTrackCi18nMessageValues } from "./providerDocumentationComplaintIntelligenceTrackC";
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "@/i18n/messages/providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationPediatricLegacyComplaintIntelEn } from "@/i18n/messages/providerDocumentationPediatricLegacyComplaintIntel.en";
 import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "@/i18n/messages/providerDocumentationCardiacNonChestPainComplaintIntel.en";
 import { providerDocumentationDizzinessVertigoComplaintIntelEn } from "@/i18n/messages/providerDocumentationDizzinessVertigoComplaintIntel.en";
+import { providerDocumentationRenalMetabolicEndocrineComplaintIntelEn } from "@/i18n/messages/providerDocumentationRenalMetabolicEndocrineComplaintIntel.en";
+import { providerDocumentationNauseaVomitingComplaintIntelEn } from "@/i18n/messages/providerDocumentationNauseaVomitingComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -256,8 +271,57 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
       nearSyncopeComplaintV1: providerDocumentationDizzinessVertigoComplaintIntelEn.nearSyncopeComplaintV1,
     },
   },
+  {
+    phase: "MEDUI.ED.ME.2Z-R",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      { templateId: "hyperglycemia_complaint_v1", bundle: HYPERGLYCEMIA_COMPLAINT_V1_INTEL, namespace: "hyperglycemiaComplaintV1" },
+      { templateId: "hypoglycemia_complaint_v1", bundle: HYPOGLYCEMIA_COMPLAINT_V1_INTEL, namespace: "hypoglycemiaComplaintV1" },
+      { templateId: "diabetes_sick_day_complaint_v1", bundle: DIABETES_SICK_DAY_COMPLAINT_V1_INTEL, namespace: "diabetesSickDayComplaintV1" },
+      {
+        templateId: "insulin_medication_issue_complaint_v1",
+        bundle: INSULIN_MEDICATION_ISSUE_COMPLAINT_V1_INTEL,
+        namespace: "insulinMedicationIssueComplaintV1",
+      },
+      {
+        templateId: "polyuria_polydipsia_complaint_v1",
+        bundle: POLYURIA_POLYDYPSIA_COMPLAINT_V1_INTEL,
+        namespace: "polyuriaPolydipsiaComplaintV1",
+      },
+      {
+        templateId: "dehydration_metabolic_complaint_v1",
+        bundle: DEHYDRATION_METABOLIC_COMPLAINT_V1_INTEL,
+        namespace: "dehydrationMetabolicComplaintV1",
+      },
+      {
+        templateId: "electrolyte_abnormality_complaint_v1",
+        bundle: ELECTROLYTE_ABNORMALITY_COMPLAINT_V1_INTEL,
+        namespace: "electrolyteAbnormalityComplaintV1",
+      },
+      { templateId: "thyroid_symptoms_complaint_v1", bundle: THYROID_SYMPTOMS_COMPLAINT_V1_INTEL, namespace: "thyroidSymptomsComplaintV1" },
+      {
+        templateId: "generalized_weakness_metabolic_complaint_v1",
+        bundle: GENERALIZED_WEAKNESS_METABOLIC_COMPLAINT_V1_INTEL,
+        namespace: "generalizedWeaknessMetabolicComplaintV1",
+      },
+      {
+        templateId: "renal_failure_symptoms_complaint_v1",
+        bundle: RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL,
+        namespace: "renalFailureSymptomsComplaintV1",
+      },
+      {
+        templateId: "nausea_vomiting_metabolic_complaint_v1",
+        bundle: NAUSEA_VOMITING_METABOLIC_COMPLAINT_V1_INTEL,
+        namespace: "nauseaVomitingMetabolicComplaintV1",
+      },
+    ],
+    messageSource: {
+      ...providerDocumentationRenalMetabolicEndocrineComplaintIntelEn,
+      nauseaVomitingMetabolicComplaintV1:
+        providerDocumentationNauseaVomitingComplaintIntelEn.nauseaVomitingMetabolicComplaintV1,
+    },
+  },
   // Future phases register here:
-  // MEDUI.ED.ME.2Z-R — Renal / Metabolic / Endocrine
   // MEDUI.ED.ME.2AA-R — GI Extensions
   // MEDUI.ED.ME.2X-R — Psychiatric / Behavioral
   // MEDUI.ED.ME.2AB-R — Legacy Adult Utilities

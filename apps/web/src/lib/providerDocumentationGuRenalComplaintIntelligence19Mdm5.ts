@@ -10,7 +10,7 @@ import { buildUrinaryRetentionComplaintV1Intel } from "./providerDocumentationUr
 import { buildFlankPainRenalComplaintV1Intel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 import { buildHematuriaComplaintV1Intel } from "./providerDocumentationHematuriaComplaintIntelGoldStandard";
 import { buildDysuriaComplaintV1Intel } from "./providerDocumentationDysuriaComplaintIntelGoldStandard";
-const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
+import { buildRenalFailureSymptomsComplaintV1Intel } from "./providerDocumentationRenalMetabolicEndocrineComplaintIntelGoldStandard";
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
 const flankPainRenal = (key: string) => `providerDocumentationComplaintIntel.flankPainRenalComplaintV1.${key}`;
@@ -45,20 +45,8 @@ export const VAGINAL_BLEEDING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaint
 export const VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildVaginalDischargeComplaintV1Intel(vaginalDischarge);
 
-export const RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [renalFailureSymptoms("hpiDecreasedUrineOutput"), renalFailureSymptoms("hpiEdemaWeaknessNausea"), renalFailureSymptoms("hpiDyspneaDialysisHistory"), renalFailureSymptoms("hpiMedicationComplianceWeightChanges")],
-  rosImportantPositives: [renalFailureSymptoms("rosEdema"), renalFailureSymptoms("rosWeakness"), renalFailureSymptoms("rosDyspnea")],
-  rosImportantNegatives: [renalFailureSymptoms("rosDeniesChestPain")],
-  rosRedFlags: [renalFailureSymptoms("rfVolumeOverloadConcern"), renalFailureSymptoms("rfAlteredMentalStatus")],
-  physicalExam: { abdomen: [renalFailureSymptoms("examEdemaIfDocumented"), renalFailureSymptoms("examPerfusionIfDocumented"), renalFailureSymptoms("examRespiratoryFindingsIfDocumented")], general: [renalFailureSymptoms("examGeneralAppearance")] },
-  mdmWorkingAssessment: [renalFailureSymptoms("mdmRenalFailureSymptomsPresentation")],
-  mdmDifferentialSynthesis: [renalFailureSymptoms("diffAki"), renalFailureSymptoms("diffCkdProgression"), renalFailureSymptoms("diffElectrolyteDerangement"), renalFailureSymptoms("diffVolumeOverload"), renalFailureSymptoms("diffDehydration")],
-  mdmDataReviewed: [renalFailureSymptoms("mdmRenalLabsElectrolytesImagingIfObtained")],
-  mdmClinicalRationale: [renalFailureSymptoms("mdmDialysisPlanIfApplicable"), renalFailureSymptoms("mdmNephrologyConsultIfIndicated")],
-  mdmAdmitObserveDischarge: [renalFailureSymptoms("mdmAdmissionIfIndicated")],
-  reassessment: [renalFailureSymptoms("reassessVolumeRespiratoryStatus")],
-  followUpDisposition: [renalFailureSymptoms("dispReturnWorseningEdemaSob")],
-});
+export const RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildRenalFailureSymptomsComplaintV1Intel(renalFailureSymptoms);
 
 export const GU_RENAL_COMPLAINT_V1_TEMPLATE_IDS = [
   "dysuria_complaint_v1",

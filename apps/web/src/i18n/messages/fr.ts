@@ -7,7 +7,7 @@ import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./prov
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.fr";
 import { providerDocumentationDentalOralComplaintIntelFr } from "./providerDocumentationDentalOralComplaintIntel.fr";
-import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.fr";
+import { providerDocumentationRenalMetabolicEndocrineComplaintIntelFr } from "./providerDocumentationRenalMetabolicEndocrineComplaintIntel.fr";
 import { providerDocumentationAbdominalPainComplaintIntelFr } from "./providerDocumentationAbdominalPainComplaintIntel.fr";
 import { providerDocumentationNauseaVomitingComplaintIntelFr } from "./providerDocumentationNauseaVomitingComplaintIntel.fr";
 import { providerDocumentationShortnessOfBreathComplaintIntelFr } from "./providerDocumentationShortnessOfBreathComplaintIntel.fr";
@@ -9029,7 +9029,7 @@ export default {
     ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7Fr,
     ...providerDocumentationDentalOralComplaintIntelFr,
-    ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8Fr,
+    ...providerDocumentationRenalMetabolicEndocrineComplaintIntelFr,
     ...providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr,
     ...providerDocumentationNeuroStrokeWeaknessComplaintIntelFr,
   },
