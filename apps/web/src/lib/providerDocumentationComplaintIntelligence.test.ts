@@ -419,7 +419,7 @@ describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => 
     const weakness = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "weakness");
     const flank = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "flank_pain");
     expect(psych?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
+      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiReportsSuicidalThoughts"
     );
     expect(weakness?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.weakness.diffTia"
@@ -561,7 +561,7 @@ describe("provider documentation complaint intelligence (19N.7 Batch 4)", () => 
       "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
     );
     expect(PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
+      "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiReportsSuicidalThoughts"
     );
     expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
       "providerDocumentationComplaintIntel.stroke.hpiLastKnownWell"

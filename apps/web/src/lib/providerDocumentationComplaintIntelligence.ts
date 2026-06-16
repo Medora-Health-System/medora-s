@@ -69,6 +69,7 @@ import {
   buildPediatricNauseaVomitingComplaintIntel,
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 import { buildUrinarySymptomsComplaintIntel } from "./providerDocumentationUrinarySymptomsComplaintIntelGoldStandard";
+import { buildPsychiatricBehavioralComplaintIntel } from "./providerDocumentationPsychBehavioralComplaintIntelGoldStandard";
 import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
@@ -149,6 +150,9 @@ const abd = (key: string) => `providerDocumentationComplaintIntel.abdominal.${ke
 const stroke = (key: string) => `providerDocumentationComplaintIntel.stroke.${key}`;
 const dizz = (key: string) => `providerDocumentationComplaintIntel.dizzinessSyncope.${key}`;
 const psych = (key: string) => `providerDocumentationComplaintIntel.psychiatricBehavioral.${key}`;
+
+export const PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPsychiatricBehavioralComplaintIntel(psych);
 const weak = (key: string) => `providerDocumentationComplaintIntel.weakness.${key}`;
 const flank = (key: string) => `providerDocumentationComplaintIntel.flankPain.${key}`;
 const uri = (key: string) => `providerDocumentationComplaintIntel.uriRespiratory.${key}`;
@@ -205,121 +209,6 @@ export const HEADACHE_COMPLAINT_INTEL = buildHeadacheComplaintIntel(ha);
 
 /** Dizziness / syncope — ACEP serious-cause evaluation framework. */
 export const DIZZINESS_SYNCOPE_COMPLAINT_INTEL = buildDizzinessSyncopeComplaintIntel(dizz);
-
-/** Psychiatric / behavioral — ACEP psychiatric emergency / safety documentation framework. */
-export const PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    psych("hpiSuicidalIdeationReported"),
-    psych("hpiHomicidalIdeationReported"),
-    psych("hpiHallucinationsReported"),
-    psych("hpiParanoiaReported"),
-    psych("hpiAgitationReported"),
-    psych("hpiAnxietySymptomsReported"),
-    psych("hpiDepressiveSymptomsReported"),
-    psych("hpiSubstanceUseReviewed"),
-    psych("hpiMedicationNonadherenceReviewed"),
-    psych("hpiRecentStressorReported"),
-    psych("hpiPriorPsychiatricHistoryReviewed"),
-    psych("hpiPriorSuicideAttemptReviewed"),
-    psych("hpiAccessToWeaponsReviewed"),
-    psych("hpiInvoluntaryHoldCriteriaConsidered"),
-    psych("hpiCollateralInformationReviewed"),
-  ],
-  rosImportantPositives: [
-    psych("rosAnxiety"),
-    psych("rosDepression"),
-    psych("rosHallucinations"),
-    psych("rosSuicidalThoughts"),
-    psych("rosHomicidalThoughts"),
-    psych("rosInsomnia"),
-    psych("rosSubstanceUse"),
-  ],
-  rosImportantNegatives: [
-    psych("rosDeniesSuicidalIdeation"),
-    psych("rosDeniesHomicidalIdeation"),
-    psych("rosDeniesHallucinations"),
-    psych("rosDeniesIngestion"),
-    psych("rosDeniesTrauma"),
-  ],
-  rosRedFlags: [
-    psych("rfActiveSuicidalIdeation"),
-    psych("rfHomicidalIdeation"),
-    psych("rfCommandHallucinations"),
-    psych("rfSevereAgitation"),
-    psych("rfIntoxicationConcern"),
-    psych("rfOverdoseIngestionConcern"),
-    psych("rfUnableToContractForSafety"),
-    psych("rfUnsafeDischargeEnvironment"),
-  ],
-  physicalExam: {
-    general: [psych("examNoAcuteMedicalDistress")],
-    neuroPsych: [
-      psych("examAlertOriented"),
-      psych("examCooperative"),
-      psych("examAgitated"),
-      psych("examTearful"),
-      psych("examAnxious"),
-      psych("examDepressedAffect"),
-      psych("examPressuredSpeech"),
-      psych("examDisorganizedThoughtProcess"),
-      psych("examHallucinationsNoted"),
-      psych("examNoFocalNeuroDeficit"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    psych("mdmSuicideRiskAssessed"),
-    psych("mdmHomicidalRiskAssessed"),
-  ],
-  mdmDifferentialSynthesis: [
-    psych("diffSuicidalIdeation"),
-    psych("diffHomicidalIdeation"),
-    psych("diffPsychosis"),
-    psych("diffMajorDepression"),
-    psych("diffAnxietyPanicReaction"),
-    psych("diffSubstanceIntoxication"),
-    psych("diffSubstanceWithdrawal"),
-    psych("diffMedicationEffect"),
-    psych("diffDeliriumMedicalCause"),
-    psych("diffBehavioralCrisis"),
-  ],
-  mdmDataReviewed: [
-    psych("mdmCollateralInformationReviewed"),
-    psych("mdmMedicalClearanceEvaluationPerformed"),
-    psych("mdmIntoxicationWithdrawalConsidered"),
-  ],
-  mdmClinicalRationale: [
-    psych("mdmSafetyPlanConsidered"),
-    psych("mdmInvoluntaryHoldConsidered"),
-    psych("mdmObservationRequiredForSafety"),
-  ],
-  mdmPlanSummary: [
-    psych("mdmPsychiatricConsultationRequested"),
-    psych("mdmTransferAdmissionPsychStabilizationConsidered"),
-    psych("mdmPatientPlacedOnSafetyPrecautions"),
-  ],
-  mdmImmediateActionsRationale: [psych("mdmSafetyPrecautionsInitiatedIfIndicated")],
-  mdmAdmitObserveDischarge: [
-    psych("mdmPsychiatricAdmissionConsidered"),
-    psych("mdmPsychiatricTransferConsidered"),
-    psych("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    psych("reassessBehaviorReassessed"),
-    psych("reassessPatientCalmOnReassessment"),
-    psych("reassessSafetyStatusReassessed"),
-    psych("reassessAgitationImproved"),
-    psych("reassessContinuesToRequireObservation"),
-  ],
-  followUpDisposition: [
-    psych("dispPsychiatricAdmissionConsidered"),
-    psych("dispPsychiatricTransferConsidered"),
-    psych("dispDischargedWithSafetyPlan"),
-    psych("dispCrisisResourcesProvided"),
-    psych("dispReturnPrecautionsDiscussed"),
-    psych("dispPatientNotSafeForDischarge"),
-    psych("dispInvoluntaryHoldDispositionDocumented"),
-  ],
-});
 
 /** Weakness — ME.2W-R gold standard. */
 export const WEAKNESS_COMPLAINT_INTEL = buildWeaknessComplaintIntel(weak);

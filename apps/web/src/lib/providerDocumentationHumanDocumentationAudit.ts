@@ -12,6 +12,7 @@ import {
   PEDIATRIC_SEIZURE_COMPLAINT_INTEL,
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
   WEAKNESS_COMPLAINT_INTEL,
+  PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
 } from "./providerDocumentationComplaintIntelligence";
 import {
@@ -60,6 +61,7 @@ import { providerDocumentationDizzinessVertigoComplaintIntelEn } from "@/i18n/me
 import { providerDocumentationRenalMetabolicEndocrineComplaintIntelEn } from "@/i18n/messages/providerDocumentationRenalMetabolicEndocrineComplaintIntel.en";
 import { providerDocumentationNauseaVomitingComplaintIntelEn } from "@/i18n/messages/providerDocumentationNauseaVomitingComplaintIntel.en";
 import { providerDocumentationGiExtensionsComplaintIntelEn } from "@/i18n/messages/providerDocumentationGiExtensionsComplaintIntel.en";
+import { providerDocumentationPsychBehavioralComplaintIntelEn } from "@/i18n/messages/providerDocumentationPsychBehavioralComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -341,8 +343,19 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
     ],
     messageSource: providerDocumentationGiExtensionsComplaintIntelEn,
   },
+  {
+    phase: "MEDUI.ED.ME.2X-R",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      {
+        templateId: "psychiatric_behavioral",
+        bundle: PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+        namespace: "psychiatricBehavioral",
+      },
+    ],
+    messageSource: providerDocumentationPsychBehavioralComplaintIntelEn,
+  },
   // Future phases register here:
-  // MEDUI.ED.ME.2X-R — Psychiatric / Behavioral
   // MEDUI.ED.ME.2AB-R — Legacy Adult Utilities
   // ENTERPRISE-CLEANUP
 ];

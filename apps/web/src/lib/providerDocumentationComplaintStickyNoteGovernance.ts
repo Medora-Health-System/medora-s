@@ -165,6 +165,12 @@ import {
   resolveGiExtensionsHpiChipGroupsForTemplate,
   resolveGiExtensionsRosChipGroupsForTemplate,
 } from "./providerDocumentationGiExtensionsGovernance";
+import {
+  filterPsychBehavioralMdmTemplateOptionsForTemplate,
+  resolvePsychBehavioralExamChipGroupsForTemplate,
+  resolvePsychBehavioralHpiChipGroupsForTemplate,
+  resolvePsychBehavioralRosChipGroupsForTemplate,
+} from "./providerDocumentationPsychBehavioralGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -242,15 +248,18 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
   );
-  return resolveGiExtensionsRosChipGroupsForTemplate(
+  return resolvePsychBehavioralRosChipGroupsForTemplate(
     templateId,
-    resolveRenalMetabolicEndocrineRosChipGroupsForTemplate(
+    resolveGiExtensionsRosChipGroupsForTemplate(
       templateId,
-      resolveCardiacNonChestPainRosChipGroupsForTemplate(
+      resolveRenalMetabolicEndocrineRosChipGroupsForTemplate(
         templateId,
-        resolvePediatricLegacyRosChipGroupsForTemplate(
+        resolveCardiacNonChestPainRosChipGroupsForTemplate(
           templateId,
-          resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+          resolvePediatricLegacyRosChipGroupsForTemplate(
+            templateId,
+            resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+          )
         )
       )
     )
@@ -325,15 +334,18 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
   );
-  return resolveGiExtensionsExamChipGroupsForTemplate(
+  return resolvePsychBehavioralExamChipGroupsForTemplate(
     templateId,
-    resolveRenalMetabolicEndocrineExamChipGroupsForTemplate(
+    resolveGiExtensionsExamChipGroupsForTemplate(
       templateId,
-      resolveCardiacNonChestPainExamChipGroupsForTemplate(
+      resolveRenalMetabolicEndocrineExamChipGroupsForTemplate(
         templateId,
-        resolvePediatricLegacyExamChipGroupsForTemplate(
+        resolveCardiacNonChestPainExamChipGroupsForTemplate(
           templateId,
-          resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+          resolvePediatricLegacyExamChipGroupsForTemplate(
+            templateId,
+            resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+          )
         )
       )
     )
@@ -405,15 +417,18 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
   );
-  return resolveGiExtensionsHpiChipGroupsForTemplate(
+  return resolvePsychBehavioralHpiChipGroupsForTemplate(
     templateId,
-    resolveRenalMetabolicEndocrineHpiChipGroupsForTemplate(
+    resolveGiExtensionsHpiChipGroupsForTemplate(
       templateId,
-      resolveCardiacNonChestPainHpiChipGroupsForTemplate(
+      resolveRenalMetabolicEndocrineHpiChipGroupsForTemplate(
         templateId,
-        resolvePediatricLegacyHpiChipGroupsForTemplate(
+        resolveCardiacNonChestPainHpiChipGroupsForTemplate(
           templateId,
-          resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+          resolvePediatricLegacyHpiChipGroupsForTemplate(
+            templateId,
+            resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+          )
         )
       )
     )
@@ -488,15 +503,18 @@ export function filterMdmTemplateOptionsForTemplate(
     )
     )
   );
-  return filterGiExtensionsMdmTemplateOptionsForTemplate(
+  return filterPsychBehavioralMdmTemplateOptionsForTemplate(
     templateId,
-    filterRenalMetabolicEndocrineMdmTemplateOptionsForTemplate(
+    filterGiExtensionsMdmTemplateOptionsForTemplate(
       templateId,
-      filterCardiacNonChestPainMdmTemplateOptionsForTemplate(
+      filterRenalMetabolicEndocrineMdmTemplateOptionsForTemplate(
         templateId,
-        filterPediatricLegacyMdmTemplateOptionsForTemplate(
+        filterCardiacNonChestPainMdmTemplateOptionsForTemplate(
           templateId,
-          filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+          filterPediatricLegacyMdmTemplateOptionsForTemplate(
+            templateId,
+            filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+          )
         )
       )
     )
