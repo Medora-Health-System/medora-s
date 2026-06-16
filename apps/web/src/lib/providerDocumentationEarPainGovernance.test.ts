@@ -300,7 +300,7 @@ describe("providerDocumentationEarPainGovernance — MEDUI.ED.ME.2R", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(dentalVisible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess")).toBe(
+    expect(dentalVisible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffDentalAbscess")).toBe(
       true
     );
   });

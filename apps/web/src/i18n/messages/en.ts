@@ -5,6 +5,7 @@ import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./provid
 import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
+import { providerDocumentationDentalOralComplaintIntelEn } from "./providerDocumentationDentalOralComplaintIntel.en";
 import { providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En } from "./providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8.en";
 import { providerDocumentationAbdominalPainComplaintIntelEn } from "./providerDocumentationAbdominalPainComplaintIntel.en";
 import { providerDocumentationNauseaVomitingComplaintIntelEn } from "./providerDocumentationNauseaVomitingComplaintIntel.en";
@@ -9309,6 +9310,7 @@ export default {
     ...providerDocumentationCardiacComplaintIntel19Mdm4En,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7En,
+    ...providerDocumentationDentalOralComplaintIntelEn,
     ...providerDocumentationEndocrineMetabolicComplaintIntel19Mdm8En,
     ...providerDocumentationNeuroExpansionComplaintIntel19Mdm9En,
   },

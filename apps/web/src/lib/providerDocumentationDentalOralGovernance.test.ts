@@ -31,6 +31,7 @@ import { collectHeadacheVisibleStickyNoteFragmentKeys } from "@/lib/providerDocu
 import { collectChestPainVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationChestPainGovernance";
 import { collectDizzinessVertigoVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationDizzinessVertigoGovernance";
 import { collectTraumaVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationTraumaGovernance";
+import { complaintIntelligenceMdmChipBindingsForTemplate } from "@/lib/providerDocumentationComplaintIntelligenceWorkspaceChips";
 
 const DENTAL_TEMPLATE_ID = "dental_pain_infection_complaint_v1" as const;
 
@@ -147,30 +148,26 @@ describe("providerDocumentationDentalOralGovernance — MEDUI.ED.ME.2Q", () => {
     }
   });
 
-  it("exposes dental pain, abscess, facial swelling, and oral lesion complaint-intel chips", () => {
+  it("exposes dental pain, abscess, facial swelling, and oral complaint-intel chips", () => {
     const visible = collectDentalOralVisibleStickyNoteFragmentKeys({
       templateId: DENTAL_TEMPLATE_ID,
       rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.hpiToothPainSwellingDrainage")).toBe(
-      true
-    );
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.hpiToothPain")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.rosDentalPain")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.rosFacialSwelling")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffDentalInfection")).toBe(
-      true
-    );
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffDentalAbscess")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffGingivitis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.examGingivalFindingsIfDocumented")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffLudwigAngina")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.examGingivalSwellingPresent")).toBe(
       true
     );
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.examOralSwellingIfDocumented")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.examOralSwellingPresent")).toBe(
       true
     );
-    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.mdmDentalOralSurgeryFollowUpIfIndicated")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.planOralSurgeryFollowUpRecommended")).toBe(
       true
     );
   });
@@ -251,8 +248,21 @@ describe("providerDocumentationDentalOralGovernance — MEDUI.ED.ME.2Q", () => {
     expect(next.hpi).toBe("");
     expect(next.physicalExam.heent).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffAbscess";
+    const fragmentKey = "providerDocumentationComplaintIntel.dentalPainInfectionComplaintV1.diffDentalAbscess";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
+  });
+
+  it("exposes MDM.1 workspace bindings for dental_pain_infection_complaint_v1", () => {
+    const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === DENTAL_TEMPLATE_ID) ?? null;
+    expect(complaintIntelligenceMdmChipBindingsForTemplate(template).map((binding) => binding.intelField)).toEqual([
+      "mdmWorkingAssessment",
+      "mdmDifferentialSynthesis",
+      "mdmDataReviewed",
+      "mdmRiskStratification",
+      "mdmClinicalRationale",
+      "clinicalImpression",
+      "mdmPlanSummary",
+    ]);
   });
 
   it("does not affect unrelated templates", () => {

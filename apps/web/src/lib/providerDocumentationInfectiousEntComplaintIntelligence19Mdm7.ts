@@ -9,6 +9,7 @@ import {
 } from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
 import { buildDehydrationViralIllnessComplaintIntel } from "./providerDocumentationDehydrationViralIllnessComplaintIntelGoldStandard";
+import { buildDentalPainInfectionComplaintV1Intel } from "./providerDocumentationDentalOralComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const fever = (key: string) => `providerDocumentationComplaintIntel.feverComplaintV1.${key}`;
 const cellulitisSkinInfection = (key: string) => `providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.${key}`;
@@ -286,20 +287,8 @@ export const SINUS_SYMPTOMS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIn
   ],
 });
 
-export const DENTAL_PAIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [dentalPainInfection("hpiToothPainSwellingDrainage"), dentalPainInfection("hpiTraumaFeverFacialSwelling"), dentalPainInfection("hpiSwallowingDifficulty")],
-  rosImportantPositives: [dentalPainInfection("rosDentalPain"), dentalPainInfection("rosFacialSwelling"), dentalPainInfection("rosFever")],
-  rosImportantNegatives: [dentalPainInfection("rosDeniesDysphagia")],
-  rosRedFlags: [dentalPainInfection("rfAirwayConcern"), dentalPainInfection("rfDeepSpaceInfectionConcern")],
-  physicalExam: { skin: [dentalPainInfection("examOralSwellingIfDocumented"), dentalPainInfection("examGingivalFindingsIfDocumented"), dentalPainInfection("examAirwayConcernsIfDocumented")], general: [dentalPainInfection("examGeneralAppearance")] },
-  mdmWorkingAssessment: [dentalPainInfection("mdmDentalInfectionPresentation")],
-  mdmDifferentialSynthesis: [dentalPainInfection("diffDentalInfection"), dentalPainInfection("diffAbscess"), dentalPainInfection("diffGingivitis"), dentalPainInfection("diffDeepSpaceInfectionConcern")],
-  mdmDataReviewed: [dentalPainInfection("mdmImagingReviewedIfObtained")],
-  mdmClinicalRationale: [dentalPainInfection("mdmAntibioticPainPlanIfGiven"), dentalPainInfection("mdmDentalOralSurgeryFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [dentalPainInfection("mdmObservationIfHighRisk")],
-  reassessment: [dentalPainInfection("reassessSwellingDysphagia")],
-  followUpDisposition: [dentalPainInfection("dispReturnWorseningSwellingFeverDysphagia")],
-});
+export const DENTAL_PAIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildDentalPainInfectionComplaintV1Intel(dentalPainInfection);
 
 export const RASH_SKIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = buildRashSkinComplaintV1Intel(rashSkin);
 
