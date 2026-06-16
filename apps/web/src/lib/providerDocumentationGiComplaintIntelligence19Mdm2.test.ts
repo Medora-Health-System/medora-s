@@ -30,6 +30,7 @@ import {
   scanComplaintIntelligenceBundleForUnsafePhrases,
 } from "./providerDocumentationComplaintIntelligenceGovernance";
 import { providerDocumentationGiComplaintIntel19Mdm2En } from "@/i18n/messages/providerDocumentationGiComplaintIntel19Mdm2.en";
+import { providerDocumentationFlankPainRenalComplaintIntelEn } from "@/i18n/messages/providerDocumentationFlankPainRenalComplaintIntel.en";
 import enMessages from "@/i18n/messages/en";
 import frMessages from "@/i18n/messages/fr";
 
@@ -50,6 +51,10 @@ function resolveGiKey(key: string): string {
   const ns = parts[2];
   const field = parts[3];
   if (!ns || !field) return key;
+  const flankNsRecord = (providerDocumentationFlankPainRenalComplaintIntelEn as Record<string, Record<string, string>>)[
+    ns
+  ];
+  if (flankNsRecord?.[field]) return flankNsRecord[field];
   const nsRecord = (providerDocumentationGiComplaintIntel19Mdm2En as Record<string, Record<string, string>>)[ns];
   return nsRecord?.[field] ?? key;
 }
@@ -94,6 +99,12 @@ describe("provider documentation GI complaint intelligence (19MDM.2)", () => {
     for (const bundle of GI_BUNDLES) {
       assertSectionCoverage(bundle);
     }
+  });
+
+  it("flank_pain_complaint_v1 has seven-section MDM gold standard", () => {
+    expect(FLANK_PAIN_COMPLAINT_V1_INTEL.mdmWorkingAssessment?.length ?? 0).toBeGreaterThan(0);
+    expect(FLANK_PAIN_COMPLAINT_V1_INTEL.mdmRiskStratification?.length ?? 0).toBeGreaterThan(0);
+    expect(FLANK_PAIN_COMPLAINT_V1_INTEL.clinicalImpression?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("does not auto-insert complaint intelligence on GI template apply", () => {

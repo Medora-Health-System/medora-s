@@ -7,6 +7,7 @@ import {
 } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
 import { buildTesticularPainComplaintV1Intel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
 import { buildUrinaryRetentionComplaintV1Intel } from "./providerDocumentationUrinaryRetentionComplaintIntelGoldStandard";
+import { buildFlankPainRenalComplaintV1Intel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -48,20 +49,8 @@ export const HEMATURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelli
   followUpDisposition: [hematuria("dispReturnWorseningBleedingRetention")],
 });
 
-export const FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [flankPainRenal("hpiUnilateralBilateralPain"), flankPainRenal("hpiRadiationNauseaVomiting"), flankPainRenal("hpiFeverUrinarySymptoms"), flankPainRenal("hpiHematuriaPregnancyRisk")],
-  rosImportantPositives: [flankPainRenal("rosFlankPain"), flankPainRenal("rosNausea"), flankPainRenal("rosDysuria")],
-  rosImportantNegatives: [flankPainRenal("rosDeniesFever")],
-  rosRedFlags: [flankPainRenal("rfSeverePainVomiting"), flankPainRenal("rfObstructionConcern")],
-  physicalExam: { abdomen: [flankPainRenal("examCvaTenderness"), flankPainRenal("examAbdominalTenderness"), flankPainRenal("examHydrationIfDocumented")], general: [flankPainRenal("examGeneralAppearance")] },
-  mdmWorkingAssessment: [flankPainRenal("mdmFlankPainPresentation")],
-  mdmDifferentialSynthesis: [flankPainRenal("diffRenalColic"), flankPainRenal("diffPyelonephritis"), flankPainRenal("diffObstruction"), flankPainRenal("diffVascularCause"), flankPainRenal("diffMskPain"), flankPainRenal("diffGynecologicCause")],
-  mdmDataReviewed: [flankPainRenal("mdmCtUltrasoundLabsReviewedIfObtained")],
-  mdmClinicalRationale: [flankPainRenal("mdmAnalgesiaPlanIfGiven"), flankPainRenal("mdmUrologyConsultIfIndicated")],
-  mdmAdmitObserveDischarge: [flankPainRenal("mdmObservationIfPersistentPain")],
-  reassessment: [flankPainRenal("reassessPainControlVomiting")],
-  followUpDisposition: [flankPainRenal("dispReturnFeverObstructionConcern")],
-});
+export const FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildFlankPainRenalComplaintV1Intel(flankPainRenal);
 
 export const URINARY_RETENTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildUrinaryRetentionComplaintV1Intel(urinaryRetention);

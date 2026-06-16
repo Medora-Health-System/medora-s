@@ -2,6 +2,7 @@
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildAbdominalPainComplaintV1Intel } from "./providerDocumentationAbdominalPainComplaintIntelGoldStandard";
 import { buildNauseaVomitingComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
+import { buildFlankPainComplaintV1GiIntel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const abdominalPain = (key: string) => `providerDocumentationComplaintIntel.abdominalPainComplaintV1.${key}`;
 const nauseaVomiting = (key: string) => `providerDocumentationComplaintIntel.nauseaVomitingComplaintV1.${key}`;
@@ -62,20 +63,8 @@ export const GI_BLEED_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntellig
   followUpDisposition: [giBleed("dispDispositionAfterReassessment")],
 });
 
-export const FLANK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [flankPain("hpiSideRadiation"), flankPain("hpiUrinarySymptoms"), flankPain("hpiPregnancyConsideration")],
-  rosImportantPositives: [flankPain("rosFlankPain"), flankPain("rosDysuria"), flankPain("rosFever")],
-  rosImportantNegatives: [flankPain("rosDeniesAbdominalDistension")],
-  rosRedFlags: [flankPain("rfFeverObstruction"), flankPain("rfPregnancyConcern")],
-  physicalExam: { abdomen: [flankPain("examCvaTenderness"), flankPain("examAbdominalTenderness")], general: [flankPain("examGeneralAppearance")] },
-  mdmWorkingAssessment: [flankPain("mdmFlankPainPresentation")],
-  mdmDifferentialSynthesis: [flankPain("diffRenalColic"), flankPain("diffPyelo"), flankPain("diffObstruction"), flankPain("diffMsk"), flankPain("diffGynecologic")],
-  mdmDataReviewed: [flankPain("mdmUrinalysisImagingIfObtained")],
-  mdmClinicalRationale: [flankPain("mdmPainControlReassessment")],
-  mdmAdmitObserveDischarge: [flankPain("mdmUrologyFollowUpIfNeeded")],
-  reassessment: [flankPain("reassessPainControl"), flankPain("reassessVomitingFever")],
-  followUpDisposition: [flankPain("dispReturnObstructionFever")],
-});
+export const FLANK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildFlankPainComplaintV1GiIntel(flankPain);
 
 export const HERNIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [hernia("hpiLocationDuration"), hernia("hpiReducibilityPain"), hernia("hpiBowelSymptomsSkinChanges")],

@@ -39,6 +39,7 @@ import { buildCoughComplaintIntel, buildUriRespiratoryComplaintIntel } from "./p
 import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import { buildFemalePelvicGynComplaintIntel } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
+import { buildFlankPainComplaintIntel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 import { buildMaleGenitalComplaintIntel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
 import { buildAllergicReactionRashIntel } from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import {
@@ -514,110 +515,8 @@ export const WEAKNESS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligenc
   ],
 });
 
-/** Flank pain / renal colic — ED urologic emergency workup framework. */
-export const FLANK_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    flank("hpiFlankPain"),
-    flank("hpiColickyPain"),
-    flank("hpiRadiatingToGroin"),
-    flank("hpiSuddenOnset"),
-    flank("hpiNauseaVomiting"),
-    flank("hpiHematuriaReported"),
-    flank("hpiDysuriaReported"),
-    flank("hpiFeverReviewed"),
-    flank("hpiPriorKidneyStoneHistory"),
-    flank("hpiPregnancyConcernReviewed"),
-    flank("hpiUrinaryRetentionReviewed"),
-    flank("hpiSolitaryKidneyHistoryReviewed"),
-  ],
-  rosImportantPositives: [
-    flank("rosFlankPain"),
-    flank("rosHematuria"),
-    flank("rosDysuria"),
-    flank("rosNausea"),
-    flank("rosVomiting"),
-    flank("rosFever"),
-    flank("rosUrinaryFrequency"),
-  ],
-  rosImportantNegatives: [
-    flank("rosDeniesFever"),
-    flank("rosDeniesDysuria"),
-    flank("rosDeniesTesticularPain"),
-    flank("rosDeniesAbdominalPain"),
-    flank("rosDeniesPregnancyConcern"),
-    flank("rosDeniesUrinaryRetention"),
-  ],
-  rosRedFlags: [
-    flank("rfFeverWithFlankPain"),
-    flank("rfSolitaryKidneyConcern"),
-    flank("rfUncontrolledPain"),
-    flank("rfPersistentVomiting"),
-    flank("rfAcuteKidneyInjuryConcern"),
-    flank("rfObstructingStoneConcern"),
-    flank("rfInfectedStoneConcern"),
-  ],
-  physicalExam: {
-    general: [flank("examUncomfortableAppearing"), flank("examDehydratedAppearance")],
-    abdomen: [
-      flank("examCvaTendernessPresent"),
-      flank("examAbdomenSoft"),
-      flank("examAbdomenNonTender"),
-      flank("examSuprapubicTenderness"),
-      flank("examNoPeritonealSigns"),
-      flank("examTesticularExamConsideredIfIndicated"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    flank("mdmRenalColicConsidered"),
-    flank("mdmInfectedStoneConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    flank("diffRenalColic"),
-    flank("diffUreterolithiasis"),
-    flank("diffPyelonephritis"),
-    flank("diffUti"),
-    flank("diffObstructingInfectedStone"),
-    flank("diffMusculoskeletalPain"),
-    flank("diffAppendicitis"),
-    flank("diffOvarianTesticularPathology"),
-    flank("diffAbdominalAorticAneurysm"),
-    flank("diffRenalInsufficiency"),
-  ],
-  mdmDataReviewed: [
-    flank("mdmUrinalysisReviewed"),
-    flank("mdmRenalFunctionReviewed"),
-    flank("mdmCtRenalStoneProtocolReviewed"),
-    flank("mdmUltrasoundReviewedIfObtained"),
-  ],
-  mdmClinicalRationale: [
-    flank("mdmPainControlProvided"),
-    flank("mdmAntiemeticTherapyProvided"),
-    flank("mdmOutpatientUrologyFollowUpDiscussed"),
-  ],
-  mdmPlanSummary: [
-    flank("mdmUrologyConsultationConsidered"),
-    flank("mdmSerialReassessmentPerformed"),
-  ],
-  mdmImmediateActionsRationale: [flank("mdmIvFluidsIfIndicated")],
-  mdmAdmitObserveDischarge: [
-    flank("mdmAdmissionConsidered"),
-    flank("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    flank("reassessPainImprovedAfterTreatment"),
-    flank("reassessNauseaImprovedAfterTreatment"),
-    flank("reassessToleratingOralIntake"),
-    flank("reassessRepeatFlankExamUnchanged"),
-    flank("reassessVitalSignsStable"),
-  ],
-  followUpDisposition: [
-    flank("dispDischargedWithUrologyFollowUp"),
-    flank("dispAdmissionInfectedObstructingStoneConsidered"),
-    flank("dispReturnForFeverVomitingUncontrolledPain"),
-    flank("dispReturnPrecautionsDiscussed"),
-    flank("dispUrineStrainerInstructionsDiscussedIfApplicable"),
-  ],
-});
+export const FLANK_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildFlankPainComplaintIntel(flank);
 
 /** URI / respiratory symptoms — viral URI / upper respiratory infection documentation framework. */
 export const URI_RESPIRATORY_COMPLAINT_INTEL = buildUriRespiratoryComplaintIntel(uri);

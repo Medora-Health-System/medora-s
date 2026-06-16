@@ -129,6 +129,12 @@ import {
   resolveDentalOralHpiChipGroupsForTemplate,
   resolveDentalOralRosChipGroupsForTemplate,
 } from "./providerDocumentationDentalOralGovernance";
+import {
+  filterFlankPainRenalMdmTemplateOptionsForTemplate,
+  resolveFlankPainRenalExamChipGroupsForTemplate,
+  resolveFlankPainRenalHpiChipGroupsForTemplate,
+  resolveFlankPainRenalRosChipGroupsForTemplate,
+} from "./providerDocumentationFlankPainRenalGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -142,7 +148,9 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDehydrationViralIllnessRosChipGroupsForTemplate(
+  return resolveFlankPainRenalRosChipGroupsForTemplate(
+    templateId,
+    resolveDehydrationViralIllnessRosChipGroupsForTemplate(
     templateId,
     resolveSoreThroatRosChipGroupsForTemplate(
     templateId,
@@ -202,6 +210,7 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
     )
+    )
   );
 }
 
@@ -209,7 +218,9 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDehydrationViralIllnessExamChipGroupsForTemplate(
+  return resolveFlankPainRenalExamChipGroupsForTemplate(
+    templateId,
+    resolveDehydrationViralIllnessExamChipGroupsForTemplate(
     templateId,
     resolveSoreThroatExamChipGroupsForTemplate(
     templateId,
@@ -269,6 +280,7 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
     )
+    )
   );
 }
 
@@ -276,7 +288,9 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
   templateId: ProviderDocumentationTemplateId | null,
   baseGroups: T[]
 ): T[] {
-  return resolveDehydrationViralIllnessHpiChipGroupsForTemplate(
+  return resolveFlankPainRenalHpiChipGroupsForTemplate(
+    templateId,
+    resolveDehydrationViralIllnessHpiChipGroupsForTemplate(
     templateId,
     resolveSoreThroatHpiChipGroupsForTemplate(
     templateId,
@@ -333,6 +347,7 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
     )
+    )
   );
 }
 
@@ -340,7 +355,9 @@ export function filterMdmTemplateOptionsForTemplate(
   templateId: ProviderDocumentationTemplateId | null,
   options: MdmTemplateOption[]
 ): MdmTemplateOption[] {
-  return filterDehydrationViralIllnessMdmTemplateOptionsForTemplate(
+  return filterFlankPainRenalMdmTemplateOptionsForTemplate(
+    templateId,
+    filterDehydrationViralIllnessMdmTemplateOptionsForTemplate(
     templateId,
     filterSoreThroatMdmTemplateOptionsForTemplate(
     templateId,
@@ -392,6 +409,7 @@ export function filterMdmTemplateOptionsForTemplate(
           )
         )
       )
+    )
     )
     )
     )
