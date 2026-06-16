@@ -18,6 +18,7 @@ import { providerDocumentationAdultFeverComplaintIntelFr } from "./providerDocum
 import { providerDocumentationRashSkinComplaintIntelFr } from "./providerDocumentationRashSkinComplaintIntel.fr";
 import { providerDocumentationFemalePelvicGynComplaintIntelFr } from "./providerDocumentationFemalePelvicGynComplaintIntel.fr";
 import { providerDocumentationMaleGuComplaintIntelFr } from "./providerDocumentationMaleGuComplaintIntel.fr";
+import { providerDocumentationUrinaryRetentionComplaintIntelFr } from "./providerDocumentationUrinaryRetentionComplaintIntel.fr";
 import { providerDocumentationDizzinessVertigoComplaintIntelFr } from "./providerDocumentationDizzinessVertigoComplaintIntel.fr";
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.fr";
 
@@ -10301,6 +10302,7 @@ export default {
       rosVomiting: "vomissements",
     },
     ...providerDocumentationMaleGuComplaintIntelFr,
+    ...providerDocumentationUrinaryRetentionComplaintIntelFr,
     ...providerDocumentationFemalePelvicGynComplaintIntelFr,
     ...providerDocumentationAbdominalPainComplaintIntelFr,
     ...providerDocumentationNauseaVomitingComplaintIntelFr,

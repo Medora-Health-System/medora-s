@@ -1,0 +1,145 @@
+/** ME.2PA-R Track C — chart-ready urinary retention complaint intelligence builder. */
+import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+
+const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
+
+export function buildUrinaryRetentionComplaintV1Intel(
+  ur: (key: string) => string
+): ProviderDocumentationComplaintIntelligence {
+  return intel({
+    hpi: [
+      ur("hpiUnableToUrinate"),
+      ur("hpiDifficultyInitiatingUrination"),
+      ur("hpiDecreasedUrinaryOutput"),
+      ur("hpiSuprapubicPressure"),
+      ur("hpiSuprapubicPain"),
+      ur("hpiProgressiveUrinaryRetention"),
+      ur("hpiSuddenInabilityToVoid"),
+      ur("hpiDribblingUrine"),
+      ur("hpiOverflowIncontinence"),
+      ur("hpiHistoryOfEnlargedProstate"),
+      ur("hpiRecentUrinaryProcedure"),
+      ur("hpiRecentCatheterRemoval"),
+      ur("hpiConstipation"),
+      ur("hpiNewMedicationUse"),
+      ur("hpiSaddleAnesthesia"),
+      ur("hpiLowerExtremityWeakness"),
+      ur("hpiDeniesFever"),
+      ur("hpiDeniesFlankPain"),
+      ur("hpiDeniesHematuria"),
+      ur("hpiDeniesDysuria"),
+      ur("hpiDeniesTrauma"),
+    ],
+    rosImportantPositives: [
+      ur("rosUrinaryRetention"),
+      ur("rosSuprapubicPain"),
+      ur("rosDecreasedUrineOutput"),
+      ur("rosUrgency"),
+      ur("rosFrequency"),
+      ur("rosConstipation"),
+    ],
+    rosImportantNegatives: [
+      ur("rosDeniesFever"),
+      ur("rosDeniesFlankPain"),
+      ur("rosDeniesHematuria"),
+      ur("rosDeniesDysuria"),
+    ],
+    rosRedFlags: [
+      ur("rfCompleteInabilityToVoid"),
+      ur("rfSevereSuprapubicPain"),
+      ur("rfFever"),
+      ur("rfSepsisConcern"),
+      ur("rfNeurologicSymptoms"),
+      ur("rfSaddleAnesthesia"),
+      ur("rfLowerExtremityWeakness"),
+    ],
+    physicalExam: {
+      general: [
+        ur("examAppearsUncomfortable"),
+        ur("examWellAppearing"),
+        ur("examHemodynamicallyStable"),
+        ur("examFebrile"),
+        ur("examAfebrile"),
+      ],
+      abdomen: [
+        ur("examBladderDistentionPresent"),
+        ur("examSuprapubicTenderness"),
+        ur("examAbdomenSoft"),
+        ur("examMildSuprapubicFullness"),
+        ur("examNoReboundTenderness"),
+        ur("examNoGuarding"),
+      ],
+      skin: [
+        ur("examNormalLowerExtremityStrength"),
+        ur("examNormalSensation"),
+        ur("examDecreasedPerinealSensation"),
+      ],
+    },
+    mdmWorkingAssessment: [
+      ur("waAcuteUrinaryRetention"),
+      ur("waUrinaryRetentionSecondaryToBph"),
+      ur("waObstructiveUropathy"),
+      ur("waPossibleNeurogenicBladder"),
+      ur("waMedicationInducedUrinaryRetention"),
+    ],
+    mdmDifferentialSynthesis: [
+      ur("diffBph"),
+      ur("diffConstipation"),
+      ur("diffMedicationEffect"),
+      ur("diffObstructiveUropathy"),
+      ur("diffProstatitis"),
+      ur("diffUrinaryTractInfection"),
+      ur("diffCaudaEquinaSyndrome"),
+      ur("diffSpinalCordCompression"),
+      ur("diffUrosepsis"),
+      ur("diffAcuteKidneyInjury"),
+    ],
+    mdmDataReviewed: [
+      ur("mdmUrinalysisReviewed"),
+      ur("mdmUrineCultureReviewed"),
+      ur("mdmCbcReviewed"),
+      ur("mdmCmpReviewed"),
+      ur("mdmRenalFunctionReviewed"),
+      ur("mdmBladderScanReviewed"),
+      ur("mdmCtAbdomenPelvisReviewed"),
+    ],
+    mdmRiskStratification: [
+      ur("riskLowRisk"),
+      ur("riskModerateRisk"),
+      ur("riskHighRisk"),
+      ur("riskAdmissionRecommendedHigh"),
+    ],
+    mdmClinicalRationale: [
+      ur("reasoningMostConsistentUrinaryRetention"),
+      ur("reasoningEvidenceBladderOutletObstruction"),
+      ur("reasoningLowSuspicionInfection"),
+      ur("reasoningLowSuspicionNeurologicCause"),
+      ur("reasoningConcernForObstructiveUropathy"),
+    ],
+    clinicalImpression: [
+      ur("impAcuteUrinaryRetention"),
+      ur("impObstructiveUropathy"),
+      ur("impBphWithUrinaryRetention"),
+    ],
+    mdmPlanSummary: [
+      ur("planFoleyCatheterPlaced"),
+      ur("planUrologyFollowUpRecommended"),
+      ur("planReturnPrecautionsDiscussed"),
+      ur("planRenalFunctionMonitoringRecommended"),
+      ur("planEdReturnAdvisedWorseningSymptoms"),
+    ],
+    mdmAdmitObserveDischarge: [ur("dispObservation"), ur("dispAdmission"), ur("dispDischarge")],
+    reassessment: [
+      ur("reassessUrinaryOutputImproved"),
+      ur("reassessCatheterDrainingAppropriately"),
+      ur("reassessPainImproved"),
+      ur("reassessSymptomsImprovedAfterDecompression"),
+      ur("reassessRemainsHemodynamicallyStable"),
+    ],
+    followUpDisposition: [
+      ur("dispReturnInabilityToVoid"),
+      ur("dispReturnNeurologicSymptoms"),
+      ur("dispReturnPrecautionsDiscussed"),
+    ],
+  });
+}

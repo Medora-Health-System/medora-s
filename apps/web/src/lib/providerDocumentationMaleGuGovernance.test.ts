@@ -202,6 +202,28 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
     expect(hematuriaVisible.has("providerDocumentationComplaintIntel.hematuriaComplaintV1.diffStoneDisease")).toBe(true);
   });
 
+  it("exposes urinary retention complaint-intel chips on retention template", () => {
+    const visible = collectMaleGuVisibleStickyNoteFragmentKeys({
+      templateId: "urinary_retention_complaint_v1",
+      rosBaseGroups: WORKSPACE_ROS_CHIP_GROUPS,
+      examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
+      hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
+    });
+    expect(visible.has("providerDocumentationComplaintIntel.urinaryRetentionComplaintV1.hpiUnableToUrinate")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.urinaryRetentionComplaintV1.examBladderDistentionPresent")).toBe(
+      true
+    );
+    expect(visible.has("providerDocumentationComplaintIntel.urinaryRetentionComplaintV1.diffCaudaEquinaSyndrome")).toBe(
+      true
+    );
+    expect(visible.has("providerDocumentationComplaintIntel.urinaryRetentionComplaintV1.waAcuteUrinaryRetention")).toBe(
+      true
+    );
+    expect(visible.has("providerDocumentationComplaintIntel.urinaryRetentionComplaintV1.planFoleyCatheterPlaced")).toBe(
+      true
+    );
+  });
+
   it("hides chest pain, URI, female pelvic, pregnancy, headache, and vertigo wrong-domain chips", () => {
     const visible = collectMaleGuVisibleStickyNoteFragmentKeys({
       templateId: "male_genital_complaint",

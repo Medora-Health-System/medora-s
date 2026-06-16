@@ -6,6 +6,7 @@ import {
   buildVaginalDischargeComplaintV1Intel,
 } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
 import { buildTesticularPainComplaintV1Intel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
+import { buildUrinaryRetentionComplaintV1Intel } from "./providerDocumentationUrinaryRetentionComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -62,20 +63,8 @@ export const FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL: ProviderDocumentationComplaint
   followUpDisposition: [flankPainRenal("dispReturnFeverObstructionConcern")],
 });
 
-export const URINARY_RETENTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [urinaryRetention("hpiInabilityToVoid"), urinaryRetention("hpiSuprapubicFullnessPain"), urinaryRetention("hpiNeuroSymptomsMedTriggers"), urinaryRetention("hpiProstateHistory")],
-  rosImportantPositives: [urinaryRetention("rosUrinaryRetention"), urinaryRetention("rosSuprapubicPain"), urinaryRetention("rosWeakness")],
-  rosImportantNegatives: [urinaryRetention("rosDeniesFever")],
-  rosRedFlags: [urinaryRetention("rfBladderDistentionConcern"), urinaryRetention("rfNeuroDeficitConcern")],
-  physicalExam: { abdomen: [urinaryRetention("examBladderDistentionIfDocumented"), urinaryRetention("examNeuroFindingsIfDocumented")], general: [urinaryRetention("examGeneralAppearance")] },
-  mdmWorkingAssessment: [urinaryRetention("mdmRetentionPresentation")],
-  mdmDifferentialSynthesis: [urinaryRetention("diffObstruction"), urinaryRetention("diffBph"), urinaryRetention("diffNeurogenicBladder"), urinaryRetention("diffMedicationRelated"), urinaryRetention("diffInfection")],
-  mdmDataReviewed: [urinaryRetention("mdmBladderScanCatheterReviewedIfObtained")],
-  mdmClinicalRationale: [urinaryRetention("mdmCatheterPlanIfPerformed"), urinaryRetention("mdmUrologyConsultIfIndicated")],
-  mdmAdmitObserveDischarge: [urinaryRetention("mdmAdmissionIfUnableToVoid")],
-  reassessment: [urinaryRetention("reassessVoidingStatus")],
-  followUpDisposition: [urinaryRetention("dispReturnInabilityToVoidFollowUp")],
-});
+export const URINARY_RETENTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildUrinaryRetentionComplaintV1Intel(urinaryRetention);
 
 export const TESTICULAR_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildTesticularPainComplaintV1Intel(testicularPain);
