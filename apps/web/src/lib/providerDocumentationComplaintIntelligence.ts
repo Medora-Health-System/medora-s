@@ -70,6 +70,7 @@ import {
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 import { buildUrinarySymptomsComplaintIntel } from "./providerDocumentationUrinarySymptomsComplaintIntelGoldStandard";
 import { buildPsychiatricBehavioralComplaintIntel } from "./providerDocumentationPsychBehavioralComplaintIntelGoldStandard";
+import { buildMedicationRefillComplaintIntel } from "./providerDocumentationMedicationRefillGoldStandard";
 import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
@@ -180,6 +181,8 @@ const allergy = (key: string) => `providerDocumentationComplaintIntel.allergicRe
 const adultNv = (key: string) => `providerDocumentationComplaintIntel.adultNauseaVomiting.${key}`;
 const adultDiarrhea = (key: string) => `providerDocumentationComplaintIntel.adultDiarrhea.${key}`;
 const medRefill = (key: string) => `providerDocumentationComplaintIntel.medicationRefill.${key}`;
+export const MEDICATION_REFILL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildMedicationRefillComplaintIntel(medRefill);
 const obsReassess = (key: string) => `providerDocumentationComplaintIntel.observationReassessment.${key}`;
 const mvcIntel = (key: string) => `providerDocumentationComplaintIntel.mvcCollision.${key}`;
 const assaultIntel = (key: string) => `providerDocumentationComplaintIntel.assaultTrauma.${key}`;
@@ -652,93 +655,6 @@ export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL = buildAdultNauseaVomitingCom
 /** Adult diarrhea — infectious diarrhea / C. diff documentation framework. */
 export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildAdultDiarrheaComplaintIntel(adultDiarrhea);
-
-/** Medication refill — medico-legal refill documentation framework. */
-export const MEDICATION_REFILL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    medRefill("hpiMedicationNameReviewed"),
-    medRefill("hpiDoseReviewed"),
-    medRefill("hpiLastDoseReviewed"),
-    medRefill("hpiReasonForRunningOutReviewed"),
-    medRefill("hpiPrescribingClinicianReviewed"),
-    medRefill("hpiChronicConditionReviewed"),
-    medRefill("hpiSymptomsFromMissedMedicationReviewed"),
-    medRefill("hpiAdverseEffectsReviewed"),
-    medRefill("hpiControlledSubstanceStatusReviewed"),
-    medRefill("hpiPdmpReviewedIfApplicable"),
-    medRefill("hpiFollowUpAccessReviewed"),
-  ],
-  rosImportantPositives: [
-    medRefill("rosMedicationRelatedSymptoms"),
-    medRefill("rosWithdrawalSymptomsReviewed"),
-    medRefill("rosChronicConditionSymptomsReviewed"),
-    medRefill("rosPainSymptomsReviewedIfApplicable"),
-  ],
-  rosImportantNegatives: [
-    medRefill("rosDeniesChestPain"),
-    medRefill("rosDeniesShortnessOfBreath"),
-    medRefill("rosDeniesNeurologicSymptoms"),
-    medRefill("rosDeniesSevereWithdrawalSymptoms"),
-    medRefill("rosDeniesSuicidalIdeationIfRelevant"),
-    medRefill("rosDeniesAdverseMedicationReaction"),
-  ],
-  rosRedFlags: [
-    medRefill("rfControlledSubstanceRefillRequest"),
-    medRefill("rfWithdrawalConcern"),
-    medRefill("rfMedicationMisuseConcern"),
-    medRefill("rfUnsafeChronicDiseaseControl"),
-    medRefill("rfInabilityToAccessPrimaryCare"),
-    medRefill("rfHighRiskMedicationRequest"),
-  ],
-  physicalExam: {
-    general: [
-      medRefill("examNoAcuteDistress"),
-      medRefill("examVitalSignsReviewed"),
-      medRefill("examAlertAndOriented"),
-    ],
-    respiratory: [medRefill("examNoRespiratoryDistress")],
-    neuroPsych: [medRefill("examNoFocalNeurologicDeficit")],
-    cardiovascular: [medRefill("examChronicConditionFocusedExamPerformed")],
-  },
-  mdmWorkingAssessment: [
-    medRefill("mdmChronicConditionStabilityAssessed"),
-    medRefill("mdmRefillAppropriatenessAssessed"),
-  ],
-  mdmDifferentialSynthesis: [
-    medRefill("diffMedicationLapse"),
-    medRefill("diffChronicDiseaseMedicationNeed"),
-    medRefill("diffWithdrawalSyndrome"),
-    medRefill("diffMedicationAdverseEffect"),
-    medRefill("diffUncontrolledChronicCondition"),
-    medRefill("diffSubstanceMisuseDiversionConcern"),
-  ],
-  mdmDataReviewed: [
-    medRefill("mdmMedicationHistoryReviewed"),
-    medRefill("mdmPharmacyPrescriptionHistoryReviewedIfAvailable"),
-    medRefill("mdmPdmpReviewedIfControlledSubstanceApplicable"),
-  ],
-  mdmClinicalRationale: [
-    medRefill("mdmRisksBenefitsOfRefillDiscussed"),
-    medRefill("mdmControlledSubstancePrescribingPolicyDiscussed"),
-    medRefill("mdmFollowUpWithPcpSpecialistEmphasized"),
-    medRefill("mdmRedFlagSymptomsReviewed"),
-    medRefill("mdmAlternativeTreatmentOfferedIfRefillNotAppropriate"),
-  ],
-  mdmPlanSummary: [medRefill("mdmLimitedBridgeRefillConsidered")],
-  reassessment: [
-    medRefill("reassessPatientRemainsStable"),
-    medRefill("reassessNoEmergentConditionIdentified"),
-    medRefill("reassessFollowUpPlanReviewed"),
-    medRefill("reassessMedicationInstructionsReviewed"),
-  ],
-  followUpDisposition: [
-    medRefill("dispLimitedRefillProvidedIfAppropriate"),
-    medRefill("dispRefillDeclinedWithExplanationIfUnsafe"),
-    medRefill("dispPrimaryCareFollowUpRequired"),
-    medRefill("dispReturnPrecautionsDiscussed"),
-    medRefill("dispMedicationSafetyInstructionsProvided"),
-  ],
-});
 
 /** Observation reassessment — interval reassessment and discharge readiness documentation framework. */
 export const OBSERVATION_REASSESSMENT_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({

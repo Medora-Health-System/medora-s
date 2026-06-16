@@ -13,6 +13,7 @@ import { isNeuroStrokeWeaknessGovernedTemplate } from "./providerDocumentationNe
 import { isRenalMetabolicEndocrineGovernedTemplate } from "./providerDocumentationRenalMetabolicEndocrineGovernance";
 import { templateUsesPediatricLegacyStickyNoteGovernance } from "./providerDocumentationPediatricLegacyGovernance";
 import { isPsychBehavioralGovernedTemplate } from "./providerDocumentationPsychBehavioralGovernance";
+import { isMedicationRefillGovernedTemplate } from "./providerDocumentationMedicationRefillGovernance";
 import { templateUsesTraumaStickyNoteGovernance } from "./providerDocumentationTraumaGovernance";
 import { templateUsesAbdominalPainStickyNoteGovernance } from "./providerDocumentationAbdominalPainGovernance";
 import { templateUsesDizzinessVertigoStickyNoteGovernance } from "./providerDocumentationDizzinessVertigoGovernance";
@@ -51,6 +52,7 @@ type GovernanceOwnerId =
   | "RenalMetabolicEndocrineGovernance"
   | "PediatricLegacyGovernance"
   | "PsychBehavioralGovernance"
+  | "MedicationRefillGovernance"
   | "TraumaGovernance"
   | "AbdominalPainGovernance"
   | "DizzinessVertigoGovernance"
@@ -88,6 +90,7 @@ export const GOVERNANCE_OWNERSHIP_MATRIX: readonly GovernanceOwnershipEntry[] = 
   { templateId: "altered_mental_status_complaint_v1", primaryOwner: "NeuroStrokeWeaknessGovernance", collector: "resolveNeuroStrokeWeakness*ChipGroupsForTemplate", filter: "filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate" },
   { templateId: "focal_weakness_complaint_v1", primaryOwner: "NeuroStrokeWeaknessGovernance", collector: "resolveNeuroStrokeWeakness*ChipGroupsForTemplate", filter: "filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate" },
   { templateId: "psychiatric_behavioral", primaryOwner: "PsychBehavioralGovernance", collector: "resolvePsychBehavioral*ChipGroupsForTemplate", filter: "filterPsychBehavioralMdmTemplateOptionsForTemplate" },
+  { templateId: "medication_refill", primaryOwner: "MedicationRefillGovernance", collector: "resolveMedicationRefill*ChipGroupsForTemplate", filter: "filterMedicationRefillMdmTemplateOptionsForTemplate" },
   { templateId: "gi_bleed_complaint_v1", primaryOwner: "GiExtensionsGovernance", collector: "resolveGiExtensions*ChipGroupsForTemplate", filter: "filterGiExtensionsMdmTemplateOptionsForTemplate" },
   { templateId: "palpitations_complaint_v1", primaryOwner: "CardiacNonChestPainGovernance", collector: "resolveCardiacNonChestPain*ChipGroupsForTemplate", filter: "filterCardiacNonChestPainMdmTemplateOptionsForTemplate" },
   { templateId: "hyperglycemia_complaint_v1", primaryOwner: "RenalMetabolicEndocrineGovernance", collector: "resolveRenalMetabolicEndocrine*ChipGroupsForTemplate", filter: "filterRenalMetabolicEndocrineMdmTemplateOptionsForTemplate" },
@@ -134,6 +137,7 @@ const OWNER_ASSERTIONS: Record<
   RenalMetabolicEndocrineGovernance: (id) => isRenalMetabolicEndocrineGovernedTemplate(id),
   PediatricLegacyGovernance: (id) => templateUsesPediatricLegacyStickyNoteGovernance(id),
   PsychBehavioralGovernance: (id) => isPsychBehavioralGovernedTemplate(id),
+  MedicationRefillGovernance: (id) => isMedicationRefillGovernedTemplate(id),
   TraumaGovernance: (id) => templateUsesTraumaStickyNoteGovernance(id),
   AbdominalPainGovernance: (id) => templateUsesAbdominalPainStickyNoteGovernance(id),
   DizzinessVertigoGovernance: (id) => templateUsesDizzinessVertigoStickyNoteGovernance(id),

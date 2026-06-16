@@ -13,6 +13,7 @@ import {
   STROKE_SYMPTOMS_COMPLAINT_INTEL,
   WEAKNESS_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
+  MEDICATION_REFILL_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
 } from "./providerDocumentationComplaintIntelligence";
 import {
@@ -62,6 +63,7 @@ import { providerDocumentationRenalMetabolicEndocrineComplaintIntelEn } from "@/
 import { providerDocumentationNauseaVomitingComplaintIntelEn } from "@/i18n/messages/providerDocumentationNauseaVomitingComplaintIntel.en";
 import { providerDocumentationGiExtensionsComplaintIntelEn } from "@/i18n/messages/providerDocumentationGiExtensionsComplaintIntel.en";
 import { providerDocumentationPsychBehavioralComplaintIntelEn } from "@/i18n/messages/providerDocumentationPsychBehavioralComplaintIntel.en";
+import { providerDocumentationMedicationRefillComplaintIntelEn } from "@/i18n/messages/providerDocumentationMedicationRefillComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -373,6 +375,18 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
       },
     ],
     messageSource: providerDocumentationPsychBehavioralComplaintIntelEn,
+  },
+  {
+    phase: "MEDUI.ED.POSTCERT.1B",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      {
+        templateId: "medication_refill",
+        bundle: MEDICATION_REFILL_COMPLAINT_INTEL,
+        namespace: "medicationRefill",
+      },
+    ],
+    messageSource: providerDocumentationMedicationRefillComplaintIntelEn,
   },
   // Future phases register here:
   // MEDUI.ED.ME.2AB-R — Legacy Adult Utilities
