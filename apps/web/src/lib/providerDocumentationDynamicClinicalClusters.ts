@@ -282,11 +282,11 @@ export const DYNAMIC_CLINICAL_CLUSTER_DEFINITIONS: ClusterDefinition[] = [
     ],
     suggestions: [
       sug("differential", maleGen("diffTesticularTorsion"), "mdmDifferentialSynthesis"),
-      sug("mdm", maleGen("mdmScrotalUltrasoundConsideredReviewed"), "mdmDataReviewed"),
-      sug("mdm", maleGen("mdmUrologyConsultationConsidered"), "mdmConsultsDiscussed"),
-      sug("mdm", maleGen("mdmEmergentTransferConsultConsideredIfTorsionConcern"), "mdmImmediateActionsRationale"),
-      sug("reassessment", maleGen("reassessPainReassessed"), "mdmPlanSummary"),
-      sug("disposition", maleGen("mdmEmergentTransferConsultConsideredIfTorsionConcern"), "mdmAdmitObserveDischarge"),
+      sug("mdm", maleGen("mdmScrotalUltrasoundReviewed"), "mdmDataReviewed"),
+      sug("mdm", maleGen("planUrologyFollowUpRecommended"), "mdmPlanSummary"),
+      sug("mdm", maleGen("riskTorsionConcernHigh"), "mdmWorkingAssessment"),
+      sug("reassessment", maleGen("reassessPainImproved"), "mdmPlanSummary"),
+      sug("disposition", maleGen("dispEmergentReturnTorsionSymptoms"), "followUpDisposition"),
     ],
   },
   {

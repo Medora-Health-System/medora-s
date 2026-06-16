@@ -5,6 +5,7 @@ import {
   buildVaginalBleedingComplaintV1Intel,
   buildVaginalDischargeComplaintV1Intel,
 } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
+import { buildTesticularPainComplaintV1Intel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -76,20 +77,8 @@ export const URINARY_RETENTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplain
   followUpDisposition: [urinaryRetention("dispReturnInabilityToVoidFollowUp")],
 });
 
-export const TESTICULAR_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [testicularPain("hpiOnsetSuddenVsGradual"), testicularPain("hpiSwellingTraumaUrinarySymptoms"), testicularPain("hpiFeverStiExposure"), testicularPain("hpiPriorTorsionHistory")],
-  rosImportantPositives: [testicularPain("rosTesticularPain"), testicularPain("rosScrotalSwelling"), testicularPain("rosDysuria")],
-  rosImportantNegatives: [testicularPain("rosDeniesTrauma")],
-  rosRedFlags: [testicularPain("rfSuddenSeverePain"), testicularPain("rfVomitingConcern")],
-  physicalExam: { abdomen: [testicularPain("examScrotalSwellingTenderness"), testicularPain("examCremastericReflexIfDocumented"), testicularPain("examGuFindingsIfExamined")], general: [testicularPain("examGeneralAppearance")] },
-  mdmWorkingAssessment: [testicularPain("mdmTesticularPainPresentation")],
-  mdmDifferentialSynthesis: [testicularPain("diffTorsion"), testicularPain("diffEpididymitis"), testicularPain("diffOrchitis"), testicularPain("diffHernia"), testicularPain("diffHydroceleVaricocele"), testicularPain("diffTrauma")],
-  mdmDataReviewed: [testicularPain("mdmUltrasoundReviewedIfObtained")],
-  mdmClinicalRationale: [testicularPain("mdmUrgentUrologyConsultIfIndicated"), testicularPain("mdmSurgicalConsultIfConcern")],
-  mdmAdmitObserveDischarge: [testicularPain("mdmAdmissionIfHighRisk")],
-  reassessment: [testicularPain("reassessPainSwelling")],
-  followUpDisposition: [testicularPain("dispReturnWorseningPainSwellingFever")],
-});
+export const TESTICULAR_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildTesticularPainComplaintV1Intel(testicularPain);
 
 export const PELVIC_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildPelvicPainComplaintV1Intel(pelvicPain);

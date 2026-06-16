@@ -121,8 +121,8 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
     });
     const keys = suggestions.map((item) => item.fragmentKey);
     expect(keys).toContain("providerDocumentationComplaintIntel.maleGenitalComplaint.diffTesticularTorsion");
-    expect(keys).toContain("providerDocumentationComplaintIntel.maleGenitalComplaint.mdmTesticularTorsionConsidered");
-    expect(keys).toContain("providerDocumentationComplaintIntel.maleGenitalComplaint.mdmUrologyConsultationConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.maleGenitalComplaint.waSuspectedTesticularTorsion");
+    expect(keys).toContain("providerDocumentationComplaintIntel.maleGenitalComplaint.planUrologyFollowUpRecommended");
   });
 
   it("suggests ectopic pregnancy and pregnancy testing for female pelvic pregnancy concern", () => {

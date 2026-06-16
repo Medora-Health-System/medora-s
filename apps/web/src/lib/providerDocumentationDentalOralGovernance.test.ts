@@ -280,7 +280,7 @@ describe("providerDocumentationDentalOralGovernance — MEDUI.ED.ME.2Q", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(maleGuVisible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTorsion")).toBe(true);
+    expect(maleGuVisible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTesticularTorsion")).toBe(true);
 
     const mskVisible = collectExtremityMskVisibleStickyNoteFragmentKeys({
       templateId: "trauma_musculoskeletal",

@@ -39,6 +39,7 @@ import { buildCoughComplaintIntel, buildUriRespiratoryComplaintIntel } from "./p
 import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import { buildFemalePelvicGynComplaintIntel } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
+import { buildMaleGenitalComplaintIntel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
 import { buildAllergicReactionRashIntel } from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
@@ -2596,91 +2597,8 @@ export const PEDIATRIC_TRAUMA_COMPLAINT_INTEL: ProviderDocumentationComplaintInt
   ],
 });
 
-export const MALE_GENITAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    maleGenIntel("hpiTesticularPain"),
-    maleGenIntel("hpiScrotalSwelling"),
-    maleGenIntel("hpiDysuria"),
-    maleGenIntel("hpiPenileDischarge"),
-    maleGenIntel("hpiTraumaReviewed"),
-    maleGenIntel("hpiOnsetSuddenGradual"),
-    maleGenIntel("hpiNauseaVomiting"),
-    maleGenIntel("hpiSexualHistoryReviewedIfClinicallyAppropriate"),
-    maleGenIntel("hpiStiExposureReviewed"),
-    maleGenIntel("hpiUrinarySymptomsReviewed"),
-  ],
-  rosImportantPositives: [
-    maleGenIntel("rosTesticularPain"),
-    maleGenIntel("rosScrotalSwelling"),
-    maleGenIntel("rosDysuria"),
-    maleGenIntel("rosPenileDischarge"),
-    maleGenIntel("rosNausea"),
-    maleGenIntel("rosFever"),
-  ],
-  rosImportantNegatives: [
-    maleGenIntel("rosDeniesFever"),
-    maleGenIntel("rosDeniesPenileDischarge"),
-    maleGenIntel("rosDeniesTrauma"),
-    maleGenIntel("rosDeniesUrinaryRetention"),
-    maleGenIntel("rosDeniesSeverePain"),
-  ],
-  rosRedFlags: [
-    maleGenIntel("rfTesticularTorsionConcern"),
-    maleGenIntel("rfSevereSuddenTesticularPain"),
-    maleGenIntel("rfHighRidingTesticleConcern"),
-    maleGenIntel("rfAbsentCremastericReflexConcern"),
-    maleGenIntel("rfScrotalTrauma"),
-    maleGenIntel("rfFournierGangreneConcern"),
-    maleGenIntel("rfUrinaryRetention"),
-  ],
-  physicalExam: {
-    general: [maleGenIntel("examChaperoneOfferedPresentIfApplicable")],
-    abdomen: [maleGenIntel("examInguinalHerniaAssessed")],
-    skin: [
-      maleGenIntel("examTesticularTenderness"),
-      maleGenIntel("examScrotalSwelling"),
-      maleGenIntel("examPenileDischarge"),
-      maleGenIntel("examNoSkinNecrosis"),
-      maleGenIntel("examCremastericReflexDocumentedIfPerformed"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    maleGenIntel("mdmTesticularTorsionConsidered"),
-    maleGenIntel("mdmStiConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    maleGenIntel("diffTesticularTorsion"),
-    maleGenIntel("diffEpididymitis"),
-    maleGenIntel("diffOrchitis"),
-    maleGenIntel("diffStiUrethritis"),
-    maleGenIntel("diffInguinalHernia"),
-    maleGenIntel("diffScrotalTrauma"),
-    maleGenIntel("diffHydroceleVaricocele"),
-    maleGenIntel("diffFournierGangrene"),
-  ],
-  mdmDataReviewed: [
-    maleGenIntel("mdmUrinalysisReviewed"),
-    maleGenIntel("mdmScrotalUltrasoundConsideredReviewed"),
-  ],
-  mdmClinicalRationale: [
-    maleGenIntel("mdmStiTestingTreatmentConsidered"),
-    maleGenIntel("mdmAntibioticsConsidered"),
-    maleGenIntel("mdmChaperoneDocumentationIncluded"),
-  ],
-  mdmPlanSummary: [maleGenIntel("mdmUrologyConsultationConsidered")],
-  mdmAdmitObserveDischarge: [maleGenIntel("mdmEmergentTransferConsultConsideredIfTorsionConcern")],
-  reassessment: [
-    maleGenIntel("reassessPainReassessed"),
-    maleGenIntel("reassessVitalSignsStable"),
-    maleGenIntel("reassessUltrasoundLabResultsReviewed"),
-  ],
-  followUpDisposition: [
-    maleGenIntel("dispUrologyFollowUp"),
-    maleGenIntel("dispStiPrecautionsIfRelevant"),
-    maleGenIntel("dispReturnWorseningPainSwellingFever"),
-    maleGenIntel("dispEmergentReturnTorsionSymptoms"),
-  ],
-});
+export const MALE_GENITAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildMaleGenitalComplaintIntel(maleGenIntel);
 
 export const FEMALE_PELVIC_GYN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFemalePelvicGynComplaintIntel(femaleGynIntel);

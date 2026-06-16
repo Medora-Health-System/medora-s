@@ -155,10 +155,10 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.rosTesticularPain")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTorsion")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTesticularTorsion")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffEpididymitis")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.diffOrchitis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.examScrotalSwellingTenderness")).toBe(
+    expect(visible.has("providerDocumentationComplaintIntel.testicularPainComplaintV1.examScrotalSwellingPresent")).toBe(
       true
     );
   });
@@ -172,12 +172,12 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
     });
     expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.hpiScrotalSwelling")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.rosScrotalSwelling")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.hpiStiExposureReviewed")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.hpiStiExposure")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.diffTesticularTorsion")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.diffEpididymitis")).toBe(true);
     expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.diffOrchitis")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.examTesticularTenderness")).toBe(true);
-    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.examPenileDischarge")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.examRightTesticularTenderness")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.maleGenitalComplaint.examPenileDischargePresent")).toBe(true);
   });
 
   it("exposes dysuria and hematuria complaint-intel chips on urinary overlap templates", () => {
@@ -274,7 +274,7 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
     expect(next.hpi).toBe("");
     expect(next.physicalExam.abdomen).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTorsion";
+    const fragmentKey = "providerDocumentationComplaintIntel.testicularPainComplaintV1.diffTesticularTorsion";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
   });
 

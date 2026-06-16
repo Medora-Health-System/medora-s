@@ -430,9 +430,9 @@ const MALE_GENITAL_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("maleGenitalSuddenPain"),
     suggestions: [
       sug("differential", maleGen("diffTesticularTorsion"), "mdmDifferentialSynthesis"),
-      sug("mdm", maleGen("mdmTesticularTorsionConsidered"), "mdmWorkingAssessment"),
-      sug("mdm", maleGen("mdmScrotalUltrasoundConsideredReviewed"), "mdmDataReviewed"),
-      sug("mdm", maleGen("mdmUrologyConsultationConsidered"), "mdmConsultsDiscussed"),
+      sug("mdm", maleGen("waSuspectedTesticularTorsion"), "mdmWorkingAssessment"),
+      sug("mdm", maleGen("mdmScrotalUltrasoundReviewed"), "mdmDataReviewed"),
+      sug("mdm", maleGen("planUrologyFollowUpRecommended"), "mdmPlanSummary"),
     ],
   },
   {
@@ -440,7 +440,7 @@ const MALE_GENITAL_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("maleGenitalNauseaVomiting"),
     suggestions: [
       sug("differential", maleGen("diffTesticularTorsion"), "mdmDifferentialSynthesis"),
-      sug("mdm", maleGen("mdmEmergentTransferConsultConsideredIfTorsionConcern"), "mdmAdmitObserveDischarge"),
+      sug("mdm", maleGen("riskTorsionConcernHigh"), "mdmWorkingAssessment"),
       sug("disposition", maleGen("dispEmergentReturnTorsionSymptoms"), "followUpDisposition"),
     ],
   },
@@ -449,7 +449,7 @@ const MALE_GENITAL_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("maleGenitalScrotalSwelling"),
     suggestions: [
       sug("differential", maleGen("diffEpididymitis"), "mdmDifferentialSynthesis"),
-      sug("mdm", maleGen("mdmScrotalUltrasoundConsideredReviewed"), "mdmDataReviewed"),
+      sug("mdm", maleGen("mdmScrotalUltrasoundReviewed"), "mdmDataReviewed"),
       sug("mdm", maleGen("mdmUrinalysisReviewed"), "mdmDataReviewed"),
     ],
   },
