@@ -166,15 +166,15 @@ describe("providerDocumentationBackPainGovernance — MEDUI.ED.ME.2H", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.hpiRadiationToLegReviewed")).toBe(
+    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.hpiBackPainAfterInjury")).toBe(
       true
     );
     expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.diffRadiculopathy")).toBe(true);
-    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome")).toBe(
+    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquina")).toBe(
       true
     );
-    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.rfSaddleAnesthesia")).toBe(true);
-    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.examThoracicLumbarTenderness")).toBe(
+    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.rfSpinalTenderness")).toBe(true);
+    expect(traumaVisible.has("providerDocumentationComplaintIntel.backPainTrauma.examLumbarTendernessPresent")).toBe(
       true
     );
     expect(traumaVisible.has("erMseHpiChipsTrauma.mechanismReviewed")).toBe(true);
@@ -248,7 +248,7 @@ describe("providerDocumentationBackPainGovernance — MEDUI.ED.ME.2H", () => {
     expect(next.hpi).toBe("");
     expect(next.physicalExam.musculoskeletal).toBe("");
 
-    const fragmentKey = "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome";
+    const fragmentKey = "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquina";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
   });
 

@@ -689,7 +689,7 @@ describe("provider documentation complaint intelligence (19N.8 Batch 5)", () => 
       "providerDocumentationComplaintIntel.headInjury.diffConcussion"
     );
     expect(lac?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.laceration.diffSimpleLaceration"
+      "providerDocumentationComplaintIntel.laceration.diffTendonInjury"
     );
     expect(frac?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.fractureConcern.diffFracture"
@@ -1241,7 +1241,7 @@ describe("provider documentation complaint intelligence (19N.12 Batch 9)", () =>
     expect(neckKeys.some((key) => key.includes(".headache."))).toBe(false);
     expect(backKeys.some((key) => key.includes(".flankPain.diffRenalColic"))).toBe(false);
     expect(backKeys.some((key) => key.includes(".flankPain."))).toBe(false);
-    expect(backKeys.some((key) => key.includes(".backPainTrauma.diffRenalInjury"))).toBe(true);
+    expect(backKeys.some((key) => key.includes(".backPainTrauma.diffRadiculopathy"))).toBe(true);
   });
 
   it("does not duplicate intelligence fragment keys within a Batch 9 bundle", () => {
@@ -1261,7 +1261,7 @@ describe("provider documentation complaint intelligence (19N.12 Batch 9)", () =>
     const neck = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "neck_pain_trauma");
     const back = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "back_pain");
     expect(mvc?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriverPassenger"
+      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriver"
     );
     expect(mvc?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.mvcCollision.diffCervicalSpineInjury"
@@ -1269,11 +1269,11 @@ describe("provider documentation complaint intelligence (19N.12 Batch 9)", () =>
     expect(assault?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.assaultTrauma.diffStrangulationInjury"
     );
-    expect(neck?.complaintIntelligence?.mdmClinicalRationale).toContain(
-      "providerDocumentationComplaintIntel.neckPainTrauma.mdmNexusCanadianCspineConsiderationsReviewed"
+    expect(neck?.complaintIntelligence?.mdmDataReviewed).toContain(
+      "providerDocumentationComplaintIntel.neckPainTrauma.mdmCtCervicalSpineReviewed"
     );
     expect(back?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome"
+      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquina"
     );
     expect(mvc?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaMvcMechanismReminder");
     expect(assault?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaAssaultSafetyReminder");
@@ -1435,16 +1435,16 @@ describe("provider documentation complaint intelligence (19N.13 Batch 10)", () =
     const male = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "male_genital_complaint");
     const female = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "female_pelvic_gyn_complaint");
     expect(crush?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.crushInjury.hpiCrushMechanism"
+      "providerDocumentationComplaintIntel.crushInjury.hpiWorkRelatedInjury"
     );
-    expect(penetrating?.complaintIntelligence?.rosRedFlags).toContain(
-      "providerDocumentationComplaintIntel.penetratingInjury.rfRetainedForeignBody"
+    expect(penetrating?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.penetratingInjury.diffVascularInjury"
     );
     expect(burn?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.burnInjury.diffInhalationInjury"
     );
-    expect(pedTrauma?.complaintIntelligence?.rosRedFlags).toContain(
-      "providerDocumentationComplaintIntel.pediatricTrauma.rfNonAccidentalTraumaConcern"
+    expect(pedTrauma?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
+      "providerDocumentationComplaintIntel.pediatricTrauma.diffNonAccidentalTrauma"
     );
     expect(male?.complaintIntelligence?.rosRedFlags).toContain(
       "providerDocumentationComplaintIntel.maleGenitalComplaint.rfTesticularTorsionConcern"
@@ -1459,10 +1459,10 @@ describe("provider documentation complaint intelligence (19N.13 Batch 10)", () =
 
   it("leaves Batch 1–9 intelligence bundles unchanged", () => {
     expect(MVC_COLLISION_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriverPassenger"
+      "providerDocumentationComplaintIntel.mvcCollision.hpiRestrainedDriver"
     );
     expect(BACK_PAIN_TRAUMA_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquinaSyndrome"
+      "providerDocumentationComplaintIntel.backPainTrauma.diffCaudaEquina"
     );
   });
 

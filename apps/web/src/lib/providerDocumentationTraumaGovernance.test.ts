@@ -174,7 +174,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
     expect(fallVisible.has("erMseHpiChipsTrauma.fallMechanism")).toBe(true);
     expect(fallVisible.has("erMseHpiChipsTrauma.mechanismReviewed")).toBe(true);
     expect(fallVisible.has("providerDocumentationComplaintIntel.fall.hpiMechanicalFall")).toBe(true);
-    expect(fallVisible.has("providerDocumentationComplaintIntel.fall.mdmCtHeadConsideredReviewed")).toBe(true);
+    expect(fallVisible.has("providerDocumentationComplaintIntel.fall.mdmCtHeadReviewed")).toBe(true);
 
     const mvcVisible = collectTraumaVisibleStickyNoteFragmentKeys({
       templateId: "mvc",
@@ -246,7 +246,7 @@ describe("providerDocumentationTraumaGovernance — MEDUI.ED.ME.2N", () => {
 
     const headTemplate = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "head_injury") ?? null;
     const headMdm = buildMdmTemplateDropdownOptions(headTemplate).map((option) => option.fragmentKey);
-    expect(headMdm).toContain("providerDocumentationComplaintIntel.headInjury.mdmCtHeadConsideredBasedOnRiskFactors");
+    expect(headMdm).toContain("providerDocumentationComplaintIntel.headInjury.mdmCtHeadReviewed");
   });
 
   it("preserves sticky-note-only activation and click-to-insert", () => {

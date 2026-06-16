@@ -2,6 +2,7 @@
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildMigraineHeadacheComplaintV1Intel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import { buildVertigoComplaintV1Intel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
+import { buildConcussionFollowupComplaintV1Intel } from "./providerDocumentationTraumaInjuryComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const seizure = (key: string) => `providerDocumentationComplaintIntel.seizureComplaintV1.${key}`;
 const alteredMentalStatus = (key: string) => `providerDocumentationComplaintIntel.alteredMentalStatusComplaintV1.${key}`;
@@ -93,20 +94,7 @@ export const VERTIGO_COMPLAINT_V1_INTEL = buildVertigoComplaintV1Intel(vertigo);
 
 export const MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL = buildMigraineHeadacheComplaintV1Intel(migraineHeadache);
 
-export const CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [concussionFollowup("hpiMechanismLocAmnesia"), concussionFollowup("hpiHeadacheDizzinessNausea"), concussionFollowup("hpiCognitiveSymptoms"), concussionFollowup("hpiAnticoagulantsRepeatedInjury")],
-  rosImportantPositives: [concussionFollowup("rosHeadache"), concussionFollowup("rosDizziness"), concussionFollowup("rosNausea")],
-  rosImportantNegatives: [concussionFollowup("rosDeniesWeakness")],
-  rosRedFlags: [concussionFollowup("rfWorseningSymptoms"), concussionFollowup("rfRepeatedInjury")],
-  physicalExam: { neuroPsych: [concussionFollowup("examMentalStatusIfDocumented"), concussionFollowup("examNeuroScreenIfDocumented"), concussionFollowup("examBalanceGaitIfDocumented")], general: [concussionFollowup("examGeneralAppearance")] },
-  mdmWorkingAssessment: [concussionFollowup("mdmConcussionFollowupPresentation")],
-  mdmDifferentialSynthesis: [concussionFollowup("diffConcussion"), concussionFollowup("diffIntracranialInjuryConcern"), concussionFollowup("diffCervicalInjury")],
-  mdmDataReviewed: [concussionFollowup("mdmCtReviewedIfObtained")],
-  mdmClinicalRationale: [concussionFollowup("mdmActivityRestrictionsAsDirected"), concussionFollowup("mdmNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [concussionFollowup("mdmObservationIfHighRisk")],
-  reassessment: [concussionFollowup("reassessCognitiveSymptoms")],
-  followUpDisposition: [concussionFollowup("dispReturnVomitingConfusionWorseningHeadache")],
-});
+export const CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL = buildConcussionFollowupComplaintV1Intel(concussionFollowup);
 
 export const GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [gaitInstabilityFallsNeuro("hpiOnsetFrequencyBaselineMobility"), gaitInstabilityFallsNeuro("hpiAssistiveDevices"), gaitInstabilityFallsNeuro("hpiDizzinessWeaknessNumbness"), gaitInstabilityFallsNeuro("hpiSyncopeInjury")],
