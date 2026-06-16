@@ -171,7 +171,26 @@ export type HumanDocViolationCategory =
   | "internal-terminology"
   | "noun-chain-return"
   | "track-c"
-  | "meta-documentation";
+  | "meta-documentation"
+  | "borderline-meta";
+
+export type HumanDocBorderlineWarning = {
+  phase: string;
+  templateId: string;
+  section: string;
+  key: string;
+  value: string;
+  pattern: string;
+};
+
+/** Warning-only borderline psychiatric exam phrasing (ME.ENTERPRISE-CLEANUP.A3 / ME.2AB-R). */
+export const HUMAN_DOC_BORDERLINE_PATTERNS = [
+  /\bhallucinations noted\b/i,
+  /\bparanoia noted\b/i,
+  /\banxiety noted\b/i,
+  /\bsuicidal ideation noted\b/i,
+  /\bhomicidal ideation noted\b/i,
+] as const;
 
 export type HumanDocViolation = {
   phase: string;
@@ -427,6 +446,38 @@ function isRoboticReturnPhrase(value: string): boolean {
 
 function isAllowedDataReviewedValue(value: string): boolean {
   return HUMAN_DOC_ALLOWED_DATA_REVIEWED_PATTERNS.some((pattern) => pattern.test(value.trim()));
+}
+
+/** Warning-only borderline meta-language scan (does not fail gold-standard audits). */
+export function collectBorderlineMetaWarnings(input: {
+  phase: string;
+  templateId: string;
+  bundle: ProviderDocumentationComplaintIntelligence;
+  messages: Record<string, string>;
+}): HumanDocBorderlineWarning[] {
+  const { phase, templateId, bundle, messages } = input;
+  const warnings: HumanDocBorderlineWarning[] = [];
+
+  for (const { section, keys } of sectionEntriesForBundle(bundle)) {
+    for (const key of keys) {
+      const value = messages[key];
+      if (!value) continue;
+      for (const pattern of HUMAN_DOC_BORDERLINE_PATTERNS) {
+        if (pattern.test(value)) {
+          warnings.push({
+            phase,
+            templateId,
+            section,
+            key,
+            value,
+            pattern: pattern.source,
+          });
+        }
+      }
+    }
+  }
+
+  return warnings;
 }
 
 export function auditHumanDocumentationValues(input: {

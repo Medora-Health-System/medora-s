@@ -24,16 +24,30 @@ const gaitInstabilityFallsNeuro = (key: string) => `providerDocumentationComplai
 const backPainNeuroRedFlags = (key: string) => `providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.${key}`;
 
 export const SEIZURE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [seizure("hpiWitnessedEventDurationPostictal"), seizure("hpiPriorSeizureHistoryMeds"), seizure("hpiTraumaFeverSubstanceUse"), seizure("hpiPregnancyRiskIfApplicable")],
+  hpi: [
+    seizure("hpiWitnessedEventDurationPostictal"),
+    seizure("hpiPriorSeizureHistoryMeds"),
+    seizure("hpiTraumaFeverSubstanceUse"),
+    seizure("hpiPregnancyConcern"),
+  ],
   rosImportantPositives: [seizure("rosSeizureEvent"), seizure("rosPostictalConfusion"), seizure("rosHeadache")],
   rosImportantNegatives: [seizure("rosDeniesFever")],
   rosRedFlags: [seizure("rfRecurrentSeizures"), seizure("rfProlongedPostictalState")],
-  physicalExam: { neuroPsych: [seizure("examMentalStatusIfDocumented"), seizure("examFocalDeficitsIfDocumented"), seizure("examInjuryAssessmentIfDocumented")], general: [seizure("examGeneralAppearance")] },
+  physicalExam: {
+    neuroPsych: [seizure("examAlertAndOriented"), seizure("examNoFocalNeurologicDeficit"), seizure("examNoTraumaticInjury")],
+    general: [seizure("examGeneralAppearance")],
+  },
   mdmWorkingAssessment: [seizure("mdmSeizurePresentation")],
-  mdmDifferentialSynthesis: [seizure("diffSeizure"), seizure("diffSyncope"), seizure("diffMetabolicToxic"), seizure("diffInfection"), seizure("diffIntracranialProcess")],
-  mdmDataReviewed: [seizure("mdmCtEegLabsReviewedIfObtained")],
-  mdmClinicalRationale: [seizure("mdmAntiepilepticPlanIfGiven"), seizure("mdmNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [seizure("mdmObservationIfHighRisk")],
+  mdmDifferentialSynthesis: [
+    seizure("diffSeizure"),
+    seizure("diffSyncope"),
+    seizure("diffMetabolicToxic"),
+    seizure("diffInfection"),
+    seizure("diffIntracranialProcess"),
+  ],
+  mdmDataReviewed: [seizure("mdmCtHeadReviewed")],
+  mdmClinicalRationale: [seizure("planAntiepilepticTherapy"), seizure("planNeurologyFollowUp")],
+  mdmAdmitObserveDischarge: [seizure("dispObservationInEd")],
   reassessment: [seizure("reassessMentalStatusRecurrence")],
   followUpDisposition: [seizure("dispReturnRecurrenceDrivingRestrictionsAsDirected")],
 });
@@ -45,16 +59,34 @@ export const GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL = buildGaitInstabil
 export const BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL = buildBackPainNeuroRedFlagsComplaintV1Intel(backPainNeuroRedFlags);
 
 export const TREMOR_MOVEMENT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [tremorMovement("hpiOnsetRestVsActionTremor"), tremorMovement("hpiMedicationSubstanceTriggers"), tremorMovement("hpiWeaknessGaitChangeFever"), tremorMovement("hpiThyroidSymptomsIfPresent")],
+  hpi: [
+    tremorMovement("hpiOnsetRestVsActionTremor"),
+    tremorMovement("hpiMedicationSubstanceTriggers"),
+    tremorMovement("hpiWeaknessGaitChangeFever"),
+    tremorMovement("hpiThyroidSymptoms"),
+  ],
   rosImportantPositives: [tremorMovement("rosTremor"), tremorMovement("rosWeakness"), tremorMovement("rosGaitChange")],
   rosImportantNegatives: [tremorMovement("rosDeniesFever")],
   rosRedFlags: [tremorMovement("rfFunctionalImpairment"), tremorMovement("rfRapidProgression")],
-  physicalExam: { neuroPsych: [tremorMovement("examTremorCharacterizationIfDocumented"), tremorMovement("examNeuroScreenIfDocumented"), tremorMovement("examGaitIfDocumented")], general: [tremorMovement("examGeneralAppearance")] },
+  physicalExam: {
+    neuroPsych: [
+      tremorMovement("examNoRestingTremor"),
+      tremorMovement("examNonfocalNeurologicExam"),
+      tremorMovement("examNormalGait"),
+    ],
+    general: [tremorMovement("examGeneralAppearance")],
+  },
   mdmWorkingAssessment: [tremorMovement("mdmTremorMovementPresentation")],
-  mdmDifferentialSynthesis: [tremorMovement("diffMedicationEffect"), tremorMovement("diffMetabolicThyroid"), tremorMovement("diffWithdrawal"), tremorMovement("diffEssentialTremor"), tremorMovement("diffNeurologicDisorder")],
-  mdmDataReviewed: [tremorMovement("mdmLabsReviewedIfObtained")],
-  mdmClinicalRationale: [tremorMovement("mdmMedicationReviewIfApplicable"), tremorMovement("mdmNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [tremorMovement("mdmObservationIfHighRisk")],
+  mdmDifferentialSynthesis: [
+    tremorMovement("diffMedicationEffect"),
+    tremorMovement("diffMetabolicThyroid"),
+    tremorMovement("diffWithdrawal"),
+    tremorMovement("diffEssentialTremor"),
+    tremorMovement("diffNeurologicDisorder"),
+  ],
+  mdmDataReviewed: [tremorMovement("mdmLabsReviewed")],
+  mdmClinicalRationale: [tremorMovement("reasoningMedicationEffectAddressed"), tremorMovement("planNeurologyFollowUp")],
+  mdmAdmitObserveDischarge: [tremorMovement("dispObservationInEd")],
   reassessment: [tremorMovement("reassessFunctionalImpairment")],
   followUpDisposition: [tremorMovement("dispReturnWorseningTremorWeakness")],
 });

@@ -38,7 +38,7 @@ export const providerDocumentationPsychBehavioralComplaintIntelEn = {
     examDepressedAffect: "depressed affect",
     examDisheveledAppearance: "disheveled appearance",
     examDisorganizedThoughtProcess: "disorganized thought process",
-    examHallucinationsNoted: "hallucinations noted",
+    examHallucinationsNoted: "hallucinations present",
     examHomicidalIdeationOnExam: "homicidal ideation on exam",
     examIllAppearing: "ill appearing",
     examNoAcuteMedicalDistress: "no acute medical distress",
