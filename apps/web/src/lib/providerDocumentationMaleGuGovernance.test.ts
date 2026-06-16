@@ -189,7 +189,9 @@ describe("providerDocumentationMaleGuGovernance — MEDUI.ED.ME.2P", () => {
     });
     expect(dysuriaVisible.has("providerDocumentationComplaintIntel.dysuriaComplaintV1.rosDysuria")).toBe(true);
     expect(dysuriaVisible.has("providerDocumentationComplaintIntel.dysuriaComplaintV1.diffStiUrethritis")).toBe(true);
-    expect(dysuriaVisible.has("providerDocumentationComplaintIntel.dysuriaComplaintV1.examGuExamIfPerformed")).toBe(true);
+    expect(dysuriaVisible.has("providerDocumentationComplaintIntel.dysuriaComplaintV1.examSuprapubicTenderness")).toBe(
+      true
+    );
 
     const hematuriaVisible = collectMaleGuVisibleStickyNoteFragmentKeys({
       templateId: "hematuria_complaint_v1",

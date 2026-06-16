@@ -28,6 +28,7 @@ import {
 } from "./providerDocumentationComplaintIntelligenceGovernance";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "@/i18n/messages/providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationHematuriaComplaintIntelEn } from "@/i18n/messages/providerDocumentationHematuriaComplaintIntel.en";
+import { providerDocumentationDysuriaComplaintIntelEn } from "@/i18n/messages/providerDocumentationDysuriaComplaintIntel.en";
 import enMessages from "@/i18n/messages/en";
 import frMessages from "@/i18n/messages/fr";
 
@@ -53,6 +54,10 @@ function resolveGuRenalKey(key: string): string {
   const hematuriaRecord = providerDocumentationHematuriaComplaintIntelEn.hematuriaComplaintV1;
   if (ns === "hematuriaComplaintV1" && hematuriaRecord[field as keyof typeof hematuriaRecord]) {
     return hematuriaRecord[field as keyof typeof hematuriaRecord] as string;
+  }
+  const dysuriaRecord = providerDocumentationDysuriaComplaintIntelEn.dysuriaComplaintV1;
+  if (ns === "dysuriaComplaintV1" && dysuriaRecord[field as keyof typeof dysuriaRecord]) {
+    return dysuriaRecord[field as keyof typeof dysuriaRecord] as string;
   }
   return key;
 }

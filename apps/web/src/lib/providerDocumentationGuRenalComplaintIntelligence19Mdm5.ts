@@ -9,6 +9,7 @@ import { buildTesticularPainComplaintV1Intel } from "./providerDocumentationMale
 import { buildUrinaryRetentionComplaintV1Intel } from "./providerDocumentationUrinaryRetentionComplaintIntelGoldStandard";
 import { buildFlankPainRenalComplaintV1Intel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
 import { buildHematuriaComplaintV1Intel } from "./providerDocumentationHematuriaComplaintIntelGoldStandard";
+import { buildDysuriaComplaintV1Intel } from "./providerDocumentationDysuriaComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -20,20 +21,8 @@ const vaginalBleeding = (key: string) => `providerDocumentationComplaintIntel.va
 const vaginalDischarge = (key: string) => `providerDocumentationComplaintIntel.vaginalDischargeComplaintV1.${key}`;
 const renalFailureSymptoms = (key: string) => `providerDocumentationComplaintIntel.renalFailureSymptomsComplaintV1.${key}`;
 
-export const DYSURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [dysuria("hpiOnsetFrequencyUrgency"), dysuria("hpiSuprapubicPain"), dysuria("hpiFeverFlankHematuria"), dysuria("hpiDischargeStiExposure"), dysuria("hpiPregnancyPossibilityIfApplicable")],
-  rosImportantPositives: [dysuria("rosDysuria"), dysuria("rosFrequency"), dysuria("rosSuprapubicPain")],
-  rosImportantNegatives: [dysuria("rosDeniesFlankPain")],
-  rosRedFlags: [dysuria("rfFeverConcern"), dysuria("rfUrinaryRetentionConcern")],
-  physicalExam: { abdomen: [dysuria("examAbdominalCvaTenderness"), dysuria("examHydrationIfDocumented"), dysuria("examGuExamIfPerformed")], general: [dysuria("examGeneralAppearance")] },
-  mdmWorkingAssessment: [dysuria("mdmDysuriaPresentation")],
-  mdmDifferentialSynthesis: [dysuria("diffCystitis"), dysuria("diffPyelonephritis"), dysuria("diffStiUrethritis"), dysuria("diffProstatitis"), dysuria("diffStoneDisease"), dysuria("diffVaginitis")],
-  mdmDataReviewed: [dysuria("mdmUaCultureReviewedIfObtained")],
-  mdmClinicalRationale: [dysuria("mdmAntibioticPlanIfGiven"), dysuria("mdmUrologyObGynFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [dysuria("mdmObservationIfHighRisk")],
-  reassessment: [dysuria("reassessUrinarySymptomsPain")],
-  followUpDisposition: [dysuria("dispReturnFeverFlankRetention")],
-});
+export const DYSURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildDysuriaComplaintV1Intel(dysuria);
 
 export const HEMATURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildHematuriaComplaintV1Intel(hematuria);
