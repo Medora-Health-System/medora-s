@@ -71,6 +71,7 @@ import {
 import { buildUrinarySymptomsComplaintIntel } from "./providerDocumentationUrinarySymptomsComplaintIntelGoldStandard";
 import { buildPsychiatricBehavioralComplaintIntel } from "./providerDocumentationPsychBehavioralComplaintIntelGoldStandard";
 import { buildMedicationRefillComplaintIntel } from "./providerDocumentationMedicationRefillGoldStandard";
+import { buildObservationReassessmentComplaintIntel } from "./providerDocumentationObservationReassessmentGoldStandard";
 import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
@@ -184,6 +185,8 @@ const medRefill = (key: string) => `providerDocumentationComplaintIntel.medicati
 export const MEDICATION_REFILL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildMedicationRefillComplaintIntel(medRefill);
 const obsReassess = (key: string) => `providerDocumentationComplaintIntel.observationReassessment.${key}`;
+export const OBSERVATION_REASSESSMENT_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildObservationReassessmentComplaintIntel(obsReassess);
 const mvcIntel = (key: string) => `providerDocumentationComplaintIntel.mvcCollision.${key}`;
 const assaultIntel = (key: string) => `providerDocumentationComplaintIntel.assaultTrauma.${key}`;
 const neckTrauma = (key: string) => `providerDocumentationComplaintIntel.neckPainTrauma.${key}`;
@@ -655,99 +658,6 @@ export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL = buildAdultNauseaVomitingCom
 /** Adult diarrhea — infectious diarrhea / C. diff documentation framework. */
 export const ADULT_DIARRHEA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildAdultDiarrheaComplaintIntel(adultDiarrhea);
-
-/** Observation reassessment — interval reassessment and discharge readiness documentation framework. */
-export const OBSERVATION_REASSESSMENT_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    obsReassess("hpiObservationReasonReviewed"),
-    obsReassess("hpiIntervalSymptomsReviewed"),
-    obsReassess("hpiResponseToTreatmentReviewed"),
-    obsReassess("hpiRepeatVitalSignsReviewed"),
-    obsReassess("hpiPainStatusReviewed"),
-    obsReassess("hpiOralIntakeReviewed"),
-    obsReassess("hpiAmbulationStatusReviewed"),
-    obsReassess("hpiFamilyCaregiverUpdateReviewed"),
-    obsReassess("hpiConsultantRecommendationsReviewed"),
-    obsReassess("hpiPendingTestResultsReviewed"),
-  ],
-  rosImportantPositives: [
-    obsReassess("rosPersistentSymptoms"),
-    obsReassess("rosImprovedSymptoms"),
-    obsReassess("rosPainImproved"),
-    obsReassess("rosNauseaImproved"),
-    obsReassess("rosDizzinessImproved"),
-    obsReassess("rosShortnessOfBreathImproved"),
-  ],
-  rosImportantNegatives: [
-    obsReassess("rosDeniesWorseningSymptoms"),
-    obsReassess("rosDeniesNewChestPain"),
-    obsReassess("rosDeniesNewShortnessOfBreath"),
-    obsReassess("rosDeniesNewNeurologicSymptoms"),
-    obsReassess("rosDeniesPersistentVomiting"),
-  ],
-  rosRedFlags: [
-    obsReassess("rfWorseningClinicalStatus"),
-    obsReassess("rfAbnormalRepeatVitals"),
-    obsReassess("rfUncontrolledPain"),
-    obsReassess("rfInabilityToToleratePo"),
-    obsReassess("rfUnsafeAmbulation"),
-    obsReassess("rfNewConcerningSymptoms"),
-    obsReassess("rfPendingCriticalResult"),
-  ],
-  physicalExam: {
-    general: [obsReassess("examImprovedAppearance"), obsReassess("examNoAcuteDistress")],
-    respiratory: [obsReassess("examRepeatCardiopulmonaryExamStable")],
-    abdomen: [obsReassess("examRepeatAbdominalExamStable")],
-    neuroPsych: [
-      obsReassess("examRepeatNeurologicExamStable"),
-      obsReassess("examAmbulatoryWithoutDifficulty"),
-      obsReassess("examToleratingOralIntake"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    obsReassess("mdmDischargeReadinessAssessed"),
-    obsReassess("mdmObservationFailureConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    obsReassess("diffImprovingAcuteCondition"),
-    obsReassess("diffPersistentSymptomsRequiringAdmission"),
-    obsReassess("diffTreatmentResponseIncomplete"),
-    obsReassess("diffEvolvingDiagnosis"),
-    obsReassess("diffDischargeReadiness"),
-    obsReassess("diffObservationFailure"),
-  ],
-  mdmDataReviewed: [
-    obsReassess("mdmPendingStudiesReviewed"),
-    obsReassess("mdmConsultantRecommendationsReviewed"),
-    obsReassess("mdmRepeatVitalsReviewed"),
-  ],
-  mdmClinicalRationale: [
-    obsReassess("mdmIntervalReassessmentPerformed"),
-    obsReassess("mdmResponseToTherapyReviewed"),
-    obsReassess("mdmRepeatExamDocumented"),
-    obsReassess("mdmSharedDecisionMakingDocumented"),
-  ],
-  mdmAdmitObserveDischarge: [
-    obsReassess("mdmAdmissionConsidered"),
-    obsReassess("mdmObservationContinuedConsidered"),
-  ],
-  reassessment: [
-    obsReassess("reassessSymptomsImproved"),
-    obsReassess("reassessRepeatExamStable"),
-    obsReassess("reassessVitalsStable"),
-    obsReassess("reassessPatientAmbulatory"),
-    obsReassess("reassessToleratingOralIntake"),
-    obsReassess("reassessFamilyCaregiverComfortableWithPlan"),
-  ],
-  followUpDisposition: [
-    obsReassess("dispDischargedAfterObservationImprovement"),
-    obsReassess("dispAdmissionDueToPersistentSymptoms"),
-    obsReassess("dispObservationContinued"),
-    obsReassess("dispReturnPrecautionsReviewed"),
-    obsReassess("dispFollowUpArrangedRecommended"),
-  ],
-});
-
 
 export const MALE_GENITAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildMaleGenitalComplaintIntel(maleGenIntel);

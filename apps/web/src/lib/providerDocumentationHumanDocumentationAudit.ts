@@ -14,6 +14,7 @@ import {
   WEAKNESS_COMPLAINT_INTEL,
   PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL,
   MEDICATION_REFILL_COMPLAINT_INTEL,
+  OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
 } from "./providerDocumentationComplaintIntelligence";
 import {
@@ -64,6 +65,7 @@ import { providerDocumentationNauseaVomitingComplaintIntelEn } from "@/i18n/mess
 import { providerDocumentationGiExtensionsComplaintIntelEn } from "@/i18n/messages/providerDocumentationGiExtensionsComplaintIntel.en";
 import { providerDocumentationPsychBehavioralComplaintIntelEn } from "@/i18n/messages/providerDocumentationPsychBehavioralComplaintIntel.en";
 import { providerDocumentationMedicationRefillComplaintIntelEn } from "@/i18n/messages/providerDocumentationMedicationRefillComplaintIntel.en";
+import { providerDocumentationObservationReassessmentComplaintIntelEn } from "@/i18n/messages/providerDocumentationObservationReassessmentComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -387,6 +389,18 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
       },
     ],
     messageSource: providerDocumentationMedicationRefillComplaintIntelEn,
+  },
+  {
+    phase: "MEDUI.ED.POSTCERT.1C",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      {
+        templateId: "observation_reassessment",
+        bundle: OBSERVATION_REASSESSMENT_COMPLAINT_INTEL,
+        namespace: "observationReassessment",
+      },
+    ],
+    messageSource: providerDocumentationObservationReassessmentComplaintIntelEn,
   },
   // Future phases register here:
   // MEDUI.ED.ME.2AB-R — Legacy Adult Utilities
