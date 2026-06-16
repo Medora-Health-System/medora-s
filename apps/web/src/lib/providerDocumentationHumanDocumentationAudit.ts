@@ -21,9 +21,22 @@ import {
   GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL,
   NUMBNESS_TINGLING_COMPLAINT_V1_INTEL,
 } from "./providerDocumentationNeuroExpansionComplaintIntelligence19Mdm9";
+import {
+  AFIB_RAPID_RATE_COMPLAINT_V1_INTEL,
+  CHF_SYMPTOMS_COMPLAINT_V1_INTEL,
+  EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL,
+  EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL,
+  GENERALIZED_WEAKNESS_CARDIAC_EQUIVALENT_COMPLAINT_V1_INTEL,
+  HYPERTENSION_COMPLAINT_V1_INTEL,
+  LEG_SWELLING_DVT_COMPLAINT_V1_INTEL,
+  NEAR_SYNCOPE_COMPLAINT_V1_INTEL,
+  PALPITATIONS_COMPLAINT_V1_INTEL,
+} from "./providerDocumentationCardiacComplaintIntelligence19Mdm4";
 import { auditTrackCi18nMessageValues } from "./providerDocumentationComplaintIntelligenceTrackC";
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "@/i18n/messages/providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationPediatricLegacyComplaintIntelEn } from "@/i18n/messages/providerDocumentationPediatricLegacyComplaintIntel.en";
+import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "@/i18n/messages/providerDocumentationCardiacNonChestPainComplaintIntel.en";
+import { providerDocumentationDizzinessVertigoComplaintIntelEn } from "@/i18n/messages/providerDocumentationDizzinessVertigoComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -208,8 +221,42 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
     ],
     messageSource: providerDocumentationNeuroStrokeWeaknessComplaintIntelEn,
   },
+  {
+    phase: "MEDUI.ED.ME.2Y-R",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      { templateId: "palpitations_complaint_v1", bundle: PALPITATIONS_COMPLAINT_V1_INTEL, namespace: "palpitationsComplaintV1" },
+      { templateId: "hypertension_complaint_v1", bundle: HYPERTENSION_COMPLAINT_V1_INTEL, namespace: "hypertensionComplaintV1" },
+      {
+        templateId: "leg_swelling_dvt_complaint_v1",
+        bundle: LEG_SWELLING_DVT_COMPLAINT_V1_INTEL,
+        namespace: "legSwellingDvtComplaintV1",
+      },
+      { templateId: "chf_symptoms_complaint_v1", bundle: CHF_SYMPTOMS_COMPLAINT_V1_INTEL, namespace: "chfSymptomsComplaintV1" },
+      { templateId: "afib_rapid_rate_complaint_v1", bundle: AFIB_RAPID_RATE_COMPLAINT_V1_INTEL, namespace: "afibRapidRateComplaintV1" },
+      {
+        templateId: "generalized_weakness_cardiac_equivalent_complaint_v1",
+        bundle: GENERALIZED_WEAKNESS_CARDIAC_EQUIVALENT_COMPLAINT_V1_INTEL,
+        namespace: "generalizedWeaknessCardiacEquivalentComplaintV1",
+      },
+      { templateId: "near_syncope_complaint_v1", bundle: NEAR_SYNCOPE_COMPLAINT_V1_INTEL, namespace: "nearSyncopeComplaintV1" },
+      {
+        templateId: "exertional_dyspnea_complaint_v1",
+        bundle: EXERTIONAL_DYSPNEA_COMPLAINT_V1_INTEL,
+        namespace: "exertionalDyspneaComplaintV1",
+      },
+      {
+        templateId: "edema_volume_overload_complaint_v1",
+        bundle: EDEMA_VOLUME_OVERLOAD_COMPLAINT_V1_INTEL,
+        namespace: "edemaVolumeOverloadComplaintV1",
+      },
+    ],
+    messageSource: {
+      ...providerDocumentationCardiacNonChestPainComplaintIntelEn,
+      nearSyncopeComplaintV1: providerDocumentationDizzinessVertigoComplaintIntelEn.nearSyncopeComplaintV1,
+    },
+  },
   // Future phases register here:
-  // MEDUI.ED.ME.2Y-R — Cardiac Non-Chest-Pain
   // MEDUI.ED.ME.2Z-R — Renal / Metabolic / Endocrine
   // MEDUI.ED.ME.2AA-R — GI Extensions
   // MEDUI.ED.ME.2X-R — Psychiatric / Behavioral

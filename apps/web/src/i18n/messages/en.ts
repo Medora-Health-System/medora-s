@@ -2,7 +2,6 @@ import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
 import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
-import { providerDocumentationCardiacComplaintIntel19Mdm4En } from "./providerDocumentationCardiacComplaintIntel19Mdm4.en";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
 import { providerDocumentationDentalOralComplaintIntelEn } from "./providerDocumentationDentalOralComplaintIntel.en";
@@ -29,6 +28,7 @@ import { providerDocumentationExtremityMskComplaintIntelEn } from "./providerDoc
 import { providerDocumentationPediatricLegacyComplaintIntelEn } from "./providerDocumentationPediatricLegacyComplaintIntel.en";
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9En } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.en";
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "./providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
+import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "./providerDocumentationCardiacNonChestPainComplaintIntel.en";
 
 export default {
   common: {
@@ -9045,7 +9045,7 @@ export default {
     ...providerDocumentationPediatricLegacyComplaintIntelEn,
     ...providerDocumentationGiComplaintIntel19Mdm2En,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
-    ...providerDocumentationCardiacComplaintIntel19Mdm4En,
+    ...providerDocumentationCardiacNonChestPainComplaintIntelEn,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,
     ...providerDocumentationInfectiousEntComplaintIntel19Mdm7En,
     ...providerDocumentationDentalOralComplaintIntelEn,

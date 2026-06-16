@@ -147,6 +147,12 @@ import {
   resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate,
   resolveNeuroStrokeWeaknessRosChipGroupsForTemplate,
 } from "./providerDocumentationNeuroStrokeWeaknessGovernance";
+import {
+  filterCardiacNonChestPainMdmTemplateOptionsForTemplate,
+  resolveCardiacNonChestPainExamChipGroupsForTemplate,
+  resolveCardiacNonChestPainHpiChipGroupsForTemplate,
+  resolveCardiacNonChestPainRosChipGroupsForTemplate,
+} from "./providerDocumentationCardiacNonChestPainGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -224,9 +230,12 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
   );
-  return resolvePediatricLegacyRosChipGroupsForTemplate(
+  return resolveCardiacNonChestPainRosChipGroupsForTemplate(
     templateId,
-    resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+    resolvePediatricLegacyRosChipGroupsForTemplate(
+      templateId,
+      resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
+    )
   );
 }
 
@@ -298,9 +307,12 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
   );
-  return resolvePediatricLegacyExamChipGroupsForTemplate(
+  return resolveCardiacNonChestPainExamChipGroupsForTemplate(
     templateId,
-    resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+    resolvePediatricLegacyExamChipGroupsForTemplate(
+      templateId,
+      resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
+    )
   );
 }
 
@@ -369,9 +381,12 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
   );
-  return resolvePediatricLegacyHpiChipGroupsForTemplate(
+  return resolveCardiacNonChestPainHpiChipGroupsForTemplate(
     templateId,
-    resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+    resolvePediatricLegacyHpiChipGroupsForTemplate(
+      templateId,
+      resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
+    )
   );
 }
 
@@ -443,8 +458,11 @@ export function filterMdmTemplateOptionsForTemplate(
     )
     )
   );
-  return filterPediatricLegacyMdmTemplateOptionsForTemplate(
+  return filterCardiacNonChestPainMdmTemplateOptionsForTemplate(
     templateId,
-    filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+    filterPediatricLegacyMdmTemplateOptionsForTemplate(
+      templateId,
+      filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
+    )
   );
 }
