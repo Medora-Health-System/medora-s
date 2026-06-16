@@ -25,6 +25,7 @@ import { providerDocumentationHematuriaComplaintIntelFr } from "./providerDocume
 import { providerDocumentationDysuriaComplaintIntelFr } from "./providerDocumentationDysuriaComplaintIntel.fr";
 import { providerDocumentationDizzinessVertigoComplaintIntelFr } from "./providerDocumentationDizzinessVertigoComplaintIntel.fr";
 import { providerDocumentationTraumaInjuryComplaintIntelFr } from "./providerDocumentationTraumaInjuryComplaintIntel.fr";
+import { providerDocumentationExtremityMskComplaintIntelFr } from "./providerDocumentationExtremityMskComplaintIntel.fr";
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.fr";
 
 export default {
@@ -9282,6 +9283,7 @@ export default {
     ...providerDocumentationRashSkinComplaintIntelFr,
     ...providerDocumentationDizzinessVertigoComplaintIntelFr,
     ...providerDocumentationTraumaInjuryComplaintIntelFr,
+    ...providerDocumentationExtremityMskComplaintIntelFr,
     ...providerDocumentationGiComplaintIntel19Mdm2Fr,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
     ...providerDocumentationCardiacComplaintIntel19Mdm4Fr,

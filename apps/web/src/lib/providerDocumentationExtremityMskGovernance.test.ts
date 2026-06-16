@@ -18,6 +18,7 @@ import {
   templateUsesExtremityMskStickyNoteGovernance,
 } from "@/lib/providerDocumentationExtremityMskGovernance";
 import { templateUsesTraumaStickyNoteGovernance } from "@/lib/providerDocumentationTraumaGovernance";
+import { complaintIntelligenceMdmChipBindingsForTemplate } from "@/lib/providerDocumentationComplaintIntelligenceWorkspaceChips";
 import { collectTraumaVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationTraumaGovernance";
 import { collectUrinarySymptomsVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationUrinarySymptomsGovernance";
 import { collectDiarrheaVisibleStickyNoteFragmentKeys } from "@/lib/providerDocumentationDiarrheaGovernance";
@@ -150,53 +151,32 @@ describe("providerDocumentationExtremityMskGovernance — MEDUI.ED.ME.2O", () =>
     }
   });
 
-  it("keeps shoulder injury complaint-intel namespaces available for MSK governance", () => {
+  it("keeps extremity MSK complaint-intel namespace available for MSK governance", () => {
     expect(
       isExtremityMskDeniedStickyNoteFragment(
-        "providerDocumentationComplaintIntel.shoulderInjuryComplaintV1.diffRotatorCuffInjury"
+        "providerDocumentationComplaintIntel.extremityMskComplaint.diffFracture"
       )
     ).toBe(false);
     expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.shoulderInjuryComplaintV1.rosShoulderPain")
-    ).toBe(false);
-  });
-
-  it("keeps knee injury complaint-intel namespaces available for MSK governance", () => {
-    expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.kneeInjuryComplaintV1.diffFracture")
-    ).toBe(false);
-    expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.kneeInjuryComplaintV1.rosKneePain")
-    ).toBe(false);
-  });
-
-  it("keeps hip injury complaint-intel namespaces available for MSK governance", () => {
-    expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.hipPainInjuryComplaintV1.diffFracture")
-    ).toBe(false);
-    expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.hipPainInjuryComplaintV1.rosHipPain")
-    ).toBe(false);
-  });
-
-  it("keeps ankle/foot injury complaint-intel namespaces available for MSK governance", () => {
-    expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.ankleFootInjuryComplaintV1.diffSprain")
-    ).toBe(false);
-    expect(
       isExtremityMskDeniedStickyNoteFragment(
-        "providerDocumentationComplaintIntel.ankleFootInjuryComplaintV1.rosAnkleFootPain"
+        "providerDocumentationComplaintIntel.extremityMskComplaint.diffCompartmentSyndrome"
       )
     ).toBe(false);
+    expect(
+      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.extremityMskComplaint.rosExtremityPain")
+    ).toBe(false);
+    expect(
+      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.extremityMskComplaint.hpiShoulderPain")
+    ).toBe(false);
   });
 
-  it("keeps joint/fracture MSK complaint-intel namespaces available for MSK governance", () => {
+  it("still denies trauma complaint-intel prefixes when extremity MSK template is active", () => {
     expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.fractureConcern.diffFracture")
-    ).toBe(false);
+      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.fall.hpiMechanicalFall")
+    ).toBe(true);
     expect(
-      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.handWristInjuryComplaintV1.diffSprain")
-    ).toBe(false);
+      isExtremityMskDeniedStickyNoteFragment("providerDocumentationComplaintIntel.headInjury.diffConcussion")
+    ).toBe(true);
   });
 
   it("exposes limb pain, ROM, swelling, and tenderness chips for trauma_musculoskeletal", () => {
@@ -224,6 +204,8 @@ describe("providerDocumentationExtremityMskGovernance — MEDUI.ED.ME.2O", () =>
     expect(visible.has("erMseHpiChips.qualAching")).toBe(true);
     expect(visible.has("erMseExamChips.mskRomNormal")).toBe(true);
     expect(visible.has("erMseRosChips.posWeakness")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.extremityMskComplaint.diffFracture")).toBe(true);
+    expect(visible.has("providerDocumentationComplaintIntel.extremityMskComplaint.hpiShoulderPain")).toBe(true);
   });
 
   it("hides chest pain, URI, UTI, pelvic, headache, and vertigo wrong-domain chips", () => {
@@ -287,6 +269,19 @@ describe("providerDocumentationExtremityMskGovernance — MEDUI.ED.ME.2O", () =>
 
     const fragmentKey = "erMseHpiChips.locLimbPain";
     expect(toggleDocumentationFragment("", fragmentKey)).toContain(fragmentKey);
+  });
+
+  it("exposes MDM.1 workspace bindings for trauma_musculoskeletal", () => {
+    const template = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === MSK_TEMPLATE_ID) ?? null;
+    expect(complaintIntelligenceMdmChipBindingsForTemplate(template).map((binding) => binding.intelField)).toEqual([
+      "mdmWorkingAssessment",
+      "mdmDifferentialSynthesis",
+      "mdmDataReviewed",
+      "mdmRiskStratification",
+      "mdmClinicalRationale",
+      "clinicalImpression",
+      "mdmPlanSummary",
+    ]);
   });
 
   it("does not affect unrelated templates", () => {

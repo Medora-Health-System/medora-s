@@ -102,6 +102,7 @@ import {
   NEURO_EXPANSION_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   NEURO_EXPANSION_COMPLAINT_V1_TEMPLATE_IDS,
 } from "./providerDocumentationNeuroExpansionComplaintIntelligence19Mdm9";
+import { buildExtremityMskComplaintIntel } from "./providerDocumentationExtremityMskComplaintIntelGoldStandard";
 
 export type ProviderDocumentationComplaintIntelligence = {
   hpi?: string[];
@@ -744,6 +745,10 @@ export const PENETRATING_INJURY_COMPLAINT_INTEL = buildPenetratingInjuryComplain
 export const BURN_INJURY_COMPLAINT_INTEL = buildBurnInjuryComplaintIntel(burnIntel);
 export const PEDIATRIC_TRAUMA_COMPLAINT_INTEL = buildPediatricTraumaComplaintIntel(pedTraumaIntel);
 
+const extremityMsk = (key: string) => `providerDocumentationComplaintIntel.extremityMskComplaint.${key}`;
+/** Extremity / MSK — ME.2O-R gold-standard builder (`trauma_musculoskeletal` only). */
+export const EXTREMITY_MSK_COMPLAINT_INTEL = buildExtremityMskComplaintIntel(extremityMsk);
+
 /** Pediatric fever — AAP pediatric fever / toxic appearance documentation framework. */
 export const PEDIATRIC_FEVER_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [
@@ -1284,6 +1289,7 @@ export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   penetrating_injury: PENETRATING_INJURY_COMPLAINT_INTEL,
   burn: BURN_INJURY_COMPLAINT_INTEL,
   pediatric_trauma: PEDIATRIC_TRAUMA_COMPLAINT_INTEL,
+  trauma_musculoskeletal: EXTREMITY_MSK_COMPLAINT_INTEL,
   male_genital_complaint: MALE_GENITAL_COMPLAINT_INTEL,
   female_pelvic_gyn_complaint: FEMALE_PELVIC_GYN_COMPLAINT_INTEL,
   ...GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,

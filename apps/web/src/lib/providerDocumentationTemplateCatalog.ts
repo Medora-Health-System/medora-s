@@ -17,6 +17,7 @@ import {
   HEAD_INJURY_COMPLAINT_INTEL,
   LACERATION_COMPLAINT_INTEL,
   FRACTURE_CONCERN_COMPLAINT_INTEL,
+  EXTREMITY_MSK_COMPLAINT_INTEL,
   PEDIATRIC_FEVER_COMPLAINT_INTEL,
   PEDIATRIC_ABDOMINAL_PAIN_COMPLAINT_INTEL,
   PEDIATRIC_ASTHMA_WHEEZING_COMPLAINT_INTEL,
@@ -729,7 +730,13 @@ export const PROVIDER_DOCUMENTATION_TEMPLATES: ProviderDocumentationTemplateDefi
         "erMseExamChips.mskDeformityNoted",
         "providerDocumentationWorkspace.stickerExamNvIntact",
       ],
-    }
+    },
+    undefined,
+    [
+      "providerDocumentationPromptReminders.traumaMechanism",
+      "providerDocumentationPromptReminders.traumaReassessment",
+    ],
+    EXTREMITY_MSK_COMPLAINT_INTEL
   ),
   traumaTemplate(
     "back_pain",
