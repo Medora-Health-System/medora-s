@@ -244,9 +244,9 @@ const STROKE_RULES: DynamicIntelligenceRule[] = [
     triggerTerms: ["last known well", "dernier moment", "heure connue"],
     reasonKey: reason("strokeLastKnownWell"),
     suggestions: [
-      sug("mdm", stroke("reasoningLastKnownWellGuidesStrokePathway"), "mdmClinicalRationale"),
-      sug("mdm", stroke("planStrokeAlertActivated"), "mdmPlanSummary"),
-      sug("mdm", stroke("mdmCtaHeadNeckReviewed"), "mdmDataReviewed"),
+      sug("mdm", stroke("mdmLastKnownWellDocumented"), "mdmClinicalRationale"),
+      sug("mdm", stroke("mdmThrombolyticEligibilityConsidered"), "mdmClinicalRationale"),
+      sug("mdm", stroke("mdmTimeSensitiveWorkflowReviewed"), "mdmClinicalRationale"),
     ],
   },
   {
@@ -254,10 +254,10 @@ const STROKE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("strokeUnilateralWeakness"),
     suggestions: [
       sug("differential", stroke("diffIschemicStroke"), "mdmDifferentialSynthesis"),
-      sug("mdm", stroke("waSuspectedStroke"), "mdmWorkingAssessment"),
+      sug("mdm", stroke("mdmStrokeSyndromeConsidered"), "mdmWorkingAssessment"),
       sug("mdm", stroke("mdmCtHeadReviewed"), "mdmDataReviewed"),
-      sug("mdm", stroke("reasoningCtHeadForHemorrhage"), "mdmClinicalRationale"),
-      sug("reassessment", stroke("reassessNeuroExamUnchanged"), "treatmentPlan"),
+      sug("mdm", stroke("mdmThrombolyticEligibilityConsidered"), "mdmClinicalRationale"),
+      sug("reassessment", stroke("reassessRepeatNeuroExam"), "treatmentPlan"),
     ],
   },
   {
@@ -265,19 +265,19 @@ const STROKE_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("strokeSpeechDifficulty"),
     suggestions: [
       sug("differential", stroke("diffTia"), "mdmDifferentialSynthesis"),
-      sug("mdm", stroke("planStrokeAlertActivated"), "mdmPlanSummary"),
+      sug("mdm", stroke("mdmStrokeAlertActivated"), "mdmImmediateActionsRationale"),
       sug("mdm", stroke("mdmCtHeadReviewed"), "mdmDataReviewed"),
-      sug("mdm", stroke("planTransferArranged"), "mdmPlanSummary"),
+      sug("mdm", stroke("mdmTransferStrokeCenterConsidered"), "mdmAdmitObserveDischarge"),
     ],
   },
   {
     triggerTerms: ["facial droop", "facial asymmetry", "asymétrie faciale"],
     reasonKey: reason("strokeFacialDroop"),
     suggestions: [
-      sug("mdm", stroke("planStrokeAlertActivated"), "mdmPlanSummary"),
-      sug("mdm", stroke("reasoningCtaForLargeVesselOcclusion"), "mdmClinicalRationale"),
-      sug("mdm", stroke("planNeurologyConsulted"), "mdmPlanSummary"),
-      sug("disposition", stroke("dispTransferredHigherLevelCare"), "followUpDisposition"),
+      sug("mdm", stroke("mdmStrokeAlertActivated"), "mdmImmediateActionsRationale"),
+      sug("mdm", stroke("mdmThrombolyticEligibilityConsidered"), "mdmClinicalRationale"),
+      sug("mdm", stroke("mdmNeurologyConsulted"), "mdmConsultsDiscussed"),
+      sug("disposition", stroke("dispTransferHigherNeuroCare"), "followUpDisposition"),
     ],
   },
 ];

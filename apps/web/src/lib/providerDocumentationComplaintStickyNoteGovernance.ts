@@ -141,12 +141,6 @@ import {
   resolvePediatricLegacyHpiChipGroupsForTemplate,
   resolvePediatricLegacyRosChipGroupsForTemplate,
 } from "./providerDocumentationPediatricLegacyGovernance";
-import {
-  filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate,
-  resolveNeuroStrokeWeaknessExamChipGroupsForTemplate,
-  resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate,
-  resolveNeuroStrokeWeaknessRosChipGroupsForTemplate,
-} from "./providerDocumentationNeuroStrokeWeaknessGovernance";
 
 export type StickyNoteChipGroup<TChip extends { fragmentKey: string }> = {
   chips: TChip[];
@@ -224,10 +218,7 @@ export function resolveRosChipGroupsForTemplate<T extends StickyNoteChipGroup<{ 
     )
     )
   );
-  return resolvePediatricLegacyRosChipGroupsForTemplate(
-    templateId,
-    resolveNeuroStrokeWeaknessRosChipGroupsForTemplate(templateId, groups)
-  );
+  return resolvePediatricLegacyRosChipGroupsForTemplate(templateId, groups);
 }
 
 export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGroup<{ fragmentKey: string }>>(
@@ -298,10 +289,7 @@ export function resolveExamChipGroupsForTemplate<T extends StickyNoteExamChipGro
     )
     )
   );
-  return resolvePediatricLegacyExamChipGroupsForTemplate(
-    templateId,
-    resolveNeuroStrokeWeaknessExamChipGroupsForTemplate(templateId, groups)
-  );
+  return resolvePediatricLegacyExamChipGroupsForTemplate(templateId, groups);
 }
 
 export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationHpiDimensionGroup>(
@@ -369,10 +357,7 @@ export function resolveHpiChipGroupsForTemplate<T extends ProviderDocumentationH
     )
     )
   );
-  return resolvePediatricLegacyHpiChipGroupsForTemplate(
-    templateId,
-    resolveNeuroStrokeWeaknessHpiChipGroupsForTemplate(templateId, groups)
-  );
+  return resolvePediatricLegacyHpiChipGroupsForTemplate(templateId, groups);
 }
 
 export function filterMdmTemplateOptionsForTemplate(
@@ -443,8 +428,5 @@ export function filterMdmTemplateOptionsForTemplate(
     )
     )
   );
-  return filterPediatricLegacyMdmTemplateOptionsForTemplate(
-    templateId,
-    filterNeuroStrokeWeaknessMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters)
-  );
+  return filterPediatricLegacyMdmTemplateOptionsForTemplate(templateId, optionsAfterDomainFilters);
 }
