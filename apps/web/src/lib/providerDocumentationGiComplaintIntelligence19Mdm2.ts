@@ -4,7 +4,14 @@ import { buildAbdominalPainComplaintV1Intel } from "./providerDocumentationAbdom
 import { buildNauseaVomitingComplaintV1Intel } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
 import { buildDiarrheaComplaintV1Intel } from "./providerDocumentationDiarrheaComplaintIntelGoldStandard";
 import { buildFlankPainComplaintV1GiIntel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
-const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
+import {
+  buildConstipationComplaintV1Intel,
+  buildDysphagiaComplaintV1Intel,
+  buildGiBleedComplaintV1Intel,
+  buildHerniaComplaintV1Intel,
+  buildRectalPainComplaintV1Intel,
+} from "./providerDocumentationGiExtensionsComplaintIntelGoldStandard";
+
 const abdominalPain = (key: string) => `providerDocumentationComplaintIntel.abdominalPainComplaintV1.${key}`;
 const nauseaVomiting = (key: string) => `providerDocumentationComplaintIntel.nauseaVomitingComplaintV1.${key}`;
 const diarrhea = (key: string) => `providerDocumentationComplaintIntel.diarrheaComplaintV1.${key}`;
@@ -15,90 +22,32 @@ const hernia = (key: string) => `providerDocumentationComplaintIntel.herniaCompl
 const rectalPain = (key: string) => `providerDocumentationComplaintIntel.rectalPainComplaintV1.${key}`;
 const dysphagia = (key: string) => `providerDocumentationComplaintIntel.dysphagiaComplaintV1.${key}`;
 
-export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL = buildAbdominalPainComplaintV1Intel(abdominalPain);
+export const ABDOMINAL_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildAbdominalPainComplaintV1Intel(abdominalPain);
 
-export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL = buildNauseaVomitingComplaintV1Intel(nauseaVomiting);
+export const NAUSEA_VOMITING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildNauseaVomitingComplaintV1Intel(nauseaVomiting);
 
 export const DIARRHEA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildDiarrheaComplaintV1Intel(diarrhea);
 
-export const CONSTIPATION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [constipation("hpiDurationPattern"), constipation("hpiPassingGasVomiting"), constipation("hpiOpioidSurgeryHistory")],
-  rosImportantPositives: [constipation("rosConstipation"), constipation("rosAbdominalDistension")],
-  rosImportantNegatives: [constipation("rosDeniesFever")],
-  rosRedFlags: [constipation("rfObstructionConcern"), constipation("rfRectalBleeding")],
-  physicalExam: { abdomen: [constipation("examDistensionTenderness"), constipation("examRectalIfPerformed")], general: [constipation("examGeneralAppearance")] },
-  mdmWorkingAssessment: [constipation("mdmConstipationPresentation")],
-  mdmDifferentialSynthesis: [constipation("diffFunctional"), constipation("diffMedication"), constipation("diffObstruction"), constipation("diffImpaction")],
-  mdmDataReviewed: [constipation("mdmImagingIfIndicated")],
-  mdmClinicalRationale: [constipation("mdmBowelObstructionConsidered")],
-  mdmAdmitObserveDischarge: [constipation("mdmAdmissionIfObstructionConcern")],
-  reassessment: [constipation("reassessBowelSymptoms")],
-  followUpDisposition: [constipation("dispReturnVomitingObstructionSigns")],
-});
+export const CONSTIPATION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildConstipationComplaintV1Intel(constipation);
 
-export const GI_BLEED_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [giBleed("hpiBleedTypeAmount"), giBleed("hpiAnticoagulantUse"), giBleed("hpiSyncopeDizziness")],
-  rosImportantPositives: [giBleed("rosMelena"), giBleed("rosHematochezia"), giBleed("rosDizziness")],
-  rosImportantNegatives: [giBleed("rosDeniesChestPain")],
-  rosRedFlags: [giBleed("rfHemodynamicInstability"), giBleed("rfLargeVolumeBleed")],
-  physicalExam: { abdomen: [giBleed("examVitalsTrend"), giBleed("examAbdominalExam"), giBleed("examRectalIfPerformed")], general: [giBleed("examGeneralAppearance")] },
-  mdmWorkingAssessment: [giBleed("mdmGiBleedPresentation")],
-  mdmDifferentialSynthesis: [giBleed("diffUpperGi"), giBleed("diffLowerGi"), giBleed("diffVarices"), giBleed("diffDiverticular"), giBleed("diffHemorrhoids")],
-  mdmDataReviewed: [giBleed("mdmHemoglobinReviewedIfObtained"), giBleed("mdmImagingEndoscopyConsidered")],
-  mdmClinicalRationale: [giBleed("mdmTransfusionConsultIfIndicated")],
-  mdmAdmitObserveDischarge: [giBleed("mdmAdmissionObservationIfIndicated")],
-  reassessment: [giBleed("reassessHemodynamicStatus"), giBleed("reassessRepeatBleeding")],
-  followUpDisposition: [giBleed("dispDispositionAfterReassessment")],
-});
+export const GI_BLEED_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildGiBleedComplaintV1Intel(giBleed);
 
 export const FLANK_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFlankPainComplaintV1GiIntel(flankPain);
 
-export const HERNIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [hernia("hpiLocationDuration"), hernia("hpiReducibilityPain"), hernia("hpiBowelSymptomsSkinChanges")],
-  rosImportantPositives: [hernia("rosVomiting"), hernia("rosAbdominalPain")],
-  rosImportantNegatives: [hernia("rosDeniesFever")],
-  rosRedFlags: [hernia("rfIncarcerationConcern"), hernia("rfStrangulationConcern")],
-  physicalExam: { abdomen: [hernia("examHerniaExam"), hernia("examAbdominalDistension")], general: [hernia("examGeneralAppearance")] },
-  mdmWorkingAssessment: [hernia("mdmHerniaPresentation")],
-  mdmDifferentialSynthesis: [hernia("diffReducibleHernia"), hernia("diffIncarcerated"), hernia("diffObstruction")],
-  mdmDataReviewed: [hernia("mdmImagingIfIndicated")],
-  mdmClinicalRationale: [hernia("mdmSurgicalConsultIfConcern")],
-  mdmAdmitObserveDischarge: [hernia("mdmAdmissionIfNonreducible")],
-  reassessment: [hernia("reassessHerniaExam")],
-  followUpDisposition: [hernia("dispReturnWorseningPainVomiting")],
-});
+export const HERNIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildHerniaComplaintV1Intel(hernia);
 
-export const RECTAL_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [rectalPain("hpiOnsetBleeding"), rectalPain("hpiConstipationDrainage"), rectalPain("hpiImmunocompromised")],
-  rosImportantPositives: [rectalPain("rosRectalPain"), rectalPain("rosBleeding"), rectalPain("rosFever")],
-  rosImportantNegatives: [rectalPain("rosDeniesAbdominalDistension")],
-  rosRedFlags: [rectalPain("rfAbscessConcern"), rectalPain("rfSignificantBleeding")],
-  physicalExam: { abdomen: [rectalPain("examExternalRectalIfPerformed")], general: [rectalPain("examGeneralAppearance")] },
-  mdmWorkingAssessment: [rectalPain("mdmRectalPainPresentation")],
-  mdmDifferentialSynthesis: [rectalPain("diffHemorrhoid"), rectalPain("diffFissure"), rectalPain("diffAbscess"), rectalPain("diffProctitis")],
-  mdmDataReviewed: [rectalPain("mdmLabsIfIndicated")],
-  mdmClinicalRationale: [rectalPain("mdmAnalgesiaHygienePlan")],
-  mdmAdmitObserveDischarge: [rectalPain("mdmSurgicalReferralIfAbscess")],
-  reassessment: [rectalPain("reassessPainBleeding")],
-  followUpDisposition: [rectalPain("dispReturnFeverDrainage")],
-});
+export const RECTAL_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildRectalPainComplaintV1Intel(rectalPain);
 
-export const DYSPHAGIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [dysphagia("hpiSolidsVsLiquids"), dysphagia("hpiChokingDrooling"), dysphagia("hpiWeightLossNeuro")],
-  rosImportantPositives: [dysphagia("rosChestPain"), dysphagia("rosRegurgitation")],
-  rosImportantNegatives: [dysphagia("rosDeniesFocalWeakness")],
-  rosRedFlags: [dysphagia("rfAirwayCompromise"), dysphagia("rfFoodImpaction")],
-  physicalExam: { abdomen: [dysphagia("examAirwayOralPharynx"), dysphagia("examNeuroScreen")], general: [dysphagia("examGeneralAppearance")] },
-  mdmWorkingAssessment: [dysphagia("mdmDysphagiaPresentation")],
-  mdmDifferentialSynthesis: [dysphagia("diffImpaction"), dysphagia("diffEsophagitis"), dysphagia("diffStricture"), dysphagia("diffMotility"), dysphagia("diffNeurologic")],
-  mdmDataReviewed: [dysphagia("mdmImagingConsultIfIndicated")],
-  mdmClinicalRationale: [dysphagia("mdmNpoAirwayPrecautionsIfIndicated")],
-  mdmAdmitObserveDischarge: [dysphagia("mdmAdmissionIfCannotTolerateSecretions")],
-  reassessment: [dysphagia("reassessSwallowingTrial")],
-  followUpDisposition: [dysphagia("dispEntGiFollowUp")],
-});
+export const DYSPHAGIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildDysphagiaComplaintV1Intel(dysphagia);
 
 export const GI_COMPLAINT_V1_TEMPLATE_IDS = [
   "abdominal_pain_complaint_v1",
@@ -109,7 +58,7 @@ export const GI_COMPLAINT_V1_TEMPLATE_IDS = [
   "flank_pain_complaint_v1",
   "hernia_complaint_v1",
   "rectal_pain_complaint_v1",
-  "dysphagia_complaint_v1"
+  "dysphagia_complaint_v1",
 ] as const;
 
 export const GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID = {

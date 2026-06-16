@@ -1,6 +1,6 @@
 import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
-import { providerDocumentationGiComplaintIntel19Mdm2En } from "./providerDocumentationGiComplaintIntel19Mdm2.en";
+import { providerDocumentationGiExtensionsComplaintIntelEn } from "./providerDocumentationGiExtensionsComplaintIntel.en";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3En } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.en";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.en";
 import { providerDocumentationInfectiousEntComplaintIntel19Mdm7En } from "./providerDocumentationInfectiousEntComplaintIntel19Mdm7.en";
@@ -9043,7 +9043,7 @@ export default {
     ...providerDocumentationTraumaInjuryComplaintIntelEn,
     ...providerDocumentationExtremityMskComplaintIntelEn,
     ...providerDocumentationPediatricLegacyComplaintIntelEn,
-    ...providerDocumentationGiComplaintIntel19Mdm2En,
+    ...providerDocumentationGiExtensionsComplaintIntelEn,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3En,
     ...providerDocumentationCardiacNonChestPainComplaintIntelEn,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5En,

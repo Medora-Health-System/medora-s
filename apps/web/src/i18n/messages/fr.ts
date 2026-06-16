@@ -1,7 +1,7 @@
 import { labels } from "@/lib/uiLabels";
 import { erTriageMessagesFr } from "./erTriage.fr";
 import { providerDischargeDocumentation19YFr } from "./providerDischargeDocumentation19Y.fr";
-import { providerDocumentationGiComplaintIntel19Mdm2Fr } from "./providerDocumentationGiComplaintIntel19Mdm2.fr";
+import { providerDocumentationGiExtensionsComplaintIntelFr } from "./providerDocumentationGiExtensionsComplaintIntel.fr";
 import { providerDocumentationRespiratoryComplaintIntel19Mdm3Fr } from "./providerDocumentationRespiratoryComplaintIntel19Mdm3.fr";
 import { providerDocumentationCardiacNonChestPainComplaintIntelFr } from "./providerDocumentationCardiacNonChestPainComplaintIntel.fr";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5Fr } from "./providerDocumentationGuRenalComplaintIntel19Mdm5.fr";
@@ -9023,7 +9023,7 @@ export default {
     ...providerDocumentationTraumaInjuryComplaintIntelFr,
     ...providerDocumentationExtremityMskComplaintIntelFr,
     ...providerDocumentationPediatricLegacyComplaintIntelFr,
-    ...providerDocumentationGiComplaintIntel19Mdm2Fr,
+    ...providerDocumentationGiExtensionsComplaintIntelFr,
     ...providerDocumentationRespiratoryComplaintIntel19Mdm3Fr,
     ...providerDocumentationCardiacNonChestPainComplaintIntelFr,
     ...providerDocumentationGuRenalComplaintIntel19Mdm5Fr,

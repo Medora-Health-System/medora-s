@@ -45,6 +45,13 @@ import {
   THYROID_SYMPTOMS_COMPLAINT_V1_INTEL,
 } from "./providerDocumentationEndocrineMetabolicComplaintIntelligence19Mdm8";
 import { RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL } from "./providerDocumentationGuRenalComplaintIntelligence19Mdm5";
+import {
+  CONSTIPATION_COMPLAINT_V1_INTEL,
+  DYSPHAGIA_COMPLAINT_V1_INTEL,
+  GI_BLEED_COMPLAINT_V1_INTEL,
+  HERNIA_COMPLAINT_V1_INTEL,
+  RECTAL_PAIN_COMPLAINT_V1_INTEL,
+} from "./providerDocumentationGiComplaintIntelligence19Mdm2";
 import { auditTrackCi18nMessageValues } from "./providerDocumentationComplaintIntelligenceTrackC";
 import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "@/i18n/messages/providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationPediatricLegacyComplaintIntelEn } from "@/i18n/messages/providerDocumentationPediatricLegacyComplaintIntel.en";
@@ -52,6 +59,7 @@ import { providerDocumentationCardiacNonChestPainComplaintIntelEn } from "@/i18n
 import { providerDocumentationDizzinessVertigoComplaintIntelEn } from "@/i18n/messages/providerDocumentationDizzinessVertigoComplaintIntel.en";
 import { providerDocumentationRenalMetabolicEndocrineComplaintIntelEn } from "@/i18n/messages/providerDocumentationRenalMetabolicEndocrineComplaintIntel.en";
 import { providerDocumentationNauseaVomitingComplaintIntelEn } from "@/i18n/messages/providerDocumentationNauseaVomitingComplaintIntel.en";
+import { providerDocumentationGiExtensionsComplaintIntelEn } from "@/i18n/messages/providerDocumentationGiExtensionsComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
 export const HUMAN_DOC_FORBIDDEN_RENDERED_PHRASES = [
@@ -321,8 +329,19 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
         providerDocumentationNauseaVomitingComplaintIntelEn.nauseaVomitingMetabolicComplaintV1,
     },
   },
+  {
+    phase: "MEDUI.ED.ME.2AA-R",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      { templateId: "constipation_complaint_v1", bundle: CONSTIPATION_COMPLAINT_V1_INTEL, namespace: "constipationComplaintV1" },
+      { templateId: "gi_bleed_complaint_v1", bundle: GI_BLEED_COMPLAINT_V1_INTEL, namespace: "giBleedComplaintV1" },
+      { templateId: "hernia_complaint_v1", bundle: HERNIA_COMPLAINT_V1_INTEL, namespace: "herniaComplaintV1" },
+      { templateId: "rectal_pain_complaint_v1", bundle: RECTAL_PAIN_COMPLAINT_V1_INTEL, namespace: "rectalPainComplaintV1" },
+      { templateId: "dysphagia_complaint_v1", bundle: DYSPHAGIA_COMPLAINT_V1_INTEL, namespace: "dysphagiaComplaintV1" },
+    ],
+    messageSource: providerDocumentationGiExtensionsComplaintIntelEn,
+  },
   // Future phases register here:
-  // MEDUI.ED.ME.2AA-R — GI Extensions
   // MEDUI.ED.ME.2X-R — Psychiatric / Behavioral
   // MEDUI.ED.ME.2AB-R — Legacy Adult Utilities
   // ENTERPRISE-CLEANUP
