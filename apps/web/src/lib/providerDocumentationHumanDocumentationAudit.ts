@@ -10,9 +10,19 @@ import {
   PEDIATRIC_RASH_COMPLAINT_INTEL,
   PEDIATRIC_RSV_LIKE_ILLNESS_COMPLAINT_INTEL,
   PEDIATRIC_SEIZURE_COMPLAINT_INTEL,
+  STROKE_SYMPTOMS_COMPLAINT_INTEL,
+  WEAKNESS_COMPLAINT_INTEL,
   flattenComplaintIntelligenceKeys,
 } from "./providerDocumentationComplaintIntelligence";
+import {
+  ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL,
+  BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL,
+  FOCAL_WEAKNESS_COMPLAINT_V1_INTEL,
+  GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL,
+  NUMBNESS_TINGLING_COMPLAINT_V1_INTEL,
+} from "./providerDocumentationNeuroExpansionComplaintIntelligence19Mdm9";
 import { auditTrackCi18nMessageValues } from "./providerDocumentationComplaintIntelligenceTrackC";
+import { providerDocumentationNeuroStrokeWeaknessComplaintIntelEn } from "@/i18n/messages/providerDocumentationNeuroStrokeWeaknessComplaintIntel.en";
 import { providerDocumentationPediatricLegacyComplaintIntelEn } from "@/i18n/messages/providerDocumentationPediatricLegacyComplaintIntel.en";
 
 /** Forbidden rendered phrases outside mdmDataReviewed (substring match, case-insensitive). */
@@ -164,8 +174,41 @@ export const HUMAN_DOCUMENTATION_AUDIT_FAMILIES: readonly HumanDocumentationAudi
     ],
     messageSource: providerDocumentationPediatricLegacyComplaintIntelEn,
   },
+  {
+    phase: "MEDUI.ED.ME.2W-R",
+    requiredSamplesPerTemplate: 20,
+    templates: [
+      { templateId: "stroke_symptoms", bundle: STROKE_SYMPTOMS_COMPLAINT_INTEL, namespace: "stroke" },
+      { templateId: "weakness", bundle: WEAKNESS_COMPLAINT_INTEL, namespace: "weakness" },
+      {
+        templateId: "altered_mental_status_complaint_v1",
+        bundle: ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL,
+        namespace: "alteredMentalStatusComplaintV1",
+      },
+      {
+        templateId: "focal_weakness_complaint_v1",
+        bundle: FOCAL_WEAKNESS_COMPLAINT_V1_INTEL,
+        namespace: "focalWeaknessComplaintV1",
+      },
+      {
+        templateId: "numbness_tingling_complaint_v1",
+        bundle: NUMBNESS_TINGLING_COMPLAINT_V1_INTEL,
+        namespace: "numbnessTinglingComplaintV1",
+      },
+      {
+        templateId: "gait_instability_falls_neuro_complaint_v1",
+        bundle: GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL,
+        namespace: "gaitInstabilityFallsNeuroComplaintV1",
+      },
+      {
+        templateId: "back_pain_neuro_red_flags_complaint_v1",
+        bundle: BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL,
+        namespace: "backPainNeuroRedFlagsComplaintV1",
+      },
+    ],
+    messageSource: providerDocumentationNeuroStrokeWeaknessComplaintIntelEn,
+  },
   // Future phases register here:
-  // MEDUI.ED.ME.2W-R — Neuro / Stroke / Weakness
   // MEDUI.ED.ME.2Y-R — Cardiac Non-Chest-Pain
   // MEDUI.ED.ME.2Z-R — Renal / Metabolic / Endocrine
   // MEDUI.ED.ME.2AA-R — GI Extensions

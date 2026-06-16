@@ -3,6 +3,14 @@ import type { ProviderDocumentationComplaintIntelligence } from "./providerDocum
 import { buildMigraineHeadacheComplaintV1Intel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
 import { buildVertigoComplaintV1Intel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildConcussionFollowupComplaintV1Intel } from "./providerDocumentationTraumaInjuryComplaintIntelGoldStandard";
+import {
+  buildAlteredMentalStatusComplaintV1Intel,
+  buildBackPainNeuroRedFlagsComplaintV1Intel,
+  buildFocalWeaknessComplaintV1Intel,
+  buildGaitInstabilityFallsNeuroComplaintV1Intel,
+  buildNumbnessTinglingComplaintV1Intel,
+} from "./providerDocumentationNeuroStrokeWeaknessComplaintIntelGoldStandard";
+
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const seizure = (key: string) => `providerDocumentationComplaintIntel.seizureComplaintV1.${key}`;
 const alteredMentalStatus = (key: string) => `providerDocumentationComplaintIntel.alteredMentalStatusComplaintV1.${key}`;
@@ -30,50 +38,11 @@ export const SEIZURE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntellige
   followUpDisposition: [seizure("dispReturnRecurrenceDrivingRestrictionsAsDirected")],
 });
 
-export const ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [alteredMentalStatus("hpiBaselineMentalStatusOnset"), alteredMentalStatus("hpiTimeLastKnownWellProgression"), alteredMentalStatus("hpiFeverTraumaIntoxication"), alteredMentalStatus("hpiMedicationChangeGlucoseConcerns")],
-  rosImportantPositives: [alteredMentalStatus("rosAlteredMentalStatus"), alteredMentalStatus("rosConfusion"), alteredMentalStatus("rosWeakness")],
-  rosImportantNegatives: [alteredMentalStatus("rosDeniesTrauma")],
-  rosRedFlags: [alteredMentalStatus("rfRapidDecline"), alteredMentalStatus("rfFeverConcern")],
-  physicalExam: { neuroPsych: [alteredMentalStatus("examOrientationIfDocumented"), alteredMentalStatus("examNeuroScreenIfDocumented"), alteredMentalStatus("examHydrationPerfusionIfDocumented")], general: [alteredMentalStatus("examGeneralAppearance")] },
-  mdmWorkingAssessment: [alteredMentalStatus("mdmAlteredMentalStatusPresentation")],
-  mdmDifferentialSynthesis: [alteredMentalStatus("diffInfection"), alteredMentalStatus("diffMetabolic"), alteredMentalStatus("diffToxicologic"), alteredMentalStatus("diffNeurologic"), alteredMentalStatus("diffTrauma"), alteredMentalStatus("diffPsychiatricCause")],
-  mdmDataReviewed: [alteredMentalStatus("mdmCtLabsReviewedIfObtained")],
-  mdmClinicalRationale: [alteredMentalStatus("mdmCaregiverReliabilityDiscussed"), alteredMentalStatus("mdmNeurologyPsychiatryFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [alteredMentalStatus("mdmAdmissionObservationIfIndicated")],
-  reassessment: [alteredMentalStatus("reassessMentalStatusTrend")],
-  followUpDisposition: [alteredMentalStatus("dispReturnWorseningConfusionFever")],
-});
-
-export const FOCAL_WEAKNESS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [focalWeakness("hpiOnsetTimeLastKnownWell"), focalWeakness("hpiUnilateralVsBilateralProgression"), focalWeakness("hpiSpeechVisionChanges"), focalWeakness("hpiHeadacheSeizureTrauma")],
-  rosImportantPositives: [focalWeakness("rosFocalWeakness"), focalWeakness("rosSpeechChange"), focalWeakness("rosVisionChange")],
-  rosImportantNegatives: [focalWeakness("rosDeniesHeadache")],
-  rosRedFlags: [focalWeakness("rfRapidProgression"), focalWeakness("rfSpeechDeficitConcern")],
-  physicalExam: { neuroPsych: [focalWeakness("examStrengthIfDocumented"), focalWeakness("examSensationIfDocumented"), focalWeakness("examCranialNervesGaitIfDocumented")], general: [focalWeakness("examGeneralAppearance")] },
-  mdmWorkingAssessment: [focalWeakness("mdmFocalWeaknessPresentation")],
-  mdmDifferentialSynthesis: [focalWeakness("diffStrokeTiaConcern"), focalWeakness("diffPeripheralNerveRadiculopathy"), focalWeakness("diffMetabolic"), focalWeakness("diffMigraine"), focalWeakness("diffSeizurePostictal")],
-  mdmDataReviewed: [focalWeakness("mdmCtCtaMriReviewedIfObtained")],
-  mdmClinicalRationale: [focalWeakness("mdmNeurologyConsultIfIndicated"), focalWeakness("mdmAdmissionRationaleIfApplicable")],
-  mdmAdmitObserveDischarge: [focalWeakness("mdmObservationIfHighRisk")],
-  reassessment: [focalWeakness("reassessNeuroStatusTrend")],
-  followUpDisposition: [focalWeakness("dispReturnWorseningWeaknessSpeechVision")],
-});
-
-export const NUMBNESS_TINGLING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [numbnessTingling("hpiDistributionOnsetProgression"), numbnessTingling("hpiUnilateralVsBilateral"), numbnessTingling("hpiWeaknessSpeechVision"), numbnessTingling("hpiNeckBackPain")],
-  rosImportantPositives: [numbnessTingling("rosNumbness"), numbnessTingling("rosTingling"), numbnessTingling("rosWeakness")],
-  rosImportantNegatives: [numbnessTingling("rosDeniesSpeechChange")],
-  rosRedFlags: [numbnessTingling("rfProgressiveSymptoms"), numbnessTingling("rfWeaknessConcern")],
-  physicalExam: { neuroPsych: [numbnessTingling("examSensoryFindingsIfDocumented"), numbnessTingling("examStrengthReflexesIfDocumented"), numbnessTingling("examGaitIfDocumented")], general: [numbnessTingling("examGeneralAppearance")] },
-  mdmWorkingAssessment: [numbnessTingling("mdmNumbnessTinglingPresentation")],
-  mdmDifferentialSynthesis: [numbnessTingling("diffNeuropathy"), numbnessTingling("diffRadiculopathy"), numbnessTingling("diffStrokeTiaConcern"), numbnessTingling("diffMetabolicElectrolyte"), numbnessTingling("diffAnxietyHyperventilation")],
-  mdmDataReviewed: [numbnessTingling("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [numbnessTingling("mdmFunctionalStatusAssessed"), numbnessTingling("mdmNeurologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [numbnessTingling("mdmObservationIfHighRisk")],
-  reassessment: [numbnessTingling("reassessProgressionWeakness")],
-  followUpDisposition: [numbnessTingling("dispReturnProgressionWeaknessFunctionLoss")],
-});
+export const ALTERED_MENTAL_STATUS_COMPLAINT_V1_INTEL = buildAlteredMentalStatusComplaintV1Intel(alteredMentalStatus);
+export const FOCAL_WEAKNESS_COMPLAINT_V1_INTEL = buildFocalWeaknessComplaintV1Intel(focalWeakness);
+export const NUMBNESS_TINGLING_COMPLAINT_V1_INTEL = buildNumbnessTinglingComplaintV1Intel(numbnessTingling);
+export const GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL = buildGaitInstabilityFallsNeuroComplaintV1Intel(gaitInstabilityFallsNeuro);
+export const BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL = buildBackPainNeuroRedFlagsComplaintV1Intel(backPainNeuroRedFlags);
 
 export const TREMOR_MOVEMENT_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [tremorMovement("hpiOnsetRestVsActionTremor"), tremorMovement("hpiMedicationSubstanceTriggers"), tremorMovement("hpiWeaknessGaitChangeFever"), tremorMovement("hpiThyroidSymptomsIfPresent")],
@@ -95,36 +64,6 @@ export const VERTIGO_COMPLAINT_V1_INTEL = buildVertigoComplaintV1Intel(vertigo);
 export const MIGRAINE_HEADACHE_COMPLAINT_V1_INTEL = buildMigraineHeadacheComplaintV1Intel(migraineHeadache);
 
 export const CONCUSSION_FOLLOWUP_COMPLAINT_V1_INTEL = buildConcussionFollowupComplaintV1Intel(concussionFollowup);
-
-export const GAIT_INSTABILITY_FALLS_NEURO_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [gaitInstabilityFallsNeuro("hpiOnsetFrequencyBaselineMobility"), gaitInstabilityFallsNeuro("hpiAssistiveDevices"), gaitInstabilityFallsNeuro("hpiDizzinessWeaknessNumbness"), gaitInstabilityFallsNeuro("hpiSyncopeInjury")],
-  rosImportantPositives: [gaitInstabilityFallsNeuro("rosGaitInstability"), gaitInstabilityFallsNeuro("rosFalls"), gaitInstabilityFallsNeuro("rosDizziness")],
-  rosImportantNegatives: [gaitInstabilityFallsNeuro("rosDeniesSyncope")],
-  rosRedFlags: [gaitInstabilityFallsNeuro("rfRecurrentFalls"), gaitInstabilityFallsNeuro("rfInjuryFromFall")],
-  physicalExam: { neuroPsych: [gaitInstabilityFallsNeuro("examGaitIfAssessed"), gaitInstabilityFallsNeuro("examStrengthSensationIfDocumented"), gaitInstabilityFallsNeuro("examCoordinationInjuryScreenIfDocumented")], general: [gaitInstabilityFallsNeuro("examGeneralAppearance")] },
-  mdmWorkingAssessment: [gaitInstabilityFallsNeuro("mdmGaitInstabilityPresentation")],
-  mdmDifferentialSynthesis: [gaitInstabilityFallsNeuro("diffNeurologic"), gaitInstabilityFallsNeuro("diffVestibular"), gaitInstabilityFallsNeuro("diffMetabolic"), gaitInstabilityFallsNeuro("diffCardiac"), gaitInstabilityFallsNeuro("diffMedicationRelated"), gaitInstabilityFallsNeuro("diffTrauma")],
-  mdmDataReviewed: [gaitInstabilityFallsNeuro("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [gaitInstabilityFallsNeuro("mdmFallRiskDiscussed"), gaitInstabilityFallsNeuro("mdmNeurologyPtFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [gaitInstabilityFallsNeuro("mdmAdmissionObservationIfIndicated")],
-  reassessment: [gaitInstabilityFallsNeuro("reassessMobilityFallRisk")],
-  followUpDisposition: [gaitInstabilityFallsNeuro("dispReturnRecurrentFallsInjuryWorseningWeakness")],
-});
-
-export const BACK_PAIN_NEURO_RED_FLAGS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [backPainNeuroRedFlags("hpiBackPainWithWeaknessNumbness"), backPainNeuroRedFlags("hpiSaddleAnesthesiaBowelBladder"), backPainNeuroRedFlags("hpiFeverIvduCancerTrauma"), backPainNeuroRedFlags("hpiAnticoagulantUse")],
-  rosImportantPositives: [backPainNeuroRedFlags("rosBackPain"), backPainNeuroRedFlags("rosWeakness"), backPainNeuroRedFlags("rosNumbness")],
-  rosImportantNegatives: [backPainNeuroRedFlags("rosDeniesFever")],
-  rosRedFlags: [backPainNeuroRedFlags("rfBowelBladderSymptoms"), backPainNeuroRedFlags("rfProgressiveWeakness")],
-  physicalExam: { neuroPsych: [backPainNeuroRedFlags("examStrengthSensationReflexesIfDocumented"), backPainNeuroRedFlags("examGaitIfDocumented"), backPainNeuroRedFlags("examMidlineTendernessIfDocumented")], general: [backPainNeuroRedFlags("examGeneralAppearance")] },
-  mdmWorkingAssessment: [backPainNeuroRedFlags("mdmBackPainNeuroRedFlagsPresentation")],
-  mdmDifferentialSynthesis: [backPainNeuroRedFlags("diffRadiculopathy"), backPainNeuroRedFlags("diffCaudaEquinaConcern"), backPainNeuroRedFlags("diffSpinalInfection"), backPainNeuroRedFlags("diffFracture"), backPainNeuroRedFlags("diffMalignancy"), backPainNeuroRedFlags("diffEpiduralHematoma")],
-  mdmDataReviewed: [backPainNeuroRedFlags("mdmMriCtReviewedIfObtained")],
-  mdmClinicalRationale: [backPainNeuroRedFlags("mdmNeurosurgeryConsultIfIndicated"), backPainNeuroRedFlags("mdmAdmissionRationaleIfApplicable")],
-  mdmAdmitObserveDischarge: [backPainNeuroRedFlags("mdmObservationIfHighRisk")],
-  reassessment: [backPainNeuroRedFlags("reassessNeuroBowelBladderStatus")],
-  followUpDisposition: [backPainNeuroRedFlags("dispReturnWorseningWeaknessUrinaryRetentionFever")],
-});
 
 export const NEURO_EXPANSION_COMPLAINT_V1_TEMPLATE_IDS = [
   "seizure_complaint_v1",

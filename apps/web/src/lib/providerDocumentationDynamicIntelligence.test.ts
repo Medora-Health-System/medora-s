@@ -71,7 +71,7 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
     expect(keys).toContain("providerDocumentationComplaintIntel.abdominal.reassessSerialAbdominalExam");
   });
 
-  it("suggests stroke alert, CT, and thrombolytic review for weakness and speech difficulty", () => {
+  it("suggests stroke alert, CT, and transfer planning for weakness and speech difficulty", () => {
     const state = emptyProviderDocumentationWorkspaceState();
     state.hpi = "unilateral weakness; speech difficulty";
     const suggestions = getProviderDocumentationDynamicSuggestions({
@@ -79,9 +79,9 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
       state,
     });
     const keys = suggestions.map((item) => item.fragmentKey);
-    expect(keys).toContain("providerDocumentationComplaintIntel.stroke.mdmStrokeAlertActivated");
+    expect(keys).toContain("providerDocumentationComplaintIntel.stroke.planStrokeAlertActivated");
     expect(keys).toContain("providerDocumentationComplaintIntel.stroke.mdmCtHeadReviewed");
-    expect(keys).toContain("providerDocumentationComplaintIntel.stroke.mdmThrombolyticEligibilityConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.stroke.planTransferArranged");
   });
 
   it("suggests SAH, CT, and LP for thunderclap headache", () => {

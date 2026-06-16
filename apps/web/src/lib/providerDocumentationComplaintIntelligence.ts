@@ -111,6 +111,16 @@ import {
   buildPediatricRsvLikeIllnessComplaintIntel,
   buildPediatricSeizureComplaintIntel,
 } from "./providerDocumentationPediatricLegacyComplaintIntelGoldStandard";
+import {
+  buildAlteredMentalStatusComplaintV1Intel,
+  buildBackPainNeuroRedFlagsComplaintV1Intel,
+  buildFocalWeaknessComplaintV1Intel,
+  buildGaitInstabilityFallsNeuroComplaintV1Intel,
+  buildNumbnessTinglingComplaintV1Intel,
+  buildStrokeSymptomsComplaintIntel,
+  buildWeaknessComplaintIntel,
+  NEURO_STROKE_WEAKNESS_TEMPLATE_IDS,
+} from "./providerDocumentationNeuroStrokeWeaknessComplaintIntelGoldStandard";
 
 export type ProviderDocumentationComplaintIntelligence = {
   hpi?: string[];
@@ -187,143 +197,8 @@ export const SOB_COMPLAINT_INTEL = buildAdultSobComplaintIntel(sob);
 /** Abdominal pain — surgical / OB-GYN red flags (SAEM / StatPearls / ECAT). */
 export const ABDOMINAL_COMPLAINT_INTEL = buildAdultAbdominalPainComplaintIntel(abd);
 
-/** Acute neuro symptoms / stroke concern — AHA/ASA time-sensitive workflow elements. */
-export const STROKE_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    stroke("hpiLastKnownWellReviewed"),
-    stroke("hpiSuddenOnset"),
-    stroke("hpiSpeechDifficulty"),
-    stroke("hpiFacialDroop"),
-    stroke("hpiUnilateralWeakness"),
-    stroke("hpiUnilateralNumbness"),
-    stroke("hpiGaitInstability"),
-    stroke("hpiVisionChange"),
-    stroke("hpiConfusion"),
-    stroke("hpiHeadacheWithNeuroSymptoms"),
-    stroke("hpiSymptomsImproving"),
-    stroke("hpiSymptomsPersistent"),
-    stroke("hpiSymptomOnsetWitnessed"),
-    stroke("hpiSymptomOnsetTimeDocumented"),
-    stroke("hpiAnticoagulantUse"),
-    stroke("hpiPriorTiaStroke"),
-    stroke("hpiNihssConsidered"),
-    stroke("hpiStrokeAlertActivated"),
-    stroke("hpiTransferHigherNeuroCareConsidered"),
-    stroke("hpiSeizureActivityReviewed"),
-    stroke("hpiAtrialFibrillation"),
-    stroke("hpiHypertensionHistory"),
-    stroke("hpiDiabetesHistory"),
-    stroke("hpiRecentTrauma"),
-  ],
-  rosImportantPositives: [
-    stroke("rosWeakness"),
-    stroke("rosNumbness"),
-    stroke("rosSpeechDifficulty"),
-    stroke("rosVisionLoss"),
-    stroke("rosFacialDroop"),
-    stroke("rosHeadache"),
-    stroke("rosConfusion"),
-    stroke("rosDizziness"),
-    stroke("rosGaitDifficulty"),
-  ],
-  rosImportantNegatives: [
-    stroke("rosDeniesChestPain"),
-    stroke("rosDeniesFever"),
-    stroke("rosDeniesSeizure"),
-    stroke("rosDeniesTrauma"),
-    stroke("rosDeniesSyncope"),
-    stroke("rosDeniesNeckStiffness"),
-  ],
-  rosRedFlags: [
-    stroke("rfRapidNeurologicDecline"),
-    stroke("rfAlteredMentalStatus"),
-    stroke("rfPersistentFocalDeficit"),
-    stroke("rfAirwayCompromiseConcern"),
-    stroke("rfIntracranialHemorrhageConcern"),
-  ],
-  physicalExam: {
-    neuroPsych: [
-      stroke("examFacialAsymmetryPresent"),
-      stroke("examSpeechSlurringNoted"),
-      stroke("examUnilateralWeaknessNoted"),
-      stroke("examSensationDeficitPresent"),
-      stroke("examPronatorDriftPresent"),
-      stroke("examGaitInstabilityNoted"),
-      stroke("examNihssPerformed"),
-      stroke("examAlertOriented"),
-      stroke("examCranialNervesIntact"),
-      stroke("examStrengthSymmetric"),
-      stroke("examNoFocalDeficitOnReassessment"),
-      stroke("examFollowsCommands"),
-    ],
-    cardiovascular: [
-      stroke("examCardioRrr"),
-      stroke("examCardioTachycardic"),
-      stroke("examIrregularRhythmNoted"),
-    ],
-    general: [stroke("examAlert"), stroke("examUncomfortableAppearing")],
-  },
-  mdmWorkingAssessment: [
-    stroke("mdmStrokeSyndromeConsidered"),
-    stroke("mdmHemorrhagicStrokeConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    stroke("diffIschemicStroke"),
-    stroke("diffTia"),
-    stroke("diffIntracranialHemorrhage"),
-    stroke("diffSeizurePostIctal"),
-    stroke("diffComplexMigraine"),
-    stroke("diffMetabolicEncephalopathy"),
-    stroke("diffBellPalsy"),
-    stroke("diffVertigo"),
-    stroke("diffMassLesion"),
-    stroke("diffMedicationIntoxication"),
-  ],
-  mdmDataReviewed: [
-    stroke("mdmCtHeadReviewed"),
-    stroke("mdmCtaHeadNeckReviewed"),
-    stroke("mdmGlucoseReviewed"),
-    stroke("mdmNihssDocumentedIfUsed"),
-    stroke("mdmEcgReviewed"),
-    stroke("mdmExternalRecordsReviewed"),
-  ],
-  mdmClinicalRationale: [
-    stroke("mdmLastKnownWellDocumented"),
-    stroke("mdmStrokeAlertActivated"),
-    stroke("mdmTimeSensitiveWorkflowReviewed"),
-    stroke("mdmThrombolyticEligibilityConsidered"),
-    stroke("mdmRiskBenefitDiscussionDocumented"),
-    stroke("mdmAnticoagulationStatusReviewed"),
-  ],
-  mdmPlanSummary: [
-    stroke("mdmNeurologyConsulted"),
-    stroke("mdmTransferStrokeCenterConsidered"),
-    stroke("mdmSerialNeuroReassessmentsPerformed"),
-    stroke("mdmAdmissionNeuroMonitoring"),
-  ],
-  mdmImmediateActionsRationale: [
-    stroke("mdmNpoIfStrokeSuspected"),
-    stroke("mdmBloodPressureManagementConsidered"),
-  ],
-  mdmAdmitObserveDischarge: [
-    stroke("mdmAdmissionConsidered"),
-    stroke("mdmTransferConsidered"),
-    stroke("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    stroke("reassessRepeatNeuroExam"),
-    stroke("reassessNeurologicStatusUnchanged"),
-    stroke("reassessSymptomsImproved"),
-    stroke("reassessHemodynamicallyStable"),
-  ],
-  followUpDisposition: [
-    stroke("dispAdmissionStrokeEvaluation"),
-    stroke("dispTransferHigherNeuroCare"),
-    stroke("dispDischargeReassuringEvaluation"),
-    stroke("dispStrictReturnPrecautions"),
-    stroke("dispStrokeEducationReviewed"),
-  ],
-});
+/** Acute neuro symptoms / stroke concern — ME.2W-R gold standard. */
+export const STROKE_SYMPTOMS_COMPLAINT_INTEL = buildStrokeSymptomsComplaintIntel(stroke);
 
 /** Headache — ACEP red flags / secondary headache workup framework. */
 export const HEADACHE_COMPLAINT_INTEL = buildHeadacheComplaintIntel(ha);
@@ -446,108 +321,8 @@ export const PSYCHIATRIC_BEHAVIORAL_COMPLAINT_INTEL: ProviderDocumentationCompla
   ],
 });
 
-/** Weakness — broad ED weakness differential (SAEM / neurologic-medical clearance framework). */
-export const WEAKNESS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    weak("hpiGeneralizedWeakness"),
-    weak("hpiFocalWeakness"),
-    weak("hpiAcuteOnset"),
-    weak("hpiGradualOnset"),
-    weak("hpiAssociatedDizziness"),
-    weak("hpiAssociatedFatigue"),
-    weak("hpiAssociatedFever"),
-    weak("hpiPoorOralIntake"),
-    weak("hpiRecentIllness"),
-    weak("hpiMedicationChangeReviewed"),
-    weak("hpiNeurologicSymptomsReviewed"),
-    weak("hpiFallRiskReviewed"),
-    weak("hpiBaselineFunctionalStatusReviewed"),
-    weak("hpiCaregiverHistorianUsedIfApplicable"),
-  ],
-  rosImportantPositives: [
-    weak("rosWeakness"),
-    weak("rosFatigue"),
-    weak("rosDizziness"),
-    weak("rosFever"),
-    weak("rosDecreasedAppetite"),
-    weak("rosGaitDifficulty"),
-  ],
-  rosImportantNegatives: [
-    weak("rosDeniesFocalNeuroDeficit"),
-    weak("rosDeniesChestPain"),
-    weak("rosDeniesShortnessOfBreath"),
-    weak("rosDeniesSyncope"),
-    weak("rosDeniesFever"),
-    weak("rosDeniesTrauma"),
-  ],
-  rosRedFlags: [
-    weak("rfFocalWeakness"),
-    weak("rfAlteredMentalStatus"),
-    weak("rfInabilityToAmbulate"),
-    weak("rfSepsisConcern"),
-    weak("rfStrokeConcern"),
-    weak("rfSevereDehydrationConcern"),
-  ],
-  physicalExam: {
-    general: [weak("examAlertOriented"), weak("examNoAcuteDistress"), weak("examNoRespiratoryDistress")],
-    heent: [weak("examDryMucousMembranes")],
-    cardiovascular: [weak("examTachycardic")],
-    neuroPsych: [
-      weak("examNoFocalNeuroDeficit"),
-      weak("examFocalWeaknessNoted"),
-      weak("examStrengthSymmetric"),
-      weak("examGaitSteady"),
-      weak("examGaitUnstable"),
-    ],
-  },
-  mdmWorkingAssessment: [weak("mdmBroadWeaknessDifferentialConsidered")],
-  mdmDifferentialSynthesis: [
-    weak("diffDehydration"),
-    weak("diffElectrolyteAbnormality"),
-    weak("diffInfectionSepsis"),
-    weak("diffAnemia"),
-    weak("diffStrokeTia"),
-    weak("diffAcsEquivalent"),
-    weak("diffMedicationAdverseEffect"),
-    weak("diffDeconditioning"),
-    weak("diffHypoHyperglycemia"),
-    weak("diffRenalDysfunction"),
-  ],
-  mdmDataReviewed: [
-    weak("mdmLabsReviewed"),
-    weak("mdmElectrolytesReviewed"),
-    weak("mdmEcgReviewed"),
-    weak("mdmGlucoseReviewedIfObtained"),
-  ],
-  mdmClinicalRationale: [
-    weak("mdmInfectionEvaluationPerformed"),
-    weak("mdmNeurologicExamReassessed"),
-    weak("mdmSafeDischargeAbilityAssessed"),
-  ],
-  mdmPlanSummary: [
-    weak("mdmIvFluidsAdministeredIfIndicated"),
-    weak("mdmAmbulationTrialPerformed"),
-    weak("mdmSerialReassessmentPerformed"),
-  ],
-  mdmImmediateActionsRationale: [weak("mdmFallPrecautionsIfIndicated")],
-  mdmAdmitObserveDischarge: [
-    weak("mdmAdmissionConsidered"),
-    weak("mdmObservationConsidered"),
-  ],
-  reassessment: [
-    weak("reassessWeaknessImprovedAfterTreatment"),
-    weak("reassessAmbulatoryReassessmentPerformed"),
-    weak("reassessRepeatNeuroExamUnchanged"),
-    weak("reassessVitalSignsStable"),
-  ],
-  followUpDisposition: [
-    weak("dispDischargedAfterImprovement"),
-    weak("dispAdmissionForWeaknessEvaluation"),
-    weak("dispObservationConsidered"),
-    weak("dispReturnPrecautionsDiscussed"),
-    weak("dispFollowUpRecommended"),
-  ],
-});
+/** Weakness — ME.2W-R gold standard. */
+export const WEAKNESS_COMPLAINT_INTEL = buildWeaknessComplaintIntel(weak);
 
 export const FLANK_PAIN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFlankPainComplaintIntel(flank);
@@ -1298,6 +1073,9 @@ export const BATCH15_MSK_TRAUMA_COMPLAINT_TEMPLATE_IDS = MSK_TRAUMA_COMPLAINT_V1
 export const BATCH16_INFECTIOUS_ENT_COMPLAINT_TEMPLATE_IDS = INFECTIOUS_ENT_COMPLAINT_V1_TEMPLATE_IDS;
 export const BATCH17_ENDOCRINE_METABOLIC_COMPLAINT_TEMPLATE_IDS = ENDOCRINE_METABOLIC_COMPLAINT_V1_TEMPLATE_IDS;
 export const BATCH18_NEURO_EXPANSION_COMPLAINT_TEMPLATE_IDS = NEURO_EXPANSION_COMPLAINT_V1_TEMPLATE_IDS;
+export const BATCH20_NEURO_STROKE_WEAKNESS_COMPLAINT_TEMPLATE_IDS = NEURO_STROKE_WEAKNESS_TEMPLATE_IDS;
+export const BATCH21_EXTREMITY_MSK_COMPLAINT_TEMPLATE_IDS = ["trauma_musculoskeletal"] as const;
+
 export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH1_COMPLAINT_TEMPLATE_IDS,
   ...BATCH2_COMPLAINT_TEMPLATE_IDS,
@@ -1318,6 +1096,8 @@ export const COMPLAINT_INTEL_TEMPLATE_IDS = [
   ...BATCH17_ENDOCRINE_METABOLIC_COMPLAINT_TEMPLATE_IDS,
   ...BATCH18_NEURO_EXPANSION_COMPLAINT_TEMPLATE_IDS,
   ...BATCH19_PEDIATRIC_LEGACY_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH20_NEURO_STROKE_WEAKNESS_COMPLAINT_TEMPLATE_IDS,
+  ...BATCH21_EXTREMITY_MSK_COMPLAINT_TEMPLATE_IDS,
   "uri_respiratory",
   "diarrhea",
   "ear_pain",

@@ -242,10 +242,10 @@ describe("provider documentation complaint intelligence (19N.5 Batch 2)", () => 
     const headache = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "headache");
     const dizz = PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "dizziness_syncope");
     expect(stroke?.complaintIntelligence?.hpi).toContain(
-      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWell"
     );
     expect(stroke?.complaintIntelligence?.physicalExam?.neuroPsych).toContain(
-      "providerDocumentationComplaintIntel.stroke.examNihssPerformed"
+      "providerDocumentationComplaintIntel.stroke.examNihssScore"
     );
     expect(stroke?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.stroke.diffBellPalsy"
@@ -422,7 +422,7 @@ describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => 
       "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
     );
     expect(weakness?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
-      "providerDocumentationComplaintIntel.weakness.diffStrokeTia"
+      "providerDocumentationComplaintIntel.weakness.diffTia"
     );
     expect(flank?.complaintIntelligence?.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
@@ -438,7 +438,7 @@ describe("provider documentation complaint intelligence (19N.6 Batch 3)", () => 
 
   it("leaves Batch 1 and Batch 2 intelligence bundles unchanged", () => {
     expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWell"
     );
     expect(CHEST_PAIN_COMPLAINT_INTEL.mdmDifferentialSynthesis).toContain(
       "providerDocumentationComplaintIntel.chestPain.diffStemi"
@@ -564,7 +564,7 @@ describe("provider documentation complaint intelligence (19N.7 Batch 4)", () => 
       "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"
     );
     expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWell"
     );
   });
 
@@ -708,7 +708,7 @@ describe("provider documentation complaint intelligence (19N.8 Batch 5)", () => 
       "providerDocumentationComplaintIntel.flankPain.diffRenalColic"
     );
     expect(STROKE_SYMPTOMS_COMPLAINT_INTEL.hpi).toContain(
-      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWellReviewed"
+      "providerDocumentationComplaintIntel.stroke.hpiLastKnownWell"
     );
   });
 
