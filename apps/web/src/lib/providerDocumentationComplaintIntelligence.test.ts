@@ -1390,10 +1390,10 @@ describe("provider documentation complaint intelligence (19N.13 Batch 10)", () =
   it("pelvic/GYN bundle uses summary exam chips without auto-inserting sensitive findings", () => {
     const femaleKeys = flattenComplaintIntelligenceKeys(FEMALE_PELVIC_GYN_COMPLAINT_INTEL);
     expect(femaleKeys).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examExternalExamSummaryDocumented"
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examPelvicExamPerformedWithChaperone"
     );
     expect(femaleKeys).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examDeferredWithReasonIfDeferred"
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examPelvicExamDeferred"
     );
     expect(femaleKeys).not.toContain(
       "providerDocumentationComplaintIntel.femalePelvicGynComplaint.examDetailedSpeculumFindingsAuto"
@@ -1444,7 +1444,7 @@ describe("provider documentation complaint intelligence (19N.13 Batch 10)", () =
       "providerDocumentationComplaintIntel.maleGenitalComplaint.rfTesticularTorsionConcern"
     );
     expect(female?.complaintIntelligence?.mdmClinicalRationale).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmChaperoneDocumentationIncluded"
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.reasoningLowSuspicionEctopicPregnancy"
     );
     expect(crush?.promptReminderKeys).toContain("providerDocumentationPromptReminders.traumaCrushRhabdoReminder");
     expect(male?.promptReminderKeys).toContain("providerDocumentationPromptReminders.adultMaleGenitalTorsionReminder");

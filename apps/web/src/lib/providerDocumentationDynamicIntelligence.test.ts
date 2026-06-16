@@ -133,8 +133,8 @@ describe("providerDocumentationDynamicIntelligence (19O)", () => {
     });
     const keys = suggestions.map((item) => item.fragmentKey);
     expect(keys).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffEctopicPregnancy");
-    expect(keys).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmEctopicPregnancyConsidered");
-    expect(keys).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPregnancyTestingReviewed");
+    expect(keys).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.waConcernForEctopicPregnancy");
+    expect(keys).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPregnancyTestReviewed");
   });
 
   it("does not auto-insert dynamic suggestion fragments on template apply", () => {

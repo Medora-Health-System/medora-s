@@ -460,18 +460,18 @@ const FEMALE_PELVIC_GYN_RULES: DynamicIntelligenceRule[] = [
     triggerTerms: ["pelvic pain", "douleur pelvienne", "pelvien"],
     reasonKey: reason("femalePelvicPain"),
     suggestions: [
-      sug("differential", femaleGyn("diffPid"), "mdmDifferentialSynthesis"),
-      sug("differential", femaleGyn("diffOvarianTorsionCyst"), "mdmDifferentialSynthesis"),
-      sug("mdm", femaleGyn("mdmPelvicUltrasoundConsideredReviewed"), "mdmDataReviewed"),
+      sug("differential", femaleGyn("diffPelvicInflammatoryDisease"), "mdmDifferentialSynthesis"),
+      sug("differential", femaleGyn("diffOvarianTorsion"), "mdmDifferentialSynthesis"),
+      sug("mdm", femaleGyn("mdmPelvicUltrasoundReviewed"), "mdmDataReviewed"),
     ],
   },
   {
     triggerTerms: ["vaginal bleeding", "saignement vaginal", "bleeding"],
     reasonKey: reason("femalePelvicBleeding"),
     suggestions: [
-      sug("differential", femaleGyn("diffPregnancyRelatedBleeding"), "mdmDifferentialSynthesis"),
-      sug("mdm", femaleGyn("mdmPregnancyTestingReviewed"), "mdmDataReviewed"),
-      sug("mdm", femaleGyn("mdmObGynConsultationConsidered"), "mdmConsultsDiscussed"),
+      sug("differential", femaleGyn("diffAbnormalUterineBleeding"), "mdmDifferentialSynthesis"),
+      sug("mdm", femaleGyn("mdmPregnancyTestReviewed"), "mdmDataReviewed"),
+      sug("mdm", femaleGyn("planObGynFollowUpRecommended"), "mdmPlanSummary"),
     ],
   },
   {
@@ -479,18 +479,18 @@ const FEMALE_PELVIC_GYN_RULES: DynamicIntelligenceRule[] = [
     reasonKey: reason("femalePelvicPregnancyConcern"),
     suggestions: [
       sug("differential", femaleGyn("diffEctopicPregnancy"), "mdmDifferentialSynthesis"),
-      sug("mdm", femaleGyn("mdmEctopicPregnancyConsidered"), "mdmWorkingAssessment"),
-      sug("mdm", femaleGyn("mdmPregnancyTestingReviewed"), "mdmDataReviewed"),
-      sug("mdm", femaleGyn("mdmPelvicUltrasoundConsideredReviewed"), "mdmDataReviewed"),
+      sug("mdm", femaleGyn("waConcernForEctopicPregnancy"), "mdmWorkingAssessment"),
+      sug("mdm", femaleGyn("mdmPregnancyTestReviewed"), "mdmDataReviewed"),
+      sug("mdm", femaleGyn("mdmPelvicUltrasoundReviewed"), "mdmDataReviewed"),
     ],
   },
   {
     triggerTerms: ["adnexal tenderness", "adnexal", "annexe"],
     reasonKey: reason("femalePelvicAdnexalTenderness"),
     suggestions: [
-      sug("differential", femaleGyn("diffOvarianTorsionCyst"), "mdmDifferentialSynthesis"),
-      sug("differential", femaleGyn("diffPid"), "mdmDifferentialSynthesis"),
-      sug("mdm", femaleGyn("mdmPelvicUltrasoundConsideredReviewed"), "mdmDataReviewed"),
+      sug("differential", femaleGyn("diffOvarianTorsion"), "mdmDifferentialSynthesis"),
+      sug("differential", femaleGyn("diffPelvicInflammatoryDisease"), "mdmDifferentialSynthesis"),
+      sug("mdm", femaleGyn("mdmPelvicUltrasoundReviewed"), "mdmDataReviewed"),
     ],
   },
 ];

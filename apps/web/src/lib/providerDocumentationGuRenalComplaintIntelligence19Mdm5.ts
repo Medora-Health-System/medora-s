@@ -1,5 +1,10 @@
 /** Phase 19MDM.5 — GU / renal complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
+import {
+  buildPelvicPainComplaintV1Intel,
+  buildVaginalBleedingComplaintV1Intel,
+  buildVaginalDischargeComplaintV1Intel,
+} from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -86,50 +91,14 @@ export const TESTICULAR_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintI
   followUpDisposition: [testicularPain("dispReturnWorseningPainSwellingFever")],
 });
 
-export const PELVIC_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [pelvicPain("hpiLocationDuration"), pelvicPain("hpiMenstrualHistoryPregnancy"), pelvicPain("hpiVaginalBleedingDischarge"), pelvicPain("hpiUrinaryGiSymptomsFever")],
-  rosImportantPositives: [pelvicPain("rosPelvicPain"), pelvicPain("rosVaginalBleeding"), pelvicPain("rosDysuria")],
-  rosImportantNegatives: [pelvicPain("rosDeniesSyncope")],
-  rosRedFlags: [pelvicPain("rfSeverePainConcern"), pelvicPain("rfPregnancyConcern")],
-  physicalExam: { abdomen: [pelvicPain("examAbdominalPelvicFindingsIfPerformed")], general: [pelvicPain("examGeneralAppearance")] },
-  mdmWorkingAssessment: [pelvicPain("mdmPelvicPainPresentation")],
-  mdmDifferentialSynthesis: [pelvicPain("diffOvarianPathology"), pelvicPain("diffEctopicConcern"), pelvicPain("diffPid"), pelvicPain("diffCystitis"), pelvicPain("diffAppendicitis"), pelvicPain("diffGiCause")],
-  mdmDataReviewed: [pelvicPain("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [pelvicPain("mdmObGynConsultIfIndicated"), pelvicPain("mdmPregnancyTestReviewIfApplicable")],
-  mdmAdmitObserveDischarge: [pelvicPain("mdmObservationIfHighRisk")],
-  reassessment: [pelvicPain("reassessPainBleeding")],
-  followUpDisposition: [pelvicPain("dispReturnSyncopeFeverBleeding")],
-});
+export const PELVIC_PAIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildPelvicPainComplaintV1Intel(pelvicPain);
 
-export const VAGINAL_BLEEDING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [vaginalBleeding("hpiAmountDurationClots"), vaginalBleeding("hpiPregnancyPossibility"), vaginalBleeding("hpiPelvicPainDizziness"), vaginalBleeding("hpiAnticoagulantUse")],
-  rosImportantPositives: [vaginalBleeding("rosVaginalBleeding"), vaginalBleeding("rosPelvicPain"), vaginalBleeding("rosDizziness")],
-  rosImportantNegatives: [vaginalBleeding("rosDeniesSyncope")],
-  rosRedFlags: [vaginalBleeding("rfHeavyBleedingConcern"), vaginalBleeding("rfHypotensionConcern")],
-  physicalExam: { abdomen: [vaginalBleeding("examHemodynamicConcernsIfDocumented"), vaginalBleeding("examAbdominalPelvicFindingsIfDocumented")], general: [vaginalBleeding("examGeneralAppearance")] },
-  mdmWorkingAssessment: [vaginalBleeding("mdmVaginalBleedingPresentation")],
-  mdmDifferentialSynthesis: [vaginalBleeding("diffDysfunctionalBleeding"), vaginalBleeding("diffMiscarriageEctopicConcern"), vaginalBleeding("diffFibroids"), vaginalBleeding("diffHormonalCause"), vaginalBleeding("diffCoagulopathy")],
-  mdmDataReviewed: [vaginalBleeding("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [vaginalBleeding("mdmObGynConsultIfIndicated"), vaginalBleeding("mdmRhStatusIfApplicable")],
-  mdmAdmitObserveDischarge: [vaginalBleeding("mdmAdmissionIfHighRisk")],
-  reassessment: [vaginalBleeding("reassessBleedingHemodynamics")],
-  followUpDisposition: [vaginalBleeding("dispReturnHeavyBleedingSyncope")],
-});
+export const VAGINAL_BLEEDING_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildVaginalBleedingComplaintV1Intel(vaginalBleeding);
 
-export const VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [vaginalDischarge("hpiColorOdorItchingPain"), vaginalDischarge("hpiStiExposure"), vaginalDischarge("hpiDysuriaPelvicPainFever")],
-  rosImportantPositives: [vaginalDischarge("rosVaginalDischarge"), vaginalDischarge("rosDysuria"), vaginalDischarge("rosPelvicPain")],
-  rosImportantNegatives: [vaginalDischarge("rosDeniesFever")],
-  rosRedFlags: [vaginalDischarge("rfSeverePainConcern"), vaginalDischarge("rfFeverConcern")],
-  physicalExam: { abdomen: [vaginalDischarge("examPelvicFindingsIfDocumented")], general: [vaginalDischarge("examGeneralAppearance")] },
-  mdmWorkingAssessment: [vaginalDischarge("mdmVaginalDischargePresentation")],
-  mdmDifferentialSynthesis: [vaginalDischarge("diffVaginitis"), vaginalDischarge("diffCervicitis"), vaginalDischarge("diffStiPidConcern"), vaginalDischarge("diffUrinaryInfection")],
-  mdmDataReviewed: [vaginalDischarge("mdmUaCultureReviewedIfObtained")],
-  mdmClinicalRationale: [vaginalDischarge("mdmStiCounselingIfApplicable"), vaginalDischarge("mdmObGynFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [vaginalDischarge("mdmObservationIfHighRisk")],
-  reassessment: [vaginalDischarge("reassessPainFever")],
-  followUpDisposition: [vaginalDischarge("dispReturnWorseningPainFever")],
-});
+export const VAGINAL_DISCHARGE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildVaginalDischargeComplaintV1Intel(vaginalDischarge);
 
 export const RENAL_FAILURE_SYMPTOMS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [renalFailureSymptoms("hpiDecreasedUrineOutput"), renalFailureSymptoms("hpiEdemaWeaknessNausea"), renalFailureSymptoms("hpiDyspneaDialysisHistory"), renalFailureSymptoms("hpiMedicationComplianceWeightChanges")],

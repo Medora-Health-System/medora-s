@@ -38,6 +38,7 @@ import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainCo
 import { buildCoughComplaintIntel, buildUriRespiratoryComplaintIntel } from "./providerDocumentationCoughUriComplaintIntelGoldStandard";
 import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
+import { buildFemalePelvicGynComplaintIntel } from "./providerDocumentationFemalePelvicGynComplaintIntelGoldStandard";
 import { buildAllergicReactionRashIntel } from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
@@ -2681,95 +2682,8 @@ export const MALE_GENITAL_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelli
   ],
 });
 
-export const FEMALE_PELVIC_GYN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    femaleGynIntel("hpiPelvicPain"),
-    femaleGynIntel("hpiVaginalBleeding"),
-    femaleGynIntel("hpiVaginalDischarge"),
-    femaleGynIntel("hpiPregnancyConcern"),
-    femaleGynIntel("hpiLmpReviewed"),
-    femaleGynIntel("hpiDysuriaReviewed"),
-    femaleGynIntel("hpiStiExposureReviewed"),
-    femaleGynIntel("hpiAbdominalPainReviewed"),
-    femaleGynIntel("hpiFeverReviewed"),
-    femaleGynIntel("hpiSexualAssaultConcernReviewedIfClinicallyAppropriate"),
-  ],
-  rosImportantPositives: [
-    femaleGynIntel("rosPelvicPain"),
-    femaleGynIntel("rosVaginalBleeding"),
-    femaleGynIntel("rosVaginalDischarge"),
-    femaleGynIntel("rosAbdominalPain"),
-    femaleGynIntel("rosFever"),
-    femaleGynIntel("rosDysuria"),
-  ],
-  rosImportantNegatives: [
-    femaleGynIntel("rosDeniesHeavyBleeding"),
-    femaleGynIntel("rosDeniesSeverePain"),
-    femaleGynIntel("rosDeniesFever"),
-    femaleGynIntel("rosDeniesSyncope"),
-    femaleGynIntel("rosDeniesPregnancyConcern"),
-  ],
-  rosRedFlags: [
-    femaleGynIntel("rfEctopicPregnancyConcern"),
-    femaleGynIntel("rfHeavyVaginalBleeding"),
-    femaleGynIntel("rfPidConcern"),
-    femaleGynIntel("rfOvarianTorsionConcern"),
-    femaleGynIntel("rfSexualAssaultConcern"),
-    femaleGynIntel("rfPregnancyComplicationConcern"),
-    femaleGynIntel("rfSepsisConcern"),
-  ],
-  physicalExam: {
-    general: [femaleGynIntel("examChaperonePresentOffered")],
-    abdomen: [femaleGynIntel("examAbdominalTendernessIfPerformed")],
-    skin: [
-      femaleGynIntel("examExternalExamSummaryDocumented"),
-      femaleGynIntel("examSpeculumExamSummaryDocumented"),
-      femaleGynIntel("examBimanualExamSummaryDocumented"),
-      femaleGynIntel("examCervicalMotionTenderness"),
-      femaleGynIntel("examAdnexalTenderness"),
-      femaleGynIntel("examDischargeNoted"),
-      femaleGynIntel("examBleedingNoted"),
-      femaleGynIntel("examDeferredWithReasonIfDeferred"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    femaleGynIntel("mdmEctopicPregnancyConsidered"),
-    femaleGynIntel("mdmPidConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    femaleGynIntel("diffEctopicPregnancy"),
-    femaleGynIntel("diffPregnancyRelatedBleeding"),
-    femaleGynIntel("diffPid"),
-    femaleGynIntel("diffOvarianTorsionCyst"),
-    femaleGynIntel("diffCervicitisSti"),
-    femaleGynIntel("diffUti"),
-    femaleGynIntel("diffVaginitis"),
-    femaleGynIntel("diffAbnormalUterineBleeding"),
-    femaleGynIntel("diffAppendicitis"),
-  ],
-  mdmDataReviewed: [
-    femaleGynIntel("mdmPregnancyTestingReviewed"),
-    femaleGynIntel("mdmPelvicUltrasoundConsideredReviewed"),
-  ],
-  mdmClinicalRationale: [
-    femaleGynIntel("mdmStiTestingTreatmentConsidered"),
-    femaleGynIntel("mdmChaperoneDocumentationIncluded"),
-    femaleGynIntel("mdmSafetySexualAssaultResourcesConsideredIfApplicable"),
-  ],
-  mdmPlanSummary: [femaleGynIntel("mdmObGynConsultationConsidered")],
-  reassessment: [
-    femaleGynIntel("reassessPainReassessed"),
-    femaleGynIntel("reassessBleedingStatusReassessed"),
-    femaleGynIntel("reassessVitalsStable"),
-    femaleGynIntel("reassessTestResultsReviewed"),
-  ],
-  followUpDisposition: [
-    femaleGynIntel("dispObGynFollowUp"),
-    femaleGynIntel("dispReturnHeavyBleedingWorseningPainSyncopeFever"),
-    femaleGynIntel("dispStiPrecautionsIfRelevant"),
-    femaleGynIntel("dispDischargeAfterReassuringEvaluation"),
-  ],
-});
+export const FEMALE_PELVIC_GYN_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildFemalePelvicGynComplaintIntel(femaleGynIntel);
 
 export const COMPLAINT_INTEL_BY_TEMPLATE_ID: Partial<
   Record<string, ProviderDocumentationComplaintIntelligence>

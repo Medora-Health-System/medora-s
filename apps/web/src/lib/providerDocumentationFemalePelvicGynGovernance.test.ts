@@ -184,12 +184,12 @@ describe("providerDocumentationFemalePelvicGynGovernance — MEDUI.ED.ME.2I", ()
     expect(
       compositeVisible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiPregnancyConcern")
     ).toBe(true);
-    expect(compositeVisible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiLmpReviewed")).toBe(
+    expect(compositeVisible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiLastMenstrualPeriodDocumented")).toBe(
       true
     );
-    expect(
-      compositeVisible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiStiExposureReviewed")
-    ).toBe(true);
+    expect(compositeVisible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.hpiStiExposure")).toBe(
+      true
+    );
 
     const pelvicVisible = collectFemalePelvicGynVisibleStickyNoteFragmentKeys({
       templateId: "pelvic_pain_complaint_v1",
@@ -228,14 +228,16 @@ describe("providerDocumentationFemalePelvicGynGovernance — MEDUI.ED.ME.2I", ()
       "providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffEctopicPregnancy"
     );
     expect(compositeMdm).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffOvarianTorsionCyst"
-    );
-    expect(compositeMdm).toContain("providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffPid");
-    expect(compositeMdm).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPregnancyTestingReviewed"
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffOvarianTorsion"
     );
     expect(compositeMdm).toContain(
-      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPelvicUltrasoundConsideredReviewed"
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.diffPelvicInflammatoryDisease"
+    );
+    expect(compositeMdm).toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPregnancyTestReviewed"
+    );
+    expect(compositeMdm).toContain(
+      "providerDocumentationComplaintIntel.femalePelvicGynComplaint.mdmPelvicUltrasoundReviewed"
     );
     expect(compositeMdm).not.toContain("erMseMdmChips.planEcg");
     expect(compositeMdm).not.toContain("providerDocumentationMdmHighValue.ekgNormal");
@@ -245,14 +247,14 @@ describe("providerDocumentationFemalePelvicGynGovernance — MEDUI.ED.ME.2I", ()
     const pelvicTemplate =
       PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "pelvic_pain_complaint_v1") ?? null;
     const pelvicMdm = buildMdmTemplateDropdownOptions(pelvicTemplate).map((option) => option.fragmentKey);
-    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffEctopicConcern");
-    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffOvarianPathology");
-    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffPid");
+    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffEctopicPregnancy");
+    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffOvarianTorsion");
+    expect(pelvicMdm).toContain("providerDocumentationComplaintIntel.pelvicPainComplaintV1.diffPelvicInflammatoryDisease");
 
     const dischargeTemplate =
       PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "vaginal_discharge_complaint_v1") ?? null;
     const dischargeMdm = buildMdmTemplateDropdownOptions(dischargeTemplate).map((option) => option.fragmentKey);
-    expect(dischargeMdm).toContain("providerDocumentationComplaintIntel.vaginalDischargeComplaintV1.diffStiPidConcern");
+    expect(dischargeMdm).toContain("providerDocumentationComplaintIntel.vaginalDischargeComplaintV1.diffPelvicInflammatoryDisease");
     expect(dischargeMdm).toContain("providerDocumentationComplaintIntel.vaginalDischargeComplaintV1.diffVaginitis");
   });
 
@@ -279,10 +281,10 @@ describe("providerDocumentationFemalePelvicGynGovernance — MEDUI.ED.ME.2I", ()
     });
     expect(visible.has("erMseExamChips.abdTendernessPresent")).toBe(true);
     expect(
-      visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.examCervicalMotionTenderness")
+      visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.examCervicalMotionTendernessPresent")
     ).toBe(true);
     expect(
-      visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.examBimanualExamSummaryDocumented")
+      visible.has("providerDocumentationComplaintIntel.femalePelvicGynComplaint.examPelvicExamPerformedWithChaperone")
     ).toBe(true);
     expect(visible.has("erMseExamChips.mskTendernessPresent")).toBe(false);
   });
