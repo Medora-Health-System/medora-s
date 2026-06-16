@@ -8,6 +8,7 @@ import {
 import { buildTesticularPainComplaintV1Intel } from "./providerDocumentationMaleGuComplaintIntelGoldStandard";
 import { buildUrinaryRetentionComplaintV1Intel } from "./providerDocumentationUrinaryRetentionComplaintIntelGoldStandard";
 import { buildFlankPainRenalComplaintV1Intel } from "./providerDocumentationFlankPainRenalComplaintIntelGoldStandard";
+import { buildHematuriaComplaintV1Intel } from "./providerDocumentationHematuriaComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
 const dysuria = (key: string) => `providerDocumentationComplaintIntel.dysuriaComplaintV1.${key}`;
 const hematuria = (key: string) => `providerDocumentationComplaintIntel.hematuriaComplaintV1.${key}`;
@@ -34,20 +35,8 @@ export const DYSURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntellige
   followUpDisposition: [dysuria("dispReturnFeverFlankRetention")],
 });
 
-export const HEMATURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [hematuria("hpiGrossVsMicroscopic"), hematuria("hpiClotsTraumaAnticoagulants"), hematuria("hpiFlankPainUrinarySymptoms"), hematuria("hpiFeverRetentionSymptoms")],
-  rosImportantPositives: [hematuria("rosHematuria"), hematuria("rosFlankPain"), hematuria("rosDysuria")],
-  rosImportantNegatives: [hematuria("rosDeniesTrauma")],
-  rosRedFlags: [hematuria("rfClotRetentionConcern"), hematuria("rfHeavyBleedingConcern")],
-  physicalExam: { abdomen: [hematuria("examAbdominalCvaTenderness"), hematuria("examGuFindingsIfExamined")], general: [hematuria("examGeneralAppearance")] },
-  mdmWorkingAssessment: [hematuria("mdmHematuriaPresentation")],
-  mdmDifferentialSynthesis: [hematuria("diffStoneDisease"), hematuria("diffInfection"), hematuria("diffMalignancyConcern"), hematuria("diffTrauma"), hematuria("diffAnticoagulationBleeding"), hematuria("diffObstruction")],
-  mdmDataReviewed: [hematuria("mdmUaImagingLabsReviewedIfObtained")],
-  mdmClinicalRationale: [hematuria("mdmUrologyConsultIfIndicated"), hematuria("mdmAnticoagulationReviewIfApplicable")],
-  mdmAdmitObserveDischarge: [hematuria("mdmAdmissionIfHighRisk")],
-  reassessment: [hematuria("reassessBleedingRetention")],
-  followUpDisposition: [hematuria("dispReturnWorseningBleedingRetention")],
-});
+export const HEMATURIA_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildHematuriaComplaintV1Intel(hematuria);
 
 export const FLANK_PAIN_RENAL_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
   buildFlankPainRenalComplaintV1Intel(flankPainRenal);

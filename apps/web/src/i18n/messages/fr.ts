@@ -22,6 +22,7 @@ import { providerDocumentationUrinaryRetentionComplaintIntelFr } from "./provide
 import { providerDocumentationFlankPainRenalComplaintIntelFr } from "./providerDocumentationFlankPainRenalComplaintIntel.fr";
 import { providerDocumentationDiarrheaComplaintIntelFr } from "./providerDocumentationDiarrheaComplaintIntel.fr";
 import { providerDocumentationUrinarySymptomsComplaintIntelFr } from "./providerDocumentationUrinarySymptomsComplaintIntel.fr";
+import { providerDocumentationHematuriaComplaintIntelFr } from "./providerDocumentationHematuriaComplaintIntel.fr";
 import { providerDocumentationDizzinessVertigoComplaintIntelFr } from "./providerDocumentationDizzinessVertigoComplaintIntel.fr";
 import { providerDocumentationNeuroExpansionComplaintIntel19Mdm9Fr } from "./providerDocumentationNeuroExpansionComplaintIntel19Mdm9.fr";
 
@@ -10098,6 +10099,7 @@ export default {
     ...providerDocumentationNauseaVomitingComplaintIntelFr,
     ...providerDocumentationDiarrheaComplaintIntelFr,
     ...providerDocumentationUrinarySymptomsComplaintIntelFr,
+    ...providerDocumentationHematuriaComplaintIntelFr,
     ...providerDocumentationShortnessOfBreathComplaintIntelFr,
     ...providerDocumentationChestPainComplaintIntelFr,
     ...providerDocumentationHeadacheComplaintIntelFr,

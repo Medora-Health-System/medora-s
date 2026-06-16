@@ -27,6 +27,7 @@ import {
   scanComplaintIntelligenceBundleForUnsafePhrases,
 } from "./providerDocumentationComplaintIntelligenceGovernance";
 import { providerDocumentationGuRenalComplaintIntel19Mdm5En } from "@/i18n/messages/providerDocumentationGuRenalComplaintIntel19Mdm5.en";
+import { providerDocumentationHematuriaComplaintIntelEn } from "@/i18n/messages/providerDocumentationHematuriaComplaintIntel.en";
 import enMessages from "@/i18n/messages/en";
 import frMessages from "@/i18n/messages/fr";
 
@@ -48,7 +49,12 @@ function resolveGuRenalKey(key: string): string {
   const nsRecord = (providerDocumentationGuRenalComplaintIntel19Mdm5En as Record<string, Record<string, string>>)[
     ns
   ];
-  return nsRecord?.[field] ?? key;
+  if (nsRecord?.[field]) return nsRecord[field];
+  const hematuriaRecord = providerDocumentationHematuriaComplaintIntelEn.hematuriaComplaintV1;
+  if (ns === "hematuriaComplaintV1" && hematuriaRecord[field as keyof typeof hematuriaRecord]) {
+    return hematuriaRecord[field as keyof typeof hematuriaRecord] as string;
+  }
+  return key;
 }
 
 function assertSectionCoverage(bundle: (typeof GU_RENAL_BUNDLES)[number]) {
