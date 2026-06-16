@@ -132,7 +132,7 @@ export const BACK_PAIN_REQUIRED_STICKY_NOTE_FRAGMENT_KEYS = [
   "providerDocumentationComplaintIntel.backPainComplaintV1.hpiBackPainAfterInjury",
   "providerDocumentationComplaintIntel.backPainComplaintV1.diffRadiculopathy",
   "providerDocumentationComplaintIntel.backPainComplaintV1.diffCaudaEquina",
-  "providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.diffCaudaEquinaConcern",
+  "providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.diffCaudaEquinaSyndrome",
   "providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.rfBowelBladderSymptoms",
   "erMseExamChips.mskTendernessPresent",
   "erMseRosChips.rfNeuroDeficit",

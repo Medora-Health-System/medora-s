@@ -80,19 +80,20 @@ describe("providerDocumentationMdmWorkspaceGoldStandard — MEDUI.ED.MDM.1", () 
     }
   });
 
-  it("renders legacy complaint MDM sections without losing existing chips", () => {
+  it("renders full MDM.1 workspace bindings for certified gold-standard chest_pain", () => {
     const template = templateById("chest_pain");
     expect(template?.complaintIntelligence).toEqual(CHEST_PAIN_COMPLAINT_INTEL);
 
     const bindings = complaintIntelligenceMdmChipBindingsForTemplate(template);
-    const intelFields = bindings.map((binding) => binding.intelField);
-    expect(intelFields).toContain("mdmWorkingAssessment");
-    expect(intelFields).toContain("mdmDifferentialSynthesis");
-    expect(intelFields).toContain("mdmDataReviewed");
-    expect(intelFields).toContain("mdmClinicalRationale");
-    expect(intelFields).toContain("mdmPlanSummary");
-    expect(intelFields).not.toContain("mdmRiskStratification");
-    expect(intelFields).not.toContain("clinicalImpression");
+    expect(bindings.map((binding) => binding.intelField)).toEqual([
+      "mdmWorkingAssessment",
+      "mdmDifferentialSynthesis",
+      "mdmDataReviewed",
+      "mdmRiskStratification",
+      "mdmClinicalRationale",
+      "clinicalImpression",
+      "mdmPlanSummary",
+    ]);
   });
 
   it("supports click-to-insert for complaint-intel MDM chips", () => {

@@ -195,10 +195,13 @@ describe("providerDocumentationBackPainGovernance — MEDUI.ED.ME.2H", () => {
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
     expect(
-      neuroVisible.has("providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.diffCaudaEquinaConcern")
+      neuroVisible.has("providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.diffCaudaEquinaSyndrome")
     ).toBe(true);
     expect(
       neuroVisible.has("providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.rfBowelBladderSymptoms")
+    ).toBe(true);
+    expect(
+      neuroVisible.has("providerDocumentationComplaintIntel.backPainNeuroRedFlagsComplaintV1.waCaudaEquinaConcern")
     ).toBe(true);
   });
 
