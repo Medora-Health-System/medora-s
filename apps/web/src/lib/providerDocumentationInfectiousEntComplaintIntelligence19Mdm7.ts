@@ -1,6 +1,12 @@
 /** Phase 19MDM.7 — Infectious / ENT complaint intelligence (click-to-insert only). */
 import type { ProviderDocumentationComplaintIntelligence } from "./providerDocumentationComplaintIntelligence";
 import { buildFeverComplaintV1Intel } from "./providerDocumentationAdultFeverComplaintIntelGoldStandard";
+import {
+  buildAbscessSoftTissueComplaintV1Intel,
+  buildCellulitisSkinInfectionComplaintV1Intel,
+  buildRashSkinComplaintV1Intel,
+  buildWoundInfectionComplaintV1Intel,
+} from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import { buildSoreThroatComplaintIntel } from "./providerDocumentationSoreThroatComplaintIntelGoldStandard";
 import { buildDehydrationViralIllnessComplaintIntel } from "./providerDocumentationDehydrationViralIllnessComplaintIntelGoldStandard";
 const intel = (bundle: ProviderDocumentationComplaintIntelligence): ProviderDocumentationComplaintIntelligence => bundle;
@@ -17,50 +23,14 @@ const dehydrationViralIllness = (key: string) => `providerDocumentationComplaint
 
 export const FEVER_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = buildFeverComplaintV1Intel(fever);
 
-export const CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [cellulitisSkinInfection("hpiRednessSwellingWarmth"), cellulitisSkinInfection("hpiDrainageTraumaInsectBite"), cellulitisSkinInfection("hpiFeverStreakingImmunocompromised")],
-  rosImportantPositives: [cellulitisSkinInfection("rosSkinRedness"), cellulitisSkinInfection("rosSwelling"), cellulitisSkinInfection("rosFever")],
-  rosImportantNegatives: [cellulitisSkinInfection("rosDeniesDrainage")],
-  rosRedFlags: [cellulitisSkinInfection("rfRapidSpreadConcern"), cellulitisSkinInfection("rfFeverConcern")],
-  physicalExam: { skin: [cellulitisSkinInfection("examErythemaExtentIfDocumented"), cellulitisSkinInfection("examFluctuanceDrainageIfDocumented"), cellulitisSkinInfection("examNeurovascularStatusIfDocumented")], general: [cellulitisSkinInfection("examGeneralAppearance")] },
-  mdmWorkingAssessment: [cellulitisSkinInfection("mdmCellulitisPresentation")],
-  mdmDifferentialSynthesis: [cellulitisSkinInfection("diffCellulitis"), cellulitisSkinInfection("diffAbscess"), cellulitisSkinInfection("diffNecrotizingInfectionConcern"), cellulitisSkinInfection("diffDvt"), cellulitisSkinInfection("diffDermatitis")],
-  mdmDataReviewed: [cellulitisSkinInfection("mdmLabsImagingReviewedIfObtained")],
-  mdmClinicalRationale: [cellulitisSkinInfection("mdmAntibioticPlanIfGiven"), cellulitisSkinInfection("mdmRecheckFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [cellulitisSkinInfection("mdmObservationIfHighRisk")],
-  reassessment: [cellulitisSkinInfection("reassessSpreadFever")],
-  followUpDisposition: [cellulitisSkinInfection("dispReturnWorseningRednessFeverDrainage")],
-});
+export const CELLULITIS_SKIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildCellulitisSkinInfectionComplaintV1Intel(cellulitisSkinInfection);
 
-export const ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [abscessSoftTissue("hpiSwellingDrainagePriorAbscess"), abscessSoftTissue("hpiFeverDiabetesImmunocompromised"), abscessSoftTissue("hpiIvDrugUseIfApplicable")],
-  rosImportantPositives: [abscessSoftTissue("rosSwelling"), abscessSoftTissue("rosPain"), abscessSoftTissue("rosFever")],
-  rosImportantNegatives: [abscessSoftTissue("rosDeniesSpreadingRedness")],
-  rosRedFlags: [abscessSoftTissue("rfNecrotizingConcern"), abscessSoftTissue("rfSeverePainConcern")],
-  physicalExam: { skin: [abscessSoftTissue("examFluctuanceIfDocumented"), abscessSoftTissue("examSurroundingErythema"), abscessSoftTissue("examDrainageLocationIfDocumented")], general: [abscessSoftTissue("examGeneralAppearance")] },
-  mdmWorkingAssessment: [abscessSoftTissue("mdmAbscessPresentation")],
-  mdmDifferentialSynthesis: [abscessSoftTissue("diffAbscess"), abscessSoftTissue("diffCellulitis"), abscessSoftTissue("diffInfectedCyst"), abscessSoftTissue("diffNecrotizingInfectionConcern")],
-  mdmDataReviewed: [abscessSoftTissue("mdmCultureReviewedIfObtained")],
-  mdmClinicalRationale: [abscessSoftTissue("mdmIdProcedureReassessmentIfPerformed"), abscessSoftTissue("mdmSurgicalFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [abscessSoftTissue("mdmObservationIfHighRisk")],
-  reassessment: [abscessSoftTissue("reassessPainSwellingAfterProcedure")],
-  followUpDisposition: [abscessSoftTissue("dispReturnWorseningPainFeverWoundCare")],
-});
+export const ABSCESS_SOFT_TISSUE_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildAbscessSoftTissueComplaintV1Intel(abscessSoftTissue);
 
-export const WOUND_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [woundInfection("hpiInjurySurgeryTiming"), woundInfection("hpiDrainageRednessPain"), woundInfection("hpiFeverForeignBodyTetanus")],
-  rosImportantPositives: [woundInfection("rosWoundPain"), woundInfection("rosDrainage"), woundInfection("rosFever")],
-  rosImportantNegatives: [woundInfection("rosDeniesForeignBodySensation")],
-  rosRedFlags: [woundInfection("rfDeepInfectionConcern"), woundInfection("rfJointInvolvementConcern")],
-  physicalExam: { skin: [woundInfection("examWoundAppearanceIfDocumented"), woundInfection("examDrainageErythemaIfDocumented"), woundInfection("examRomNearJointIfDocumented")], general: [woundInfection("examGeneralAppearance")] },
-  mdmWorkingAssessment: [woundInfection("mdmWoundInfectionPresentation")],
-  mdmDifferentialSynthesis: [woundInfection("diffSuperficialInfection"), woundInfection("diffAbscess"), woundInfection("diffRetainedForeignBody"), woundInfection("diffDeepSoftTissueInfection")],
-  mdmDataReviewed: [woundInfection("mdmImagingReviewedIfObtained")],
-  mdmClinicalRationale: [woundInfection("mdmWoundCarePlanIfGiven"), woundInfection("mdmWoundFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [woundInfection("mdmObservationIfHighRisk")],
-  reassessment: [woundInfection("reassessDrainageRedness")],
-  followUpDisposition: [woundInfection("dispReturnWorseningDrainageFever")],
-});
+export const WOUND_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildWoundInfectionComplaintV1Intel(woundInfection);
 
 export const EAR_PAIN_OTITIS_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
   hpi: [
@@ -331,20 +301,7 @@ export const DENTAL_PAIN_INFECTION_COMPLAINT_V1_INTEL: ProviderDocumentationComp
   followUpDisposition: [dentalPainInfection("dispReturnWorseningSwellingFeverDysphagia")],
 });
 
-export const RASH_SKIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [rashSkin("hpiOnsetSpreadItchingPain"), rashSkin("hpiExposuresMedication"), rashSkin("hpiFeverMucosalInvolvement")],
-  rosImportantPositives: [rashSkin("rosRash"), rashSkin("rosItching"), rashSkin("rosFever")],
-  rosImportantNegatives: [rashSkin("rosDeniesMucosalInvolvement")],
-  rosRedFlags: [rashSkin("rfPurpuraConcern"), rashSkin("rfMucosalInvolvementConcern")],
-  physicalExam: { skin: [rashSkin("examDistributionIfDocumented"), rashSkin("examBlanchingVesiclesPurpuraIfDocumented")], general: [rashSkin("examGeneralAppearance")] },
-  mdmWorkingAssessment: [rashSkin("mdmRashPresentation")],
-  mdmDifferentialSynthesis: [rashSkin("diffDermatitis"), rashSkin("diffAllergicReaction"), rashSkin("diffViralExanthem"), rashSkin("diffCellulitis"), rashSkin("diffVasculiticEmergentRashConcern")],
-  mdmDataReviewed: [rashSkin("mdmLabsReviewedIfObtained")],
-  mdmClinicalRationale: [rashSkin("mdmAntihistamineSteroidPlanIfGiven"), rashSkin("mdmDermatologyFollowUpIfIndicated")],
-  mdmAdmitObserveDischarge: [rashSkin("mdmObservationIfHighRisk")],
-  reassessment: [rashSkin("reassessRashSpreadFever")],
-  followUpDisposition: [rashSkin("dispReturnWorseningRashFeverMucosal")],
-});
+export const RASH_SKIN_COMPLAINT_V1_INTEL: ProviderDocumentationComplaintIntelligence = buildRashSkinComplaintV1Intel(rashSkin);
 
 export const SORE_THROAT_INFECTIOUS_COMPLAINT_V1_INTEL = buildSoreThroatComplaintIntel(soreThroatInfectious);
 

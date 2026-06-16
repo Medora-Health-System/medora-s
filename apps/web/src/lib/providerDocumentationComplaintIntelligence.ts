@@ -38,6 +38,7 @@ import { buildChestPainComplaintIntel } from "./providerDocumentationChestPainCo
 import { buildCoughComplaintIntel, buildUriRespiratoryComplaintIntel } from "./providerDocumentationCoughUriComplaintIntelGoldStandard";
 import { buildDizzinessSyncopeComplaintIntel } from "./providerDocumentationDizzinessVertigoComplaintIntelGoldStandard";
 import { buildHeadacheComplaintIntel } from "./providerDocumentationHeadacheComplaintIntelGoldStandard";
+import { buildAllergicReactionRashIntel } from "./providerDocumentationRashSkinComplaintIntelGoldStandard";
 import {
   buildAdultSobComplaintIntel,
   buildPediatricAsthmaSobComplaintIntel,
@@ -1587,95 +1588,8 @@ export const HYPERTENSION_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelli
 });
 
 /** Allergic reaction / rash — anaphylaxis and dermatologic red-flag documentation framework. */
-export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    allergy("hpiRashOnsetReviewed"),
-    allergy("hpiAllergenExposureReviewed"),
-    allergy("hpiMedicationExposureReviewed"),
-    allergy("hpiFoodExposureReviewed"),
-    allergy("hpiInsectStingReviewed"),
-    allergy("hpiItchingReported"),
-    allergy("hpiSwellingReviewed"),
-    allergy("hpiThroatTightnessReviewed"),
-    allergy("hpiWheezingReviewed"),
-    allergy("hpiPriorAnaphylaxisHistoryReviewed"),
-    allergy("hpiEpinephrineUseReviewed"),
-  ],
-  rosImportantPositives: [
-    allergy("rosRash"),
-    allergy("rosItching"),
-    allergy("rosSwelling"),
-    allergy("rosWheezing"),
-    allergy("rosThroatTightness"),
-    allergy("rosNauseaVomiting"),
-  ],
-  rosImportantNegatives: [
-    allergy("rosDeniesShortnessOfBreath"),
-    allergy("rosDeniesThroatSwelling"),
-    allergy("rosDeniesWheezing"),
-    allergy("rosDeniesVomiting"),
-    allergy("rosDeniesSyncope"),
-    allergy("rosDeniesMucosalLesions"),
-  ],
-  rosRedFlags: [
-    allergy("rfAnaphylaxisConcern"),
-    allergy("rfAirwaySwellingConcern"),
-    allergy("rfHypotension"),
-    allergy("rfWheezingBronchospasm"),
-    allergy("rfMucosalInvolvement"),
-    allergy("rfStevensJohnsonTenConcern"),
-    allergy("rfPurpuraPetechiaeConcern"),
-  ],
-  physicalExam: {
-    general: [allergy("examNoHypotension")],
-    respiratory: [
-      allergy("examNoRespiratoryDistress"),
-      allergy("examAirwayPatent"),
-      allergy("examWheezingPresent"),
-    ],
-    heent: [allergy("examNoTongueLipSwelling"), allergy("examMucosalLesionsPresent")],
-    skin: [allergy("examUrticariaPresent"), allergy("examMaculopapularRash"), allergy("examSkinWarmDry")],
-  },
-  mdmWorkingAssessment: [
-    allergy("mdmAnaphylaxisCriteriaAssessed"),
-    allergy("mdmAirwayInvolvementAssessed"),
-  ],
-  mdmDifferentialSynthesis: [
-    allergy("diffAllergicReaction"),
-    allergy("diffAnaphylaxis"),
-    allergy("diffUrticaria"),
-    allergy("diffContactDermatitis"),
-    allergy("diffViralExanthem"),
-    allergy("diffCellulitis"),
-    allergy("diffMedicationReaction"),
-    allergy("diffStevensJohnsonTen"),
-    allergy("diffPetechialPurpuricRash"),
-  ],
-  mdmClinicalRationale: [
-    allergy("mdmTriggerAvoidanceDiscussed"),
-    allergy("mdmObservationPeriodConsidered"),
-    allergy("mdmSerialReassessmentPerformed"),
-  ],
-  mdmPlanSummary: [
-    allergy("mdmEpinephrineConsideredAdministered"),
-    allergy("mdmAntihistamineTherapyConsideredAdministered"),
-    allergy("mdmSteroidTherapyConsidered"),
-  ],
-  mdmImmediateActionsRationale: [allergy("mdmEpinephrinePrescriptionConsideredIfIndicated")],
-  reassessment: [
-    allergy("reassessRashImproving"),
-    allergy("reassessAirwayRemainsPatent"),
-    allergy("reassessNoRespiratoryDistress"),
-    allergy("reassessVitalSignsStable"),
-    allergy("reassessSymptomsImprovedAfterTreatment"),
-  ],
-  followUpDisposition: [
-    allergy("dispReturnBreathingDifficultyThroatSwelling"),
-    allergy("dispAllergenAvoidanceDiscussed"),
-    allergy("dispEpinephrineAutoinjectorInstructionsIfPrescribed"),
-    allergy("dispFollowUpRecommended"),
-  ],
-});
+export const ALLERGIC_REACTION_RASH_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildAllergicReactionRashIntel(allergy);
 
 /** Adult nausea / vomiting — GI red flag and dehydration documentation framework. */
 export const ADULT_NAUSEA_VOMITING_COMPLAINT_INTEL = buildAdultNauseaVomitingComplaintIntel(adultNv);

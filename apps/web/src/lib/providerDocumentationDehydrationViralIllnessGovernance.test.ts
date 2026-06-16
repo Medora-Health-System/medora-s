@@ -109,7 +109,7 @@ describe("providerDocumentationDehydrationViralIllnessGovernance — MEDUI.ED.ME
       "providerDocumentationComplaintIntel.soreThroatComplaintV1.hpiPainfulSwallowing"
     )).toBe(true);
     expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
-      "providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiOnsetSpreadItchingPain"
+      "providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiRashBeganToday"
     )).toBe(true);
     expect(isDehydrationViralIllnessDeniedStickyNoteFragment(
       "providerDocumentationComplaintIntel.psychiatricBehavioral.hpiSuicidalIdeationReported"

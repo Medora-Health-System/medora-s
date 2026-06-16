@@ -164,7 +164,7 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiWheezingReviewed")).toBe(
+    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiWheezing")).toBe(
       true
     );
     expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.rosWheezing")).toBe(true);
@@ -188,13 +188,13 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiRashOnsetReviewed")).toBe(
+    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiRashBeganToday")).toBe(
       true
     );
     expect(
-      allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiMedicationExposureReviewed")
+      allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiMedicationExposure")
     ).toBe(true);
-    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiInsectStingReviewed")).toBe(
+    expect(allergyVisible.has("providerDocumentationComplaintIntel.allergicReactionRash.hpiInsectSting")).toBe(
       true
     );
     expect(
@@ -210,10 +210,10 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
       examBaseGroups: WORKSPACE_EXAM_CHIP_GROUPS,
       hpiBaseGroups: WORKSPACE_HPI_CHIP_GROUPS,
     });
-    expect(rashVisible.has("providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiOnsetSpreadItchingPain")).toBe(
+    expect(rashVisible.has("providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiRashBeganToday")).toBe(
       true
     );
-    expect(rashVisible.has("providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiExposuresMedication")).toBe(
+    expect(rashVisible.has("providerDocumentationComplaintIntel.rashSkinComplaintV1.hpiNewMedicationExposure")).toBe(
       true
     );
     expect(rashVisible.has("providerDocumentationComplaintIntel.rashSkinComplaintV1.rfPurpuraConcern")).toBe(true);
@@ -226,7 +226,7 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
     });
     expect(
       cellulitisVisible.has(
-        "providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.hpiDrainageTraumaInsectBite"
+        "providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.hpiInsectBite"
       )
     ).toBe(true);
     expect(cellulitisVisible.has("providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.rosFever")).toBe(
@@ -249,9 +249,9 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
     const rashTemplate =
       PROVIDER_DOCUMENTATION_TEMPLATES.find((item) => item.id === "rash_skin_complaint_v1") ?? null;
     const rashMdm = buildMdmTemplateDropdownOptions(rashTemplate).map((option) => option.fragmentKey);
-    expect(rashMdm).toContain("providerDocumentationComplaintIntel.rashSkinComplaintV1.diffAllergicReaction");
+    expect(rashMdm).toContain("providerDocumentationComplaintIntel.rashSkinComplaintV1.diffAllergicDermatitis");
     expect(rashMdm).toContain("providerDocumentationComplaintIntel.rashSkinComplaintV1.diffCellulitis");
-    expect(rashMdm).toContain("providerDocumentationComplaintIntel.rashSkinComplaintV1.mdmAntihistamineSteroidPlanIfGiven");
+    expect(rashMdm).toContain("providerDocumentationComplaintIntel.rashSkinComplaintV1.planAntihistaminePrescribed");
     expect(rashMdm).not.toContain("erMseMdmChips.planEcg");
     expect(rashMdm).not.toContain("providerDocumentationMdmHighValue.ekgNormal");
     expect(rashMdm).not.toContain("erMseMdmChips.waCardiopulmonary");
@@ -262,10 +262,10 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
     expect(allergyMdm).toContain("providerDocumentationComplaintIntel.allergicReactionRash.diffAnaphylaxis");
     expect(allergyMdm).toContain("providerDocumentationComplaintIntel.allergicReactionRash.diffUrticaria");
     expect(allergyMdm).toContain(
-      "providerDocumentationComplaintIntel.allergicReactionRash.mdmEpinephrineConsideredAdministered"
+      "providerDocumentationComplaintIntel.allergicReactionRash.planEpinephrineAdministered"
     );
     expect(allergyMdm).toContain(
-      "providerDocumentationComplaintIntel.allergicReactionRash.mdmAntihistamineTherapyConsideredAdministered"
+      "providerDocumentationComplaintIntel.allergicReactionRash.planAntihistaminePrescribed"
     );
 
     const cellulitisTemplate =
@@ -273,7 +273,7 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
     const cellulitisMdm = buildMdmTemplateDropdownOptions(cellulitisTemplate).map((option) => option.fragmentKey);
     expect(cellulitisMdm).toContain("providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.diffCellulitis");
     expect(cellulitisMdm).toContain(
-      "providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.mdmAntibioticPlanIfGiven"
+      "providerDocumentationComplaintIntel.cellulitisSkinInfectionComplaintV1.planAntibioticsPrescribed"
     );
 
     const abscessTemplate =
@@ -281,7 +281,7 @@ describe("providerDocumentationRashGovernance — MEDUI.ED.ME.2J", () => {
     const abscessMdm = buildMdmTemplateDropdownOptions(abscessTemplate).map((option) => option.fragmentKey);
     expect(abscessMdm).toContain("providerDocumentationComplaintIntel.abscessSoftTissueComplaintV1.diffAbscess");
     expect(abscessMdm).toContain(
-      "providerDocumentationComplaintIntel.abscessSoftTissueComplaintV1.mdmIdProcedureReassessmentIfPerformed"
+      "providerDocumentationComplaintIntel.abscessSoftTissueComplaintV1.planIncisionDrainagePerformed"
     );
   });
 
