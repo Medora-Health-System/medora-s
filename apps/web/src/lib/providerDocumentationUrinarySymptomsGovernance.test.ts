@@ -83,7 +83,7 @@ function flattenFragmentKeys(groups: Array<{ chips: Array<{ fragmentKey: string 
   return groups.flatMap((group) => group.chips.map((chip) => chip.fragmentKey));
 }
 
-describe("providerDocumentationUrinarySymptomsGovernance — MEDUI.ED.ME.2A", () => {
+describe("providerDocumentationUrinarySymptomsGovernance — MEDUI.ED.ME.2A-R", () => {
   it("does not render chest pain chips when urinary_symptoms is active", () => {
     const rosKeys = flattenFragmentKeys(
       resolveRosChipGroupsForTemplate(URINARY_SYMPTOMS_GOVERNED_TEMPLATE_ID, WORKSPACE_ROS_CHIP_GROUPS)

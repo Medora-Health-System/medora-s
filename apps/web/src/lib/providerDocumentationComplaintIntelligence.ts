@@ -54,6 +54,7 @@ import {
   buildAdultNauseaVomitingComplaintIntel,
   buildPediatricNauseaVomitingComplaintIntel,
 } from "./providerDocumentationNauseaVomitingComplaintIntelGoldStandard";
+import { buildUrinarySymptomsComplaintIntel } from "./providerDocumentationUrinarySymptomsComplaintIntelGoldStandard";
 import {
   GI_COMPLAINT_V1_INTEL_BY_TEMPLATE_ID,
   GI_COMPLAINT_V1_TEMPLATE_IDS,
@@ -1228,97 +1229,8 @@ export const PEDIATRIC_VOMITING_DIARRHEA_COMPLAINT_INTEL = buildPediatricNauseaV
 export const PEDIATRIC_DIARRHEA_COMPLAINT_INTEL = buildPediatricDiarrheaComplaintIntel(pedDiarrhea);
 
 /** UTI / urinary symptoms — cystitis / pyelonephritis documentation framework. */
-export const UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
-  hpi: [
-    uti("hpiDysuria"),
-    uti("hpiUrinaryFrequency"),
-    uti("hpiUrinaryUrgency"),
-    uti("hpiSuprapubicPain"),
-    uti("hpiFlankPainReviewed"),
-    uti("hpiFeverReviewed"),
-    uti("hpiHematuriaReviewed"),
-    uti("hpiNauseaVomitingReviewed"),
-    uti("hpiPregnancyConcernReviewed"),
-    uti("hpiRecurrentUtiHistoryReviewed"),
-    uti("hpiCatheterUseReviewed"),
-    uti("hpiImmunocompromisedStatusReviewed"),
-  ],
-  rosImportantPositives: [
-    uti("rosDysuria"),
-    uti("rosFrequency"),
-    uti("rosUrgency"),
-    uti("rosHematuria"),
-    uti("rosSuprapubicPain"),
-    uti("rosFlankPain"),
-    uti("rosFever"),
-    uti("rosNauseaVomiting"),
-  ],
-  rosImportantNegatives: [
-    uti("rosDeniesFlankPain"),
-    uti("rosDeniesFever"),
-    uti("rosDeniesVomiting"),
-    uti("rosDeniesVaginalSymptoms"),
-    uti("rosDeniesTesticularPain"),
-    uti("rosDeniesPregnancyConcern"),
-  ],
-  rosRedFlags: [
-    uti("rfPyelonephritisConcern"),
-    uti("rfSepsisConcern"),
-    uti("rfObstructingStoneConcern"),
-    uti("rfPregnancyWithUrinarySymptoms"),
-    uti("rfImmunocompromisedPatient"),
-    uti("rfUrinaryRetention"),
-  ],
-  physicalExam: {
-    general: [uti("examWellAppearing"), uti("examFebrileAppearance"), uti("examNoAcuteDistress")],
-    abdomen: [
-      uti("examSuprapubicTenderness"),
-      uti("examCvaTenderness"),
-      uti("examAbdomenSoft"),
-      uti("examAbdomenNonTender"),
-      uti("examNoPeritonealSigns"),
-    ],
-  },
-  mdmWorkingAssessment: [
-    uti("mdmPyelonephritisConsidered"),
-    uti("mdmSepsisFromUrinarySourceConsidered"),
-  ],
-  mdmDifferentialSynthesis: [
-    uti("diffCystitis"),
-    uti("diffPyelonephritis"),
-    uti("diffUreterolithiasis"),
-    uti("diffStiUrethritis"),
-    uti("diffVaginitis"),
-    uti("diffProstatitis"),
-    uti("diffUrinaryRetention"),
-    uti("diffSepsisFromUrinarySource"),
-  ],
-  mdmDataReviewed: [
-    uti("mdmUrinalysisReviewed"),
-    uti("mdmUrineCultureConsidered"),
-    uti("mdmPregnancyTestingReviewedIfApplicable"),
-    uti("mdmRenalFunctionReviewedIfIndicated"),
-  ],
-  mdmClinicalRationale: [
-    uti("mdmObstructingStoneConsidered"),
-    uti("mdmAntibioticsConsideredBasedOnPresentation"),
-    uti("mdmOutpatientTreatmentDiscussed"),
-    uti("mdmSerialReassessmentPerformed"),
-  ],
-  mdmAdmitObserveDischarge: [uti("mdmAdmissionConsideredSystemicIllness")],
-  reassessment: [
-    uti("reassessPainImproved"),
-    uti("reassessToleratingOralIntake"),
-    uti("reassessAfebrileStable"),
-    uti("reassessNoWorseningFlankPain"),
-  ],
-  followUpDisposition: [
-    uti("dispDischargeAntibioticsIfIndicated"),
-    uti("dispReturnFeverFlankPainVomiting"),
-    uti("dispHydrationInstructionsDiscussed"),
-    uti("dispFollowUpRecommended"),
-  ],
-});
+export const UTI_URINARY_SYMPTOMS_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence =
+  buildUrinarySymptomsComplaintIntel(uti);
 
 /** Hyperglycemia — DKA / HHS documentation framework. */
 export const HYPERGLYCEMIA_COMPLAINT_INTEL: ProviderDocumentationComplaintIntelligence = intel({
