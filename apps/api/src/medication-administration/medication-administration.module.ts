@@ -3,11 +3,16 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { AuditService } from "../common/services/audit.service";
 import { MedicationAdministrationController } from "./medication-administration.controller";
 import { MedicationAdministrationService } from "./medication-administration.service";
+import { MedicationAdministrationHistoryService } from "./medication-administration-history.service";
 
 @Module({
   imports: [PrismaModule],
   controllers: [MedicationAdministrationController],
-  providers: [MedicationAdministrationService, AuditService],
-  exports: [MedicationAdministrationService],
+  providers: [
+    MedicationAdministrationService,
+    MedicationAdministrationHistoryService,
+    AuditService,
+  ],
+  exports: [MedicationAdministrationService, MedicationAdministrationHistoryService],
 })
 export class MedicationAdministrationModule {}
