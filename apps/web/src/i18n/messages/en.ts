@@ -12301,6 +12301,17 @@ export default {
       ORDER_CANCELED: "Order canceled",
     },
   },
+  marInfusionStopReason: {
+    fieldLabel: "Stop reason",
+    detailLabel: "Detail (optional)",
+    detailPlaceholder: "Clinical detail…",
+    COMPLETED: "Completed",
+    ORDER_CANCELLED: "Order canceled",
+    REACTION: "Reaction",
+    LINE_FAILURE: "Line failure",
+    PROVIDER_DISCONTINUED: "Provider discontinued",
+    PUMP_ISSUE: "Pump issue",
+  },
   marPrnGovernance: {
     sectionTitle: "PRN reason",
     orderIndication: "Ordered indication",
@@ -12436,6 +12447,8 @@ export default {
       INFUSION_NOT_ELIGIBLE:
         "This line is not eligible for infusion (route / label). Use routine bedside administration.",
       ORDER_LINE_TERMINAL: "Order line is already completed or cancelled.",
+      INFUSION_STOP_REASON_REQUIRED: "A structured infusion stop reason is required.",
+      INVALID_INFUSION_STOP_REASON: "Invalid infusion stop reason.",
     },
     safetyGovernanceErrors: {
       MAR_EARLY_ADMIN_REASON_REQUIRED: "Early administration requires a reason.",

@@ -8,6 +8,8 @@ export const MEDICATION_INFUSION_ERROR_CODES = [
   "INVALID_START_TIME",
   "INFUSION_NOT_ELIGIBLE",
   "ORDER_LINE_TERMINAL",
+  "INFUSION_STOP_REASON_REQUIRED",
+  "INVALID_INFUSION_STOP_REASON",
 ] as const;
 
 export type MedicationInfusionErrorCode = (typeof MEDICATION_INFUSION_ERROR_CODES)[number];
@@ -29,4 +31,6 @@ export const MEDICATION_INFUSION_ERROR_MESSAGES_FR: Record<MedicationInfusionErr
   INFUSION_NOT_ELIGIBLE:
     "Cette ligne n'est pas éligible à la perfusion (voie / libellé). Utilisez l'administration au lit habituelle.",
   ORDER_LINE_TERMINAL: "Ligne déjà terminée ou annulée.",
+  INFUSION_STOP_REASON_REQUIRED: "Un motif d'arrêt de perfusion structuré est requis.",
+  INVALID_INFUSION_STOP_REASON: "Motif d'arrêt de perfusion non valide.",
 };

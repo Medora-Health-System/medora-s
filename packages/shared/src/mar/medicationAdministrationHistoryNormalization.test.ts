@@ -161,4 +161,18 @@ describe("medicationAdministrationHistoryNormalization (MEDUI.ED.MAR.H2B)", () =
     expect(times.eventAt).toBe("2026-06-16T09:14:00.000Z");
     expect(times.documentedAt).toBe("2026-06-16T10:00:00.000Z");
   });
+
+  it("11 — infusion stop ORDER_CANCELLED reason parsed for history rail (H6B)", () => {
+    const entry = normalizeMedicationAdministrationHistoryMarRow({
+      ...baseRow,
+      id: "mar-stop-cancel",
+      marAction: "administered",
+      infusionPhase: "INFUSION_STOP",
+      notes:
+        "Perfusion IV terminée — durée : 165 min\n\nReason: ORDER_CANCELLED — PATIENT_DISCHARGED",
+    });
+    expect(entry.eventType).toBe("INFUSION_STOP");
+    expect(entry.reasonCode).toBe("ORDER_CANCELLED");
+    expect(entry.reasonDetail).toContain("PATIENT_DISCHARGED");
+  });
 });

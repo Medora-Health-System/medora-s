@@ -8,6 +8,7 @@ import {
   medicationAdministrationRowIsInfusionStart,
   medicationAdministrationRowIsInfusionStop,
 } from "./medicationAdministrationInfusionMar.js";
+import { parseMedicationInfusionStopReasonFromNotes } from "../medication/medicationInfusionStopReasonGovernance.js";
 import {
   isPrnMedicationOrder,
   parseMarPrnAdministrationFromNotes,
@@ -155,6 +156,9 @@ export function resolveMedicationAdministrationHistoryReasonFields(input: {
       reasonCode: parsed.reasonCode,
       reasonDetail: parsed.reasonLabel,
     };
+  }
+  if (input.eventType === "INFUSION_STOP") {
+    return parseMedicationInfusionStopReasonFromNotes(input.notes);
   }
   if (input.effectiveAdministeredAtReason?.trim()) {
     return { reasonCode: "EFFECTIVE_TIME_ADJUSTMENT", reasonDetail: input.effectiveAdministeredAtReason.trim() };

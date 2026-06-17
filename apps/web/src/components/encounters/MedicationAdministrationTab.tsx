@@ -99,6 +99,7 @@ import {
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
   type MarShiftTimelineShiftCode,
+  MEDICATION_INFUSION_NURSE_STOP_REASON_CODES,
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import {
@@ -600,6 +601,8 @@ export function MedicationAdministrationTab({
     displayName: string;
   } | null>(null);
   const [infusionModalNote, setInfusionModalNote] = useState("");
+  const [infusionStopReasonCode, setInfusionStopReasonCode] = useState("COMPLETED");
+  const [infusionStopReasonDetail, setInfusionStopReasonDetail] = useState("");
   const [infusionDraftRestoredAt, setInfusionDraftRestoredAt] = useState<string | null>(null);
   const [infusionDraftSavedLocallyAt, setInfusionDraftSavedLocallyAt] = useState<string | null>(null);
   const [passQueue, setPassQueue] = useState<MedicationPassQueueResponse>({
@@ -921,6 +924,8 @@ export function MedicationAdministrationTab({
         medicationDoseInstanceId?: string;
         startedAtIso?: string;
         stoppedAtIso?: string;
+        stopReasonCode?: string;
+        reasonDetail?: string;
         skipReload?: boolean;
         skipModalClose?: boolean;
       }
@@ -945,6 +950,10 @@ export function MedicationAdministrationTab({
           });
         } else {
           await stopMedicationInfusion(orderItemId, facilityId, {
+            stopReasonCode: options?.stopReasonCode?.trim() || infusionStopReasonCode || "COMPLETED",
+            ...(options?.reasonDetail?.trim() || infusionStopReasonDetail.trim()
+              ? { reasonDetail: (options?.reasonDetail ?? infusionStopReasonDetail).trim() }
+              : {}),
             ...(note?.trim() ? { notes: note.trim() } : {}),
             ...(options?.stoppedAtIso?.trim() ? { stoppedAt: options.stoppedAtIso.trim() } : {}),
             ...(options?.medicationDoseInstanceId?.trim()
@@ -958,6 +967,8 @@ export function MedicationAdministrationTab({
         if (!options?.skipModalClose) {
           setInfusionModal(null);
           setInfusionModalNote("");
+          setInfusionStopReasonCode("COMPLETED");
+          setInfusionStopReasonDetail("");
           setPendingInfusionStartVerifier(null);
           setInfusionDraftRestoredAt(null);
           setInfusionDraftSavedLocallyAt(null);
@@ -974,7 +985,7 @@ export function MedicationAdministrationTab({
         setInfusionBusy(null);
       }
     },
-    [facilityId, infusionDraftKey, language, reloadMarData, t]
+    [facilityId, infusionDraftKey, infusionStopReasonCode, infusionStopReasonDetail, language, reloadMarData, t]
   );
 
   /** Same medication line = same `orderItemId`; most recent MAR row with outcome "administered". */
@@ -1563,6 +1574,8 @@ export function MedicationAdministrationTab({
         await runMarInfusion(item.orderItemId, orderId, "stop", input.notes, null, {
           medicationDoseInstanceId: item.medicationDoseInstanceId,
           stoppedAtIso: input.stoppedAt,
+          stopReasonCode: input.stopReasonCode,
+          reasonDetail: input.reasonDetail,
           skipReload: true,
           skipModalClose: true,
         });
@@ -4100,6 +4113,62 @@ export function MedicationAdministrationTab({
               <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>
                 {t("marTab.localDraftSaved")}
               </p>
+            ) : null}
+            {infusionModal.op === "stop" ? (
+              <>
+                <label
+                  htmlFor="mar-infusion-stop-reason"
+                  style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
+                >
+                  {t("marInfusionStopReason.fieldLabel")}
+                </label>
+                <select
+                  id="mar-infusion-stop-reason"
+                  data-testid="mar-infusion-stop-reason"
+                  value={infusionStopReasonCode}
+                  onChange={(e) => setInfusionStopReasonCode(e.target.value)}
+                  disabled={Boolean(infusionBusy)}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 15,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                >
+                  {MEDICATION_INFUSION_NURSE_STOP_REASON_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {t(`marInfusionStopReason.${code}`)}
+                    </option>
+                  ))}
+                </select>
+                <label
+                  htmlFor="mar-infusion-stop-reason-detail"
+                  style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
+                >
+                  {t("marInfusionStopReason.detailLabel")}
+                </label>
+                <input
+                  id="mar-infusion-stop-reason-detail"
+                  data-testid="mar-infusion-stop-reason-detail"
+                  type="text"
+                  value={infusionStopReasonDetail}
+                  onChange={(e) => setInfusionStopReasonDetail(e.target.value)}
+                  disabled={Boolean(infusionBusy)}
+                  placeholder={t("marInfusionStopReason.detailPlaceholder")}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 15,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                />
+              </>
             ) : null}
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.infusionNoteLabel")}

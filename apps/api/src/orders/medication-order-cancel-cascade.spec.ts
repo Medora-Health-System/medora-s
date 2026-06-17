@@ -1,6 +1,6 @@
 import { cascadeMedicationOrderCancelInTransaction } from "./medication-order-cancel-cascade.util";
 
-describe("cascadeMedicationOrderCancelInTransaction (MEDUI.ED.MAR.H1B)", () => {
+describe("cascadeMedicationOrderCancelInTransaction (MEDUI.ED.MAR.H1B / H6B)", () => {
   const cancelledAt = new Date("2026-06-16T14:00:00.000Z");
 
   function makeTx(overrides: Record<string, unknown> = {}) {
@@ -23,6 +23,12 @@ describe("cascadeMedicationOrderCancelInTransaction (MEDUI.ED.MAR.H1B)", () => {
         doseStatus: "COMPLETED",
         scheduledAt: new Date("2026-06-16T12:00:00.000Z"),
         terminalMedicationAdministrationId: "mar-1",
+      },
+      {
+        id: "dose-in-progress",
+        doseStatus: "IN_PROGRESS",
+        scheduledAt: new Date("2026-06-16T08:00:00.000Z"),
+        terminalMedicationAdministrationId: null,
       },
     ]);
     const doseUpdate = jest.fn().mockResolvedValue({});
@@ -58,11 +64,18 @@ describe("cascadeMedicationOrderCancelInTransaction (MEDUI.ED.MAR.H1B)", () => {
         data: expect.objectContaining({ scheduleStatus: "CANCELLED" }),
       })
     );
-    expect(doseUpdate).toHaveBeenCalledTimes(1);
+    expect(doseUpdate).toHaveBeenCalledTimes(2);
     expect(doseUpdate).toHaveBeenCalledWith({
       where: { id: "dose-future" },
       data: expect.objectContaining({ doseStatus: "CANCELLED" }),
     });
+    expect(doseUpdate).toHaveBeenCalledWith({
+      where: { id: "dose-in-progress" },
+      data: expect.objectContaining({ doseStatus: "CANCELLED" }),
+    });
+    expect(doseUpdate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "dose-past" } })
+    );
   });
 
   it("cascades line-item cancel by explicit orderItemIds", async () => {

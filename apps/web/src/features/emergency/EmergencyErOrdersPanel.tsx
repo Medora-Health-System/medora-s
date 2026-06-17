@@ -960,7 +960,7 @@ export function EmergencyErOrdersPanel({
     setOrderInfusionError(null);
     try {
       if (op === "start") await startMedicationInfusion(itemId, facilityId, startPayload);
-      else await stopMedicationInfusion(itemId, facilityId);
+      else await stopMedicationInfusion(itemId, facilityId, { stopReasonCode: "COMPLETED" });
       setOrdersRefresh((x) => x + 1);
       setScheduledSubmitFlash(
         op === "start" ? t("erEmergencyOrders.infusionStarted") : t("erEmergencyOrders.infusionStopped")

@@ -9,6 +9,8 @@ export type MedicationInfusionStartPayload = {
 };
 
 export type MedicationInfusionStopPayload = {
+  stopReasonCode?: string;
+  reasonDetail?: string;
   notes?: string;
   stoppedAt?: string;
   medicationDoseInstanceId?: string;
@@ -54,10 +56,13 @@ export function stopMedicationInfusion(
 ): Promise<unknown> {
   const body =
     typeof payload === "string"
-      ? payload.trim()
-        ? { notes: payload.trim() }
-        : {}
+      ? {
+          stopReasonCode: "COMPLETED" as const,
+          ...(payload.trim() ? { notes: payload.trim() } : {}),
+        }
       : {
+          stopReasonCode: payload?.stopReasonCode?.trim() || "COMPLETED",
+          ...(payload?.reasonDetail?.trim() ? { reasonDetail: payload.reasonDetail.trim() } : {}),
           ...(payload?.notes?.trim() ? { notes: payload.notes.trim() } : {}),
           ...(payload?.stoppedAt?.trim() ? { stoppedAt: payload.stoppedAt.trim() } : {}),
           ...(payload?.medicationDoseInstanceId?.trim()

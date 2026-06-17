@@ -82,6 +82,11 @@ import {
   medicationAdministrationRowIsInfusionStart,
   medicationAdministrationRowIsInfusionStop,
   medicationAdministrationRowIsInfusionTerminal,
+  buildMedicationInfusionOrderCancelStopNotes,
+  buildMedicationInfusionStopNotes,
+  isMedicationInfusionNurseStopReasonCode,
+  MEDICATION_INFUSION_STOP_REASON_ORDER_CANCELLED,
+  parseMedicationInfusionStopReasonFromNotes,
 } from "@medora/shared";
 import {
   buildOrderItemCreateInput,
@@ -1999,7 +2004,15 @@ export class OrdersService {
       where: { id, facilityId },
       include: {
         encounter: true,
-        items: { select: { catalogItemType: true, lifecycleState: true, status: true } },
+        items: {
+          select: {
+            id: true,
+            catalogItemType: true,
+            lifecycleState: true,
+            status: true,
+            medicationFulfillmentIntent: true,
+          },
+        },
       },
     });
 
@@ -2052,6 +2065,30 @@ export class OrdersService {
     }
 
     const now = new Date();
+
+    if (order.type === "MEDICATION") {
+      const medicationOrderItemIds = order.items
+        .filter(
+          (item) =>
+            item.catalogItemType === "MEDICATION" &&
+            item.lifecycleState !== OrderItemLifecycleState.CANCELLED &&
+            item.lifecycleState !== OrderItemLifecycleState.REVIEWED
+        )
+        .map((item) => item.id);
+      if (medicationOrderItemIds.length > 0) {
+        await this.teardownActiveMedicationInfusionsBeforeOrderCancel({
+          facilityId,
+          orderItemIds: medicationOrderItemIds,
+          cancelledAt: now,
+          cancelReason: reason,
+          cancellationDetails: dto.cancellationDetails,
+          cancelledByUserId: userId,
+          requestorRoleCodes,
+          ip,
+          userAgent,
+        });
+      }
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.order.update({
@@ -2268,6 +2305,23 @@ export class OrdersService {
       statusPatch = undefined;
     }
     const lifecycleState = applyLifecycleWithStatus(orderItem.lifecycleState, OrderStatus.CANCELLED);
+
+    if (
+      orderItem.catalogItemType === "MEDICATION" &&
+      isMedicationAdministerChart(orderItem)
+    ) {
+      await this.teardownActiveMedicationInfusionsBeforeOrderCancel({
+        facilityId,
+        orderItemIds: [orderItemId],
+        cancelledAt: now,
+        cancelReason: reason,
+        cancellationDetails: dto.cancellationDetails,
+        cancelledByUserId: userId,
+        requestorRoleCodes,
+        ip,
+        userAgent,
+      });
+    }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.orderItem.update({
@@ -3685,8 +3739,19 @@ export class OrdersService {
       Math.floor((stoppedAt.getTime() - active.startedAt.getTime()) / 60_000)
     );
 
-    const autoNote = `Perfusion IV terminée — durée : ${durationMinutes} min`;
-    const notesCombined = [autoNote, dto.notes?.trim()].filter(Boolean).join("\n\n");
+    const stopReasonCode = dto.stopReasonCode?.trim().toUpperCase();
+    if (!stopReasonCode) {
+      throw medicationInfusionBadRequest("INFUSION_STOP_REASON_REQUIRED");
+    }
+    if (!isMedicationInfusionNurseStopReasonCode(stopReasonCode)) {
+      throw medicationInfusionBadRequest("INVALID_INFUSION_STOP_REASON");
+    }
+    const notesCombined = buildMedicationInfusionStopNotes({
+      durationMinutes,
+      stopReasonCode,
+      reasonDetail: dto.reasonDetail,
+      supplementalNotes: dto.notes,
+    });
 
     const routeForMar =
       orderItem.route?.trim() || active.route.trim() || routeResolved || undefined;
@@ -3756,6 +3821,7 @@ export class OrdersService {
           0,
           Math.floor((recoveredStoppedAt.getTime() - active.startedAt.getTime()) / 60_000)
         );
+        const recoveredStopReason = parseMedicationInfusionStopReasonFromNotes(orphanTerminalMar.notes);
         const identitySnapshotRecover = await this.loadInfusionPerformerIdentitySnapshot(
           facilityId,
           userId,
@@ -3774,6 +3840,10 @@ export class OrdersService {
           durationMinutes: recoveredDurationMinutes,
           route: routeResolved,
           source: "IV_INFUSION",
+          stopReasonCode: recoveredStopReason.reasonCode ?? stopReasonCode,
+          ...(recoveredStopReason.reasonDetail
+            ? { stopReasonDetail: recoveredStopReason.reasonDetail }
+            : {}),
           ...identitySnapshotRecover,
         };
         const stopMetaRecover = stripUndefinedDeep(stopMetaRecoverRaw) as Prisma.InputJsonValue;
@@ -3881,6 +3951,8 @@ export class OrdersService {
       durationMinutes,
       route: routeResolved,
       source: "IV_INFUSION",
+      stopReasonCode,
+      ...(dto.reasonDetail?.trim() ? { stopReasonDetail: dto.reasonDetail.trim() } : {}),
       ...identitySnapshot,
     };
     const stopMeta = stripUndefinedDeep(stopMetaRaw) as Prisma.InputJsonValue;
@@ -3926,5 +3998,217 @@ export class OrdersService {
       include: { order: true },
     });
     return { orderItem: refreshed, medicationAdministration: marRow, durationMinutes };
+  }
+
+  /**
+   * MEDUI.ED.MAR.H6B — terminate active medication infusions before order cancel mutates line status.
+   * Preserves START history, appends INFUSION_STOP with ORDER_CANCELLED reason, stops sessions.
+   */
+  private async teardownActiveMedicationInfusionsBeforeOrderCancel(input: {
+    facilityId: string;
+    orderItemIds: string[];
+    cancelledAt: Date;
+    cancelReason: string;
+    cancellationDetails?: string | null;
+    cancelledByUserId: string;
+    requestorRoleCodes: RoleCode[];
+    ip?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    for (const orderItemId of [...new Set(input.orderItemIds.map((id) => id.trim()).filter(Boolean))]) {
+      try {
+        await this.stopMedicationInfusionForOrderCancel(orderItemId, input);
+      } catch (err) {
+        if (
+          err instanceof BadRequestException &&
+          (err.getResponse() as { errorCode?: string })?.errorCode === "NO_ACTIVE_INFUSION"
+        ) {
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  private async stopMedicationInfusionForOrderCancel(
+    orderItemId: string,
+    input: {
+      facilityId: string;
+      cancelledAt: Date;
+      cancelReason: string;
+      cancellationDetails?: string | null;
+      cancelledByUserId: string;
+      requestorRoleCodes: RoleCode[];
+      ip?: string;
+      userAgent?: string;
+    }
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId: input.facilityId } },
+      include: {
+        order: { include: { encounter: { include: { patient: true } } } },
+      },
+    });
+    if (!orderItem) return;
+    if (orderItem.catalogItemType !== "MEDICATION" || !isMedicationAdministerChart(orderItem)) {
+      return;
+    }
+
+    const { resolvedRoute, catalog } = await loadMedicationInfusionClassificationContext(
+      this.prisma,
+      orderItem
+    );
+    const candidateInput = buildMedicationInfusionCandidateInputFromOrderItem(
+      orderItem,
+      catalog,
+      resolvedRoute
+    );
+    if (!isMedicationInfusionCandidate(candidateInput)) {
+      return;
+    }
+    const routeResolved = (resolvedRoute ?? "").trim() || (candidateInput.route ?? "").trim() || "IV";
+
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = await this.resolveActiveMedicationInfusionSession(
+      input.facilityId,
+      orderItem,
+      infusionEvents,
+      routeResolved
+    );
+    if (!active) {
+      throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
+    }
+
+    const stoppedAt = input.cancelledAt;
+    if (stoppedAt.getTime() < active.startedAt.getTime()) {
+      throw medicationInfusionBadRequest("STOP_BEFORE_START");
+    }
+
+    const durationMinutes = Math.max(
+      0,
+      Math.floor((stoppedAt.getTime() - active.startedAt.getTime()) / 60_000)
+    );
+    const notesCombined = buildMedicationInfusionOrderCancelStopNotes({
+      durationMinutes,
+      cancelReason: input.cancelReason,
+      cancellationDetails: input.cancellationDetails,
+    });
+    const routeForMar =
+      orderItem.route?.trim() || active.route.trim() || routeResolved || undefined;
+
+    const schedulingFeatureFlags = getMedicationSchedulingFeatureFlagsFromEnv();
+    const ivpbStopLinkage = await findRecurringIvpbDoseStopLinkage(this.prisma, {
+      orderItemId,
+      facilityId: input.facilityId,
+      legacyInfusionSessionKey: active.sessionKey,
+      featureFlags: schedulingFeatureFlags,
+    });
+
+    const marRow = await this.medicationAdministration.create(
+      orderItem.order.encounterId,
+      input.facilityId,
+      input.cancelledByUserId,
+      {
+        orderItemId,
+        marAction: "administered",
+        administeredAt: stoppedAt,
+        ...(routeForMar ? { route: routeForMar } : {}),
+        notes: notesCombined,
+      },
+      {
+        allowAdministeredForInfusionTerminal: true,
+        skipAutoMedicationCatalogBilling: true,
+        skipDuplicateAdministeredWindowCheck: true,
+        ...(ivpbStopLinkage
+          ? {
+              skipMedicationLineCompletion: true,
+              ivpbDoseSessionMar: {
+                medicationDoseInstanceId: ivpbStopLinkage.dose.id,
+                infusionSessionId: ivpbStopLinkage.infusionSessionId,
+                action: "STOP" as const,
+                infusionStoppedAt: stoppedAt,
+              },
+            }
+          : {}),
+        infusionMar: {
+          infusionSessionKey: active.sessionKey,
+          infusionPhase: "INFUSION_STOP",
+        },
+        infusionBillingEvidence: {
+          infusionSessionKey: active.sessionKey,
+          infusionStartedAtIso: active.startedAt.toISOString(),
+          infusionStoppedAtIso: stoppedAt.toISOString(),
+          infusionDurationMinutes: durationMinutes,
+          orderItemId,
+        },
+      }
+    );
+
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(
+      input.facilityId,
+      input.cancelledByUserId,
+      input.requestorRoleCodes
+    );
+    const startedIso = active.startedAt.toISOString();
+    const stoppedIso = stoppedAt.toISOString();
+    const stopMetaRaw: Record<string, unknown> = {
+      infusionScope: "MEDICATION_INFUSION",
+      infusionAction: "STOP",
+      orderItemId,
+      medicationAdministrationId: marRow.id,
+      infusionSessionKey: active.sessionKey,
+      infusionStartedAt: startedIso,
+      infusionStoppedAt: stoppedIso,
+      durationMinutes,
+      route: routeResolved,
+      source: "IV_INFUSION",
+      stopReasonCode: MEDICATION_INFUSION_STOP_REASON_ORDER_CANCELLED,
+      orderCancelReason: input.cancelReason.trim(),
+      ...(input.cancellationDetails?.trim()
+        ? { orderCancelDetails: input.cancellationDetails.trim() }
+        : {}),
+      ...identitySnapshot,
+    };
+    const stopMeta = stripUndefinedDeep(stopMetaRaw) as Prisma.InputJsonValue;
+
+    await this.writeOrderEvent({
+      facilityId: input.facilityId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      orderType: orderItem.order.type,
+      eventType: OrderEventType.COMPLETED,
+      performedByUserId: input.cancelledByUserId,
+      metadata: stopMeta,
+      roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
+    });
+
+    await this.audit.log(AuditAction.ORDER_COMPLETE, "ORDER_ITEM", {
+      userId: input.cancelledByUserId,
+      facilityId: input.facilityId,
+      patientId: orderItem.order.encounter.patientId,
+      encounterId: orderItem.order.encounterId,
+      orderId: orderItem.orderId,
+      entityId: orderItemId,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      critical: true,
+      metadata: stopMeta,
+    });
+
+    if (!ivpbStopLinkage) {
+      await this.prisma.infusionSession.updateMany({
+        where: {
+          facilityId: input.facilityId,
+          orderItemId,
+          legacyInfusionSessionKey: active.sessionKey,
+          status: "IN_PROGRESS",
+        },
+        data: { status: "STOPPED", stoppedAt },
+      });
+    }
   }
 }

@@ -36,6 +36,7 @@ export function isMedicationDoseOpenForCancellation(input: {
   if (input.hasTerminalAdministration) return false;
   const status = parseMedicationDoseStatus(input.doseStatus);
   if (!status || NON_CASCADE_DOSE_STATUSES.has(status)) return false;
+  if (status === "IN_PROGRESS") return true;
   if (input.scheduledAt.getTime() < input.cancelledAt.getTime()) return false;
   return true;
 }

@@ -17,6 +17,8 @@ const MEDICATION_INFUSION_ERROR_MESSAGES_EN: Record<MedicationInfusionErrorCode,
   INFUSION_NOT_ELIGIBLE:
     "This line is not eligible for infusion (route / label). Use routine bedside administration.",
   ORDER_LINE_TERMINAL: "Order line is already completed or cancelled.",
+  INFUSION_STOP_REASON_REQUIRED: "A structured infusion stop reason is required.",
+  INVALID_INFUSION_STOP_REASON: "Invalid infusion stop reason.",
 };
 
 export function extractApiErrorCode(body: unknown): string | null {

@@ -9,6 +9,7 @@ import {
   type EncounterCareUnitCode,
 } from "../encounters/governedRoomLabel.js";
 import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
+import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "../medication/medicationInfusionStopReasonGovernance.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
 
@@ -824,9 +825,13 @@ export const medicationInfusionStartDtoSchema = z.object({
 
 export type MedicationInfusionStartDto = z.infer<typeof medicationInfusionStartDtoSchema>;
 
-/** POST /orders/items/:id/infusion/stop — IVPB infusion end (Phase 1). */
+/** POST /orders/items/:id/infusion/stop — IVPB infusion end (Phase 1 / H6C structured reason). */
 export const medicationInfusionStopDtoSchema = z.object({
   stoppedAt: z.coerce.date().optional(),
+  stopReasonCode: z
+    .enum(MEDICATION_INFUSION_NURSE_STOP_REASON_CODES)
+    .default("COMPLETED"),
+  reasonDetail: z.preprocess(emptyStrToUndefined, z.string().max(500).optional()),
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
   /** M1.8B.7J.3 — optional explicit IVPB_SESSION dose (resolved from active session when omitted). */
   medicationDoseInstanceId: z.preprocess(emptyStrToUndefined, z.string().uuid().optional()),

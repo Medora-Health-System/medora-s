@@ -12325,6 +12325,17 @@ export default {
       ORDER_CANCELED: "Ordonnance annulée",
     },
   },
+  marInfusionStopReason: {
+    fieldLabel: "Motif d'arrêt",
+    detailLabel: "Précision (optionnel)",
+    detailPlaceholder: "Détail clinique…",
+    COMPLETED: "Perfusion terminée",
+    ORDER_CANCELLED: "Ordonnance annulée",
+    REACTION: "Réaction",
+    LINE_FAILURE: "Échec de voie",
+    PROVIDER_DISCONTINUED: "Arrêt prescripteur",
+    PUMP_ISSUE: "Problème de pompe",
+  },
   marPrnGovernance: {
     sectionTitle: "Motif PRN",
     orderIndication: "Indication prescrite",
@@ -12462,6 +12473,8 @@ export default {
       INFUSION_NOT_ELIGIBLE:
         "Cette ligne n'est pas éligible à la perfusion (voie / libellé). Utilisez l'administration au lit habituelle.",
       ORDER_LINE_TERMINAL: "Ligne déjà terminée ou annulée.",
+      INFUSION_STOP_REASON_REQUIRED: "Un motif d'arrêt de perfusion structuré est requis.",
+      INVALID_INFUSION_STOP_REASON: "Motif d'arrêt de perfusion non valide.",
     },
     safetyGovernanceErrors: {
       MAR_EARLY_ADMIN_REASON_REQUIRED: "Une administration anticipée nécessite un motif.",

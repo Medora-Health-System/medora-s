@@ -195,7 +195,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
     const result = await service.stopMedicationInfusion(
       "fac-1",
       "item-ivpb-1",
-      { stoppedAt },
+      { stoppedAt, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       "user-rn-1"
     );
@@ -213,7 +213,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
     await service.stopMedicationInfusion(
       "fac-1",
       "item-ivpb-1",
-      { stoppedAt },
+      { stoppedAt, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       "user-rn-1"
     );
@@ -240,7 +240,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
     await service.stopMedicationInfusion(
       "fac-1",
       "item-ivpb-1",
-      { stoppedAt },
+      { stoppedAt, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       "user-rn-1"
     );
@@ -264,7 +264,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
       await service.stopMedicationInfusion(
         "fac-1",
         "item-ivpb-1",
-        { stoppedAt: new Date("2026-06-11T19:00:00.000Z") },
+        { stoppedAt: new Date("2026-06-11T19:00:00.000Z"), stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         "user-rn-1"
       );
@@ -382,7 +382,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
     await service.stopMedicationInfusion(
       "fac-1",
       "item-ivpb-1",
-      { stoppedAt: new Date("2026-06-12T02:00:00.000Z") },
+      { stoppedAt: new Date("2026-06-12T02:00:00.000Z"), stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       "user-rn-1"
     );
@@ -397,7 +397,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
       await service.stopMedicationInfusion(
         "fac-1",
         "item-ivpb-1",
-        { stoppedAt: new Date("2026-06-11T19:00:00.000Z") },
+        { stoppedAt: new Date("2026-06-11T19:00:00.000Z"), stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         "user-rn-1"
       );
@@ -417,7 +417,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
       await service.stopMedicationInfusion(
         "fac-1",
         "item-ivpb-1",
-        { stoppedAt: new Date("2026-06-11T19:00:00.000Z") },
+        { stoppedAt: new Date("2026-06-11T19:00:00.000Z"), stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         "user-rn-1"
       );
@@ -437,7 +437,7 @@ describe("OrdersService.stopMedicationInfusion (M1.8B.7K.10B)", () => {
     await service.stopMedicationInfusion(
       "fac-1",
       "item-ivpb-1",
-      { stoppedAt },
+      { stoppedAt, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       "user-rn-1"
     );

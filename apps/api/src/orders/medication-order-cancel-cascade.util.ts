@@ -58,7 +58,10 @@ export async function cascadeMedicationOrderCancelInTransaction(
       orderItemId: { in: orderItemIds },
       doseStatus: { notIn: ["COMPLETED", "MISSED", "CANCELLED", "SUPERSEDED", "HELD"] },
       terminalMedicationAdministrationId: null,
-      scheduledAt: { gte: input.cancelledAt },
+      OR: [
+        { scheduledAt: { gte: input.cancelledAt } },
+        { doseStatus: "IN_PROGRESS", infusionSessionId: { not: null } },
+      ],
     },
     select: {
       id: true,

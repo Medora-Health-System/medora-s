@@ -43,6 +43,7 @@ import {
   formatFluidBolusCompletedTimeRange,
   type FluidBolusSessionStatus,
 } from "./fluidBolusSession.js";
+import { resolveMedicationInfusionStopReasonTimelineLabel } from "./medicationInfusionStopReasonGovernance.js";
 
 /**
  * M1.8B.7K.1 / K.7 — Facility MAR shift timeline read model (shared contracts).
@@ -186,6 +187,8 @@ export type MarShiftTimelineAdministrationEnrichment = {
   administeredByDisplay: string | null;
   administeredByInitials: string | null;
   completionSummary: string | null;
+  /** Structured infusion stop reason from STOP MAR (MEDUI.ED.MAR.H6C). */
+  infusionStopReasonCode?: string | null;
   /** Terminal MAR notes for PRN cell/drawer display (K.10B.7). */
   administrationNotes?: string | null;
 };
@@ -861,9 +864,12 @@ export function buildMarShiftTimelineCellDisplay(input: {
 
   if (input.doseStatus === "COMPLETED") {
     const prnSummary = formatPrnMarAdministrationCellSummary(input.marNotes);
+    const stopReasonLabel = resolveMedicationInfusionStopReasonTimelineLabel(
+      input.enrichment?.infusionStopReasonCode
+    );
     return {
       primaryText,
-      secondaryText: "DONE",
+      secondaryText: stopReasonLabel ?? "DONE",
       tertiaryText: prnSummary ?? tertiaryText,
     };
   }

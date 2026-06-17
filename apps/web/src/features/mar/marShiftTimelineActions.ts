@@ -13,6 +13,8 @@ export type MarShiftTimelineInfusionStartInput = {
 };
 
 export type MarShiftTimelineInfusionStopInput = {
+  stopReasonCode?: string;
+  reasonDetail?: string;
   notes?: string;
   /** UTC ISO stop instant (from facility-local datetime-local when edited). */
   stoppedAt?: string;
@@ -151,14 +153,18 @@ export function validateMarShiftTimelineStopTime(
 }
 
 export function buildMarShiftTimelineStopPayload(
-  input: { stopTimeLocal?: string; notes?: string },
+  input: { stopTimeLocal?: string; notes?: string; stopReasonCode?: string; reasonDetail?: string },
   facilityTimeZone?: string | null
 ): MarShiftTimelineInfusionStopInput {
   const notes = input.notes?.trim() || undefined;
+  const stopReasonCode = input.stopReasonCode?.trim() || "COMPLETED";
+  const reasonDetail = input.reasonDetail?.trim() || undefined;
   const stoppedAt = input.stopTimeLocal?.trim()
     ? marShiftTimelineDateTimeLocalToUtcIso(input.stopTimeLocal, facilityTimeZone) ?? undefined
     : undefined;
   return {
+    stopReasonCode,
+    ...(reasonDetail ? { reasonDetail } : {}),
     ...(notes ? { notes } : {}),
     ...(stoppedAt ? { stoppedAt } : {}),
   };

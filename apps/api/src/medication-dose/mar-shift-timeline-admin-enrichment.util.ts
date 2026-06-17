@@ -7,6 +7,7 @@ import {
   medicationAdministrationRowIsInfusionStop,
   parseMedicationDoseKind,
   parseMedicationDoseStatus,
+  parseMedicationInfusionStopReasonFromNotes,
   type MarShiftTimelineAdministrationEnrichment,
 } from "@medora/shared";
 import { MedicationAdministrationInfusionPhase } from "@prisma/client";
@@ -62,6 +63,7 @@ function emptyEnrichment(): MarShiftTimelineAdministrationEnrichment {
     administeredByDisplay: null,
     administeredByInitials: null,
     completionSummary: null,
+    infusionStopReasonCode: null,
   };
 }
 
@@ -242,6 +244,8 @@ function resolveDoseEnrichment(
       enrichment.stoppedAt = stop.at;
       enrichment.stoppedByDisplay = stop.display;
       enrichment.stoppedByInitials = stop.initials;
+      enrichment.infusionStopReasonCode =
+        parseMedicationInfusionStopReasonFromNotes(stopMar.notes).reasonCode;
     } else if (session?.stoppedAt) {
       enrichment.stoppedAt = session.stoppedAt.toISOString();
     }

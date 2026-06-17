@@ -5,6 +5,7 @@ import {
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
 import type { MedicationAdministrationHistoryEntry, MedicationAdministrationHistoryEventType } from "@medora/shared";
+import { resolveMedicationInfusionStopReasonI18nKey } from "@medora/shared";
 import type { PriorityBadgeSoft } from "@/components/medora-card/medoraCardTokens";
 import {
   NEUTRAL_BADGE,
@@ -131,6 +132,11 @@ function formatReasonLine(
   const detail = entry.reasonDetail?.trim();
   if (!code && !detail) return null;
   const prefix = t("marAdministrationHistory.reasonPrefix");
+  if (entry.eventType === "INFUSION_STOP" && code) {
+    const labelKey = resolveMedicationInfusionStopReasonI18nKey(code);
+    const label = labelKey ? t(labelKey) : code;
+    return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
+  }
   if (code && detail) return `${prefix}${code} — ${detail}`;
   return `${prefix}${detail ?? code}`;
 }

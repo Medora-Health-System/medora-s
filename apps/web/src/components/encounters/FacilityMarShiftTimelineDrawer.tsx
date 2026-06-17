@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel } from "@medora/shared";
+import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
 import {
@@ -70,6 +71,8 @@ export function FacilityMarShiftTimelineDrawer({
   const [startTimeValue, setStartTimeValue] = useState("");
   const [stopTimeValue, setStopTimeValue] = useState("");
   const [stopNotes, setStopNotes] = useState("");
+  const [infusionStopReasonCode, setInfusionStopReasonCode] = useState("COMPLETED");
+  const [infusionStopReasonDetail, setInfusionStopReasonDetail] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reasonModal, setReasonModal] = useState<null | { action: "REFUSE" | "HOLD" | "MARK_MISSED" }>(null);
@@ -100,6 +103,8 @@ export function FacilityMarShiftTimelineDrawer({
     setStartTimeValue(defaultMarShiftTimelineStartTimeValue(item, facilityTimeZone));
     setStopTimeValue(defaultMarShiftTimelineStopTimeValue(item, facilityTimeZone));
     setStopNotes("");
+    setInfusionStopReasonCode("COMPLETED");
+    setInfusionStopReasonDetail("");
     setActionError(null);
     setSubmitting(false);
     setReasonModal(null);
@@ -568,7 +573,12 @@ export function FacilityMarShiftTimelineDrawer({
           return;
         }
         const stopPayload = buildMarShiftTimelineStopPayload(
-          { notes: stopNotes, stopTimeLocal: stopTimeValue },
+          {
+            notes: stopNotes,
+            stopTimeLocal: stopTimeValue,
+            stopReasonCode: infusionStopReasonCode,
+            reasonDetail: infusionStopReasonDetail,
+          },
           facilityTimeZone
         );
         await actionHandlers.onExecuteStopInfusion(item, stopPayload);
@@ -780,6 +790,62 @@ export function FacilityMarShiftTimelineDrawer({
 
           {showStopNotesField ? (
             <div style={{ marginTop: 12 }}>
+              {item?.clinicalAction === "STOP_INFUSION" ? (
+                <>
+                  <label
+                    htmlFor="mar-shift-timeline-stop-reason"
+                    style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+                  >
+                    {t("marInfusionStopReason.fieldLabel")}
+                  </label>
+                  <select
+                    id="mar-shift-timeline-stop-reason"
+                    data-testid="mar-shift-timeline-drawer-stop-reason"
+                    value={infusionStopReasonCode}
+                    onChange={(e) => setInfusionStopReasonCode(e.target.value)}
+                    disabled={readOnly || submitting}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 14,
+                      boxSizing: "border-box",
+                      marginBottom: 10,
+                    }}
+                  >
+                    {MEDICATION_INFUSION_NURSE_STOP_REASON_CODES.map((code) => (
+                      <option key={code} value={code}>
+                        {t(`marInfusionStopReason.${code}`)}
+                      </option>
+                    ))}
+                  </select>
+                  <label
+                    htmlFor="mar-shift-timeline-stop-reason-detail"
+                    style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
+                  >
+                    {t("marInfusionStopReason.detailLabel")}
+                  </label>
+                  <input
+                    id="mar-shift-timeline-stop-reason-detail"
+                    data-testid="mar-shift-timeline-drawer-stop-reason-detail"
+                    type="text"
+                    value={infusionStopReasonDetail}
+                    onChange={(e) => setInfusionStopReasonDetail(e.target.value)}
+                    disabled={readOnly || submitting}
+                    placeholder={t("marInfusionStopReason.detailPlaceholder")}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 14,
+                      boxSizing: "border-box",
+                      marginBottom: 10,
+                    }}
+                  />
+                </>
+              ) : null}
               <label
                 htmlFor="mar-shift-timeline-stop-notes"
                 style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 6 }}
