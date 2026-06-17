@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   buildMarPrnTimelineCellDisplay,
   buildPrnTimelineAvailabilityProjections,
+  dedupeMarPrnTimelineCells,
   formatMarPrnFrequencyLabel,
+  isMarPrnCurrentlyEligible,
   isPrnAdministrationBeforeNextEligible,
   isPrnMedicationOrderClassification,
   MAR_SHIFT_TIMELINE_STATUS_COLORS,
   prnTimelineCellPriority,
+  resolveMarPrnNextEligibleAt,
   resolveMarShiftTimelineStatusColorKey,
   resolvePrnNextEligibleAt,
   resolvePrnTimelinePlacementInstant,
@@ -41,6 +44,68 @@ describe("marPrnTimeline (K.10B.8A PRN row)", () => {
     const last = "2026-06-12T09:15:00.000Z";
     const next = resolvePrnNextEligibleAt({ lastAdministeredAt: last, frequencyCode: "Q6H" });
     expect(next?.toISOString()).toBe("2026-06-12T15:15:00.000Z");
+  });
+
+  it("resolveMarPrnNextEligibleAt aliases resolvePrnNextEligibleAt", () => {
+    const last = "2026-06-12T09:54:00.000Z";
+    expect(resolveMarPrnNextEligibleAt({ lastAdministeredAt: last, frequencyCode: "Q6H" })?.toISOString()).toBe(
+      "2026-06-12T15:54:00.000Z"
+    );
+  });
+
+  it("isMarPrnCurrentlyEligible respects Q6H interval", () => {
+    const last = "2026-06-12T09:54:00.000Z";
+    expect(
+      isMarPrnCurrentlyEligible({
+        now: "2026-06-12T11:00:00.000Z",
+        lastAdministeredAt: last,
+        frequencyCode: "Q6H",
+      })
+    ).toBe(false);
+    expect(
+      isMarPrnCurrentlyEligible({
+        now: "2026-06-12T16:00:00.000Z",
+        lastAdministeredAt: last,
+        frequencyCode: "Q6H",
+      })
+    ).toBe(true);
+  });
+
+  it("dedupeMarPrnTimelineCells keeps one projection per orderItemId", () => {
+    const deduped = dedupeMarPrnTimelineCells([
+      {
+        orderItemId: "oi-1",
+        isPrnBand: true,
+        prnProjectionKey: "oi-1:a",
+        doseStatus: "DUE",
+        scheduledAt: "2026-06-12T21:54:00.000Z",
+      },
+      {
+        orderItemId: "oi-1",
+        isPrnBand: true,
+        prnProjectionKey: "oi-1:b",
+        doseStatus: "DUE",
+        scheduledAt: "2026-06-12T15:54:00.000Z",
+      },
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.scheduledAt).toBe("2026-06-12T15:54:00.000Z");
+  });
+
+  it("buildMarPrnTimelineCellDisplay shows Next eligible when not yet due", () => {
+    const future = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    const display = buildMarPrnTimelineCellDisplay({
+      medicationLabel: "Zofran",
+      doseAmount: "4 mg",
+      route: "IVP",
+      frequencyCode: "Q6H",
+      doseStatus: "DUE",
+      facilityTimeZone: "UTC",
+      projectedEligibleAt: future,
+      prnNextEligibleAt: future,
+    });
+    expect(display.availability).toBe("next_eligible");
+    expect(display.tertiaryText).toMatch(/^Next eligible /);
   });
 
   it("isPrnAdministrationBeforeNextEligible is true when proposed time is early", () => {
@@ -137,11 +202,11 @@ describe("marPrnTimeline permanence (K.10B.11)", () => {
   });
 });
 
-describe("marPrnTimeline availability projections (K.10B.11A)", () => {
+describe("marPrnTimeline availability projections (K.10B.11A / H9J)", () => {
   const shiftStart = "2026-06-11T19:00:00.000Z";
   const shiftEnd = "2026-06-12T08:00:00.000Z";
 
-  it("Q6H PRN projects 21:00 and 03:00 inside 7P–7A shift", () => {
+  it("Q6H PRN projects only the next eligible slot inside shift", () => {
     const projections = buildPrnTimelineAvailabilityProjections({
       orderItemId: "oi-1",
       frequencyCode: "Q6H",
@@ -149,15 +214,25 @@ describe("marPrnTimeline availability projections (K.10B.11A)", () => {
       shiftStartAt: shiftStart,
       shiftEndAt: shiftEnd,
     });
-    expect(projections.map((p) => p.eligibleAt)).toEqual([
-      "2026-06-11T21:00:00.000Z",
-      "2026-06-12T03:00:00.000Z",
-    ]);
+    expect(projections).toHaveLength(1);
+    expect(projections[0]?.eligibleAt).toBe("2026-06-11T21:00:00.000Z");
     expect(projections[0]?.projectionKey).toBe("oi-1:2026-06-11T21:00:00.000Z");
-    expect(projections[0]?.prnNextEligibleAt).toBe("2026-06-12T03:00:00.000Z");
   });
 
-  it("Q4H PRN projects multiple eligible cells", () => {
+  it("Q6H PRN last given 09:54 shows next eligible 15:54 only", () => {
+    const projections = buildPrnTimelineAvailabilityProjections({
+      orderItemId: "oi-q6h",
+      frequencyCode: "Q6H",
+      lastAdministeredAt: "2026-06-12T09:54:00.000Z",
+      shiftStartAt: "2026-06-12T08:00:00.000Z",
+      shiftEndAt: "2026-06-12T20:00:00.000Z",
+    });
+    expect(projections).toHaveLength(1);
+    expect(projections[0]?.eligibleAt).toBe("2026-06-12T15:54:00.000Z");
+    expect(projections[0]?.prnNextEligibleAt).toBe("2026-06-12T15:54:00.000Z");
+  });
+
+  it("Q4H PRN projects only one next cell", () => {
     const projections = buildPrnTimelineAvailabilityProjections({
       orderItemId: "oi-q4h",
       frequencyCode: "Q4H",
@@ -165,7 +240,7 @@ describe("marPrnTimeline availability projections (K.10B.11A)", () => {
       shiftStartAt: shiftStart,
       shiftEndAt: shiftEnd,
     });
-    expect(projections.length).toBeGreaterThanOrEqual(3);
+    expect(projections).toHaveLength(1);
     expect(projections[0]?.eligibleAt).toBe("2026-06-11T20:00:00.000Z");
   });
 

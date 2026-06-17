@@ -1806,7 +1806,11 @@ export function MedicationAdministrationTab({
         : null;
     const controlledMedication = Boolean(linkedOrderItem?.catalogMedication?.isControlled);
 
-    if (modalAction === "administered" && modalItem.scheduledAt?.trim()) {
+    if (
+      modalAction === "administered" &&
+      modalItem.scheduledAt?.trim() &&
+      !modalItem.isPrn
+    ) {
       const administeredAtForTiming =
         modalEffectiveTimeLocal.trim()
           ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? documentedAt
@@ -1853,8 +1857,8 @@ export function MedicationAdministrationTab({
         actionType: universalActionType,
         clinicalTimeLocal: modalEffectiveTimeLocal,
         documentedAtIso: documentedAt.toISOString(),
-        scheduledTime: modalItem.scheduledAt,
-        currentScheduledTime: modalItem.scheduledAt,
+        scheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt,
+        currentScheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt,
         reasonCode: modalClinicalTimeReasonCode,
         reasonDetail: modalEffectiveTimeReason,
         facilityTimeZone: clinicalTz,
@@ -2091,7 +2095,7 @@ export function MedicationAdministrationTab({
       });
 
       const scheduleTimingForNotes =
-        modalAction === "administered" && modalItem.scheduledAt?.trim()
+        modalAction === "administered" && modalItem.scheduledAt?.trim() && !modalItem.isPrn
           ? evaluateMarScheduleAdministrationTiming({
               administeredAt:
                 modalEffectiveTimeLocal.trim()
@@ -2105,7 +2109,7 @@ export function MedicationAdministrationTab({
             })
           : null;
       const varianceForNotes =
-        modalAction === "administered" && modalItem.scheduledAt?.trim()
+        modalAction === "administered" && modalItem.scheduledAt?.trim() && !modalItem.isPrn
           ? assessMarAdministrationVariance({
               actualAdministrationTime:
                 modalEffectiveTimeLocal.trim()
@@ -2143,8 +2147,8 @@ export function MedicationAdministrationTab({
               actionType: universalActionTypeForNotes,
               clinicalTimeIso: clinicalTimeIsoForNotes,
               documentedAtIso: documentedAt.toISOString(),
-              scheduledTime: modalItem.scheduledAt,
-              currentScheduledTime: modalItem.scheduledAt,
+              scheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt,
+              currentScheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt,
               reasonCode: modalClinicalTimeReasonCode,
               reasonDetail: modalEffectiveTimeReason,
             })
@@ -2174,7 +2178,10 @@ export function MedicationAdministrationTab({
           routeLine,
           [
             universalTimingNotes,
-            overrideRequirementForNotes?.reasonRequired && marScheduleTimingReasonCode.trim()
+            !modalItem?.isPrn &&
+            !universalTimingNotes &&
+            overrideRequirementForNotes?.reasonRequired &&
+            marScheduleTimingReasonCode.trim()
               ? buildMarScheduleTimingDocumentation({
                   kind:
                     overrideKindForNotes === "EARLY_ADMINISTRATION"
@@ -3742,7 +3749,13 @@ export function MedicationAdministrationTab({
             ) : null}
 
             {(() => {
-              if (!modalItem || modalAction !== "administered" || !modalItem.scheduledAt?.trim()) {
+              if (
+                !modalItem ||
+                modalAction !== "administered" ||
+                !modalItem.scheduledAt?.trim() ||
+                modalItem.isPrn ||
+                canAdjustAdminTime
+              ) {
                 return null;
               }
               const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
@@ -3966,8 +3979,8 @@ export function MedicationAdministrationTab({
                   value={modalEffectiveTimeLocal}
                   onChange={setModalEffectiveTimeLocal}
                   documentedAt={new Date().toISOString()}
-                  scheduledTime={modalItem.scheduledAt}
-                  currentScheduledTime={modalItem.scheduledAt}
+                  scheduledTime={modalItem.isPrn ? null : modalItem.scheduledAt}
+                  currentScheduledTime={modalItem.isPrn ? null : modalItem.scheduledAt}
                   actionType={
                     modalItem.isPrn && modalAction === "administered"
                       ? "PRN_ADMINISTER"

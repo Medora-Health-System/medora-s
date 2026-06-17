@@ -1,6 +1,7 @@
 import {
   buildMarPrnTimelineCellDisplay,
   buildPrnTimelineAvailabilityProjections,
+  dedupeMarPrnTimelineRowCells,
   formatGovernedRoomDisplay,
   formatMarPrnFrequencyLabel,
   isPrnMedicationOrderClassification,
@@ -437,6 +438,8 @@ export function appendMarShiftTimelinePrnAvailabilityProjections(input: {
 
     upsertMarShiftTimelinePrnCellItem(input.row, built.columnKey, built.item);
   }
+
+  input.row.cells = dedupeMarPrnTimelineRowCells(input.row.cells);
 }
 
 export { isPrnMedicationOrderClassification };

@@ -9213,10 +9213,12 @@ export default {
     cancelErrorReasonRequired: "Le motif d'annulation est requis.",
     cancelErrorGeneric: "Impossible d'annuler cette commande.",
     medicationAdministrationInMar:
-      "L'administration des médicaments se fait dans le MAR.",
+      "Les doses actives sont gérées dans le MAR.",
     marStatusOrdered: "Prescrit",
     marStatusAcknowledged: "Accusé de réception",
     marStatusActiveOnMar: "Actif sur le MAR",
+    marStatusMarManaged: "Géré dans le MAR",
+    marStatusActiveMarManaged: "Actif — géré dans le MAR",
     marStatusInfusionInProgress: "Perfusion en cours sur le MAR",
     marStatusCompletedOnMar: "Terminé sur le MAR",
     marStatusHeldOnMar: "Suspendu sur le MAR",

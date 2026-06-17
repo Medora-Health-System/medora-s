@@ -53,10 +53,10 @@ export function resolveMedicationOrderMarStatusLabel(
     return t("erEmergencyOrders.marStatusCompletedOnMar");
   }
   if (st === "ACKNOWLEDGED") {
-    return t("erEmergencyOrders.marStatusAcknowledged");
+    return t("erEmergencyOrders.marStatusMarManaged");
   }
   if (st === "IN_PROGRESS") {
-    return t("erEmergencyOrders.marStatusActiveOnMar");
+    return t("erEmergencyOrders.marStatusActiveMarManaged");
   }
   return t("erEmergencyOrders.marStatusOrdered");
 }

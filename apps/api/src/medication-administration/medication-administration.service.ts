@@ -58,6 +58,8 @@ import {
   isMarUniversalClinicalTimeCorrectionEligible,
   shouldAllowOrderLineCompletionDespitePrnContinuity,
   shouldSkipOrderLineCompletionForMar,
+  isPrnMedicationOrder,
+  MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -115,6 +117,7 @@ import {
 import {
   assertMarMissedDoseGovernanceForCreate,
   assertMarScheduleTimingGovernanceForCreate,
+  resolveMarCreateClinicalAdministrationInstant,
 } from "./mar-administration-safety-governance.util";
 
 /** MAR may close a medication line from these statuses (bedside chart path; avoids strict PLACED→COMPLETED graph gap). */
@@ -904,6 +907,37 @@ export class MedicationAdministrationService {
       this.logAndThrowMarCreateBlocked(marValidationLogContext, imSiteValidation.message);
     }
 
+    const isPrnMedicationLine =
+      linkedMedicationLine != null &&
+      isPrnMedicationOrder({
+        frequencyCode: linkedMedicationLine.frequencyCode,
+        directionsSig: linkedMedicationLine.notes,
+      });
+
+    let lastPrnAdministeredAt: Date | null = null;
+    if (isPrnMedicationLine && orderItemId) {
+      const lastPrnRow = await this.prisma.medicationAdministration.findFirst({
+        where: {
+          orderItemId,
+          marAction: "administered",
+        },
+        select: { administeredAt: true },
+        orderBy: { administeredAt: "desc" },
+      });
+      lastPrnAdministeredAt = lastPrnRow?.administeredAt ?? null;
+    }
+
+    const prnEarlyOverrideReason = (() => {
+      if (!data.notes?.trim()) return null;
+      for (const line of data.notes.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith(MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX)) {
+          return trimmed.slice(MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX.length).trim() || null;
+        }
+      }
+      return null;
+    })();
+
     const prnValidation = validatePrnAdministrationForMarCreate({
       marAction: marActionResolved,
       frequencyCode: linkedMedicationLine?.frequencyCode ?? null,
@@ -918,6 +952,12 @@ export class MedicationAdministrationService {
       prnReasonCode: data.prnReasonCode ?? null,
       prnReasonOther: data.prnReasonOther ?? null,
       painScore: data.painScore ?? null,
+      proposedAdministeredAt:
+        marActionResolved === "administered"
+          ? resolveMarCreateClinicalAdministrationInstant(data)
+          : null,
+      lastAdministeredAt: lastPrnAdministeredAt,
+      prnEarlyOverrideReason,
     });
     if (prnValidation) {
       this.logAndThrowMarCreateBlocked(marValidationLogContext, prnValidation.message);
@@ -938,7 +978,8 @@ export class MedicationAdministrationService {
     if (
       marActionResolved === "administered" &&
       scheduleGovernanceDoseInstance?.scheduledAt &&
-      !skipMarSafetyGovernanceForInfusion
+      !skipMarSafetyGovernanceForInfusion &&
+      !isPrnMedicationLine
     ) {
       const facilityRow = await this.prisma.facility.findFirst({
         where: { id: facilityId },
