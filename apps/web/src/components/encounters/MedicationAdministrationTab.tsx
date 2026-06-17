@@ -98,6 +98,7 @@ import {
   type AdvancedMedicationSafetyLine,
   type MedicationSafetyCatalogInput,
   type MedicationSafetyWarning,
+  type MarShiftTimelineShiftCode,
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import {
@@ -117,6 +118,19 @@ import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/me
 import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
+import {
+  MedicationAdministrationHistoryRail,
+  marAdministrationHistoryRailTimelineWidthPercent,
+} from "@/components/mar/MedicationAdministrationHistoryRail";
+import { MarHistoricalDateNavigationBar } from "@/components/mar/MarHistoricalDateNavigationBar";
+import { resolveMarAdministrationHistoryRailLayoutMode } from "@/lib/medicationAdministrationHistoryRail";
+import {
+  buildHistoricalMarTimeline,
+  readStoredMarHistoricalDateLocal,
+  resolveFacilityLocalDayBounds,
+  resolveFacilityLocalToday,
+  writeStoredMarHistoricalDateLocal,
+} from "@/lib/marHistoricalTimeline";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import {
   findPassQueueItemForTimelineCell,
@@ -595,16 +609,21 @@ export function MedicationAdministrationTab({
     items: [],
   });
   const timelineRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  const historyRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  const refreshMarViews = useCallback(async () => {
+    await timelineRefreshRef.current?.();
+    await historyRefreshRef.current?.();
+  }, []);
   const timelineCloseDrawerRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     const onRoomAssignmentRefresh = (event: Event) => {
       const detail = (event as CustomEvent<{ encounterId?: string }>).detail;
       if (detail?.encounterId && detail.encounterId !== encounterId) return;
-      void timelineRefreshRef.current?.();
+      void refreshMarViews();
     };
     window.addEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
     return () => window.removeEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
-  }, [encounterId]);
+  }, [encounterId, refreshMarViews]);
   const timelineReopenDrawerRef = useRef<
     ((orderItemId: string, medicationDoseInstanceId?: string | null, scheduledAt?: string | null) => void) | null
   >(null);
@@ -628,13 +647,45 @@ export function MedicationAdministrationTab({
   const [panelDensity, setPanelDensity] = useState(() =>
     typeof window !== "undefined" ? resolveClinicalTabletPanelDensityMode(window.innerWidth) : "default"
   );
+  const [marViewportWidth, setMarViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1280
+  );
+  const clinicalTz = useMemo(
+    () => resolveClinicalTimeZone({ facilityTimeZone }),
+    [facilityTimeZone]
+  );
+  const [marSelectedDateLocal, setMarSelectedDateLocal] = useState(() =>
+    resolveFacilityLocalToday(clinicalTz)
+  );
+  const [marShiftCode, setMarShiftCode] = useState<MarShiftTimelineShiftCode>("7A_7P");
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const applyDensity = () => setPanelDensity(resolveClinicalTabletPanelDensityMode(window.innerWidth));
+    const applyDensity = () => {
+      setPanelDensity(resolveClinicalTabletPanelDensityMode(window.innerWidth));
+      setMarViewportWidth(window.innerWidth);
+    };
     applyDensity();
     window.addEventListener("resize", applyDensity);
     return () => window.removeEventListener("resize", applyDensity);
   }, []);
+
+  useEffect(() => {
+    const userId = currentUserId?.trim();
+    if (!userId || !facilityId.trim()) return;
+    const stored = readStoredMarHistoricalDateLocal(facilityId, encounterId, userId);
+    if (stored) setMarSelectedDateLocal(stored);
+  }, [currentUserId, encounterId, facilityId]);
+
+  const handleMarSelectedDateChange = useCallback(
+    (dateLocal: string) => {
+      setMarSelectedDateLocal(dateLocal);
+      const userId = currentUserId?.trim();
+      if (userId && facilityId.trim()) {
+        writeStoredMarHistoricalDateLocal(facilityId, encounterId, userId, dateLocal);
+      }
+    },
+    [currentUserId, encounterId, facilityId]
+  );
 
   useEffect(() => {
     if (modalAction !== "administered") {
@@ -1473,7 +1524,7 @@ export function MedicationAdministrationTab({
       if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
       await submitMarShiftTimelineTerminalMar(encounterId, facilityId, item, action, input);
       await reloadMarData();
-      await timelineRefreshRef.current?.();
+      await refreshMarViews();
     },
     [encounterId, facilityId, reloadMarData, t]
   );
@@ -1503,7 +1554,7 @@ export function MedicationAdministrationTab({
           skipModalClose: true,
         });
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
         return true;
       },
       onExecuteStopInfusion: async (item, input) => {
@@ -1516,7 +1567,7 @@ export function MedicationAdministrationTab({
           skipModalClose: true,
         });
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecuteRefuse: async (item, input) => {
         await submitTimelineTerminalMar(item, "REFUSE", input);
@@ -1531,19 +1582,19 @@ export function MedicationAdministrationTab({
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
         await startContinuousFluid(item.orderItemId, facilityId);
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecutePauseFluid: async (item) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
         await pauseContinuousFluid(item.orderItemId, facilityId);
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecuteResumeFluid: async (item) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
         await resumeContinuousFluid(item.orderItemId, facilityId);
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecuteStopFluid: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
@@ -1552,13 +1603,13 @@ export function MedicationAdministrationTab({
           stoppedAt: input.stoppedAt,
         });
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecuteStartBolus: async (item) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
         await startFluidBolus(item.orderItemId, facilityId);
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
       onExecuteCompleteBolus: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
@@ -1567,7 +1618,7 @@ export function MedicationAdministrationTab({
           completedAt: input.stoppedAt,
         });
         await reloadMarData();
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       },
     };
   }, [
@@ -2128,7 +2179,7 @@ export function MedicationAdministrationTab({
           drawerReopenTarget.scheduledAt
         );
       } else {
-        await timelineRefreshRef.current?.();
+        await refreshMarViews();
       }
     } catch (err) {
       const apiErr = err as Error & {
@@ -2154,6 +2205,22 @@ export function MedicationAdministrationTab({
   const isOpen = encounterStatus === "OPEN";
   const nowMs = Date.now();
   const marCompact = clinicalTabletUsesCompactPanel(panelDensity);
+  const marHistorySideBySide =
+    resolveMarAdministrationHistoryRailLayoutMode(marViewportWidth) === "sideRail";
+  const marHistoricalTimeline = useMemo(
+    () =>
+      buildHistoricalMarTimeline({
+        selectedDateLocal: marSelectedDateLocal,
+        shiftCode: marShiftCode,
+        facilityTimeZone: clinicalTz,
+        locale: language,
+      }),
+    [clinicalTz, language, marSelectedDateLocal, marShiftCode]
+  );
+  const marHistoryDayWindow = useMemo(
+    () => resolveFacilityLocalDayBounds(marSelectedDateLocal, clinicalTz),
+    [clinicalTz, marSelectedDateLocal]
+  );
   const marTableHeaderCellStyle: React.CSSProperties = marCompact
     ? { ...clinicalTabletCompactMarHeaderCellStyle(), textAlign: "left" }
     : { padding: "10px 8px", textAlign: "left", fontSize: 12 };
@@ -2215,23 +2282,70 @@ export function MedicationAdministrationTab({
 
       <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
 
-      <FacilityMarShiftTimeline
-        facilityId={facilityId}
-        encounterId={encounterId}
-        assignedToUserId={currentUserId}
-        viewerUserId={currentUserId}
+      <MarHistoricalDateNavigationBar
+        selectedDateLocal={marSelectedDateLocal}
+        facilityTimeZone={clinicalTz}
+        shiftLabel={marHistoricalTimeline.shiftLabel}
+        shiftTimeRangeLabel={marHistoricalTimeline.shiftTimeRangeLabel}
+        isToday={marHistoricalTimeline.isToday}
         compact={marCompact}
-        actionHandlers={marShiftTimelineActionHandlers}
-        onRegisterRefresh={(refresh) => {
-          timelineRefreshRef.current = refresh;
-        }}
-        onRegisterCloseDrawer={(close) => {
-          timelineCloseDrawerRef.current = close;
-        }}
-        onRegisterReopenDrawer={(reopen) => {
-          timelineReopenDrawerRef.current = reopen;
-        }}
+        onDateChange={handleMarSelectedDateChange}
+        onToday={() => handleMarSelectedDateChange(resolveFacilityLocalToday(clinicalTz))}
       />
+
+      <div
+        data-testid="mar-workspace-with-history"
+        style={{
+          display: "flex",
+          flexDirection: marHistorySideBySide ? "row" : "column",
+          gap: marCompact ? 8 : 12,
+          alignItems: "stretch",
+          minHeight: 0,
+        }}
+      >
+        <div
+          data-testid="mar-workspace-timeline"
+          style={{
+            flex: marHistorySideBySide
+              ? `1 1 ${marAdministrationHistoryRailTimelineWidthPercent()}%`
+              : "1 1 auto",
+            minWidth: 0,
+          }}
+        >
+          <FacilityMarShiftTimeline
+            facilityId={facilityId}
+            encounterId={encounterId}
+            assignedToUserId={currentUserId}
+            viewerUserId={currentUserId}
+            compact={marCompact}
+            facilityTimeZone={clinicalTz}
+            selectedDateLocal={marSelectedDateLocal}
+            historicalReadOnly={!marHistoricalTimeline.isToday}
+            actionHandlers={marShiftTimelineActionHandlers}
+            onShiftCodeChange={setMarShiftCode}
+            onRegisterRefresh={(refresh) => {
+              timelineRefreshRef.current = refresh;
+            }}
+            onRegisterCloseDrawer={(close) => {
+              timelineCloseDrawerRef.current = close;
+            }}
+            onRegisterReopenDrawer={(reopen) => {
+              timelineReopenDrawerRef.current = reopen;
+            }}
+          />
+        </div>
+        <MedicationAdministrationHistoryRail
+          facilityId={facilityId}
+          encounterId={encounterId}
+          viewerUserId={currentUserId}
+          facilityTimeZone={clinicalTz}
+          compact={marCompact}
+          selectedDayWindow={marHistoryDayWindow}
+          onRegisterRefresh={(refresh) => {
+            historyRefreshRef.current = refresh;
+          }}
+        />
+      </div>
 
       {MAR_TAB_SHOW_LEGACY_SECTIONS ? (
       <>
@@ -3888,7 +4002,7 @@ export function MedicationAdministrationTab({
                     }
                   );
                   await reloadMarData();
-                  await timelineRefreshRef.current?.();
+                  await refreshMarViews();
                 } catch {
                   // runMarInfusion sets tab error state
                 }

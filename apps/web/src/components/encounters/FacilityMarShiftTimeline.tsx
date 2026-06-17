@@ -28,6 +28,11 @@ import {
   readStoredMarShiftTimelineShiftCode,
   writeStoredMarShiftTimelineShiftCode,
 } from "@/lib/marShiftTimelineUiState";
+import {
+  buildHistoricalMarTimeline,
+  resolveFacilityLocalToday,
+  shouldUseExplicitMarShiftWindow,
+} from "@/lib/marHistoricalTimeline";
 
 const DEFAULT_SHIFT_CODE: MarShiftTimelineShiftCode = "7A_7P";
 const HEADER_CLOCK_REFRESH_MS = 60_000;
@@ -46,7 +51,12 @@ export type FacilityMarShiftTimelineProps = {
   /** Active viewer user id — used for per-user shift preference persistence (K.10). */
   viewerUserId?: string;
   compact?: boolean;
+  facilityTimeZone?: string | null;
+  /** Facility-local YYYY-MM-DD; when not today, timeline loads that date's shift window. */
+  selectedDateLocal?: string | null;
+  historicalReadOnly?: boolean;
   actionHandlers?: MarShiftTimelineActionHandlers | null;
+  onShiftCodeChange?: (shiftCode: MarShiftTimelineShiftCode) => void;
   onRegisterRefresh?: (refresh: () => Promise<void>) => void;
   onRegisterCloseDrawer?: (close: () => void) => void;
   /** Re-open drawer with fresh timeline item after administer modal (K.10B.2). */
@@ -63,7 +73,11 @@ export function FacilityMarShiftTimeline({
   assignedToUserId,
   viewerUserId,
   compact = false,
+  facilityTimeZone = null,
+  selectedDateLocal = null,
+  historicalReadOnly = false,
   actionHandlers = null,
+  onShiftCodeChange,
   onRegisterRefresh,
   onRegisterCloseDrawer,
   onRegisterReopenDrawer,
@@ -97,12 +111,30 @@ export function FacilityMarShiftTimeline({
   const handleShiftChange = useCallback(
     (next: MarShiftTimelineShiftCode) => {
       setShiftCode(next);
+      onShiftCodeChange?.(next);
       if (facilityId.trim() && viewerUserId?.trim()) {
         writeStoredMarShiftTimelineShiftCode(facilityId, viewerUserId, next);
       }
     },
-    [facilityId, viewerUserId]
+    [facilityId, onShiftCodeChange, viewerUserId]
   );
+
+  const explicitShiftWindow = React.useMemo(() => {
+    const dateLocal = selectedDateLocal?.trim();
+    const tz = facilityTimeZone?.trim();
+    if (!dateLocal || !tz) return null;
+    const todayLocal = resolveFacilityLocalToday(tz);
+    if (dateLocal === todayLocal) return null;
+    const built = buildHistoricalMarTimeline({
+      selectedDateLocal: dateLocal,
+      shiftCode,
+      facilityTimeZone: tz,
+      locale: language,
+    });
+    return shouldUseExplicitMarShiftWindow(built)
+      ? { shiftStart: built.shiftStart, shiftEnd: built.shiftEnd }
+      : null;
+  }, [facilityTimeZone, language, selectedDateLocal, shiftCode]);
 
   const loadTimeline = useCallback(async (reopenDrawer?: Pick<MarShiftTimelineCellItem, "orderItemId" | "medicationDoseInstanceId" | "scheduledAt">) => {
     setLoading(true);
@@ -113,6 +145,8 @@ export function FacilityMarShiftTimeline({
         encounterId,
         assignedToUserId,
         shiftCode,
+        shiftStart: explicitShiftWindow?.shiftStart,
+        shiftEnd: explicitShiftWindow?.shiftEnd,
         locale: language,
         includeCompleted: true,
         includeUpcoming: true,
@@ -139,7 +173,11 @@ export function FacilityMarShiftTimeline({
     } finally {
       setLoading(false);
     }
-  }, [assignedToUserId, encounterId, facilityId, shiftCode, language]);
+  }, [assignedToUserId, encounterId, explicitShiftWindow, facilityId, shiftCode, language]);
+
+  useEffect(() => {
+    onShiftCodeChange?.(shiftCode);
+  }, [onShiftCodeChange, shiftCode]);
 
   useEffect(() => {
     void loadTimeline();
@@ -243,6 +281,14 @@ export function FacilityMarShiftTimeline({
             </select>
           </label>
         </div>
+        {historicalReadOnly ? (
+          <p
+            data-testid="mar-shift-timeline-historical-readonly"
+            style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}
+          >
+            {t("marHistorical.historicalReadOnly")}
+          </p>
+        ) : null}
       </header>
 
       {loading ? (
@@ -486,7 +532,7 @@ export function FacilityMarShiftTimeline({
             : null
         }
         facilityTimeZone={data?.shift.timeZone ?? data?.facility.timeZone ?? null}
-        actionHandlers={actionHandlers}
+        actionHandlers={historicalReadOnly ? null : actionHandlers}
         onClose={() => setDrawerSelection(null)}
         onActionSuccess={async () => {
           await loadTimeline();
