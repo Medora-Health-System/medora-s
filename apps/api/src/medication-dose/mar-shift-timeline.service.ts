@@ -38,6 +38,10 @@ import {
   type MedicationFrequencySnapshotJson,
   type MedicationOrderedDoseSnapshotJson,
   type MedicationSafetyGovernanceSnapshot,
+  parseMarMedicationResponseNotes,
+  resolveMarMedicationResponseBadgeSeverity,
+  sortMarMedicationResponsesNewestFirst,
+  type MarMedicationResponseSeverity,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -143,6 +147,19 @@ export type MarShiftTimelineCellItem = {
   scheduleAdjustment?: MarScheduleAdjustmentTimelineProjection | null;
   scheduleAdjustmentChain?: MarScheduleAdjustmentChainStep[];
   administrationVariance?: MarAdministrationVarianceTimelineProjection | null;
+  medicationAdministrationId?: string | null;
+  medicationResponses?: Array<{
+    responseCode: string;
+    responseDetail: string | null;
+    responseTime: string | null;
+    documentedAt: string;
+    painBefore: number | null;
+    painAfter: number | null;
+  }>;
+  medicationResponseBadge?: {
+    label: "RESPONSE";
+    severity: MarMedicationResponseSeverity;
+  } | null;
 };
 
 export type MarShiftTimelineRowCell = {
@@ -699,6 +716,15 @@ export class MarShiftTimelineService {
         secondaryText = scheduleAdjustment.badgeLabel ?? "RESCHEDULED";
       }
 
+      const medicationResponses = sortMarMedicationResponsesNewestFirst(
+        parseMarMedicationResponseNotes(administrationNotes)
+      );
+      const responseBadgeSeverity = resolveMarMedicationResponseBadgeSeverity(administrationNotes);
+      const medicationResponseBadge =
+        medicationResponses.length > 0 && responseBadgeSeverity
+          ? { label: "RESPONSE" as const, severity: responseBadgeSeverity }
+          : null;
+
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
         medicationDoseInstanceId: dose.id,
@@ -790,6 +816,9 @@ export class MarShiftTimelineService {
                 performedAt: enrichment.administeredAt,
               })
             : null,
+        medicationAdministrationId: enrichment?.medicationAdministrationId ?? null,
+        medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
+        medicationResponseBadge,
       };
 
       const rowMeta = {

@@ -193,6 +193,8 @@ export type MarShiftTimelineAdministrationEnrichment = {
   infusionStopReasonCode?: string | null;
   /** Terminal MAR notes for PRN cell/drawer display (K.10B.7). */
   administrationNotes?: string | null;
+  /** Terminal MAR row id for response documentation (H9L). */
+  medicationAdministrationId?: string | null;
 };
 
 export function buildMarShiftTimelineTitle(facilityName: string): string {

@@ -103,6 +103,38 @@ function HistoryRailEntryCard({
           {entry.reasonLine}
         </div>
       ) : null}
+      {entry.medicationResponseTimeLabel ? (
+        <div
+          data-testid="mar-administration-history-response-time"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponseTimeLabel}
+        </div>
+      ) : null}
+      {entry.medicationResponseDocumentedLabel ? (
+        <div
+          data-testid="mar-administration-history-response-documented"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponseDocumentedLabel}
+        </div>
+      ) : null}
+      {entry.medicationResponsePainLabel ? (
+        <div
+          data-testid="mar-administration-history-response-pain"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponsePainLabel}
+        </div>
+      ) : null}
+      {entry.medicationResponseCommentLine ? (
+        <div
+          data-testid="mar-administration-history-response-comment"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponseCommentLine}
+        </div>
+      ) : null}
       {entry.correctionTypeLabelKey ? (
         <div
           data-testid="mar-administration-history-correction-type"

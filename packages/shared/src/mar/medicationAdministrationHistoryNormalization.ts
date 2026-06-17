@@ -35,6 +35,10 @@ import {
 } from "./marAdministrationVarianceGovernance.js";
 import { reconstructMarAdministrationVarianceFromNotes } from "./marVarianceReconstructionGovernance.js";
 import { parseMarUniversalClinicalTimeNotes } from "./marUniversalClinicalTimeGovernance.js";
+import {
+  parseMarMedicationResponseNotes,
+  sortMarMedicationResponsesNewestFirst,
+} from "./marMedicationResponseGovernance.js";
 
 const REFUSED_NOTES_PREFIX = "Refused:";
 
@@ -403,6 +407,46 @@ export function normalizeMedicationAdministrationHistoryCorrectionRow(
     }),
     readOnly: true,
   };
+}
+
+/** Expand MAR row into MEDICATION_RESPONSE_DOCUMENTED history entries (H9L, newest first). */
+export function normalizeMedicationAdministrationHistoryResponseRows(input: {
+  marEntry: MedicationAdministrationHistoryEntry;
+  administrationId: string;
+  notes?: string | null;
+}): MedicationAdministrationHistoryEntry[] {
+  const responses = sortMarMedicationResponsesNewestFirst(
+    parseMarMedicationResponseNotes(input.notes)
+  );
+  if (responses.length === 0) return [];
+
+  return responses.map((response, index) => ({
+    id: `${input.administrationId}:medication-response:${index}:${response.documentedAt}`,
+    source: "MAR" as const,
+    encounterId: input.marEntry.encounterId,
+    orderItemId: input.marEntry.orderItemId,
+    medicationLabel: input.marEntry.medicationLabel,
+    doseDisplay: input.marEntry.doseDisplay,
+    route: input.marEntry.route,
+    eventType: "MEDICATION_RESPONSE_DOCUMENTED" as const,
+    eventAt: response.responseTime ?? response.documentedAt,
+    documentedAt: response.documentedAt,
+    performedByDisplay: input.marEntry.performedByDisplay,
+    performedByRole: input.marEntry.performedByRole,
+    reasonCode: response.responseCode,
+    reasonDetail: response.responseDetail,
+    isPrn: input.marEntry.isPrn,
+    prnIndication: input.marEntry.prnIndication,
+    infusionPhase: null,
+    medicationDoseInstanceId: input.marEntry.medicationDoseInstanceId,
+    medicationResponseCode: response.responseCode,
+    medicationResponseDetail: response.responseDetail,
+    medicationResponseTime: response.responseTime,
+    medicationResponsePainBefore: response.painBefore,
+    medicationResponsePainAfter: response.painAfter,
+    originalAdministrationIdForResponse: input.administrationId,
+    readOnly: true,
+  }));
 }
 
 

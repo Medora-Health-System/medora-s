@@ -22,6 +22,7 @@ import {
   marShiftTimelinePrnRowStyle,
   marShiftTimelineRescheduleCellStyle,
   marShiftTimelineAdministrationVarianceCellStyle,
+  marShiftTimelineMedicationResponseBadgeStyle,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -164,6 +165,7 @@ export function FacilityMarShiftTimeline({
                 patientDisplay: found.patientDisplay,
                 roomLabel: found.roomLabel,
                 governedRoomDisplay: found.governedRoomDisplay,
+                encounterId: found.encounterId ?? encounterId ?? "",
               }
             : null
         );
@@ -448,6 +450,10 @@ export function FacilityMarShiftTimeline({
                               !item.administrationVariance?.hasVariance;
                             const variance = item.administrationVariance;
                             const hasVariance = variance?.hasVariance === true;
+                            const responseBadge = item.medicationResponseBadge;
+                            const responseBadgeStyle = responseBadge
+                              ? marShiftTimelineMedicationResponseBadgeStyle(responseBadge.severity)
+                              : null;
                             const statusStyle = hasVariance
                               ? marShiftTimelineAdministrationVarianceCellStyle(variance?.badgeLabel)
                               : isRescheduled
@@ -481,6 +487,7 @@ export function FacilityMarShiftTimeline({
                                     patientDisplay: scheduledPatientDisplay,
                                     roomLabel: row.roomLabel,
                                     governedRoomDisplay: row.governedRoomDisplay ?? null,
+                                    encounterId: row.encounterId,
                                   })
                                 }
                                 style={{
@@ -539,6 +546,19 @@ export function FacilityMarShiftTimeline({
                                       ) : null}
                                     </div>
                                   </>
+                                ) : null}
+                                {responseBadge ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-response-badge"
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      marginTop: 2,
+                                      color: responseBadgeStyle?.color as string,
+                                    }}
+                                  >
+                                    {t("marMedicationResponse.badge")}
+                                  </div>
                                 ) : null}
                                 {isRescheduled ? (
                                   <div
@@ -608,6 +628,7 @@ export function FacilityMarShiftTimeline({
 
       <FacilityMarShiftTimelineDrawer
         item={drawerSelection?.item ?? null}
+        encounterId={drawerSelection?.encounterId ?? encounterId ?? null}
         context={
           drawerSelection
             ? {

@@ -15,6 +15,7 @@ export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "ORDER_CANCELED",
   "ADMINISTRATION_CORRECTION",
   "SCHEDULE_TIME_CHANGED",
+  "MEDICATION_RESPONSE_DOCUMENTED",
 ] as const;
 
 export type MedicationAdministrationHistoryEventType =
@@ -80,6 +81,13 @@ export type MedicationAdministrationHistoryEntry = {
   varianceMinutes?: number | null;
   varianceSeverity?: string | null;
   varianceReviewRecommended?: boolean;
+  /** Present for MEDICATION_RESPONSE_DOCUMENTED rows (MEDUI.ED.MAR.H9L). */
+  medicationResponseCode?: string | null;
+  medicationResponseDetail?: string | null;
+  medicationResponseTime?: string | null;
+  medicationResponsePainBefore?: number | null;
+  medicationResponsePainAfter?: number | null;
+  originalAdministrationIdForResponse?: string | null;
   readOnly: true;
 };
 

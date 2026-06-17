@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   formatMarShiftTimelineClinicianDisplay,
   normalizeMedicationAdministrationHistoryMarRow,
+  normalizeMedicationAdministrationHistoryResponseRows,
   normalizeMedicationAdministrationHistoryCorrectionRow,
   normalizeMedicationAdministrationHistoryOrderCancelRow,
   normalizeMedicationAdministrationHistoryScheduleAdjustmentRow,
@@ -152,11 +153,11 @@ export class MedicationAdministrationHistoryService {
     ];
     const doseById = await this.loadDoseVarianceContextById(facilityId, encounterId, doseIds);
 
-    const marEntries = marRows.map((row) => {
+    const marEntries = marRows.flatMap((row) => {
       const doseCtx = row.medicationDoseInstanceId
         ? doseById.get(row.medicationDoseInstanceId) ?? null
         : null;
-      return normalizeMedicationAdministrationHistoryMarRow({
+      const marEntry = normalizeMedicationAdministrationHistoryMarRow({
         id: row.id,
         encounterId: row.encounterId,
         orderItemId: row.orderItemId,
@@ -180,6 +181,12 @@ export class MedicationAdministrationHistoryService {
         doseScheduledAt: doseCtx?.scheduledAt ?? null,
         doseOrderedDoseSnapshotJson: doseCtx?.orderedDoseSnapshotJson,
       });
+      const responseEntries = normalizeMedicationAdministrationHistoryResponseRows({
+        marEntry,
+        administrationId: row.id,
+        notes: row.notes,
+      });
+      return [marEntry, ...responseEntries];
     });
 
     const cancelEntries = await this.loadOrderCancelHistoryEntries({

@@ -44,6 +44,7 @@ export function isMarShiftTimelineDrawerScheduledActionable(
 export function findMarShiftTimelineCellItem(
   timeline: {
     rows: {
+      encounterId?: string;
       patientDisplay: string;
       roomLabel: string | null;
       governedRoomDisplay?: string | null;
@@ -56,6 +57,7 @@ export function findMarShiftTimelineCellItem(
   patientDisplay: string;
   roomLabel: string | null;
   governedRoomDisplay?: string | null;
+  encounterId?: string;
 } | null {
   const orderItemId = target.orderItemId.trim();
   if (!orderItemId) return null;
@@ -73,6 +75,7 @@ export function findMarShiftTimelineCellItem(
           patientDisplay: row.patientDisplay,
           roomLabel: row.roomLabel,
           governedRoomDisplay: row.governedRoomDisplay ?? null,
+          encounterId: row.encounterId,
         };
       }
     }
@@ -157,6 +160,7 @@ export type MarShiftTimelineDrawerSelection = {
   patientDisplay: string;
   roomLabel: string | null;
   governedRoomDisplay?: string | null;
+  encounterId?: string;
 };
 
 /** Reconcile open drawer with refreshed timeline; close when item no longer present (K.10B.2). */
@@ -179,6 +183,7 @@ export function reconcileMarShiftTimelineDrawerSelection(
     patientDisplay: found.patientDisplay,
     roomLabel: found.roomLabel,
     governedRoomDisplay: found.governedRoomDisplay,
+    encounterId: prev.encounterId,
   };
 }
 
@@ -360,6 +365,19 @@ export function marShiftTimelineAdministrationVarianceCellStyle(
   }
   if (badgeLabel === "LATE") {
     return { backgroundColor: "#fffbeb", borderColor: "#fde68a", color: "#92400e" };
+  }
+  return { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0", color: "#047857" };
+}
+
+/** H9L medication response badge — routine green / neutral gray / safety amber (no red). */
+export function marShiftTimelineMedicationResponseBadgeStyle(
+  severity: "routine" | "neutral" | "safety"
+): CSSProperties {
+  if (severity === "safety") {
+    return { backgroundColor: "#fffbeb", borderColor: "#fde68a", color: "#b45309" };
+  }
+  if (severity === "neutral") {
+    return { backgroundColor: "#f1f5f9", borderColor: "#cbd5e1", color: "#475569" };
   }
   return { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0", color: "#047857" };
 }

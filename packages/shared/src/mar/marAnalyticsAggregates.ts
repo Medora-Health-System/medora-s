@@ -26,6 +26,10 @@ import {
   buildMarTimingOverrideAnalyticsMetrics,
   type MarTimingOverrideAnalyticsMetrics,
 } from "./marAnalyticsTimingOverride.js";
+import {
+  buildMarMedicationResponseAnalyticsMetrics,
+  type MarMedicationResponseAnalyticsMetrics,
+} from "./marMedicationResponseAnalytics.js";
 
 export type MarAnalyticsAggregates = {
   readOnly: typeof MAR_ANALYTICS_READ_ONLY;
@@ -43,6 +47,7 @@ export type MarAnalyticsAggregates = {
   scheduleReschedules: MarScheduleRescheduleAnalyticsMetrics;
   administrationVariances: MarAdministrationVarianceAnalyticsMetrics;
   timingOverrides: MarTimingOverrideAnalyticsMetrics;
+  medicationResponses: MarMedicationResponseAnalyticsMetrics;
 };
 
 export type MarAdministrationAnalyticsMetrics = {
@@ -497,6 +502,10 @@ export function buildMarAnalyticsAggregates(input: MarAnalyticsInput): MarAnalyt
   const timingOverrides = buildMarTimingOverrideAnalyticsMetrics({
     overrides: input.timingOverrides ?? [],
   });
+  const medicationResponses = buildMarMedicationResponseAnalyticsMetrics({
+    eligibleAdministrationCount: administrations.totalAdministrations,
+    projections: input.medicationResponses ?? [],
+  });
 
   return {
     readOnly: MAR_ANALYTICS_READ_ONLY,
@@ -524,6 +533,7 @@ export function buildMarAnalyticsAggregates(input: MarAnalyticsInput): MarAnalyt
     scheduleReschedules,
     administrationVariances,
     timingOverrides,
+    medicationResponses,
   };
 }
 
@@ -541,6 +551,7 @@ export function projectMarAnalyticsInputFromSnapshots(input: {
   scheduleReschedules?: import("./marAnalyticsScheduleReschedule.js").MarAnalyticsScheduleRescheduleProjection[];
   administrationVariances?: import("./marAnalyticsAdministrationVariance.js").MarAnalyticsAdministrationVarianceProjection[];
   timingOverrides?: import("./marAnalyticsTimingOverride.js").MarAnalyticsTimingOverrideProjection[];
+  medicationResponses?: import("./marMedicationResponseAnalytics.js").MarMedicationResponseAnalyticsProjection[];
 }): MarAnalyticsInput {
   return {
     facilityId: input.facilityId,
@@ -557,5 +568,6 @@ export function projectMarAnalyticsInputFromSnapshots(input: {
       ? [...input.administrationVariances]
       : undefined,
     timingOverrides: input.timingOverrides ? [...input.timingOverrides] : undefined,
+    medicationResponses: input.medicationResponses ? [...input.medicationResponses] : undefined,
   };
 }

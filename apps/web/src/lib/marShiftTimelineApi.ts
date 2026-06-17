@@ -105,6 +105,19 @@ export type MarShiftTimelineCellItem = {
     riskSeverity?: string | null;
     reviewRecommended?: boolean;
   }>;
+  medicationResponseBadge?: {
+    label: "RESPONSE";
+    severity: "routine" | "neutral" | "safety";
+  } | null;
+  medicationAdministrationId?: string | null;
+  medicationResponses?: Array<{
+    responseCode: string;
+    responseDetail: string | null;
+    responseTime: string | null;
+    documentedAt: string;
+    painBefore: number | null;
+    painAfter: number | null;
+  }>;
   administrationVariance?: {
     hasVariance: boolean;
     classification: string | null;

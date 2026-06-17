@@ -279,6 +279,7 @@ function resolveDoseEnrichment(
     enrichment.administeredByDisplay = admin.display;
     enrichment.administeredByInitials = admin.initials;
     enrichment.administrationNotes = terminalMar.notes?.trim() || null;
+    enrichment.medicationAdministrationId = terminalMar.id;
     enrichment.completionSummary = buildMarShiftTimelineCompletionSummary({
       doseKind: parsedKind ?? dose.doseKind,
       doseStatus: parsedStatus,

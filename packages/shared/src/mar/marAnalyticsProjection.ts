@@ -69,6 +69,8 @@ export type MarAnalyticsInput = {
   administrationVariances?: import("./marAnalyticsAdministrationVariance.js").MarAnalyticsAdministrationVarianceProjection[];
   /** MEDUI.ED.MAR.H9C — timing override justification projections. */
   timingOverrides?: import("./marAnalyticsTimingOverride.js").MarAnalyticsTimingOverrideProjection[];
+  /** MEDUI.ED.MAR.H9L — medication response documentation projections. */
+  medicationResponses?: import("./marMedicationResponseAnalytics.js").MarMedicationResponseAnalyticsProjection[];
 };
 
 export const MAR_ANALYTICS_READ_ONLY = true as const;

@@ -38,6 +38,7 @@ import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/MedicationDoseScheduleAdjustmentModal";
 import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
 import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
+import { MedicationResponseDocumentationPanel } from "@/components/mar/MedicationResponseDocumentationPanel";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
 import {
   buildMarClinicalTimeDocumentationNotes,
@@ -54,6 +55,7 @@ export type FacilityMarShiftTimelineDrawerContext = {
 export type FacilityMarShiftTimelineDrawerProps = {
   item: MarShiftTimelineCellItem | null;
   context: FacilityMarShiftTimelineDrawerContext | null;
+  encounterId?: string | null;
   facilityTimeZone?: string | null;
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onClose: () => void;
@@ -67,6 +69,7 @@ function actionLabelKey(action: MarShiftTimelineDrawerAction): string {
 export function FacilityMarShiftTimelineDrawer({
   item,
   context,
+  encounterId = null,
   facilityTimeZone = null,
   actionHandlers = null,
   onClose,
@@ -923,6 +926,16 @@ export function FacilityMarShiftTimelineDrawer({
             item={item}
             facilityTimeZone={facilityTimeZone}
           />
+
+          {encounterId?.trim() ? (
+            <MedicationResponseDocumentationPanel
+              item={item}
+              encounterId={encounterId}
+              facilityTimeZone={facilityTimeZone}
+              readOnly={readOnly}
+              onSaved={onActionSuccess}
+            />
+          ) : null}
 
           {showStartTimeField ? (
             <div style={{ marginTop: 12, position: "relative", zIndex: 1 }}>

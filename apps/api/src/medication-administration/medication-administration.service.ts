@@ -20,6 +20,7 @@ import type {
   MedicationAdministrationCreateDto,
   MedicationAdministrationEffectiveTimeDto,
   MedicationAdministrationClinicalCorrectionDto,
+  MarMedicationResponseDocumentDto,
 } from "@medora/shared";
 import {
   buildMedicationAdministrationCandidate,
@@ -61,6 +62,11 @@ import {
   isPrnMedicationOrder,
   MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX,
   type MedicationAdminEffectiveTimeValidationCode,
+  buildMarMedicationResponseNotes,
+  resolveMedicationResponseVisibilityTier,
+  isMarMedicationResponseDocumentationEligible,
+  isMarShiftTimelineHoldNotes,
+  isMarMissedDoseNotes,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import {
@@ -2103,6 +2109,124 @@ export class MedicationAdministrationService {
         marAction: updated.marAction ?? null,
         notes: updated.notes,
       }),
+    };
+  }
+
+  /**
+   * Append-only medication response documentation (MEDUI.ED.MAR.H9L).
+   * Never overwrites prior response lines in MAR notes.
+   */
+  async documentMedicationResponse(
+    encounterId: string,
+    facilityId: string,
+    medicationAdministrationId: string,
+    dto: MarMedicationResponseDocumentDto,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    if (!roleCodes.includes(RoleCode.RN) && !roleCodes.includes(RoleCode.PROVIDER) && !roleCodes.includes(RoleCode.ADMIN)) {
+      throw new BadRequestException("Rôle non autorisé pour documenter une réponse médicamenteuse.");
+    }
+
+    const row = await this.prisma.medicationAdministration.findFirst({
+      where: { id: medicationAdministrationId, encounterId, facilityId },
+      include: {
+        encounter: true,
+        orderItem: {
+          select: {
+            manualLabel: true,
+            manualSecondaryText: true,
+            frequencyCode: true,
+            notes: true,
+          },
+        },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Administration introuvable.");
+    }
+
+    assertEncounterNotSigned(row.encounter);
+    if (row.encounter.status !== "OPEN") {
+      throw new BadRequestException("La consultation doit être ouverte pour documenter une réponse.");
+    }
+
+    const marAction = resolveMedicationMarActionFromStorage({
+      marAction: row.marAction ?? null,
+      notes: row.notes,
+    });
+    if (marAction !== "administered") {
+      throw new BadRequestException("Seules les administrations complétées peuvent recevoir une réponse.");
+    }
+    if (isMarShiftTimelineHoldNotes(row.notes) || isMarMissedDoseNotes(row.notes)) {
+      throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
+    }
+
+    const visibility = resolveMedicationResponseVisibilityTier({
+      marAction,
+      medicationLabel: row.medicationLabelSnapshot,
+      genericName: row.orderItem?.manualSecondaryText,
+      therapeuticClass: null,
+      manualLabel: row.orderItem?.manualLabel,
+      manualSecondaryText: row.orderItem?.manualSecondaryText,
+      frequencyCode: row.orderItem?.frequencyCode,
+      directionsSig: row.orderItem?.notes,
+    });
+    if (visibility === "HIDDEN") {
+      throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
+    }
+
+    const administeredAtIso = row.effectiveAdministeredAt?.toISOString() ?? row.administeredAt.toISOString();
+    if (
+      !isMarMedicationResponseDocumentationEligible({
+        marAction,
+        administeredAt: administeredAtIso,
+        doseStatus: "COMPLETED",
+      })
+    ) {
+      throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
+    }
+
+    const notesResult = buildMarMedicationResponseNotes(row.notes, {
+      responseCode: dto.responseCode,
+      responseDetail: dto.responseDetail ?? null,
+      responseTime: dto.responseTime?.toISOString() ?? null,
+      documentedAt: new Date().toISOString(),
+      painBefore: dto.painBefore ?? null,
+      painAfter: dto.painAfter ?? null,
+    });
+    if (!notesResult.ok) {
+      throw new BadRequestException(notesResult.message);
+    }
+
+    const updated = await this.prisma.medicationAdministration.update({
+      where: { id: medicationAdministrationId },
+      data: { notes: notesResult.notes },
+    });
+
+    await this.audit.log(AuditAction.UPDATE, "MEDICATION_ADMINISTRATION", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: medicationAdministrationId,
+      ip,
+      userAgent,
+      critical: false,
+      metadata: {
+        medicationAdministrationId,
+        encounterId: row.encounterId,
+        responseCode: dto.responseCode,
+        source: "MAR_MEDICATION_RESPONSE",
+      },
+    });
+
+    return {
+      id: updated.id,
+      notes: updated.notes,
+      responseCode: dto.responseCode,
     };
   }
 }

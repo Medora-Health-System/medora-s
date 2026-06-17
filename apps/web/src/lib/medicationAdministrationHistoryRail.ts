@@ -13,6 +13,7 @@ import {
   resolveMedicationAdministrationCorrectionReasonI18nKey,
   resolveMarRescheduleReasonLabelKey,
   resolveMarMedicationTimingOverrideReasonLabelKey,
+  resolveMarMedicationResponseLabelKey,
 } from "@medora/shared";
 import {
   isMarClinicalCorrectionReviewRecommended,
@@ -51,6 +52,11 @@ export type MedicationAdministrationHistoryRailEntry = {
   varianceScheduledTimeLabel: string | null;
   varianceActualTimeLabel: string | null;
   varianceSeverityLabelKey: string | null;
+  medicationResponseLabel?: string | null;
+  medicationResponseTimeLabel?: string | null;
+  medicationResponseDocumentedLabel?: string | null;
+  medicationResponsePainLabel?: string | null;
+  medicationResponseCommentLine?: string | null;
 };
 
 const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, PriorityBadgeSoft> = {
@@ -68,6 +74,7 @@ const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, Prior
   SCHEDULE_TIME_CHANGED: { bg: "#ecfeff", text: "#0e7490", border: "#a5f3fc" },
   EARLY_ADMINISTRATION: { bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" },
   LATE_ADMINISTRATION: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
+  MEDICATION_RESPONSE_DOCUMENTED: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0" },
 };
 
 export function resolveMarAdministrationHistoryRailLayoutMode(
@@ -180,6 +187,12 @@ function formatReasonLine(
     const label = labelKey ? t(labelKey) : code;
     return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
   }
+  if (entry.eventType === "MEDICATION_RESPONSE_DOCUMENTED") {
+    const responseCode = entry.medicationResponseCode ?? code;
+    const labelKey = resolveMarMedicationResponseLabelKey(responseCode);
+    const label = labelKey ? t(labelKey) : responseCode;
+    return `${t("marMedicationResponse.history.response")}: ${label}`;
+  }
   if (
     (entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION") &&
     code
@@ -241,6 +254,15 @@ export function buildMedicationAdministrationHistoryRailEntry(
     entry.eventType === "SCHEDULE_TIME_CHANGED" ? scheduleSplit : correctionSplit;
   const isVarianceEvent =
     entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION";
+  const isMedicationResponseEvent = entry.eventType === "MEDICATION_RESPONSE_DOCUMENTED";
+  const responseCode = entry.medicationResponseCode ?? entry.reasonCode;
+  const responseLabelKey = resolveMarMedicationResponseLabelKey(responseCode);
+  const responsePainLabel =
+    isMedicationResponseEvent &&
+    entry.medicationResponsePainBefore != null &&
+    entry.medicationResponsePainAfter != null
+      ? `${input.t("marMedicationResponse.history.pain")}: ${entry.medicationResponsePainBefore}/10 → ${entry.medicationResponsePainAfter}/10`
+      : null;
 
   return {
     id: entry.id,
@@ -290,6 +312,24 @@ export function buildMedicationAdministrationHistoryRailEntry(
     varianceSeverityLabelKey:
       isVarianceEvent && entry.varianceSeverity?.trim()
         ? `marAdministrationVariance.severity.${entry.varianceSeverity.trim().toUpperCase()}`
+        : null,
+    medicationResponseLabel:
+      isMedicationResponseEvent && responseLabelKey ? input.t(responseLabelKey) : null,
+    medicationResponseTimeLabel:
+      isMedicationResponseEvent && (entry.medicationResponseTime ?? entry.eventAt)?.trim()
+        ? `${input.t("marMedicationResponse.history.responseTime")}: ${input.formatClinicalTime(
+            (entry.medicationResponseTime ?? entry.eventAt)!
+          )}`
+        : null,
+    medicationResponseDocumentedLabel:
+      isMedicationResponseEvent && entry.documentedAt?.trim()
+        ? `${input.t("marMedicationResponse.history.documentedAt")}: ${input.formatClinicalTime(entry.documentedAt)}`
+        : null,
+    medicationResponsePainLabel: responsePainLabel,
+    medicationResponseCommentLine:
+      isMedicationResponseEvent &&
+      (entry.medicationResponseDetail ?? entry.reasonDetail)?.trim()
+        ? `${input.t("marMedicationResponse.history.comment")}: ${(entry.medicationResponseDetail ?? entry.reasonDetail)!.trim()}`
         : null,
   };
 }
