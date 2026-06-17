@@ -10,6 +10,7 @@ function makeHistoryService(overrides: Record<string, unknown> = {}) {
   const orderItemFindMany = jest.fn().mockResolvedValue([]);
   const orderEventFindMany = jest.fn().mockResolvedValue([]);
   const userRoleFindMany = jest.fn().mockResolvedValue([]);
+  const correctionFindMany = jest.fn().mockResolvedValue([]);
 
   const prisma = {
     encounter: {
@@ -17,6 +18,9 @@ function makeHistoryService(overrides: Record<string, unknown> = {}) {
     },
     medicationAdministration: {
       findMany: medicationAdministrationFindMany,
+    },
+    medicationAdministrationCorrection: {
+      findMany: correctionFindMany,
     },
     orderItem: {
       findMany: orderItemFindMany,

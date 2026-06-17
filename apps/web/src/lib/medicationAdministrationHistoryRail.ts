@@ -4,8 +4,15 @@ import {
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
-import type { MedicationAdministrationHistoryEntry, MedicationAdministrationHistoryEventType } from "@medora/shared";
-import { resolveMedicationInfusionStopReasonI18nKey } from "@medora/shared";
+import type {
+  MedicationAdministrationHistoryEntry,
+  MedicationAdministrationHistoryEventType,
+} from "@medora/shared";
+import { resolveMedicationInfusionStopReasonI18nKey, resolveMedicationAdministrationCorrectionReasonI18nKey } from "@medora/shared";
+import {
+  isMarClinicalCorrectionReviewRecommended,
+  resolveMarClinicalCorrectionTypeLabelKey,
+} from "@/features/mar/marClinicalCorrectionWorkflow";
 import type { PriorityBadgeSoft } from "@/components/medora-card/medoraCardTokens";
 import {
   NEUTRAL_BADGE,
@@ -29,6 +36,10 @@ export type MedicationAdministrationHistoryRailEntry = {
   showAdjustedTime: boolean;
   badgeSoft: PriorityBadgeSoft;
   ariaStatusLabel: string;
+  correctionTypeLabelKey: string | null;
+  reviewRecommended: boolean;
+  beforeSummary: string | null;
+  afterSummary: string | null;
 };
 
 const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, PriorityBadgeSoft> = {
@@ -42,6 +53,7 @@ const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, Prior
   INFUSION_START: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
   INFUSION_STOP: { bg: "#f8fafc", text: "#475569", border: "#cbd5e1" },
   ORDER_CANCELED: { bg: "#f3f4f6", text: "#6b7280", border: "#9ca3af" },
+  ADMINISTRATION_CORRECTION: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74" },
 };
 
 export function resolveMarAdministrationHistoryRailLayoutMode(
@@ -137,8 +149,35 @@ function formatReasonLine(
     const label = labelKey ? t(labelKey) : code;
     return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
   }
+  if (entry.eventType === "ADMINISTRATION_CORRECTION" && code) {
+    const labelKey = resolveMedicationAdministrationCorrectionReasonI18nKey(code);
+    const label = labelKey ? t(labelKey) : code;
+    const summary = entry.effectiveChangeSummary?.trim();
+    if (summary === "duplicate_documentation_flagged") {
+      return `${prefix}${label} — ${t("marAdministrationCorrection.duplicateFlagged")}`;
+    }
+    if (summary) {
+      return `${prefix}${label} — ${t("marAdministrationCorrection.correctedPrefix")}${summary}`;
+    }
+    return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
+  }
   if (code && detail) return `${prefix}${code} — ${detail}`;
   return `${prefix}${detail ?? code}`;
+}
+
+function splitCorrectionSummary(summary: string | null | undefined): {
+  beforeSummary: string | null;
+  afterSummary: string | null;
+} {
+  const text = summary?.trim() || "";
+  if (!text || text === "duplicate_documentation_flagged") {
+    return { beforeSummary: null, afterSummary: text || null };
+  }
+  const parts = text.split("→").map((p) => p.trim());
+  if (parts.length === 2) {
+    return { beforeSummary: parts[0] || null, afterSummary: parts[1] || null };
+  }
+  return { beforeSummary: null, afterSummary: text };
 }
 
 export function buildMedicationAdministrationHistoryRailEntry(
@@ -154,6 +193,10 @@ export function buildMedicationAdministrationHistoryRailEntry(
     entry.documentedAt != null &&
     entry.documentedAt.trim() !== "" &&
     entry.documentedAt !== entry.eventAt;
+  const correctionSplit =
+    entry.eventType === "ADMINISTRATION_CORRECTION"
+      ? splitCorrectionSummary(entry.effectiveChangeSummary)
+      : { beforeSummary: null, afterSummary: null };
 
   return {
     id: entry.id,
@@ -172,6 +215,15 @@ export function buildMedicationAdministrationHistoryRailEntry(
     showAdjustedTime,
     badgeSoft,
     ariaStatusLabel: input.t(statusLabelKey),
+    correctionTypeLabelKey:
+      entry.eventType === "ADMINISTRATION_CORRECTION"
+        ? resolveMarClinicalCorrectionTypeLabelKey(entry.reasonCode)
+        : null,
+    reviewRecommended:
+      entry.eventType === "ADMINISTRATION_CORRECTION" &&
+      isMarClinicalCorrectionReviewRecommended(entry.reasonCode),
+    beforeSummary: correctionSplit.beforeSummary,
+    afterSummary: correctionSplit.afterSummary,
   };
 }
 

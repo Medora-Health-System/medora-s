@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   formatMarShiftTimelineClinicianDisplay,
   normalizeMedicationAdministrationHistoryMarRow,
+  normalizeMedicationAdministrationHistoryCorrectionRow,
   normalizeMedicationAdministrationHistoryOrderCancelRow,
   resolveMedicationOrderCancelMetadata,
   sortMedicationAdministrationHistoryEntries,
@@ -174,7 +175,19 @@ export class MedicationAdministrationHistoryService {
       roleByUserId,
     });
 
-    let merged = sortMedicationAdministrationHistoryEntries([...marEntries, ...cancelEntries]);
+    const correctionEntries = await this.loadCorrectionHistoryEntries({
+      encounterId,
+      facilityId,
+      lookbackStart,
+      orderItemFilter,
+      roleByUserId,
+    });
+
+    let merged = sortMedicationAdministrationHistoryEntries([
+      ...marEntries,
+      ...cancelEntries,
+      ...correctionEntries,
+    ]);
 
     if (eventTypeFilter) {
       merged = merged.filter((entry) => entry.eventType === eventTypeFilter);
@@ -320,6 +333,88 @@ export class MedicationAdministrationHistoryService {
     }
 
     return entries;
+  }
+
+  private async loadCorrectionHistoryEntries(input: {
+    encounterId: string;
+    facilityId: string;
+    lookbackStart: Date;
+    orderItemFilter: string | null;
+    roleByUserId: Map<string, string>;
+  }): Promise<MedicationAdministrationHistoryEntry[]> {
+    const corrections = await this.prisma.medicationAdministrationCorrection.findMany({
+      where: {
+        facilityId: input.facilityId,
+        createdAt: { gte: input.lookbackStart },
+        medicationAdministration: {
+          encounterId: input.encounterId,
+          ...(input.orderItemFilter ? { orderItemId: input.orderItemFilter } : {}),
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: ENCOUNTER_MAR_LIST_MAX_LIMIT,
+      select: {
+        id: true,
+        medicationAdministrationId: true,
+        correctedByUserId: true,
+        correctionReason: true,
+        previousValues: true,
+        correctedValues: true,
+        createdAt: true,
+        correctedBy: {
+          select: { firstName: true, lastName: true },
+        },
+        medicationAdministration: {
+          select: {
+            encounterId: true,
+            orderItemId: true,
+            medicationLabelSnapshot: true,
+            route: true,
+            doseValue: true,
+            doseUnit: true,
+          },
+        },
+      },
+    });
+
+    if (corrections.length === 0) return [];
+
+    const correctorIds = [
+      ...new Set(corrections.map((row) => row.correctedByUserId).filter(Boolean)),
+    ];
+    const correctorRoles = await this.loadPrimaryRoleByUserId(input.facilityId, correctorIds);
+    for (const [userId, role] of correctorRoles) {
+      if (!input.roleByUserId.has(userId)) {
+        input.roleByUserId.set(userId, role);
+      }
+    }
+
+    return corrections.map((row) => {
+      const mar = row.medicationAdministration;
+      const doseValue = mar.doseValue?.toString() ?? null;
+      const doseUnit = mar.doseUnit?.trim() || null;
+      const doseDisplay =
+        doseValue && doseUnit ? `${doseValue} ${doseUnit}` : doseValue || doseUnit || null;
+
+      return normalizeMedicationAdministrationHistoryCorrectionRow({
+        id: row.id,
+        facilityId: input.facilityId,
+        medicationAdministrationId: row.medicationAdministrationId,
+        correctedByUserId: row.correctedByUserId,
+        correctionReason: row.correctionReason,
+        previousValues: row.previousValues,
+        correctedValues: row.correctedValues,
+        createdAt: row.createdAt,
+        correctedByFirstName: row.correctedBy.firstName,
+        correctedByLastName: row.correctedBy.lastName,
+        correctedByRole: input.roleByUserId.get(row.correctedByUserId) ?? null,
+        medicationLabel: mar.medicationLabelSnapshot,
+        doseDisplay,
+        route: mar.route,
+        encounterId: mar.encounterId,
+        orderItemId: mar.orderItemId,
+      });
+    });
   }
 
   private async loadPrimaryRoleByUserId(

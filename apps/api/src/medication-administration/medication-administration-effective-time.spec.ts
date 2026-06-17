@@ -45,6 +45,7 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
   const auditLog = jest.fn().mockResolvedValue(undefined);
 
   function makeService(row: ReturnType<typeof makeAdminRow>) {
+    const correctionCreate = jest.fn().mockResolvedValue({ id: "corr-1" });
     const update = jest.fn().mockImplementation(async ({ data }) => ({
       ...row,
       ...data,
@@ -57,6 +58,9 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
         findFirst: jest.fn().mockResolvedValue(row),
         update,
       },
+      medicationAdministrationCorrection: {
+        create: correctionCreate,
+      },
       catalogMedication: {
         findUnique: jest.fn().mockResolvedValue({ isControlled: false }),
       },
@@ -64,17 +68,20 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
         findMany: jest.fn().mockResolvedValue([{ role: { code: RoleCode.RN } }]),
       },
       $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn({ medicationAdministration: { update } })
+        fn({
+          medicationAdministration: { update },
+          medicationAdministrationCorrection: { create: correctionCreate },
+        })
       ),
     };
     const audit = { log: auditLog };
     const service = new MedicationAdministrationService(prisma as never, audit as never);
-    return { service, update, auditLog, row };
+    return { service, update, correctionCreate, auditLog, row };
   }
 
   it("allows RN to adjust and writes audit without mutating administeredAt", async () => {
     const row = makeAdminRow();
-    const { service, update, auditLog: log } = makeService(row);
+    const { service, update, correctionCreate, auditLog: log } = makeService(row);
     await service.setEffectiveAdministeredAt(
       "enc-1",
       "fac-1",
@@ -89,6 +96,14 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
     expect(updateArg.data.administeredAt).toBeUndefined();
     expect(updateArg.data.createdAt).toBeUndefined();
     expect(updateArg.data.effectiveAdministeredAt).toBeInstanceOf(Date);
+    expect(correctionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          medicationAdministrationId: "mar-1",
+          correctionReason: expect.stringContaining("DOCUMENTED_WRONG_TIME"),
+        }),
+      })
+    );
     expect(log).toHaveBeenCalledWith(
       AuditAction.MEDICATION_ADMIN_TIME_ADJUSTED,
       "MEDICATION_ADMINISTRATION",

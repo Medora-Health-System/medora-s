@@ -3,6 +3,7 @@ import {
   AuditAction,
   MedicationAdministrationInfusionPhase,
   MedicationMarAction,
+  MedicationCorrectionStatus,
   OrderEventOrderType,
   OrderEventType,
   OrderStatus,
@@ -18,12 +19,16 @@ import type {
   MarClinicalAction,
   MedicationAdministrationCreateDto,
   MedicationAdministrationEffectiveTimeDto,
+  MedicationAdministrationClinicalCorrectionDto,
 } from "@medora/shared";
 import {
   buildMedicationAdministrationCandidate,
+  buildMedicationAdministrationCorrectionReasonStorage,
   buildMedicationOrderLabelSnapshot,
   deltaMinutesBetween,
   deriveMarClinicalActionFromNotes,
+  inferMedicationAdministrationCorrectionReasonCodeForEffectiveTime,
+  planMedicationAdministrationClinicalCorrection,
   getEncounterAllergyDocumentationSummary,
   INFUSION_START_MAR_NOTE_PREFIX,
   medicationAdministrationRowIsInfusionStart,
@@ -1796,21 +1801,55 @@ export class MedicationAdministrationService {
 
     const previousEffective = row.effectiveAdministeredAt;
     const effectiveAtUtc = new Date(toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAt));
+    const correctionReasonCode = inferMedicationAdministrationCorrectionReasonCodeForEffectiveTime({
+      previousEffectiveAdministeredAt: previousEffective,
+      newEffectiveAdministeredAt: effectiveAtUtc,
+      originalAdministeredAt,
+      systemDocumentedAt,
+      explicitCode: dto.correctionReasonCode,
+    });
+    const correctionReasonStorage = buildMedicationAdministrationCorrectionReasonStorage({
+      reasonCode: correctionReasonCode,
+      reasonDetail: reasonTrim,
+    });
+    const previousValues = {
+      effectiveAdministeredAt: previousEffective
+        ? toMedicationAdministrationEffectiveTimeIsoUtc(previousEffective)
+        : toMedicationAdministrationEffectiveTimeIsoUtc(originalAdministeredAt),
+      administeredAt: toMedicationAdministrationEffectiveTimeIsoUtc(originalAdministeredAt),
+    };
+    const correctedValues = {
+      effectiveAdministeredAt: toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAtUtc),
+    };
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      return tx.medicationAdministration.update({
+      const marUpdated = await tx.medicationAdministration.update({
         where: { id: medicationAdministrationId },
         data: {
           effectiveAdministeredAt: effectiveAtUtc,
           effectiveAdministeredAtSetAt: systemNow,
           effectiveAdministeredAtSetByUserId: userId,
-          effectiveAdministeredAtReason: reasonTrim,
+          effectiveAdministeredAtReason: correctionReasonStorage,
           effectiveAdministeredAtVersion: { increment: 1 },
         },
         include: {
           administeredBy: { select: { id: true, firstName: true, lastName: true } },
         },
       });
+
+      await tx.medicationAdministrationCorrection.create({
+        data: {
+          facilityId,
+          medicationAdministrationId,
+          correctedByUserId: userId,
+          correctionReason: correctionReasonStorage,
+          previousValues,
+          correctedValues,
+          status: MedicationCorrectionStatus.RECORDED,
+        },
+      });
+
+      return marUpdated;
     });
 
     await this.audit.log(AuditAction.MEDICATION_ADMIN_TIME_ADJUSTED, "MEDICATION_ADMINISTRATION", {
@@ -1837,6 +1876,171 @@ export class MedicationAdministrationService {
         infusionEvent: infusionStopTerminal || infusionStartRow,
         infusionPhase: row.infusionPhase ?? null,
         reasonProvided: Boolean(reasonTrim),
+        correctionReasonCode,
+        source: "MAR",
+      },
+    });
+
+    return {
+      ...updated,
+      marAction: resolveMedicationMarActionFromStorage({
+        marAction: updated.marAction ?? null,
+        notes: updated.notes,
+      }),
+    };
+  }
+
+  private marClinicalCorrectionValidationMessage(
+    code: string
+  ): string {
+    switch (code) {
+      case "FORBIDDEN_WRONG_PATIENT":
+        return "La correction patient incorrect nécessite une revue de conformité — contactez l'administration.";
+      case "INVALID_REASON_CODE":
+        return "Motif de correction invalide.";
+      case "REASON_REQUIRED":
+      case "DUPLICATE_DETAIL_REQUIRED":
+        return "Un motif détaillé est requis pour cette correction.";
+      case "DOSE_REQUIRED":
+        return "La dose corrigée est requise.";
+      case "ROUTE_REQUIRED":
+        return "La voie corrigée est requise.";
+      case "NOT_ADMINISTERED":
+        return "Seules les administrations documentées (administré) peuvent être corrigées.";
+      case "ALREADY_NOT_ADMINISTERED":
+        return "Cette administration est déjà documentée comme non administrée.";
+      case "INFUSION_DOSE_FORBIDDEN":
+        return "La correction de dose n'est pas autorisée pour les perfusions IV.";
+      case "INFUSION_ROUTE_FORBIDDEN":
+        return "La correction de voie n'est pas autorisée pour les perfusions IV.";
+      case "INFUSION_NOT_GIVEN_FORBIDDEN":
+        return "La correction « documenté mais non administré » n'est pas autorisée pour les perfusions IV.";
+      case "NO_CHANGE":
+        return "Aucun changement clinique détecté.";
+      default:
+        return "Correction clinique refusée.";
+    }
+  }
+
+  /**
+   * Append-only clinical correction for dose, route, duplicate documentation, and charted-not-given.
+   * Never mutates `administeredAt`, `administeredByUserId`, `patientId`, or deletes MAR rows.
+   */
+  async applyClinicalCorrection(
+    encounterId: string,
+    facilityId: string,
+    medicationAdministrationId: string,
+    dto: MedicationAdministrationClinicalCorrectionDto,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    assertMedicationAdminEffectiveTimeActor(roleCodes);
+
+    const row = await this.prisma.medicationAdministration.findFirst({
+      where: { id: medicationAdministrationId, encounterId, facilityId },
+      include: {
+        encounter: true,
+        orderItem: { include: { order: true } },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Administration introuvable.");
+    }
+
+    assertEncounterNotSigned(row.encounter);
+    if (row.encounter.status !== "OPEN") {
+      throw new BadRequestException("La consultation doit être ouverte pour corriger une administration.");
+    }
+
+    const marActionResolved = resolveMedicationMarActionFromStorage({
+      marAction: row.marAction ?? null,
+      notes: row.notes,
+    });
+
+    const planResult = planMedicationAdministrationClinicalCorrection({
+      dto,
+      current: {
+        doseValue: row.doseValue?.toString() ?? null,
+        doseUnit: row.doseUnit?.trim() || null,
+        route: row.route?.trim() || null,
+        marAction: row.marAction ?? null,
+        notes: row.notes,
+      },
+      marActionResolved,
+      infusionPhase: row.infusionPhase,
+    });
+    if (!planResult.ok) {
+      throw new BadRequestException(this.marClinicalCorrectionValidationMessage(planResult.code));
+    }
+
+    const { plan } = planResult;
+    const reasonTrim = dto.reason?.trim() || null;
+    const correctionReasonStorage = buildMedicationAdministrationCorrectionReasonStorage({
+      reasonCode: plan.reasonCode,
+      reasonDetail: reasonTrim,
+    });
+
+    const marUpdateData: Prisma.MedicationAdministrationUpdateInput = {};
+    if (plan.marUpdate.doseValue !== undefined) {
+      marUpdateData.doseValue = Number(plan.marUpdate.doseValue);
+    }
+    if (plan.marUpdate.doseUnit !== undefined) {
+      marUpdateData.doseUnit = plan.marUpdate.doseUnit;
+    }
+    if (plan.marUpdate.route !== undefined) {
+      marUpdateData.route = plan.marUpdate.route;
+    }
+    if (plan.marUpdate.marAction === "refused") {
+      marUpdateData.marAction = MedicationMarAction.refused;
+    }
+    if (plan.marUpdate.notes !== undefined) {
+      marUpdateData.notes = plan.marUpdate.notes;
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const marUpdated = await tx.medicationAdministration.update({
+        where: { id: medicationAdministrationId },
+        data: marUpdateData,
+        include: {
+          administeredBy: { select: { id: true, firstName: true, lastName: true } },
+        },
+      });
+
+      await tx.medicationAdministrationCorrection.create({
+        data: {
+          facilityId,
+          medicationAdministrationId,
+          correctedByUserId: userId,
+          correctionReason: correctionReasonStorage,
+          previousValues: plan.previousValues as Prisma.InputJsonValue,
+          correctedValues: plan.correctedValues as Prisma.InputJsonValue,
+          status: MedicationCorrectionStatus.RECORDED,
+        },
+      });
+
+      return marUpdated;
+    });
+
+    await this.audit.log(AuditAction.MEDICATION_ADMIN_TIME_ADJUSTED, "MEDICATION_ADMINISTRATION", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      ...(row.orderItem?.orderId ? { orderId: row.orderItem.orderId } : {}),
+      entityId: medicationAdministrationId,
+      ip,
+      userAgent,
+      critical: true,
+      metadata: {
+        medicationAdministrationId,
+        orderId: row.orderItem?.orderId ?? null,
+        encounterId: row.encounterId,
+        correctionReasonCode: plan.reasonCode,
+        correctionKind: "CLINICAL",
+        previousValues: plan.previousValues,
+        correctedValues: plan.correctedValues,
         source: "MAR",
       },
     });

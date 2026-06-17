@@ -123,6 +123,8 @@ import {
   MedicationAdministrationHistoryRail,
   marAdministrationHistoryRailTimelineWidthPercent,
 } from "@/components/mar/MedicationAdministrationHistoryRail";
+import { MarAdministrationRowCorrectionControls } from "@/components/mar/MarAdministrationRowCorrectionControls";
+import type { MedicationAdministrationHistoryEntry } from "@medora/shared";
 import { MarHistoricalDateNavigationBar } from "@/components/mar/MarHistoricalDateNavigationBar";
 import { resolveMarAdministrationHistoryRailLayoutMode } from "@/lib/medicationAdministrationHistoryRail";
 import {
@@ -212,6 +214,9 @@ type AdminRow = {
   marAction?: string | null;
   infusionPhase?: string | null;
   infusionSessionKey?: string | null;
+  doseValue?: string | number | null;
+  doseUnit?: string | null;
+  route?: string | null;
   administeredBy: { id: string; firstName: string; lastName: string };
   pendingSync?: boolean;
   administeredQuantity?: number | null;
@@ -585,6 +590,9 @@ export function MedicationAdministrationTab({
   });
   const [adminTimeModalRow, setAdminTimeModalRow] = useState<AdminRow | null>(null);
   const [adminTimeSaving, setAdminTimeSaving] = useState(false);
+  const [marHistoryRawEntries, setMarHistoryRawEntries] = useState<MedicationAdministrationHistoryEntry[]>(
+    []
+  );
   const [infusionModal, setInfusionModal] = useState<{
     orderItemId: string;
     orderId: string;
@@ -617,6 +625,7 @@ export function MedicationAdministrationTab({
     await timelineRefreshRef.current?.();
     await historyRefreshRef.current?.();
   }, []);
+
   const timelineCloseDrawerRef = useRef<(() => void) | null>(null);
   useEffect(() => {
     const onRoomAssignmentRefresh = (event: Event) => {
@@ -863,6 +872,11 @@ export function MedicationAdministrationTab({
     }
     await loadAllStandalone();
   }, [useSharedClinicalData, clinicalData, loadAllStandalone]);
+
+  const handleMarCorrectionSaved = useCallback(async () => {
+    await reloadMarData();
+    await refreshMarViews();
+  }, [reloadMarData, refreshMarViews]);
 
   useEffect(() => {
     if (!useSharedClinicalData || !clinicalData) return;
@@ -2354,6 +2368,7 @@ export function MedicationAdministrationTab({
           facilityTimeZone={clinicalTz}
           compact={marCompact}
           selectedDayWindow={marHistoryDayWindow}
+          onHistoryLoaded={setMarHistoryRawEntries}
           onRegisterRefresh={(refresh) => {
             historyRefreshRef.current = refresh;
           }}
@@ -2745,6 +2760,11 @@ export function MedicationAdministrationTab({
                   marRowClock.administrationId != null
                     ? adminListForRow.find((a) => a.id === marRowClock.administrationId) ?? null
                     : null;
+                const displayName =
+                  marMedicationDisplayLabel(latest?.medicationLabelSnapshot, row.label, [
+                    latest?.medicationLabelSnapshot,
+                    row.label,
+                  ]);
                 const showDocAction = buildMedicationAdministrationRowDocumentAction({
                   encounterOpen: encounterClinicalMutationsAllowed,
                   canAdjust: canAdjustAdminTime,
@@ -2792,14 +2812,25 @@ export function MedicationAdministrationTab({
                         ) : null}
                       </div>
                     ) : null}
+                    {resolvedClockAdmin ? (
+                      <MarAdministrationRowCorrectionControls
+                        row={resolvedClockAdmin}
+                        medicationLabel={displayName}
+                        encounterId={encounterId}
+                        facilityId={facilityId}
+                        facilityTimeZone={facilityTimeZone}
+                        language={language}
+                        encounterOpen={encounterClinicalMutationsAllowed}
+                        canAdjust={canAdjustAdminTime}
+                        readOnly={!marHistoricalTimeline.isToday}
+                        historyEntries={marHistoryRawEntries}
+                        t={t}
+                        onOpenTimeCorrection={() => setAdminTimeModalRow(resolvedClockAdmin)}
+                        onSaved={handleMarCorrectionSaved}
+                      />
+                    ) : null}
                   </div>
                 );
-
-                const displayName =
-                  marMedicationDisplayLabel(latest?.medicationLabelSnapshot, row.label, [
-                    latest?.medicationLabelSnapshot,
-                    row.label,
-                  ]);
 
                 const intendedLine =
                   row.intendedAt != null && String(row.intendedAt).trim() !== ""
@@ -2983,6 +3014,21 @@ export function MedicationAdministrationTab({
                       />
                     ) : null}
                   </div>
+                  <MarAdministrationRowCorrectionControls
+                    row={r}
+                    medicationLabel={label}
+                    encounterId={encounterId}
+                    facilityId={facilityId}
+                    facilityTimeZone={facilityTimeZone}
+                    language={language}
+                    encounterOpen={encounterClinicalMutationsAllowed}
+                    canAdjust={canAdjustAdminTime}
+                    readOnly={!marHistoricalTimeline.isToday}
+                    historyEntries={marHistoryRawEntries}
+                    t={t}
+                    onOpenTimeCorrection={() => setAdminTimeModalRow(r)}
+                    onSaved={handleMarCorrectionSaved}
+                  />
                   {r.notes?.trim() ? (
                     <pre
                       style={{

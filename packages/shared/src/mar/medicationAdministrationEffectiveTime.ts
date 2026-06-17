@@ -8,6 +8,8 @@ const medicationAdministrationEffectiveTimeBodySchema = z
     effectiveAdministeredTime: z.string().trim().min(1).optional(),
     /** Client alias (create payload uses effectiveAdministeredAt) — normalized to effectiveAdministeredTime. */
     effectiveAdministeredAt: z.string().trim().min(1).optional(),
+    /** Structured correction reason (MEDUI.ED.MAR.H7). */
+    correctionReasonCode: z.string().trim().optional(),
     reason: z.string().max(500).optional(),
   })
   .strict();
@@ -16,6 +18,7 @@ export const medicationAdministrationEffectiveTimeDtoSchema = medicationAdminist
   .transform((body) => ({
     effectiveAdministeredTime:
       body.effectiveAdministeredTime?.trim() || body.effectiveAdministeredAt?.trim() || "",
+    correctionReasonCode: body.correctionReasonCode?.trim() || undefined,
     reason: body.reason?.trim() || undefined,
   }))
   .pipe(
@@ -23,6 +26,7 @@ export const medicationAdministrationEffectiveTimeDtoSchema = medicationAdminist
       effectiveAdministeredTime: z
         .string()
         .min(1, "Horodatage clinique requis."),
+      correctionReasonCode: z.string().optional(),
       reason: z.string().max(500).optional(),
     })
   );

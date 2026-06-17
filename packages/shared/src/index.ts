@@ -85,6 +85,8 @@ export * from "./mar/medicationAdministrationPrnGovernance.js";
 export * from "./mar/marPrnTimeline.js";
 export * from "./mar/marAdministrationSafetyGovernance.js";
 export * from "./mar/medicationAdministrationHistory.js";
+export * from "./mar/medicationAdministrationCorrectionGovernance.js";
+export * from "./mar/medicationAdministrationClinicalCorrection.js";
 export * from "./mar/medicationAdministrationHistoryNormalization.js";
 export * from "./mar/marHiddenBillingPayload.js";
 export * from "./mar/marAdministeredQuantity.js";

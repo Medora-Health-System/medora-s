@@ -11,12 +11,13 @@ export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "INFUSION_START",
   "INFUSION_STOP",
   "ORDER_CANCELED",
+  "ADMINISTRATION_CORRECTION",
 ] as const;
 
 export type MedicationAdministrationHistoryEventType =
   (typeof MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES)[number];
 
-export const MEDICATION_ADMINISTRATION_HISTORY_SOURCES = ["MAR", "ORDER_CANCEL"] as const;
+export const MEDICATION_ADMINISTRATION_HISTORY_SOURCES = ["MAR", "ORDER_CANCEL", "MAR_CORRECTION"] as const;
 
 export type MedicationAdministrationHistorySource =
   (typeof MEDICATION_ADMINISTRATION_HISTORY_SOURCES)[number];
@@ -56,6 +57,9 @@ export type MedicationAdministrationHistoryEntry = {
   prnIndication: string | null;
   infusionPhase: "INFUSION_START" | "INFUSION_STOP" | null;
   medicationDoseInstanceId: string | null;
+  /** Present for ADMINISTRATION_CORRECTION rows (MEDUI.ED.MAR.H7). */
+  originalAdministrationId?: string | null;
+  effectiveChangeSummary?: string | null;
   readOnly: true;
 };
 

@@ -10,6 +10,12 @@ import {
 } from "./medicationAdministrationInfusionMar.js";
 import { parseMedicationInfusionStopReasonFromNotes } from "../medication/medicationInfusionStopReasonGovernance.js";
 import {
+  buildMedicationAdministrationHistoryCorrectionId,
+  parseMedicationAdministrationCorrectionReasonFields,
+  resolveMedicationAdministrationCorrectionEffectiveChangeSummary,
+  type MedicationAdministrationCorrectionSourceRow,
+} from "./medicationAdministrationCorrectionGovernance.js";
+import {
   isPrnMedicationOrder,
   parseMarPrnAdministrationFromNotes,
 } from "./medicationAdministrationPrnGovernance.js";
@@ -161,6 +167,12 @@ export function resolveMedicationAdministrationHistoryReasonFields(input: {
     return parseMedicationInfusionStopReasonFromNotes(input.notes);
   }
   if (input.effectiveAdministeredAtReason?.trim()) {
+    const parsed = parseMedicationAdministrationCorrectionReasonFields(
+      input.effectiveAdministeredAtReason
+    );
+    if (parsed.reasonCode) {
+      return parsed;
+    }
     return { reasonCode: "EFFECTIVE_TIME_ADJUSTMENT", reasonDetail: input.effectiveAdministeredAtReason.trim() };
   }
   return { reasonCode: null, reasonDetail: null };
@@ -262,6 +274,40 @@ export function normalizeMedicationAdministrationHistoryOrderCancelRow(
     prnIndication: null,
     infusionPhase: null,
     medicationDoseInstanceId: null,
+    readOnly: true,
+  };
+}
+
+export function normalizeMedicationAdministrationHistoryCorrectionRow(
+  row: MedicationAdministrationCorrectionSourceRow
+): MedicationAdministrationHistoryEntry {
+  const reason = parseMedicationAdministrationCorrectionReasonFields(row.correctionReason);
+  const performer = formatPerformerDisplay(row.correctedByFirstName, row.correctedByLastName);
+
+  return {
+    id: buildMedicationAdministrationHistoryCorrectionId(row.id),
+    source: "MAR_CORRECTION",
+    encounterId: row.encounterId,
+    orderItemId: row.orderItemId,
+    medicationLabel: row.medicationLabel?.trim() || "Medication",
+    doseDisplay: row.doseDisplay?.trim() || null,
+    route: row.route?.trim() || null,
+    eventType: "ADMINISTRATION_CORRECTION",
+    eventAt: toIso(row.createdAt),
+    documentedAt: null,
+    performedByDisplay: performer,
+    performedByRole: row.correctedByRole?.trim() || null,
+    reasonCode: reason.reasonCode,
+    reasonDetail: reason.reasonDetail,
+    isPrn: false,
+    prnIndication: null,
+    infusionPhase: null,
+    medicationDoseInstanceId: null,
+    originalAdministrationId: row.medicationAdministrationId,
+    effectiveChangeSummary: resolveMedicationAdministrationCorrectionEffectiveChangeSummary({
+      previousValues: row.previousValues,
+      correctedValues: row.correctedValues,
+    }),
     readOnly: true,
   };
 }

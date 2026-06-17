@@ -34,6 +34,7 @@ export type MedicationAdministrationHistoryRailProps = {
   compact?: boolean;
   selectedDayWindow?: { startIso: string; endIso: string } | null;
   onRegisterRefresh?: (refresh: () => Promise<void>) => void;
+  onHistoryLoaded?: (entries: import("@medora/shared").MedicationAdministrationHistoryEntry[]) => void;
 };
 
 function HistoryRailEntryCard({
@@ -102,6 +103,39 @@ function HistoryRailEntryCard({
           {entry.reasonLine}
         </div>
       ) : null}
+      {entry.correctionTypeLabelKey ? (
+        <div
+          data-testid="mar-administration-history-correction-type"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#475569", fontWeight: 600 }}
+        >
+          {t(entry.correctionTypeLabelKey)}
+        </div>
+      ) : null}
+      {entry.beforeSummary || entry.afterSummary ? (
+        <div style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}>
+          {entry.beforeSummary && entry.afterSummary ? (
+            <span>
+              {t("marClinicalCorrection.chain.before")}: {entry.beforeSummary} →{" "}
+              {t("marClinicalCorrection.chain.after")}:{" "}
+              {entry.afterSummary === "duplicate_documentation_flagged"
+                ? t("marAdministrationCorrection.duplicateFlagged")
+                : entry.afterSummary}
+            </span>
+          ) : entry.afterSummary === "duplicate_documentation_flagged" ? (
+            <span>{t("marAdministrationCorrection.duplicateFlagged")}</span>
+          ) : (
+            <span>{entry.beforeSummary ?? entry.afterSummary}</span>
+          )}
+        </div>
+      ) : null}
+      {entry.reviewRecommended ? (
+        <div
+          data-testid="mar-administration-history-review-recommended"
+          style={{ marginTop: 6, fontSize: 11, fontWeight: 600, color: "#b45309" }}
+        >
+          {t("marClinicalCorrection.review.recommended")}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -114,6 +148,7 @@ export function MedicationAdministrationHistoryRail({
   compact = false,
   selectedDayWindow = null,
   onRegisterRefresh,
+  onHistoryLoaded,
 }: MedicationAdministrationHistoryRailProps) {
   const { t, language } = useI18n();
 
@@ -168,6 +203,7 @@ export function MedicationAdministrationHistoryRail({
         historyScope === "selectedDay" && selectedDayWindow
           ? filterMedicationAdministrationHistoryByInstantWindow(rows, selectedDayWindow)
           : rows;
+      onHistoryLoaded?.(rows);
       setEntries(
         buildMedicationAdministrationHistoryRailEntries(scopedRows, {
           formatClinicalTime,
@@ -179,7 +215,7 @@ export function MedicationAdministrationHistoryRail({
     } finally {
       setLoading(false);
     }
-  }, [encounterId, facilityId, formatClinicalTime, historyScope, selectedDayWindow, t]);
+  }, [encounterId, facilityId, formatClinicalTime, historyScope, onHistoryLoaded, selectedDayWindow, t]);
 
   useEffect(() => {
     void loadHistory();

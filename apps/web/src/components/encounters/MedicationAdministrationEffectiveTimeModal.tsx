@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { parseMedicationAdministrationEffectiveTimeIso } from "@medora/shared";
+import { MEDICATION_ADMINISTRATION_CORRECTION_REASON_CODES } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
@@ -77,12 +78,17 @@ export function MedicationAdministrationEffectiveTimeModal({
   controlledMedication: boolean;
   t: (key: string) => string;
   onClose: () => void;
-  onSave: (payload: { effectiveAdministeredTime: string; reason?: string }) => Promise<void>;
+  onSave: (payload: {
+    effectiveAdministeredTime: string;
+    correctionReasonCode?: string;
+    reason?: string;
+  }) => Promise<void>;
   saving: boolean;
 }) {
   const { language } = useI18n();
   const [clinicalLocal, setClinicalLocal] = useState(() => toDatetimeLocalValue(defaultEffectiveIso));
   const [reason, setReason] = useState("");
+  const [correctionReasonCode, setCorrectionReasonCode] = useState("DOCUMENTED_WRONG_TIME");
   const [error, setError] = useState<string | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
@@ -104,6 +110,7 @@ export function MedicationAdministrationEffectiveTimeModal({
     if (open) {
       setClinicalLocal(toDatetimeLocalValue(defaultEffectiveIso));
       setReason("");
+      setCorrectionReasonCode("DOCUMENTED_WRONG_TIME");
       setError(null);
       setDraftRestoredAt(null);
       setDraftSavedLocallyAt(null);
@@ -221,8 +228,9 @@ export function MedicationAdministrationEffectiveTimeModal({
     try {
       await onSave({
         effectiveAdministeredTime: iso,
+        correctionReasonCode,
         ...(reason.trim() ? { reason: reason.trim() } : {}),
-      } satisfies { effectiveAdministeredTime: string; reason?: string });
+      });
       if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
       setDraftRestoredAt(null);
       setDraftSavedLocallyAt(null);
@@ -288,7 +296,29 @@ export function MedicationAdministrationEffectiveTimeModal({
           </p>
         ) : null}
         <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
-          {t("marTab.adminTime.reasonLabel")}
+          {t("marAdministrationCorrection.fieldLabel")}
+        </label>
+        <select
+          value={correctionReasonCode}
+          onChange={(e) => setCorrectionReasonCode(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid #cbd5e1",
+            fontSize: 14,
+            marginBottom: 12,
+            boxSizing: "border-box",
+          }}
+        >
+          {MEDICATION_ADMINISTRATION_CORRECTION_REASON_CODES.map((code) => (
+            <option key={code} value={code}>
+              {t(`marAdministrationCorrection.reason.${code}`)}
+            </option>
+          ))}
+        </select>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+          {t("marAdministrationCorrection.detailLabel")}
           {reasonRequired ? " *" : null}
         </label>
         {draftRestoredAt ? (

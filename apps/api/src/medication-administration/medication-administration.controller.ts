@@ -16,6 +16,7 @@ import { RoleCode } from "@prisma/client";
 import {
   medicationAdministrationCreateDtoSchema,
   medicationAdministrationEffectiveTimeDtoSchema,
+  medicationAdministrationClinicalCorrectionDtoSchema,
 } from "@medora/shared";
 import { assertZodBody } from "../common/http/zod-parse";
 import { MedicationAdministrationService } from "./medication-administration.service";
@@ -118,6 +119,34 @@ export class MedicationAdministrationController {
     }
     const dto = assertZodBody(medicationAdministrationEffectiveTimeDtoSchema.safeParse(body));
     return this.medicationAdministrationService.setEffectiveAdministeredAt(
+      encounterId,
+      facilityId,
+      administrationId,
+      dto,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Patch("encounters/:encounterId/medication-administrations/:administrationId/clinical-correction")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async applyClinicalCorrection(
+    @Param("encounterId") encounterId: string,
+    @Param("administrationId") administrationId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise");
+    }
+    const dto = assertZodBody(medicationAdministrationClinicalCorrectionDtoSchema.safeParse(body));
+    return this.medicationAdministrationService.applyClinicalCorrection(
       encounterId,
       facilityId,
       administrationId,

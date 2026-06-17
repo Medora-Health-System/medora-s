@@ -276,6 +276,7 @@ describe("marAdministrationHistoryRail (MEDUI.ED.MAR.H2C)", () => {
       "INFUSION_START",
       "INFUSION_STOP",
       "ORDER_CANCELED",
+      "ADMINISTRATION_CORRECTION",
     ] as const;
     for (const eventType of types) {
       const badge = marAdministrationHistoryRailBadgeForEventType(eventType);
