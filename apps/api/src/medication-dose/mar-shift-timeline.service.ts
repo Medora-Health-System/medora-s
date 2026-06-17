@@ -39,9 +39,11 @@ import {
   type MedicationOrderedDoseSnapshotJson,
   type MedicationSafetyGovernanceSnapshot,
   parseMarMedicationResponseNotes,
-  resolveMarMedicationResponseBadgeSeverity,
+  buildMarMedicationResponseTimelineBadge,
   sortMarMedicationResponsesNewestFirst,
   type MarMedicationResponseSeverity,
+  buildMarMedicationResponseFollowUpSummary,
+  type MarMedicationResponseFollowUpStatus,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -158,8 +160,18 @@ export type MarShiftTimelineCellItem = {
   }>;
   medicationResponseBadge?: {
     label: "RESPONSE";
+    displayLabel: string;
+    count: number;
     severity: MarMedicationResponseSeverity;
   } | null;
+  medicationResponseFollowUp?: {
+    status: MarMedicationResponseFollowUpStatus;
+    earliestAt: string | null;
+    latestAt: string | null;
+    responseCount: number;
+    showAdverseEscalation: boolean;
+  } | null;
+  medicationResponseAdverseEscalation?: boolean;
 };
 
 export type MarShiftTimelineRowCell = {
@@ -719,11 +731,32 @@ export class MarShiftTimelineService {
       const medicationResponses = sortMarMedicationResponsesNewestFirst(
         parseMarMedicationResponseNotes(administrationNotes)
       );
-      const responseBadgeSeverity = resolveMarMedicationResponseBadgeSeverity(administrationNotes);
-      const medicationResponseBadge =
-        medicationResponses.length > 0 && responseBadgeSeverity
-          ? { label: "RESPONSE" as const, severity: responseBadgeSeverity }
+      const medicationResponseBadge = buildMarMedicationResponseTimelineBadge(administrationNotes);
+      const followUpSummary = buildMarMedicationResponseFollowUpSummary({
+        doseStatus: parsedStatus,
+        secondaryText,
+        medicationLabel,
+        frequencyCode,
+        directionsSig,
+        route,
+        prnIndication: prnDisplay.orderPrnIndication,
+        administeredAt: enrichment?.administeredAt ?? null,
+        administrationNotes,
+        responses: medicationResponses,
+      });
+      const medicationResponseFollowUp =
+        followUpSummary.status === "RECOMMENDED" || followUpSummary.status === "OVERDUE"
+          ? {
+              status: followUpSummary.status,
+              earliestAt: followUpSummary.earliestAt,
+              latestAt: followUpSummary.latestAt,
+              responseCount: followUpSummary.responseCount,
+              showAdverseEscalation: false,
+            }
           : null;
+      const medicationResponseAdverseEscalation = medicationResponses.some(
+        (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
+      );
 
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
@@ -819,6 +852,8 @@ export class MarShiftTimelineService {
         medicationAdministrationId: enrichment?.medicationAdministrationId ?? null,
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
         medicationResponseBadge,
+        medicationResponseFollowUp,
+        medicationResponseAdverseEscalation,
       };
 
       const rowMeta = {

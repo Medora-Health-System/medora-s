@@ -12690,6 +12690,11 @@ export default {
       save: "Save response",
       saveError: "Unable to save response.",
     },
+    followUp: {
+      recommended: "Response recommended",
+      overdue: "Response overdue",
+      adverseEscalation: "Consider allergy review",
+    },
   },
   marShiftTimeline: {
     titleFallback: "MAR SHIFT TIMELINE",

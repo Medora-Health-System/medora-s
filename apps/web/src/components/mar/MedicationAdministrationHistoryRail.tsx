@@ -135,6 +135,14 @@ function HistoryRailEntryCard({
           {entry.medicationResponseCommentLine}
         </div>
       ) : null}
+      {entry.medicationResponseAdverseEscalationLine ? (
+        <div
+          data-testid="mar-administration-history-response-adverse-escalation"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#b45309", fontWeight: 600 }}
+        >
+          {entry.medicationResponseAdverseEscalationLine}
+        </div>
+      ) : null}
       {entry.correctionTypeLabelKey ? (
         <div
           data-testid="mar-administration-history-correction-type"

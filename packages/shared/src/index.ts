@@ -100,6 +100,7 @@ export * from "./mar/marAnalyticsTimingOverride.js";
 export * from "./mar/marMedicationResponseGovernance.js";
 export * from "./mar/marMedicationResponseVisibilityGovernance.js";
 export * from "./mar/marMedicationResponseAnalytics.js";
+export * from "./mar/marMedicationResponseFollowUpGovernance.js";
 export * from "./mar/marMedicationResponseDto.js";
 export * from "./mar/marRescheduleRiskAssessment.js";
 export * from "./mar/marUniversalAdministrationTimingGovernance.js";

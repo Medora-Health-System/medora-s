@@ -57,6 +57,7 @@ export type MedicationAdministrationHistoryRailEntry = {
   medicationResponseDocumentedLabel?: string | null;
   medicationResponsePainLabel?: string | null;
   medicationResponseCommentLine?: string | null;
+  medicationResponseAdverseEscalationLine?: string | null;
 };
 
 const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, PriorityBadgeSoft> = {
@@ -330,6 +331,11 @@ export function buildMedicationAdministrationHistoryRailEntry(
       isMedicationResponseEvent &&
       (entry.medicationResponseDetail ?? entry.reasonDetail)?.trim()
         ? `${input.t("marMedicationResponse.history.comment")}: ${(entry.medicationResponseDetail ?? entry.reasonDetail)!.trim()}`
+        : null,
+    medicationResponseAdverseEscalationLine:
+      isMedicationResponseEvent &&
+      (entry.medicationResponseCode ?? entry.reasonCode) === "ADVERSE_REACTION_REPORTED"
+        ? input.t("marMedicationResponse.followUp.adverseEscalation")
         : null,
   };
 }

@@ -8,6 +8,7 @@ import {
   resolveMarMedicationResponseLabelKey,
   resolveMarMedicationResponseSeverity,
   resolveMedicationResponseVisibilityTier,
+  buildMarMedicationResponseFollowUpSummary,
   sortMarMedicationResponsesNewestFirst,
   type MarMedicationResponseCode,
   type ParsedMarMedicationResponse,
@@ -60,6 +61,21 @@ export function MedicationResponseDocumentationPanel({
         (item.medicationResponses ?? []) as import("@medora/shared").ParsedMarMedicationResponse[]
       ),
     [item.medicationResponses]
+  );
+
+  const followUpSummary = useMemo(
+    () =>
+      buildMarMedicationResponseFollowUpSummary({
+        doseStatus: item.doseStatus,
+        secondaryText: item.secondaryText,
+        medicationLabel: item.medicationLabel ?? item.primaryText,
+        frequencyCode: item.frequencyCode,
+        prnIndication: item.orderPrnIndication,
+        route: item.route,
+        administeredAt: item.administeredAt,
+        responses: savedResponses,
+      }),
+    [item, savedResponses]
   );
 
   const [expanded, setExpanded] = useState(visibilityTier === "RECOMMENDED");
@@ -130,6 +146,14 @@ export function MedicationResponseDocumentationPanel({
             {t("marMedicationResponse.panel.comment")}: {response.responseDetail}
           </div>
         ) : null}
+        {response.responseCode === "ADVERSE_REACTION_REPORTED" ? (
+          <div
+            data-testid="mar-medication-response-adverse-escalation"
+            style={{ marginTop: 6, fontSize: 12, color: "#b45309", fontWeight: 600 }}
+          >
+            {t("marMedicationResponse.followUp.adverseEscalation")}
+          </div>
+        ) : null}
       </div>
     );
   };
@@ -196,6 +220,23 @@ export function MedicationResponseDocumentationPanel({
         <span>{sectionTitle}</span>
         <span aria-hidden>{expanded ? "▾" : "▸"}</span>
       </button>
+
+      {followUpSummary.status === "RECOMMENDED" ? (
+        <p
+          data-testid="mar-medication-response-follow-up-recommended"
+          style={{ margin: "8px 0 0", fontSize: 12, color: "#1d4ed8", fontWeight: 600 }}
+        >
+          {t("marMedicationResponse.followUp.recommended")}
+        </p>
+      ) : null}
+      {followUpSummary.status === "OVERDUE" ? (
+        <p
+          data-testid="mar-medication-response-follow-up-overdue"
+          style={{ margin: "8px 0 0", fontSize: 12, color: "#b45309", fontWeight: 600 }}
+        >
+          {t("marMedicationResponse.followUp.overdue")}
+        </p>
+      ) : null}
 
       {savedResponses.map(renderSavedResponse)}
 

@@ -252,6 +252,30 @@ export function resolveMarMedicationResponseBadgeSeverity(
   return severity;
 }
 
+export type MarMedicationResponseTimelineBadge = {
+  label: "RESPONSE";
+  displayLabel: string;
+  count: number;
+  severity: MarMedicationResponseSeverity;
+};
+
+/** Build timeline RESPONSE badge with optional count (H9L.1). */
+export function buildMarMedicationResponseTimelineBadge(
+  notes: string | null | undefined
+): MarMedicationResponseTimelineBadge | null {
+  const responses = parseMarMedicationResponseNotes(notes);
+  if (responses.length === 0) return null;
+  const severity = resolveMarMedicationResponseBadgeSeverity(notes);
+  if (!severity) return null;
+  const count = responses.length;
+  return {
+    label: "RESPONSE",
+    displayLabel: count > 1 ? `RESPONSE (${count})` : "RESPONSE",
+    count,
+    severity,
+  };
+}
+
 /** Strip structured response lines from notes for free-text display. */
 export function extractMarMedicationResponseFreeTextNotes(
   notes: string | null | undefined

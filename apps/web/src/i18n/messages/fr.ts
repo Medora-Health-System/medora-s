@@ -12716,6 +12716,11 @@ export default {
       save: "Enregistrer la réponse",
       saveError: "Impossible d'enregistrer la réponse.",
     },
+    followUp: {
+      recommended: "Réponse recommandée",
+      overdue: "Réponse en retard",
+      adverseEscalation: "Envisager une revue des allergies",
+    },
   },
   marShiftTimeline: {
     titleFallback: "QUART MAR",

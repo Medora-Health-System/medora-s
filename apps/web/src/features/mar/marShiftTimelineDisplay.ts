@@ -382,6 +382,16 @@ export function marShiftTimelineMedicationResponseBadgeStyle(
   return { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0", color: "#047857" };
 }
 
+/** H9L.1 follow-up indicator — recommended blue / overdue amber (non-blocking). */
+export function marShiftTimelineMedicationResponseFollowUpStyle(
+  status: "RECOMMENDED" | "OVERDUE"
+): CSSProperties {
+  if (status === "OVERDUE") {
+    return { color: "#b45309" };
+  }
+  return { color: "#1d4ed8" };
+}
+
 /** Neutral blue governance styling for rescheduled MAR timeline cells (H9A). */
 export function marShiftTimelineRescheduleCellStyle(): CSSProperties {
   return {

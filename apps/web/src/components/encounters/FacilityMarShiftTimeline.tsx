@@ -23,6 +23,7 @@ import {
   marShiftTimelineRescheduleCellStyle,
   marShiftTimelineAdministrationVarianceCellStyle,
   marShiftTimelineMedicationResponseBadgeStyle,
+  marShiftTimelineMedicationResponseFollowUpStyle,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -451,8 +452,12 @@ export function FacilityMarShiftTimeline({
                             const variance = item.administrationVariance;
                             const hasVariance = variance?.hasVariance === true;
                             const responseBadge = item.medicationResponseBadge;
+                            const responseFollowUp = item.medicationResponseFollowUp;
                             const responseBadgeStyle = responseBadge
                               ? marShiftTimelineMedicationResponseBadgeStyle(responseBadge.severity)
+                              : null;
+                            const followUpStyle = responseFollowUp
+                              ? marShiftTimelineMedicationResponseFollowUpStyle(responseFollowUp.status)
                               : null;
                             const statusStyle = hasVariance
                               ? marShiftTimelineAdministrationVarianceCellStyle(variance?.badgeLabel)
@@ -550,6 +555,11 @@ export function FacilityMarShiftTimeline({
                                 {responseBadge ? (
                                   <div
                                     data-testid="mar-shift-timeline-response-badge"
+                                    title={
+                                      item.medicationResponseAdverseEscalation
+                                        ? t("marMedicationResponse.followUp.adverseEscalation")
+                                        : undefined
+                                    }
                                     style={{
                                       fontSize: 10,
                                       fontWeight: 600,
@@ -557,7 +567,23 @@ export function FacilityMarShiftTimeline({
                                       color: responseBadgeStyle?.color as string,
                                     }}
                                   >
-                                    {t("marMedicationResponse.badge")}
+                                    {responseBadge.displayLabel}
+                                  </div>
+                                ) : null}
+                                {responseFollowUp ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-response-follow-up"
+                                    data-follow-up-status={responseFollowUp.status}
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      marginTop: 2,
+                                      color: followUpStyle?.color as string,
+                                    }}
+                                  >
+                                    {responseFollowUp.status === "OVERDUE"
+                                      ? t("marMedicationResponse.followUp.overdue")
+                                      : t("marMedicationResponse.followUp.recommended")}
                                   </div>
                                 ) : null}
                                 {isRescheduled ? (

@@ -107,8 +107,17 @@ export type MarShiftTimelineCellItem = {
   }>;
   medicationResponseBadge?: {
     label: "RESPONSE";
+    displayLabel: string;
+    count: number;
     severity: "routine" | "neutral" | "safety";
   } | null;
+  medicationResponseFollowUp?: {
+    status: "RECOMMENDED" | "OVERDUE";
+    earliestAt: string | null;
+    latestAt: string | null;
+    responseCount: number;
+  } | null;
+  medicationResponseAdverseEscalation?: boolean;
   medicationAdministrationId?: string | null;
   medicationResponses?: Array<{
     responseCode: string;
