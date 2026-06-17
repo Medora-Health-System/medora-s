@@ -12275,6 +12275,7 @@ export default {
     previousDay: "Previous day",
     nextDay: "Next day",
     today: "Today",
+    todayAriaLabel: "Return to current day MAR",
     datePickerLabel: "Select MAR date",
     shiftContext: "Shift",
     historicalReadOnly: "Historical review — read only",

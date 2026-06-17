@@ -63,6 +63,7 @@ describe("marHistoricalTimeline (MEDUI.ED.MAR.H3)", () => {
     });
     expect(model.isToday).toBe(true);
     expect(tabSrc).toContain("resolveFacilityLocalToday(clinicalTz)");
+    expect(tabSrc).not.toContain("readStoredMarHistoricalDateLocal");
   });
 
   it("2 — previous day navigation", () => {
@@ -204,10 +205,10 @@ describe("marHistoricalTimeline (MEDUI.ED.MAR.H3)", () => {
     expect(end - start).toBe(13 * 3_600_000);
   });
 
-  it("16 — history rail integration", () => {
-    expect(tabSrc).toContain("selectedDayWindow={marHistoryDayWindow}");
+  it("16 — history read model remains available without MAR side rail", () => {
+    expect(tabSrc).not.toContain("MedicationAdministrationHistoryRail");
+    expect(tabSrc).toContain("fetchMedicationAdministrationHistory");
     expect(railSrc).toContain("filterMedicationAdministrationHistoryByInstantWindow");
-    expect(railSrc).toContain('data-testid="mar-administration-history-scope"');
   });
 
   it("17 — no timeline mutations in historical review", () => {

@@ -12299,6 +12299,7 @@ export default {
     previousDay: "Jour précédent",
     nextDay: "Jour suivant",
     today: "Aujourd'hui",
+    todayAriaLabel: "Revenir au MAR du jour actuel",
     datePickerLabel: "Sélectionner la date du MAR",
     shiftContext: "Quart",
     historicalReadOnly: "Consultation historique — lecture seule",

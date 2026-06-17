@@ -222,7 +222,7 @@ describe("marClinicalCorrectionWorkflow (MEDUI.ED.MAR.H7B)", () => {
   });
 
   it("16 — cancellation continuity unchanged", () => {
-    expect(tabSrc).toContain("MedicationAdministrationHistoryRail");
+    expect(tabSrc).toContain("FacilityMarShiftTimeline");
   });
 
   it("17 — infusion dose correction blocked in menu", () => {

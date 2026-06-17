@@ -238,12 +238,13 @@ describe("marAdministrationHistoryRail (MEDUI.ED.MAR.H2C)", () => {
     expect(railSrc).toContain('"tablet"');
   });
 
-  it("16 — desktop render layout split", () => {
+  it("16 — desktop render layout split (rail helpers retained; MAR tab full-width)", () => {
     expect(resolveMarAdministrationHistoryRailLayoutMode(1280)).toBe("sideRail");
     expect(marAdministrationHistoryRailTimelineWidthPercent()).toBe(70);
     expect(marAdministrationHistoryRailSideWidthPercent()).toBe(30);
-    expect(tabSrc).toContain('data-testid="mar-workspace-with-history"');
-    expect(tabSrc).toContain("marHistorySideBySide");
+    expect(tabSrc).not.toContain('data-testid="mar-workspace-with-history"');
+    expect(tabSrc).not.toContain("MedicationAdministrationHistoryRail");
+    expect(tabSrc).toContain('data-testid="mar-workspace-timeline"');
   });
 
   it("17 — loading state", () => {

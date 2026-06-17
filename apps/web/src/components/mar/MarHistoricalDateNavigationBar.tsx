@@ -160,6 +160,7 @@ export function MarHistoricalDateNavigationBar({
         <button
           type="button"
           data-testid="mar-historical-today"
+          aria-label={t("marHistorical.todayAriaLabel")}
           disabled={isToday}
           onClick={onToday}
           style={{

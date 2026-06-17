@@ -93,7 +93,8 @@ describe("marInfusionCancelContinuity (MEDUI.ED.MAR.H6B)", () => {
 
   it("10 — historical date review wired", () => {
     expect(tabSrc).toContain("MarHistoricalDateNavigationBar");
-    expect(tabSrc).toContain("selectedDayWindow");
+    expect(tabSrc).toContain("marSelectedDateLocal");
+    expect(tabSrc).toContain("historicalReadOnly={!marHistoricalTimeline.isToday}");
   });
 
   it("11 — no orphan active infusion after cancel teardown", () => {
