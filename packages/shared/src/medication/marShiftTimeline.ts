@@ -1,5 +1,6 @@
 import { isIvpbSessionDoseKind, parseMedicationDoseKind } from "./medicationDoseKind.js";
 import type { MedicationDoseKind } from "./medicationDoseKind.js";
+import { resolveMarClinicalDoseTimelinePlacementInstant } from "./marClinicalTimelinePlacement.js";
 import {
   getZonedWallClockParts,
   wallClockToUtc,
@@ -1055,7 +1056,7 @@ function parseMarShiftTimelinePlacementInstant(iso: string | null | undefined): 
 
 /**
  * MEDUI.ED.MAR.H9E — column placement instant for MAR shift timeline doses.
- * START / IN_PROGRESS → clinical start; STOP / COMPLETE → clinical stop; regular admin → administeredAt.
+ * H9K — delegates to clinical placement governance (never documentation time).
  */
 export function resolveMarShiftTimelineDosePlacementInstant(input: {
   doseStatus: MedicationDoseStatus | string;
@@ -1063,70 +1064,11 @@ export function resolveMarShiftTimelineDosePlacementInstant(input: {
   scheduledAt: Date;
   enrichment?: Pick<
     MarShiftTimelineAdministrationEnrichment,
-    "startedAt" | "stoppedAt" | "administeredAt"
+    "startedAt" | "stoppedAt" | "administeredAt" | "administrationNotes"
   > | null;
   fluid?: MarShiftTimelineDosePlacementFluidInput | null;
 }): Date {
-  const status =
-    typeof input.doseStatus === "string"
-      ? parseMedicationDoseStatus(input.doseStatus)
-      : input.doseStatus;
-  if (!status) return input.scheduledAt;
-
-  const fluid = input.fluid;
-  if (fluid?.isFluidBolus) {
-    const bolusStatus = fluid.fluidBolusStatus;
-    if (bolusStatus === "RUNNING" || status === "IN_PROGRESS") {
-      return parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ?? input.scheduledAt;
-    }
-    if (bolusStatus === "COMPLETED" || status === "COMPLETED") {
-      return (
-        parseMarShiftTimelinePlacementInstant(fluid.fluidCompletedAt) ??
-        parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ??
-        input.scheduledAt
-      );
-    }
-  }
-
-  if (fluid?.isContinuousFluid) {
-    const fluidStatus = fluid.continuousFluidStatus;
-    if (fluidStatus === "RUNNING" || fluidStatus === "PAUSED" || status === "IN_PROGRESS") {
-      return parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ?? input.scheduledAt;
-    }
-    if (fluidStatus === "COMPLETED" || status === "COMPLETED") {
-      return (
-        parseMarShiftTimelinePlacementInstant(fluid.fluidStoppedAt) ??
-        parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ??
-        input.scheduledAt
-      );
-    }
-  }
-
-  const enrichment = input.enrichment;
-  if (isIvpbSessionDoseKind(input.doseKind)) {
-    if (status === "IN_PROGRESS") {
-      return parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ?? input.scheduledAt;
-    }
-    if (status === "COMPLETED") {
-      return (
-        parseMarShiftTimelinePlacementInstant(enrichment?.stoppedAt) ??
-        parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ??
-        parseMarShiftTimelinePlacementInstant(enrichment?.administeredAt) ??
-        input.scheduledAt
-      );
-    }
-    return input.scheduledAt;
-  }
-
-  if (status === "COMPLETED") {
-    return parseMarShiftTimelinePlacementInstant(enrichment?.administeredAt) ?? input.scheduledAt;
-  }
-
-  if (status === "IN_PROGRESS") {
-    return parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ?? input.scheduledAt;
-  }
-
-  return input.scheduledAt;
+  return resolveMarClinicalDoseTimelinePlacementInstant(input);
 }
 
 export function doseOverlapsMarShiftTimelineWindow(input: {

@@ -10,6 +10,7 @@ import {
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineDrawerActions,
   formatFluidRateDisplay,
+  mergeMarClinicalFluidOverlay,
   parseFluidBagSizeMl,
   type MarShiftTimelineClinicalAction,
   type MarShiftTimelineDrawerAction,
@@ -50,6 +51,9 @@ export function resolveMarTimelineFluidEnrichment(input: {
   enrichment?: {
     marAction?: string | null;
     marNotes?: string | null;
+    marStartedAt?: string | null;
+    marStoppedAt?: string | null;
+    marAdministeredAt?: string | null;
   } | null;
   asOf?: string;
 }): MarTimelineFluidEnrichment | null {
@@ -73,9 +77,24 @@ export function resolveMarTimelineFluidEnrichment(input: {
       input.orderEvents,
       input.directionsSig
     );
+    const clinicalOverlay = mergeMarClinicalFluidOverlay({
+      fluidStartedAt: bolusSession.startedAt,
+      fluidCompletedAt: bolusSession.completedAt,
+      marStartedAt: input.enrichment?.marStartedAt,
+      marStoppedAt: input.enrichment?.marStoppedAt,
+      marAdministeredAt: input.enrichment?.marAdministeredAt,
+      marNotes: input.enrichment?.marNotes,
+    });
+    const clinicalStartedAt = clinicalOverlay.clinicalStartAt ?? bolusSession.startedAt;
+    const clinicalCompletedAt = clinicalOverlay.clinicalCompleteAt ?? bolusSession.completedAt;
+    const bolusSessionForDisplay = {
+      ...bolusSession,
+      startedAt: clinicalStartedAt,
+      completedAt: clinicalCompletedAt,
+    };
     const drawerMetrics = resolveFluidDrawerMetrics({
       mode: "bolus",
-      session: bolusSession,
+      session: bolusSessionForDisplay,
       asOf,
     });
     const clinicalAction = resolveMarShiftTimelineClinicalAction(input.doseKind, input.doseStatus as never, {
@@ -92,8 +111,8 @@ export function resolveMarTimelineFluidEnrichment(input: {
       facilityTimeZone: input.facilityTimeZone,
       directionsSig: input.directionsSig,
       fluidBolusStatus: bolusSession.status,
-      fluidStartedAt: bolusSession.startedAt,
-      fluidCompletedAt: bolusSession.completedAt,
+      fluidStartedAt: clinicalStartedAt,
+      fluidCompletedAt: clinicalCompletedAt,
       fluidBagSizeMl,
       fluidBolusVolumeMl: bolusSession.bolusVolumeMl,
       marAction: input.enrichment?.marAction,
@@ -108,9 +127,9 @@ export function resolveMarTimelineFluidEnrichment(input: {
       fluidRateLabel,
       fluidBagSizeMl,
       fluidVolumeInfusedMl: drawerMetrics.volumeInfusedMl,
-      fluidStartedAt: bolusSession.startedAt,
+      fluidStartedAt: clinicalStartedAt,
       fluidStoppedAt: null,
-      fluidCompletedAt: bolusSession.completedAt,
+      fluidCompletedAt: clinicalCompletedAt,
       fluidBolusVolumeMl: bolusSession.bolusVolumeMl,
       fluidRunningDurationLabel: drawerMetrics.runningDurationLabel,
       fluidActiveDurationLabel: drawerMetrics.activeDurationLabel,
@@ -128,14 +147,29 @@ export function resolveMarTimelineFluidEnrichment(input: {
     input.orderItemId,
     input.orderEvents
   );
+  const continuousOverlay = mergeMarClinicalFluidOverlay({
+    fluidStartedAt: fluidSession.startedAt,
+    fluidStoppedAt: fluidSession.stoppedAt,
+    marStartedAt: input.enrichment?.marStartedAt,
+    marStoppedAt: input.enrichment?.marStoppedAt,
+    marAdministeredAt: input.enrichment?.marAdministeredAt,
+    marNotes: input.enrichment?.marNotes,
+  });
+  const clinicalFluidStartedAt = continuousOverlay.clinicalStartAt ?? fluidSession.startedAt;
+  const clinicalFluidStoppedAt = continuousOverlay.clinicalStopAt ?? fluidSession.stoppedAt;
+  const fluidSessionForDisplay = {
+    ...fluidSession,
+    startedAt: clinicalFluidStartedAt,
+    stoppedAt: clinicalFluidStoppedAt,
+  };
   const volumeInfusedMl = computeFluidVolumeFromSession({
-    session: fluidSession,
+    session: fluidSessionForDisplay,
     rate: fluidRate,
     asOf: fluidSession.stoppedAt ?? asOf,
   });
   const drawerMetrics = resolveFluidDrawerMetrics({
     mode: "continuous",
-    session: fluidSession,
+    session: fluidSessionForDisplay,
     directionsSig: input.directionsSig,
     asOf,
   });
@@ -153,8 +187,8 @@ export function resolveMarTimelineFluidEnrichment(input: {
     facilityTimeZone: input.facilityTimeZone,
     directionsSig: input.directionsSig,
     continuousFluidStatus: fluidSession.status,
-    fluidStartedAt: fluidSession.startedAt,
-    fluidStoppedAt: fluidSession.stoppedAt,
+    fluidStartedAt: clinicalFluidStartedAt,
+    fluidStoppedAt: clinicalFluidStoppedAt,
     fluidBagSizeMl,
     marAction: input.enrichment?.marAction,
     marNotes: input.enrichment?.marNotes,
@@ -169,8 +203,8 @@ export function resolveMarTimelineFluidEnrichment(input: {
     fluidRateLabel,
     fluidBagSizeMl,
     fluidVolumeInfusedMl: volumeInfusedMl,
-    fluidStartedAt: fluidSession.startedAt,
-    fluidStoppedAt: fluidSession.stoppedAt,
+    fluidStartedAt: clinicalFluidStartedAt,
+    fluidStoppedAt: clinicalFluidStoppedAt,
     fluidCompletedAt: null,
     fluidBolusVolumeMl: null,
     fluidRunningDurationLabel: drawerMetrics.runningDurationLabel,

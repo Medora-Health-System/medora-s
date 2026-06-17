@@ -499,6 +499,14 @@ export class MarShiftTimelineService {
         orderEvents: orderEventsByOrderId.get(dose.orderId) ?? [],
         requiresWitness: false,
         facilityTimeZone: shiftWindow.facilityTimeZone,
+        enrichment: enrichment
+          ? {
+              marStartedAt: enrichment.startedAt,
+              marStoppedAt: enrichment.stoppedAt,
+              marAdministeredAt: enrichment.administeredAt,
+              marNotes: enrichment.administrationNotes,
+            }
+          : null,
       });
 
       // MEDUI.ED.MAR.H9F.1 — universal placement certification (single resolver).
@@ -574,6 +582,9 @@ export class MarShiftTimelineService {
         enrichment: {
           marAction: administrationNotes ? "administered" : null,
           marNotes: administrationNotes,
+          marStartedAt: enrichment?.startedAt ?? null,
+          marStoppedAt: enrichment?.stoppedAt ?? null,
+          marAdministeredAt: enrichment?.administeredAt ?? null,
         },
       });
 

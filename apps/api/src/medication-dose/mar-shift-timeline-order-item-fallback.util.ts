@@ -12,6 +12,7 @@ import {
   resolveMarShiftTimelineOrderItemFallbackDoseKind,
   resolveMarShiftTimelineOrderItemFallbackDoseStatus,
   resolveMarShiftTimelineOrderItemPlacementInstant,
+  resolveMarClinicalDoseTimelinePlacementInstant,
   resolveMarTimelinePrnDisplayFields,
   marShiftTimelineOrderItemFallbackHasCompletedAdministration,
   shouldCreateMarShiftTimelineOrderItemFallback,
@@ -578,24 +579,6 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         })
       : { prnLastGivenAt: null, prnNextEligibleAt: null };
 
-    const columnKey = isPrnBand
-      ? resolveMarShiftTimelinePrnColumnKey({
-          doseStatus: parsedStatus,
-          administeredAt: enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
-          prnLastGivenAt: prnTiming.prnLastGivenAt,
-          prnNextEligibleAt: prnTiming.prnNextEligibleAt,
-          referenceAt: input.referenceAt ?? new Date(),
-          columns: input.columns,
-          facilityTimeZone: input.facilityTimeZone,
-        })
-      : resolveMarShiftTimelineColumnKey({
-          scheduledAt: pseudo.scheduledAt,
-          dueWindowStartAt: pseudo.dueWindowStartAt,
-          columns: input.columns,
-          facilityTimeZone: input.facilityTimeZone,
-        });
-    if (!columnKey) continue;
-
     const fluidEnrichment = resolveMarTimelineFluidEnrichment({
       orderItemId: orderItem.id,
       medicationLabel,
@@ -609,8 +592,54 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       enrichment: {
         marAction: terminalMar?.marAction,
         marNotes: administrationNotes,
+        marStartedAt: enrichment?.startedAt ?? null,
+        marStoppedAt: enrichment?.stoppedAt ?? null,
+        marAdministeredAt: enrichment?.administeredAt ?? null,
       },
     });
+
+    const cellPlacementInstant = resolveMarClinicalDoseTimelinePlacementInstant({
+      doseStatus: parsedStatus,
+      doseKind: pseudo.doseKind,
+      scheduledAt: pseudo.scheduledAt,
+      enrichment: enrichment
+        ? {
+            startedAt: enrichment.startedAt,
+            stoppedAt: enrichment.stoppedAt,
+            administeredAt: enrichment.administeredAt,
+            administrationNotes,
+          }
+        : null,
+      fluid: fluidEnrichment
+        ? {
+            isFluidBolus: fluidEnrichment.isFluidBolus,
+            isContinuousFluid: fluidEnrichment.isContinuousFluid,
+            fluidBolusStatus: fluidEnrichment.fluidBolusStatus,
+            continuousFluidStatus: fluidEnrichment.continuousFluidStatus,
+            fluidStartedAt: fluidEnrichment.fluidStartedAt,
+            fluidStoppedAt: fluidEnrichment.fluidStoppedAt,
+            fluidCompletedAt: fluidEnrichment.fluidCompletedAt,
+          }
+        : null,
+    });
+
+    const columnKey = isPrnBand
+      ? resolveMarShiftTimelinePrnColumnKey({
+          doseStatus: parsedStatus,
+          administeredAt: enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
+          prnLastGivenAt: prnTiming.prnLastGivenAt,
+          prnNextEligibleAt: prnTiming.prnNextEligibleAt,
+          referenceAt: input.referenceAt ?? new Date(),
+          columns: input.columns,
+          facilityTimeZone: input.facilityTimeZone,
+        })
+      : resolveMarShiftTimelineColumnKey({
+          scheduledAt: cellPlacementInstant,
+          dueWindowStartAt: pseudo.dueWindowStartAt,
+          columns: input.columns,
+          facilityTimeZone: input.facilityTimeZone,
+        });
+    if (!columnKey) continue;
 
     const clinicalAction =
       fluidEnrichment?.clinicalAction ??
