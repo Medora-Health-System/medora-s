@@ -8,6 +8,7 @@ import {
   parseMarShiftTimelineShiftCode,
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
+  resolveMarUniversalShiftTimelineDosePlacementInstant,
   resolveMarShiftTimelineDrawerActions,
   resolveMarShiftTimelineWindow,
   shouldIncludeMarShiftTimelineDose,
@@ -22,6 +23,13 @@ import {
   parseMedicationDoseKind,
   resolveMarTimelinePrnDisplayFields,
   parseMedicationDoseStatus,
+  buildMarScheduleAdjustmentTimelineProjection,
+  buildMarScheduleAdjustmentChain,
+  buildMarAdministrationVarianceTimelineProjection,
+  resolveOriginalScheduledAtFromDose,
+  type MarScheduleAdjustmentTimelineProjection,
+  type MarScheduleAdjustmentChainStep,
+  type MarAdministrationVarianceTimelineProjection,
   type MarShiftTimelineClinicalAction,
   type MarShiftTimelineDrawerAction,
   type MarShiftTimelineHover,
@@ -132,6 +140,9 @@ export type MarShiftTimelineCellItem = {
   clinicalAction: MarShiftTimelineClinicalAction | null;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
+  scheduleAdjustment?: MarScheduleAdjustmentTimelineProjection | null;
+  scheduleAdjustmentChain?: MarScheduleAdjustmentChainStep[];
+  administrationVariance?: MarAdministrationVarianceTimelineProjection | null;
 };
 
 export type MarShiftTimelineRowCell = {
@@ -465,14 +476,54 @@ export class MarShiftTimelineService {
       }
 
       const enrichment = administrationEnrichmentByDoseId.get(dose.id) ?? null;
-      const administeredPlacement =
-        parsedStatus === "COMPLETED" && enrichment?.administeredAt
-          ? new Date(enrichment.administeredAt)
-          : null;
-      const placementInstant =
-        administeredPlacement && !Number.isNaN(administeredPlacement.getTime())
-          ? administeredPlacement
-          : dose.scheduledAt;
+
+      const catalogSnapshotEarly = parseCatalogSnapshot(dose.medicationCatalogSnapshotJson);
+      const orderedSnapshotEarly = parseOrderedDoseSnapshot(dose.orderedDoseSnapshotJson);
+      const medicationLabelEarly = resolveMarShiftTimelineMedicationLabel({
+        locale: displayLocale,
+        orderedMedicationLabel: orderedSnapshotEarly?.medicationLabel,
+        catalogSnapshot: catalogSnapshotEarly,
+      });
+      const routeEarly =
+        orderedSnapshotEarly?.route?.trim() ||
+        catalogSnapshotEarly?.route?.trim() ||
+        null;
+
+      const fluidEnrichmentForPlacement = resolveMarTimelineFluidEnrichment({
+        orderItemId: dose.orderItemId,
+        medicationLabel: medicationLabelEarly,
+        directionsSig: directionsSigEarly,
+        route: routeEarly,
+        doseKind: parseMedicationDoseKind(dose.doseKind) ?? dose.doseKind,
+        doseStatus: parsedStatus,
+        orderEvents: orderEventsByOrderId.get(dose.orderId) ?? [],
+        requiresWitness: false,
+        facilityTimeZone: shiftWindow.facilityTimeZone,
+      });
+
+      // MEDUI.ED.MAR.H9F.1 — universal placement certification (single resolver).
+      const placementInstant = resolveMarUniversalShiftTimelineDosePlacementInstant({
+        doseStatus: parsedStatus,
+        doseKind: dose.doseKind,
+        scheduledAt: dose.scheduledAt,
+        adjustedScheduledAt: dose.scheduledAt,
+        originalScheduledAt: resolveOriginalScheduledAtFromDose({
+          scheduledAt: dose.scheduledAt,
+          orderedDoseSnapshotJson: dose.orderedDoseSnapshotJson,
+        }),
+        enrichment,
+        fluid: fluidEnrichmentForPlacement
+          ? {
+              isFluidBolus: fluidEnrichmentForPlacement.isFluidBolus,
+              isContinuousFluid: fluidEnrichmentForPlacement.isContinuousFluid,
+              fluidBolusStatus: fluidEnrichmentForPlacement.fluidBolusStatus,
+              continuousFluidStatus: fluidEnrichmentForPlacement.continuousFluidStatus,
+              fluidStartedAt: fluidEnrichmentForPlacement.fluidStartedAt,
+              fluidStoppedAt: fluidEnrichmentForPlacement.fluidStoppedAt,
+              fluidCompletedAt: fluidEnrichmentForPlacement.fluidCompletedAt,
+            }
+          : null,
+      });
 
       if (
         !doseOverlapsMarShiftTimelineWindow({
@@ -627,6 +678,16 @@ export class MarShiftTimelineService {
           facilityTimeZone: shiftWindow.facilityTimeZone,
         });
 
+      const scheduleAdjustment = !isPrnBand
+        ? buildMarScheduleAdjustmentTimelineProjection({
+            scheduledAt: dose.scheduledAt.toISOString(),
+            orderedDoseSnapshotJson: dose.orderedDoseSnapshotJson,
+          })
+        : null;
+      if (scheduleAdjustment?.isRescheduled) {
+        secondaryText = scheduleAdjustment.badgeLabel ?? "RESCHEDULED";
+      }
+
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
         medicationDoseInstanceId: dose.id,
@@ -699,6 +760,25 @@ export class MarShiftTimelineService {
             continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
             fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
           }),
+        scheduleAdjustment,
+        scheduleAdjustmentChain: scheduleAdjustment?.isRescheduled
+          ? buildMarScheduleAdjustmentChain({
+              scheduledAt: dose.scheduledAt.toISOString(),
+              orderedDoseSnapshotJson: dose.orderedDoseSnapshotJson,
+              administeredAt: enrichment?.administeredAt ?? null,
+            })
+          : undefined,
+        administrationVariance:
+          !isPrnBand && enrichment?.administeredAt
+            ? buildMarAdministrationVarianceTimelineProjection({
+                scheduledAt: dose.scheduledAt.toISOString(),
+                administeredAt: enrichment.administeredAt,
+                orderedDoseSnapshotJson: dose.orderedDoseSnapshotJson,
+                administrationNotes: enrichment.administrationNotes ?? null,
+                performedByDisplay: enrichment.administeredByDisplay ?? null,
+                performedAt: enrichment.administeredAt,
+              })
+            : null,
       };
 
       const rowMeta = {

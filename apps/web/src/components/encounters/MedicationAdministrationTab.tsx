@@ -71,9 +71,13 @@ import {
   evaluateMedicationTimingSafety,
   evaluateMarScheduleAdministrationTiming,
   buildMarScheduleTimingDocumentation,
-  validateMarScheduleTimingGovernance,
-  MAR_SCHEDULE_EARLY_REASON_CODES,
-  MAR_SCHEDULE_LATE_REASON_CODES,
+  buildMarInfusionTimingDocumentation,
+  validateMarInfusionClinicalTimeOverride,
+  assessMarAdministrationVariance,
+  administrationVarianceMinutesToOverrideKind,
+  assessMarMedicationTimingOverrideRequirement,
+  validateMarMedicationTimingOverride,
+  MAR_MEDICATION_TIMING_OVERRIDE_REASON_CODES,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcDate,
   resolveClinicalTimeZone,
@@ -117,6 +121,7 @@ import {
   type MedicationPassQueueResponse,
 } from "@/lib/medicationPassQueueApi";
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
+import { adjustMedicationDoseSchedule } from "@/lib/medicationDoseScheduleAdjustmentApi";
 import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
@@ -158,7 +163,12 @@ import {
   buildMarCreateEffectiveTimeRequestFields,
   marRecordModalEffectiveTimeClientError,
 } from "@/features/mar/marRecordModalEffectiveTime";
-import { MedicationAdministrationRecordModalAdjustTime } from "@/components/encounters/MedicationAdministrationRecordModalAdjustTime";
+import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
+import {
+  buildMarClinicalTimeDocumentationNotes,
+  marClinicalDateTimeLocalToUtcIso,
+  validateMarClinicalDateTimeField,
+} from "@/features/mar/marUniversalMedicationActionTime";
 import { MedicationAdministrationEffectiveTimeModal } from "@/components/encounters/MedicationAdministrationEffectiveTimeModal";
 import { MedicationAdministrationTimeCell } from "@/components/encounters/MedicationAdministrationTimeCell";
 import { MedicationAdministrationInfusionPhaseChip } from "@/components/encounters/MedicationAdministrationInfusionPhaseChip";
@@ -539,9 +549,10 @@ export function MedicationAdministrationTab({
   const [marScheduleTimingReasonCode, setMarScheduleTimingReasonCode] = useState("");
   const [marHighRiskSafetyAck, setMarHighRiskSafetyAck] = useState(false);
   const [modalSubmitError, setModalSubmitError] = useState<string | null>(null);
-  const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(false);
+  const [modalShowEffectiveTimeEditor, setModalShowEffectiveTimeEditor] = useState(true);
   const [modalEffectiveTimeLocal, setModalEffectiveTimeLocal] = useState("");
   const [modalEffectiveTimeReason, setModalEffectiveTimeReason] = useState("");
+  const [modalClinicalTimeReasonCode, setModalClinicalTimeReasonCode] = useState("");
   const [marDraftRestoredAt, setMarDraftRestoredAt] = useState<string | null>(null);
   const [marDraftSavedLocallyAt, setMarDraftSavedLocallyAt] = useState<string | null>(null);
   const [marSafetyDetailsOpen, setMarSafetyDetailsOpen] = useState(false);
@@ -604,6 +615,9 @@ export function MedicationAdministrationTab({
   const [infusionModalNote, setInfusionModalNote] = useState("");
   const [infusionStopReasonCode, setInfusionStopReasonCode] = useState("COMPLETED");
   const [infusionStopReasonDetail, setInfusionStopReasonDetail] = useState("");
+  const [infusionClinicalTimeValue, setInfusionClinicalTimeValue] = useState("");
+  const [infusionTimingReasonCode, setInfusionTimingReasonCode] = useState("");
+  const [infusionTimingReasonDetail, setInfusionTimingReasonDetail] = useState("");
   const [infusionDraftRestoredAt, setInfusionDraftRestoredAt] = useState<string | null>(null);
   const [infusionDraftSavedLocallyAt, setInfusionDraftSavedLocallyAt] = useState<string | null>(null);
   const [passQueue, setPassQueue] = useState<MedicationPassQueueResponse>({
@@ -654,6 +668,13 @@ export function MedicationAdministrationTab({
     () => resolveClinicalTimeZone({ facilityTimeZone }),
     [facilityTimeZone]
   );
+
+  useEffect(() => {
+    if (!infusionModal) return;
+    setInfusionClinicalTimeValue(clinicalDatetimeLocalFromInstant(new Date(), clinicalTz));
+    setInfusionTimingReasonCode("");
+    setInfusionTimingReasonDetail("");
+  }, [infusionModal, clinicalTz]);
   const [marSelectedDateLocal, setMarSelectedDateLocal] = useState(() =>
     resolveFacilityLocalToday(clinicalTz)
   );
@@ -686,18 +707,21 @@ export function MedicationAdministrationTab({
   }, [loadMarHistoryForCorrections]);
 
   useEffect(() => {
-    if (modalAction !== "administered") {
-      setModalShowEffectiveTimeEditor(false);
-      setModalEffectiveTimeLocal("");
-      setModalEffectiveTimeReason("");
-    }
-  }, [modalAction]);
+    if (!modalItem) return;
+    const tz = resolveClinicalTimeZone({ facilityTimeZone });
+    setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
+    setModalClinicalTimeReasonCode("");
+    setModalEffectiveTimeReason("");
+    setModalShowEffectiveTimeEditor(true);
+  }, [modalItem?.orderItemId, facilityTimeZone]);
 
   const clearModalEffectiveTime = useCallback(() => {
-    setModalShowEffectiveTimeEditor(false);
-    setModalEffectiveTimeLocal("");
+    const tz = resolveClinicalTimeZone({ facilityTimeZone });
+    setModalShowEffectiveTimeEditor(true);
+    setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
     setModalEffectiveTimeReason("");
-  }, []);
+    setModalClinicalTimeReasonCode("");
+  }, [facilityTimeZone]);
 
   const encounterOpen = encounterStatus === "OPEN";
   const encounterClinicalMutationsAllowed =
@@ -1592,9 +1616,27 @@ export function MedicationAdministrationTab({
       onExecuteMissed: async (item, input) => {
         await submitTimelineTerminalMar(item, "MARK_MISSED", input);
       },
-      onExecuteStartFluid: async (item) => {
+      onRequestScheduleAdjustment: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
-        await startContinuousFluid(item.orderItemId, facilityId);
+        await adjustMedicationDoseSchedule(
+          facilityId,
+          encounterId,
+          item.medicationDoseInstanceId,
+          {
+            newScheduledAt: input.newScheduledAtIso,
+            reasonCode: input.reasonCode,
+            reasonDetail: input.reasonDetail,
+          }
+        );
+        await reloadMarData();
+        await refreshMarViews();
+      },
+      onExecuteStartFluid: async (item, input) => {
+        if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        await startContinuousFluid(item.orderItemId, facilityId, {
+          ...(input?.notes ? { notes: input.notes } : {}),
+          ...(input?.startedAt ? { startedAt: input.startedAt } : {}),
+        });
         await reloadMarData();
         await refreshMarViews();
       },
@@ -1619,9 +1661,12 @@ export function MedicationAdministrationTab({
         await reloadMarData();
         await refreshMarViews();
       },
-      onExecuteStartBolus: async (item) => {
+      onExecuteStartBolus: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
-        await startFluidBolus(item.orderItemId, facilityId);
+        await startFluidBolus(item.orderItemId, facilityId, {
+          ...(input?.notes ? { notes: input.notes } : {}),
+          ...(input?.startedAt ? { startedAt: input.startedAt } : {}),
+        });
         await reloadMarData();
         await refreshMarViews();
       },
@@ -1766,28 +1811,63 @@ export function MedicationAdministrationTab({
         modalEffectiveTimeLocal.trim()
           ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? documentedAt
           : documentedAt;
-      const scheduleTiming = evaluateMarScheduleAdministrationTiming({
-        administeredAt: administeredAtForTiming,
-        scheduledAt: modalItem.scheduledAt,
-        dueWindowStartAt: modalItem.dueWindowStartAt,
-        dueWindowEndAt: modalItem.dueWindowEndAt,
-        facilityTimeZone: clinicalTz,
-        locale: dateLocale,
+      const variance = assessMarAdministrationVariance({
+        actualAdministrationTime: administeredAtForTiming,
+        effectiveScheduledTime: modalItem.scheduledAt,
       });
-      if (scheduleTiming.requiresReason) {
-        const timingValidation = validateMarScheduleTimingGovernance({
-          timing: scheduleTiming,
+      const overrideKind = administrationVarianceMinutesToOverrideKind(variance.varianceMinutes);
+      const overrideRequirement = assessMarMedicationTimingOverrideRequirement({
+        overrideKind,
+        movedMinutes: Math.abs(variance.varianceMinutes),
+      });
+      if (overrideRequirement.reasonRequired) {
+        const timingValidation = validateMarMedicationTimingOverride({
+          overrideKind,
+          movedMinutes: Math.abs(variance.varianceMinutes),
           reasonCode: marScheduleTimingReasonCode,
-          otherText: marScheduleTimingReason,
+          reasonDetail: marScheduleTimingReason,
         });
         if (!timingValidation.ok) {
           setModalSubmitError(
-            timingValidation.code === "OTHER_DETAIL_REQUIRED"
-              ? t("marScheduleTiming.otherDetailRequired")
-              : t("marScheduleTiming.reasonRequired")
+            timingValidation.code === "DETAIL_REQUIRED"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
           );
           return;
         }
+      }
+    }
+
+    if (modalEffectiveTimeLocal.trim() && modalItem) {
+      const universalActionType =
+        modalItem.isPrn && modalAction === "administered"
+          ? "PRN_ADMINISTER"
+          : modalAction === "refused"
+            ? "REFUSE"
+            : modalAction === "not_available"
+              ? "NOT_AVAILABLE"
+              : modalAction === "md_changed"
+                ? "MD_CHANGED"
+                : "ADMINISTER";
+      const universalValidation = validateMarClinicalDateTimeField({
+        actionType: universalActionType,
+        clinicalTimeLocal: modalEffectiveTimeLocal,
+        documentedAtIso: documentedAt.toISOString(),
+        scheduledTime: modalItem.scheduledAt,
+        currentScheduledTime: modalItem.scheduledAt,
+        reasonCode: modalClinicalTimeReasonCode,
+        reasonDetail: modalEffectiveTimeReason,
+        facilityTimeZone: clinicalTz,
+      });
+      if (!universalValidation.ok) {
+        setModalSubmitError(
+          universalValidation.code === "DETAIL_REQUIRED"
+            ? t("marClinicalTime.detailRequired")
+            : universalValidation.code === "INVALID_TIME"
+              ? t("marClinicalTime.invalidTime")
+              : t("marClinicalTime.reasonRequired")
+        );
+        return;
       }
     }
 
@@ -2024,12 +2104,60 @@ export function MedicationAdministrationTab({
               locale: dateLocale,
             })
           : null;
+      const varianceForNotes =
+        modalAction === "administered" && modalItem.scheduledAt?.trim()
+          ? assessMarAdministrationVariance({
+              actualAdministrationTime:
+                modalEffectiveTimeLocal.trim()
+                  ? clinicalDatetimeLocalToUtcDate(modalEffectiveTimeLocal, clinicalTz) ?? documentedAt
+                  : documentedAt,
+              effectiveScheduledTime: modalItem.scheduledAt,
+            })
+          : null;
+      const overrideKindForNotes = varianceForNotes
+        ? administrationVarianceMinutesToOverrideKind(varianceForNotes.varianceMinutes)
+        : "ON_TIME_ADMINISTRATION";
+      const overrideRequirementForNotes = varianceForNotes
+        ? assessMarMedicationTimingOverrideRequirement({
+            overrideKind: overrideKindForNotes,
+            movedMinutes: Math.abs(varianceForNotes.varianceMinutes),
+          })
+        : null;
+
+      const universalActionTypeForNotes =
+        modalItem?.isPrn && modalAction === "administered"
+          ? "PRN_ADMINISTER"
+          : modalAction === "refused"
+            ? "REFUSE"
+            : modalAction === "not_available"
+              ? "NOT_AVAILABLE"
+              : modalAction === "md_changed"
+                ? "MD_CHANGED"
+                : "ADMINISTER";
+      const clinicalTimeIsoForNotes = modalEffectiveTimeLocal.trim()
+        ? marClinicalDateTimeLocalToUtcIso(modalEffectiveTimeLocal, clinicalTz)
+        : null;
+      const universalTimingNotes =
+        clinicalTimeIsoForNotes && modalItem
+          ? buildMarClinicalTimeDocumentationNotes({
+              actionType: universalActionTypeForNotes,
+              clinicalTimeIso: clinicalTimeIsoForNotes,
+              documentedAtIso: documentedAt.toISOString(),
+              scheduledTime: modalItem.scheduledAt,
+              currentScheduledTime: modalItem.scheduledAt,
+              reasonCode: modalClinicalTimeReasonCode,
+              reasonDetail: modalEffectiveTimeReason,
+            })
+          : null;
 
       const body = appendMedicationDoseInstanceIdToMarCreateBody(
         {
         orderItemId,
         marAction: modalAction,
-        administeredAt: documentedAt.toISOString(),
+        administeredAt:
+          modalAction === "administered"
+            ? documentedAt.toISOString()
+            : clinicalTimeIsoForNotes ?? documentedAt.toISOString(),
         ...(routeLine ? { route: routeLine } : {}),
         ...(hiddenBillingFields.doseValue != null ? { doseValue: hiddenBillingFields.doseValue } : {}),
         ...(hiddenBillingFields.doseUnit ? { doseUnit: hiddenBillingFields.doseUnit } : {}),
@@ -2045,12 +2173,18 @@ export function MedicationAdministrationTab({
           modalAction,
           routeLine,
           [
-            scheduleTimingForNotes?.requiresReason && marScheduleTimingReasonCode.trim()
+            universalTimingNotes,
+            overrideRequirementForNotes?.reasonRequired && marScheduleTimingReasonCode.trim()
               ? buildMarScheduleTimingDocumentation({
-                  kind: scheduleTimingForNotes.kind === "early" ? "early" : "late",
+                  kind:
+                    overrideKindForNotes === "EARLY_ADMINISTRATION"
+                      ? "early"
+                      : overrideKindForNotes === "LATE_ADMINISTRATION"
+                        ? "late"
+                        : "late",
                   reasonCode: marScheduleTimingReasonCode,
                   otherText: marScheduleTimingReason,
-                  minutesDelta: scheduleTimingForNotes.minutesDelta ?? 0,
+                  minutesDelta: Math.abs(varianceForNotes?.varianceMinutes ?? 0),
                 })
               : marScheduleTimingReason.trim()
                 ? `${t("marScheduleTiming.reasonPrefix")}: ${marScheduleTimingReason.trim()}`
@@ -3624,13 +3758,18 @@ export function MedicationAdministrationTab({
                 facilityTimeZone: clinicalTz,
                 locale: dateLocale,
               });
-              if (!scheduleTiming.requiresReason) return null;
-              const reasonCodes =
-                scheduleTiming.kind === "early"
-                  ? MAR_SCHEDULE_EARLY_REASON_CODES
-                  : MAR_SCHEDULE_LATE_REASON_CODES;
+              const variance = assessMarAdministrationVariance({
+                actualAdministrationTime: administeredAtForTiming,
+                effectiveScheduledTime: modalItem.scheduledAt,
+              });
+              const overrideKind = administrationVarianceMinutesToOverrideKind(variance.varianceMinutes);
+              const overrideRequirement = assessMarMedicationTimingOverrideRequirement({
+                overrideKind,
+                movedMinutes: Math.abs(variance.varianceMinutes),
+              });
+              if (!overrideRequirement.reasonRequired) return null;
               const msgKey =
-                scheduleTiming.kind === "early"
+                overrideKind === "EARLY_ADMINISTRATION"
                   ? "marScheduleTiming.earlyWarning"
                   : "marScheduleTiming.lateWarning";
               return (
@@ -3651,16 +3790,24 @@ export function MedicationAdministrationTab({
                     {t(msgKey)
                       .replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)
                       .replace("{actualTime}", scheduleTiming.actualTimeDisplay ?? "")
-                      .replace("{minutes}", String(scheduleTiming.minutesDelta ?? 0))}
+                      .replace("{minutes}", String(Math.abs(variance.varianceMinutes)))}
                   </div>
+                  {overrideRequirement.reviewRecommended ? (
+                    <p
+                      data-testid="mar-timing-override-review-recommended"
+                      style={{ margin: "8px 0 0", fontSize: 12, fontWeight: 600, color: "#1d4ed8" }}
+                    >
+                      {t("marTimingOverride.reviewRecommended")}
+                    </p>
+                  ) : null}
                   <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b" }}>
                     {t("marScheduleTiming.timingDetail")
                       .replace("{scheduledTime}", scheduleTiming.scheduledTimeDisplay)
                       .replace("{actualTime}", scheduleTiming.actualTimeDisplay ?? "")
-                      .replace("{minutes}", String(scheduleTiming.minutesDelta ?? 0))}
+                      .replace("{minutes}", String(Math.abs(variance.varianceMinutes)))}
                   </p>
                   <label style={{ display: "block", marginTop: 10, marginBottom: 4, fontSize: 13, fontWeight: 600 }}>
-                    {t("marScheduleTiming.reasonLabel")}
+                    {t("marTimingOverride.reasonLabel")}
                   </label>
                   <select
                     value={marScheduleTimingReasonCode}
@@ -3676,20 +3823,20 @@ export function MedicationAdministrationTab({
                       marginBottom: 8,
                     }}
                   >
-                    <option value="">{t("marScheduleTiming.reasonSelectPlaceholder")}</option>
-                    {reasonCodes.map((code) => (
+                    <option value="">{t("marTimingOverride.reasonPlaceholder")}</option>
+                    {MAR_MEDICATION_TIMING_OVERRIDE_REASON_CODES.map((code) => (
                       <option key={code} value={code}>
-                        {t(`marScheduleTiming.reasonCodes.${code}`)}
+                        {t(`marTimingOverride.reason.${code}`)}
                       </option>
                     ))}
                   </select>
-                  {marScheduleTimingReasonCode === "OTHER" ? (
+                  {marScheduleTimingReasonCode === "OTHER" || overrideRequirement.detailRequired ? (
                     <input
                       type="text"
                       value={marScheduleTimingReason}
                       onChange={(e) => setMarScheduleTimingReason(e.target.value)}
                       disabled={submitting}
-                      placeholder={t("marScheduleTiming.otherPlaceholder")}
+                      placeholder={t("marTimingOverride.detailPlaceholder")}
                       style={{
                         width: "100%",
                         padding: "8px 10px",
@@ -3807,23 +3954,40 @@ export function MedicationAdministrationTab({
               );
             })()}
 
-            {modalAction === "administered" ? (
-              <div
-                style={{
-                  marginTop: 14,
-                  paddingTop: 12,
-                  borderTop: "1px solid #e2e8f0",
-                  fontSize: 12,
-                  color: "#64748b",
-                  lineHeight: 1.5,
-                }}
-              >
-                <p style={{ margin: 0 }}>{t("marTab.adminTime.recordModalDocumentedNow")}</p>
-                {modalEffectiveTimeLocal.trim() ? (
-                  <p style={{ margin: "6px 0 0", color: "#475569" }}>
-                    {t("marTab.adminTime.recordModalClinicalSeparate")}
-                  </p>
-                ) : null}
+            {modalItem &&
+            canAdjustAdminTime &&
+            (modalAction === "administered" ||
+              modalAction === "refused" ||
+              modalAction === "not_available" ||
+              modalAction === "md_changed") ? (
+              <div style={{ marginTop: 14 }}>
+                <MedicationClinicalDateTimeField
+                  label={t("marClinicalTime.clinicalTimeLabel")}
+                  value={modalEffectiveTimeLocal}
+                  onChange={setModalEffectiveTimeLocal}
+                  documentedAt={new Date().toISOString()}
+                  scheduledTime={modalItem.scheduledAt}
+                  currentScheduledTime={modalItem.scheduledAt}
+                  actionType={
+                    modalItem.isPrn && modalAction === "administered"
+                      ? "PRN_ADMINISTER"
+                      : modalAction === "refused"
+                        ? "REFUSE"
+                        : modalAction === "not_available"
+                          ? "NOT_AVAILABLE"
+                          : modalAction === "md_changed"
+                            ? "MD_CHANGED"
+                            : "ADMINISTER"
+                  }
+                  facilityTimeZone={resolveClinicalTimeZone({ facilityTimeZone })}
+                  reasonCode={modalClinicalTimeReasonCode}
+                  onReasonCodeChange={setModalClinicalTimeReasonCode}
+                  reasonDetail={modalEffectiveTimeReason}
+                  onReasonDetailChange={setModalEffectiveTimeReason}
+                  required
+                  disabled={submitting}
+                  testId="mar-record-modal-clinical-time"
+                />
               </div>
             ) : null}
 
@@ -3834,64 +3998,10 @@ export function MedicationAdministrationTab({
                 gap: 12,
                 justifyContent: "space-between",
                 alignItems: "flex-end",
-                marginTop: modalAction === "administered" ? 10 : 0,
+                marginTop: 10,
               }}
             >
-              {modalAction === "administered" && canAdjustAdminTime && modalItem ? (
-                <MedicationAdministrationRecordModalAdjustTime
-                  showEditor={modalShowEffectiveTimeEditor}
-                  onToggleEditor={() => {
-                    setModalShowEffectiveTimeEditor((open) => {
-                      const next = !open;
-                      if (next && !modalEffectiveTimeLocal.trim()) {
-                        const tz = resolveClinicalTimeZone({ facilityTimeZone });
-                        setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
-                      }
-                      return next;
-                    });
-                  }}
-                  effectiveTimeLocal={modalEffectiveTimeLocal}
-                  onEffectiveTimeLocalChange={setModalEffectiveTimeLocal}
-                  effectiveTimeReason={modalEffectiveTimeReason}
-                  onEffectiveTimeReasonChange={setModalEffectiveTimeReason}
-                  onClear={clearModalEffectiveTime}
-                  documentedAt={new Date()}
-                  orderCreatedAt={(() => {
-                    const oid = modalItem.orderItemId;
-                    const ord = orders
-                      .map((o) => asApiObject(o))
-                      .find((o) => {
-                        const items = Array.isArray(o?.items) ? o.items : [];
-                        return items.some((it) => asApiObject(it)?.id === oid);
-                      });
-                    return ord?.createdAt ? new Date(String(ord.createdAt)) : new Date();
-                  })()}
-                  orderItemCreatedAt={(() => {
-                    const oi = orderItemById.get(modalItem.orderItemId);
-                    return oi?.createdAt ? new Date(String(oi.createdAt)) : null;
-                  })()}
-                  orderCancelledAt={(() => {
-                    const oid = modalItem.orderItemId;
-                    const ord = orders
-                      .map((o) => asApiObject(o))
-                      .find((o) => {
-                        const items = Array.isArray(o?.items) ? o.items : [];
-                        return items.some((it) => asApiObject(it)?.id === oid);
-                      });
-                    return String(ord?.status ?? "").toUpperCase() === "CANCELLED" && ord?.cancelledAt
-                      ? new Date(String(ord.cancelledAt))
-                      : null;
-                  })()}
-                  controlledMedication={Boolean(
-                    orderItemById.get(modalItem.orderItemId)?.catalogMedication?.isControlled
-                  )}
-                  dateLocale={dateLocale}
-                  disabled={submitting}
-                  t={t}
-                />
-              ) : (
-                <div style={{ flex: "1 1 120px" }} />
-              )}
+              <div style={{ flex: "1 1 120px" }} />
               <div
                 style={{
                   display: "flex",
@@ -4119,6 +4229,29 @@ export function MedicationAdministrationTab({
             {infusionModal.op === "stop" ? (
               <>
                 <label
+                  htmlFor="mar-infusion-clinical-time"
+                  style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
+                >
+                  {t("marShiftTimeline.drawer.stopTimeField")}
+                </label>
+                <input
+                  id="mar-infusion-clinical-time"
+                  data-testid="mar-infusion-clinical-stop-time"
+                  type="datetime-local"
+                  value={infusionClinicalTimeValue}
+                  onChange={(e) => setInfusionClinicalTimeValue(e.target.value)}
+                  disabled={Boolean(infusionBusy)}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 15,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                />
+                <label
                   htmlFor="mar-infusion-stop-reason"
                   style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
                 >
@@ -4171,7 +4304,82 @@ export function MedicationAdministrationTab({
                   }}
                 />
               </>
-            ) : null}
+            ) : (
+              <>
+                <label
+                  htmlFor="mar-infusion-clinical-start-time"
+                  style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
+                >
+                  {t("marShiftTimeline.drawer.startTimeField")}
+                </label>
+                <input
+                  id="mar-infusion-clinical-start-time"
+                  data-testid="mar-infusion-clinical-start-time"
+                  type="datetime-local"
+                  value={infusionClinicalTimeValue}
+                  onChange={(e) => setInfusionClinicalTimeValue(e.target.value)}
+                  disabled={Boolean(infusionBusy)}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 15,
+                    marginBottom: 12,
+                    boxSizing: "border-box",
+                  }}
+                />
+              </>
+            )}
+            <div data-testid="mar-infusion-timing-override-fields" style={{ marginBottom: 12 }}>
+              <label
+                htmlFor="mar-infusion-timing-reason"
+                style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}
+              >
+                {t("marTimingOverride.reasonLabel")}
+              </label>
+              <select
+                id="mar-infusion-timing-reason"
+                data-testid="mar-infusion-timing-reason"
+                value={infusionTimingReasonCode}
+                onChange={(e) => setInfusionTimingReasonCode(e.target.value)}
+                disabled={Boolean(infusionBusy)}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 8,
+                  border: "1px solid #ccc",
+                  fontSize: 15,
+                  marginBottom: 8,
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">{t("marTimingOverride.reasonPlaceholder")}</option>
+                {MAR_MEDICATION_TIMING_OVERRIDE_REASON_CODES.map((code) => (
+                  <option key={code} value={code}>
+                    {t(`marTimingOverride.reason.${code}`)}
+                  </option>
+                ))}
+              </select>
+              {infusionTimingReasonCode === "OTHER" ? (
+                <input
+                  type="text"
+                  data-testid="mar-infusion-timing-detail"
+                  value={infusionTimingReasonDetail}
+                  onChange={(e) => setInfusionTimingReasonDetail(e.target.value)}
+                  disabled={Boolean(infusionBusy)}
+                  placeholder={t("marTimingOverride.detailPlaceholder")}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    border: "1px solid #ccc",
+                    fontSize: 15,
+                    boxSizing: "border-box",
+                  }}
+                />
+              ) : null}
+            </div>
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.infusionNoteLabel")}
             </label>
@@ -4216,15 +4424,46 @@ export function MedicationAdministrationTab({
               <button
                 type="button"
                 disabled={Boolean(infusionBusy)}
-                onClick={() =>
+                onClick={() => {
+                  const saveAt = new Date();
+                  const clinicalIso =
+                    clinicalDatetimeLocalToUtcDate(infusionClinicalTimeValue, clinicalTz)?.toISOString() ??
+                    saveAt.toISOString();
+                  const timingValidation = validateMarInfusionClinicalTimeOverride({
+                    clinicalAt: clinicalIso,
+                    saveAt,
+                    reasonCode: infusionTimingReasonCode,
+                    reasonDetail: infusionTimingReasonDetail,
+                  });
+                  if (!timingValidation.ok) {
+                    setError(
+                      timingValidation.code === "DETAIL_REQUIRED"
+                        ? t("marTimingOverride.detailRequired")
+                        : t("marTimingOverride.reasonRequired")
+                    );
+                    return;
+                  }
+                  const timingDoc =
+                    infusionTimingReasonCode.trim()
+                      ? buildMarInfusionTimingDocumentation({
+                          clinicalAt: clinicalIso,
+                          saveAt,
+                          reasonCode: infusionTimingReasonCode.trim(),
+                          reasonDetail: infusionTimingReasonDetail,
+                        })
+                      : null;
+                  const combinedNote = [timingDoc, infusionModalNote.trim()].filter(Boolean).join("\n\n");
                   void runMarInfusion(
                     infusionModal.orderItemId,
                     infusionModal.orderId,
                     infusionModal.op,
-                    infusionModalNote,
-                    infusionModal.op === "start" ? pendingInfusionStartVerifier : null
-                  )
-                }
+                    combinedNote || undefined,
+                    infusionModal.op === "start" ? pendingInfusionStartVerifier : null,
+                    {
+                      ...(infusionModal.op === "start" ? { startedAtIso: clinicalIso } : { stoppedAtIso: clinicalIso }),
+                    }
+                  );
+                }}
                 style={{
                   padding: "10px 16px",
                   borderRadius: 8,

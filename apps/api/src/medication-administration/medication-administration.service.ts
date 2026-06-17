@@ -55,6 +55,7 @@ import {
   medicationIvpbDoseSchedulingEnabled,
   resolveClinicalTimeZone,
   resolveScheduleClassification,
+  isMarUniversalClinicalTimeCorrectionEligible,
   shouldAllowOrderLineCompletionDespitePrnContinuity,
   shouldSkipOrderLineCompletionForMar,
   type MedicationAdminEffectiveTimeValidationCode,
@@ -1746,7 +1747,13 @@ export class MedicationAdministrationService {
       marAction: row.marAction ?? null,
       notes: row.notes,
     });
-    if (marActionResolved !== "administered") {
+    if (
+      !isMarUniversalClinicalTimeCorrectionEligible({
+        marActionResolved,
+        notes: row.notes,
+        infusionPhase: row.infusionPhase,
+      })
+    ) {
       throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
     }
 
@@ -1793,7 +1800,11 @@ export class MedicationAdministrationService {
       adjustmentVersion: row.effectiveAdministeredAtVersion,
       reason: reasonTrim,
       controlledMedication,
-      marActionAdministered: true,
+      marActionAdministered: isMarUniversalClinicalTimeCorrectionEligible({
+        marActionResolved,
+        notes: row.notes,
+        infusionPhase: row.infusionPhase,
+      }),
     });
     if (!validation.ok) {
       throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));

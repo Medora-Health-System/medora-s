@@ -27,6 +27,7 @@ import {
   buildMarShiftTimelineStartPayload,
   buildMarShiftTimelineStopPayload,
   validateMarShiftTimelineStopTime,
+  validateMarShiftTimelineInfusionClinicalTime,
   type MarShiftTimelineActionHandlers,
 } from "@/features/mar/marShiftTimelineActions";
 import {
@@ -34,6 +35,15 @@ import {
   toMarShiftTimelineDateTimeLocalValue,
 } from "@/features/mar/marShiftTimelineDisplay";
 import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
+import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/MedicationDoseScheduleAdjustmentModal";
+import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
+import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
+import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
+import {
+  buildMarClinicalTimeDocumentationNotes,
+  marDrawerActionToUniversalClinicalActionType,
+  validateMarClinicalDateTimeField,
+} from "@/features/mar/marUniversalMedicationActionTime";
 
 export type FacilityMarShiftTimelineDrawerContext = {
   patientDisplay: string;
@@ -73,22 +83,31 @@ export function FacilityMarShiftTimelineDrawer({
   const [stopNotes, setStopNotes] = useState("");
   const [infusionStopReasonCode, setInfusionStopReasonCode] = useState("COMPLETED");
   const [infusionStopReasonDetail, setInfusionStopReasonDetail] = useState("");
+  const [infusionTimingReasonCode, setInfusionTimingReasonCode] = useState("");
+  const [infusionTimingReasonDetail, setInfusionTimingReasonDetail] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [reasonModal, setReasonModal] = useState<null | { action: "REFUSE" | "HOLD" | "MARK_MISSED" }>(null);
   const [reasonCode, setReasonCode] = useState("");
   const [reasonOther, setReasonOther] = useState("");
   const [reasonTimeValue, setReasonTimeValue] = useState("");
+  const [reasonTimingReasonCode, setReasonTimingReasonCode] = useState("");
+  const [reasonTimingReasonDetail, setReasonTimingReasonDetail] = useState("");
+  const [documentedAtIso, setDocumentedAtIso] = useState(() => new Date().toISOString());
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
   const readOnly = item ? isMarShiftTimelineDrawerReadOnly(item) : false;
   const scheduledActionable = item ? isMarShiftTimelineDrawerScheduledActionable(item) : false;
   const primaryAction = item ? marShiftTimelinePrimaryDrawerAction(item) : null;
   const showStartTimeField =
     item?.clinicalAction === "START_INFUSION" ||
+    item?.clinicalAction === "START_BOLUS" ||
+    item?.clinicalAction === "START_FLUID" ||
     (item?.clinicalAction === "VIEW_UPCOMING" &&
       (item.doseKind === "IVPB_SESSION" || item.route?.trim().toUpperCase() === "IVPB"));
   const showStopTimeField =
     item?.clinicalAction === "STOP_INFUSION" ||
+    item?.clinicalAction === "COMPLETE_BOLUS" ||
     item?.clinicalAction === "STOP_FLUID" ||
     item?.clinicalAction === "RESUME_FLUID";
   const showStopNotesField =
@@ -105,11 +124,17 @@ export function FacilityMarShiftTimelineDrawer({
     setStopNotes("");
     setInfusionStopReasonCode("COMPLETED");
     setInfusionStopReasonDetail("");
+    setInfusionTimingReasonCode("");
+    setInfusionTimingReasonDetail("");
     setActionError(null);
     setSubmitting(false);
     setReasonModal(null);
     setReasonCode("");
     setReasonOther("");
+    setReasonTimingReasonCode("");
+    setReasonTimingReasonDetail("");
+    setDocumentedAtIso(new Date().toISOString());
+    setScheduleModalOpen(false);
     setReasonTimeValue(
       toMarShiftTimelineDateTimeLocalValue(item.scheduledAt, facilityTimeZone) ||
         toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone)
@@ -138,6 +163,25 @@ export function FacilityMarShiftTimelineDrawer({
     dateLocale,
     facilityTimeZone
   );
+  const infusionStartActionType = marDrawerActionToUniversalClinicalActionType(
+    item.clinicalAction ?? "START_INFUSION",
+    {
+      isPrn: item.isPrnBand,
+      isFluidBolus: item.isFluidBolus,
+      isIvpb: item.doseKind === "IVPB_SESSION",
+    }
+  );
+  const infusionStopActionType = marDrawerActionToUniversalClinicalActionType(
+    item.clinicalAction ?? "STOP_INFUSION",
+    {
+      isPrn: item.isPrnBand,
+      isFluidBolus: item.isFluidBolus,
+      isIvpb: item.doseKind === "IVPB_SESSION",
+      isStop: true,
+    }
+  );
+  const originalScheduledAt = item.scheduleAdjustment?.originalScheduledAt ?? null;
+  const currentScheduledAt = item.scheduleAdjustment?.currentScheduledAt ?? item.scheduledAt;
 
   const isPrnItem = item.isPrnBand === true;
   const prnFrequencyDisplay =
@@ -404,14 +448,49 @@ export function FacilityMarShiftTimelineDrawer({
     setActionError(null);
     setSubmitting(true);
     try {
-      const administeredAtIso =
-        (reasonTimeValue.trim()
-          ? marShiftTimelineDateTimeLocalToUtcIso(reasonTimeValue, facilityTimeZone)
-          : null) ?? new Date().toISOString();
+      const documentedAtIso = new Date().toISOString();
+      const terminalActionType =
+        reasonModal.action === "REFUSE"
+          ? "REFUSE"
+          : reasonModal.action === "MARK_MISSED"
+            ? "MISSED"
+            : "HOLD";
+      const timingValidation = validateMarClinicalDateTimeField({
+        actionType: terminalActionType,
+        clinicalTimeLocal: reasonTimeValue,
+        documentedAtIso,
+        scheduledTime: item.scheduledAt,
+        currentScheduledTime: currentScheduledAt,
+        originalScheduledTime: originalScheduledAt,
+        reasonCode: reasonTimingReasonCode,
+        reasonDetail: reasonTimingReasonDetail,
+        facilityTimeZone,
+      });
+      if (!timingValidation.ok) {
+        setActionError(
+          timingValidation.code === "DETAIL_REQUIRED"
+            ? t("marClinicalTime.detailRequired")
+            : timingValidation.code === "INVALID_TIME"
+              ? t("marClinicalTime.invalidTime")
+              : t("marClinicalTime.reasonRequired")
+        );
+        return;
+      }
+      const timingNotes = buildMarClinicalTimeDocumentationNotes({
+        actionType: terminalActionType,
+        clinicalTimeIso: timingValidation.clinicalTimeIso,
+        documentedAtIso,
+        scheduledTime: item.scheduledAt,
+        currentScheduledTime: currentScheduledAt,
+        originalScheduledTime: originalScheduledAt,
+        reasonCode: reasonTimingReasonCode,
+        reasonDetail: reasonTimingReasonDetail,
+      });
       const payload = {
         reasonCode,
         otherText: reasonOther.trim() || undefined,
-        administeredAtIso,
+        administeredAtIso: timingValidation.clinicalTimeIso,
+        timingNotes,
       };
       if (reasonModal.action === "REFUSE") {
         await actionHandlers.onExecuteRefuse(item, payload);
@@ -450,11 +529,40 @@ export function FacilityMarShiftTimelineDrawer({
       return;
     }
 
+    if (action === "CHANGE_SCHEDULED_TIME") {
+      setActionError(null);
+      setScheduleModalOpen(true);
+      return;
+    }
+
     if (action === "START_FLUID" && actionHandlers.onExecuteStartFluid) {
       setActionError(null);
       setSubmitting(true);
       try {
-        await actionHandlers.onExecuteStartFluid(item);
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(startTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
+        const startPayload = buildMarShiftTimelineStartPayload(
+          {
+            startTimeLocal: startTimeValue,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
+          },
+          facilityTimeZone
+        );
+        await actionHandlers.onExecuteStartFluid(item, startPayload);
         await onActionSuccess?.();
       } catch (e) {
         setActionError(resolveActionError(e));
@@ -496,8 +604,27 @@ export function FacilityMarShiftTimelineDrawer({
       setActionError(null);
       setSubmitting(true);
       try {
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(stopTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
         const stopPayload = buildMarShiftTimelineStopPayload(
-          { stopTimeLocal: stopTimeValue },
+          {
+            stopTimeLocal: stopTimeValue,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
+          },
           facilityTimeZone
         );
         await actionHandlers.onExecuteStopFluid(item, stopPayload);
@@ -514,7 +641,30 @@ export function FacilityMarShiftTimelineDrawer({
       setActionError(null);
       setSubmitting(true);
       try {
-        await actionHandlers.onExecuteStartBolus(item);
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(startTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
+        const startPayload = buildMarShiftTimelineStartPayload(
+          {
+            startTimeLocal: startTimeValue,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
+          },
+          facilityTimeZone
+        );
+        await actionHandlers.onExecuteStartBolus(item, startPayload);
         await onActionSuccess?.();
       } catch (e) {
         setActionError(resolveActionError(e));
@@ -528,8 +678,27 @@ export function FacilityMarShiftTimelineDrawer({
       setActionError(null);
       setSubmitting(true);
       try {
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(stopTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
         const completePayload = buildMarShiftTimelineStopPayload(
-          { stopTimeLocal: stopTimeValue },
+          {
+            stopTimeLocal: stopTimeValue,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
+          },
           facilityTimeZone
         );
         await actionHandlers.onExecuteCompleteBolus(item, completePayload);
@@ -552,8 +721,27 @@ export function FacilityMarShiftTimelineDrawer({
     setSubmitting(true);
     try {
       if (action === "START_INFUSION") {
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(startTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
         const startPayload = buildMarShiftTimelineStartPayload(
-          { startTimeLocal: startTimeValue },
+          {
+            startTimeLocal: startTimeValue,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
+          },
           facilityTimeZone
         );
         const completed = await actionHandlers.onRequestStartInfusion(item, startPayload);
@@ -563,6 +751,20 @@ export function FacilityMarShiftTimelineDrawer({
         return;
       }
       if (action === "STOP_INFUSION") {
+        const saveAt = new Date();
+        const timingValidation = validateMarShiftTimelineInfusionClinicalTime(stopTimeValue, facilityTimeZone, {
+          reasonCode: infusionTimingReasonCode,
+          reasonDetail: infusionTimingReasonDetail,
+          saveAt,
+        });
+        if (!timingValidation.ok) {
+          setActionError(
+            timingValidation.reason === "timing_detail_required"
+              ? t("marTimingOverride.detailRequired")
+              : t("marTimingOverride.reasonRequired")
+          );
+          return;
+        }
         const stopValidation = validateMarShiftTimelineStopTime(item, stopTimeValue, facilityTimeZone);
         if (!stopValidation.ok) {
           setActionError(
@@ -578,6 +780,9 @@ export function FacilityMarShiftTimelineDrawer({
             stopTimeLocal: stopTimeValue,
             stopReasonCode: infusionStopReasonCode,
             reasonDetail: infusionStopReasonDetail,
+            timingReasonCode: infusionTimingReasonCode,
+            timingReasonDetail: infusionTimingReasonDetail,
+            saveAt,
           },
           facilityTimeZone
         );
@@ -707,40 +912,37 @@ export function FacilityMarShiftTimelineDrawer({
             ) : null
           )}
 
+          {item.scheduleAdjustmentChain && item.scheduleAdjustmentChain.length > 0 ? (
+            <MedicationScheduleAdjustmentChainViewer
+              steps={item.scheduleAdjustmentChain}
+              facilityTimeZone={facilityTimeZone}
+            />
+          ) : null}
+
+          <MedicationTimingOverrideJustificationPanel
+            item={item}
+            facilityTimeZone={facilityTimeZone}
+          />
+
           {showStartTimeField ? (
             <div style={{ marginTop: 12, position: "relative", zIndex: 1 }}>
-              <label
-                htmlFor="mar-shift-timeline-start-time"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#64748b",
-                  marginBottom: 6,
-                  cursor: readOnly || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED ? "default" : "pointer",
-                }}
-              >
-                {t("marShiftTimeline.drawer.startTimeField")}
-              </label>
-              <input
-                id="mar-shift-timeline-start-time"
-                data-testid="mar-shift-timeline-drawer-start-time"
-                type="datetime-local"
+              <MedicationClinicalDateTimeField
+                label={t("marShiftTimeline.drawer.startTimeField")}
                 value={startTimeValue}
-                onChange={(e) => setStartTimeValue(e.target.value)}
+                onChange={setStartTimeValue}
+                documentedAt={documentedAtIso}
+                scheduledTime={item.scheduledAt}
+                currentScheduledTime={currentScheduledAt}
+                originalScheduledTime={originalScheduledAt}
+                actionType={infusionStartActionType}
+                facilityTimeZone={facilityTimeZone}
+                reasonCode={infusionTimingReasonCode}
+                onReasonCodeChange={setInfusionTimingReasonCode}
+                reasonDetail={infusionTimingReasonDetail}
+                onReasonDetailChange={setInfusionTimingReasonDetail}
+                required
                 disabled={readOnly || submitting || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                  cursor:
-                    readOnly || submitting || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED
-                      ? "not-allowed"
-                      : "text",
-                }}
+                testId="mar-shift-timeline-drawer-start-time"
               />
               {!MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED ? (
                 <p
@@ -755,35 +957,23 @@ export function FacilityMarShiftTimelineDrawer({
 
           {showStopTimeField ? (
             <div style={{ marginTop: 12, position: "relative", zIndex: 1 }}>
-              <label
-                htmlFor="mar-shift-timeline-stop-time"
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "#64748b",
-                  marginBottom: 6,
-                  cursor: readOnly || submitting ? "default" : "pointer",
-                }}
-              >
-                {t("marShiftTimeline.drawer.stopTimeField")}
-              </label>
-              <input
-                id="mar-shift-timeline-stop-time"
-                data-testid="mar-shift-timeline-drawer-stop-time"
-                type="datetime-local"
+              <MedicationClinicalDateTimeField
+                label={t("marShiftTimeline.drawer.stopTimeField")}
                 value={stopTimeValue}
-                onChange={(e) => setStopTimeValue(e.target.value)}
+                onChange={setStopTimeValue}
+                documentedAt={documentedAtIso}
+                scheduledTime={item.scheduledAt}
+                currentScheduledTime={currentScheduledAt}
+                originalScheduledTime={originalScheduledAt}
+                actionType={infusionStopActionType}
+                facilityTimeZone={facilityTimeZone}
+                reasonCode={infusionTimingReasonCode}
+                onReasonCodeChange={setInfusionTimingReasonCode}
+                reasonDetail={infusionTimingReasonDetail}
+                onReasonDetailChange={setInfusionTimingReasonDetail}
+                required
                 disabled={readOnly || submitting}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                  cursor: readOnly || submitting ? "not-allowed" : "text",
-                }}
+                testId="mar-shift-timeline-drawer-stop-time"
               />
             </div>
           ) : null}
@@ -1008,30 +1198,31 @@ export function FacilityMarShiftTimelineDrawer({
                   }}
                 />
               ) : null}
-              <label
-                htmlFor="mar-shift-timeline-reason-time"
-                style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 6 }}
-              >
-                {t("marShiftTimeline.reasonModal.timeField")}
-              </label>
-              <input
-                id="mar-shift-timeline-reason-time"
-                data-testid="mar-shift-timeline-reason-time"
-                type="datetime-local"
+              <MedicationClinicalDateTimeField
+                label={t("marShiftTimeline.reasonModal.timeField")}
                 value={reasonTimeValue}
-                onChange={(e) => setReasonTimeValue(e.target.value)}
+                onChange={setReasonTimeValue}
+                documentedAt={documentedAtIso}
+                scheduledTime={item.scheduledAt}
+                currentScheduledTime={currentScheduledAt}
+                originalScheduledTime={originalScheduledAt}
+                actionType={
+                  reasonModal.action === "REFUSE"
+                    ? "REFUSE"
+                    : reasonModal.action === "MARK_MISSED"
+                      ? "MISSED"
+                      : "HOLD"
+                }
+                facilityTimeZone={facilityTimeZone}
+                reasonCode={reasonTimingReasonCode}
+                onReasonCodeChange={setReasonTimingReasonCode}
+                reasonDetail={reasonTimingReasonDetail}
+                onReasonDetailChange={setReasonTimingReasonDetail}
+                required
                 disabled={submitting}
-                style={{
-                  width: "100%",
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #cbd5e1",
-                  fontSize: 14,
-                  marginBottom: 16,
-                  boxSizing: "border-box",
-                }}
+                testId="mar-shift-timeline-reason-time"
               />
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
                 <button
                   type="button"
                   data-testid="mar-shift-timeline-reason-cancel"
@@ -1069,6 +1260,38 @@ export function FacilityMarShiftTimelineDrawer({
           </div>
         ) : null}
       </aside>
+
+      <MedicationDoseScheduleAdjustmentModal
+        open={scheduleModalOpen}
+        medicationLabel={item.medicationLabel ?? item.primaryText}
+        originalScheduledAt={item.scheduledAt}
+        facilityTimeZone={facilityTimeZone}
+        busy={submitting}
+        error={actionError}
+        onClose={() => {
+          if (!submitting) {
+            setScheduleModalOpen(false);
+            setActionError(null);
+          }
+        }}
+        onSubmit={async (input) => {
+          if (!actionHandlers?.onRequestScheduleAdjustment) {
+            setActionError(t("marShiftTimeline.actionError"));
+            return;
+          }
+          setSubmitting(true);
+          setActionError(null);
+          try {
+            await actionHandlers.onRequestScheduleAdjustment(item, input);
+            setScheduleModalOpen(false);
+            await onActionSuccess?.();
+          } catch (e) {
+            setActionError(resolveActionError(e));
+          } finally {
+            setSubmitting(false);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { isMarShiftTimelineHoldNotes } from "../medication/marShiftTimelineTermi
 import {
   isMarMissedDoseNotes,
   parseMarMissedDoseReasonFromNotes,
+  parseMarScheduleTimingReasonFromNotes,
 } from "./marAdministrationSafetyGovernance.js";
 import { resolveMedicationMarActionFromStorage } from "./marClinicalAction.js";
 import {
@@ -26,6 +27,14 @@ import {
   type MedicationAdministrationHistoryMarSourceRow,
   type MedicationAdministrationHistoryOrderCancelSourceRow,
 } from "./medicationAdministrationHistory.js";
+import { buildMarRescheduleSummary } from "./marScheduleReschedulingGovernance.js";
+import {
+  assessMarAdministrationVariance,
+  resolveEffectiveVarianceScheduledTime,
+  resolveMarAdministrationVarianceHistoryEventType,
+} from "./marAdministrationVarianceGovernance.js";
+import { reconstructMarAdministrationVarianceFromNotes } from "./marVarianceReconstructionGovernance.js";
+import { parseMarUniversalClinicalTimeNotes } from "./marUniversalClinicalTimeGovernance.js";
 
 const REFUSED_NOTES_PREFIX = "Refused:";
 
@@ -164,7 +173,41 @@ export function resolveMedicationAdministrationHistoryReasonFields(input: {
     };
   }
   if (input.eventType === "INFUSION_STOP") {
-    return parseMedicationInfusionStopReasonFromNotes(input.notes);
+    const stopReason = parseMedicationInfusionStopReasonFromNotes(input.notes);
+    const reconstructed = reconstructMarAdministrationVarianceFromNotes(input.notes);
+    if (reconstructed?.reasonCode) {
+      return {
+        reasonCode: reconstructed.reasonCode,
+        reasonDetail: reconstructed.reasonDetail ?? stopReason.reasonDetail,
+      };
+    }
+    return stopReason;
+  }
+  if (input.eventType === "INFUSION_START") {
+    const reconstructed = reconstructMarAdministrationVarianceFromNotes(input.notes);
+    if (reconstructed?.reasonCode) {
+      return {
+        reasonCode: reconstructed.reasonCode,
+        reasonDetail: reconstructed.reasonDetail,
+      };
+    }
+  }
+  if (
+    input.eventType === "ADMINISTERED" ||
+    input.eventType === "EARLY_ADMINISTRATION" ||
+    input.eventType === "LATE_ADMINISTRATION"
+  ) {
+    const reconstructed = reconstructMarAdministrationVarianceFromNotes(input.notes);
+    if (reconstructed?.reasonCode) {
+      return {
+        reasonCode: reconstructed.reasonCode,
+        reasonDetail: reconstructed.reasonDetail,
+      };
+    }
+    const timing = parseMarScheduleTimingReasonFromNotes(input.notes);
+    if (timing?.reasonCode) {
+      return { reasonCode: timing.reasonCode, reasonDetail: timing.otherText };
+    }
   }
   if (input.effectiveAdministeredAtReason?.trim()) {
     const parsed = parseMedicationAdministrationCorrectionReasonFields(
@@ -199,7 +242,7 @@ export function normalizeMedicationAdministrationHistoryMarRow(
     effectiveAdministeredAtReason?: string | null;
   }
 ): MedicationAdministrationHistoryEntry {
-  const eventType = resolveMedicationAdministrationHistoryEventType({
+  const baseEventType = resolveMedicationAdministrationHistoryEventType({
     marAction: row.marAction,
     notes: row.notes,
     infusionPhase: row.infusionPhase,
@@ -210,13 +253,62 @@ export function normalizeMedicationAdministrationHistoryMarRow(
     administeredAt: row.administeredAt,
     effectiveAdministeredAt: row.effectiveAdministeredAt,
   });
+  const universalClinicalTiming = parseMarUniversalClinicalTimeNotes(row.notes);
+  const infusionTimingVariance = reconstructMarAdministrationVarianceFromNotes(row.notes);
+  const createdAtIso = row.createdAt ? toIso(row.createdAt) : null;
+  const eventAtResolved = universalClinicalTiming?.clinicalTime ?? eventAt;
+  const documentedAtResolved =
+    universalClinicalTiming?.documentedAt ??
+    documentedAt ??
+    (infusionTimingVariance?.reasonCode &&
+    createdAtIso &&
+    createdAtIso !== eventAtResolved &&
+    (baseEventType === "INFUSION_START" || baseEventType === "INFUSION_STOP")
+      ? createdAtIso
+      : null);
+
+  const isPrn = baseEventType === "PRN_ADMINISTERED";
+  let eventType = baseEventType;
+  let varianceFields: {
+    effectiveScheduledAt?: string | null;
+    varianceMinutes?: number | null;
+    varianceSeverity?: string | null;
+    varianceReviewRecommended?: boolean;
+    reviewRecommended?: boolean;
+  } = {};
+
+  const doseScheduledAt = row.doseScheduledAt;
+  if (
+    !isPrn &&
+    baseEventType === "ADMINISTERED" &&
+    doseScheduledAt != null &&
+    (row.marAction === "administered" || !row.marAction)
+  ) {
+    const effectiveScheduledAt = resolveEffectiveVarianceScheduledTime({
+      scheduledAt: doseScheduledAt,
+      orderedDoseSnapshotJson: row.doseOrderedDoseSnapshotJson,
+    });
+    const variance = assessMarAdministrationVariance({
+      actualAdministrationTime: eventAtResolved,
+      effectiveScheduledTime: effectiveScheduledAt,
+    });
+    eventType = resolveMarAdministrationVarianceHistoryEventType(variance.classification, false);
+    varianceFields = {
+      effectiveScheduledAt: variance.effectiveScheduledAt,
+      varianceMinutes: variance.varianceMinutes,
+      varianceSeverity: variance.severity,
+      varianceReviewRecommended: variance.reviewRecommended,
+      reviewRecommended: variance.reviewRecommended,
+    };
+  }
+
   const reason = resolveMedicationAdministrationHistoryReasonFields({
     eventType,
     notes: row.notes,
     effectiveAdministeredAtReason: row.effectiveAdministeredAtReason,
   });
   const prnParsed = parseMarPrnAdministrationFromNotes(row.notes);
-  const isPrn = eventType === "PRN_ADMINISTERED";
+  const isPrnEntry = eventType === "PRN_ADMINISTERED";
   const infusionPhase =
     eventType === "INFUSION_START"
       ? "INFUSION_START"
@@ -233,16 +325,17 @@ export function normalizeMedicationAdministrationHistoryMarRow(
     doseDisplay: formatDoseDisplay(row.doseValue, row.doseUnit),
     route: row.route?.trim() || null,
     eventType,
-    eventAt,
-    documentedAt,
+    eventAt: eventAtResolved,
+    documentedAt: documentedAtResolved,
     performedByDisplay: formatPerformerDisplay(row.performedByFirstName, row.performedByLastName),
     performedByRole: row.performedByRole?.trim() || null,
     reasonCode: reason.reasonCode,
     reasonDetail: reason.reasonDetail,
-    isPrn,
+    isPrn: isPrnEntry,
     prnIndication: prnParsed.indication ?? prnParsed.reasonLabel,
     infusionPhase,
     medicationDoseInstanceId: row.medicationDoseInstanceId?.trim() || null,
+    ...varianceFields,
     readOnly: true,
   };
 }
@@ -307,6 +400,69 @@ export function normalizeMedicationAdministrationHistoryCorrectionRow(
     effectiveChangeSummary: resolveMedicationAdministrationCorrectionEffectiveChangeSummary({
       previousValues: row.previousValues,
       correctedValues: row.correctedValues,
+    }),
+    readOnly: true,
+  };
+}
+
+
+export type MedicationAdministrationHistoryScheduleAdjustmentSourceRow = {
+  medicationDoseInstanceId: string;
+  encounterId: string;
+  orderItemId: string;
+  medicationLabel: string;
+  doseDisplay?: string | null;
+  route?: string | null;
+  originalScheduledAt: string;
+  previousScheduledAt: string;
+  newScheduledAt: string;
+  reasonCode: string;
+  reasonDetail?: string | null;
+  changedAt: string;
+  changedByUserId?: string | null;
+  changedByDisplay?: string | null;
+  changedByRole?: string | null;
+  riskSeverity?: string | null;
+  reviewRecommended?: boolean;
+};
+
+export function normalizeMedicationAdministrationHistoryScheduleAdjustmentRow(
+  row: MedicationAdministrationHistoryScheduleAdjustmentSourceRow
+): MedicationAdministrationHistoryEntry {
+  return {
+    id: `dose-schedule-adjust:${row.medicationDoseInstanceId}:${row.changedAt}`,
+    source: "DOSE_SCHEDULE_ADJUSTMENT",
+    encounterId: row.encounterId,
+    orderItemId: row.orderItemId,
+    medicationLabel: row.medicationLabel.trim() || "Medication",
+    doseDisplay: row.doseDisplay?.trim() || null,
+    route: row.route?.trim() || null,
+    eventType: "SCHEDULE_TIME_CHANGED",
+    eventAt: row.newScheduledAt,
+    documentedAt: row.changedAt,
+    performedByDisplay: row.changedByDisplay?.trim() || null,
+    performedByRole: row.changedByRole?.trim() || null,
+    reasonCode: row.reasonCode.trim().toUpperCase(),
+    reasonDetail: row.reasonDetail?.trim() || null,
+    isPrn: false,
+    prnIndication: null,
+    infusionPhase: null,
+    medicationDoseInstanceId: row.medicationDoseInstanceId,
+    originalScheduledAt: row.originalScheduledAt,
+    previousScheduledAt: row.previousScheduledAt,
+    newScheduledAt: row.newScheduledAt,
+    changedByUserId: row.changedByUserId?.trim() || null,
+    riskSeverity: row.riskSeverity?.trim() || null,
+    reviewRecommended: row.reviewRecommended === true,
+    effectiveChangeSummary: buildMarRescheduleSummary({
+      originalScheduledAt: row.originalScheduledAt,
+      previousScheduledAt: row.previousScheduledAt,
+      newScheduledAt: row.newScheduledAt,
+      reasonCode: row.reasonCode,
+      reasonDetail: row.reasonDetail,
+      changedByDisplay: row.changedByDisplay,
+      changedAt: row.changedAt,
+      riskSeverity: row.riskSeverity,
     }),
     readOnly: true,
   };

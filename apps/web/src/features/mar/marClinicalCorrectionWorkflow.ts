@@ -1,6 +1,7 @@
 import type { MedicationAdministrationHistoryEntry } from "@medora/shared";
 import {
   assertMedicationAdministrationInfusionClinicalCorrectionAllowed,
+  isMarUniversalClinicalTimeCorrectionEligible,
   medicationAdministrationRowIsInfusionStart,
   medicationAdministrationRowIsInfusionStop,
   parseMedicationAdministrationCorrectionReasonFields,
@@ -126,6 +127,11 @@ export function buildMarClinicalCorrectionMenu(input: {
   const items: MarClinicalCorrectionMenuItem[] = [];
   const isInfusion = infusionRow(input.infusionPhase, input.notes);
   const administered = input.marActionResolved === "administered";
+  const timeCorrectionEligible = isMarUniversalClinicalTimeCorrectionEligible({
+    marActionResolved: input.marActionResolved,
+    notes: input.notes,
+    infusionPhase: input.infusionPhase,
+  });
   const baseEnabled = input.encounterOpen && input.canAdjust && !input.readOnly;
 
   const gate = (reasonCode: MedicationAdministrationCorrectionReasonCode) =>
@@ -139,8 +145,10 @@ export function buildMarClinicalCorrectionMenu(input: {
     kind: "action",
     type: "TIME",
     labelKey: "marClinicalCorrection.action.TIME",
-    enabled: baseEnabled && administered,
-    blockedReasonKey: !administered ? "marClinicalCorrection.blocked.notAdministered" : undefined,
+    enabled: baseEnabled && timeCorrectionEligible,
+    blockedReasonKey: !timeCorrectionEligible
+      ? "marClinicalCorrection.blocked.notAdministered"
+      : undefined,
   });
 
   const doseGate = gate("DOCUMENTED_WRONG_DOSE");
@@ -211,7 +219,7 @@ export function buildMarClinicalCorrectionMenu(input: {
 
   const visible =
     baseEnabled &&
-    (administered || isInfusion) &&
+    (timeCorrectionEligible || administered || isInfusion) &&
     items.some((item) => item.kind === "action" && item.enabled);
 
   return { visible, items };
