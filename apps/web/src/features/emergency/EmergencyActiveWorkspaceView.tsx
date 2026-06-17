@@ -885,7 +885,6 @@ export function EmergencyActiveWorkspaceView() {
                 }
                 roomButtonTitle={t("roomAssignment.changeRoomTooltip")}
                 erChartHref={erChartHref}
-                genericEncounterHref={genericEncounterHref}
                 isLocked={isLocked}
                 encounterStatus={encounter.status ?? "OPEN"}
                 t={t}
@@ -1174,23 +1173,6 @@ export function EmergencyActiveWorkspaceView() {
                   )}
                 >
                   {t("emergencyWorkspace.linkFullEncounter")}
-                </Link>
-                <Link
-                  href={genericEncounterHref}
-                  style={clinicalThumbReachActionStyle(
-                    emergencyChartTouchLinkStyle({
-                      alignSelf: layoutMode === "mobileStacked" ? "stretch" : "flex-end",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#64748b",
-                      textDecoration: "none",
-                      padding: "8px 12px",
-                      border: "1px solid #e2e8f0",
-                      backgroundColor: "#fff",
-                    })
-                  )}
-                >
-                  {t("emergencyWorkspace.linkMedoraChartRef")}
                 </Link>
                 </div>
               </div>

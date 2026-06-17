@@ -90,7 +90,6 @@ export function EmergencyWorkspaceCompactTabletSummary({
   onRoomClick,
   roomButtonTitle,
   erChartHref,
-  genericEncounterHref,
   isLocked,
   encounterStatus,
   t,
@@ -133,7 +132,6 @@ export function EmergencyWorkspaceCompactTabletSummary({
   onRoomClick?: () => void;
   roomButtonTitle?: string;
   erChartHref: string;
-  genericEncounterHref: string;
   isLocked: boolean;
   encounterStatus: string;
   t: (key: string) => string;
@@ -309,22 +307,6 @@ export function EmergencyWorkspaceCompactTabletSummary({
             )}
           >
             {t("emergencyWorkspace.linkFullEncounter")}
-          </Link>
-          <Link
-            href={genericEncounterHref}
-            style={clinicalThumbReachActionStyle(
-              emergencyChartTouchLinkStyle({
-                fontSize: 12,
-                fontWeight: 600,
-                color: "#64748b",
-                textDecoration: "none",
-                padding: "8px 12px",
-                border: "1px solid #e2e8f0",
-                backgroundColor: "#fff",
-              })
-            )}
-          >
-            {t("emergencyWorkspace.linkMedoraChartRef")}
           </Link>
         </div>
       </div>
