@@ -8,7 +8,12 @@ import type {
   MedicationAdministrationHistoryEntry,
   MedicationAdministrationHistoryEventType,
 } from "@medora/shared";
-import { resolveMedicationInfusionStopReasonI18nKey, resolveMedicationAdministrationCorrectionReasonI18nKey } from "@medora/shared";
+import {
+  resolveMedicationInfusionStopReasonI18nKey,
+  resolveMedicationAdministrationCorrectionReasonI18nKey,
+  resolveMarRescheduleReasonLabelKey,
+  resolveMarMedicationTimingOverrideReasonLabelKey,
+} from "@medora/shared";
 import {
   isMarClinicalCorrectionReviewRecommended,
   resolveMarClinicalCorrectionTypeLabelKey,
@@ -40,6 +45,12 @@ export type MedicationAdministrationHistoryRailEntry = {
   reviewRecommended: boolean;
   beforeSummary: string | null;
   afterSummary: string | null;
+  scheduleSeverityLabelKey: string | null;
+  scheduleChangedWhenLabel: string | null;
+  varianceMinutesLabel: string | null;
+  varianceScheduledTimeLabel: string | null;
+  varianceActualTimeLabel: string | null;
+  varianceSeverityLabelKey: string | null;
 };
 
 const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, PriorityBadgeSoft> = {
@@ -54,6 +65,9 @@ const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, Prior
   INFUSION_STOP: { bg: "#f8fafc", text: "#475569", border: "#cbd5e1" },
   ORDER_CANCELED: { bg: "#f3f4f6", text: "#6b7280", border: "#9ca3af" },
   ADMINISTRATION_CORRECTION: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74" },
+  SCHEDULE_TIME_CHANGED: { bg: "#ecfeff", text: "#0e7490", border: "#a5f3fc" },
+  EARLY_ADMINISTRATION: { bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" },
+  LATE_ADMINISTRATION: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
 };
 
 export function resolveMarAdministrationHistoryRailLayoutMode(
@@ -161,6 +175,19 @@ function formatReasonLine(
     }
     return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
   }
+  if (entry.eventType === "SCHEDULE_TIME_CHANGED" && code) {
+    const labelKey = resolveMarRescheduleReasonLabelKey(code);
+    const label = labelKey ? t(labelKey) : code;
+    return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
+  }
+  if (
+    (entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION") &&
+    code
+  ) {
+    const labelKey = resolveMarMedicationTimingOverrideReasonLabelKey(code);
+    const label = labelKey ? t(labelKey) : code;
+    return detail ? `${prefix}${label} — ${detail}` : `${prefix}${label}`;
+  }
   if (code && detail) return `${prefix}${code} — ${detail}`;
   return `${prefix}${detail ?? code}`;
 }
@@ -197,6 +224,23 @@ export function buildMedicationAdministrationHistoryRailEntry(
     entry.eventType === "ADMINISTRATION_CORRECTION"
       ? splitCorrectionSummary(entry.effectiveChangeSummary)
       : { beforeSummary: null, afterSummary: null };
+  const scheduleSplit =
+    entry.eventType === "SCHEDULE_TIME_CHANGED"
+      ? {
+          beforeSummary: entry.previousScheduledAt
+            ? input.formatClinicalTime(entry.previousScheduledAt)
+            : entry.originalScheduledAt
+              ? input.formatClinicalTime(entry.originalScheduledAt)
+              : null,
+          afterSummary: entry.newScheduledAt
+            ? input.formatClinicalTime(entry.newScheduledAt)
+            : null,
+        }
+      : { beforeSummary: null, afterSummary: null };
+  const resolvedSplit =
+    entry.eventType === "SCHEDULE_TIME_CHANGED" ? scheduleSplit : correctionSplit;
+  const isVarianceEvent =
+    entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION";
 
   return {
     id: entry.id,
@@ -220,10 +264,33 @@ export function buildMedicationAdministrationHistoryRailEntry(
         ? resolveMarClinicalCorrectionTypeLabelKey(entry.reasonCode)
         : null,
     reviewRecommended:
-      entry.eventType === "ADMINISTRATION_CORRECTION" &&
-      isMarClinicalCorrectionReviewRecommended(entry.reasonCode),
-    beforeSummary: correctionSplit.beforeSummary,
-    afterSummary: correctionSplit.afterSummary,
+      (entry.eventType === "ADMINISTRATION_CORRECTION" &&
+        isMarClinicalCorrectionReviewRecommended(entry.reasonCode)) ||
+      (entry.eventType === "SCHEDULE_TIME_CHANGED" && entry.reviewRecommended === true) ||
+      (isVarianceEvent && entry.varianceReviewRecommended === true),
+    beforeSummary: resolvedSplit.beforeSummary,
+    afterSummary: resolvedSplit.afterSummary,
+    scheduleSeverityLabelKey:
+      entry.eventType === "SCHEDULE_TIME_CHANGED" && entry.riskSeverity?.trim()
+        ? `marReschedule.severity.${entry.riskSeverity.trim().toUpperCase()}`
+        : null,
+    scheduleChangedWhenLabel:
+      entry.eventType === "SCHEDULE_TIME_CHANGED" && entry.documentedAt?.trim()
+        ? input.formatClinicalTime(entry.documentedAt)
+        : null,
+    varianceMinutesLabel:
+      isVarianceEvent && entry.varianceMinutes != null
+        ? `${entry.varianceMinutes > 0 ? "+" : ""}${entry.varianceMinutes} min`
+        : null,
+    varianceScheduledTimeLabel:
+      isVarianceEvent && entry.effectiveScheduledAt?.trim()
+        ? input.formatClinicalTime(entry.effectiveScheduledAt)
+        : null,
+    varianceActualTimeLabel: isVarianceEvent ? input.formatClinicalTime(entry.eventAt) : null,
+    varianceSeverityLabelKey:
+      isVarianceEvent && entry.varianceSeverity?.trim()
+        ? `marAdministrationVariance.severity.${entry.varianceSeverity.trim().toUpperCase()}`
+        : null,
   };
 }
 

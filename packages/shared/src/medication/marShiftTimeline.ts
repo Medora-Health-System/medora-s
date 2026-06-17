@@ -156,6 +156,7 @@ export const MAR_SHIFT_TIMELINE_DRAWER_ACTIONS = [
   "STOP_FLUID",
   "START_BOLUS",
   "COMPLETE_BOLUS",
+  "CHANGE_SCHEDULED_TIME",
   "REFUSE",
   "HOLD",
   "MARK_MISSED",
@@ -463,7 +464,7 @@ export function resolveMarShiftTimelineClinicalAction(
       case "IN_PROGRESS":
         return "STOP_INFUSION";
       case "PLANNED":
-        return "VIEW_UPCOMING";
+        return "START_INFUSION";
       case "COMPLETED":
         return "VIEW_ADMINISTRATION";
       case "HELD":
@@ -482,7 +483,7 @@ export function resolveMarShiftTimelineClinicalAction(
     case "OVERDUE":
       return "ADMINISTER";
     case "PLANNED":
-      return "VIEW_UPCOMING";
+      return "ADMINISTER";
     case "COMPLETED":
       return "VIEW_ADMINISTRATION";
     case "HELD":
@@ -514,9 +515,24 @@ export function resolveMarShiftTimelineDrawerActions(
 
   switch (clinicalAction) {
     case "ADMINISTER":
-      return ["ADMINISTER", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
+      return [
+        "ADMINISTER",
+        "CHANGE_SCHEDULED_TIME",
+        "REFUSE",
+        "HOLD",
+        "MARK_MISSED",
+        "VIEW_ORDER",
+      ];
     case "START_INFUSION":
-      return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
+      return [
+        "ADMINISTER",
+        "START_INFUSION",
+        "CHANGE_SCHEDULED_TIME",
+        "REFUSE",
+        "HOLD",
+        "MARK_MISSED",
+        "VIEW_ORDER",
+      ];
     case "STOP_INFUSION":
       return ["START_INFUSION", "STOP_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
     case "START_FLUID":
@@ -530,7 +546,15 @@ export function resolveMarShiftTimelineDrawerActions(
     case "COMPLETE_BOLUS":
       return ["COMPLETE_BOLUS", "VIEW_ORDER"];
     case "VIEW_UPCOMING":
-      return ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "MARK_MISSED", "VIEW_ORDER"];
+      return [
+        "ADMINISTER",
+        "START_INFUSION",
+        "CHANGE_SCHEDULED_TIME",
+        "REFUSE",
+        "HOLD",
+        "MARK_MISSED",
+        "VIEW_ORDER",
+      ];
     case "VIEW_ADMINISTRATION":
     case "VIEW_HELD":
     case "VIEW_MISSED":
@@ -1011,6 +1035,98 @@ export function findMarShiftTimelineColumnKeyForInstant(
     if (time >= start && time < end) return column.key;
   }
   return null;
+}
+
+export type MarShiftTimelineDosePlacementFluidInput = {
+  isFluidBolus?: boolean;
+  isContinuousFluid?: boolean;
+  fluidBolusStatus?: string | null;
+  continuousFluidStatus?: string | null;
+  fluidStartedAt?: string | null;
+  fluidStoppedAt?: string | null;
+  fluidCompletedAt?: string | null;
+};
+
+function parseMarShiftTimelinePlacementInstant(iso: string | null | undefined): Date | null {
+  if (!iso?.trim()) return null;
+  const instant = new Date(iso);
+  return Number.isNaN(instant.getTime()) ? null : instant;
+}
+
+/**
+ * MEDUI.ED.MAR.H9E — column placement instant for MAR shift timeline doses.
+ * START / IN_PROGRESS → clinical start; STOP / COMPLETE → clinical stop; regular admin → administeredAt.
+ */
+export function resolveMarShiftTimelineDosePlacementInstant(input: {
+  doseStatus: MedicationDoseStatus | string;
+  doseKind?: string | null;
+  scheduledAt: Date;
+  enrichment?: Pick<
+    MarShiftTimelineAdministrationEnrichment,
+    "startedAt" | "stoppedAt" | "administeredAt"
+  > | null;
+  fluid?: MarShiftTimelineDosePlacementFluidInput | null;
+}): Date {
+  const status =
+    typeof input.doseStatus === "string"
+      ? parseMedicationDoseStatus(input.doseStatus)
+      : input.doseStatus;
+  if (!status) return input.scheduledAt;
+
+  const fluid = input.fluid;
+  if (fluid?.isFluidBolus) {
+    const bolusStatus = fluid.fluidBolusStatus;
+    if (bolusStatus === "RUNNING" || status === "IN_PROGRESS") {
+      return parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ?? input.scheduledAt;
+    }
+    if (bolusStatus === "COMPLETED" || status === "COMPLETED") {
+      return (
+        parseMarShiftTimelinePlacementInstant(fluid.fluidCompletedAt) ??
+        parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ??
+        input.scheduledAt
+      );
+    }
+  }
+
+  if (fluid?.isContinuousFluid) {
+    const fluidStatus = fluid.continuousFluidStatus;
+    if (fluidStatus === "RUNNING" || fluidStatus === "PAUSED" || status === "IN_PROGRESS") {
+      return parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ?? input.scheduledAt;
+    }
+    if (fluidStatus === "COMPLETED" || status === "COMPLETED") {
+      return (
+        parseMarShiftTimelinePlacementInstant(fluid.fluidStoppedAt) ??
+        parseMarShiftTimelinePlacementInstant(fluid.fluidStartedAt) ??
+        input.scheduledAt
+      );
+    }
+  }
+
+  const enrichment = input.enrichment;
+  if (isIvpbSessionDoseKind(input.doseKind)) {
+    if (status === "IN_PROGRESS") {
+      return parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ?? input.scheduledAt;
+    }
+    if (status === "COMPLETED") {
+      return (
+        parseMarShiftTimelinePlacementInstant(enrichment?.stoppedAt) ??
+        parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ??
+        parseMarShiftTimelinePlacementInstant(enrichment?.administeredAt) ??
+        input.scheduledAt
+      );
+    }
+    return input.scheduledAt;
+  }
+
+  if (status === "COMPLETED") {
+    return parseMarShiftTimelinePlacementInstant(enrichment?.administeredAt) ?? input.scheduledAt;
+  }
+
+  if (status === "IN_PROGRESS") {
+    return parseMarShiftTimelinePlacementInstant(enrichment?.startedAt) ?? input.scheduledAt;
+  }
+
+  return input.scheduledAt;
 }
 
 export function doseOverlapsMarShiftTimelineWindow(input: {

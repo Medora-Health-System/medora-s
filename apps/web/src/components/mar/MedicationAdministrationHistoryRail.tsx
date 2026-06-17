@@ -112,8 +112,19 @@ function HistoryRailEntryCard({
         </div>
       ) : null}
       {entry.beforeSummary || entry.afterSummary ? (
-        <div style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}>
-          {entry.beforeSummary && entry.afterSummary ? (
+        <div
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+          data-testid={
+            entry.eventType === "SCHEDULE_TIME_CHANGED"
+              ? "mar-administration-history-schedule-change"
+              : undefined
+          }
+        >
+          {entry.eventType === "SCHEDULE_TIME_CHANGED" && entry.beforeSummary && entry.afterSummary ? (
+            <span>
+              {entry.beforeSummary} → {entry.afterSummary}
+            </span>
+          ) : entry.beforeSummary && entry.afterSummary ? (
             <span>
               {t("marClinicalCorrection.chain.before")}: {entry.beforeSummary} →{" "}
               {t("marClinicalCorrection.chain.after")}:{" "}
@@ -128,12 +139,66 @@ function HistoryRailEntryCard({
           )}
         </div>
       ) : null}
+      {entry.scheduleSeverityLabelKey ? (
+        <div
+          data-testid="mar-administration-history-schedule-severity"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {t("marReschedule.history.severity")}: {t(entry.scheduleSeverityLabelKey)}
+        </div>
+      ) : null}
+      {entry.scheduleChangedWhenLabel ? (
+        <div
+          data-testid="mar-administration-history-schedule-when"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {t("marReschedule.history.when")}: {entry.scheduleChangedWhenLabel}
+        </div>
+      ) : null}
+      {entry.varianceMinutesLabel ? (
+        <div
+          data-testid="mar-administration-history-variance-minutes"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {t("marAdministrationVariance.history.variance")}: {entry.varianceMinutesLabel}
+        </div>
+      ) : null}
+      {entry.varianceScheduledTimeLabel ? (
+        <div style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}>
+          {t("marAdministrationVariance.history.scheduled")}: {entry.varianceScheduledTimeLabel}
+        </div>
+      ) : null}
+      {entry.varianceActualTimeLabel ? (
+        <div style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}>
+          {t("marAdministrationVariance.history.actual")}: {entry.varianceActualTimeLabel}
+        </div>
+      ) : null}
+      {entry.varianceSeverityLabelKey ? (
+        <div
+          data-testid="mar-administration-history-variance-severity"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {t("marAdministrationVariance.history.severity")}: {t(entry.varianceSeverityLabelKey)}
+        </div>
+      ) : null}
       {entry.reviewRecommended ? (
         <div
           data-testid="mar-administration-history-review-recommended"
-          style={{ marginTop: 6, fontSize: 11, fontWeight: 600, color: "#b45309" }}
+          style={{
+            marginTop: 6,
+            fontSize: 11,
+            fontWeight: 600,
+            color: entry.eventType === "SCHEDULE_TIME_CHANGED" ? "#1d4ed8" : "#b45309",
+          }}
         >
-          {t("marClinicalCorrection.review.recommended")}
+          {t(
+            entry.eventType === "SCHEDULE_TIME_CHANGED"
+              ? "marReschedule.reviewRecommended"
+              : entry.eventType === "EARLY_ADMINISTRATION" ||
+                  entry.eventType === "LATE_ADMINISTRATION"
+                ? "marAdministrationVariance.reviewRecommended"
+                : "marClinicalCorrection.review.recommended"
+          )}
         </div>
       ) : null}
     </li>

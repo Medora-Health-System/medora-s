@@ -20,6 +20,7 @@ export type MarShiftTimelineDrawerAction =
   | "STOP_FLUID"
   | "START_BOLUS"
   | "COMPLETE_BOLUS"
+  | "CHANGE_SCHEDULED_TIME"
   | "REFUSE"
   | "HOLD"
   | "MARK_MISSED"
@@ -81,6 +82,45 @@ export type MarShiftTimelineCellItem = {
   cancelledByDisplay?: string | null;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
+  scheduleAdjustment?: {
+    isRescheduled: boolean;
+    originalScheduledAt: string | null;
+    currentScheduledAt: string;
+    lastChangedAt: string | null;
+    lastChangedByDisplay: string | null;
+    lastReasonCode: string | null;
+    lastReasonDetail: string | null;
+    riskSeverity: string | null;
+    reviewRecommended: boolean;
+    adjustmentCount: number;
+    badgeLabel: "RESCHEDULED" | null;
+  } | null;
+  scheduleAdjustmentChain?: Array<{
+    kind: "ORIGINAL_SCHEDULED" | "RESCHEDULED" | "ADMINISTERED";
+    atIso: string;
+    label: string;
+    reasonCode?: string | null;
+    reasonDetail?: string | null;
+    changedByDisplay?: string | null;
+    riskSeverity?: string | null;
+    reviewRecommended?: boolean;
+  }>;
+  administrationVariance?: {
+    hasVariance: boolean;
+    classification: string | null;
+    badgeLabel: "ON_TIME" | "EARLY" | "LATE" | null;
+    scheduledAt: string | null;
+    administeredAt: string | null;
+    effectiveScheduledAt: string | null;
+    actualAdministrationAt: string | null;
+    varianceMinutes: number | null;
+    severity: string | null;
+    reviewRecommended: boolean;
+    reasonCode: string | null;
+    reasonDetail: string | null;
+    performedByDisplay: string | null;
+    performedAt: string | null;
+  } | null;
 };
 
 export type MarShiftTimelineRowCell = {

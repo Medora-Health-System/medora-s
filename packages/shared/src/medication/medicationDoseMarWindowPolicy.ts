@@ -14,10 +14,10 @@ export type MedicationDoseMarAdministrableStatus =
 const ADMINISTRABLE_SET = new Set<string>(MEDICATION_DOSE_MAR_ADMINISTRABLE_STATUSES);
 
 /**
- * Window policy for dose-gated MAR (M1.8B.7I.1).
+ * Window policy for dose-gated MAR (M1.8B.7I.1 / MEDUI.ED.MAR.H9).
  *
- * - DUE / OVERDUE / IN_PROGRESS: administrable regardless of window bounds
- * - PLANNED: administrable only when now is within [dueWindowStartAt, dueWindowEndAt]
+ * Active scheduled doses remain administrable outside the due window.
+ * Early/late governance is enforced at MAR create (reason required), not by blocking eligibility.
  */
 export function isDoseAdministrableNow(input: {
   doseStatus: MedicationDoseStatus | string;
@@ -30,13 +30,5 @@ export function isDoseAdministrableNow(input: {
     return false;
   }
 
-  if (status === "DUE" || status === "OVERDUE" || status === "IN_PROGRESS") {
-    return true;
-  }
-
-  // PLANNED — early administration allowed only inside due window
-  const nowMs = input.now.getTime();
-  return (
-    nowMs >= input.dueWindowStartAt.getTime() && nowMs <= input.dueWindowEndAt.getTime()
-  );
+  return true;
 }

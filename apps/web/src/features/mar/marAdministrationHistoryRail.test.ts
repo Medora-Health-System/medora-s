@@ -307,4 +307,29 @@ describe("marAdministrationHistoryRail (MEDUI.ED.MAR.H2C)", () => {
       key.userId
     )).toBe(false);
   });
+
+  it("renders SCHEDULE_TIME_CHANGED with schedule change line and severity (H9A)", () => {
+    const entry = buildMedicationAdministrationHistoryRailEntry(
+      sampleEntry({
+        id: "sched-1",
+        source: "DOSE_SCHEDULE_ADJUSTMENT",
+        eventType: "SCHEDULE_TIME_CHANGED",
+        eventAt: "2026-06-03T01:00:00.000Z",
+        documentedAt: "2026-06-03T00:47:00.000Z",
+        originalScheduledAt: "2026-06-03T03:00:00.000Z",
+        previousScheduledAt: "2026-06-03T03:00:00.000Z",
+        newScheduledAt: "2026-06-03T01:00:00.000Z",
+        reasonCode: "PATIENT_SLEEPING",
+        performedByDisplay: "Elizabeth Posada RN",
+        riskSeverity: "MODERATE",
+        reviewRecommended: false,
+      }),
+      { formatClinicalTime, t: (key) => (key.includes("PATIENT_SLEEPING") ? "Patient sleeping" : t(key)) }
+    );
+    expect(entry.beforeSummary).toBeTruthy();
+    expect(entry.afterSummary).toBeTruthy();
+    expect(entry.scheduleSeverityLabelKey).toBe("marReschedule.severity.MODERATE");
+    expect(entry.scheduleChangedWhenLabel).toBeTruthy();
+    expect(entry.reasonLine).toContain("Patient sleeping");
+  });
 });

@@ -1,6 +1,14 @@
 import { formatClinicalDateTimeInZone } from "../clinical/clinicalTimeZone.js";
 import { CONTROLLED_SUBSTANCE_GOVERNANCE_MANIFEST } from "../medication/controlledSubstanceGovernanceManifest.js";
 import type { MarScheduleAdministrationTimingKind } from "../medication/marScheduleAdministrationTiming.js";
+import {
+  isMarUniversalAdministrationOverrideReasonCode,
+  MAR_UNIVERSAL_ADMINISTRATION_OVERRIDE_REASON_CODES,
+} from "./marUniversalAdministrationTimingGovernance.js";
+import {
+  assessMarMedicationTimingOverrideRequirement,
+  normalizeMarMedicationTimingOverrideReasonCode,
+} from "./marMedicationTimingOverrideGovernance.js";
 
 /** Persisted prefix for early/late schedule timing documentation (K.10B.9). */
 export const MAR_SCHEDULE_TIMING_NOTE_PREFIX = "MAR_SCHEDULE_TIMING:";
@@ -170,19 +178,34 @@ export function buildMarScheduleTimingDocumentation(input: {
 }
 
 export function validateMarScheduleTimingGovernance(input: {
-  timing: Pick<MarScheduleTimingGovernanceResult, "requiresReason" | "kind">;
+  timing: Pick<MarScheduleTimingGovernanceResult, "requiresReason" | "kind"> & {
+    minutesDelta?: number;
+  };
   reasonCode?: string | null;
   otherText?: string | null;
-}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "OTHER_DETAIL_REQUIRED" } {
-  if (!input.timing.requiresReason) return { ok: true };
-  const code = input.reasonCode?.trim().toUpperCase() ?? "";
-  if (!code) return { ok: false, code: "REASON_REQUIRED" };
-  const allowed =
+}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "OTHER_DETAIL_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
+  const overrideKind =
     input.timing.kind === "early"
-      ? (MAR_SCHEDULE_EARLY_REASON_CODES as readonly string[])
-      : (MAR_SCHEDULE_LATE_REASON_CODES as readonly string[]);
-  if (!allowed.includes(code)) return { ok: false, code: "REASON_REQUIRED" };
-  if (code === "OTHER" && !input.otherText?.trim()) {
+      ? "EARLY_ADMINISTRATION"
+      : input.timing.kind === "late"
+        ? "LATE_ADMINISTRATION"
+        : "ON_TIME_ADMINISTRATION";
+  const movedMinutes = Math.abs(input.timing.minutesDelta ?? 0);
+  const h9cRequirement = assessMarMedicationTimingOverrideRequirement({
+    overrideKind,
+    movedMinutes,
+  });
+  const reasonRequired = input.timing.requiresReason || h9cRequirement.reasonRequired;
+
+  if (!reasonRequired) return { ok: true };
+
+  const canonical = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
+  if (!canonical) return { ok: false, code: "REASON_REQUIRED" };
+
+  if (h9cRequirement.detailRequired && !input.otherText?.trim()) {
+    return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
+  }
+  if (canonical === "OTHER" && !input.otherText?.trim()) {
     return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
   }
   return { ok: true };

@@ -4,7 +4,9 @@ import {
   normalizeMedicationAdministrationHistoryMarRow,
   normalizeMedicationAdministrationHistoryCorrectionRow,
   normalizeMedicationAdministrationHistoryOrderCancelRow,
+  normalizeMedicationAdministrationHistoryScheduleAdjustmentRow,
   resolveMedicationOrderCancelMetadata,
+  readMarDoseScheduleAdjustmentHistory,
   sortMedicationAdministrationHistoryEntries,
   type MedicationAdministrationHistoryEntry,
   type MedicationAdministrationHistoryEventType,
@@ -143,13 +145,24 @@ export class MedicationAdministrationHistoryService {
     ];
     const roleByUserId = await this.loadPrimaryRoleByUserId(facilityId, performerIds);
 
-    const marEntries = marRows.map((row) =>
-      normalizeMedicationAdministrationHistoryMarRow({
+    const doseIds = [
+      ...new Set(
+        marRows.map((row) => row.medicationDoseInstanceId).filter((id): id is string => Boolean(id?.trim()))
+      ),
+    ];
+    const doseById = await this.loadDoseVarianceContextById(facilityId, encounterId, doseIds);
+
+    const marEntries = marRows.map((row) => {
+      const doseCtx = row.medicationDoseInstanceId
+        ? doseById.get(row.medicationDoseInstanceId) ?? null
+        : null;
+      return normalizeMedicationAdministrationHistoryMarRow({
         id: row.id,
         encounterId: row.encounterId,
         orderItemId: row.orderItemId,
         administeredAt: row.administeredAt,
         effectiveAdministeredAt: row.effectiveAdministeredAt,
+        createdAt: row.createdAt,
         effectiveAdministeredAtReason: row.effectiveAdministeredAtReason,
         medicationLabelSnapshot: row.medicationLabelSnapshot,
         route: row.route,
@@ -164,8 +177,10 @@ export class MedicationAdministrationHistoryService {
         performedByRole: roleByUserId.get(row.administeredByUserId) ?? null,
         orderItemFrequencyCode: row.orderItem?.frequencyCode ?? null,
         orderItemDirectionsSig: row.orderItem?.notes ?? null,
-      })
-    );
+        doseScheduledAt: doseCtx?.scheduledAt ?? null,
+        doseOrderedDoseSnapshotJson: doseCtx?.orderedDoseSnapshotJson,
+      });
+    });
 
     const cancelEntries = await this.loadOrderCancelHistoryEntries({
       encounterId,
@@ -183,10 +198,18 @@ export class MedicationAdministrationHistoryService {
       roleByUserId,
     });
 
+    const scheduleAdjustmentEntries = await this.loadScheduleAdjustmentHistoryEntries({
+      encounterId,
+      facilityId,
+      lookbackStart,
+      orderItemFilter,
+    });
+
     let merged = sortMedicationAdministrationHistoryEntries([
       ...marEntries,
       ...cancelEntries,
       ...correctionEntries,
+      ...scheduleAdjustmentEntries,
     ]);
 
     if (eventTypeFilter) {
@@ -415,6 +438,91 @@ export class MedicationAdministrationHistoryService {
         orderItemId: mar.orderItemId,
       });
     });
+  }
+
+  private async loadScheduleAdjustmentHistoryEntries(input: {
+    encounterId: string;
+    facilityId: string;
+    lookbackStart: Date;
+    orderItemFilter: string | null;
+  }): Promise<MedicationAdministrationHistoryEntry[]> {
+    const doses = await this.prisma.medicationDoseInstance.findMany({
+      where: {
+        encounterId: input.encounterId,
+        facilityId: input.facilityId,
+        ...(input.orderItemFilter ? { orderItemId: input.orderItemFilter } : {}),
+      },
+      select: {
+        id: true,
+        encounterId: true,
+        orderItemId: true,
+        orderedDoseSnapshotJson: true,
+        orderItem: {
+          select: {
+            manualLabel: true,
+            manualSecondaryText: true,
+            strength: true,
+            route: true,
+          },
+        },
+      },
+    });
+
+    const entries: MedicationAdministrationHistoryEntry[] = [];
+    for (const dose of doses) {
+      const history = readMarDoseScheduleAdjustmentHistory(dose.orderedDoseSnapshotJson);
+      for (const row of history) {
+        const changedAt = new Date(row.changedAt);
+        if (changedAt < input.lookbackStart) continue;
+        entries.push(
+          normalizeMedicationAdministrationHistoryScheduleAdjustmentRow({
+            medicationDoseInstanceId: dose.id,
+            encounterId: dose.encounterId,
+            orderItemId: dose.orderItemId,
+            medicationLabel: formatMedicationLabelFromOrderItem(dose.orderItem),
+            doseDisplay: formatDoseFromOrderItem(dose.orderItem),
+            route: dose.orderItem.route,
+            originalScheduledAt: row.originalScheduledAt,
+            previousScheduledAt: row.previousScheduledAt ?? row.originalScheduledAt,
+            newScheduledAt: row.newScheduledAt,
+            reasonCode: row.reasonCode,
+            reasonDetail: row.reasonDetail,
+            changedAt: row.changedAt,
+            changedByUserId: row.changedByUserId,
+            changedByDisplay: row.changedByDisplay,
+            riskSeverity: row.riskSeverity,
+            reviewRecommended: row.reviewRecommended,
+          })
+        );
+      }
+    }
+    return entries;
+  }
+
+  private async loadDoseVarianceContextById(
+    facilityId: string,
+    encounterId: string,
+    doseIds: string[]
+  ): Promise<Map<string, { scheduledAt: Date; orderedDoseSnapshotJson: unknown }>> {
+    if (doseIds.length === 0) return new Map();
+    const rows = await this.prisma.medicationDoseInstance.findMany({
+      where: {
+        id: { in: doseIds },
+        facilityId,
+        encounterId,
+      },
+      select: {
+        id: true,
+        scheduledAt: true,
+        orderedDoseSnapshotJson: true,
+      },
+    });
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        { scheduledAt: row.scheduledAt, orderedDoseSnapshotJson: row.orderedDoseSnapshotJson },
+      ])
+    );
   }
 
   private async loadPrimaryRoleByUserId(

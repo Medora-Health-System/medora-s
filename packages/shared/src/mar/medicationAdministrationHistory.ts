@@ -2,6 +2,8 @@
 
 export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "ADMINISTERED",
+  "EARLY_ADMINISTRATION",
+  "LATE_ADMINISTRATION",
   "PRN_ADMINISTERED",
   "REFUSED",
   "HELD",
@@ -12,12 +14,18 @@ export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "INFUSION_STOP",
   "ORDER_CANCELED",
   "ADMINISTRATION_CORRECTION",
+  "SCHEDULE_TIME_CHANGED",
 ] as const;
 
 export type MedicationAdministrationHistoryEventType =
   (typeof MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES)[number];
 
-export const MEDICATION_ADMINISTRATION_HISTORY_SOURCES = ["MAR", "ORDER_CANCEL", "MAR_CORRECTION"] as const;
+export const MEDICATION_ADMINISTRATION_HISTORY_SOURCES = [
+  "MAR",
+  "ORDER_CANCEL",
+  "MAR_CORRECTION",
+  "DOSE_SCHEDULE_ADJUSTMENT",
+] as const;
 
 export type MedicationAdministrationHistorySource =
   (typeof MEDICATION_ADMINISTRATION_HISTORY_SOURCES)[number];
@@ -60,6 +68,18 @@ export type MedicationAdministrationHistoryEntry = {
   /** Present for ADMINISTRATION_CORRECTION rows (MEDUI.ED.MAR.H7). */
   originalAdministrationId?: string | null;
   effectiveChangeSummary?: string | null;
+  /** Present for SCHEDULE_TIME_CHANGED rows (MEDUI.ED.MAR.H9A). */
+  originalScheduledAt?: string | null;
+  previousScheduledAt?: string | null;
+  newScheduledAt?: string | null;
+  changedByUserId?: string | null;
+  riskSeverity?: string | null;
+  reviewRecommended?: boolean;
+  /** Present for administration variance rows (MEDUI.ED.MAR.H9B). */
+  effectiveScheduledAt?: string | null;
+  varianceMinutes?: number | null;
+  varianceSeverity?: string | null;
+  varianceReviewRecommended?: boolean;
   readOnly: true;
 };
 
@@ -69,6 +89,8 @@ export type MedicationAdministrationHistoryMarSourceRow = {
   orderItemId: string | null;
   administeredAt: Date | string;
   effectiveAdministeredAt?: Date | string | null;
+  /** System save instant when it differs from clinical administeredAt (H9E infusion timing). */
+  createdAt?: Date | string | null;
   medicationLabelSnapshot?: string | null;
   route?: string | null;
   doseValue?: string | number | null;
@@ -82,6 +104,9 @@ export type MedicationAdministrationHistoryMarSourceRow = {
   performedByRole?: string | null;
   orderItemFrequencyCode?: string | null;
   orderItemDirectionsSig?: string | null;
+  /** Current dose scheduledAt for variance (H9B) — effective after H9A reschedule. */
+  doseScheduledAt?: Date | string | null;
+  doseOrderedDoseSnapshotJson?: unknown;
 };
 
 export type MedicationAdministrationHistoryOrderCancelSourceRow = {

@@ -3,6 +3,7 @@ import {
   MAR_SHIFT_TIMELINE_STATUS_COLORS,
   resolveMarShiftTimelineStatusColorKey,
   resolveMarShiftTimelinePerformerLabel,
+  resolveMarMedicationTimingOverrideReasonLabel,
   toMedicationAdministrationEffectiveTimeIsoUtc,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcIso,
@@ -293,7 +294,83 @@ export function buildMarShiftTimelineItemHoverTitle(item: MarShiftTimelineCellIt
     item.hover.status ? `Status: ${item.hover.status}` : null,
     item.tertiaryText?.trim() ? item.tertiaryText.trim() : null,
   ].filter(Boolean);
+
+  const adj = item.scheduleAdjustment;
+  if (adj?.isRescheduled) {
+    lines.push("---");
+    if (adj.lastChangedByDisplay?.trim()) {
+      lines.push(`Rescheduled by: ${adj.lastChangedByDisplay.trim()}`);
+    }
+    if (adj.lastReasonCode?.trim() || adj.lastReasonDetail?.trim()) {
+      const reason = adj.lastReasonDetail?.trim() || adj.lastReasonCode?.trim();
+      lines.push(`Reason: ${reason}`);
+    }
+    if (adj.lastChangedAt?.trim()) {
+      lines.push(`Changed: ${adj.lastChangedAt.trim()}`);
+    }
+    if (adj.reviewRecommended) {
+      lines.push("Review recommended");
+    }
+  }
+
+  const variance = item.administrationVariance;
+  if (variance?.hasVariance && variance.badgeLabel) {
+    lines.push("---");
+    const scheduledIso = variance.scheduledAt ?? variance.effectiveScheduledAt;
+    const actualIso = variance.administeredAt ?? variance.actualAdministrationAt;
+    if (scheduledIso) {
+      lines.push(`Scheduled: ${scheduledIso}`);
+    }
+    if (actualIso) {
+      lines.push(`Actual: ${actualIso}`);
+    }
+    if (variance.varianceMinutes != null) {
+      const sign = variance.varianceMinutes > 0 ? "+" : "";
+      lines.push(`Variance: ${sign}${variance.varianceMinutes} min`);
+    }
+    if (variance.reasonCode?.trim()) {
+      const reasonLabel =
+        resolveMarMedicationTimingOverrideReasonLabel(variance.reasonCode, "en") ??
+        variance.reasonCode.trim();
+      lines.push(`Reason: ${reasonLabel}`);
+    }
+    if (variance.reasonDetail?.trim()) {
+      lines.push(`Detail: ${variance.reasonDetail.trim()}`);
+    }
+    if (variance.performedByDisplay?.trim()) {
+      lines.push(`Administered by: ${variance.performedByDisplay.trim()}`);
+    }
+    if (variance.severity?.trim()) {
+      lines.push(`Risk: ${variance.severity.trim()}`);
+    }
+    if (variance.reviewRecommended) {
+      lines.push("Review recommended");
+    }
+  }
+
   return lines.join("\n");
+}
+
+/** H9B administration variance timeline cell styling — green / blue / amber only. */
+export function marShiftTimelineAdministrationVarianceCellStyle(
+  badgeLabel: "ON_TIME" | "EARLY" | "LATE" | null | undefined
+): CSSProperties {
+  if (badgeLabel === "EARLY") {
+    return { backgroundColor: "#eff6ff", borderColor: "#bfdbfe", color: "#1e40af" };
+  }
+  if (badgeLabel === "LATE") {
+    return { backgroundColor: "#fffbeb", borderColor: "#fde68a", color: "#92400e" };
+  }
+  return { backgroundColor: "#ecfdf5", borderColor: "#a7f3d0", color: "#047857" };
+}
+
+/** Neutral blue governance styling for rescheduled MAR timeline cells (H9A). */
+export function marShiftTimelineRescheduleCellStyle(): CSSProperties {
+  return {
+    backgroundColor: "#eff6ff",
+    borderColor: "#bfdbfe",
+    color: "#1e40af",
+  };
 }
 
 export function marShiftTimelineItemStatusStyle(

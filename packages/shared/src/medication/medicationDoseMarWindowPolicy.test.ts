@@ -19,37 +19,19 @@ describe("medicationDoseMarWindowPolicy (M1.8B.7I.1)", () => {
     }
   );
 
-  it("PLANNED inside window → administrable", () => {
+  it.each([
+    ["before window", "2026-06-10T08:59:59.000Z"],
+    ["inside window", "2026-06-10T09:30:00.000Z"],
+    ["after window", "2026-06-10T10:00:01.000Z"],
+  ] as const)("PLANNED %s → administrable (H9 universal actionability)", (_label, nowIso) => {
     expect(
       isDoseAdministrableNow({
         doseStatus: "PLANNED",
-        now: new Date("2026-06-10T09:30:00.000Z"),
+        now: new Date(nowIso),
         dueWindowStartAt: windowStart,
         dueWindowEndAt: windowEnd,
       })
     ).toBe(true);
-  });
-
-  it("PLANNED before window → not administrable", () => {
-    expect(
-      isDoseAdministrableNow({
-        doseStatus: "PLANNED",
-        now: new Date("2026-06-10T08:59:59.000Z"),
-        dueWindowStartAt: windowStart,
-        dueWindowEndAt: windowEnd,
-      })
-    ).toBe(false);
-  });
-
-  it("PLANNED after window → not administrable", () => {
-    expect(
-      isDoseAdministrableNow({
-        doseStatus: "PLANNED",
-        now: new Date("2026-06-10T10:00:01.000Z"),
-        dueWindowStartAt: windowStart,
-        dueWindowEndAt: windowEnd,
-      })
-    ).toBe(false);
   });
 
   it("HELD and terminal statuses → not administrable", () => {

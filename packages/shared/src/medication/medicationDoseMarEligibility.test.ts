@@ -138,7 +138,7 @@ describe("medicationDoseMarEligibility (M1.8B.7I.1)", () => {
     ).toBe("FACILITY_MISMATCH");
   });
 
-  it("PLANNED outside window → ineligible", () => {
+  it("PLANNED outside window → eligible (H9 universal actionability)", () => {
     const now = new Date("2026-06-10T08:00:00.000Z");
     expect(
       evaluateDoseGatedMarEligibility({
@@ -147,8 +147,8 @@ describe("medicationDoseMarEligibility (M1.8B.7I.1)", () => {
         now,
         dueWindowStartAt: new Date("2026-06-10T09:00:00.000Z"),
         dueWindowEndAt: new Date("2026-06-10T10:00:00.000Z"),
-      }).reason
-    ).toBe("DOSE_OUTSIDE_ADMINISTRATION_WINDOW");
+      }).eligible
+    ).toBe(true);
   });
 
   it("PLANNED inside window → eligible", () => {
