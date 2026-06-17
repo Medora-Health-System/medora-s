@@ -71,10 +71,7 @@ function evaluateStartEligibility(
   if (status === "HELD") {
     return ineligibleAction("DOSE_NOT_STARTABLE");
   }
-  if (status === "PLANNED") {
-    return ineligibleAction("DOSE_NOT_STARTABLE");
-  }
-  if (status === "DUE" || status === "OVERDUE") {
+  if (status === "PLANNED" || status === "DUE" || status === "OVERDUE") {
     if (infusionSessionId?.trim()) {
       return ineligibleAction("DOSE_ALREADY_IN_PROGRESS");
     }
@@ -106,7 +103,7 @@ function evaluateMissEligibility(status: MedicationDoseStatus): IvpbDoseSessionA
   if (status === "IN_PROGRESS" || status === "HELD") {
     return ineligibleAction("ACTION_NOT_APPLICABLE");
   }
-  if (status === "DUE" || status === "OVERDUE") {
+  if (status === "PLANNED" || status === "DUE" || status === "OVERDUE") {
     return eligibleAction();
   }
   return ineligibleAction("ACTION_NOT_APPLICABLE");
@@ -119,7 +116,7 @@ function evaluateHoldEligibility(status: MedicationDoseStatus): IvpbDoseSessionA
   if (status === "IN_PROGRESS") {
     return ineligibleAction("ACTION_NOT_APPLICABLE");
   }
-  if (status === "DUE" || status === "OVERDUE") {
+  if (status === "PLANNED" || status === "DUE" || status === "OVERDUE") {
     return eligibleAction();
   }
   return ineligibleAction("ACTION_NOT_APPLICABLE");

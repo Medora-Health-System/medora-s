@@ -2,7 +2,11 @@ import type { MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
 import type { MarShiftTimelineCellItem } from "@/lib/marShiftTimelineApi";
 import type { MedicationPassQueueItem } from "@/lib/medicationPassQueueApi";
 import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
-import { isMarShiftTimelineItemActionable } from "@medora/shared";
+import {
+  buildMarInfusionTimingDocumentation,
+  isMarShiftTimelineItemActionable,
+  validateMarInfusionClinicalTimeOverride,
+} from "@medora/shared";
 import { marInfusionStartWitnessRequired, type MarHighAlertRouteOptions } from "@/components/medication/MarHighAlertFields";
 import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
 
@@ -51,14 +55,28 @@ export type MarShiftTimelineActionHandlers = {
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineRefuseHoldInput
   ) => Promise<void>;
-  onExecuteStartFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onRequestScheduleAdjustment?: (
+    item: MarShiftTimelineCellItem,
+    input: {
+      newScheduledAtIso: string;
+      reasonCode: string;
+      reasonDetail?: string;
+    }
+  ) => Promise<void>;
+  onExecuteStartFluid?: (
+    item: MarShiftTimelineCellItem,
+    input?: MarShiftTimelineInfusionStartInput
+  ) => Promise<void>;
   onExecutePauseFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
   onExecuteResumeFluid?: (item: MarShiftTimelineCellItem) => Promise<void>;
   onExecuteStopFluid?: (
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineInfusionStopInput
   ) => Promise<void>;
-  onExecuteStartBolus?: (item: MarShiftTimelineCellItem) => Promise<void>;
+  onExecuteStartBolus?: (
+    item: MarShiftTimelineCellItem,
+    input?: MarShiftTimelineInfusionStartInput
+  ) => Promise<void>;
   onExecuteCompleteBolus?: (
     item: MarShiftTimelineCellItem,
     input: MarShiftTimelineInfusionStopInput
@@ -119,15 +137,32 @@ export function resolveMarShiftTimelineOrderId(
 }
 
 export function buildMarShiftTimelineStartPayload(
-  input: { startTimeLocal?: string; notes?: string },
+  input: {
+    startTimeLocal?: string;
+    notes?: string;
+    timingReasonCode?: string;
+    timingReasonDetail?: string;
+    saveAt?: Date;
+  },
   facilityTimeZone?: string | null
 ): MarShiftTimelineInfusionStartInput {
+  const saveAt = input.saveAt ?? new Date();
   const notes = input.notes?.trim() || undefined;
   const startedAt = input.startTimeLocal?.trim()
     ? marShiftTimelineDateTimeLocalToUtcIso(input.startTimeLocal, facilityTimeZone) ?? undefined
     : undefined;
+  const timingDoc =
+    startedAt && input.timingReasonCode?.trim()
+      ? buildMarInfusionTimingDocumentation({
+          clinicalAt: startedAt,
+          saveAt,
+          reasonCode: input.timingReasonCode.trim(),
+          reasonDetail: input.timingReasonDetail,
+        })
+      : null;
+  const combinedNotes = [timingDoc, notes].filter(Boolean).join("\n\n") || undefined;
   return {
-    ...(notes ? { notes } : {}),
+    ...(combinedNotes ? { notes: combinedNotes } : {}),
     ...(startedAt ? { startedAt } : {}),
   };
 }
@@ -152,20 +187,62 @@ export function validateMarShiftTimelineStopTime(
   return { ok: true };
 }
 
+export type MarShiftTimelineInfusionTimingValidation =
+  | { ok: true }
+  | { ok: false; reason: "timing_reason_required" | "timing_detail_required" | "invalid_timing_reason" };
+
+export function validateMarShiftTimelineInfusionClinicalTime(
+  timeLocal: string,
+  facilityTimeZone: string | null | undefined,
+  input: { reasonCode?: string; reasonDetail?: string; saveAt?: Date }
+): MarShiftTimelineInfusionTimingValidation {
+  const clinicalIso = marShiftTimelineDateTimeLocalToUtcIso(timeLocal?.trim() ?? "", facilityTimeZone);
+  if (!clinicalIso) return { ok: true };
+  const result = validateMarInfusionClinicalTimeOverride({
+    clinicalAt: clinicalIso,
+    saveAt: input.saveAt ?? new Date(),
+    reasonCode: input.reasonCode,
+    reasonDetail: input.reasonDetail,
+  });
+  if (result.ok) return { ok: true };
+  if (result.code === "DETAIL_REQUIRED") return { ok: false, reason: "timing_detail_required" };
+  if (result.code === "INVALID_REASON") return { ok: false, reason: "invalid_timing_reason" };
+  return { ok: false, reason: "timing_reason_required" };
+}
+
 export function buildMarShiftTimelineStopPayload(
-  input: { stopTimeLocal?: string; notes?: string; stopReasonCode?: string; reasonDetail?: string },
+  input: {
+    stopTimeLocal?: string;
+    notes?: string;
+    stopReasonCode?: string;
+    reasonDetail?: string;
+    timingReasonCode?: string;
+    timingReasonDetail?: string;
+    saveAt?: Date;
+  },
   facilityTimeZone?: string | null
 ): MarShiftTimelineInfusionStopInput {
+  const saveAt = input.saveAt ?? new Date();
   const notes = input.notes?.trim() || undefined;
   const stopReasonCode = input.stopReasonCode?.trim() || "COMPLETED";
   const reasonDetail = input.reasonDetail?.trim() || undefined;
   const stoppedAt = input.stopTimeLocal?.trim()
     ? marShiftTimelineDateTimeLocalToUtcIso(input.stopTimeLocal, facilityTimeZone) ?? undefined
     : undefined;
+  const timingDoc =
+    stoppedAt && input.timingReasonCode?.trim()
+      ? buildMarInfusionTimingDocumentation({
+          clinicalAt: stoppedAt,
+          saveAt,
+          reasonCode: input.timingReasonCode.trim(),
+          reasonDetail: input.timingReasonDetail,
+        })
+      : null;
+  const combinedNotes = [timingDoc, notes].filter(Boolean).join("\n\n") || undefined;
   return {
     stopReasonCode,
     ...(reasonDetail ? { reasonDetail } : {}),
-    ...(notes ? { notes } : {}),
+    ...(combinedNotes ? { notes: combinedNotes } : {}),
     ...(stoppedAt ? { stoppedAt } : {}),
   };
 }
@@ -214,6 +291,13 @@ export function isMarShiftTimelineActionEnabled(
   if (action === "COMPLETE_BOLUS") return item.clinicalAction === "COMPLETE_BOLUS";
   if (action === "REFUSE" || action === "HOLD" || action === "MARK_MISSED") {
     return isMarShiftTimelineRefuseHoldEligible(item);
+  }
+  if (action === "CHANGE_SCHEDULED_TIME") {
+    return (
+      item.clinicalAction === "ADMINISTER" ||
+      item.clinicalAction === "START_INFUSION" ||
+      isMarShiftTimelineUpcomingActionable(item)
+    );
   }
   return false;
 }

@@ -21,8 +21,11 @@ function assertNoDuplicateCatalogLinesInPayload(data: OrderCreateDto) {
     const key = `${it.catalogItemType}:${cid}`;
     keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
   }
-  for (const [, n] of keyCounts) {
+  for (const [key, n] of keyCounts) {
     if (n > 1) {
+      const catalogType = key.split(":")[0];
+      // MEDUI.ED.MAR.H9E — medication duplicates are warning-only (frontend advanced safety).
+      if (catalogType === "MEDICATION") continue;
       throw new BadRequestException(
         "Plusieurs lignes identiques au catalogue dans la même commande. Retirez le doublon."
       );
@@ -43,13 +46,10 @@ async function assertNoActiveDuplicateCatalogItems(
   for (const it of data.items) {
     const cid = it.catalogItemId?.trim();
     if (!cid) continue;
-    if (
-      it.catalogItemType === "LAB_TEST" ||
-      it.catalogItemType === "IMAGING_STUDY" ||
-      it.catalogItemType === "MEDICATION"
-    ) {
+    if (it.catalogItemType === "LAB_TEST" || it.catalogItemType === "IMAGING_STUDY") {
       catalogPairs.push({ catalogItemId: cid, catalogItemType: it.catalogItemType });
     }
+    // MEDUI.ED.MAR.H9E — active duplicate medications are warning-only; never block provider submit.
   }
 
   if (catalogPairs.length === 0) return;

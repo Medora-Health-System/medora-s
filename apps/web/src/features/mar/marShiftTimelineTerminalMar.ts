@@ -14,6 +14,7 @@ export type MarShiftTimelineTerminalMarInput = {
   reasonCode: string;
   otherText?: string;
   administeredAtIso: string;
+  timingNotes?: string | null;
 };
 
 /**
@@ -28,7 +29,7 @@ export async function submitMarShiftTimelineTerminalMar(
   input: MarShiftTimelineTerminalMarInput
 ): Promise<void> {
   const marAction = marShiftTimelineTerminalMarActionForDrawerAction(action);
-  const notes =
+  const clinicalNotes =
     action === "REFUSE"
       ? buildMarShiftTimelineRefuseNotes(
           input.reasonCode as MarShiftTimelineRefuseReasonCode,
@@ -43,6 +44,7 @@ export async function submitMarShiftTimelineTerminalMar(
             input.reasonCode as MarShiftTimelineHoldReasonCode,
             input.otherText
           );
+  const notes = [clinicalNotes, input.timingNotes?.trim()].filter(Boolean).join("\n\n");
 
   await apiFetch(`/encounters/${encounterId}/medication-administrations`, {
     facilityId,

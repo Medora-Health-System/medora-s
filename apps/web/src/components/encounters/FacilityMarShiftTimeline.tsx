@@ -6,6 +6,7 @@ import {
   MAR_SHIFT_TIMELINE_SHIFT_LABELS,
   type MarShiftTimelineShiftCode,
   isMarShiftTimelineItemActionable,
+  formatMarShiftTimelineClinicalDateTime,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -19,6 +20,8 @@ import {
   formatMarShiftTimelineHeaderClock,
   marShiftTimelineItemStatusStyle,
   marShiftTimelinePrnRowStyle,
+  marShiftTimelineRescheduleCellStyle,
+  marShiftTimelineAdministrationVarianceCellStyle,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -440,12 +443,22 @@ export function FacilityMarShiftTimeline({
                         >
                           {(cell?.items ?? []).map((item) => {
                             const readOnly = !isMarShiftTimelineItemActionable(item);
-                            const statusStyle = marShiftTimelineItemStatusStyle(
-                              item.doseStatus,
-                              readOnly,
-                              item.isPrnBand === true,
-                              item.secondaryText
-                            );
+                            const isRescheduled =
+                              item.scheduleAdjustment?.isRescheduled === true &&
+                              !item.administrationVariance?.hasVariance;
+                            const variance = item.administrationVariance;
+                            const hasVariance = variance?.hasVariance === true;
+                            const statusStyle = hasVariance
+                              ? marShiftTimelineAdministrationVarianceCellStyle(variance?.badgeLabel)
+                              : isRescheduled
+                                ? marShiftTimelineRescheduleCellStyle()
+                                : marShiftTimelineItemStatusStyle(
+                                    item.doseStatus,
+                                    readOnly,
+                                    item.isPrnBand === true,
+                                    item.secondaryText
+                                  );
+                            const facilityTz = data.shift.timeZone;
                             const scheduledPatientDisplay =
                               data.rows.find(
                                 (candidate) =>
@@ -489,7 +502,80 @@ export function FacilityMarShiftTimeline({
                                 }}
                               >
                                 <div data-testid="mar-shift-timeline-primary-text">{item.primaryText}</div>
-                                {item.secondaryText?.trim() ? (
+                                {hasVariance && variance?.badgeLabel ? (
+                                  <>
+                                    <div
+                                      data-testid="mar-shift-timeline-variance-badge"
+                                      style={{ fontSize: 10, fontWeight: 600, marginTop: 2 }}
+                                    >
+                                      {t(`marAdministrationVariance.badge.${variance.badgeLabel}`)}
+                                    </div>
+                                    <div
+                                      data-testid="mar-shift-timeline-variance-times"
+                                      style={{ fontSize: 10, marginTop: 2, lineHeight: 1.3 }}
+                                    >
+                                      <div>
+                                        {t("marAdministrationVariance.timeline.scheduled")}:{" "}
+                                        {formatMarShiftTimelineClinicalDateTime(
+                                          variance.effectiveScheduledAt ?? "",
+                                          dateLocale,
+                                          facilityTz
+                                        )}
+                                      </div>
+                                      <div>
+                                        {t("marAdministrationVariance.timeline.actual")}:{" "}
+                                        {formatMarShiftTimelineClinicalDateTime(
+                                          variance.actualAdministrationAt ?? "",
+                                          dateLocale,
+                                          facilityTz
+                                        )}
+                                      </div>
+                                      {variance.varianceMinutes != null ? (
+                                        <div>
+                                          {t("marAdministrationVariance.timeline.variance")}:{" "}
+                                          {variance.varianceMinutes > 0 ? "+" : ""}
+                                          {variance.varianceMinutes} min
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </>
+                                ) : null}
+                                {isRescheduled ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-reschedule-badge"
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      marginTop: 2,
+                                      color: "#1d4ed8",
+                                    }}
+                                  >
+                                    {t("marReschedule.badge")}
+                                  </div>
+                                ) : null}
+                                {isRescheduled && item.scheduleAdjustment ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-reschedule-times"
+                                    style={{ fontSize: 10, marginTop: 2, lineHeight: 1.3 }}
+                                  >
+                                    <div>
+                                      {t("marReschedule.timeline.original")}:{" "}
+                                      {formatMarShiftTimelineClinicalDateTime(
+                                        item.scheduleAdjustment.originalScheduledAt ?? "",
+                                        dateLocale,
+                                        facilityTz
+                                      )}
+                                    </div>
+                                    <div>
+                                      {t("marReschedule.timeline.current")}:{" "}
+                                      {formatMarShiftTimelineClinicalDateTime(
+                                        item.scheduleAdjustment.currentScheduledAt,
+                                        dateLocale,
+                                        facilityTz
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : item.secondaryText?.trim() ? (
                                   <div
                                     data-testid="mar-shift-timeline-secondary-text"
                                     style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}

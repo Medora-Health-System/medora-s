@@ -26,9 +26,9 @@ export type ResolveIvpbDoseStatusTransitionResult =
   | { ok: true; nextStatus: MedicationDoseStatus; reason: "TRANSITION_ALLOWED" }
   | { ok: false; reason: IvpbDoseStatusTransitionReason; message: string };
 
-const START_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["DUE", "OVERDUE"]);
-const MISS_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["DUE", "OVERDUE"]);
-const HOLD_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["DUE", "OVERDUE"]);
+const START_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["PLANNED", "DUE", "OVERDUE"]);
+const MISS_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["PLANNED", "DUE", "OVERDUE"]);
+const HOLD_FROM: ReadonlySet<MedicationDoseStatus> = new Set(["PLANNED", "DUE", "OVERDUE"]);
 
 /**
  * Resolves IVPB_SESSION dose status after nurse/clinical action (M1.8B.7J.1).
