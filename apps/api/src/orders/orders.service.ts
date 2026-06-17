@@ -42,6 +42,7 @@ import {
 } from "../common/workflow/order-item-action-guards.util";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
 import { maybeCreateMedicationOrderScheduleForOrderItem } from "../medication-scheduling/medication-order-schedule.persistence";
+import { cascadeMedicationOrderCancelInTransaction } from "./medication-order-cancel-cascade.util";
 import { expandMedicationDosesForScheduleInTransaction } from "../medication-dose/medication-dose-expansion.service";
 import {
   findRecurringIvpbDoseStopLinkage,
@@ -2086,6 +2087,15 @@ export class OrdersService {
           },
         });
       }
+      if (order.type === "MEDICATION") {
+        await cascadeMedicationOrderCancelInTransaction(tx, {
+          facilityId,
+          orderId: id,
+          cancelledAt: now,
+          cancelReason: reason,
+          cancelledByUserId: userId,
+        });
+      }
       const row = await tx.order.findFirst({
         where: { id },
         include: {
@@ -2267,6 +2277,19 @@ export class OrdersService {
           ...(statusPatch ? { status: statusPatch } : {}),
         },
       });
+
+      if (
+        orderItem.catalogItemType === "MEDICATION" &&
+        isMedicationAdministerChart(orderItem)
+      ) {
+        await cascadeMedicationOrderCancelInTransaction(tx, {
+          facilityId,
+          orderItemIds: [orderItemId],
+          cancelledAt: now,
+          cancelReason: reason,
+          cancelledByUserId: userId,
+        });
+      }
 
       await this.writeOrderEvent({
         facilityId,

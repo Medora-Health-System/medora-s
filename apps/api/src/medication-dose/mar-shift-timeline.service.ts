@@ -42,6 +42,7 @@ import {
 import { MEDICATION_PASS_QUEUE_LIST_LIMIT } from "./medication-pass-queue.service";
 import { loadMarShiftTimelineAdministrationEnrichment } from "./mar-shift-timeline-admin-enrichment.util";
 import { loadMarShiftTimelineOrderItemFallbackPlacements } from "./mar-shift-timeline-order-item-fallback.util";
+import { loadMarShiftTimelineCanceledPlacements } from "./mar-shift-timeline-canceled.util";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
 import {
   appendMarShiftTimelineCellItem,
@@ -104,6 +105,10 @@ export type MarShiftTimelineCellItem = {
   prnLastGivenAt?: string | null;
   prnNextEligibleAt?: string | null;
   prnProjectionKey?: string | null;
+  cancellationReason?: string | null;
+  cancellationDetails?: string | null;
+  cancelledAt?: string | null;
+  cancelledByDisplay?: string | null;
   continuousFluidStatus?: string | null;
   fluidRateLabel?: string | null;
   fluidVolumeInfusedMl?: number | null;
@@ -760,6 +765,44 @@ export class MarShiftTimelineService {
           !existing.medicationDoseInstanceId?.trim()
       );
       if (!duplicate) {
+        appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
+      }
+    }
+
+    const canceledPlacements = await loadMarShiftTimelineCanceledPlacements({
+      prisma: this.prisma,
+      facilityId,
+      shiftStart: shiftWindow.startAt,
+      shiftEnd: shiftWindow.endAt,
+      columns,
+      facilityTimeZone: shiftWindow.facilityTimeZone,
+      displayLocale,
+      encounterId: query.encounterId,
+      assignedToUserId: query.assignedToUserId,
+      governanceByCatalogId,
+    });
+
+    for (const placement of canceledPlacements) {
+      const isPrnBand = placement.item.isPrnBand === true;
+      const { scheduled, prn } = ensureRowMaps({
+        patientId: placement.patientId,
+        encounterId: placement.encounterId,
+        patientDisplay: placement.patientDisplay,
+        roomLabel: placement.roomLabel,
+        encounterType: placement.encounterType,
+        admissionSummaryJson: placement.admissionSummaryJson,
+        assignedNurseUserId: placement.assignedNurseUserId,
+      });
+      const targetRow = isPrnBand ? prn : scheduled;
+      const markerId = placement.item.medicationDoseInstanceId?.trim() ?? "";
+      const existingCell = targetRow.cells.find((c) => c.columnKey === placement.columnKey);
+      const duplicateCanceled = existingCell?.items.some(
+        (existing) => existing.medicationDoseInstanceId?.trim() === markerId
+      );
+      if (duplicateCanceled) continue;
+      if (isPrnBand) {
+        upsertMarShiftTimelinePrnCellItem(targetRow, placement.columnKey, placement.item);
+      } else {
         appendMarShiftTimelineCellItem(targetRow, placement.columnKey, placement.item);
       }
     }

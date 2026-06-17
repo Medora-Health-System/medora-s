@@ -75,6 +75,10 @@ export type MarShiftTimelineCellItem = {
   fluidTotalDurationLabel?: string | null;
   fluidPausedAt?: string | null;
   isFluidBolus?: boolean;
+  cancellationReason?: string | null;
+  cancellationDetails?: string | null;
+  cancelledAt?: string | null;
+  cancelledByDisplay?: string | null;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
 };

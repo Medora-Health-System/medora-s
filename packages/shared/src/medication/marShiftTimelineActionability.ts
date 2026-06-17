@@ -15,6 +15,7 @@ export const MAR_SHIFT_TIMELINE_TERMINAL_CLINICAL_ACTIONS = [
   "VIEW_ADMINISTRATION",
   "VIEW_HELD",
   "VIEW_MISSED",
+  "VIEW_CANCELED",
 ] as const;
 
 export type MarShiftTimelineActionabilityItem = {

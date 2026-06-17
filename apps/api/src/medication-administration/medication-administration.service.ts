@@ -66,7 +66,7 @@ import {
   loadMedicationInfusionClassificationContext,
   shouldBlockDirectMarAdministeredForInfusionLine,
 } from "../common/medication/medication-infusion-candidate-from-order-item.util";
-import { assertParentOrderNotCancelled } from "../common/workflow/order-cancelled.guard";
+import { assertParentOrderNotCancelled, assertOrderItemNotCancelled } from "../common/workflow/order-cancelled.guard";
 import { assertEncounterNotSigned } from "../encounters/encounter-sign-lock.util";
 import { applyLifecycleWithStatus } from "../common/workflow/order-item-lifecycle.machine";
 import { logInfo } from "../common/logging/medoraLogger";
@@ -507,6 +507,10 @@ export class MedicationAdministrationService {
         throw new BadRequestException("La ligne doit être un médicament.");
       }
       assertParentOrderNotCancelled(item.order.status);
+      assertOrderItemNotCancelled({
+        lifecycleState: item.lifecycleState,
+        status: item.status,
+      });
       linkedMedicationLine = item as OrderItem & {
         order: { id: string; encounterId: string; facilityId: string; type: string; status: string };
       };

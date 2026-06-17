@@ -142,7 +142,8 @@ export type MarShiftTimelineClinicalAction =
   | "VIEW_UPCOMING"
   | "VIEW_ADMINISTRATION"
   | "VIEW_HELD"
-  | "VIEW_MISSED";
+  | "VIEW_MISSED"
+  | "VIEW_CANCELED";
 
 export const MAR_SHIFT_TIMELINE_DRAWER_ACTIONS = [
   "ADMINISTER",
@@ -393,6 +394,8 @@ export function doseStatusMarShiftTimelineHoverLabel(status: MedicationDoseStatu
       return "Completed";
     case "MISSED":
       return "Missed";
+    case "CANCELLED":
+      return "Canceled";
     default:
       return status;
   }
@@ -464,6 +467,8 @@ export function resolveMarShiftTimelineClinicalAction(
         return "VIEW_HELD";
       case "MISSED":
         return "VIEW_MISSED";
+      case "CANCELLED":
+        return "VIEW_CANCELED";
       default:
         return null;
     }
@@ -481,6 +486,8 @@ export function resolveMarShiftTimelineClinicalAction(
       return "VIEW_HELD";
     case "MISSED":
       return "VIEW_MISSED";
+    case "CANCELLED":
+      return "VIEW_CANCELED";
     default:
       return null;
   }
@@ -524,6 +531,7 @@ export function resolveMarShiftTimelineDrawerActions(
     case "VIEW_ADMINISTRATION":
     case "VIEW_HELD":
     case "VIEW_MISSED":
+    case "VIEW_CANCELED":
       return ["VIEW_ORDER"];
   }
 }

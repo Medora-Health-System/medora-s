@@ -144,6 +144,10 @@ export function FacilityMarShiftTimelineDrawer({
         })
       : item.frequencyCode);
 
+  const isCanceledItem =
+    item.doseStatus.trim().toUpperCase() === "CANCELLED" ||
+    item.clinicalAction === "VIEW_CANCELED";
+
   const statusBadgeStyle = marShiftTimelineItemStatusStyle(
     item.doseStatus,
     readOnly,
@@ -181,6 +185,36 @@ export function FacilityMarShiftTimelineDrawer({
       testId: "mar-shift-timeline-drawer-status",
       statusBadge: true,
     },
+    ...(isCanceledItem
+      ? [
+          {
+            label: t("marShiftTimeline.drawer.cancellationReason"),
+            value: item.cancellationReason,
+            testId: "mar-shift-timeline-drawer-cancellation-reason",
+          },
+          {
+            label: t("marShiftTimeline.drawer.cancellationDetails"),
+            value: item.cancellationDetails,
+            testId: "mar-shift-timeline-drawer-cancellation-details",
+          },
+          {
+            label: t("marShiftTimeline.drawer.cancelledBy"),
+            value: item.cancelledByDisplay,
+            testId: "mar-shift-timeline-drawer-cancelled-by",
+          },
+          {
+            label: t("marShiftTimeline.drawer.cancelledAt"),
+            value: item.cancelledAt
+              ? formatMarShiftTimelineClinicalDateTime(
+                  item.cancelledAt,
+                  dateLocale,
+                  facilityTimeZone ?? undefined
+                )
+              : null,
+            testId: "mar-shift-timeline-drawer-cancelled-at",
+          },
+        ]
+      : []),
     { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
     { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
     { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
@@ -607,7 +641,9 @@ export function FacilityMarShiftTimelineDrawer({
             data-testid="mar-shift-timeline-drawer-readonly-notice"
             style={{ margin: "12px 0 0", fontSize: 13, color: "#64748b" }}
           >
-            {t("marShiftTimeline.drawer.readOnlyNotice")}
+            {isCanceledItem
+              ? t("marShiftTimeline.drawer.canceledReadOnlyNotice")
+              : t("marShiftTimeline.drawer.readOnlyNotice")}
           </p>
         ) : scheduledActionable ? (
           <p

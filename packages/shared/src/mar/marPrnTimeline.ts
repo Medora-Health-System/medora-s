@@ -26,6 +26,11 @@ export const MAR_SHIFT_TIMELINE_STATUS_COLORS = {
     borderColor: "#DC2626",
     color: "#991B1B",
   },
+  cancelled: {
+    backgroundColor: "#F3F4F6",
+    borderColor: "#9CA3AF",
+    color: "#6B7280",
+  },
   prnRow: { backgroundColor: "#FFFBE6", borderColor: "#E8D38A", color: "#664D03" },
 } as const;
 
@@ -60,6 +65,9 @@ export function resolveMarShiftTimelineStatusColorKey(input: {
   const secondary = input.secondaryText?.trim().toUpperCase() ?? "";
 
   if (secondary === "REFUSED") return "refused";
+  if (status === "CANCELLED" || secondary === "CANCELED" || secondary === "ANNULÉ") {
+    return "cancelled";
+  }
   if (status === "HELD" || secondary === "HELD") return "held";
   if (status === "MISSED") return "missed";
   if (status === "OVERDUE") return "overdue";
@@ -393,6 +401,9 @@ export function resolvePrnTimelineTerminalDisplay(input: {
   }
   if (status === "COMPLETED" || secondary === "DONE") {
     return { colorKey: "administered", availability: "given" };
+  }
+  if (status === "CANCELLED" || secondary === "CANCELED" || secondary === "ANNULÉ") {
+    return { colorKey: "cancelled", availability: "given" };
   }
   return null;
 }
