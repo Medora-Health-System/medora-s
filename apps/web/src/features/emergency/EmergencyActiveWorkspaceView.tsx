@@ -818,11 +818,6 @@ export function EmergencyActiveWorkspaceView() {
           >
             {t("emergencyWorkspace.pageTitle")}
           </h1>
-          {!compactTabletHeader ? (
-            <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b", lineHeight: 1.5 }}>
-              {t("emergencyWorkspace.pageSubtitle")}
-            </p>
-          ) : null}
         </header>
 
         {!isEmergencyType && (

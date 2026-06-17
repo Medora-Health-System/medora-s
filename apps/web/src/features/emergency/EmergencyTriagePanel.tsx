@@ -1360,8 +1360,7 @@ export function EmergencyTriagePanel({
               </div>
 
               <div>
-                <p style={sectionHeading}>{t("erTriage.panel.sectionV1")}</p>
-                <div style={{ marginTop: 12 }}>
+                <div>
                   <EmergencyTriageV1Sections
                     er={formData.erV1}
                     patchErV1={patchErV1}

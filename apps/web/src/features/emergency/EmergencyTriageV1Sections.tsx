@@ -46,10 +46,8 @@ import {
   ER_TRIAGE_ROUTING_CHIP_DEFS,
   appendIfNotPresent,
   emptyErTraumaActivationForm,
-  erTriageV1FormHasAnyContent,
   nextGcsStateAfterComponentChange,
 } from "./medoraErTriageV1";
-import { MedoraCardBadge } from "@/components/medora-card";
 import { TriageCarryForwardSectionBadge, TriageCarryForwardSectionToolbar } from "./TriageCarryForwardBanner";
 import type { TriageCarryForwardMeta, TriageCarryForwardSectionKey } from "./triageCarryForward";
 
@@ -304,7 +302,6 @@ export function EmergencyTriageV1Sections({
   onClearCarryForwardSection,
 }: EmergencyTriageV1SectionsProps) {
   const { t, language } = useI18n();
-  const v1Any = erTriageV1FormHasAnyContent(er);
 
   const dash = t("erTriage.preview.emptyOption");
   const abcOptions: { value: ErAbcOption; label: string }[] = useMemo(
@@ -523,12 +520,6 @@ export function EmergencyTriageV1Sections({
   return (
     <>
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {v1Any ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <MedoraCardBadge soft={{ bg: "#fef2f2", text: "#991b1b", border: "#fecaca" }}>{t("erTriage.v1.badge")}</MedoraCardBadge>
-        </div>
-      ) : null}
-
       <details open style={detailsShell}>
         <summary style={summaryRow}>
           <span>{t("erTriage.v1.s1Title")}</span>
