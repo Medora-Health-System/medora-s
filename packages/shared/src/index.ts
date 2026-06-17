@@ -95,6 +95,7 @@ export * from "./mar/marAnalyticsAdministrationVariance.js";
 export * from "./mar/marAdministrationVarianceGovernance.js";
 export * from "./mar/marMedicationTimingOverrideGovernance.js";
 export * from "./mar/marUniversalClinicalTimeGovernance.js";
+export * from "./mar/marAuditCertification.js";
 export * from "./mar/marAnalyticsTimingOverride.js";
 export * from "./mar/marRescheduleRiskAssessment.js";
 export * from "./mar/marUniversalAdministrationTimingGovernance.js";
