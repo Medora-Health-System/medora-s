@@ -1,17 +1,32 @@
+import {
+  shouldSkipOrderLineCompletionForMar,
+} from "@medora/shared";
+
 /**
  * RN medication line workload — MAR-eligible MEDICATION lines (any fulfillment intent)
  * that are not yet terminal on the order line. MAR links lifecycle to `OrderItem.status`.
+ *
+ * Repeating PRN / ON_DEMAND lines remain actionable even when a prior MAR incorrectly
+ * marked the line COMPLETED (MEDUI.ED.MAR.H2).
  */
 export function isOrderItemPendingNurseMedication(it: {
   catalogItemType?: string | null;
   medicationFulfillmentIntent?: string | null;
   status?: string | null;
+  frequencyCode?: string | null;
+  notes?: string | null;
+  route?: string | null;
 }): boolean {
-  return (
-    it.catalogItemType === "MEDICATION" &&
-    it.status !== "COMPLETED" &&
-    it.status !== "CANCELLED"
-  );
+  if (it.catalogItemType !== "MEDICATION") return false;
+  if (it.status === "CANCELLED") return false;
+  if (it.status !== "COMPLETED") return true;
+
+  return shouldSkipOrderLineCompletionForMar({
+    frequencyCode: it.frequencyCode,
+    directionsSig: it.notes,
+    orderRoute: it.route,
+    doseGatedMarPathUsed: false,
+  });
 }
 
 /** Count pending RN medication lines across encounter orders (same API shape as GET /encounters/:id/orders). */

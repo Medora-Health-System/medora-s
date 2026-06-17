@@ -187,9 +187,10 @@ describe("MAR shift timeline K.10A same-hour placement", () => {
   });
 
   it("timeline uses stable per-order item keys for fallback rows", () => {
-    expect(timeline).toContain(
-      'key={`${item.orderItemId}:${item.medicationDoseInstanceId || "fallback"}`}'
-    );
+    expect(timeline).toContain("item.orderItemId");
+    expect(timeline).toContain("item.medicationDoseInstanceId");
+    expect(timeline).toContain("item.prnProjectionKey");
+    expect(timeline).toContain("item.administeredAt");
   });
 
   it("mock 10P cell contains Metoprolol and Ondansetron with no Ondansetron in 11P", () => {

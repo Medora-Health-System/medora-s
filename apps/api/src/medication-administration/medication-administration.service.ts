@@ -49,6 +49,9 @@ import {
   medicationDoseGatedMarEnabled,
   medicationIvpbDoseSchedulingEnabled,
   resolveClinicalTimeZone,
+  resolveScheduleClassification,
+  shouldAllowOrderLineCompletionDespitePrnContinuity,
+  shouldSkipOrderLineCompletionForMar,
   type MedicationAdminEffectiveTimeValidationCode,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
@@ -616,11 +619,6 @@ export class MedicationAdministrationService {
       }
     }
 
-    const effectiveSkipMedicationLineCompletion =
-      serviceOptions?.skipMedicationLineCompletion === true ||
-      doseGatedMarContext?.skipOrderLineCompletion === true ||
-      ivpbDoseSessionMarContext?.skipOrderLineCompletion === true;
-
     let administeredQuantity = resolveMarAdministeredQuantityForCreate({
       marAction: marActionResolved,
       explicitQuantity: data.administeredQuantity ?? null,
@@ -970,6 +968,66 @@ export class MedicationAdministrationService {
     }
 
     const administeredAtEffective = data.administeredAt ?? new Date();
+
+    const scheduleClassificationForCompletion = linkedMedicationLine
+      ? resolveScheduleClassification({
+          frequencyCode: linkedMedicationLine.frequencyCode,
+          orderRoute: linkedMedicationLine.route,
+        })
+      : null;
+
+    const skipForPrnContinuity = linkedMedicationLine
+      ? shouldSkipOrderLineCompletionForMar({
+          featureFlags: schedulingFeatureFlags,
+          frequencyCode: linkedMedicationLine.frequencyCode,
+          directionsSig: linkedMedicationLine.notes,
+          orderRoute: linkedMedicationLine.route,
+          scheduleClassification: scheduleClassificationForCompletion,
+          doseGatedMarPathUsed: doseGatedMarContext != null,
+        })
+      : false;
+
+    let priorAdministeredSumForCompletion = 0;
+    if (
+      skipForPrnContinuity &&
+      marActionResolved === "administered" &&
+      orderItemId &&
+      linkedMedicationLine?.quantity != null &&
+      linkedMedicationLine.quantity >= 1
+    ) {
+      const at =
+        administeredAtEffective instanceof Date
+          ? administeredAtEffective
+          : new Date(administeredAtEffective);
+      const { start, end } = utcDayBoundsForMar(at);
+      const agg = await this.prisma.medicationAdministration.aggregate({
+        where: {
+          orderItemId,
+          facilityId,
+          encounterId,
+          marAction: MedicationMarAction.administered,
+          administeredAt: { gte: start, lt: end },
+          infusionPhase: { notIn: [MedicationAdministrationInfusionPhase.INFUSION_START] },
+        },
+        _sum: { administeredQuantity: true },
+      });
+      priorAdministeredSumForCompletion = Number(agg._sum.administeredQuantity ?? 0);
+    }
+
+    const allowCompletionDespitePrnContinuity = shouldAllowOrderLineCompletionDespitePrnContinuity({
+      skipForPrnContinuity,
+      marAction: marActionResolved,
+      prescribedQuantity: linkedMedicationLine?.quantity ?? null,
+      priorAdministeredSum: priorAdministeredSumForCompletion,
+      administrationIncrement: administeredQuantity,
+    });
+
+    const effectiveSkipMedicationLineCompletion =
+      serviceOptions?.skipMedicationLineCompletion === true ||
+      doseGatedMarContext?.skipOrderLineCompletion === true ||
+      ivpbDoseSessionMarContext?.skipOrderLineCompletion === true ||
+      (skipForPrnContinuity && !allowCompletionDespitePrnContinuity);
+
     const allergySummaryForGate = getEncounterAllergyDocumentationSummary({
       vitals: encounter.vitals,
       nursingAssessment: encounter.nursingAssessment,

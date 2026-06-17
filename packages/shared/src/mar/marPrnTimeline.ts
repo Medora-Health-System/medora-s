@@ -298,20 +298,32 @@ export function buildMarPrnTimelineCellDisplay(input: {
 
   if (nextEligibleMs != null && nextEligibleMs > nowMs && nextEligible) {
     const nextLabel = formatPrnTimelineTime(nextEligible, tz);
+    const lastLabel = lastGiven ? formatPrnTimelineTime(lastGiven, tz) : null;
     return {
       primaryText,
       secondaryText,
-      tertiaryText: `Next: ${nextLabel}`,
+      tertiaryText: lastLabel
+        ? `Last given ${lastLabel} · Next eligible ${nextLabel}`
+        : `Next eligible ${nextLabel}`,
       availability: "next_eligible",
     };
   }
 
   if (lastGiven) {
     const lastLabel = formatPrnTimelineTime(lastGiven, tz);
+    if (nextEligible && nextEligibleMs != null && nextEligibleMs <= nowMs) {
+      const nextLabel = formatPrnTimelineTime(nextEligible, tz);
+      return {
+        primaryText,
+        secondaryText,
+        tertiaryText: `Last given ${lastLabel} · Next eligible ${nextLabel}`,
+        availability: "available",
+      };
+    }
     return {
       primaryText,
       secondaryText,
-      tertiaryText: `Last: ${lastLabel}`,
+      tertiaryText: `Last given ${lastLabel}`,
       availability: "last_given",
     };
   }

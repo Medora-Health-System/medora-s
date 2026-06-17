@@ -76,7 +76,79 @@ export function findMarShiftTimelineCellItem(
       }
     }
   }
-  return null;
+
+  return findMarShiftTimelinePrnCellItemFallback(timeline, orderItemId);
+}
+
+function parseMarShiftTimelineInstantMs(iso: string | null | undefined): number {
+  if (!iso?.trim()) return 0;
+  const ms = new Date(iso).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+}
+
+/** PRN cells relocate after administration — resolve by orderItemId (MEDUI.ED.MAR.H2). */
+export function findMarShiftTimelinePrnCellItemFallback(
+  timeline: {
+    rows: {
+      patientDisplay: string;
+      roomLabel: string | null;
+      governedRoomDisplay?: string | null;
+      cells: { items: MarShiftTimelineCellItem[] }[];
+    }[];
+  },
+  orderItemId: string
+): {
+  item: MarShiftTimelineCellItem;
+  patientDisplay: string;
+  roomLabel: string | null;
+  governedRoomDisplay?: string | null;
+} | null {
+  let bestTerminal: {
+    item: MarShiftTimelineCellItem;
+    patientDisplay: string;
+    roomLabel: string | null;
+    governedRoomDisplay?: string | null;
+    score: number;
+  } | null = null;
+  let bestAvailable: {
+    item: MarShiftTimelineCellItem;
+    patientDisplay: string;
+    roomLabel: string | null;
+    governedRoomDisplay?: string | null;
+  } | null = null;
+
+  for (const row of timeline.rows) {
+    for (const cell of row.cells) {
+      for (const item of cell.items) {
+        if (item.orderItemId !== orderItemId || item.isPrnBand !== true) continue;
+        const candidate = {
+          item,
+          patientDisplay: row.patientDisplay,
+          roomLabel: row.roomLabel,
+          governedRoomDisplay: row.governedRoomDisplay ?? null,
+        };
+        const status = item.doseStatus.trim().toUpperCase();
+        const terminal =
+          status === "COMPLETED" ||
+          item.readOnly === true ||
+          item.clinicalAction === "VIEW_ADMINISTRATION";
+        if (terminal) {
+          const score = parseMarShiftTimelineInstantMs(item.administeredAt ?? item.scheduledAt);
+          if (!bestTerminal || score >= bestTerminal.score) {
+            bestTerminal = { ...candidate, score };
+          }
+          continue;
+        }
+        bestAvailable = candidate;
+      }
+    }
+  }
+
+  if (bestTerminal) {
+    const { score: _score, ...found } = bestTerminal;
+    return found;
+  }
+  return bestAvailable;
 }
 
 export type MarShiftTimelineDrawerSelection = {

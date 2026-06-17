@@ -408,7 +408,7 @@ export function FacilityMarShiftTimeline({
                               )?.patientDisplay ?? row.patientDisplay;
                             return (
                               <button
-                                key={`${item.orderItemId}:${item.medicationDoseInstanceId || "fallback"}`}
+                                key={`${item.orderItemId}:${item.medicationDoseInstanceId || item.prnProjectionKey || item.administeredAt || item.scheduledAt || "fallback"}`}
                                 type="button"
                                 data-testid="mar-shift-timeline-cell-item"
                                 data-dose-status={item.doseStatus}
