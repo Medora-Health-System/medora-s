@@ -462,6 +462,7 @@ export class MedicationAdministrationHistoryService {
             manualLabel: true,
             manualSecondaryText: true,
             strength: true,
+            quantity: true,
             route: true,
           },
         },

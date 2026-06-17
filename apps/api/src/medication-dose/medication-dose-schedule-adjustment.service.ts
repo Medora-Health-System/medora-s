@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { RoleCode } from "@prisma/client";
+import { RoleCode, Prisma } from "@prisma/client";
 import {
   appendMarDoseScheduleAdjustmentHistory,
   buildMarDoseScheduleAdjustmentAuditEntry,
@@ -33,9 +33,9 @@ export class MedicationDoseScheduleAdjustmentService {
   async resolveFacilityTimeZone(facilityId: string): Promise<string | null> {
     const facility = await this.prisma.facility.findUnique({
       where: { id: facilityId },
-      select: { timeZone: true },
+      select: { timezone: true },
     });
-    return facility?.timeZone?.trim() || null;
+    return facility?.timezone?.trim() || null;
   }
 
   async adjustScheduledAt(input: AdjustMedicationDoseScheduleInput) {
@@ -96,7 +96,7 @@ export class MedicationDoseScheduleAdjustmentService {
     const orderedDoseSnapshotJson = appendMarDoseScheduleAdjustmentHistory(
       dose.orderedDoseSnapshotJson,
       auditEntry
-    );
+    ) as Prisma.InputJsonValue;
 
     const updated = await this.prisma.medicationDoseInstance.update({
       where: { id: dose.id },
