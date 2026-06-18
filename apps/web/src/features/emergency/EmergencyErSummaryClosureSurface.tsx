@@ -5,7 +5,7 @@
  * Reuses EmergencyVisitSummaryPanel and the same close-check/close API path as the generic encounter page.
  */
 
-import React, { useCallback, useEffect, useState, type ComponentProps } from "react";
+import React, { useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import type { DispositionSafetyReadinessResponse } from "@medora/shared";
 import { apiFetch, asApiObject } from "@/lib/apiClient";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
@@ -53,6 +53,10 @@ import {
 } from "@/features/emergency/emergencyDispositionV1";
 import { EmergencyVisitSummaryPanel } from "@/features/emergency/EmergencyVisitSummaryPanel";
 import { MEDORA_CARD_SHELL } from "@/components/medora-card";
+import { buildEdClosedEncounterCertificationFromEncounter } from "@/features/emergency/edClosedEncounterCertificationFromEncounter";
+import type { EdClosureCertificationEncounter } from "@/features/emergency/edClosedEncounterCertificationFromEncounter";
+import { EdEncounterCertificationReview } from "@/features/emergency/EdEncounterCertificationReview";
+import { EdEncounterBillingReadinessBadge } from "@/features/emergency/EdEncounterBillingReadinessBadge";
 
 /** API encounters include `patient`; `EncounterLike` does not — widen for header / print / close. */
 type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["encounter"] & {
@@ -137,6 +141,7 @@ export function EmergencyErSummaryClosureSurface({
   const canFetchProcedures = proceduresFetchEnabled ?? false;
   const { t, language } = useI18n();
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showCertificationReview, setShowCertificationReview] = useState(false);
   const [showDeficiencyModal, setShowDeficiencyModal] = useState(false);
   const [deficiencies, setDeficiencies] = useState<Array<{ code: string; labelFr: string }>>([]);
   const [closing, setClosing] = useState(false);
@@ -159,6 +164,14 @@ export function EmergencyErSummaryClosureSurface({
   const handleDispositionReadiness = useCallback((r: DispositionSafetyReadinessResponse | null) => {
     setDispositionReadiness(r);
   }, []);
+
+  const closureCertification = useMemo(
+    () =>
+      buildEdClosedEncounterCertificationFromEncounter(encounter as EdClosureCertificationEncounter, {
+        dispositionReadiness,
+      }),
+    [encounter, dispositionReadiness]
+  );
 
   const patient = encounter.patient;
   const dash = t("common.dash");
@@ -421,6 +434,7 @@ export function EmergencyErSummaryClosureSurface({
         const queued =
           res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
         setShowCloseModal(false);
+        setShowCertificationReview(false);
         setShowDeficiencyModal(false);
         setDeficiencies([]);
         setAckDispositionSafety(false);
@@ -477,6 +491,7 @@ export function EmergencyErSummaryClosureSurface({
       };
       if (result.hasDeficiencies && result.deficiencies && result.deficiencies.length > 0) {
         setShowCloseModal(false);
+        setShowCertificationReview(false);
         setDeficiencies(result.deficiencies);
         setShowDeficiencyModal(true);
         return;
@@ -585,6 +600,9 @@ export function EmergencyErSummaryClosureSurface({
 
       {open ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", padding: "0 4px" }}>
+            <EdEncounterBillingReadinessBadge certification={closureCertification} />
+          </div>
           <div
             style={{
               display: "flex",
@@ -690,28 +708,6 @@ export function EmergencyErSummaryClosureSurface({
             <p style={{ margin: "10px 0 0 0", fontSize: 14, color: "#475569", lineHeight: 1.5 }}>
               {t("emergencyErClosure.modalBody")}
             </p>
-            {dispositionReadiness && !dispositionReadiness.canClose ? (
-              <label
-                style={{
-                  display: "flex",
-                  gap: 10,
-                  alignItems: "flex-start",
-                  marginTop: 14,
-                  fontSize: 13,
-                  color: "#0f172a",
-                  fontWeight: 600,
-                  cursor: closing ? "default" : "pointer",
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={ackDispositionSafety}
-                  disabled={closing}
-                  onChange={(e) => setAckDispositionSafety(e.target.checked)}
-                />
-                <span>{t("dispositionReadiness.overrideCheckbox")}</span>
-              </label>
-            ) : null}
             <div style={{ marginTop: 18, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -737,11 +733,11 @@ export function EmergencyErSummaryClosureSurface({
               </button>
               <button
                 type="button"
-                disabled={
-                  closing ||
-                  Boolean(dispositionReadiness && !dispositionReadiness.canClose && !ackDispositionSafety)
-                }
-                onClick={() => void runCloseCheck()}
+                disabled={closing}
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setShowCertificationReview(true);
+                }}
                 style={edDispositionTouchButtonStyle(
                   {
                     padding: "8px 14px",
@@ -761,6 +757,25 @@ export function EmergencyErSummaryClosureSurface({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {showCertificationReview ? (
+        <EdEncounterCertificationReview
+          certification={closureCertification}
+          dispositionReadiness={dispositionReadiness}
+          acknowledgeDispositionSafety={ackDispositionSafety}
+          onAcknowledgeDispositionSafetyChange={setAckDispositionSafety}
+          closing={closing}
+          layoutMode={layoutMode}
+          onCancel={() => {
+            setShowCertificationReview(false);
+            setAckDispositionSafety(false);
+          }}
+          onContinueClose={() => {
+            setShowCertificationReview(false);
+            void runCloseCheck();
+          }}
+        />
       ) : null}
 
       {showDeficiencyModal ? (
