@@ -62,6 +62,14 @@ import {
   resolveMyIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
 import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
+import {
+  isMyIncompleteChartsBoardView,
+  resolveIncompleteChartsVisibleBadgeKeys,
+  shouldShowIncompleteChartsAcuityChip,
+  shouldShowIncompleteChartsBedStatusChip,
+  shouldShowIncompleteChartsOpsChips,
+  shouldShowIncompleteChartsOwnershipBadge,
+} from "@/features/emergency/edIncompleteChartsUiCleanup";
 import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
 import {
   fetchFacilityBedBoard,
@@ -955,7 +963,10 @@ export function EmergencyTrackboardView() {
               const isPhysMine = Boolean(userId && physId && physId === userId);
               const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
               const isAssignedToMe = isEncounterAssignedToCurrentUser(encounter, myPatientsFilterCtx);
-              const incompleteChartBadges = resolveEdIncompleteChartBadgeKeys(encounter);
+              const incompleteChartsView = isMyIncompleteChartsBoardView(boardViewMode);
+              const incompleteChartBadges = incompleteChartsView
+                ? resolveIncompleteChartsVisibleBadgeKeys(resolveEdIncompleteChartBadgeKeys(encounter))
+                : resolveEdIncompleteChartBadgeKeys(encounter);
               const nirLine = patientNirDisplay(patient, dash);
               const arrivalDisplay = encounter.createdAt
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)
@@ -1207,7 +1218,10 @@ export function EmergencyTrackboardView() {
                               >
                                 <MedoraCardBadge compact={usesCompactCensus} soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
                               </span>
-                              <EdBedStatusChip status={bedStatus} compact={usesCompactCensus} />
+                              <EdBedStatusChip
+                                status={shouldShowIncompleteChartsBedStatusChip(boardViewMode) ? bedStatus : null}
+                                compact={usesCompactCensus}
+                              />
                               {sortieInfirmierOk ? (
                                 <span title={t("emergencyTrackboard.sortieExecTooltip")}>
                                   <MedoraCardBadge compact={usesCompactCensus} soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}>
@@ -1222,8 +1236,12 @@ export function EmergencyTrackboardView() {
                                   </MedoraCardBadge>
                                 </span>
                               ) : null}
-                              <MedoraCardBadge compact={usesCompactCensus} soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
-                              {isAssignedToMe ? (
+                              {shouldShowIncompleteChartsAcuityChip(boardViewMode) ? (
+                                <MedoraCardBadge compact={usesCompactCensus} soft={ACUITY_SOFT[acuity]}>
+                                  {t(acuityLabelKey(acuity))}
+                                </MedoraCardBadge>
+                              ) : null}
+                              {isAssignedToMe && shouldShowIncompleteChartsOwnershipBadge(boardViewMode) ? (
                                 <MedoraCardBadge
                                   compact={usesCompactCensus}
                                   soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}
@@ -1257,6 +1275,32 @@ export function EmergencyTrackboardView() {
                                 alignItems: "center",
                               }}
                             >
+                              {boardViewMode === "incompleteCharts" ? (
+                                <button
+                                  type="button"
+                                  data-testid={`ed-certification-review-${encounter.id}`}
+                                  onClick={() => setCertificationPanelEncounter(encounter)}
+                                  style={erTrackboardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "5px 12px",
+                                      borderRadius: 8,
+                                      border: "1px solid #f59e0b",
+                                      backgroundColor: "#fffbeb",
+                                      color: "#92400e",
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                      cursor: "pointer",
+                                      boxShadow: "0 1px 2px rgba(146, 64, 14, 0.12)",
+                                    },
+                                    layoutMode
+                                  )}
+                                >
+                                  {t("edLifecycle.incompleteCharts.reviewCertification")}
+                                </button>
+                              ) : null}
                               <Link
                                 href={emergencyChartPath(encounter.id)}
                                 style={erTrackboardCensusActionButtonStyle(
@@ -1278,31 +1322,6 @@ export function EmergencyTrackboardView() {
                               >
                                 {t("emergencyTrackboard.chartLink")}
                               </Link>
-                              {boardViewMode === "incompleteCharts" ? (
-                                <button
-                                  type="button"
-                                  data-testid={`ed-certification-review-${encounter.id}`}
-                                  onClick={() => setCertificationPanelEncounter(encounter)}
-                                  style={erTrackboardCensusActionButtonStyle(
-                                    {
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      padding: "4px 10px",
-                                      borderRadius: 8,
-                                      border: "1px solid #fde68a",
-                                      backgroundColor: "#fffbeb",
-                                      color: "#92400e",
-                                      fontSize: 12,
-                                      fontWeight: 600,
-                                      cursor: "pointer",
-                                    },
-                                    layoutMode
-                                  )}
-                                >
-                                  {t("edLifecycle.incompleteCharts.reviewCertification")}
-                                </button>
-                              ) : null}
                               <Link
                                 href={emergencyActiveWorkspacePath(encounter.id)}
                                 style={erTrackboardCensusActionButtonStyle(
@@ -1409,30 +1428,32 @@ export function EmergencyTrackboardView() {
                           </>
                         }
                       />
-                      <div
-                        role="region"
-                        aria-label={t("emergencyTrackboard.ops.regionAria")}
-                        style={erTrackboardOpsRegionStyle(layoutMode)}
-                      >
-                        {opsChips.map((c) =>
-                          c.href ? (
-                            <Link
-                              key={c.key}
-                              href={c.href}
-                              aria-label={c.ariaLabel ?? c.text}
-                              style={{ textDecoration: "none", display: "inline-flex" }}
-                            >
-                              <MedoraCardBadge compact={usesCompactCensus} soft={c.soft}>
+                      {shouldShowIncompleteChartsOpsChips(boardViewMode) ? (
+                        <div
+                          role="region"
+                          aria-label={t("emergencyTrackboard.ops.regionAria")}
+                          style={erTrackboardOpsRegionStyle(layoutMode)}
+                        >
+                          {opsChips.map((c) =>
+                            c.href ? (
+                              <Link
+                                key={c.key}
+                                href={c.href}
+                                aria-label={c.ariaLabel ?? c.text}
+                                style={{ textDecoration: "none", display: "inline-flex" }}
+                              >
+                                <MedoraCardBadge compact={usesCompactCensus} soft={c.soft}>
+                                  {c.text}
+                                </MedoraCardBadge>
+                              </Link>
+                            ) : (
+                              <MedoraCardBadge key={c.key} compact={usesCompactCensus} soft={c.soft}>
                                 {c.text}
                               </MedoraCardBadge>
-                            </Link>
-                          ) : (
-                            <MedoraCardBadge key={c.key} compact={usesCompactCensus} soft={c.soft}>
-                              {c.text}
-                            </MedoraCardBadge>
-                          )
-                        )}
-                      </div>
+                            )
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </MedoraCard>
                 </li>
