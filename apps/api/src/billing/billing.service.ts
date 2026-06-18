@@ -14,6 +14,7 @@ import {
   isProviderProcedureDocumentationForBilling,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
+  validateManualBillingReviewBulkApproval,
   type BillingCaptureItem,
   type InfusionBillingReviewDecision,
 } from "@medora/shared";
@@ -28,6 +29,8 @@ import type {
   BillingManualReviewGateDto,
   BillingManualReviewGateItemDto,
   BillingManualReviewRowDto,
+  BillingManualReviewBulkDecisionResponseDto,
+  BillingManualReviewBulkDecisionResultItemDto,
   BillingReviewAnchorType,
   BillingReviewDecisionAuditEntryDto,
   BillingReviewDecisionDto,
@@ -572,6 +575,8 @@ export class BillingService {
 
     const decision = parseBillingReviewDecisionStatus(body?.decision);
     const notes = typeof body?.notes === "string" ? body.notes.trim() : "";
+    const auditSource = typeof body?.auditSource === "string" ? body.auditSource.trim() : null;
+    const bulkReason = typeof body?.bulkReason === "string" ? body.bulkReason.trim() : null;
     if ((decision === BillingReviewDecisionStatus.NEEDS_INFO || decision === BillingReviewDecisionStatus.DO_NOT_BILL) && !notes) {
       throw new BadRequestException("notes are required for this decision");
     }
@@ -650,6 +655,8 @@ export class BillingService {
           billingEventId,
           decision,
           hasNotes: Boolean(notes),
+          ...(auditSource ? { source: auditSource } : {}),
+          ...(bulkReason ? { bulkReason } : {}),
         },
         critical: true,
       });
@@ -662,6 +669,81 @@ export class BillingService {
       include: { reviewer: { select: { firstName: true, lastName: true, email: true } } },
     });
     return toBillingReviewDecisionDto(withReviewer)!;
+  }
+
+  async bulkUpsertManualBillingReviewDecision(
+    facilityId: string,
+    body: Record<string, unknown>,
+    reviewerId?: string
+  ): Promise<BillingManualReviewBulkDecisionResponseDto> {
+    if (!reviewerId) {
+      throw new ForbiddenException("Authentication required");
+    }
+
+    const itemIdsRaw = Array.isArray(body.itemIds) ? body.itemIds : [];
+    const validation = validateManualBillingReviewBulkApproval({
+      itemIds: itemIdsRaw.filter((id): id is string => typeof id === "string"),
+      decision: typeof body.decision === "string" ? body.decision : "",
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(validation.message);
+    }
+
+    const bulkReason = typeof body.reason === "string" ? body.reason.trim() : "";
+    const results: BillingManualReviewBulkDecisionResultItemDto[] = [];
+    let approved = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const orderItemId of validation.itemIds) {
+      if (orderItemId.startsWith("proc-doc_")) {
+        results.push({
+          orderItemId,
+          status: "skipped",
+          error: "Procedure documented rows cannot receive billing decisions.",
+        });
+        skipped += 1;
+        continue;
+      }
+
+      const existing = await this.prisma.billingReviewDecision.findUnique({
+        where: { facilityId_orderItemId: { facilityId, orderItemId } },
+        select: { decision: true },
+      });
+      if (existing?.decision === BillingReviewDecisionStatus.APPROVED) {
+        results.push({ orderItemId, status: "skipped" });
+        skipped += 1;
+        continue;
+      }
+
+      try {
+        await this.upsertManualBillingReviewDecision(
+          facilityId,
+          orderItemId,
+          {
+            decision: BillingReviewDecisionStatus.APPROVED,
+            notes: bulkReason || undefined,
+            auditSource: "BULK_APPROVAL",
+            bulkReason: bulkReason || null,
+          },
+          reviewerId
+        );
+        results.push({ orderItemId, status: "approved" });
+        approved += 1;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Bulk approval failed";
+        results.push({ orderItemId, status: "failed", error: message });
+        failed += 1;
+      }
+    }
+
+    return {
+      requested: validation.itemIds.length,
+      approved,
+      skipped,
+      failed,
+      results,
+    };
   }
 
   /**
@@ -963,9 +1045,11 @@ function parseBillingReviewAuditMetadata(metadata: Prisma.JsonValue | null | und
   decision: BillingReviewDecisionStatus | null;
   hasNotes: boolean | null;
   billingEventId: string | null;
+  source: string | null;
+  bulkReason: string | null;
 } {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
-    return { orderItemId: null, decision: null, hasNotes: null, billingEventId: null };
+    return { orderItemId: null, decision: null, hasNotes: null, billingEventId: null, source: null, bulkReason: null };
   }
   const m = metadata as Record<string, unknown>;
   const orderItemId = typeof m.orderItemId === "string" ? m.orderItemId : null;
@@ -978,7 +1062,9 @@ function parseBillingReviewAuditMetadata(metadata: Prisma.JsonValue | null | und
   }
   const hasNotes = typeof m.hasNotes === "boolean" ? m.hasNotes : null;
   const billingEventId = typeof m.billingEventId === "string" ? m.billingEventId : null;
-  return { orderItemId, decision, hasNotes, billingEventId };
+  const source = typeof m.source === "string" ? m.source : null;
+  const bulkReason = typeof m.bulkReason === "string" ? m.bulkReason : null;
+  return { orderItemId, decision, hasNotes, billingEventId, source, bulkReason };
 }
 
 function billingReviewAuditEntryFromLog(log: {
@@ -999,6 +1085,8 @@ function billingReviewAuditEntryFromLog(log: {
     decision: meta.decision,
     hasNotes: meta.hasNotes,
     billingEventId: meta.billingEventId,
+    source: meta.source,
+    bulkReason: meta.bulkReason,
   };
 }
 

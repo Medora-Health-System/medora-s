@@ -35,6 +35,8 @@ export type BillingReviewDecisionAuditEntryDto = {
   decision: BillingReviewDecisionStatus | null;
   hasNotes: boolean | null;
   billingEventId: string | null;
+  source?: string | null;
+  bulkReason?: string | null;
 };
 
 export type BillingReadinessItemDto = {
@@ -109,4 +111,18 @@ export type BillingManualReviewGateDto = {
   unresolvedCount: number;
   unresolvedItems: BillingManualReviewGateItemDto[];
   doNotBillOrderItemIds: string[];
+};
+
+export type BillingManualReviewBulkDecisionResultItemDto = {
+  orderItemId: string;
+  status: "approved" | "skipped" | "failed";
+  error?: string;
+};
+
+export type BillingManualReviewBulkDecisionResponseDto = {
+  requested: number;
+  approved: number;
+  skipped: number;
+  failed: number;
+  results: BillingManualReviewBulkDecisionResultItemDto[];
 };

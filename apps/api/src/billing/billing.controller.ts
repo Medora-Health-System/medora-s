@@ -352,6 +352,19 @@ export class BillingController {
     );
   }
 
+  @Post("billing/manual-review/bulk-decision")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async bulkUpsertManualBillingReviewDecision(@Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    const payload =
+      body && typeof body === "object" && !Array.isArray(body) ? (body as Record<string, unknown>) : {};
+    return this.billingService.bulkUpsertManualBillingReviewDecision(
+      facilityId,
+      payload,
+      req.user?.userId
+    );
+  }
+
   @Post("billing/manual-review/:orderItemId/decision")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async upsertManualBillingReviewDecision(
