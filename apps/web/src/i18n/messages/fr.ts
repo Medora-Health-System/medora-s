@@ -4734,6 +4734,23 @@ export default {
         "Série mensuelle insuffisante pour comparer deux mois consécutifs dans les données retournées.",
     },
   },
+  edLifecycle: {
+    navigation: {
+      ariaLabel: "Vues du cycle de vie des urgences",
+      trackboard: "Tableau de suivi",
+      bedBoard: "Plan des lits",
+      myPatients: "Mes patients",
+      incompleteCharts: "Dossiers incomplets",
+      allEncounters: "Tous les dossiers",
+    },
+    placeholder: {
+      myPatients: "Mes patients affichera les rencontres qui vous sont assignées.",
+      incompleteCharts:
+        "Les dossiers incomplets afficheront les rencontres sorties en attente de documentation.",
+      allEncounters:
+        "Tous les dossiers affichera les rencontres ED fermées et certifiées.",
+    },
+  },
   emergencyTrackboard: {
     title: "Urgences",
     subtitle: "Consultations d'urgence ouvertes",

@@ -4767,6 +4767,22 @@ export default {
         "Insufficient monthly data to compare two consecutive months in the returned data.",
     },
   },
+  edLifecycle: {
+    navigation: {
+      ariaLabel: "ED lifecycle views",
+      trackboard: "Trackboard",
+      bedBoard: "Bed Board",
+      myPatients: "My Patients",
+      incompleteCharts: "Incomplete Charts",
+      allEncounters: "All Encounters",
+    },
+    placeholder: {
+      myPatients: "My Patients will show encounters assigned to you.",
+      incompleteCharts:
+        "Incomplete Charts will show departed encounters awaiting documentation completion.",
+      allEncounters: "All Encounters will show certified closed ED encounters.",
+    },
+  },
   emergencyTrackboard: {
     title: "Emergency Department",
     subtitle: "Open emergency encounters",

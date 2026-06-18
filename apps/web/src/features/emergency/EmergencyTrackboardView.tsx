@@ -46,6 +46,13 @@ import {
 } from "@/components/encounters/BedBoardAssignEncounterPicker";
 import { EdBedStatusChip } from "@/components/encounters/BedOperationalStatusChip";
 import {
+  ED_LIFECYCLE_BOARD_VIEWS,
+  ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS,
+  ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS,
+  isEdLifecyclePlaceholderView,
+  type EdLifecycleBoardView,
+} from "@/features/emergency/edEncounterLifecycleNavigation";
+import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
   indexBedBoardByKey,
@@ -254,7 +261,7 @@ export function EmergencyTrackboardView() {
   );
   const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
   const [edBedBoard, setEdBedBoard] = useState<FacilityBedBoardResponse | null>(null);
-  const [boardViewMode, setBoardViewMode] = useState<"trackboard" | "bedBoard">("trackboard");
+  const [boardViewMode, setBoardViewMode] = useState<EdLifecycleBoardView>("trackboard");
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
   const [bedBoardStatusFilter, setBedBoardStatusFilter] = useState<BedBoardStatusFilterId>("all");
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
@@ -413,6 +420,26 @@ export function EmergencyTrackboardView() {
     () => (edBedBoard ? findBedBoardUnit(edBedBoard, "ED") : null),
     [edBedBoard]
   );
+
+  const lifecycleNavLabel = useCallback(
+    (view: EdLifecycleBoardView): string => {
+      const base = t(ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS[view]);
+      if (view === "trackboard" && emergencyOnly.length > 0) {
+        return `${base} (${emergencyOnly.length})`;
+      }
+      return base;
+    },
+    [emergencyOnly.length, t]
+  );
+
+  const lifecyclePlaceholderPanelStyle: React.CSSProperties = {
+    borderRadius: 16,
+    border: "1px dashed #cbd5e1",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    padding: "48px 24px",
+    textAlign: "center",
+    boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
+  };
 
   const unassignedEdCandidates = useMemo((): BedBoardAssignCandidate[] => {
     return emergencyOnly
@@ -574,51 +601,40 @@ export function EmergencyTrackboardView() {
           <div style={erTrackboardFilterActionsStyle(layoutMode)}>
             <div
               role="group"
-              aria-label={t("bedBoard.viewToggleBedBoard")}
+              aria-label={t("edLifecycle.navigation.ariaLabel")}
               data-testid="emergency-trackboard-view-toggle"
               style={{
                 display: "inline-flex",
+                flexWrap: "wrap",
                 borderRadius: 12,
                 border: "1px solid #e2e8f0",
                 overflow: "hidden",
                 background: "#fff",
               }}
             >
-              <button
-                type="button"
-                aria-pressed={boardViewMode === "trackboard"}
-                onClick={() => setBoardViewMode("trackboard")}
-                style={{
-                  padding: "0 12px",
-                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
-                  border: "none",
-                  background: boardViewMode === "trackboard" ? "#eff6ff" : "#fff",
-                  color: boardViewMode === "trackboard" ? "#1d4ed8" : "#475569",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {t("bedBoard.viewToggleTrackboard")}
-              </button>
-              <button
-                type="button"
-                aria-pressed={boardViewMode === "bedBoard"}
-                onClick={() => setBoardViewMode("bedBoard")}
-                style={{
-                  padding: "0 12px",
-                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
-                  border: "none",
-                  borderLeft: "1px solid #e2e8f0",
-                  background: boardViewMode === "bedBoard" ? "#eff6ff" : "#fff",
-                  color: boardViewMode === "bedBoard" ? "#1d4ed8" : "#475569",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                {t("bedBoard.viewToggleBedBoard")}
-              </button>
+              {ED_LIFECYCLE_BOARD_VIEWS.map((view, index) => (
+                <button
+                  key={view}
+                  type="button"
+                  data-testid={`ed-lifecycle-nav-${view}`}
+                  aria-pressed={boardViewMode === view}
+                  onClick={() => setBoardViewMode(view)}
+                  style={{
+                    padding: "0 12px",
+                    height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                    border: "none",
+                    borderLeft: index > 0 ? "1px solid #e2e8f0" : undefined,
+                    background: boardViewMode === view ? "#eff6ff" : "#fff",
+                    color: boardViewMode === view ? "#1d4ed8" : "#475569",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {lifecycleNavLabel(view)}
+                </button>
+              ))}
             </div>
             <button
               type="button"
@@ -651,7 +667,16 @@ export function EmergencyTrackboardView() {
           </div>
         </div>
 
-        {boardViewMode === "bedBoard" ? (
+        {isEdLifecyclePlaceholderView(boardViewMode) ? (
+          <div
+            style={lifecyclePlaceholderPanelStyle}
+            data-testid={`ed-lifecycle-placeholder-${boardViewMode}`}
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
+              {t(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[boardViewMode]!)}
+            </p>
+          </div>
+        ) : boardViewMode === "bedBoard" ? (
           edBedBoardUnit ? (
             <>
               <BedBoardStatusFilterBar
