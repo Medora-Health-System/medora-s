@@ -5,6 +5,10 @@ import {
   MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES,
   classifyMarAdministrationVariance,
 } from "./marAdministrationVarianceGovernance.js";
+import {
+  resolveMarMedicationTimingAdvisory,
+  type MarMedicationTimingAdvisory,
+} from "./marMedicationTimingAdvisory.js";
 
 export const MAR_MEDICATION_TIMING_OVERRIDE_REASON_CODES = [
   "CLINICAL_CONDITION",
@@ -100,6 +104,7 @@ export type MarMedicationTimingOverrideRequirement = {
   detailRequired: boolean;
   reviewRecommended: boolean;
   severity: "LOW" | "MODERATE" | "HIGH";
+  advisory?: MarMedicationTimingAdvisory;
 };
 
 export function normalizeMarMedicationTimingOverrideReasonCode(
@@ -149,6 +154,10 @@ export function resolveMarMedicationTimingOverrideKindFromVariance(
 export function assessMarMedicationTimingOverrideRequirement(input: {
   overrideKind: MarMedicationTimingOverrideKind;
   movedMinutes: number;
+  scheduledAt?: Date | string | null;
+  clinicalEventAt?: Date | string | null;
+  documentedAt?: Date | string | null;
+  isPrn?: boolean;
 }): MarMedicationTimingOverrideRequirement {
   const absMoved = Math.max(0, Math.abs(input.movedMinutes));
   let severity: "LOW" | "MODERATE" | "HIGH" = "LOW";
@@ -156,12 +165,22 @@ export function assessMarMedicationTimingOverrideRequirement(input: {
   else if (absMoved > 60) severity = "MODERATE";
   else if (absMoved > MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES) severity = "LOW";
 
-  const reasonRequired =
-    input.overrideKind === "SCHEDULE_CHANGE" ||
-    (input.overrideKind !== "ON_TIME_ADMINISTRATION" &&
-      absMoved > MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES);
-  const reviewRecommended = severity === "HIGH" && reasonRequired;
-  const detailRequired = reviewRecommended;
+  const reasonRequired = input.overrideKind === "SCHEDULE_CHANGE";
+  const reviewRecommended = false;
+  const detailRequired = false;
+
+  let advisory: MarMedicationTimingAdvisory | undefined;
+  if (input.clinicalEventAt) {
+    const resolved = resolveMarMedicationTimingAdvisory({
+      scheduledAt: input.scheduledAt,
+      clinicalEventAt: input.clinicalEventAt,
+      documentedAt: input.documentedAt,
+      isPrn: input.isPrn,
+    });
+    if (resolved.severity !== "NONE") {
+      advisory = resolved;
+    }
+  }
 
   return {
     overrideKind: input.overrideKind,
@@ -170,20 +189,31 @@ export function assessMarMedicationTimingOverrideRequirement(input: {
     detailRequired,
     reviewRecommended,
     severity,
+    advisory,
   };
 }
 
 export function validateMarMedicationTimingOverride(input: {
   overrideKind: MarMedicationTimingOverrideKind;
   movedMinutes: number;
+  scheduledAt?: Date | string | null;
+  clinicalEventAt?: Date | string | null;
+  documentedAt?: Date | string | null;
+  isPrn?: boolean;
   reasonCode?: string | null;
   reasonDetail?: string | null;
-}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
+}): { ok: true; advisory?: MarMedicationTimingAdvisory } | { ok: false; code: "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
   const requirement = assessMarMedicationTimingOverrideRequirement({
     overrideKind: input.overrideKind,
     movedMinutes: input.movedMinutes,
+    scheduledAt: input.scheduledAt,
+    clinicalEventAt: input.clinicalEventAt,
+    documentedAt: input.documentedAt,
+    isPrn: input.isPrn,
   });
-  if (!requirement.reasonRequired) return { ok: true };
+  if (!requirement.reasonRequired) {
+    return requirement.advisory ? { ok: true, advisory: requirement.advisory } : { ok: true };
+  }
 
   const canonical = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
   if (!canonical) return { ok: false, code: "INVALID_REASON" };
@@ -194,7 +224,7 @@ export function validateMarMedicationTimingOverride(input: {
   if (canonical === "OTHER" && !input.reasonDetail?.trim()) {
     return { ok: false, code: "DETAIL_REQUIRED" };
   }
-  return { ok: true };
+  return requirement.advisory ? { ok: true, advisory: requirement.advisory } : { ok: true };
 }
 
 export function administrationVarianceMinutesToOverrideKind(

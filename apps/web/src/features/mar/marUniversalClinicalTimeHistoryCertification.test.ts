@@ -85,6 +85,6 @@ describe("marUniversalClinicalTimeHistoryCertification (H9F.1)", () => {
     });
     expect(resolved?.varianceMinutes).toBe(45);
     expect(resolved?.placementInstant).toBe(clinicalTime);
-    expect(resolved?.requiresReason).toBe(true);
+    expect(resolved?.requiresReason).toBe(false);
   });
 });

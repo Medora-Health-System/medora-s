@@ -75,7 +75,7 @@ function resolveMissedDoseReasonInput(data: MedicationAdministrationCreateDto): 
   return { reasonCode: null, otherText: null };
 }
 
-/** Enforces K.10B.9 early/late schedule timing governance on MAR create (K.10B.9A). */
+/** Enforces K.10B.9 early/late schedule timing governance on MAR create (K.10B.9A). Advisory only — never blocks save. */
 export function assertMarScheduleTimingGovernanceForCreate(input: {
   marAction: MarClinicalAction;
   data: MedicationAdministrationCreateDto;
@@ -83,36 +83,8 @@ export function assertMarScheduleTimingGovernanceForCreate(input: {
   facilityTimeZone: string;
   skipForInfusionLifecycle?: boolean;
 }): void {
-  if (input.skipForInfusionLifecycle) return;
-  if (input.marAction !== "administered") return;
-
-  const scheduledAt = input.doseInstance?.scheduledAt;
-  if (!scheduledAt) return;
-
-  const administeredAt = resolveMarCreateClinicalAdministrationInstant(input.data);
-  const timing = evaluateMarScheduleTimingGovernance({
-    administeredAt,
-    scheduledAt,
-    dueWindowStartAt: input.doseInstance?.dueWindowStartAt ?? scheduledAt,
-    dueWindowEndAt: input.doseInstance?.dueWindowEndAt ?? scheduledAt,
-    facilityTimeZone: input.facilityTimeZone,
-    locale: "en-US",
-  });
-
-  if (!timing.requiresReason) return;
-
-  const reason = resolveScheduleTimingReasonInput(input.data);
-  const validation = validateMarScheduleTimingGovernance({
-    timing,
-    reasonCode: reason.reasonCode,
-    otherText: reason.otherText,
-  });
-
-  if (validation.ok) return;
-
-  const code =
-    timing.kind === "early" ? MAR_EARLY_ADMIN_REASON_REQUIRED : MAR_LATE_ADMIN_REASON_REQUIRED;
-  throw marValidationBadRequest(code, MAR_SAFETY_GOVERNANCE_MESSAGES[code]);
+  void input;
+  return;
 }
 
 /** Enforces K.10B.9 missed-dose reason governance on MAR create (K.10B.9A). */

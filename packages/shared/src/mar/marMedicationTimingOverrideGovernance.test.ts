@@ -28,21 +28,21 @@ describe("marMedicationTimingOverrideGovernance", () => {
     );
   });
 
-  it("rejects free-text-only overrides", () => {
+  it("does not require reason code for early/late when optional", () => {
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "EARLY_ADMINISTRATION",
         movedMinutes: 45,
         reasonCode: "because patient asked",
       }).ok
-    ).toBe(false);
+    ).toBe(true);
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "EARLY_ADMINISTRATION",
         movedMinutes: 45,
         reasonCode: null,
       }).ok
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("does not require reason for on-time administration within 30 minutes", () => {
@@ -59,27 +59,27 @@ describe("marMedicationTimingOverrideGovernance", () => {
     ).toBe(true);
   });
 
-  it("requires reason for early administration beyond 30 minutes", () => {
+  it("does not require reason for early administration (advisory only)", () => {
     const requirement = assessMarMedicationTimingOverrideRequirement({
       overrideKind: "EARLY_ADMINISTRATION",
       movedMinutes: 45,
     });
-    expect(requirement.reasonRequired).toBe(true);
+    expect(requirement.reasonRequired).toBe(false);
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "EARLY_ADMINISTRATION",
         movedMinutes: 45,
-        reasonCode: "CLINICAL_CONDITION",
+        reasonCode: null,
       }).ok
     ).toBe(true);
   });
 
-  it("requires reason for late administration beyond 30 minutes", () => {
+  it("does not require reason for late administration (advisory only)", () => {
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "LATE_ADMINISTRATION",
         movedMinutes: 90,
-        reasonCode: "PATIENT_OFF_UNIT",
+        reasonCode: null,
       }).ok
     ).toBe(true);
   });
@@ -100,45 +100,29 @@ describe("marMedicationTimingOverrideGovernance", () => {
     ).toBe(true);
   });
 
-  it("flags high-risk overrides over 120 minutes", () => {
+  it("flags high-risk overrides over 120 minutes without blocking", () => {
     const requirement = assessMarMedicationTimingOverrideRequirement({
       overrideKind: "LATE_ADMINISTRATION",
       movedMinutes: 150,
     });
     expect(requirement.severity).toBe("HIGH");
-    expect(requirement.reviewRecommended).toBe(true);
-    expect(requirement.detailRequired).toBe(true);
+    expect(requirement.reviewRecommended).toBe(false);
+    expect(requirement.detailRequired).toBe(false);
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "LATE_ADMINISTRATION",
         movedMinutes: 150,
         reasonCode: "PATIENT_OFF_UNIT",
-      }).ok
-    ).toBe(false);
-    expect(
-      validateMarMedicationTimingOverride({
-        overrideKind: "LATE_ADMINISTRATION",
-        movedMinutes: 150,
-        reasonCode: "PATIENT_OFF_UNIT",
-        reasonDetail: "Patient in imaging suite",
       }).ok
     ).toBe(true);
   });
 
-  it("requires detail for OTHER reason code", () => {
+  it("does not require detail for OTHER when timing is advisory only", () => {
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "EARLY_ADMINISTRATION",
         movedMinutes: 60,
         reasonCode: "OTHER",
-      }).ok
-    ).toBe(false);
-    expect(
-      validateMarMedicationTimingOverride({
-        overrideKind: "EARLY_ADMINISTRATION",
-        movedMinutes: 60,
-        reasonCode: "OTHER",
-        reasonDetail: "Unit staffing constraint",
       }).ok
     ).toBe(true);
   });

@@ -13839,6 +13839,10 @@ export default {
     overrideAck: "Je confirme que cette administration est volontaire.",
   },
   marScheduleTiming: {
+    outsideWindowAdvisory:
+      "L'heure d'administration est hors de la fenêtre standard d'une heure. Vous pouvez enregistrer — aucune justification horaire n'est requise.",
+    significantDifferenceAdvisory:
+      "L'heure clinique d'administration diffère significativement de l'heure prévue ou de l'heure de saisie. Vous pouvez enregistrer — aucune justification horaire n'est requise.",
     earlyWarning:
       "Administration anticipée : prévu à {scheduledTime}, administré à {actualTime} ({minutes} min en avance).",
     lateWarning:

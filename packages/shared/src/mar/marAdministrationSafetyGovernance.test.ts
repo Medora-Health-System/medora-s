@@ -15,7 +15,7 @@ import {
   validateMarMissedDoseGovernance,
   validateMarScheduleTimingGovernance,
 } from "./marAdministrationSafetyGovernance.js";
-import { wallClockToUtc } from "../clinical/clinicalTimeZone.js";
+import { wallClockToUtc } from "../medication/medicationDoseExpansionPlanner.js";
 import { resolveMarShiftTimelineOrderItemPlacementInstant } from "../medication/marShiftTimelineOrderItemFallback.js";
 
 describe("marAdministrationSafetyGovernance (K.10B.9)", () => {
@@ -34,7 +34,7 @@ describe("marAdministrationSafetyGovernance (K.10B.9)", () => {
     });
     expect(result.kind).toBe("early");
     expect(result.minutesDelta).toBe(240);
-    expect(result.requiresReason).toBe(true);
+    expect(result.requiresReason).toBe(false);
     expect(result.actualTimeDisplay).toContain("9");
   });
 
@@ -52,19 +52,19 @@ describe("marAdministrationSafetyGovernance (K.10B.9)", () => {
     });
     expect(result.kind).toBe("late");
     expect(result.minutesDelta).toBeGreaterThanOrEqual(135);
-    expect(result.requiresReason).toBe(true);
+    expect(result.requiresReason).toBe(false);
   });
 
-  it("requires structured reason for early/late and persists documentation prefix", () => {
+  it("does not require structured reason for early/late (advisory only)", () => {
     expect(
       validateMarScheduleTimingGovernance({
-        timing: { kind: "early", requiresReason: true },
+        timing: { kind: "early", requiresReason: false },
         reasonCode: "",
       }).ok
-    ).toBe(false);
+    ).toBe(true);
     expect(
       validateMarScheduleTimingGovernance({
-        timing: { kind: "late", requiresReason: true },
+        timing: { kind: "late", requiresReason: false },
         reasonCode: "PROCEDURE",
       }).ok
     ).toBe(true);

@@ -52,7 +52,7 @@ describe("marUniversalMedicationActionTime (H9F)", () => {
   it("18-20 — documentedAt, scheduled, and universal notes preserved on submit", () => {
     expect(tabSrc).toContain("buildMarClinicalTimeDocumentationNotes");
     expect(tabSrc).toContain("documentedAt.toISOString()");
-    expect(tabSrc).toContain("scheduledTime: modalItem.scheduledAt");
+    expect(tabSrc).toContain("scheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt");
     expect(helperSrc).toContain("validateMarUniversalClinicalTime");
   });
 });

@@ -13808,6 +13808,10 @@ export default {
     overrideAck: "I confirm this administration is intentional.",
   },
   marScheduleTiming: {
+    outsideWindowAdvisory:
+      "Administration time is outside the standard 1-hour window. You may still save — no timing justification is required.",
+    significantDifferenceAdvisory:
+      "Clinical administration time differs significantly from the scheduled or documented time. You may still save — no timing justification is required.",
     earlyWarning:
       "Medication is being administered early. Scheduled: {scheduledTime}. Actual: {actualTime}. ({minutes} min early)",
     lateWarning:

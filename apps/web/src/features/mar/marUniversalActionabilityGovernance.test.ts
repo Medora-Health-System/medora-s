@@ -104,7 +104,7 @@ describe("marUniversalActionabilityGovernance (MEDUI.ED.MAR.H9)", () => {
     expect(tabSrc).toContain("isPrnAdministrationBeforeNextEligible");
   });
 
-  it("reason required for early/late administration", () => {
+  it("early/late administration is advisory only", () => {
     const timing = evaluateMarScheduleTimingGovernance({
       administeredAt: new Date("2026-06-10T08:00:00.000Z"),
       scheduledAt: new Date("2026-06-10T09:30:00.000Z"),
@@ -112,11 +112,11 @@ describe("marUniversalActionabilityGovernance (MEDUI.ED.MAR.H9)", () => {
       dueWindowEndAt: new Date("2026-06-10T10:00:00.000Z"),
       facilityTimeZone: "UTC",
     });
-    expect(timing.requiresReason).toBe(true);
+    expect(timing.requiresReason).toBe(false);
     expect(
       validateMarScheduleTimingGovernance({
         timing,
-        reasonCode: "PATIENT_CONDITION",
+        reasonCode: null,
       }).ok
     ).toBe(true);
   });

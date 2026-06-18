@@ -16,11 +16,12 @@ function readSrc(relativePath: string): string {
 }
 
 describe("marPrnTimingReasonStability (H9J.1)", () => {
-  it("timing override reason appears once — legacy block suppressed when clinical field active", () => {
+  it("legacy timing reason block suppressed — outside-window advisory only", () => {
     const tab = readSrc("components/encounters/MedicationAdministrationTab.tsx");
     expect(tab).toContain("canAdjustAdminTime");
-    expect(tab).toMatch(/modalItem\.isPrn \|\|[\s\S]*canAdjustAdminTime/);
-    expect(tab).toContain("!universalTimingNotes");
+    expect(tab).toContain("resolveMarMedicationTimingAdvisory");
+    expect(tab).toContain("mar-outside-window-advisory");
+    expect(tab).not.toContain('t("marScheduleTiming.reasonRequired")');
   });
 
   it("PRN clinical time validation does not use scheduledAt as due time", () => {
@@ -28,7 +29,7 @@ describe("marPrnTimingReasonStability (H9J.1)", () => {
     expect(tab).toContain("scheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt");
   });
 
-  it("scheduled med still supports true late reason", () => {
+  it("scheduled med late outside 1-hour window is advisory only", () => {
     const administeredAt = new Date("2026-06-12T10:30:00.000Z");
     const scheduledAt = "2026-06-12T09:00:00.000Z";
     const timing = evaluateMarScheduleAdministrationTiming({
@@ -49,7 +50,7 @@ describe("marPrnTimingReasonStability (H9J.1)", () => {
       overrideKind: kind,
       movedMinutes: Math.abs(variance.varianceMinutes),
     });
-    expect(requirement.reasonRequired).toBe(true);
+    expect(requirement.reasonRequired).toBe(false);
   });
 
   it("NOW/STAT not falsely late when no scheduled anchor", () => {
@@ -97,9 +98,9 @@ describe("marPrnTimingReasonStability (H9J.1)", () => {
     expect(validation.ok).toBe(true);
   });
 
-  it("MedicationClinicalDateTimeField owns timing override reason input", () => {
+  it("MedicationClinicalDateTimeField hides timing override reason by default", () => {
     const field = readSrc("components/mar/MedicationClinicalDateTimeField.tsx");
+    expect(field).toContain("showReasonWhenRequired = false");
     expect(field).toContain("MAR_MEDICATION_TIMING_OVERRIDE_REASON_CODES");
-    expect(field).toContain("onReasonCodeChange");
   });
 });

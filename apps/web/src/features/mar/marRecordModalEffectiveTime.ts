@@ -1,7 +1,5 @@
 import {
   medicationAdminTimeModalIsLargeBackdate,
-  medicationAdminTimeModalRequiresDetailedReason,
-  medicationAdminTimeModalRequiresReason,
 } from "./medicationAdministrationEffectiveTimeDisplay";
 
 /** PATCH effective-administered-time body (must match medicationAdministrationEffectiveTimeDtoSchema). */
@@ -50,28 +48,6 @@ export function marRecordModalEffectiveTimeClientError(input: {
   const iso = input.toUtcIso(trimmed);
   if (!iso) return input.t("marTab.adminTime.invalidTime");
 
-  const needsReason = medicationAdminTimeModalRequiresReason({
-    effectiveAdministeredTimeIso: iso,
-    originalAdministeredAt: input.documentedAt,
-    systemDocumentedAt: input.documentedAt,
-    orderCreatedAt: input.orderCreatedAt,
-    orderItemCreatedAt: input.orderItemCreatedAt,
-    adjustmentVersion: 0,
-    controlledMedication: input.controlledMedication,
-    orderCancelledAt: input.orderCancelledAt,
-  });
-  if (needsReason && !input.effectiveTimeReason.trim()) {
-    return input.t("marTab.adminTime.reasonRequired");
-  }
-  if (
-    medicationAdminTimeModalRequiresDetailedReason({
-      effectiveAdministeredTimeIso: iso,
-      systemDocumentedAt: input.documentedAt,
-      reason: input.effectiveTimeReason,
-    })
-  ) {
-    return input.t("marTab.adminTime.reasonTooShortForLargeBackdate");
-  }
   return null;
 }
 

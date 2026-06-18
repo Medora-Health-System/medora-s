@@ -74,7 +74,7 @@ describe("marRecordModalEffectiveTime", () => {
     ).toBe(false);
   });
 
-  it("requires reason for large backdate at create", () => {
+  it("large backdate at create does not require reason (advisory only)", () => {
     const documented = new Date("2026-05-16T14:00:00.000Z");
     const err = marRecordModalEffectiveTimeClientError({
       effectiveTimeLocal: "2026-05-15T08:00",
@@ -87,6 +87,13 @@ describe("marRecordModalEffectiveTime", () => {
       toUtcIso: () => "2026-05-15T13:00:00.000Z",
       t,
     });
-    expect(err).toBe("reason required");
+    expect(err).toBeNull();
+    expect(
+      marRecordModalShowsLargeBackdateSupervisoryWarning({
+        effectiveTimeLocal: "2026-05-15T08:00",
+        documentedAt: documented,
+        toUtcIso: () => "2026-05-15T13:00:00.000Z",
+      })
+    ).toBe(true);
   });
 });

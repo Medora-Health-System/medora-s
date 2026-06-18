@@ -12,10 +12,10 @@ const webSrcRoot = join(import.meta.dirname, "..", "..");
 describe("marShiftTimelineK10B5 — schedule timing governance + placement", () => {
   const haiti = "America/Port-au-Prince";
 
-  it("early administration requires reason before save", () => {
+  it("early administration is advisory only (does not require reason)", () => {
     const scheduled = wallClockToUtc(2026, 6, 12, 10, 0, haiti);
     const dueEnd = new Date(scheduled.getTime() + 60 * 60 * 1000);
-    const early = wallClockToUtc(2026, 6, 12, 9, 15, haiti);
+    const early = wallClockToUtc(2026, 6, 12, 8, 45, haiti);
     const timing = evaluateMarScheduleAdministrationTiming({
       administeredAt: early,
       scheduledAt: scheduled,
@@ -25,7 +25,7 @@ describe("marShiftTimelineK10B5 — schedule timing governance + placement", () 
       locale: "fr-FR",
     });
     expect(timing.kind).toBe("early");
-    expect(timing.requiresReason).toBe(true);
+    expect(timing.requiresReason).toBe(false);
   });
 
   it("completed item placement uses administeredAt hour", () => {
@@ -42,15 +42,15 @@ describe("marShiftTimelineK10B5 — schedule timing governance + placement", () 
     expect(placement.toISOString()).toBe(administeredAt.toISOString());
   });
 
-  it("MedicationAdministrationTab wires schedule timing reason validation (K.10B.5)", () => {
+  it("MedicationAdministrationTab shows outside-window advisory (HOTFIX.TIME.1)", () => {
     const source = readFileSync(
       join(webSrcRoot, "components/encounters/MedicationAdministrationTab.tsx"),
       "utf8"
     );
-    expect(source).toContain("evaluateMarScheduleAdministrationTiming");
-    expect(source).toContain("marScheduleTimingReason");
-    expect(source).toContain('t("marScheduleTiming.reasonRequired")');
-    expect(source).toContain("clinicalDatetimeLocalFromInstant(new Date(), tz)");
+    expect(source).toContain("resolveMarMedicationTimingAdvisory");
+    expect(source).toContain("mar-outside-window-advisory");
+    expect(source).toContain('t("marScheduleTiming.outsideWindowAdvisory")');
+    expect(source).toContain("marClinicalDateTimeLocalToUtcIso");
   });
 
   it("CreateOrderModal blocks submit when facility timezone not ready (K.10B.5)", () => {

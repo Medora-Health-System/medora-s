@@ -14,7 +14,7 @@ export const MAR_ADMINISTRATION_VARIANCE_SEVERITIES = ["LOW", "MODERATE", "HIGH"
 export type MarAdministrationVarianceSeverity =
   (typeof MAR_ADMINISTRATION_VARIANCE_SEVERITIES)[number];
 
-export const MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES = 30;
+export const MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES = 60;
 
 export type MarAdministrationVarianceAssessment = {
   classification: MarAdministrationVarianceClassification;

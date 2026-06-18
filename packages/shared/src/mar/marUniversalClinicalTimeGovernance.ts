@@ -6,6 +6,10 @@ import {
   computeMarInfusionTimingMovedMinutes,
 } from "../medication/marInfusionTimingOverrideGovernance.js";
 import {
+  resolveMarMedicationTimingAdvisory,
+  type MarMedicationTimingAdvisory,
+} from "./marMedicationTimingAdvisory.js";
+import {
   normalizeMarMedicationTimingOverrideReasonCode,
   validateMarMedicationTimingOverride,
   type MarMedicationTimingOverrideKind,
@@ -196,9 +200,8 @@ export function resolveMarUniversalClinicalTime(
 
   const docDiffers = marInfusionClinicalTimeDiffersFromSave(clinical, documented);
   const docMovedMinutes = computeMarInfusionTimingMovedMinutes(clinical, documented);
-  const docOverrideKind = resolveDocumentationOverrideKind(clinical, documented);
 
-  const requiresReason = docDiffers;
+  const requiresReason = false;
 
   const canonicalReason = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
 
@@ -226,7 +229,9 @@ export function resolveMarUniversalClinicalTime(
 
 export function validateMarUniversalClinicalTime(
   input: MarUniversalClinicalTimeInput
-): { ok: true; result: MarUniversalClinicalTimeResult } | { ok: false; code: "INVALID_TIME" | "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
+):
+  | { ok: true; result: MarUniversalClinicalTimeResult; advisory?: MarMedicationTimingAdvisory }
+  | { ok: false; code: "INVALID_TIME" | "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
   const clinical = parseInstant(input.clinicalTime);
   const documented = parseInstant(input.documentedAt);
   if (!clinical || !documented) {
@@ -236,32 +241,18 @@ export function validateMarUniversalClinicalTime(
   const resolved = resolveMarUniversalClinicalTime(input);
   if (!resolved) return { ok: false, code: "INVALID_TIME" };
 
-  const docDiffers = marInfusionClinicalTimeDiffersFromSave(clinical, documented);
-  if (!docDiffers) {
+  const isPrn = input.actionType === "PRN_ADMINISTER";
+  const advisory = resolveMarMedicationTimingAdvisory({
+    scheduledAt: input.currentScheduledTime ?? input.scheduledTime,
+    clinicalEventAt: clinical,
+    documentedAt: documented,
+    isPrn,
+  });
+
+  if (advisory.severity === "NONE") {
     return { ok: true, result: resolved };
   }
-
-  const docMovedMinutes = computeMarInfusionTimingMovedMinutes(clinical, documented);
-  const docOverrideKind = resolveDocumentationOverrideKind(clinical, documented);
-  const validation = validateMarMedicationTimingOverride({
-    overrideKind: docOverrideKind,
-    movedMinutes: docMovedMinutes,
-    reasonCode: input.reasonCode,
-    reasonDetail: input.reasonDetail,
-  });
-  if (!validation.ok) {
-    if (validation.code === "DETAIL_REQUIRED") return { ok: false, code: "DETAIL_REQUIRED" };
-    if (validation.code === "INVALID_REASON") return { ok: false, code: "INVALID_REASON" };
-    return { ok: false, code: "REASON_REQUIRED" };
-  }
-
-  const canonical = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
-  if (!canonical) return { ok: false, code: "REASON_REQUIRED" };
-  if (canonical === "OTHER" && !input.reasonDetail?.trim()) {
-    return { ok: false, code: "DETAIL_REQUIRED" };
-  }
-
-  return { ok: true, result: resolved };
+  return { ok: true, result: resolved, advisory };
 }
 
 export function buildMarUniversalClinicalTimeNotes(input: {

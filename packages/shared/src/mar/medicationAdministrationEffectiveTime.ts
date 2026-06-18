@@ -107,11 +107,6 @@ export function medicationAdminEffectiveTimeRequiresReason(input: {
   if (orderItemCreatedAt && effectiveAdministeredTime.getTime() < orderItemCreatedAt.getTime()) return true;
   if (medicationAdminEffectiveTimeIsLargeBackdate(effectiveAdministeredTime, systemDocumentedAt)) return true;
 
-  const deltaMs = Math.abs(
-    effectiveAdministeredTime.getTime() - originalAdministeredAt.getTime()
-  );
-  if (deltaMs > LARGE_DELTA_MINUTES * 60_000) return true;
-
   return false;
 }
 

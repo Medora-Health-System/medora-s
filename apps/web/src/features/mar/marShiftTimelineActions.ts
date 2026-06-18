@@ -5,7 +5,6 @@ import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
 import {
   buildMarInfusionTimingDocumentation,
   isMarShiftTimelineItemActionable,
-  validateMarInfusionClinicalTimeOverride,
 } from "@medora/shared";
 import { marInfusionStartWitnessRequired, type MarHighAlertRouteOptions } from "@/components/medication/MarHighAlertFields";
 import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
@@ -196,18 +195,10 @@ export function validateMarShiftTimelineInfusionClinicalTime(
   facilityTimeZone: string | null | undefined,
   input: { reasonCode?: string; reasonDetail?: string; saveAt?: Date }
 ): MarShiftTimelineInfusionTimingValidation {
-  const clinicalIso = marShiftTimelineDateTimeLocalToUtcIso(timeLocal?.trim() ?? "", facilityTimeZone);
-  if (!clinicalIso) return { ok: true };
-  const result = validateMarInfusionClinicalTimeOverride({
-    clinicalAt: clinicalIso,
-    saveAt: input.saveAt ?? new Date(),
-    reasonCode: input.reasonCode,
-    reasonDetail: input.reasonDetail,
-  });
-  if (result.ok) return { ok: true };
-  if (result.code === "DETAIL_REQUIRED") return { ok: false, reason: "timing_detail_required" };
-  if (result.code === "INVALID_REASON") return { ok: false, reason: "invalid_timing_reason" };
-  return { ok: false, reason: "timing_reason_required" };
+  void timeLocal;
+  void facilityTimeZone;
+  void input;
+  return { ok: true };
 }
 
 export function buildMarShiftTimelineStopPayload(

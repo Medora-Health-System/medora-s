@@ -2,8 +2,11 @@
 
 import { buildMarScheduleTimingDocumentation } from "../mar/marAdministrationSafetyGovernance.js";
 import {
+  resolveMarMedicationTimingAdvisory,
+  type MarMedicationTimingAdvisory,
+} from "../mar/marMedicationTimingAdvisory.js";
+import {
   type MarMedicationTimingOverrideKind,
-  validateMarMedicationTimingOverride,
 } from "../mar/marMedicationTimingOverrideGovernance.js";
 
 export const MAR_INFUSION_TIMING_SAVE_TOLERANCE_MINUTES = 1;
@@ -40,19 +43,25 @@ export function computeMarInfusionTimingMovedMinutes(
 export function validateMarInfusionClinicalTimeOverride(input: {
   clinicalAt: Date | string;
   saveAt?: Date;
+  scheduledAt?: Date | string | null;
   reasonCode?: string | null;
   reasonDetail?: string | null;
-}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
-  const saveAt = input.saveAt ?? new Date();
-  if (!marInfusionClinicalTimeDiffersFromSave(input.clinicalAt, saveAt)) {
+  isPrn?: boolean;
+}): { ok: true; advisory?: MarMedicationTimingAdvisory } {
+  void input.reasonCode;
+  void input.reasonDetail;
+
+  const advisory = resolveMarMedicationTimingAdvisory({
+    scheduledAt: input.scheduledAt,
+    clinicalEventAt: input.clinicalAt,
+    documentedAt: input.saveAt ?? new Date(),
+    isPrn: input.isPrn,
+  });
+
+  if (advisory.severity === "NONE") {
     return { ok: true };
   }
-  return validateMarMedicationTimingOverride({
-    overrideKind: resolveMarInfusionTimingOverrideKind(input.clinicalAt, saveAt),
-    movedMinutes: computeMarInfusionTimingMovedMinutes(input.clinicalAt, saveAt),
-    reasonCode: input.reasonCode,
-    reasonDetail: input.reasonDetail,
-  });
+  return { ok: true, advisory };
 }
 
 export function buildMarInfusionTimingDocumentation(input: {

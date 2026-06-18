@@ -72,6 +72,34 @@ export function clinicalDatetimeLocalToUtcIso(
   return date ? date.toISOString() : null;
 }
 
+/** Format ISO instant in facility timezone for medication order/MAR display. */
+export function resolveMedicationClinicalDisplayTime(input: {
+  iso: string | Date | null | undefined;
+  facilityTimezone: string | null | undefined;
+  locale?: string;
+}): string {
+  if (input.iso == null) return "";
+  return formatMedicationTimeInFacilityZone({
+    iso: input.iso,
+    facilityTimezone: input.facilityTimezone,
+    locale: input.locale,
+  });
+}
+
+/** Alias for medication-facing display — facility TZ is the single source of truth. */
+export function formatMedicationTimeInFacilityZone(input: {
+  iso: string | Date | null | undefined;
+  facilityTimezone: string | null | undefined;
+  locale?: string;
+}): string {
+  if (input.iso == null) return "";
+  return formatClinicalDateTimeInZone(
+    input.iso,
+    input.locale ?? "en-US",
+    resolveClinicalTimeZone({ facilityTimeZone: input.facilityTimezone })
+  );
+}
+
 /** User-facing clinical date/time in facility timezone (never browser-local). */
 export function formatClinicalDateTimeInZone(
   instant: Date | string | null | undefined,

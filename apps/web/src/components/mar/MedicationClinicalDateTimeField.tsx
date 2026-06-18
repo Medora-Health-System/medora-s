@@ -29,7 +29,7 @@ export function MedicationClinicalDateTimeField({
   onReasonDetailChange,
   required = false,
   disabled = false,
-  showReasonWhenRequired = true,
+  showReasonWhenRequired = false,
   allowClear = false,
   testId = "mar-clinical-datetime-field",
 }: {

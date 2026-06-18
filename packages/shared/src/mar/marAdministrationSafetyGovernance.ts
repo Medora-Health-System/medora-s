@@ -9,6 +9,14 @@ import {
   assessMarMedicationTimingOverrideRequirement,
   normalizeMarMedicationTimingOverrideReasonCode,
 } from "./marMedicationTimingOverrideGovernance.js";
+import {
+  MAR_STANDARD_ADMINISTRATION_WINDOW_MINUTES,
+  resolveMarAdministrationWindowStatus,
+} from "./marMedicationAdministrationWindow.js";
+import {
+  resolveMarMedicationTimingAdvisory,
+  type MarMedicationTimingAdvisory,
+} from "./marMedicationTimingAdvisory.js";
 
 /** Persisted prefix for early/late schedule timing documentation (K.10B.9). */
 export const MAR_SCHEDULE_TIMING_NOTE_PREFIX = "MAR_SCHEDULE_TIMING:";
@@ -120,31 +128,34 @@ export function evaluateMarScheduleTimingGovernance(input: {
 
   const scheduledDisplay = formatClinicalDateTimeInZone(scheduled, locale, tz);
   const actualDisplay = formatClinicalDateTimeInZone(administered, locale, tz);
-  const dueStart = parseInstant(input.dueWindowStartAt) ?? scheduled;
-  const dueEnd = parseInstant(input.dueWindowEndAt) ?? scheduled;
-  const adminMs = administered.getTime();
 
-  if (adminMs < dueStart.getTime()) {
-    const minutesEarly = Math.max(1, Math.round((dueStart.getTime() - adminMs) / 60_000));
+  const windowStatus = resolveMarAdministrationWindowStatus({
+    scheduledAt: scheduled,
+    administeredAt: administered,
+    windowMinutes: MAR_STANDARD_ADMINISTRATION_WINDOW_MINUTES,
+  });
+
+  if (windowStatus.status === "EARLY") {
+    const minutesEarly = Math.max(1, Math.abs(windowStatus.minutesDelta));
     return {
       kind: "early",
       scheduledTimeDisplay: scheduledDisplay,
       actualTimeDisplay: actualDisplay,
       minutesDelta: minutesEarly,
       directionLabel: "early",
-      requiresReason: true,
+      requiresReason: false,
     };
   }
 
-  if (adminMs > dueEnd.getTime()) {
-    const minutesLate = Math.max(1, Math.round((adminMs - dueEnd.getTime()) / 60_000));
+  if (windowStatus.status === "LATE") {
+    const minutesLate = Math.max(1, Math.abs(windowStatus.minutesDelta));
     return {
       kind: "late",
       scheduledTimeDisplay: scheduledDisplay,
       actualTimeDisplay: actualDisplay,
       minutesDelta: minutesLate,
       directionLabel: "late",
-      requiresReason: true,
+      requiresReason: false,
     };
   }
 
@@ -181,34 +192,32 @@ export function validateMarScheduleTimingGovernance(input: {
   timing: Pick<MarScheduleTimingGovernanceResult, "requiresReason" | "kind"> & {
     minutesDelta?: number;
   };
+  administeredAt?: Date | string;
+  scheduledAt?: Date | string;
+  documentedAt?: Date | string;
+  isPrn?: boolean;
   reasonCode?: string | null;
   otherText?: string | null;
-}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "OTHER_DETAIL_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
-  const overrideKind =
-    input.timing.kind === "early"
-      ? "EARLY_ADMINISTRATION"
-      : input.timing.kind === "late"
-        ? "LATE_ADMINISTRATION"
-        : "ON_TIME_ADMINISTRATION";
-  const movedMinutes = Math.abs(input.timing.minutesDelta ?? 0);
-  const h9cRequirement = assessMarMedicationTimingOverrideRequirement({
-    overrideKind,
-    movedMinutes,
+}): { ok: true; advisory?: MarMedicationTimingAdvisory } {
+  void input.timing;
+  void input.reasonCode;
+  void input.otherText;
+
+  if (!input.administeredAt) {
+    return { ok: true };
+  }
+
+  const advisory = resolveMarMedicationTimingAdvisory({
+    scheduledAt: input.scheduledAt,
+    clinicalEventAt: input.administeredAt,
+    documentedAt: input.documentedAt,
+    isPrn: input.isPrn,
   });
-  const reasonRequired = input.timing.requiresReason || h9cRequirement.reasonRequired;
 
-  if (!reasonRequired) return { ok: true };
-
-  const canonical = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
-  if (!canonical) return { ok: false, code: "REASON_REQUIRED" };
-
-  if (h9cRequirement.detailRequired && !input.otherText?.trim()) {
-    return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
+  if (advisory.severity === "NONE") {
+    return { ok: true };
   }
-  if (canonical === "OTHER" && !input.otherText?.trim()) {
-    return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
-  }
-  return { ok: true };
+  return { ok: true, advisory };
 }
 
 export function buildMarMissedDoseDocumentation(

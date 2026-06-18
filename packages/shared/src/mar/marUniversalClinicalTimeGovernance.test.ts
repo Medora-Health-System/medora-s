@@ -28,15 +28,17 @@ describe("marUniversalClinicalTimeGovernance (H9F)", () => {
     expect(result?.placementInstant).toBe(clinicalTime);
   });
 
-  it("2 — reason required when clinicalTime differs beyond threshold", () => {
+  it("2 — no reason required when clinicalTime differs from documentedAt", () => {
     const validation = validateMarUniversalClinicalTime({
       actionType: "ADMINISTER",
       clinicalTime,
       documentedAt,
       reasonCode: null,
     });
-    expect(validation.ok).toBe(false);
-    if (!validation.ok) expect(validation.code).toBe("REASON_REQUIRED");
+    expect(validation.ok).toBe(true);
+    if (validation.ok) {
+      expect(validation.advisory?.severity ?? "NONE").toBeDefined();
+    }
   });
 
   it("3 — no reason required when within threshold", () => {

@@ -203,16 +203,13 @@ describe("MedicationAdministrationService MAR safety governance (K.10B.9A)", () 
     administeredQuantity: 1,
   };
 
-  it("rejects early administration without reason → MAR_EARLY_ADMIN_REASON_REQUIRED", async () => {
+  it("accepts early administration without reason", async () => {
     const service = makeService();
-    await expectMarGovernanceRejection(
-      service.create("enc-1", "fac-1", "nurse-1", {
-        ...dosePayload,
-        administeredAt: EARLY_ADMIN_AT,
-      }),
-      MAR_EARLY_ADMIN_REASON_REQUIRED
-    );
-    expect(marCreate).not.toHaveBeenCalled();
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      ...dosePayload,
+      administeredAt: EARLY_ADMIN_AT,
+    });
+    expect(marCreate).toHaveBeenCalled();
   });
 
   it("accepts early administration with structured reason in notes", async () => {
@@ -240,16 +237,13 @@ describe("MedicationAdministrationService MAR safety governance (K.10B.9A)", () 
     expect(marCreate).toHaveBeenCalled();
   });
 
-  it("rejects late administration without reason → MAR_LATE_ADMIN_REASON_REQUIRED", async () => {
+  it("accepts late administration without reason", async () => {
     const service = makeService();
-    await expectMarGovernanceRejection(
-      service.create("enc-1", "fac-1", "nurse-1", {
-        ...dosePayload,
-        administeredAt: LATE_ADMIN_AT,
-      }),
-      MAR_LATE_ADMIN_REASON_REQUIRED
-    );
-    expect(marCreate).not.toHaveBeenCalled();
+    await service.create("enc-1", "fac-1", "nurse-1", {
+      ...dosePayload,
+      administeredAt: LATE_ADMIN_AT,
+    });
+    expect(marCreate).toHaveBeenCalled();
   });
 
   it("accepts late administration with structured reason in notes", async () => {

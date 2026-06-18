@@ -18,8 +18,8 @@ describe("mar-administration-safety-governance.util (K.10B.9A)", () => {
     dueWindowEndAt: new Date("2026-06-12T14:00:00.000Z"),
   };
 
-  it("assertMarScheduleTimingGovernanceForCreate throws MAR_EARLY_ADMIN_REASON_REQUIRED", () => {
-    try {
+  it("assertMarScheduleTimingGovernanceForCreate does not block early administration", () => {
+    expect(() =>
       assertMarScheduleTimingGovernanceForCreate({
         marAction: "administered",
         data: {
@@ -27,18 +27,11 @@ describe("mar-administration-safety-governance.util (K.10B.9A)", () => {
         },
         doseInstance,
         facilityTimeZone: "UTC",
-      });
-      throw new Error("expected throw");
-    } catch (err) {
-      expect(err).toBeInstanceOf(BadRequestException);
-      expect((err as BadRequestException).getResponse()).toMatchObject({
-        code: MAR_EARLY_ADMIN_REASON_REQUIRED,
-        errorCode: MAR_EARLY_ADMIN_REASON_REQUIRED,
-      });
-    }
+      })
+    ).not.toThrow();
   });
 
-  it("assertMarScheduleTimingGovernanceForCreate accepts documented early reason", () => {
+  it("assertMarScheduleTimingGovernanceForCreate accepts without timing reason", () => {
     expect(() =>
       assertMarScheduleTimingGovernanceForCreate({
         marAction: "administered",

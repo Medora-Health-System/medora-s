@@ -93,7 +93,7 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
     expect(resolveMarShiftTimelineClinicalAction("IVPB_SESSION", "PLANNED")).toBe("START_INFUSION");
   });
 
-  it("4 — early administration requires reason", () => {
+  it("4 — early administration is advisory only", () => {
     const timing = evaluateMarScheduleTimingGovernance({
       administeredAt: "2026-06-17T23:40:00.000Z",
       scheduledAt: "2026-06-18T00:36:00.000Z",
@@ -101,11 +101,11 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
       dueWindowEndAt: "2026-06-18T01:00:00.000Z",
       facilityTimeZone: "America/Port-au-Prince",
     });
-    expect(timing.requiresReason).toBe(true);
-    expect(validateMarScheduleTimingGovernance({ timing, reasonCode: null }).ok).toBe(false);
+    expect(timing.requiresReason).toBe(false);
+    expect(validateMarScheduleTimingGovernance({ timing, reasonCode: null }).ok).toBe(true);
   });
 
-  it("5 — late administration requires reason", () => {
+  it("5 — late administration is advisory only", () => {
     const timing = evaluateMarScheduleTimingGovernance({
       administeredAt: "2026-06-18T02:00:00.000Z",
       scheduledAt: "2026-06-18T00:36:00.000Z",
@@ -114,7 +114,7 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
       facilityTimeZone: "UTC",
     });
     expect(timing.kind).toBe("late");
-    expect(timing.requiresReason).toBe(true);
+    expect(timing.requiresReason).toBe(false);
   });
 
   it("6 — change scheduled time requires reason", () => {
@@ -161,8 +161,8 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
     );
   });
 
-  it("9 — actual administered time displayed in tab", () => {
-    expect(tabSrc).toContain("evaluateMarScheduleAdministrationTiming");
+  it("9 — actual administered time and window advisory in tab", () => {
+    expect(tabSrc).toContain("resolveMarMedicationTimingAdvisory");
     expect(tabSrc).toContain("effectiveAdministeredAt");
   });
 
@@ -181,8 +181,9 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
     expect(tabSrc).toContain("validatePrnAdministrationForMarCreate");
   });
 
-  it("13 — historical MAR shows override via timing governance", () => {
-    expect(tabSrc).toContain("marScheduleTimingReasonCode");
+  it("13 — historical MAR shows outside-window advisory wiring", () => {
+    expect(tabSrc).toContain("mar-outside-window-advisory");
+    expect(tabSrc).toContain("resolveMarMedicationTimingAdvisory");
   });
 
   it("14 — history shows time change read model support", () => {

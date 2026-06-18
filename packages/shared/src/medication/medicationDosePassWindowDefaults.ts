@@ -14,7 +14,7 @@ export const MEDICATION_DOSE_HORIZON_REPLENISH_THRESHOLD_MS =
   MEDICATION_DOSE_HORIZON_REPLENISH_THRESHOLD_HOURS * 60 * 60 * 1000;
 
 /** Minutes before scheduledAt when a dose becomes administrable. */
-export const DEFAULT_EARLY_TOLERANCE_MINUTES = 30 as const;
+export const DEFAULT_EARLY_TOLERANCE_MINUTES = 60 as const;
 
 /** Minutes after scheduledAt when a dose is still on-time. */
 export const DEFAULT_LATE_TOLERANCE_MINUTES = 60 as const;
