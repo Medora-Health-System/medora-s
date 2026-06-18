@@ -73,6 +73,7 @@ export * from "./billingClaimPackages.js";
 export * from "./billingClaimExport.js";
 export * from "./billingX12Preview.js";
 export * from "./billingLedgerInferCode.js";
+export * from "./billing/revenueCycleClassification.js";
 export * from "./icd10Normalize.js";
 export * from "./icd10FormatGuardrail.js";
 export * from "./claimDiagnosisCodes.js";

@@ -1722,6 +1722,60 @@ export default {
     erProcedureCatalogLink: "Import catalogue procédures urgences (HCPCS/CPT)",
     roiWorkflowLink: "Dévoilement dossier (ROI)",
     roiMonitoringLink: "Surveillance ROI (plateforme)",
+    revenueCycleLink: "Cycle de revenus",
+  },
+  revenueCycle: {
+    title: "Cycle de revenus",
+    intro:
+      "Espace opérationnel pour les spécialistes facturation, codeurs, gestionnaires du cycle de revenus, auditeurs et administrateurs. Coquille en lecture seule — les files réelles seront connectées ultérieurement.",
+    backAdmin: "← Administration",
+    accessDenied: "Accès facturation, accueil ou administrateur requis.",
+    viewsAriaLabel: "Files du cycle de revenus",
+    filtersAriaLabel: "Filtres rapides du cycle de revenus",
+    shellNotice: "Aperçu coquille — lignes de démonstration uniquement.",
+    readOnlyNotice:
+      "Espace en lecture seule. Consulter le registre uniquement ; aucune mutation facturation, codage, réclamation ou paiement.",
+    views: {
+      readyForBilling: "Prêt pour facturation",
+      billingDeficiency: "Déficience facturation",
+      codingReview: "Revue codage requise",
+      claimSubmitted: "Réclamation soumise",
+      claimPaid: "Réclamation payée",
+    },
+    filters: {
+      all: "Tous",
+    },
+    table: {
+      encounter: "Rencontre",
+      patient: "Patient",
+      mrn: "NDM",
+      dos: "Date de service",
+      provider: "Médecin",
+      queue: "File",
+      billingStatus: "Statut facturation",
+      codingStatus: "Statut codage",
+      claimStatus: "Statut réclamation",
+      actions: "Actions",
+      empty: "Aucune rencontre dans cette file.",
+    },
+    billingStatus: {
+      ready: "Prêt",
+      deficiency: "Déficience",
+      not_reviewed: "Non revu",
+    },
+    codingStatus: {
+      ready: "Prêt",
+      review_needed: "Revue requise",
+    },
+    claimStatus: {
+      not_submitted: "Non soumise",
+      submitted: "Soumise",
+      paid: "Payée",
+      unknown: "Inconnu",
+    },
+    actions: {
+      viewLedger: "Voir le registre",
+    },
   },
   roi: {
     title: "Dévoilement de dossier (ROI)",
