@@ -24,10 +24,9 @@ export const ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS: Record<EdLifecycleBoardView, str
 export const ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS: Partial<
   Record<EdLifecycleBoardView, string>
 > = {
-  incompleteCharts: "edLifecycle.placeholder.incompleteCharts",
   allEncounters: "edLifecycle.placeholder.allEncounters",
 };
 
 export function isEdLifecyclePlaceholderView(view: EdLifecycleBoardView): boolean {
-  return view === "incompleteCharts" || view === "allEncounters";
+  return view === "allEncounters";
 }

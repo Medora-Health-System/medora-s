@@ -65,7 +65,8 @@ describe("edMyPatientsFilter (MEDUI.ED.LIFECYCLE.4)", () => {
     );
     expect(emergencyOnlyBlock).not.toContain("resolveMyPatientsEncounters");
     expect(emergencyOnlyBlock).not.toContain("myPatientsBase");
-    expect(trackboard).toContain("boardViewMode === \"myPatients\" ? myPatientsSorted : sortedFiltered");
+    expect(trackboard).toContain("encounterListRows");
+    expect(trackboard).toContain('boardViewMode === "incompleteCharts"');
   });
 
   it("search applies independently to My Patients without changing trackboard rows", () => {

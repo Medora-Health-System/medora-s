@@ -61,12 +61,12 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
   });
 
-  it("Incomplete Charts placeholder renders without patient movement", () => {
+  it("Incomplete Charts tab wires lifecycle workspace (LIFECYCLE.5)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("ed-lifecycle-placeholder-${boardViewMode}");
-    expect(trackboard).toContain("ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS");
-    expect(trackboard).not.toContain("resolveEdEncounterLifecycleState");
-    expect(trackboard).not.toContain("INCOMPLETE_CHART");
+    expect(trackboard).toContain("resolveIncompleteChartsEncounters");
+    expect(trackboard).toContain('data-testid="ed-incomplete-charts-empty"');
+    expect(trackboard).toContain('boardViewMode === "incompleteCharts"');
+    expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(false);
   });
 
   it("All Encounters placeholder renders without archive query", () => {
@@ -87,8 +87,9 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
   it("No API or data movement introduced for placeholder views", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
-    expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(true);
-    expect(trackboard).not.toContain("buildEdEncounterLifecycleProjection");
+    expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(false);
+    expect(trackboard).toContain("resolveActiveTrackboardEncounters");
+    expect(trackboard).toContain("resolveIncompleteChartsEncounters");
     const loadBlock = trackboard.slice(
       trackboard.indexOf("const loadEncounters"),
       trackboard.indexOf("const claimSelf")
@@ -127,7 +128,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(fr).toContain('myPatients: "Mes patients"');
     expect(fr).toContain('incompleteCharts: "Dossiers incomplets"');
     expect(fr).toContain('allEncounters: "Tous les dossiers"');
-    for (const view of ["incompleteCharts", "allEncounters"] as const) {
+    for (const view of ["allEncounters"] as const) {
       expect(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[view]).toBeDefined();
     }
   });

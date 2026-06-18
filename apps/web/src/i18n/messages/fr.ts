@@ -4754,6 +4754,15 @@ export default {
       empty: "Aucune rencontre ne vous est actuellement assignée.",
       ownershipBadge: "Assigné à vous",
     },
+    incompleteCharts: {
+      empty: "Aucun dossier incomplet en attente de documentation.",
+      badge: {
+        incompleteChart: "Dossier incomplet",
+        missingDocumentation: "Documentation manquante",
+        providerSignatureNeeded: "Signature du médecin requise",
+        documentationDeficiency: "Déficience de documentation",
+      },
+    },
   },
   emergencyTrackboard: {
     title: "Urgences",

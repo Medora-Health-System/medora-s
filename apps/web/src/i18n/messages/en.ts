@@ -4786,6 +4786,15 @@ export default {
       empty: "No encounters are currently assigned to you.",
       ownershipBadge: "Assigned to you",
     },
+    incompleteCharts: {
+      empty: "No incomplete charts awaiting documentation.",
+      badge: {
+        incompleteChart: "Incomplete Chart",
+        missingDocumentation: "Missing Documentation",
+        providerSignatureNeeded: "Provider Signature Needed",
+        documentationDeficiency: "Documentation Deficiency",
+      },
+    },
   },
   emergencyTrackboard: {
     title: "Emergency Department",

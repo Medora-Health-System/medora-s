@@ -57,6 +57,11 @@ import {
   resolveMyPatientsEncounters,
 } from "@/features/emergency/edMyPatientsFilter";
 import {
+  resolveActiveTrackboardEncounters,
+  resolveEdIncompleteChartBadgeKeys,
+  resolveIncompleteChartsEncounters,
+} from "@/features/emergency/edIncompleteChartsFilter";
+import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
   indexBedBoardByKey,
@@ -202,6 +207,12 @@ type OpenEncounterRow = {
   /** Phase 10B — first admission-summary save timestamp (server). */
   admittedAt?: string | null;
   providerDocumentationSignedAt?: string | null;
+  providerDocumentationStatus?: string | null;
+  workflowState?: string | null;
+  providerNote?: string | null;
+  treatmentPlan?: string | null;
+  billingFinalizationStatus?: string | null;
+  dischargedAt?: string | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
   nursingAssessment?: unknown;
@@ -211,6 +222,27 @@ type OpenEncounterRow = {
   governedRoomUnit?: string | null;
   governedRoomHasAssignment?: boolean;
 };
+
+function filterOpenEncountersBySearch(
+  encounters: OpenEncounterRow[],
+  search: string,
+  t: (key: string) => string
+): OpenEncounterRow[] {
+  const q = search.trim().toLowerCase();
+  if (!q) return encounters;
+  return encounters.filter((encounter) => {
+    const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
+    const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
+      .trim()
+      .toLowerCase();
+    const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
+    const room = (encounter.roomLabel ?? "").toLowerCase();
+    const phys = physicianLabel(encounter).toLowerCase();
+    const nurse = nurseLabel(encounter).toLowerCase();
+    const blob = `${name} ${nir} ${cc} ${room} ${phys} ${nurse}`;
+    return blob.includes(q);
+  });
+}
 
 type EdRoomAssignmentLaunch = {
   encounter: OpenEncounterRow;
@@ -402,22 +434,20 @@ export function EmergencyTrackboardView() {
     [rows]
   );
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return emergencyOnly;
-    return emergencyOnly.filter((encounter) => {
-      const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
-      const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
-        .trim()
-        .toLowerCase();
-      const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
-      const room = (encounter.roomLabel ?? "").toLowerCase();
-      const phys = physicianLabel(encounter).toLowerCase();
-      const nurse = nurseLabel(encounter).toLowerCase();
-      const blob = `${name} ${nir} ${cc} ${room} ${phys} ${nurse}`;
-      return blob.includes(q);
-    });
-  }, [emergencyOnly, search, t]);
+  const activeTrackboardBase = useMemo(
+    () => resolveActiveTrackboardEncounters(emergencyOnly),
+    [emergencyOnly]
+  );
+
+  const incompleteChartsBase = useMemo(
+    () => resolveIncompleteChartsEncounters(emergencyOnly),
+    [emergencyOnly]
+  );
+
+  const filtered = useMemo(
+    () => filterOpenEncountersBySearch(activeTrackboardBase, search, t),
+    [activeTrackboardBase, search, t]
+  );
 
   const sortedFiltered = useMemo(() => sortRowsByRoomLabel(filtered), [filtered]);
 
@@ -431,30 +461,32 @@ export function EmergencyTrackboardView() {
     [emergencyOnly, myPatientsFilterCtx]
   );
 
-  const myPatientsFiltered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return myPatientsBase;
-    return myPatientsBase.filter((encounter) => {
-      const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
-      const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
-        .trim()
-        .toLowerCase();
-      const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
-      const room = (encounter.roomLabel ?? "").toLowerCase();
-      const phys = physicianLabel(encounter).toLowerCase();
-      const nurse = nurseLabel(encounter).toLowerCase();
-      const blob = `${name} ${nir} ${cc} ${room} ${phys} ${nurse}`;
-      return blob.includes(q);
-    });
-  }, [myPatientsBase, search, t]);
+  const myPatientsFiltered = useMemo(
+    () => filterOpenEncountersBySearch(myPatientsBase, search, t),
+    [myPatientsBase, search, t]
+  );
 
   const myPatientsSorted = useMemo(
     () => sortRowsByRoomLabel(myPatientsFiltered),
     [myPatientsFiltered]
   );
 
+  const incompleteChartsFiltered = useMemo(
+    () => filterOpenEncountersBySearch(incompleteChartsBase, search, t),
+    [incompleteChartsBase, search, t]
+  );
+
+  const incompleteChartsSorted = useMemo(
+    () => sortRowsByRoomLabel(incompleteChartsFiltered),
+    [incompleteChartsFiltered]
+  );
+
   const encounterListRows =
-    boardViewMode === "myPatients" ? myPatientsSorted : sortedFiltered;
+    boardViewMode === "myPatients"
+      ? myPatientsSorted
+      : boardViewMode === "incompleteCharts"
+        ? incompleteChartsSorted
+        : sortedFiltered;
 
   const edBedBoardUnit = useMemo(
     () => (edBedBoard ? findBedBoardUnit(edBedBoard, "ED") : null),
@@ -464,15 +496,18 @@ export function EmergencyTrackboardView() {
   const lifecycleNavLabel = useCallback(
     (view: EdLifecycleBoardView): string => {
       const base = t(ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS[view]);
-      if (view === "trackboard" && emergencyOnly.length > 0) {
-        return `${base} (${emergencyOnly.length})`;
+      if (view === "trackboard" && activeTrackboardBase.length > 0) {
+        return `${base} (${activeTrackboardBase.length})`;
       }
       if (view === "myPatients" && myPatientsBase.length > 0) {
         return `${base} (${myPatientsBase.length})`;
       }
+      if (view === "incompleteCharts" && incompleteChartsBase.length > 0) {
+        return `${base} (${incompleteChartsBase.length})`;
+      }
       return base;
     },
-    [emergencyOnly.length, myPatientsBase.length, t]
+    [activeTrackboardBase.length, incompleteChartsBase.length, myPatientsBase.length, t]
   );
 
   const lifecyclePlaceholderPanelStyle: React.CSSProperties = {
@@ -485,7 +520,7 @@ export function EmergencyTrackboardView() {
   };
 
   const unassignedEdCandidates = useMemo((): BedBoardAssignCandidate[] => {
-    return emergencyOnly
+    return activeTrackboardBase
       .filter((row) => !(row.roomLabel ?? "").trim())
       .map((row) => ({
         id: row.id,
@@ -494,7 +529,7 @@ export function EmergencyTrackboardView() {
         type: row.type ?? "EMERGENCY",
         admissionSummaryJson: row.admissionSummaryJson,
       }));
-  }, [emergencyOnly, t]);
+  }, [activeTrackboardBase, t]);
 
   const refreshEdBedBoard = useCallback(async () => {
     if (!facilityId) return;
@@ -809,6 +844,15 @@ export function EmergencyTrackboardView() {
               {t("edLifecycle.myPatients.empty")}
             </p>
           </div>
+        ) : boardViewMode === "incompleteCharts" && incompleteChartsBase.length === 0 ? (
+          <div
+            style={lifecyclePlaceholderPanelStyle}
+            data-testid="ed-incomplete-charts-empty"
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
+              {t("edLifecycle.incompleteCharts.empty")}
+            </p>
+          </div>
         ) : encounterListRows.length === 0 ? (
           <div
             style={{
@@ -821,16 +865,16 @@ export function EmergencyTrackboardView() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              {boardViewMode === "myPatients"
+              {boardViewMode === "myPatients" || boardViewMode === "incompleteCharts"
                 ? t("emergencyTrackboard.emptyNoSearch")
-                : emergencyOnly.length === 0
+                : activeTrackboardBase.length === 0
                   ? t("emergencyTrackboard.emptyNoEncounters")
                   : t("emergencyTrackboard.emptyNoSearch")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-              {boardViewMode === "myPatients"
+              {boardViewMode === "myPatients" || boardViewMode === "incompleteCharts"
                 ? t("emergencyTrackboard.emptyHintSearch")
-                : emergencyOnly.length === 0
+                : activeTrackboardBase.length === 0
                   ? t("emergencyTrackboard.emptyHintNoEncounters")
                   : t("emergencyTrackboard.emptyHintSearch")}
             </p>
@@ -875,6 +919,7 @@ export function EmergencyTrackboardView() {
               const isPhysMine = Boolean(userId && physId && physId === userId);
               const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
               const isAssignedToMe = isEncounterAssignedToCurrentUser(encounter, myPatientsFilterCtx);
+              const incompleteChartBadges = resolveEdIncompleteChartBadgeKeys(encounter);
               const nirLine = patientNirDisplay(patient, dash);
               const arrivalDisplay = encounter.createdAt
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)
@@ -1150,6 +1195,15 @@ export function EmergencyTrackboardView() {
                                   {t("edLifecycle.myPatients.ownershipBadge")}
                                 </MedoraCardBadge>
                               ) : null}
+                              {incompleteChartBadges.map((badgeKey) => (
+                                <MedoraCardBadge
+                                  key={badgeKey}
+                                  compact={usesCompactCensus}
+                                  soft={{ bg: "#fffbeb", text: "#92400e", border: "#fde68a" }}
+                                >
+                                  {t(badgeKey)}
+                                </MedoraCardBadge>
+                              ))}
                               {facilityId ? (
                                 <BillingClassificationBadgeInteractive
                                   encounterId={encounter.id}
