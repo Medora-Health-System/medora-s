@@ -55,6 +55,10 @@ export function revenueClaimViewHref(encounterId: string, claimId: string): stri
   return `/app/billing/encounters/${encodedEncounter}?claimSubmission=${encodedClaim}`;
 }
 
+export function revenueClaimAuditHref(claimId: string): string {
+  return `/app/admin/revenue-cycle/claims/${encodeURIComponent(claimId)}`;
+}
+
 export function matchesRevenueClaimFilter(
   queue: ClaimSubmissionWorkspaceQueue,
   filter: RevenueClaimWorkspaceFilter

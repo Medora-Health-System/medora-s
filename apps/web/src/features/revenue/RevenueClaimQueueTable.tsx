@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import type { RevenueClaimQueueRow } from "@/features/revenue/revenueClaimSubmissionWorkspaceModels";
+import { revenueClaimAuditHref } from "@/features/revenue/revenueClaimSubmissionNavigation";
 
 type RevenueClaimQueueTableProps = {
   rows: readonly RevenueClaimQueueRow[];
@@ -113,6 +114,13 @@ export function RevenueClaimQueueTable({ rows }: RevenueClaimQueueTableProps) {
                       data-testid={`revenue-claim-view-${row.claimId}`}
                     >
                       {t("revenueClaimSubmission.actions.viewClaim")}
+                    </Link>
+                    <Link
+                      href={revenueClaimAuditHref(row.claimId)}
+                      style={actionLinkStyle}
+                      data-testid={`revenue-claim-audit-${row.claimId}`}
+                    >
+                      {t("revenueClaimSubmission.actions.viewAudit")}
                     </Link>
                   </div>
                 </td>

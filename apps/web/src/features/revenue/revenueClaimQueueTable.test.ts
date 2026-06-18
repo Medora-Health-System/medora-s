@@ -25,7 +25,8 @@ describe("revenueClaimQueueTable (MEDUI.ADMIN.REVENUE.3)", () => {
     const table = readWebFile("src/features/revenue/RevenueClaimQueueTable.tsx");
     expect(table).toContain("revenueClaimSubmission.actions.viewLedger");
     expect(table).toContain("revenueClaimSubmission.actions.viewClaim");
-    expect(table).not.toContain("submit");
+    expect(table).toContain("viewAudit");
+    expect(table).toContain("revenue-claim-audit-");
     expect(table).not.toContain("retry");
     expect(table).not.toContain("resend");
   });

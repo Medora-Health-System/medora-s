@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RoleCode } from "@prisma/client";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@medora/shared";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { RevenueCycleClaimsService } from "./revenue-cycle-claims.service";
+import { RevenueCycleClaimAuditService } from "./revenue-cycle-claim-audit.service";
 
 function parseQueueFilter(raw: string | undefined): RevenueClaimSubmissionFilter {
   const value = (raw ?? "ALL").trim().toUpperCase();
@@ -20,7 +21,10 @@ function parseQueueFilter(raw: string | undefined): RevenueClaimSubmissionFilter
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class RevenueCycleClaimsController {
-  constructor(private readonly revenueCycleClaimsService: RevenueCycleClaimsService) {}
+  constructor(
+    private readonly revenueCycleClaimsService: RevenueCycleClaimsService,
+    private readonly revenueCycleClaimAuditService: RevenueCycleClaimAuditService
+  ) {}
 
   @Get("billing/revenue-cycle/claims")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
@@ -41,5 +45,14 @@ export class RevenueCycleClaimsController {
       limit: Number.isFinite(limit) ? limit : undefined,
       offset: Number.isFinite(offset) ? offset : undefined,
     });
+  }
+
+  @Get("billing/revenue-cycle/claims/:claimId/audit")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getRevenueCycleClaimAudit(
+    @Req() req: { facilityId: string },
+    @Param("claimId") claimId: string
+  ) {
+    return this.revenueCycleClaimAuditService.getClaimAudit(req.facilityId, claimId);
   }
 }

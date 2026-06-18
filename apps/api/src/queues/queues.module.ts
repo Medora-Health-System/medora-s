@@ -34,10 +34,13 @@ import { RevenueCycleQueueService } from "../billing/revenue-cycle-queue.service
 import { RevenueCycleQueueController } from "../billing/revenue-cycle-queue.controller";
 import { RevenueCycleClaimsService } from "../billing/revenue-cycle-claims.service";
 import { RevenueCycleClaimsController } from "../billing/revenue-cycle-claims.controller";
+import { RevenueCycleClaimAuditService } from "../billing/revenue-cycle-claim-audit.service";
+import { RevenueCyclePaymentsService } from "../billing/revenue-cycle-payments.service";
+import { RevenueCyclePaymentsController } from "../billing/revenue-cycle-payments.controller";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController, BillingController, RevenueCycleQueueController, RevenueCycleClaimsController],
+  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController, BillingController, RevenueCycleQueueController, RevenueCycleClaimsController, RevenueCyclePaymentsController],
   providers: [
     QueuesService,
     AuditService,
@@ -67,6 +70,8 @@ import { RevenueCycleClaimsController } from "../billing/revenue-cycle-claims.co
     ProcedureRevenueReviewService,
     RevenueCycleQueueService,
     RevenueCycleClaimsService,
+    RevenueCycleClaimAuditService,
+    RevenueCyclePaymentsService,
   ],
   exports: [
     QueuesService,
