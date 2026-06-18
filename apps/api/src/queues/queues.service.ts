@@ -25,6 +25,7 @@ import {
 import { AuditService } from "../common/services/audit.service";
 import {
   billingLedgerRowMissingBillableCodeBlocksReadiness,
+  buildBillingReadinessExplainerSummary,
   buildOrderItemCandidate,
   computeClaimPackageSummaries,
   computeObservationStaySummaryForExport,
@@ -325,6 +326,7 @@ export class QueuesService {
       cur.push(ev);
       eventsByEncounter.set(eid, cur);
     }
+    const manualReviewByEncounter = await this.billingService.summarizeManualReviewForEncounters(facilityId, ids);
     return list.map((e) => {
       const bl = rollup.get(e.id) ?? {
         total: 0,
@@ -353,11 +355,24 @@ export class QueuesService {
           diagnosisCodes: r.diagnosisCodes,
         }))
       );
+      const manualReview = manualReviewByEncounter.get(e.id) ?? {
+        unresolvedCount: 0,
+        requiresReviewCount: 0,
+      };
+      const readinessExplainer = buildBillingReadinessExplainerSummary({
+        readiness,
+        ledger: bl,
+        claimPackages,
+        manualReview,
+        billingFinalizationStatus: e.billingFinalizationStatus,
+        hasAttendingProvider: Boolean(e.physicianAssignedUserId?.trim()),
+      });
       return {
         ...e,
         billingLedger: bl,
         billingReadiness: readiness,
         claimPackages,
+        readinessExplainer,
       };
     });
   }

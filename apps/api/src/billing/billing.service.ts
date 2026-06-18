@@ -10,18 +10,24 @@ import {
   BILLING_CAPTURE_VERSION,
   DOCUMENTED_PROCEDURE_CPT_PENDING_EVIDENCE,
   DOCUMENTED_PROCEDURE_REVIEW_REASON,
+  buildBillingReadinessExplainerSummary,
+  computeClaimPackageSummaries,
   displayNameFrForDocumentedProcedureType,
   isProviderProcedureDocumentationForBilling,
   medoraCodeForDocumentedProcedureType,
   readBillingCaptureV1,
   validateManualBillingReviewBulkApproval,
+  billingLedgerRowMissingBillableCodeBlocksReadiness,
   type BillingCaptureItem,
+  type BillingReadinessExplainerSummary,
   type InfusionBillingReviewDecision,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../common/services/audit.service";
 import { throwEncounterConcurrentModification } from "../encounters/encounter-concurrency.util";
 import { upsertBillingEventFromCaptureItem } from "./billing-ledger.sync";
+import { evaluateEncounterBillingReadinessFromData } from "./billing-encounter-readiness.util";
+import { evaluateClaimIdentityGaps } from "./claim-billing-identity.util";
 import type { PatchInfusionBillingReviewBody } from "./dto/infusion-billing-review.dto";
 import type {
   BillingAutoBillDecisionDto,
@@ -744,6 +750,110 @@ export class BillingService {
       failed,
       results,
     };
+  }
+
+  async summarizeManualReviewForEncounters(
+    facilityId: string,
+    encounterIds: readonly string[]
+  ): Promise<Map<string, { unresolvedCount: number; requiresReviewCount: number }>> {
+    const idSet = new Set(encounterIds);
+    const rows = await this.getManualBillingReviewQueue(facilityId);
+    const summary = new Map<string, { unresolvedCount: number; requiresReviewCount: number }>();
+    for (const row of rows) {
+      if (!idSet.has(row.encounterId)) continue;
+      if (row.reviewAnchorType === "PROCEDURE_DOCUMENTED") continue;
+      const current = summary.get(row.encounterId) ?? { unresolvedCount: 0, requiresReviewCount: 0 };
+      current.requiresReviewCount += 1;
+      const decision = row.latestDecision?.decision;
+      if (decision !== BillingReviewDecisionStatus.APPROVED && decision !== BillingReviewDecisionStatus.DO_NOT_BILL) {
+        current.unresolvedCount += 1;
+      }
+      summary.set(row.encounterId, current);
+    }
+    return summary;
+  }
+
+  async getEncounterReadinessExplainer(
+    facilityId: string,
+    encounterId: string
+  ): Promise<BillingReadinessExplainerSummary> {
+    const enc = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: {
+        id: true,
+        status: true,
+        dischargeStatus: true,
+        physicianAssignedUserId: true,
+        patientId: true,
+        dischargedAt: true,
+        billingFinalizationStatus: true,
+      },
+    });
+    if (!enc) {
+      throw new NotFoundException("Encounter not found");
+    }
+
+    const [events, diagnosisCount, identityGaps] = await Promise.all([
+      this.prisma.billingEvent.findMany({
+        where: { facilityId, encounterId },
+        select: {
+          reviewStatus: true,
+          sourceModule: true,
+          billingSide: true,
+          procedureCode: true,
+          hcpcsCode: true,
+          code: true,
+          diagnosisCodes: true,
+        },
+      }),
+      this.prisma.diagnosis.count({
+        where: { facilityId, encounterId, status: "ACTIVE" },
+      }),
+      evaluateClaimIdentityGaps(this.prisma, {
+        facilityId,
+        patientId: enc.patientId,
+        serviceDate: enc.dischargedAt ?? null,
+      }),
+    ]);
+    const manualSummary = await this.summarizeManualReviewForEncounters(facilityId, [encounterId]);
+    const manualReview = manualSummary.get(encounterId) ?? { unresolvedCount: 0, requiresReviewCount: 0 };
+
+    let needsReview = 0;
+    let missingCode = 0;
+    let unmappedLinesCount = 0;
+    for (const event of events) {
+      if (event.reviewStatus === "CAPTURED") needsReview += 1;
+      if (billingLedgerRowMissingBillableCodeBlocksReadiness(event)) missingCode += 1;
+      if (event.procedureCode?.trim() === "UNMAPPED" || event.code?.trim() === "UNMAPPED") {
+        unmappedLinesCount += 1;
+      }
+    }
+
+    const readiness = evaluateEncounterBillingReadinessFromData(
+      {
+        status: enc.status,
+        dischargeStatus: enc.dischargeStatus,
+        physicianAssignedUserId: enc.physicianAssignedUserId,
+      },
+      events,
+      diagnosisCount
+    );
+    const claimPackages = computeClaimPackageSummaries(events);
+
+    return buildBillingReadinessExplainerSummary({
+      readiness,
+      ledger: {
+        total: events.length,
+        needsReview,
+        missingCode,
+        unmappedLinesCount,
+      },
+      claimPackages,
+      manualReview,
+      identityGaps,
+      billingFinalizationStatus: enc.billingFinalizationStatus,
+      hasAttendingProvider: Boolean(enc.physicianAssignedUserId?.trim()),
+    });
   }
 
   /**

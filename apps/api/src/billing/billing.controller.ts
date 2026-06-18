@@ -313,6 +313,13 @@ export class BillingController {
     return this.billingService.getEncounterManualReviewGate(facilityId, encounterId);
   }
 
+  @Get("billing/encounters/:encounterId/readiness-explainer")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getEncounterReadinessExplainer(@Param("encounterId") encounterId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    return this.billingService.getEncounterReadinessExplainer(facilityId, encounterId);
+  }
+
   @Get("billing/encounters/:encounterId/review-decisions")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterBillingReviewDecisions(@Param("encounterId") encounterId: string, @Req() req: any) {

@@ -7,8 +7,9 @@ import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
-import { readBillingCaptureV1 } from "@medora/shared";
+import { readBillingCaptureV1, type BillingReadinessExplainerSummary } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { BillingReadinessExplainerPanel } from "@/features/billing/BillingReadinessExplainerPanel";
 
 function defaultLocalIsoDate(): string {
   const d = new Date();
@@ -37,6 +38,12 @@ export default function BillingPage() {
   const [dailyExportBusy, setDailyExportBusy] = useState<null | "json" | "csv">(null);
   const [dailyExportErr, setDailyExportErr] = useState<string | null>(null);
   const [dailyExportOk, setDailyExportOk] = useState(false);
+  const [explainerEncounter, setExplainerEncounter] = useState<{
+    id: string;
+    patientId: string;
+    patientLabel: string;
+    summary: BillingReadinessExplainerSummary;
+  } | null>(null);
 
   useEffect(() => {
     const cookieValue = document.cookie
@@ -155,6 +162,40 @@ export default function BillingPage() {
       }
     },
     [dailyExportDate, effectiveFacilityId, language, t]
+  );
+
+  const openReadinessExplainer = useCallback(
+    async (encounter: {
+      id: string;
+      patient?: { id?: string; firstName?: string; lastName?: string };
+      readinessExplainer?: BillingReadinessExplainerSummary;
+    }) => {
+      if (!effectiveFacilityId) return;
+      const patientLabel = `${encounter.patient?.firstName ?? ""} ${encounter.patient?.lastName ?? ""}`.trim();
+      if (encounter.readinessExplainer) {
+        setExplainerEncounter({
+          id: encounter.id,
+          patientId: encounter.patient?.id ?? "",
+          patientLabel,
+          summary: encounter.readinessExplainer,
+        });
+        return;
+      }
+      try {
+        const summary = (await apiFetch(`/billing/encounters/${encounter.id}/readiness-explainer`, {
+          facilityId: effectiveFacilityId,
+        })) as BillingReadinessExplainerSummary;
+        setExplainerEncounter({
+          id: encounter.id,
+          patientId: encounter.patient?.id ?? "",
+          patientLabel,
+          summary,
+        });
+      } catch {
+        setExplainerEncounter(null);
+      }
+    },
+    [effectiveFacilityId]
   );
 
   if (!ready) {
@@ -413,12 +454,15 @@ export default function BillingPage() {
                 const wfLabelKey = `billingPage.billingWorkflow_${wf}`;
                 const wfLabel = t(wfLabelKey);
                 const br = encounter.billingReadiness as { isReady?: boolean } | undefined;
+                const explainer = encounter.readinessExplainer as BillingReadinessExplainerSummary | undefined;
+                const blockerCount = explainer?.blockerCount ?? 0;
                 const queueHint =
                   wf === "FINALIZED"
                     ? null
                     : br?.isReady
                       ? t("billingPage.readinessQueueHintReady")
                       : t("billingPage.readinessQueueHintBlocked");
+                const showExplainer = wf !== "FINALIZED" && br?.isReady !== true;
                 const wfDisplay = wfLabel !== wfLabelKey ? wfLabel : wf;
                 const cp = encounter.claimPackages as
                   | { overall?: { readyForProfessionalClaim?: boolean; readyForFacilityClaim?: boolean } }
@@ -460,6 +504,30 @@ export default function BillingPage() {
                       <div style={{ fontWeight: 600 }}>{wfDisplay}</div>
                       {queueHint ? (
                         <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>{queueHint}</div>
+                      ) : null}
+                      {showExplainer ? (
+                        <button
+                          type="button"
+                          onClick={() => void openReadinessExplainer(encounter)}
+                          style={{
+                            marginTop: 6,
+                            padding: 0,
+                            border: "none",
+                            background: "transparent",
+                            color: "#0f766e",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          {blockerCount > 0
+                            ? t("billingPage.readinessExplainerWhyNotReadyWithCount").replace(
+                                "{count}",
+                                String(blockerCount)
+                              )
+                            : t("billingPage.readinessExplainerWhyNotReady")}
+                        </button>
                       ) : null}
                     </td>
                     <td style={{ padding: 12, textAlign: "center", fontSize: 16 }}>{profClaimOk ? "✓" : "—"}</td>
@@ -597,6 +665,52 @@ export default function BillingPage() {
                 style={{ padding: "8px 16px" }}
               >
                 {t("billingPage.billingCaptureCancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {explainerEncounter ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15,23,42,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 10,
+              maxWidth: 640,
+              width: "100%",
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+              padding: 18,
+            }}
+          >
+            <BillingReadinessExplainerPanel
+              encounterId={explainerEncounter.id}
+              patientId={explainerEncounter.patientId}
+              patientLabel={explainerEncounter.patientLabel}
+              summary={explainerEncounter.summary}
+              t={t}
+            />
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+              <button
+                type="button"
+                onClick={() => setExplainerEncounter(null)}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff" }}
+              >
+                {t("common.cancel")}
               </button>
             </div>
           </div>
