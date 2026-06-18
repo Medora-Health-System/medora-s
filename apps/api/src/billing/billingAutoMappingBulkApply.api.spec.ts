@@ -1,4 +1,6 @@
 import { BadRequestException } from "@nestjs/common";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   BillingCodeType,
   BillingReviewStatus,
@@ -6,10 +8,6 @@ import {
   BillingSourceModule,
   EncounterBillingFinalizationStatus,
 } from "@prisma/client";
-import {
-  buildBillingAutoMappingCandidateSignature,
-  resolveBillingAutoMappingDecision,
-} from "@medora/shared";
 import { BillingAutoMappingService } from "./billing-auto-mapping.service";
 import { resolveBillingAutoMappingProposal } from "./billing-auto-mapping-resolver.util";
 
@@ -21,7 +19,7 @@ jest.mock("./billing-capture-sync-from-ledger.util", () => ({
   syncBillingCaptureItemFromLedgerRow: jest.fn().mockResolvedValue(undefined),
 }));
 
-describe("BillingAutoMappingService (MEDUI.BILLING.AUTO_MAPPING.1)", () => {
+describe("BillingAutoMappingService bulk apply (MEDUI.BILLING.AUTO_MAPPING.1A)", () => {
   const baseRow = {
     id: "be-1",
     facilityId: "f1",
@@ -39,6 +37,7 @@ describe("BillingAutoMappingService (MEDUI.BILLING.AUTO_MAPPING.1)", () => {
     metadata: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    patient: { firstName: "Jean", lastName: "Dupont", mrn: "MRN-1", globalMrn: "G-1" },
   };
 
   function buildService() {
@@ -48,7 +47,6 @@ describe("BillingAutoMappingService (MEDUI.BILLING.AUTO_MAPPING.1)", () => {
           id: "e1",
           billingFinalizationStatus: EncounterBillingFinalizationStatus.NOT_READY,
         }),
-        findMany: jest.fn().mockResolvedValue([{ id: "e1" }]),
       },
       billingEvent: {
         findMany: jest.fn().mockResolvedValue([baseRow]),
@@ -89,64 +87,32 @@ describe("BillingAutoMappingService (MEDUI.BILLING.AUTO_MAPPING.1)", () => {
     });
   });
 
-  it("preview endpoint returns candidates only", async () => {
+  it("workspace endpoint returns counts and rows", async () => {
     const { svc } = buildService();
-    const preview = await svc.previewAutoMappingsForEncounter("f1", "e1");
-    expect(preview.candidates.length).toBe(1);
-    expect(preview.applyCount).toBe(1);
-    expect(preview.candidates[0].decision).toBe("APPLY");
+    const workspace = await svc.getAutoMappingWorkspace("f1");
+    expect(workspace.counts.total).toBeGreaterThanOrEqual(1);
+    expect(workspace.rows[0].queue).toBe("APPLY_READY");
+    expect(workspace.rows[0].patientName).toBe("Jean Dupont");
   });
 
-  it("apply requires explicit selected ids", async () => {
-    const { svc } = buildService();
-    await expect(svc.applyAutoMappingsForEncounter("f1", "e1", [], "u1")).rejects.toThrow(BadRequestException);
-  });
-
-  it("apply audits every change", async () => {
+  it("bulk apply succeeds for apply-ready rows", async () => {
     const { svc, audit } = buildService();
-    const preview = await svc.previewAutoMappingsForEncounter("f1", "e1");
-    await svc.applyAutoMappingsForEncounter("f1", "e1", [preview.candidates[0].ledgerLineId], "u1");
+    const result = await svc.bulkApplyAutoMappings("f1", ["be-1"], "u1");
+    expect(result.applied).toBe(1);
+    expect(result.appliedLedgerRowIds).toEqual(["be-1"]);
     expect(audit.log).toHaveBeenCalledWith(
       "UPDATE",
-      "BILLING_AUTO_MAPPING",
+      "AUTO_MAPPING_APPLIED",
       expect.objectContaining({
         metadata: expect.objectContaining({
-          source: "AUTO_MAPPING_USER_APPLIED",
+          source: "BULK_AUTO_MAPPING",
           ledgerRowId: "be-1",
         }),
       })
     );
   });
 
-  it("rejects stale candidate signatures", async () => {
-    const { svc } = buildService();
-    const preview = await svc.previewAutoMappingsForEncounter("f1", "e1");
-    (resolveBillingAutoMappingProposal as jest.Mock).mockResolvedValueOnce({
-      candidateType: "LAB",
-      sourceLabel: "CBC",
-      normalizedKey: "cbc",
-      confidence: "HIGH",
-      ambiguousCatalogMatch: false,
-      medicationAdministrationRouteMissing: false,
-      procedureCode: "80053",
-      hcpcsCode: null,
-      code: "80053",
-      codeType: BillingCodeType.CPT,
-      billingSide: BillingSide.FACILITY,
-      descriptionSnapshot: "Changed",
-    });
-    const result = await svc.applyAutoMappingsForEncounter("f1", "e1", [preview.candidates[0].ledgerLineId], "u1");
-    expect(result.staleCount).toBe(1);
-    expect(result.appliedCount).toBe(0);
-  });
-
-  it("enforces max apply count", async () => {
-    const { svc } = buildService();
-    const ids = Array.from({ length: 101 }, (_, i) => `id-${i}`);
-    await expect(svc.applyAutoMappingsForEncounter("f1", "e1", ids, "u1")).rejects.toThrow(BadRequestException);
-  });
-
-  it("medication administration without route → REVIEW in preview", async () => {
+  it("bulk apply skips invalid review-required rows", async () => {
     (resolveBillingAutoMappingProposal as jest.Mock).mockResolvedValue({
       candidateType: "MEDICATION_ADMINISTRATION",
       sourceLabel: "Drug",
@@ -161,40 +127,29 @@ describe("BillingAutoMappingService (MEDUI.BILLING.AUTO_MAPPING.1)", () => {
       billingSide: BillingSide.BOTH,
       descriptionSnapshot: "Drug",
     });
-    const { svc, prisma } = buildService();
-    prisma.billingEvent.findMany.mockResolvedValue([
-      { ...baseRow, sourceModule: BillingSourceModule.MED_ADMIN, hcpcsCode: "UNMAPPED" },
-    ]);
-    const preview = await svc.previewAutoMappingsForEncounter("f1", "e1");
-    expect(preview.reviewCount).toBe(1);
-    expect(preview.applyCount).toBe(0);
+    const { svc } = buildService();
+    const result = await svc.bulkApplyAutoMappings("f1", ["be-1"], "u1");
+    expect(result.applied).toBe(0);
+    expect(result.skipped).toBeGreaterThanOrEqual(1);
+  });
+
+  it("bulk apply requires ledgerRowIds", async () => {
+    const { svc } = buildService();
+    await expect(svc.bulkApplyAutoMappings("f1", [], "u1")).rejects.toThrow(BadRequestException);
+  });
+
+  it("bulk apply enforces max count", async () => {
+    const { svc } = buildService();
+    const ids = Array.from({ length: 501 }, (_, i) => `id-${i}`);
+    await expect(svc.bulkApplyAutoMappings("f1", ids, "u1")).rejects.toThrow(BadRequestException);
   });
 });
 
-describe("billingAutoMapping governance integration", () => {
-  it("manually edited line → SKIP", () => {
-    expect(
-      resolveBillingAutoMappingDecision({
-        confidence: "HIGH",
-        candidateType: "LAB",
-        isUnmapped: true,
-        isManuallyEdited: true,
-        isDoNotBill: false,
-        isVoidedOrSkipped: false,
-        isFinalizedEncounter: false,
-        hasCatalogMatch: true,
-      })
-    ).toBe("SKIP");
-  });
-
-  it("candidate signature is stable", () => {
-    const sig = buildBillingAutoMappingCandidateSignature({
-      ledgerLineId: "be-1",
-      currentCode: "UNMAPPED",
-      proposedCode: "85025",
-      normalizedKey: "cbc",
-      proposedCodeType: "CPT",
-    });
-    expect(sig).toContain("85025");
+describe("billingAutoMappingBulkApply.api routes", () => {
+  it("controller exposes workspace and bulk-apply endpoints", () => {
+    const controller = readFileSync(join(__dirname, "billing.controller.ts"), "utf8");
+    expect(controller).toContain('@Get("billing/auto-mapping/workspace")');
+    expect(controller).toContain('@Post("billing/auto-mapping/bulk-apply")');
+    expect(controller).toContain("RoleCode.BILLING, RoleCode.ADMIN");
   });
 });

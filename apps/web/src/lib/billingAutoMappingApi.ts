@@ -1,5 +1,5 @@
 import { apiFetch } from "./apiClient";
-import type { BillingAutoMappingCandidate } from "@medora/shared";
+import type { BillingAutoMappingCandidate, BillingAutoMappingWorkspaceRow } from "@medora/shared";
 
 export type BillingAutoMappingPreviewResult = {
   encounterId: string;
@@ -37,4 +37,48 @@ export async function applyBillingAutoMappings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ candidateIds }),
   }) as Promise<BillingAutoMappingApplyResult>;
+}
+
+export type BillingAutoMappingWorkspaceResult = {
+  counts: {
+    applyReady: number;
+    reviewRequired: number;
+    skipped: number;
+    mapped: number;
+    total: number;
+  };
+  rows: BillingAutoMappingWorkspaceRow[];
+};
+
+export type BillingAutoMappingBulkApplyResult = {
+  requested: number;
+  applied: number;
+  skipped: number;
+  failed: number;
+  appliedLedgerRowIds: string[];
+};
+
+export async function fetchBillingAutoMappingWorkspace(
+  facilityId: string,
+  options?: { limit?: number; queue?: string }
+): Promise<BillingAutoMappingWorkspaceResult> {
+  const params = new URLSearchParams();
+  if (options?.limit) params.set("limit", String(options.limit));
+  if (options?.queue) params.set("queue", options.queue);
+  const qs = params.toString();
+  return apiFetch(`/billing/auto-mapping/workspace${qs ? `?${qs}` : ""}`, {
+    facilityId,
+  }) as Promise<BillingAutoMappingWorkspaceResult>;
+}
+
+export async function bulkApplyBillingAutoMappings(
+  facilityId: string,
+  ledgerRowIds: string[]
+): Promise<BillingAutoMappingBulkApplyResult> {
+  return apiFetch("/billing/auto-mapping/bulk-apply", {
+    facilityId,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ledgerRowIds }),
+  }) as Promise<BillingAutoMappingBulkApplyResult>;
 }

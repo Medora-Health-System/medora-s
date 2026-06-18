@@ -673,6 +673,25 @@ export class BillingController {
     return this.externalBillingExport.getMonthlyExportCertification(req.facilityId, month.trim());
   }
 
+  @Get("billing/auto-mapping/workspace")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async getBillingAutoMappingWorkspace(@Req() req: any, @Query("limit") limitRaw?: string, @Query("queue") queue?: string) {
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+    return this.billingAutoMapping.getAutoMappingWorkspace(req.facilityId, {
+      limit: Number.isFinite(limit) ? limit : undefined,
+      queue: queue?.trim() || undefined,
+    });
+  }
+
+  @Post("billing/auto-mapping/bulk-apply")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async bulkApplyBillingAutoMapping(@Body() body: { ledgerRowIds?: string[] }, @Req() req: any) {
+    const ledgerRowIds = Array.isArray(body?.ledgerRowIds)
+      ? body.ledgerRowIds.filter((id) => typeof id === "string")
+      : [];
+    return this.billingAutoMapping.bulkApplyAutoMappings(req.facilityId, ledgerRowIds, req.user?.userId);
+  }
+
   @Get("billing/auto-mapping/encounters/:encounterId/preview")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
   async previewBillingAutoMapping(@Param("encounterId") encounterId: string, @Req() req: any) {

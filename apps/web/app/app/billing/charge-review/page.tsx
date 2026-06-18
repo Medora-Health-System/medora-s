@@ -140,9 +140,16 @@ export default function ChargeReviewPage() {
       >
         {t("chargeCaptureReview.previewOnlyDisclaimer")}
       </p>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
         <Link href="/app/billing" style={{ fontSize: 14, color: "#2563eb" }}>
           ← {t("chargeCaptureReview.backToBilling")}
+        </Link>
+        <Link
+          href="/app/billing/auto-mapping"
+          data-testid="charge-review-auto-mapping-workspace"
+          style={{ fontSize: 14, color: "#0f766e", fontWeight: 600 }}
+        >
+          {t("billingPage.autoMappingWorkspaceOpen")}
         </Link>
       </div>
 

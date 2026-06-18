@@ -4013,23 +4013,41 @@ export default function BillingEncounterLedgerPage() {
               {data.summary.missingCode}
             </span>
             {facilityId ? (
-              <button
-                type="button"
-                data-testid="billing-auto-mapping-open"
-                onClick={() => setShowAutoMappingPanel((open) => !open)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #0f766e",
-                  background: showAutoMappingPanel ? "#ecfdf5" : "#fff",
-                  color: "#0f766e",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer",
-                }}
-              >
-                {t("billingPage.autoMappingFindButton")}
-              </button>
+              <>
+                <button
+                  type="button"
+                  data-testid="billing-auto-mapping-open"
+                  onClick={() => setShowAutoMappingPanel((open) => !open)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #0f766e",
+                    background: showAutoMappingPanel ? "#ecfdf5" : "#fff",
+                    color: "#0f766e",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("billingPage.autoMappingFindButton")}
+                </button>
+                <Link
+                  href="/app/billing/auto-mapping"
+                  data-testid="billing-ledger-auto-mapping-workspace"
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    color: "#334155",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    textDecoration: "none",
+                  }}
+                >
+                  {t("billingPage.autoMappingWorkspaceLinkLedger")}
+                </Link>
+              </>
             ) : null}
           </div>
           {showAutoMappingPanel && facilityId ? (

@@ -14,14 +14,21 @@ import { resolveBillingAutoMappingProposal } from "./billing-auto-mapping-resolv
 import {
   buildBillingAutoMappingCandidateSignature,
   billingEventHasManualLedgerEdit,
+  computeBillingAutoMappingCounts,
   groupBillingAutoMappingCandidates,
   ledgerLineLooksUnmapped,
+  readBillingAutoMappingAppliedMetadata,
   resolveBillingAutoMappingDecision,
+  validateBulkAutoMappingSelection,
+  workspaceRowFromCandidate,
   type BillingAutoMappingCandidate,
+  type BillingAutoMappingWorkspaceRow,
 } from "@medora/shared";
 
 const AUDIT_ENTITY = "BILLING_AUTO_MAPPING" as const;
+const BULK_AUDIT_ENTITY = "AUTO_MAPPING_APPLIED" as const;
 const MAX_APPLY_COUNT = 100;
+const MAX_BULK_APPLY_COUNT = 500;
 
 export type BillingAutoMappingPreviewResult = {
   encounterId: string;
@@ -37,6 +44,25 @@ export type BillingAutoMappingApplyResult = {
   skippedCount: number;
   staleCount: number;
   appliedLedgerLineIds: string[];
+};
+
+export type BillingAutoMappingWorkspaceResult = {
+  counts: {
+    applyReady: number;
+    reviewRequired: number;
+    skipped: number;
+    mapped: number;
+    total: number;
+  };
+  rows: BillingAutoMappingWorkspaceRow[];
+};
+
+export type BillingAutoMappingBulkApplyResult = {
+  requested: number;
+  applied: number;
+  skipped: number;
+  failed: number;
+  appliedLedgerRowIds: string[];
 };
 
 @Injectable()
@@ -60,6 +86,195 @@ export class BillingAutoMappingService {
       applyCount: grouped.apply.length,
       reviewCount: grouped.review.length,
       skipCount: grouped.skip.length,
+    };
+  }
+
+  async getAutoMappingWorkspace(
+    facilityId: string,
+    filters?: { limit?: number; queue?: string }
+  ): Promise<BillingAutoMappingWorkspaceResult> {
+    const limit = Math.min(Math.max(filters?.limit ?? 500, 1), 2000);
+    const rows = await this.prisma.billingEvent.findMany({
+      where: {
+        facilityId,
+        OR: [
+          { code: { equals: "UNMAPPED", mode: "insensitive" } },
+          { procedureCode: { equals: "UNMAPPED", mode: "insensitive" } },
+          { hcpcsCode: { equals: "UNMAPPED", mode: "insensitive" } },
+          {
+            metadata: {
+              path: ["autoMappingApplied"],
+              not: { equals: null },
+            },
+          },
+        ],
+      },
+      include: {
+        patient: { select: { firstName: true, lastName: true, mrn: true, globalMrn: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+    });
+
+    const doNotBillByEncounter = new Map<string, Set<string>>();
+    const finalizedByEncounter = new Map<string, boolean>();
+    const workspaceRows: BillingAutoMappingWorkspaceRow[] = [];
+
+    for (const row of rows) {
+      const appliedMeta = readBillingAutoMappingAppliedMetadata(row.metadata);
+      if (appliedMeta) {
+        const patientName = `${row.patient.firstName} ${row.patient.lastName}`.trim();
+        workspaceRows.push(
+          workspaceRowFromCandidate(
+            {
+              ledgerLineId: row.id,
+              candidateType: appliedMeta.candidateType ?? "UNKNOWN",
+              sourceLabel: row.descriptionSnapshot?.trim() || row.sourceModule,
+              normalizedKey: "",
+              currentCode: appliedMeta.previousCode ?? null,
+              proposedCode: appliedMeta.newCode ?? row.code ?? "",
+              proposedCodeType: "CPT",
+              proposedBillingSide: row.billingSide,
+              confidence: appliedMeta.confidence ?? "HIGH",
+              decision: "APPLY",
+              reason: "Auto-mapping applied",
+              warnings: [],
+              candidateSignature: "",
+            },
+            {
+              encounterId: row.encounterId,
+              patientName,
+              patientMrn: row.patient.mrn ?? row.patient.globalMrn ?? null,
+              manuallyEdited: billingEventHasManualLedgerEdit(row.metadata),
+              doNotBill: false,
+              metadata: row.metadata,
+            }
+          )
+        );
+        continue;
+      }
+
+      let doNotBillIds = doNotBillByEncounter.get(row.encounterId);
+      if (!doNotBillIds) {
+        doNotBillIds = await this.billingService.getDoNotBillBillingEventIdsForEncounter(
+          facilityId,
+          row.encounterId
+        );
+        doNotBillByEncounter.set(row.encounterId, doNotBillIds);
+      }
+
+      let isFinalized = finalizedByEncounter.get(row.encounterId);
+      if (isFinalized == null) {
+        const enc = await this.prisma.encounter.findFirst({
+          where: { id: row.encounterId, facilityId },
+          select: { billingFinalizationStatus: true },
+        });
+        isFinalized = enc?.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED;
+        finalizedByEncounter.set(row.encounterId, isFinalized);
+      }
+
+      const candidate = await this.buildCandidateForRow(facilityId, row.encounterId, row, {
+        doNotBillIds,
+        isFinalized,
+      });
+      if (!candidate) continue;
+
+      const patientName = `${row.patient.firstName} ${row.patient.lastName}`.trim();
+      const wsRow = workspaceRowFromCandidate(candidate, {
+        encounterId: row.encounterId,
+        patientName,
+        patientMrn: row.patient.mrn ?? row.patient.globalMrn ?? null,
+        manuallyEdited: billingEventHasManualLedgerEdit(row.metadata),
+        doNotBill: doNotBillIds.has(row.id),
+        metadata: row.metadata,
+        ambiguousCatalogMatch: candidate.warnings.some((w) =>
+          w.toLowerCase().includes("alternate lookup")
+        ),
+      });
+      workspaceRows.push(wsRow);
+    }
+
+    const queueFilter = filters?.queue?.trim().toUpperCase();
+    const filtered =
+      queueFilter && ["APPLY_READY", "REVIEW_REQUIRED", "SKIPPED", "MAPPED"].includes(queueFilter)
+        ? workspaceRows.filter((r) => r.queue === queueFilter)
+        : workspaceRows;
+
+    return {
+      counts: computeBillingAutoMappingCounts(workspaceRows),
+      rows: filtered,
+    };
+  }
+
+  async bulkApplyAutoMappings(
+    facilityId: string,
+    ledgerRowIds: string[],
+    userId?: string
+  ): Promise<BillingAutoMappingBulkApplyResult> {
+    if (!ledgerRowIds.length) {
+      throw new BadRequestException("ledgerRowIds is required");
+    }
+    if (ledgerRowIds.length > MAX_BULK_APPLY_COUNT) {
+      throw new BadRequestException(`Maximum ${MAX_BULK_APPLY_COUNT} mappings per bulk apply request`);
+    }
+
+    const workspace = await this.getAutoMappingWorkspace(facilityId, { limit: 2000 });
+    const selectionRows = workspace.rows.map((row) => ({
+      ledgerRowId: row.ledgerRowId,
+      queue: row.queue,
+      confidence: row.confidence,
+      manuallyEdited: row.manuallyEdited,
+      doNotBill: row.doNotBill,
+      ambiguousCatalogMatch: row.ambiguousCatalogMatch ?? false,
+    }));
+    const validation = validateBulkAutoMappingSelection(selectionRows, ledgerRowIds);
+
+    let applied = 0;
+    let skipped = validation.invalidIds.length;
+    let failed = 0;
+    const appliedLedgerRowIds: string[] = [];
+
+    for (const ledgerRowId of validation.validIds) {
+      const row = await this.prisma.billingEvent.findFirst({
+        where: { id: ledgerRowId, facilityId },
+      });
+      if (!row) {
+        failed += 1;
+        continue;
+      }
+
+      const enc = await this.prisma.encounter.findFirst({
+        where: { id: row.encounterId, facilityId },
+        select: { billingFinalizationStatus: true },
+      });
+      if (enc?.billingFinalizationStatus === EncounterBillingFinalizationStatus.FINALIZED) {
+        skipped += 1;
+        continue;
+      }
+
+      const result = await this.applySingleMapping(
+        facilityId,
+        row.encounterId,
+        ledgerRowId,
+        userId,
+        "BULK_AUTO_MAPPING"
+      );
+      if (result === "applied") {
+        applied += 1;
+        appliedLedgerRowIds.push(ledgerRowId);
+      } else if (result === "stale") {
+        skipped += 1;
+      } else {
+        failed += 1;
+      }
+    }
+
+    return {
+      requested: ledgerRowIds.length,
+      applied,
+      skipped,
+      failed,
+      appliedLedgerRowIds,
     };
   }
 
@@ -123,83 +338,22 @@ export class BillingAutoMappingService {
         continue;
       }
 
-      const row = await this.prisma.billingEvent.findFirst({
-        where: { id: candidateId, facilityId, encounterId },
-      });
-      if (!row) {
-        staleCount += 1;
-        continue;
-      }
-
-      const fresh = await this.buildCandidateForRow(facilityId, encounterId, row);
-      if (!fresh || fresh.candidateSignature !== candidate.candidateSignature || fresh.decision !== "APPLY") {
-        staleCount += 1;
-        continue;
-      }
-
-      const proposal = await resolveBillingAutoMappingProposal(this.prisma, row);
-      if (!proposal) {
-        staleCount += 1;
-        continue;
-      }
-
-      const prevMeta =
-        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-          ? (row.metadata as Record<string, unknown>)
-          : {};
-
-      await this.prisma.$transaction(async (tx) => {
-        const updated = await tx.billingEvent.update({
-          where: { id: row.id },
-          data: {
-            procedureCode: proposal.procedureCode,
-            hcpcsCode: proposal.hcpcsCode,
-            code: proposal.code,
-            codeType: proposal.codeType,
-            billingSide: proposal.billingSide,
-            descriptionSnapshot: proposal.descriptionSnapshot,
-            metadata: {
-              ...prevMeta,
-              autoMappingApplied: {
-                at: new Date().toISOString(),
-                source: "AUTO_MAPPING_USER_APPLIED",
-                candidateType: candidate.candidateType,
-                confidence: candidate.confidence,
-                previousCode: row.code,
-                previousProcedureCode: row.procedureCode,
-                previousHcpcsCode: row.hcpcsCode,
-                previousBillingSide: row.billingSide,
-                previousCodeType: row.codeType,
-              },
-            } as Prisma.InputJsonValue,
-          },
-        });
-        await syncBillingCaptureItemFromLedgerRow(tx, updated);
-      });
-
-      await this.audit.log(AuditAction.UPDATE, AUDIT_ENTITY, {
-        userId,
+      const result = await this.applySingleMapping(
         facilityId,
-        patientId: row.patientId,
-        encounterId: row.encounterId,
-        entityId: row.id,
-        metadata: {
-          ledgerLineId: row.id,
-          encounterId: row.encounterId,
-          previousCode: row.code,
-          newCode: proposal.code,
-          previousCodeType: row.codeType,
-          newCodeType: proposal.codeType,
-          previousBillingSide: row.billingSide,
-          newBillingSide: proposal.billingSide,
-          candidateType: candidate.candidateType,
-          confidence: candidate.confidence,
-          source: "AUTO_MAPPING_USER_APPLIED",
-        },
-      });
-
-      appliedCount += 1;
-      appliedLedgerLineIds.push(row.id);
+        encounterId,
+        candidateId,
+        userId,
+        "AUTO_MAPPING_USER_APPLIED",
+        candidate
+      );
+      if (result === "applied") {
+        appliedCount += 1;
+        appliedLedgerLineIds.push(candidateId);
+      } else if (result === "stale") {
+        staleCount += 1;
+      } else {
+        skippedCount += 1;
+      }
     }
 
     return {
@@ -209,6 +363,95 @@ export class BillingAutoMappingService {
       staleCount,
       appliedLedgerLineIds,
     };
+  }
+
+  private async applySingleMapping(
+    facilityId: string,
+    encounterId: string,
+    ledgerLineId: string,
+    userId: string | undefined,
+    source: "AUTO_MAPPING_USER_APPLIED" | "BULK_AUTO_MAPPING",
+    expectedCandidate?: BillingAutoMappingCandidate
+  ): Promise<"applied" | "stale" | "skipped"> {
+    const row = await this.prisma.billingEvent.findFirst({
+      where: { id: ledgerLineId, facilityId, encounterId },
+    });
+    if (!row) return "stale";
+
+    const fresh = await this.buildCandidateForRow(facilityId, encounterId, row);
+    if (!fresh || fresh.decision !== "APPLY") return "stale";
+    if (expectedCandidate) {
+      if (
+        fresh.candidateSignature !== expectedCandidate.candidateSignature ||
+        fresh.decision !== "APPLY"
+      ) {
+        return "stale";
+      }
+    }
+
+    const proposal = await resolveBillingAutoMappingProposal(this.prisma, row);
+    if (!proposal) return "stale";
+
+    const prevMeta =
+      row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+        ? (row.metadata as Record<string, unknown>)
+        : {};
+
+    await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.billingEvent.update({
+        where: { id: row.id },
+        data: {
+          procedureCode: proposal.procedureCode,
+          hcpcsCode: proposal.hcpcsCode,
+          code: proposal.code,
+          codeType: proposal.codeType,
+          billingSide: proposal.billingSide,
+          descriptionSnapshot: proposal.descriptionSnapshot,
+          metadata: {
+            ...prevMeta,
+            autoMappingApplied: {
+              at: new Date().toISOString(),
+              source,
+              userId: userId ?? null,
+              candidateType: fresh.candidateType,
+              confidence: fresh.confidence,
+              previousCode: row.code,
+              previousProcedureCode: row.procedureCode,
+              previousHcpcsCode: row.hcpcsCode,
+              previousBillingSide: row.billingSide,
+              previousCodeType: row.codeType,
+              newCode: proposal.code,
+            },
+          } as Prisma.InputJsonValue,
+        },
+      });
+      await syncBillingCaptureItemFromLedgerRow(tx, updated);
+    });
+
+    const auditEntity = source === "BULK_AUTO_MAPPING" ? BULK_AUDIT_ENTITY : AUDIT_ENTITY;
+    await this.audit.log(AuditAction.UPDATE, auditEntity, {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: row.id,
+      metadata: {
+        ledgerRowId: row.id,
+        encounterId: row.encounterId,
+        code: proposal.code,
+        confidence: fresh.confidence,
+        source,
+        previousCode: row.code,
+        newCode: proposal.code,
+        previousCodeType: row.codeType,
+        newCodeType: proposal.codeType,
+        previousBillingSide: row.billingSide,
+        newBillingSide: proposal.billingSide,
+        candidateType: fresh.candidateType,
+      },
+    });
+
+    return "applied";
   }
 
   private async assertEncounterAccessible(facilityId: string, encounterId: string): Promise<void> {

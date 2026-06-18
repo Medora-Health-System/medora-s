@@ -321,6 +321,22 @@ export default function BillingPage() {
           {t("billingPage.manualReviewOpen")}
         </Link>
         <Link
+          href="/app/billing/auto-mapping"
+          style={{
+            display: "inline-block",
+            padding: "8px 12px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            color: "#0f172a",
+            fontWeight: 600,
+            textDecoration: "none",
+            fontSize: 14,
+          }}
+        >
+          {t("billingPage.autoMappingWorkspaceOpen")}
+        </Link>
+        <Link
           href="/app/billing/charge-review"
           style={{
             display: "inline-block",
