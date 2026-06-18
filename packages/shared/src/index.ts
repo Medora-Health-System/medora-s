@@ -75,6 +75,7 @@ export * from "./billingX12Preview.js";
 export * from "./billingLedgerInferCode.js";
 export * from "./billing/revenueCycleClassification.js";
 export * from "./billing/revenueCycleQueue.js";
+export * from "./billing/revenueClaimSubmission.js";
 export * from "./icd10Normalize.js";
 export * from "./icd10FormatGuardrail.js";
 export * from "./claimDiagnosisCodes.js";
