@@ -4740,13 +4740,13 @@ export default {
       trackboard: "Tableau de suivi",
       bedBoard: "Plan des lits",
       myPatients: "Mes patients",
-      incompleteCharts: "Dossiers incomplets",
+      incompleteCharts: "Mes dossiers incomplets",
       allEncounters: "Tous les dossiers",
     },
     placeholder: {
       myPatients: "Mes patients affichera les rencontres qui vous sont assignées.",
       incompleteCharts:
-        "Les dossiers incomplets afficheront les rencontres sorties en attente de documentation.",
+        "Mes dossiers incomplets affichera les rencontres sorties qui vous sont assignées et en attente de documentation.",
       allEncounters:
         "Tous les dossiers affichera les rencontres ED fermées et certifiées.",
     },
@@ -4755,7 +4755,7 @@ export default {
       ownershipBadge: "Assigné à vous",
     },
     incompleteCharts: {
-      empty: "Aucun dossier incomplet en attente de documentation.",
+      empty: "Aucun dossier incomplet ne vous est actuellement assigné.",
       badge: {
         incompleteChart: "Dossier incomplet",
         readyForClosure: "Prêt pour clôture",
@@ -4843,6 +4843,7 @@ export default {
     readAccessDenied:
       "Accès en lecture au tableau des urgences non autorisé pour votre rôle ou établissement.",
     loadErrorHint: "Vérifiez la connexion et réessayez.",
+    silentRefreshError: "La mise à jour en arrière-plan a échoué. Dernière liste affichée.",
     retry: "Réessayer",
     emptyNoEncounters: "Aucune consultation d'urgence ouverte.",
     emptyNoSearch: "Aucun résultat pour cette recherche.",

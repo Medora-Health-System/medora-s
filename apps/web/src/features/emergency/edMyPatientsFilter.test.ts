@@ -61,9 +61,9 @@ describe("edMyPatientsFilter (MEDUI.ED.LIFECYCLE.4)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     const emergencyOnlyBlock = trackboard.slice(
       trackboard.indexOf("const emergencyOnly"),
-      trackboard.indexOf("const filtered")
+      trackboard.indexOf("const activeTrackboardBase")
     );
-    expect(emergencyOnlyBlock).not.toContain("resolveMyPatientsEncounters");
+    expect(emergencyOnlyBlock).not.toContain("resolveMyActivePatientsEncounters");
     expect(emergencyOnlyBlock).not.toContain("myPatientsBase");
     expect(trackboard).toContain("encounterListRows");
     expect(trackboard).toContain('boardViewMode === "incompleteCharts"');
@@ -112,12 +112,12 @@ describe("edMyPatientsFilter (MEDUI.ED.LIFECYCLE.4)", () => {
     ]);
   });
 
-  it("assignment filter does not import lifecycle read model", () => {
+  it("assignment filter uses lifecycle read model for active patients", () => {
     const filterSrc = readSrc("features/emergency/edMyPatientsFilter.ts");
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(filterSrc).not.toContain("edEncounterLifecycle");
-    expect(filterSrc).not.toContain("resolveEdEncounterLifecycleState");
-    expect(trackboard).not.toContain("resolveEdEncounterLifecycleState");
+    expect(filterSrc).toContain("resolveEdEncounterLifecycleState");
+    expect(filterSrc).toContain("resolveMyActivePatientsEncounters");
+    expect(trackboard).toContain("resolveMyActivePatientsEncounters");
   });
 
   it("no API changes introduced for My Patients workspace", () => {

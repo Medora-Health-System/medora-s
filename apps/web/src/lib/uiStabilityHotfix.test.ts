@@ -76,7 +76,7 @@ describe("HOTFIX.MEDUI.UI.STABILITY.1 — dashboard steady refresh", () => {
     );
     expect(source.includes("loadEncounters({ silent: true })")).toBe(true);
     expect(source.includes("hasLoadedOnceRef")).toBe(true);
-    expect(source.includes('t("common.refreshing")')).toBe(true);
+    expect(source.includes("isRefreshingSilently")).toBe(true);
   });
 
   it("lab worklist keeps rows during silent refresh", () => {

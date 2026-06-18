@@ -54,13 +54,14 @@ import {
 } from "@/features/emergency/edEncounterLifecycleNavigation";
 import {
   isEncounterAssignedToCurrentUser,
-  resolveMyPatientsEncounters,
+  resolveMyActivePatientsEncounters,
 } from "@/features/emergency/edMyPatientsFilter";
 import {
   resolveActiveTrackboardEncounters,
   resolveEdIncompleteChartBadgeKeys,
-  resolveIncompleteChartsEncounters,
+  resolveMyIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
+import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
 import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
 import {
   fetchFacilityBedBoard,
@@ -287,8 +288,9 @@ export function EmergencyTrackboardView() {
   const { facilityId: facilityIdFromHook, ready, roles, userId, facilities } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshingSilently, setIsRefreshingSilently] = useState(false);
+  const [silentRefreshError, setSilentRefreshError] = useState(false);
   const hasLoadedOnceRef = useRef(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -354,14 +356,17 @@ export function EmergencyTrackboardView() {
     setFacilityId(cookieValue || facilityIdFromHook || null);
   }, [facilityIdFromHook]);
 
-  const loadEncounters = useCallback(async (opts?: { silent?: boolean }) => {
+  const loadEncounters = useCallback(async (opts?: { silent?: boolean; showRefreshIndicator?: boolean }) => {
     if (!facilityId) return;
     const silent = Boolean(opts?.silent) || hasLoadedOnceRef.current;
     if (silent) {
-      setRefreshing(true);
+      if (opts?.showRefreshIndicator) {
+        setIsRefreshingSilently(true);
+      }
     } else {
-      setLoading(true);
+      setIsInitialLoading(true);
       setFetchError(null);
+      setSilentRefreshError(false);
     }
     try {
       const [data, bedBoard] = await Promise.all([
@@ -369,8 +374,10 @@ export function EmergencyTrackboardView() {
         fetchFacilityBedBoard(facilityId, "ED").catch(() => null),
       ]);
       const arr = Array.isArray(data) ? data : [];
-      setRows(arr as OpenEncounterRow[]);
+      const nextRows = arr as OpenEncounterRow[];
+      setRows((prev) => (shouldReplaceEncounterRows(prev, nextRows) ? nextRows : prev));
       hasLoadedOnceRef.current = true;
+      setSilentRefreshError(false);
       if (bedBoard) {
         setEdBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
@@ -384,12 +391,16 @@ export function EmergencyTrackboardView() {
         } else {
           setFetchError(t("emergencyTrackboard.loadError"));
         }
+      } else {
+        setSilentRefreshError(true);
       }
     } finally {
       if (silent) {
-        setRefreshing(false);
+        if (opts?.showRefreshIndicator) {
+          setIsRefreshingSilently(false);
+        }
       } else {
-        setLoading(false);
+        setIsInitialLoading(false);
       }
     }
   }, [facilityId, t]);
@@ -449,9 +460,19 @@ export function EmergencyTrackboardView() {
     [emergencyOnly]
   );
 
+  const myPatientsFilterCtx = useMemo(
+    () => ({ currentUserId: userId, roles }),
+    [roles, userId]
+  );
+
+  const myPatientsBase = useMemo(
+    () => resolveMyActivePatientsEncounters(emergencyOnly, myPatientsFilterCtx),
+    [emergencyOnly, myPatientsFilterCtx]
+  );
+
   const incompleteChartsBase = useMemo(
-    () => resolveIncompleteChartsEncounters(emergencyOnly),
-    [emergencyOnly]
+    () => resolveMyIncompleteChartsEncounters(emergencyOnly, myPatientsFilterCtx),
+    [emergencyOnly, myPatientsFilterCtx]
   );
 
   const filtered = useMemo(
@@ -460,16 +481,6 @@ export function EmergencyTrackboardView() {
   );
 
   const sortedFiltered = useMemo(() => sortRowsByRoomLabel(filtered), [filtered]);
-
-  const myPatientsFilterCtx = useMemo(
-    () => ({ currentUserId: userId, roles }),
-    [roles, userId]
-  );
-
-  const myPatientsBase = useMemo(
-    () => resolveMyPatientsEncounters(emergencyOnly, myPatientsFilterCtx),
-    [emergencyOnly, myPatientsFilterCtx]
-  );
 
   const myPatientsFiltered = useMemo(
     () => filterOpenEncountersBySearch(myPatientsBase, search, t),
@@ -726,8 +737,13 @@ export function EmergencyTrackboardView() {
             </div>
             <button
               type="button"
-              onClick={() => void loadEncounters({ silent: hasLoadedOnceRef.current })}
-              disabled={loading && !hasLoadedOnceRef.current}
+              onClick={() =>
+                void loadEncounters({
+                  silent: hasLoadedOnceRef.current,
+                  showRefreshIndicator: hasLoadedOnceRef.current,
+                })
+              }
+              disabled={isInitialLoading && !hasLoadedOnceRef.current}
               style={erTrackboardTouchControlStyle(
                 {
                   height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
@@ -737,23 +753,33 @@ export function EmergencyTrackboardView() {
                   color: "#334155",
                   border: "1px solid #e2e8f0",
                   borderRadius: 12,
-                  cursor: loading && !hasLoadedOnceRef.current ? "not-allowed" : "pointer",
+                  cursor: isInitialLoading && !hasLoadedOnceRef.current ? "not-allowed" : "pointer",
                   fontSize: 13,
                   fontWeight: 500,
                   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.05)",
                   whiteSpace: "nowrap",
+                  minWidth: 96,
                 },
                 layoutMode
               )}
             >
-              {loading && !hasLoadedOnceRef.current
+              {isInitialLoading && !hasLoadedOnceRef.current
                 ? t("common.loading")
-                : refreshing
+                : isRefreshingSilently
                   ? t("common.refreshing")
                   : t("common.refresh")}
             </button>
           </div>
         </div>
+
+        {silentRefreshError && rows.length > 0 ? (
+          <p
+            data-testid="ed-trackboard-silent-refresh-error"
+            style={{ margin: "0 0 8px 0", fontSize: 12, color: "#b45309", lineHeight: 1.4 }}
+          >
+            {t("emergencyTrackboard.silentRefreshError")}
+          </p>
+        ) : null}
 
         {isEdLifecyclePlaceholderView(boardViewMode) ? (
           <div
@@ -787,7 +813,7 @@ export function EmergencyTrackboardView() {
             </>
           ) : (
             <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontSize: 14 }}>
-              {loading ? t("common.loading") : t("bedBoard.refreshBoard")}
+              {isInitialLoading ? t("common.loading") : t("bedBoard.refreshBoard")}
             </div>
           )
         ) : fetchError ? (
@@ -821,7 +847,7 @@ export function EmergencyTrackboardView() {
               {t("emergencyTrackboard.retry")}
             </button>
           </div>
-        ) : loading && rows.length === 0 ? (
+        ) : isInitialLoading && rows.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {[0, 1, 2].map((i) => (
               <div

@@ -55,15 +55,15 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
 
   it("My Patients tab wires assignment workspace (LIFECYCLE.4)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("resolveMyPatientsEncounters");
+    expect(trackboard).toContain("resolveMyActivePatientsEncounters");
     expect(trackboard).toContain('data-testid="ed-my-patients-empty"');
     expect(trackboard).toContain('boardViewMode === "myPatients"');
     expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
   });
 
-  it("Incomplete Charts tab wires lifecycle workspace (LIFECYCLE.5)", () => {
+  it("Incomplete Charts tab wires personalized lifecycle workspace (LIFECYCLE.5B)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("resolveIncompleteChartsEncounters");
+    expect(trackboard).toContain("resolveMyIncompleteChartsEncounters");
     expect(trackboard).toContain('data-testid="ed-incomplete-charts-empty"');
     expect(trackboard).toContain('boardViewMode === "incompleteCharts"');
     expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(false);
@@ -79,7 +79,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
 
   it("Refresh remains available on the lifecycle shell", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("void loadEncounters({ silent: hasLoadedOnceRef.current })");
+    expect(trackboard).toContain("showRefreshIndicator: hasLoadedOnceRef.current");
     expect(trackboard).toContain('t("common.refresh")');
     expect(trackboard).toContain('data-testid="emergency-trackboard-filters"');
   });
@@ -89,7 +89,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
     expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(false);
     expect(trackboard).toContain("resolveActiveTrackboardEncounters");
-    expect(trackboard).toContain("resolveIncompleteChartsEncounters");
+    expect(trackboard).toContain("resolveMyIncompleteChartsEncounters");
     const loadBlock = trackboard.slice(
       trackboard.indexOf("const loadEncounters"),
       trackboard.indexOf("const claimSelf")
@@ -105,7 +105,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(trackboard).toContain("assignNurseSelf");
     const emergencyOnlyBlock = trackboard.slice(
       trackboard.indexOf("const emergencyOnly"),
-      trackboard.indexOf("const filtered")
+      trackboard.indexOf("const activeTrackboardBase")
     );
     expect(emergencyOnlyBlock).not.toContain("nurseAssignedUserId");
     expect(emergencyOnlyBlock).not.toContain("physicianAssignedUserId");
@@ -118,7 +118,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(en).toContain('trackboard: "Trackboard"');
     expect(en).toContain('bedBoard: "Bed Board"');
     expect(en).toContain('myPatients: "My Patients"');
-    expect(en).toContain('incompleteCharts: "Incomplete Charts"');
+    expect(en).toContain('incompleteCharts: "My Incomplete Charts"');
     expect(en).toContain('allEncounters: "All Encounters"');
     expect(en).toContain(
       'myPatients: "My Patients will show encounters assigned to you."'
@@ -126,7 +126,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(fr).toContain('trackboard: "Tableau de suivi"');
     expect(fr).toContain('bedBoard: "Plan des lits"');
     expect(fr).toContain('myPatients: "Mes patients"');
-    expect(fr).toContain('incompleteCharts: "Dossiers incomplets"');
+    expect(fr).toContain('incompleteCharts: "Mes dossiers incomplets"');
     expect(fr).toContain('allEncounters: "Tous les dossiers"');
     for (const view of ["allEncounters"] as const) {
       expect(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[view]).toBeDefined();

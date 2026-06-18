@@ -159,11 +159,11 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
     expect(resolveIncompleteChartsEncounters(rows).map((r) => r.id)).toEqual(["i1"]);
   });
 
-  it("my patients filter still uses full emergencyOnly set", () => {
+  it("my patients filter uses lifecycle-aware active assignment set", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("resolveMyPatientsEncounters(emergencyOnly, myPatientsFilterCtx)");
+    expect(trackboard).toContain("resolveMyActivePatientsEncounters(emergencyOnly, myPatientsFilterCtx)");
     expect(trackboard).not.toMatch(
-      /resolveMyPatientsEncounters\(activeTrackboardBase/
+      /resolveMyActivePatientsEncounters\(activeTrackboardBase/
     );
   });
 

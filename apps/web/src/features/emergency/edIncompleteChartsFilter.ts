@@ -10,6 +10,11 @@ import {
   type EdEncounterLifecycleProjection,
 } from "@medora/shared";
 import type { TrackboardOpsPayload } from "@/features/emergency/erTrackboardOperationalBadges";
+import {
+  isEncounterAssignedToCurrentUser,
+  type EdMyPatientsFilterContext,
+  type EdMyPatientsLifecycleEncounter,
+} from "@/features/emergency/edMyPatientsFilter";
 
 /** Trackboard row fields required for lifecycle projection (read-only). */
 export type EdTrackboardLifecycleEncounter = {
@@ -94,6 +99,26 @@ export function resolveIncompleteChartsEncounters<T extends EdTrackboardLifecycl
   encounters: readonly T[]
 ): T[] {
   return encounters.filter((encounter) => {
+    const state = resolveTrackboardEncounterLifecycleState(encounter);
+    return (
+      state === EdEncounterLifecycleState.INCOMPLETE_CHART ||
+      state === EdEncounterLifecycleState.READY_FOR_CLOSURE
+    );
+  });
+}
+
+export type EdMyIncompleteChartsEncounter = EdTrackboardLifecycleEncounter & EdMyPatientsLifecycleEncounter;
+
+/**
+ * My Incomplete Charts — assigned post-departure documentation only.
+ */
+export function resolveMyIncompleteChartsEncounters<T extends EdMyIncompleteChartsEncounter>(
+  encounters: readonly T[],
+  ctx: EdMyPatientsFilterContext
+): T[] {
+  if (!(ctx.currentUserId ?? "").trim()) return [];
+  return encounters.filter((encounter) => {
+    if (!isEncounterAssignedToCurrentUser(encounter, ctx)) return false;
     const state = resolveTrackboardEncounterLifecycleState(encounter);
     return (
       state === EdEncounterLifecycleState.INCOMPLETE_CHART ||

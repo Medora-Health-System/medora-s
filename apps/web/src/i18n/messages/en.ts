@@ -4773,13 +4773,13 @@ export default {
       trackboard: "Trackboard",
       bedBoard: "Bed Board",
       myPatients: "My Patients",
-      incompleteCharts: "Incomplete Charts",
+      incompleteCharts: "My Incomplete Charts",
       allEncounters: "All Encounters",
     },
     placeholder: {
       myPatients: "My Patients will show encounters assigned to you.",
       incompleteCharts:
-        "Incomplete Charts will show departed encounters awaiting documentation completion.",
+        "My Incomplete Charts will show departed encounters assigned to you that await documentation completion.",
       allEncounters: "All Encounters will show certified closed ED encounters.",
     },
     myPatients: {
@@ -4787,7 +4787,7 @@ export default {
       ownershipBadge: "Assigned to you",
     },
     incompleteCharts: {
-      empty: "No incomplete charts awaiting documentation.",
+      empty: "No incomplete charts are currently assigned to you.",
       badge: {
         incompleteChart: "Incomplete Chart",
         readyForClosure: "Ready For Closure",
@@ -4875,6 +4875,7 @@ export default {
     readAccessDenied:
       "Read access to the emergency trackboard is not authorized for your role or facility.",
     loadErrorHint: "Check your connection and try again.",
+    silentRefreshError: "Background refresh failed. Showing the last loaded list.",
     retry: "Retry",
     emptyNoEncounters: "No open emergency encounters.",
     emptyNoSearch: "No results match this search.",
