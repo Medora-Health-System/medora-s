@@ -200,4 +200,30 @@ describe("billing ledger hotfix (MEDUI.BILLING.HOTFIX.1)", () => {
       MANUAL_BILLING_REVIEW_UNRESOLVED_MESSAGE
     );
   });
+
+  it("10 — archive-visible billing-incomplete encounter gets 200 NOT_READY from claims route on read failure", async () => {
+    const encounterId = "enc-billing-ledger-regression";
+    const claimBuilderService = {
+      buildEncounterClaims: jest
+        .fn()
+        .mockRejectedValue(new BadRequestException("Manual billing review unresolved for this encounter.")),
+    };
+    const controller = new QueuesController(
+      {} as never,
+      claimBuilderService as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never
+    );
+    const result = await controller.getEncounterClaimAssembly(encounterId, { facilityId: "fac-er-1" });
+    expect(result).toMatchObject({
+      status: BILLING_LEDGER_ARTIFACT_STATUS.NOT_READY,
+      blockers: expect.arrayContaining([expect.stringContaining("Manual billing review unresolved")]),
+    });
+    expect((result as { status: string }).status).not.toBe("400");
+  });
 });

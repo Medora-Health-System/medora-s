@@ -47,6 +47,10 @@ import {
   fetchEncounterClaimAssemblyPreview,
   type EncounterClaimAssemblyPreviewPayload,
 } from "@/lib/claimAssemblyPreviewApi";
+import {
+  billingLedgerArtifactNotReadyMessage,
+  isBillingLedgerArtifactNotReady,
+} from "@/lib/billingLedgerArtifactLoad";
 
 type LedgerEventRow = {
   id: string;
@@ -953,6 +957,7 @@ export default function BillingEncounterLedgerPage() {
   const [advancedSaving, setAdvancedSaving] = useState(false);
   const [advancedErr, setAdvancedErr] = useState<string | null>(null);
   const [claimAssembly, setClaimAssembly] = useState<ClaimAssemblyPayload | null>(null);
+  const [claimArtifactNotice, setClaimArtifactNotice] = useState<string | null>(null);
   const [claimExport, setClaimExport] = useState<EncounterClaimExportPayload | null>(null);
   const [showExportJson, setShowExportJson] = useState(false);
   const [claimX12, setClaimX12] = useState<EncounterX12ExportPayload | null>(null);
@@ -1095,6 +1100,7 @@ export default function BillingEncounterLedgerPage() {
       if (summaryOutcome.status === "rejected") {
         setData(null);
         setClaimAssembly(null);
+        setClaimArtifactNotice(null);
         setClaimExport(null);
         setClaimX12(null);
         setClaimSubmissions([]);
@@ -1162,25 +1168,63 @@ export default function BillingEncounterLedgerPage() {
         setClearinghouseOpsStatus(null);
       }
       if (claimsOutcome.status === "fulfilled" && claimsOutcome.value && typeof claimsOutcome.value === "object") {
-        setClaimAssembly(claimsOutcome.value as ClaimAssemblyPayload);
+        if (isBillingLedgerArtifactNotReady(claimsOutcome.value)) {
+          setClaimAssembly(null);
+          setClaimArtifactNotice(
+            billingLedgerArtifactNotReadyMessage(claimsOutcome.value, t("billingPage.claimArtifactsNotReady"))
+          );
+        } else {
+          setClaimAssembly(claimsOutcome.value as ClaimAssemblyPayload);
+          setClaimArtifactNotice(null);
+        }
       } else {
         setClaimAssembly(null);
+        if (claimsOutcome.status === "rejected") {
+          setClaimArtifactNotice(t("billingPage.claimArtifactsNotReady"));
+        }
       }
       if (exportOutcome.status === "fulfilled" && exportOutcome.value && typeof exportOutcome.value === "object") {
-        setClaimExport(exportOutcome.value as EncounterClaimExportPayload);
+        if (isBillingLedgerArtifactNotReady(exportOutcome.value)) {
+          setClaimExport(null);
+          setClaimArtifactNotice((prev) =>
+            prev ??
+            billingLedgerArtifactNotReadyMessage(exportOutcome.value, t("billingPage.claimArtifactSectionNotReady"))
+          );
+        } else {
+          setClaimExport(exportOutcome.value as EncounterClaimExportPayload);
+        }
       } else {
         setClaimExport(null);
       }
       if (x12Outcome.status === "fulfilled" && x12Outcome.value && typeof x12Outcome.value === "object") {
-        setClaimX12(x12Outcome.value as EncounterX12ExportPayload);
+        if (isBillingLedgerArtifactNotReady(x12Outcome.value)) {
+          setClaimX12(null);
+          setClaimArtifactNotice((prev) => prev ?? t("billingPage.x12PreviewNotReady"));
+        } else {
+          setClaimX12(x12Outcome.value as EncounterX12ExportPayload);
+        }
       } else {
         setClaimX12(null);
       }
       if (submissionsOutcome.status === "fulfilled" && Array.isArray(submissionsOutcome.value)) {
         setClaimSubmissions(submissionsOutcome.value as ClaimSubmissionListItemPayload[]);
         setSubmissionListErr(null);
-        const dbg = await apiFetch(`/billing/encounters/${encounterId}/submission-debug`, { facilityId });
-        if (dbg && typeof dbg === "object") setSubmissionDebug(dbg as SubmissionDebugPayload);
+        try {
+          const dbg = await apiFetch(`/billing/encounters/${encounterId}/submission-debug`, { facilityId });
+          if (dbg && typeof dbg === "object") {
+            if (isBillingLedgerArtifactNotReady(dbg)) {
+              setSubmissionDebug(null);
+              setClaimArtifactNotice((prev) => prev ?? t("billingPage.submissionDebugNotReady"));
+            } else {
+              setSubmissionDebug(dbg as SubmissionDebugPayload);
+            }
+          } else {
+            setSubmissionDebug(null);
+          }
+        } catch {
+          setSubmissionDebug(null);
+          setClaimArtifactNotice((prev) => prev ?? t("billingPage.submissionDebugNotReady"));
+        }
       } else {
         setClaimSubmissions([]);
         setSubmissionListErr(t("billingPage.submissionListLoadErr"));
@@ -1255,6 +1299,7 @@ export default function BillingEncounterLedgerPage() {
     } catch {
       setData(null);
       setClaimAssembly(null);
+      setClaimArtifactNotice(null);
       setClaimExport(null);
       setClaimX12(null);
       setClaimSubmissions([]);
@@ -2348,6 +2393,25 @@ export default function BillingEncounterLedgerPage() {
               </div>
             </div>
           </div>
+
+          {claimArtifactNotice ? (
+            <div
+              data-testid="billing-ledger-claim-artifact-not-ready"
+              style={{
+                marginBottom: 20,
+                padding: 14,
+                borderRadius: 8,
+                border: "1px solid #fcd34d",
+                background: "#fffbeb",
+                color: "#92400e",
+                fontSize: 13,
+                lineHeight: 1.5,
+              }}
+              role="status"
+            >
+              <strong>{t("billingPage.claimArtifactSectionNotReady")}:</strong> {claimArtifactNotice}
+            </div>
+          ) : null}
 
           {claimAssembly ? (
             <div

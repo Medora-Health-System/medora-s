@@ -135,4 +135,24 @@ describe("EmergencyEncountersArchiveService (MEDUI.ED.LIFECYCLE.7A)", () => {
       })
     );
   });
+
+  it("includes billing-incomplete closed signed encounter for ledger cross-system regression", async () => {
+    const billingIncomplete = buildClosedSignedEncounter({
+      id: "enc-billing-ledger-regression",
+      billingReadinessSnapshotJson: { isReady: false, reason: "payer missing" },
+      billingFinalizationStatus: "NOT_READY",
+      _count: { diagnoses: 0 },
+    });
+    const findMany = jest.fn().mockResolvedValue([billingIncomplete]);
+    const count = jest.fn().mockResolvedValue(1);
+    const prisma = { encounter: { findMany, count } } as never;
+
+    const service = new EmergencyEncountersArchiveService(prisma);
+    const result = await service.listArchiveEncounters({ facilityId });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]?.id).toBe("enc-billing-ledger-regression");
+    expect(result.rows[0]?.certification.billingReady).toBe(false);
+    expect(result.rows[0]?.certification.allEncountersEligible).toBe(false);
+  });
 });
