@@ -30,10 +30,12 @@ import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
 import { ProcedureRevenueReviewService } from "../billing/procedure-revenue-review.service";
+import { RevenueCycleQueueService } from "../billing/revenue-cycle-queue.service";
+import { RevenueCycleQueueController } from "../billing/revenue-cycle-queue.controller";
 
 @Module({
   imports: [PrismaModule],
-  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController, BillingController],
+  controllers: [QueuesController, ClearinghouseAckWebhookController, BillingIdentityController, BillingController, RevenueCycleQueueController],
   providers: [
     QueuesService,
     AuditService,
@@ -61,6 +63,7 @@ import { ProcedureRevenueReviewService } from "../billing/procedure-revenue-revi
     CodingIntegrityReviewService,
     ClaimAssemblyPreviewService,
     ProcedureRevenueReviewService,
+    RevenueCycleQueueService,
   ],
   exports: [
     QueuesService,

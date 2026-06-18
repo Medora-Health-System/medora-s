@@ -74,7 +74,7 @@ describe("revenueCycleWorkspace (MEDUI.ADMIN.REVENUE.1)", () => {
     const workspace = readWebFile("src/features/revenue/RevenueCycleWorkspace.tsx");
     expect(workspace).toContain("revenue-cycle-view-nav");
     expect(workspace).toContain("revenue-cycle-quick-filters");
-    expect(workspace).toContain("buildRevenueCyclePlaceholderRows");
+    expect(workspace).toContain("fetchRevenueCycleQueue");
   });
 
   it("admin page links to revenue cycle workspace", () => {
@@ -85,13 +85,13 @@ describe("revenueCycleWorkspace (MEDUI.ADMIN.REVENUE.1)", () => {
 
   it("does not call billing mutation APIs from workspace shell", () => {
     const workspace = readWebFile("src/features/revenue/RevenueCycleWorkspace.tsx");
-    const models = readWebFile("src/features/revenue/revenueCycleWorkspaceModels.ts");
-    for (const source of [workspace, models]) {
+    const api = readWebFile("src/features/revenue/revenueCycleQueueApi.ts");
+    for (const source of [workspace, api]) {
       expect(source).not.toContain("finalize");
       expect(source).not.toContain("submitClaim");
       expect(source).not.toContain('method: "POST"');
-      expect(source).not.toContain("apiFetch");
     }
+    expect(api).toContain("apiFetch");
   });
 
   it("does not mutate encounters from revenue workspace", () => {

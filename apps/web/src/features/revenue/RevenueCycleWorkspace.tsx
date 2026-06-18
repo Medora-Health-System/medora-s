@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { RevenueCycleQueueTable } from "@/features/revenue/RevenueCycleQueueTable";
@@ -14,29 +14,85 @@ import {
   type RevenueCycleWorkspaceFilter,
   type RevenueCycleWorkspaceView,
 } from "@/features/revenue/revenueCycleNavigation";
-import { buildRevenueCyclePlaceholderRows } from "@/features/revenue/revenueCycleWorkspaceModels";
+import {
+  fetchRevenueCycleQueue,
+  mapRevenueCycleApiRowsToWorkspaceRows,
+  shouldReplaceRevenueCycleRows,
+} from "@/features/revenue/revenueCycleQueueApi";
+import {
+  buildRevenueCycleQueueCounts,
+  formatRevenueCycleQueueCountLabel,
+} from "@/features/revenue/revenueCycleQueueCounts";
+import type { RevenueCycleQueueRow } from "@/features/revenue/revenueCycleWorkspaceModels";
+import type { RevenueCycleQueueView } from "@medora/shared";
 
 type RevenueCycleWorkspaceProps = {
   facilityId?: string | null;
 };
 
-export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleWorkspaceProps) {
+const EMPTY_STATE_I18N_KEYS: Record<RevenueCycleQueueView, string> = {
+  READY_FOR_BILLING: "revenueCycle.empty.readyForBilling",
+  BILLING_DEFICIENCY: "revenueCycle.empty.billingDeficiency",
+  CODING_REVIEW: "revenueCycle.empty.codingReview",
+  CLAIM_SUBMITTED: "revenueCycle.empty.claimSubmitted",
+  CLAIM_PAID: "revenueCycle.empty.claimPaid",
+};
+
+export function RevenueCycleWorkspace({ facilityId }: RevenueCycleWorkspaceProps) {
   const { t } = useI18n();
+  const hasLoadedOnceRef = useRef(false);
   const [activeView, setActiveView] = useState<RevenueCycleWorkspaceView>(
     REVENUE_WORKSPACE_VIEWS[0]!
   );
   const [quickFilter, setQuickFilter] = useState<RevenueCycleWorkspaceFilter>("ALL");
+  const [search, setSearch] = useState("");
+  const [rows, setRows] = useState<RevenueCycleQueueRow[]>([]);
+  const [counts, setCounts] = useState(buildRevenueCycleQueueCounts(null));
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isRefreshingSilently, setIsRefreshingSilently] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const placeholderRows = useMemo(() => buildRevenueCyclePlaceholderRows(), []);
+  const loadQueue = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!facilityId) return;
+      const silent = Boolean(opts?.silent) || hasLoadedOnceRef.current;
+      if (!silent) setIsInitialLoading(true);
+      if (silent) setIsRefreshingSilently(true);
+      setFetchError(null);
 
-  const filteredRows = useMemo(() => {
-    return placeholderRows.filter((row) => matchesRevenueCycleFilter(row.queue, quickFilter));
-  }, [placeholderRows, quickFilter]);
+      try {
+        const result = await fetchRevenueCycleQueue({
+          facilityId,
+          queue: quickFilter === "ALL" ? undefined : quickFilter,
+          search,
+        });
+        const nextRows = mapRevenueCycleApiRowsToWorkspaceRows(result.rows);
+        setRows((prev) => (shouldReplaceRevenueCycleRows(prev, nextRows) ? nextRows : prev));
+        setCounts(buildRevenueCycleQueueCounts(result.counts));
+        hasLoadedOnceRef.current = true;
+      } catch (error) {
+        if (!silent) {
+          setFetchError(error instanceof Error ? error.message : t("revenueCycle.loadError"));
+        }
+      } finally {
+        setIsInitialLoading(false);
+        setIsRefreshingSilently(false);
+      }
+    },
+    [facilityId, quickFilter, search, t]
+  );
+
+  useEffect(() => {
+    void loadQueue();
+  }, [loadQueue]);
 
   const viewRows = useMemo(() => {
-    if (quickFilter !== "ALL") return filteredRows;
-    return placeholderRows.filter((row) => row.queue === activeView);
-  }, [activeView, filteredRows, placeholderRows, quickFilter]);
+    if (quickFilter !== "ALL") return rows;
+    return rows.filter((row) => row.queue === activeView);
+  }, [activeView, quickFilter, rows]);
+
+  const activeQueueForEmpty =
+    quickFilter === "ALL" ? activeView : (quickFilter as RevenueCycleQueueView);
 
   return (
     <div
@@ -62,7 +118,7 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
             {t("revenueCycle.title")}
           </h1>
           <p style={{ margin: 0, fontSize: 13, color: "#64748b", maxWidth: 720 }}>
-            {t("revenueCycle.intro")}
+            {t("revenueCycle.introLive")}
           </p>
         </div>
         <Link
@@ -72,6 +128,30 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
           {t("revenueCycle.backAdmin")}
         </Link>
       </header>
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={t("revenueCycle.searchPlaceholder")}
+          data-testid="revenue-cycle-search"
+          style={{
+            minWidth: 220,
+            flex: "1 1 220px",
+            maxWidth: 360,
+            padding: "8px 12px",
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            fontSize: 13,
+          }}
+        />
+        {isRefreshingSilently ? (
+          <span data-testid="revenue-cycle-silent-refresh" style={{ fontSize: 12, color: "#64748b" }}>
+            {t("revenueCycle.refreshing")}
+          </span>
+        ) : null}
+      </div>
 
       <nav
         aria-label={t("revenueCycle.viewsAriaLabel")}
@@ -88,6 +168,7 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
       >
         {REVENUE_WORKSPACE_VIEWS.map((view) => {
           const selected = quickFilter === "ALL" && activeView === view;
+          const label = t(REVENUE_WORKSPACE_VIEW_I18N_KEYS[view]);
           return (
             <button
               key={view}
@@ -109,7 +190,7 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
                 cursor: "pointer",
               }}
             >
-              {t(REVENUE_WORKSPACE_VIEW_I18N_KEYS[view])}
+              {formatRevenueCycleQueueCountLabel(view, counts[view], label)}
             </button>
           );
         })}
@@ -122,6 +203,15 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
       >
         {REVENUE_WORKSPACE_FILTERS.map((filterKey) => {
           const selected = quickFilter === filterKey;
+          const label = t(REVENUE_WORKSPACE_FILTER_I18N_KEYS[filterKey]);
+          const countLabel =
+            filterKey === "ALL"
+              ? label
+              : formatRevenueCycleQueueCountLabel(
+                  filterKey,
+                  counts[filterKey as RevenueCycleQueueView],
+                  label
+                );
           return (
             <button
               key={filterKey}
@@ -140,7 +230,7 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
                 cursor: "pointer",
               }}
             >
-              {t(REVENUE_WORKSPACE_FILTER_I18N_KEYS[filterKey])}
+              {countLabel}
             </button>
           );
         })}
@@ -171,15 +261,23 @@ export function RevenueCycleWorkspace({ facilityId: _facilityId }: RevenueCycleW
               ? t(REVENUE_WORKSPACE_VIEW_I18N_KEYS[activeView])
               : t(REVENUE_WORKSPACE_FILTER_I18N_KEYS[quickFilter])}
           </h2>
-          <span
-            data-testid="revenue-cycle-shell-notice"
-            style={{ fontSize: 12, color: "#64748b" }}
-          >
-            {t("revenueCycle.shellNotice")}
-          </span>
         </div>
 
-        <RevenueCycleQueueTable rows={viewRows} />
+        {isInitialLoading ? (
+          <p data-testid="revenue-cycle-loading" style={{ color: "#64748b", fontSize: 13 }}>
+            {t("revenueCycle.loading")}
+          </p>
+        ) : fetchError ? (
+          <p data-testid="revenue-cycle-error" style={{ color: "#b91c1c", fontSize: 13 }}>
+            {fetchError}
+          </p>
+        ) : viewRows.length === 0 ? (
+          <p data-testid="revenue-cycle-empty" style={{ color: "#64748b", fontSize: 13 }}>
+            {t(EMPTY_STATE_I18N_KEYS[activeQueueForEmpty])}
+          </p>
+        ) : (
+          <RevenueCycleQueueTable rows={viewRows} />
+        )}
       </section>
 
       <p

@@ -1728,8 +1728,14 @@ export default {
     title: "Cycle de revenus",
     intro:
       "Espace opérationnel pour les spécialistes facturation, codeurs, gestionnaires du cycle de revenus, auditeurs et administrateurs. Coquille en lecture seule — les files réelles seront connectées ultérieurement.",
+    introLive:
+      "Espace opérationnel pour les spécialistes facturation, codeurs, gestionnaires du cycle de revenus, auditeurs et administrateurs. Files en lecture seule projetées à partir des données de facturation existantes.",
     backAdmin: "← Administration",
     accessDenied: "Accès facturation, accueil ou administrateur requis.",
+    loading: "Chargement des files du cycle de revenus…",
+    loadError: "Impossible de charger les files du cycle de revenus.",
+    refreshing: "Actualisation…",
+    searchPlaceholder: "Rechercher patient, NDM ou rencontre…",
     viewsAriaLabel: "Files du cycle de revenus",
     filtersAriaLabel: "Filtres rapides du cycle de revenus",
     shellNotice: "Aperçu coquille — lignes de démonstration uniquement.",
@@ -1775,6 +1781,13 @@ export default {
     },
     actions: {
       viewLedger: "Voir le registre",
+    },
+    empty: {
+      readyForBilling: "Aucune rencontre prête pour facturation.",
+      billingDeficiency: "Aucune déficience de facturation trouvée.",
+      codingReview: "Aucun élément de revue codage.",
+      claimSubmitted: "Aucune réclamation soumise trouvée.",
+      claimPaid: "Aucune réclamation payée trouvée.",
     },
   },
   roi: {

@@ -1776,8 +1776,14 @@ export default {
     title: "Revenue Cycle",
     intro:
       "Operational workspace for billing specialists, coders, revenue cycle managers, auditors, and administrators. Read-only shell — live queues will connect in a later phase.",
+    introLive:
+      "Operational workspace for billing specialists, coders, revenue cycle managers, auditors, and administrators. Read-only queues projected from existing billing data.",
     backAdmin: "← Administration",
     accessDenied: "Billing, front desk, or administrator access required.",
+    loading: "Loading revenue cycle queues…",
+    loadError: "Unable to load revenue cycle queues.",
+    refreshing: "Refreshing…",
+    searchPlaceholder: "Search patient, MRN, or encounter…",
     viewsAriaLabel: "Revenue cycle queues",
     filtersAriaLabel: "Revenue cycle quick filters",
     shellNotice: "Shell preview — placeholder rows only.",
@@ -1822,6 +1828,13 @@ export default {
     },
     actions: {
       viewLedger: "View Ledger",
+    },
+    empty: {
+      readyForBilling: "No ready-for-billing encounters.",
+      billingDeficiency: "No billing deficiencies found.",
+      codingReview: "No coding review items.",
+      claimSubmitted: "No submitted claims found.",
+      claimPaid: "No paid claims found.",
     },
   },
   roi: {

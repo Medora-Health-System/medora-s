@@ -2,6 +2,7 @@ import {
   resolveRevenueCycleQueue,
   type RevenueCycleClaimStatus,
   type RevenueCyclePaymentStatus,
+  type RevenueCycleQueueRowDto,
   type RevenueCycleQueueView,
 } from "@medora/shared";
 import { revenueCycleLedgerHref } from "@/features/revenue/revenueCycleNavigation";
@@ -118,6 +119,22 @@ export function projectRevenueCycleRowFromBillingQueueSource(
     codingStatus: resolveCodingStatusLabel(codingReady),
     claimStatus: resolveClaimStatusLabel(claimStatus),
     ledgerHref: revenueCycleLedgerHref(source.id),
+  };
+}
+
+export function mapRevenueCycleApiRowToWorkspaceRow(row: RevenueCycleQueueRowDto): RevenueCycleQueueRow {
+  return {
+    encounterId: row.encounterId,
+    encounterLabel: row.encounterId.slice(0, 8).toUpperCase(),
+    patientName: row.patientName,
+    mrn: row.mrn,
+    dateOfService: row.dateOfService ?? "",
+    providerName: row.provider,
+    queue: row.queue,
+    billingStatus: resolveBillingStatusLabel(row.billingReady),
+    codingStatus: resolveCodingStatusLabel(row.codingReady),
+    claimStatus: resolveClaimStatusLabel(row.claimStatus),
+    ledgerHref: row.ledgerHref,
   };
 }
 
