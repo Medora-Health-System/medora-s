@@ -40,7 +40,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("ed-lifecycle-nav-${view}");
     expect(trackboard).toContain("setBoardViewMode(view)");
-    expect(trackboard).toContain("sortedFiltered.map");
+    expect(trackboard).toContain("encounterListRows.map");
     expect(trackboard).toContain("fetchOpenEncounters");
     expect(trackboard).toContain('useState<EdLifecycleBoardView>("trackboard")');
   });
@@ -53,13 +53,12 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(trackboard).toContain("fetchFacilityBedBoard");
   });
 
-  it("My Patients placeholder renders without filtering", () => {
+  it("My Patients tab wires assignment workspace (LIFECYCLE.4)", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("ed-lifecycle-placeholder-${boardViewMode}");
-    expect(trackboard).toContain("ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS");
-    expect(trackboard).toContain("isEdLifecyclePlaceholderView");
-    expect(trackboard).not.toMatch(/myPatients[\s\S]{0,400}nurseAssignedUserId/);
-    expect(trackboard).not.toMatch(/myPatients[\s\S]{0,400}physicianAssignedUserId/);
+    expect(trackboard).toContain("resolveMyPatientsEncounters");
+    expect(trackboard).toContain('data-testid="ed-my-patients-empty"');
+    expect(trackboard).toContain('boardViewMode === "myPatients"');
+    expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
   });
 
   it("Incomplete Charts placeholder renders without patient movement", () => {
@@ -87,8 +86,8 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
 
   it("No API or data movement introduced for placeholder views", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(isEdLifecyclePlaceholderView("myPatients")).toBe(true);
-    expect(isEdLifecyclePlaceholderView("trackboard")).toBe(false);
+    expect(isEdLifecyclePlaceholderView("myPatients")).toBe(false);
+    expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(true);
     expect(trackboard).not.toContain("buildEdEncounterLifecycleProjection");
     const loadBlock = trackboard.slice(
       trackboard.indexOf("const loadEncounters"),
@@ -128,7 +127,7 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(fr).toContain('myPatients: "Mes patients"');
     expect(fr).toContain('incompleteCharts: "Dossiers incomplets"');
     expect(fr).toContain('allEncounters: "Tous les dossiers"');
-    for (const view of ["myPatients", "incompleteCharts", "allEncounters"] as const) {
+    for (const view of ["incompleteCharts", "allEncounters"] as const) {
       expect(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[view]).toBeDefined();
     }
   });

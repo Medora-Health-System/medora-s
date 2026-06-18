@@ -4750,6 +4750,10 @@ export default {
       allEncounters:
         "Tous les dossiers affichera les rencontres ED fermées et certifiées.",
     },
+    myPatients: {
+      empty: "Aucune rencontre ne vous est actuellement assignée.",
+      ownershipBadge: "Assigné à vous",
+    },
   },
   emergencyTrackboard: {
     title: "Urgences",

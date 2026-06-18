@@ -53,6 +53,10 @@ import {
   type EdLifecycleBoardView,
 } from "@/features/emergency/edEncounterLifecycleNavigation";
 import {
+  isEncounterAssignedToCurrentUser,
+  resolveMyPatientsEncounters,
+} from "@/features/emergency/edMyPatientsFilter";
+import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
   indexBedBoardByKey,
@@ -193,6 +197,7 @@ type OpenEncounterRow = {
   nurseAssigned?: { id?: string; firstName?: string | null; lastName?: string | null } | null;
   physicianAssignedUserId?: string | null;
   physicianAssignedAt?: string | null;
+  nurseAssignedUserId?: string | null;
   nurseAssignedAt?: string | null;
   /** Phase 10B — first admission-summary save timestamp (server). */
   admittedAt?: string | null;
@@ -416,6 +421,41 @@ export function EmergencyTrackboardView() {
 
   const sortedFiltered = useMemo(() => sortRowsByRoomLabel(filtered), [filtered]);
 
+  const myPatientsFilterCtx = useMemo(
+    () => ({ currentUserId: userId, roles }),
+    [roles, userId]
+  );
+
+  const myPatientsBase = useMemo(
+    () => resolveMyPatientsEncounters(emergencyOnly, myPatientsFilterCtx),
+    [emergencyOnly, myPatientsFilterCtx]
+  );
+
+  const myPatientsFiltered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return myPatientsBase;
+    return myPatientsBase.filter((encounter) => {
+      const name = fullPatientName(encounter.patient, t("common.dash")).toLowerCase();
+      const nir = String(encounter.patient?.mrn ?? encounter.patient?.nationalId ?? "")
+        .trim()
+        .toLowerCase();
+      const cc = (encounter.triage?.chiefComplaint || encounter.chiefComplaint || "").toLowerCase();
+      const room = (encounter.roomLabel ?? "").toLowerCase();
+      const phys = physicianLabel(encounter).toLowerCase();
+      const nurse = nurseLabel(encounter).toLowerCase();
+      const blob = `${name} ${nir} ${cc} ${room} ${phys} ${nurse}`;
+      return blob.includes(q);
+    });
+  }, [myPatientsBase, search, t]);
+
+  const myPatientsSorted = useMemo(
+    () => sortRowsByRoomLabel(myPatientsFiltered),
+    [myPatientsFiltered]
+  );
+
+  const encounterListRows =
+    boardViewMode === "myPatients" ? myPatientsSorted : sortedFiltered;
+
   const edBedBoardUnit = useMemo(
     () => (edBedBoard ? findBedBoardUnit(edBedBoard, "ED") : null),
     [edBedBoard]
@@ -427,9 +467,12 @@ export function EmergencyTrackboardView() {
       if (view === "trackboard" && emergencyOnly.length > 0) {
         return `${base} (${emergencyOnly.length})`;
       }
+      if (view === "myPatients" && myPatientsBase.length > 0) {
+        return `${base} (${myPatientsBase.length})`;
+      }
       return base;
     },
-    [emergencyOnly.length, t]
+    [emergencyOnly.length, myPatientsBase.length, t]
   );
 
   const lifecyclePlaceholderPanelStyle: React.CSSProperties = {
@@ -757,7 +800,16 @@ export function EmergencyTrackboardView() {
               </div>
             ))}
           </div>
-        ) : sortedFiltered.length === 0 ? (
+        ) : boardViewMode === "myPatients" && myPatientsBase.length === 0 ? (
+          <div
+            style={lifecyclePlaceholderPanelStyle}
+            data-testid="ed-my-patients-empty"
+          >
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
+              {t("edLifecycle.myPatients.empty")}
+            </p>
+          </div>
+        ) : encounterListRows.length === 0 ? (
           <div
             style={{
               borderRadius: 16,
@@ -769,19 +821,23 @@ export function EmergencyTrackboardView() {
             }}
           >
             <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              {emergencyOnly.length === 0
-                ? t("emergencyTrackboard.emptyNoEncounters")
-                : t("emergencyTrackboard.emptyNoSearch")}
+              {boardViewMode === "myPatients"
+                ? t("emergencyTrackboard.emptyNoSearch")
+                : emergencyOnly.length === 0
+                  ? t("emergencyTrackboard.emptyNoEncounters")
+                  : t("emergencyTrackboard.emptyNoSearch")}
             </p>
             <p style={{ margin: "8px 0 0 0", fontSize: 14, color: "#64748b" }}>
-              {emergencyOnly.length === 0
-                ? t("emergencyTrackboard.emptyHintNoEncounters")
-                : t("emergencyTrackboard.emptyHintSearch")}
+              {boardViewMode === "myPatients"
+                ? t("emergencyTrackboard.emptyHintSearch")
+                : emergencyOnly.length === 0
+                  ? t("emergencyTrackboard.emptyHintNoEncounters")
+                  : t("emergencyTrackboard.emptyHintSearch")}
             </p>
           </div>
         ) : (
-          <ul style={erTrackboardPatientListStyle(layoutMode)}>
-            {sortedFiltered.map((encounter) => {
+          <ul style={erTrackboardPatientListStyle(layoutMode)} data-testid="emergency-trackboard-patient-list">
+            {encounterListRows.map((encounter) => {
               const acuity = acuityFromEsi(encounter.triage?.esi);
               const borderLeft = ACUITY_BORDER[acuity];
               const patient = encounter.patient;
@@ -810,10 +866,15 @@ export function EmergencyTrackboardView() {
                 )?.status ?? null;
               const phys = physicianLabel(encounter);
               const nurse = nurseLabel(encounter);
-              const physId = (encounter.physicianAssigned?.id ?? "").trim();
-              const nurseId = (encounter.nurseAssigned?.id ?? "").trim();
+              const physId = (
+                encounter.physicianAssignedUserId ?? encounter.physicianAssigned?.id ?? ""
+              ).trim();
+              const nurseId = (
+                encounter.nurseAssignedUserId ?? encounter.nurseAssigned?.id ?? ""
+              ).trim();
               const isPhysMine = Boolean(userId && physId && physId === userId);
               const isNurseMine = Boolean(userId && nurseId && nurseId === userId);
+              const isAssignedToMe = isEncounterAssignedToCurrentUser(encounter, myPatientsFilterCtx);
               const nirLine = patientNirDisplay(patient, dash);
               const arrivalDisplay = encounter.createdAt
                 ? formatEncounterChromeDateTime(encounter.createdAt, language)
@@ -993,7 +1054,12 @@ export function EmergencyTrackboardView() {
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
                                 {t("emergencyTrackboard.physicianShort")}:
                               </span>
-                              <span style={{ color: phys ? "#0f172a" : "#94a3b8", fontWeight: phys ? 600 : 500 }}>
+                              <span
+                                style={{
+                                  color: phys ? "#0f172a" : "#94a3b8",
+                                  fontWeight: isPhysMine ? 700 : phys ? 600 : 500,
+                                }}
+                              >
                                 {phys || t("emergencyTrackboard.unassignedDash")}
                               </span>
                             </p>
@@ -1004,7 +1070,12 @@ export function EmergencyTrackboardView() {
                               <span style={{ color: "#94a3b8", marginRight: 4 }}>
                                 {t("emergencyTrackboard.nurseShort")}:
                               </span>
-                              <span style={{ color: nurse ? "#0f172a" : "#94a3b8", fontWeight: nurse ? 600 : 500 }}>
+                              <span
+                                style={{
+                                  color: nurse ? "#0f172a" : "#94a3b8",
+                                  fontWeight: isNurseMine ? 700 : nurse ? 600 : 500,
+                                }}
+                              >
                                 {nurse || t("emergencyTrackboard.unassignedDash")}
                               </span>
                             </p>
@@ -1071,6 +1142,14 @@ export function EmergencyTrackboardView() {
                                 </span>
                               ) : null}
                               <MedoraCardBadge compact={usesCompactCensus} soft={ACUITY_SOFT[acuity]}>{t(acuityLabelKey(acuity))}</MedoraCardBadge>
+                              {isAssignedToMe ? (
+                                <MedoraCardBadge
+                                  compact={usesCompactCensus}
+                                  soft={{ bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }}
+                                >
+                                  {t("edLifecycle.myPatients.ownershipBadge")}
+                                </MedoraCardBadge>
+                              ) : null}
                               {facilityId ? (
                                 <BillingClassificationBadgeInteractive
                                   encounterId={encounter.id}

@@ -4782,6 +4782,10 @@ export default {
         "Incomplete Charts will show departed encounters awaiting documentation completion.",
       allEncounters: "All Encounters will show certified closed ED encounters.",
     },
+    myPatients: {
+      empty: "No encounters are currently assigned to you.",
+      ownershipBadge: "Assigned to you",
+    },
   },
   emergencyTrackboard: {
     title: "Emergency Department",
