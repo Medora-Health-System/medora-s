@@ -3,6 +3,7 @@ import {
   buildExternalBillingDailyCertifiedExportPath,
   buildExternalBillingDailyExportPath,
   buildExternalBillingEncounterExportPath,
+  buildExternalBillingMonthlyCertifiedExportPath,
   buildExternalBillingWeeklyCertifiedExportPath,
   filenameFromContentDisposition,
 } from "./externalBillingExportDownload.util";
@@ -23,12 +24,15 @@ describe("externalBillingExportDownload.util paths", () => {
     );
   });
 
-  it("certified daily and weekly export paths", () => {
+  it("certified daily, weekly, and monthly export paths", () => {
     expect(buildExternalBillingDailyCertifiedExportPath("2026-05-14", "csv")).toBe(
       "/billing/external-export/daily.csv?date=2026-05-14"
     );
     expect(buildExternalBillingWeeklyCertifiedExportPath("2026-06-02", "json")).toBe(
       "/billing/external-export/weekly.json?weekStart=2026-06-02"
+    );
+    expect(buildExternalBillingMonthlyCertifiedExportPath("2026-06", "csv")).toBe(
+      "/billing/external-export/monthly.csv?month=2026-06"
     );
   });
 });

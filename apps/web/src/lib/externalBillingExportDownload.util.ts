@@ -33,6 +33,17 @@ export function buildExternalBillingWeeklyCertificationPath(weekStart: string): 
   return `/billing/external-export/weekly/certification?weekStart=${encodeURIComponent(weekStart.trim())}`;
 }
 
+export function buildExternalBillingMonthlyCertifiedExportPath(month: string, format: "json" | "csv"): string {
+  const trimmed = month.trim();
+  return format === "json"
+    ? `/billing/external-export/monthly.json?month=${encodeURIComponent(trimmed)}`
+    : `/billing/external-export/monthly.csv?month=${encodeURIComponent(trimmed)}`;
+}
+
+export function buildExternalBillingMonthlyCertificationPath(month: string): string {
+  return `/billing/external-export/monthly/certification?month=${encodeURIComponent(month.trim())}`;
+}
+
 export function sanitizeFilenameSegment(value: string): string {
   return value.replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^\.+/, "").slice(0, 120) || "export";
 }

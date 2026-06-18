@@ -21,8 +21,10 @@ import {
   EXTERNAL_BILLING_EXPORT_CSV_HEADERS,
   isProviderProcedureDocumentationForBilling,
   MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT,
+  MAX_EXTERNAL_BILLING_MONTHLY_ENCOUNTER_COUNT,
   medoraCodeForDocumentedProcedureType,
   parseUtcCalendarDate,
+  parseUtcMonthRange,
   parseUtcWeekRange,
   readBillingCaptureV1,
   readPerformedByDisplayNameFromPayload,
@@ -369,6 +371,52 @@ export class ExternalBillingExportService {
     });
   }
 
+  async exportMonthlyJson(params: {
+    facilityId: string;
+    month: string;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<Record<string, unknown>> {
+    const range = assertUtcMonthOrThrow(params.month);
+    return this.exportPeriodJson({
+      facilityId: params.facilityId,
+      exportType: "monthly",
+      month: range.month,
+      periodStart: range.periodStart,
+      periodEnd: range.periodEnd,
+      start: range.start,
+      end: range.end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "MONTHLY",
+    });
+  }
+
+  async exportMonthlyCsv(params: {
+    facilityId: string;
+    month: string;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{ csv: string; filename: string }> {
+    const range = assertUtcMonthOrThrow(params.month);
+    return this.exportPeriodCsv({
+      facilityId: params.facilityId,
+      exportType: "monthly",
+      month: range.month,
+      periodStart: range.periodStart,
+      periodEnd: range.periodEnd,
+      start: range.start,
+      end: range.end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "MONTHLY",
+    });
+  }
+
   async getDailyExportCertification(facilityId: string, date: string): Promise<ExternalBillingExportCertificationSummary> {
     const { start, end } = assertUtcDateOrThrow(date, "date");
     return this.buildCertificationForPeriod(facilityId, start, end);
@@ -382,9 +430,18 @@ export class ExternalBillingExportService {
     return this.buildCertificationForPeriod(facilityId, range.start, range.end);
   }
 
+  async getMonthlyExportCertification(
+    facilityId: string,
+    month: string
+  ): Promise<ExternalBillingExportCertificationSummary> {
+    const range = assertUtcMonthOrThrow(month);
+    return this.buildCertificationForPeriod(facilityId, range.start, range.end);
+  }
+
   private async exportPeriodJson(params: {
     facilityId: string;
-    exportType: "daily" | "weekly";
+    exportType: "daily" | "weekly" | "monthly";
+    month?: string;
     periodStart: string;
     periodEnd: string;
     start: Date;
@@ -392,7 +449,7 @@ export class ExternalBillingExportService {
     userCtx: ExternalExportUserContext;
     ip?: string;
     userAgent?: string;
-    auditScope: "DAILY" | "WEEKLY";
+    auditScope: "DAILY" | "WEEKLY" | "MONTHLY";
   }): Promise<Record<string, unknown>> {
     const { packages, certification, facility, encounters, batchId, exportedAt } =
       await this.collectPeriodExportData(params.facilityId, params.start, params.end, params.exportType);
@@ -408,6 +465,7 @@ export class ExternalBillingExportService {
     );
     const out = {
       exportType: params.exportType,
+      ...(params.exportType === "monthly" && params.month ? { month: params.month } : {}),
       periodStart: params.periodStart,
       periodEnd: params.periodEnd,
       exportMeta: {
@@ -455,7 +513,8 @@ export class ExternalBillingExportService {
 
   private async exportPeriodCsv(params: {
     facilityId: string;
-    exportType: "daily" | "weekly";
+    exportType: "daily" | "weekly" | "monthly";
+    month?: string;
     periodStart: string;
     periodEnd: string;
     start: Date;
@@ -463,7 +522,7 @@ export class ExternalBillingExportService {
     userCtx: ExternalExportUserContext;
     ip?: string;
     userAgent?: string;
-    auditScope: "DAILY" | "WEEKLY";
+    auditScope: "DAILY" | "WEEKLY" | "MONTHLY";
   }): Promise<{ csv: string; filename: string }> {
     const { packages, certification, encounters, batchId, exportedAt } =
       await this.collectPeriodExportData(params.facilityId, params.start, params.end, params.exportType);
@@ -490,7 +549,9 @@ export class ExternalBillingExportService {
     const filename =
       params.exportType === "daily"
         ? `external-billing-daily-${params.periodStart}.csv`
-        : `external-billing-weekly-${params.periodStart}_${params.periodEnd}.csv`;
+        : params.exportType === "weekly"
+          ? `external-billing-weekly-${params.periodStart}_${params.periodEnd}.csv`
+          : `external-billing-monthly-${params.month ?? params.periodStart.slice(0, 7)}.csv`;
     return { csv, filename };
   }
 
@@ -498,12 +559,17 @@ export class ExternalBillingExportService {
     facilityId: string,
     start: Date,
     end: Date,
-    exportType: "daily" | "weekly"
+    exportType: "daily" | "weekly" | "monthly"
   ) {
     const encounters = await this.listClosedEncountersForRange(facilityId, start, end);
     if (exportType === "weekly" && encounters.length > MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT) {
       throw new BadRequestException(
         `Weekly export exceeds maximum of ${MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT} encounters. Narrow the date range or export daily.`
+      );
+    }
+    if (exportType === "monthly" && encounters.length > MAX_EXTERNAL_BILLING_MONTHLY_ENCOUNTER_COUNT) {
+      throw new BadRequestException(
+        `Monthly export exceeds maximum of ${MAX_EXTERNAL_BILLING_MONTHLY_ENCOUNTER_COUNT} encounters. Narrow the date range or export weekly.`
       );
     }
     const batchId = `BATCH-${start.toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -1250,5 +1316,14 @@ function assertUtcWeekOrThrow(weekStart: string) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid weekStart";
     throw new BadRequestException(`weekStart: ${message}`);
+  }
+}
+
+function assertUtcMonthOrThrow(month: string) {
+  try {
+    return parseUtcMonthRange(month);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid month";
+    throw new BadRequestException(`month: ${message}`);
   }
 }

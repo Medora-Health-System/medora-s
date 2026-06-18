@@ -5,7 +5,19 @@ import type { ExternalBillingExportCertificationSummary } from "@medora/shared";
 type ExternalBillingExportCertificationPanelProps = {
   certification: ExternalBillingExportCertificationSummary;
   t: (key: string) => string;
+  periodMode?: "daily" | "weekly" | "monthly";
 };
+
+function periodModeLabelKey(periodMode: NonNullable<ExternalBillingExportCertificationPanelProps["periodMode"]>): string {
+  switch (periodMode) {
+    case "weekly":
+      return "billingPage.externalExportModeWeekly";
+    case "monthly":
+      return "billingPage.externalExportModeMonthly";
+    default:
+      return "billingPage.externalExportModeDaily";
+  }
+}
 
 function statusLabelKey(status: ExternalBillingExportCertificationSummary["status"]): string {
   switch (status) {
@@ -21,6 +33,7 @@ function statusLabelKey(status: ExternalBillingExportCertificationSummary["statu
 export function ExternalBillingExportCertificationPanel({
   certification,
   t,
+  periodMode = "daily",
 }: ExternalBillingExportCertificationPanelProps) {
   return (
     <div
@@ -33,7 +46,7 @@ export function ExternalBillingExportCertificationPanel({
       }}
     >
       <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 8 }}>
-        {t("billingPage.externalExportCertificationTitle")}
+        {t("billingPage.externalExportCertificationTitle")} — {t(periodModeLabelKey(periodMode))}
       </div>
       <div style={{ fontSize: 13, color: "#334155", marginBottom: 8 }}>
         {t("billingPage.externalExportCertificationStatusLabel")}:{" "}

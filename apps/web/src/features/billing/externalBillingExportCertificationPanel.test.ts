@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const panelPath = join(import.meta.dirname, "ExternalBillingExportCertificationPanel.tsx");
 
-describe("externalBillingExportCertification panel (MEDUI.BILLING.EXTERNAL_EXPORT.1)", () => {
+describe("externalBillingExportCertification panel (MEDUI.BILLING.EXTERNAL_EXPORT.1 + .2)", () => {
   const panel = readFileSync(panelPath, "utf8");
 
   it("renders Ready status label", () => {
@@ -17,6 +17,13 @@ describe("externalBillingExportCertification panel (MEDUI.BILLING.EXTERNAL_EXPOR
 
   it("renders Not Ready status label", () => {
     expect(panel).toContain("externalExportCertificationNotReady");
+  });
+
+  it("supports daily, weekly, and monthly period modes", () => {
+    expect(panel).toContain("periodMode");
+    expect(panel).toContain("externalExportModeMonthly");
+    expect(panel).toContain("externalExportModeWeekly");
+    expect(panel).toContain("externalExportModeDaily");
   });
 
   it("shows encounters, lines, warnings, and blockers", () => {

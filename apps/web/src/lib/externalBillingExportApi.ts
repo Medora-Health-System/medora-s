@@ -5,6 +5,8 @@ import {
   buildExternalBillingDailyCertifiedExportPath,
   buildExternalBillingDailyExportPath,
   buildExternalBillingEncounterExportPath,
+  buildExternalBillingMonthlyCertificationPath,
+  buildExternalBillingMonthlyCertifiedExportPath,
   buildExternalBillingWeeklyCertificationPath,
   buildExternalBillingWeeklyCertifiedExportPath,
   filenameFromContentDisposition,
@@ -16,6 +18,7 @@ export {
   buildExternalBillingEncounterExportPath,
   buildExternalBillingDailyCertifiedExportPath,
   buildExternalBillingWeeklyCertifiedExportPath,
+  buildExternalBillingMonthlyCertifiedExportPath,
   filenameFromContentDisposition,
 } from "./externalBillingExportDownload.util";
 
@@ -96,6 +99,32 @@ export async function fetchExternalBillingWeeklyCertification(
   weekStart: string
 ): Promise<ExternalBillingExportCertificationSummary> {
   return apiFetch(buildExternalBillingWeeklyCertificationPath(weekStart), { facilityId }) as Promise<
+    ExternalBillingExportCertificationSummary
+  >;
+}
+
+export async function downloadExternalBillingMonthlyExport(
+  facilityId: string,
+  month: string,
+  format: "json" | "csv"
+): Promise<void> {
+  const path = buildExternalBillingMonthlyCertifiedExportPath(month, format);
+  const res = await apiFetchResponse(path, { facilityId, method: "GET" });
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition");
+  const safeMonth = sanitizeFilenameSegment(month);
+  const fallback =
+    format === "csv"
+      ? `external-billing-monthly-${safeMonth}.csv`
+      : `external-billing-monthly-${safeMonth}.json`;
+  triggerBrowserFileDownload(blob, filenameFromContentDisposition(cd, fallback));
+}
+
+export async function fetchExternalBillingMonthlyCertification(
+  facilityId: string,
+  month: string
+): Promise<ExternalBillingExportCertificationSummary> {
+  return apiFetch(buildExternalBillingMonthlyCertificationPath(month), { facilityId }) as Promise<
     ExternalBillingExportCertificationSummary
   >;
 }

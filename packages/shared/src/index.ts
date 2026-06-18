@@ -81,6 +81,7 @@ export * from "./billing/revenuePaymentWorkspace.js";
 export * from "./billing/manualBillingReviewBulkGovernance.js";
 export * from "./billing/billingReadinessExplainer.js";
 export * from "./billing/externalBillingExportCertification.js";
+export * from "./billing/externalBillingMonthlyPeriod.js";
 export * from "./icd10Normalize.js";
 export * from "./icd10FormatGuardrail.js";
 export * from "./claimDiagnosisCodes.js";

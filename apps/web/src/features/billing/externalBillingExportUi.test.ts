@@ -10,13 +10,17 @@ function readFile(relativePath: string, root = webRoot): string {
   return readFileSync(join(root, relativePath), "utf8");
 }
 
-describe("externalBillingExportUi (MEDUI.BILLING.EXTERNAL_EXPORT.1)", () => {
-  it("billing page renders daily and weekly export buttons", () => {
+describe("externalBillingExportUi (MEDUI.BILLING.EXTERNAL_EXPORT.1 + .2)", () => {
+  it("billing page renders daily, weekly, and monthly export buttons", () => {
     const page = readFile("app/app/billing/page.tsx");
     expect(page).toContain("externalExportDownloadDailyJson");
     expect(page).toContain("externalExportDownloadDailyCsv");
     expect(page).toContain("externalExportDownloadWeeklyJson");
     expect(page).toContain("externalExportDownloadWeeklyCsv");
+    expect(page).toContain("externalExportDownloadMonthlyJson");
+    expect(page).toContain("externalExportDownloadMonthlyCsv");
+    expect(page).toContain("type=\"month\"");
+    expect(page).toContain("fetchExternalBillingMonthlyCertification");
     expect(page).toContain("ExternalBillingExportCertificationPanel");
   });
 
@@ -68,5 +72,6 @@ describe("externalBillingExportCsvCompatibility (MEDUI.BILLING.EXTERNAL_EXPORT.1
     const util = readFile("src/lib/externalBillingExportDownload.util.ts");
     expect(util).toContain("/billing/external/daily-export");
     expect(util).toContain("/billing/external-export/daily.json");
+    expect(util).toContain("/billing/external-export/monthly.json");
   });
 });

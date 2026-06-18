@@ -620,4 +620,54 @@ export class BillingController {
     if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
     return this.externalBillingExport.getWeeklyExportCertification(req.facilityId, weekStart.trim());
   }
+
+  @Get("billing/external-export/monthly.json")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingMonthlyJson(@Query("month") month: string, @Req() req: any) {
+    if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    return this.externalBillingExport.exportMonthlyJson({
+      facilityId,
+      month: month.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+  }
+
+  @Get("billing/external-export/monthly.csv")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingMonthlyCsv(
+    @Query("month") month: string,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    const { csv, filename } = await this.externalBillingExport.exportMonthlyCsv({
+      facilityId,
+      month: month.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return csv;
+  }
+
+  @Get("billing/external-export/monthly/certification")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getExternalBillingMonthlyCertification(@Query("month") month: string, @Req() req: any) {
+    if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
+    return this.externalBillingExport.getMonthlyExportCertification(req.facilityId, month.trim());
+  }
 }
