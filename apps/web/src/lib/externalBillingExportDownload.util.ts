@@ -5,9 +5,32 @@ export function buildExternalBillingEncounterExportPath(encounterId: string, for
   return `/billing/external/encounters/${encodeURIComponent(encounterId)}/export?${q.toString()}`;
 }
 
+/** Legacy daily export path (backward compatible). */
 export function buildExternalBillingDailyExportPath(date: string, format: "json" | "csv"): string {
   const q = new URLSearchParams({ date: date.trim(), format });
   return `/billing/external/daily-export?${q.toString()}`;
+}
+
+export function buildExternalBillingDailyCertifiedExportPath(date: string, format: "json" | "csv"): string {
+  const trimmed = date.trim();
+  return format === "json"
+    ? `/billing/external-export/daily.json?date=${encodeURIComponent(trimmed)}`
+    : `/billing/external-export/daily.csv?date=${encodeURIComponent(trimmed)}`;
+}
+
+export function buildExternalBillingWeeklyCertifiedExportPath(weekStart: string, format: "json" | "csv"): string {
+  const trimmed = weekStart.trim();
+  return format === "json"
+    ? `/billing/external-export/weekly.json?weekStart=${encodeURIComponent(trimmed)}`
+    : `/billing/external-export/weekly.csv?weekStart=${encodeURIComponent(trimmed)}`;
+}
+
+export function buildExternalBillingDailyCertificationPath(date: string): string {
+  return `/billing/external-export/daily/certification?date=${encodeURIComponent(date.trim())}`;
+}
+
+export function buildExternalBillingWeeklyCertificationPath(weekStart: string): string {
+  return `/billing/external-export/weekly/certification?weekStart=${encodeURIComponent(weekStart.trim())}`;
 }
 
 export function sanitizeFilenameSegment(value: string): string {

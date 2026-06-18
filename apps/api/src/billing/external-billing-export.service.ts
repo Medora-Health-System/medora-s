@@ -15,13 +15,19 @@ import {
   type InfusionBillingReviewDecision,
   type InfusionBillingSuggestion,
   buildDocumentedProcedureSummaryMeta,
+  buildExternalBillingExportCertificationSummary,
   computeObservationStaySummaryForExport,
   displayNameFrForDocumentedProcedureType,
+  EXTERNAL_BILLING_EXPORT_CSV_HEADERS,
   isProviderProcedureDocumentationForBilling,
+  MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT,
   medoraCodeForDocumentedProcedureType,
+  parseUtcCalendarDate,
+  parseUtcWeekRange,
   readBillingCaptureV1,
   readPerformedByDisplayNameFromPayload,
   readProcedureTypeFromPayload,
+  type ExternalBillingExportCertificationSummary,
 } from "@medora/shared";
 
 const EXPORT_SCHEMA_VERSION = "medora_external_billing_v1" as const;
@@ -282,21 +288,128 @@ export class ExternalBillingExportService {
     ip?: string;
     userAgent?: string;
   }): Promise<Record<string, unknown>> {
-    const { start, end } = parseUtcDay(params.date);
-    const encounters = await this.listClosedEncountersForDay(params.facilityId, start, end);
-    const batchId = `BATCH-${params.date.replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    const exportedAt = new Date().toISOString();
-    const facility = await this.prisma.facility.findFirst({
-      where: { id: params.facilityId },
-      select: { id: true, name: true },
+    const { start, end, date } = assertUtcDateOrThrow(params.date, "date");
+    return this.exportPeriodJson({
+      facilityId: params.facilityId,
+      exportType: "daily",
+      periodStart: date,
+      periodEnd: date,
+      start,
+      end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "DAILY",
     });
-    const encounterPayloads: Record<string, unknown>[] = [];
-    for (const e of encounters) {
-      const pkg = await this.buildEncounterPackage(params.facilityId, e.id);
+  }
+
+  async exportDailyCsv(params: {
+    facilityId: string;
+    date: string;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{ csv: string; filename: string }> {
+    const { start, end, date } = assertUtcDateOrThrow(params.date, "date");
+    return this.exportPeriodCsv({
+      facilityId: params.facilityId,
+      exportType: "daily",
+      periodStart: date,
+      periodEnd: date,
+      start,
+      end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "DAILY",
+    });
+  }
+
+  async exportWeeklyJson(params: {
+    facilityId: string;
+    weekStart: string;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<Record<string, unknown>> {
+    const range = assertUtcWeekOrThrow(params.weekStart);
+    return this.exportPeriodJson({
+      facilityId: params.facilityId,
+      exportType: "weekly",
+      periodStart: range.periodStart,
+      periodEnd: range.periodEnd,
+      start: range.start,
+      end: range.end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "WEEKLY",
+    });
+  }
+
+  async exportWeeklyCsv(params: {
+    facilityId: string;
+    weekStart: string;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<{ csv: string; filename: string }> {
+    const range = assertUtcWeekOrThrow(params.weekStart);
+    return this.exportPeriodCsv({
+      facilityId: params.facilityId,
+      exportType: "weekly",
+      periodStart: range.periodStart,
+      periodEnd: range.periodEnd,
+      start: range.start,
+      end: range.end,
+      userCtx: params.userCtx,
+      ip: params.ip,
+      userAgent: params.userAgent,
+      auditScope: "WEEKLY",
+    });
+  }
+
+  async getDailyExportCertification(facilityId: string, date: string): Promise<ExternalBillingExportCertificationSummary> {
+    const { start, end } = assertUtcDateOrThrow(date, "date");
+    return this.buildCertificationForPeriod(facilityId, start, end);
+  }
+
+  async getWeeklyExportCertification(
+    facilityId: string,
+    weekStart: string
+  ): Promise<ExternalBillingExportCertificationSummary> {
+    const range = assertUtcWeekOrThrow(weekStart);
+    return this.buildCertificationForPeriod(facilityId, range.start, range.end);
+  }
+
+  private async exportPeriodJson(params: {
+    facilityId: string;
+    exportType: "daily" | "weekly";
+    periodStart: string;
+    periodEnd: string;
+    start: Date;
+    end: Date;
+    userCtx: ExternalExportUserContext;
+    ip?: string;
+    userAgent?: string;
+    auditScope: "DAILY" | "WEEKLY";
+  }): Promise<Record<string, unknown>> {
+    const { packages, certification, facility, encounters, batchId, exportedAt } =
+      await this.collectPeriodExportData(params.facilityId, params.start, params.end, params.exportType);
+    const encounterPayloads: Record<string, unknown>[] = packages.map((pkg) => {
       const { exportMeta: _omit, ...rest } = pkg.json;
-      encounterPayloads.push(rest);
-    }
+      return rest;
+    });
+    const flatLines = packages.flatMap((pkg) =>
+      (pkg.json.lineItems as Array<Record<string, unknown>> | undefined)?.map((line) => ({
+        encounterId: (pkg.json.encounter as { encounterId?: string })?.encounterId ?? "",
+        ...line,
+      })) ?? []
+    );
     const out = {
+      exportType: params.exportType,
+      periodStart: params.periodStart,
+      periodEnd: params.periodEnd,
       exportMeta: {
         schemaVersion: EXPORT_SCHEMA_VERSION,
         exportedAt,
@@ -309,12 +422,16 @@ export class ExternalBillingExportService {
           facilityId: params.facilityId,
           name: facility?.name ?? "",
         },
-        exportScope: "DAILY",
-        date: params.date,
+        exportScope: params.auditScope,
+        periodStart: params.periodStart,
+        periodEnd: params.periodEnd,
         exportBatchId: batchId,
         encounterCount: encounterPayloads.length,
+        timezone: "UTC",
       },
+      certification,
       encounters: encounterPayloads,
+      lines: flatLines,
     };
     await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY, {
       userId: params.userCtx.userId,
@@ -323,33 +440,34 @@ export class ExternalBillingExportService {
       userAgent: params.userAgent,
       metadata: {
         ...auditActorMetaForExportContext(params.userCtx),
-        scope: "DAILY",
+        scope: params.auditScope,
         format: "json",
-        date: params.date,
+        periodStart: params.periodStart,
+        periodEnd: params.periodEnd,
         exportBatchId: batchId,
         encounterIds: encounters.map((x) => x.id),
+        certificationStatus: certification.status,
         schemaVersion: EXPORT_SCHEMA_VERSION,
       },
     });
     return out;
   }
 
-  async exportDailyCsv(params: {
+  private async exportPeriodCsv(params: {
     facilityId: string;
-    date: string;
+    exportType: "daily" | "weekly";
+    periodStart: string;
+    periodEnd: string;
+    start: Date;
+    end: Date;
     userCtx: ExternalExportUserContext;
     ip?: string;
     userAgent?: string;
+    auditScope: "DAILY" | "WEEKLY";
   }): Promise<{ csv: string; filename: string }> {
-    const { start, end } = parseUtcDay(params.date);
-    const encounters = await this.listClosedEncountersForDay(params.facilityId, start, end);
-    const batchId = `BATCH-${params.date.replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
-    const exportedAt = new Date().toISOString();
-    const allRows: CsvRow[] = [];
-    for (const e of encounters) {
-      const pkg = await this.buildEncounterPackage(params.facilityId, e.id);
-      allRows.push(...pkg.csvRows);
-    }
+    const { packages, certification, encounters, batchId, exportedAt } =
+      await this.collectPeriodExportData(params.facilityId, params.start, params.end, params.exportType);
+    const allRows: CsvRow[] = packages.flatMap((pkg) => pkg.csvRows);
     const csv = this.buildCsvDocument(batchId, exportedAt, allRows);
     await this.audit.log(AuditAction.VIEW, AUDIT_ENTITY, {
       userId: params.userCtx.userId,
@@ -358,54 +476,119 @@ export class ExternalBillingExportService {
       userAgent: params.userAgent,
       metadata: {
         ...auditActorMetaForExportContext(params.userCtx),
-        scope: "DAILY",
+        scope: params.auditScope,
         format: "csv",
-        date: params.date,
+        periodStart: params.periodStart,
+        periodEnd: params.periodEnd,
         exportBatchId: batchId,
         encounterIds: encounters.map((x) => x.id),
         rowCount: allRows.length,
+        certificationStatus: certification.status,
         schemaVersion: EXPORT_SCHEMA_VERSION,
       },
     });
-    return { csv, filename: `external-billing-daily-${params.date}.csv` };
+    const filename =
+      params.exportType === "daily"
+        ? `external-billing-daily-${params.periodStart}.csv`
+        : `external-billing-weekly-${params.periodStart}_${params.periodEnd}.csv`;
+    return { csv, filename };
+  }
+
+  private async collectPeriodExportData(
+    facilityId: string,
+    start: Date,
+    end: Date,
+    exportType: "daily" | "weekly"
+  ) {
+    const encounters = await this.listClosedEncountersForRange(facilityId, start, end);
+    if (exportType === "weekly" && encounters.length > MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT) {
+      throw new BadRequestException(
+        `Weekly export exceeds maximum of ${MAX_EXTERNAL_BILLING_WEEKLY_ENCOUNTER_COUNT} encounters. Narrow the date range or export daily.`
+      );
+    }
+    const batchId = `BATCH-${start.toISOString().slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const exportedAt = new Date().toISOString();
+    const facility = await this.prisma.facility.findFirst({
+      where: { id: facilityId },
+      select: { id: true, name: true },
+    });
+    const packages: Awaited<ReturnType<typeof this.buildEncounterPackage>>[] = [];
+    for (const e of encounters) {
+      packages.push(await this.buildEncounterPackage(facilityId, e.id));
+    }
+    const certification = this.certifyPackages(facilityId, packages);
+    return { packages, certification, facility, encounters, batchId, exportedAt };
+  }
+
+  private async buildCertificationForPeriod(
+    facilityId: string,
+    start: Date,
+    end: Date
+  ): Promise<ExternalBillingExportCertificationSummary> {
+    const encounters = await this.listClosedEncountersForRange(facilityId, start, end);
+    const packages: Awaited<ReturnType<typeof this.buildEncounterPackage>>[] = [];
+    for (const e of encounters) {
+      packages.push(await this.buildEncounterPackage(facilityId, e.id));
+    }
+    return this.certifyPackages(facilityId, packages);
+  }
+
+  private certifyPackages(
+    facilityId: string,
+    packages: Awaited<ReturnType<typeof this.buildEncounterPackage>>[]
+  ): ExternalBillingExportCertificationSummary {
+    const encounterInputs = packages.map((pkg) => {
+      const enc = pkg.json.encounter as { encounterId?: string } | undefined;
+      const patient = pkg.json.patient as { patientId?: string; mrn?: string } | undefined;
+      const diagnoses = Array.isArray(pkg.json.diagnoses) ? pkg.json.diagnoses : [];
+      const lineItems = Array.isArray(pkg.json.lineItems) ? pkg.json.lineItems : [];
+      return {
+        encounterId: enc?.encounterId ?? "",
+        patientId: patient?.patientId ?? null,
+        mrn: patient?.mrn ?? null,
+        diagnosisCount: diagnoses.length,
+        lineCount: lineItems.length,
+      };
+    });
+
+    const lineInputs = packages.flatMap((pkg) => {
+      const enc = pkg.json.encounter as { encounterId?: string } | undefined;
+      const patient = pkg.json.patient as { patientId?: string; mrn?: string } | undefined;
+      const lineItems = Array.isArray(pkg.json.lineItems) ? pkg.json.lineItems : [];
+      return lineItems.map((line) => {
+        const row = line as Record<string, unknown>;
+        const performedBy = row.performedBy as { title?: string | null } | undefined;
+        const clinicalPayload = row.clinicalPayload;
+        const billingStatus = typeof row.billingStatus === "string" ? row.billingStatus : null;
+        const medoraCode = typeof row.medoraCode === "string" ? row.medoraCode : null;
+        return {
+          encounterId: enc?.encounterId ?? "",
+          patientId: patient?.patientId ?? null,
+          mrn: patient?.mrn ?? null,
+          billingStatus,
+          medoraCode,
+          performedByTitle: performedBy?.title ?? null,
+          hasClinicalPayload: clinicalPayload != null && typeof clinicalPayload === "object",
+          isUnmapped: medoraCode?.trim().toUpperCase() === "UNMAPPED",
+        };
+      });
+    });
+
+    const internalReady = packages.every((pkg) => {
+      const readiness = pkg.json.billingReadiness as { readyForExternalBilling?: boolean } | undefined;
+      return readiness?.readyForExternalBilling === true;
+    });
+
+    return buildExternalBillingExportCertificationSummary({
+      facilityId,
+      encounters: encounterInputs,
+      lines: lineInputs,
+      internalBillingReady: internalReady,
+    });
   }
 
   private buildCsvDocument(batchId: string, exportedAtIso: string, rows: CsvRow[]): string {
-    const headers = [
-      "export_batch_id",
-      "exported_at",
-      "facility_id",
-      "facility_name",
-      "patient_id",
-      "mrn",
-      "patient_name",
-      "dob",
-      "sex",
-      "encounter_id",
-      "encounter_number",
-      "encounter_type",
-      "encounter_status",
-      "arrival_at",
-      "closed_at",
-      "primary_provider_name",
-      "primary_provider_title",
-      "primary_diagnosis_code",
-      "primary_diagnosis_description",
-      "line_id",
-      "source_type",
-      "category",
-      "medora_code",
-      "display_name",
-      "status",
-      "performed_at",
-      "performed_by_name",
-      "performed_by_title",
-      "billing_status",
-      "billing_code_default",
-      "coding_instruction",
-      "clinical_summary",
-      "clinical_payload_json",
-    ];
+    const headers = [...EXTERNAL_BILLING_EXPORT_CSV_HEADERS];
     const lines = rows.map((r) =>
       [
         batchId,
@@ -448,7 +631,7 @@ export class ExternalBillingExportService {
     return [headers.join(","), ...lines].join("\n");
   }
 
-  private async listClosedEncountersForDay(facilityId: string, start: Date, end: Date) {
+  private async listClosedEncountersForRange(facilityId: string, start: Date, end: Date) {
     return this.prisma.encounter.findMany({
       where: {
         facilityId,
@@ -1052,12 +1235,20 @@ type CsvLineFields = {
 
 type CsvRow = CsvRowBase & CsvLineFields;
 
-function parseUtcDay(date: string): { start: Date; end: Date } {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new BadRequestException("date must be YYYY-MM-DD");
+function assertUtcDateOrThrow(date: string, label: string): { start: Date; end: Date; date: string } {
+  try {
+    return parseUtcCalendarDate(date);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid date";
+    throw new BadRequestException(`${label}: ${message}`);
   }
-  const start = new Date(`${date}T00:00:00.000Z`);
-  const end = new Date(`${date}T23:59:59.999Z`);
-  if (Number.isNaN(start.getTime())) throw new BadRequestException("Invalid date");
-  return { start, end };
+}
+
+function assertUtcWeekOrThrow(weekStart: string) {
+  try {
+    return parseUtcWeekRange(weekStart);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Invalid weekStart";
+    throw new BadRequestException(`weekStart: ${message}`);
+  }
 }

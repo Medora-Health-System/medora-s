@@ -1,7 +1,12 @@
-import { apiFetchResponse } from "./apiClient";
+import { apiFetch, apiFetchResponse } from "./apiClient";
+import type { ExternalBillingExportCertificationSummary } from "@medora/shared";
 import {
+  buildExternalBillingDailyCertificationPath,
+  buildExternalBillingDailyCertifiedExportPath,
   buildExternalBillingDailyExportPath,
   buildExternalBillingEncounterExportPath,
+  buildExternalBillingWeeklyCertificationPath,
+  buildExternalBillingWeeklyCertifiedExportPath,
   filenameFromContentDisposition,
   sanitizeFilenameSegment,
 } from "./externalBillingExportDownload.util";
@@ -9,6 +14,8 @@ import {
 export {
   buildExternalBillingDailyExportPath,
   buildExternalBillingEncounterExportPath,
+  buildExternalBillingDailyCertifiedExportPath,
+  buildExternalBillingWeeklyCertifiedExportPath,
   filenameFromContentDisposition,
 } from "./externalBillingExportDownload.util";
 
@@ -25,10 +32,6 @@ function triggerBrowserFileDownload(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-/**
- * Downloads medora_external_billing_v1 package for one encounter (JSON or CSV).
- * Uses session cookies, `x-facility-id`, and the same 401 refresh behavior as `apiFetch`.
- */
 export async function downloadExternalBillingEncounterExport(
   facilityId: string,
   encounterId: string,
@@ -44,15 +47,13 @@ export async function downloadExternalBillingEncounterExport(
   triggerBrowserFileDownload(blob, filenameFromContentDisposition(cd, fallback));
 }
 
-/**
- * Downloads medora_external_billing_v1 daily bundle for the facility (closed encounters on UTC calendar day).
- */
+/** Downloads certified daily bundle (closed encounters on UTC calendar day). */
 export async function downloadExternalBillingDailyExport(
   facilityId: string,
   date: string,
   format: "json" | "csv"
 ): Promise<void> {
-  const path = buildExternalBillingDailyExportPath(date, format);
+  const path = buildExternalBillingDailyCertifiedExportPath(date, format);
   const res = await apiFetchResponse(path, { facilityId, method: "GET" });
   const blob = await res.blob();
   const cd = res.headers.get("content-disposition");
@@ -62,4 +63,39 @@ export async function downloadExternalBillingDailyExport(
       ? `external-billing-daily-${safeDate}.csv`
       : `external-billing-daily-${safeDate}.json`;
   triggerBrowserFileDownload(blob, filenameFromContentDisposition(cd, fallback));
+}
+
+export async function downloadExternalBillingWeeklyExport(
+  facilityId: string,
+  weekStart: string,
+  format: "json" | "csv"
+): Promise<void> {
+  const path = buildExternalBillingWeeklyCertifiedExportPath(weekStart, format);
+  const res = await apiFetchResponse(path, { facilityId, method: "GET" });
+  const blob = await res.blob();
+  const cd = res.headers.get("content-disposition");
+  const safeWeek = sanitizeFilenameSegment(weekStart);
+  const fallback =
+    format === "csv"
+      ? `external-billing-weekly-${safeWeek}.csv`
+      : `external-billing-weekly-${safeWeek}.json`;
+  triggerBrowserFileDownload(blob, filenameFromContentDisposition(cd, fallback));
+}
+
+export async function fetchExternalBillingDailyCertification(
+  facilityId: string,
+  date: string
+): Promise<ExternalBillingExportCertificationSummary> {
+  return apiFetch(buildExternalBillingDailyCertificationPath(date), { facilityId }) as Promise<
+    ExternalBillingExportCertificationSummary
+  >;
+}
+
+export async function fetchExternalBillingWeeklyCertification(
+  facilityId: string,
+  weekStart: string
+): Promise<ExternalBillingExportCertificationSummary> {
+  return apiFetch(buildExternalBillingWeeklyCertificationPath(weekStart), { facilityId }) as Promise<
+    ExternalBillingExportCertificationSummary
+  >;
 }

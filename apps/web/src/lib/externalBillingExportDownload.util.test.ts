@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildExternalBillingDailyCertifiedExportPath,
   buildExternalBillingDailyExportPath,
   buildExternalBillingEncounterExportPath,
+  buildExternalBillingWeeklyCertifiedExportPath,
   filenameFromContentDisposition,
 } from "./externalBillingExportDownload.util";
 
@@ -18,6 +20,15 @@ describe("externalBillingExportDownload.util paths", () => {
   it("buildExternalBillingDailyExportPath includes date and format", () => {
     expect(buildExternalBillingDailyExportPath("2026-05-14", "json")).toBe(
       "/billing/external/daily-export?date=2026-05-14&format=json"
+    );
+  });
+
+  it("certified daily and weekly export paths", () => {
+    expect(buildExternalBillingDailyCertifiedExportPath("2026-05-14", "csv")).toBe(
+      "/billing/external-export/daily.csv?date=2026-05-14"
+    );
+    expect(buildExternalBillingWeeklyCertifiedExportPath("2026-06-02", "json")).toBe(
+      "/billing/external-export/weekly.json?weekStart=2026-06-02"
     );
   });
 });

@@ -520,4 +520,104 @@ export class BillingController {
       throw err;
     }
   }
+
+  @Get("billing/external-export/daily.json")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingDailyJson(@Query("date") date: string, @Req() req: any) {
+    if (!date?.trim()) throw new BadRequestException("date is required (YYYY-MM-DD)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    return this.externalBillingExport.exportDailyJson({
+      facilityId,
+      date: date.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+  }
+
+  @Get("billing/external-export/daily.csv")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingDailyCsv(
+    @Query("date") date: string,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    if (!date?.trim()) throw new BadRequestException("date is required (YYYY-MM-DD)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    const { csv, filename } = await this.externalBillingExport.exportDailyCsv({
+      facilityId,
+      date: date.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return csv;
+  }
+
+  @Get("billing/external-export/weekly.json")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingWeeklyJson(@Query("weekStart") weekStart: string, @Req() req: any) {
+    if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    return this.externalBillingExport.exportWeeklyJson({
+      facilityId,
+      weekStart: weekStart.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+  }
+
+  @Get("billing/external-export/weekly.csv")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async exportExternalBillingWeeklyCsv(
+    @Query("weekStart") weekStart: string,
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
+    const facilityId = req.facilityId;
+    const userCtx = await this.externalBillingExport.resolveExportUserContext(
+      req.user?.userId,
+      String(req.userRole ?? "")
+    );
+    const { csv, filename } = await this.externalBillingExport.exportWeeklyCsv({
+      facilityId,
+      weekStart: weekStart.trim(),
+      userCtx,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"] as string | undefined,
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return csv;
+  }
+
+  @Get("billing/external-export/daily/certification")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getExternalBillingDailyCertification(@Query("date") date: string, @Req() req: any) {
+    if (!date?.trim()) throw new BadRequestException("date is required (YYYY-MM-DD)");
+    return this.externalBillingExport.getDailyExportCertification(req.facilityId, date.trim());
+  }
+
+  @Get("billing/external-export/weekly/certification")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
+  async getExternalBillingWeeklyCertification(@Query("weekStart") weekStart: string, @Req() req: any) {
+    if (!weekStart?.trim()) throw new BadRequestException("weekStart is required (YYYY-MM-DD)");
+    return this.externalBillingExport.getWeeklyExportCertification(req.facilityId, weekStart.trim());
+  }
 }

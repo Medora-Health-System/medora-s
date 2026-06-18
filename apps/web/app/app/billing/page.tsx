@@ -2,21 +2,39 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { apiFetch } from "@/lib/apiClient";
-import { downloadExternalBillingDailyExport } from "@/lib/externalBillingExportApi";
+import {
+  downloadExternalBillingDailyExport,
+  downloadExternalBillingWeeklyExport,
+  fetchExternalBillingDailyCertification,
+  fetchExternalBillingWeeklyCertification,
+} from "@/lib/externalBillingExportApi";
 import Link from "next/link";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { encounterBcp47, tEncounterType } from "@/lib/encounterChromeI18n";
 import { useI18n } from "@/lib/i18n";
-import { readBillingCaptureV1, type BillingReadinessExplainerSummary } from "@medora/shared";
+import {
+  readBillingCaptureV1,
+  type BillingReadinessExplainerSummary,
+  type ExternalBillingExportCertificationSummary,
+} from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { BillingReadinessExplainerPanel } from "@/features/billing/BillingReadinessExplainerPanel";
+import { ExternalBillingExportCertificationPanel } from "@/features/billing/ExternalBillingExportCertificationPanel";
 
 function defaultLocalIsoDate(): string {
   const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function defaultWeekStartIso(): string {
+  const d = new Date();
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().slice(0, 10);
 }
 
 export default function BillingPage() {
@@ -35,9 +53,14 @@ export default function BillingPage() {
   const [savedNotice, setSavedNotice] = useState(false);
   const [queueFilter, setQueueFilter] = useState<"all" | "unmapped">("all");
   const [dailyExportDate, setDailyExportDate] = useState(defaultLocalIsoDate);
-  const [dailyExportBusy, setDailyExportBusy] = useState<null | "json" | "csv">(null);
-  const [dailyExportErr, setDailyExportErr] = useState<string | null>(null);
-  const [dailyExportOk, setDailyExportOk] = useState(false);
+  const [weeklyExportWeekStart, setWeeklyExportWeekStart] = useState(defaultWeekStartIso);
+  const [externalExportMode, setExternalExportMode] = useState<"daily" | "weekly">("daily");
+  const [externalExportBusy, setExternalExportBusy] = useState<null | "daily-json" | "daily-csv" | "weekly-json" | "weekly-csv">(null);
+  const [externalExportErr, setExternalExportErr] = useState<string | null>(null);
+  const [externalExportOk, setExternalExportOk] = useState(false);
+  const [externalExportCertification, setExternalExportCertification] =
+    useState<ExternalBillingExportCertificationSummary | null>(null);
+  const [externalExportCertificationLoading, setExternalExportCertificationLoading] = useState(false);
   const [explainerEncounter, setExplainerEncounter] = useState<{
     id: string;
     patientId: string;
@@ -137,32 +160,65 @@ export default function BillingPage() {
     }
   };
 
-  const runDailyExternalExport = useCallback(
-    async (format: "json" | "csv") => {
+  const runExternalExport = useCallback(
+    async (kind: "daily-json" | "daily-csv" | "weekly-json" | "weekly-csv") => {
       const fid = effectiveFacilityId;
       if (!fid) return;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(dailyExportDate.trim())) {
-        setDailyExportErr(t("billingPage.externalBillingDailyDateInvalid"));
+      if (kind.startsWith("daily") && !/^\d{4}-\d{2}-\d{2}$/.test(dailyExportDate.trim())) {
+        setExternalExportErr(t("billingPage.externalBillingDailyDateInvalid"));
         return;
       }
-      setDailyExportErr(null);
-      setDailyExportOk(false);
-      setDailyExportBusy(format);
+      if (kind.startsWith("weekly") && !/^\d{4}-\d{2}-\d{2}$/.test(weeklyExportWeekStart.trim())) {
+        setExternalExportErr(t("billingPage.externalExportWeekStartInvalid"));
+        return;
+      }
+      setExternalExportErr(null);
+      setExternalExportOk(false);
+      setExternalExportBusy(kind);
       try {
-        await downloadExternalBillingDailyExport(fid, dailyExportDate.trim(), format);
-        setDailyExportOk(true);
-        window.setTimeout(() => setDailyExportOk(false), 6000);
+        if (kind === "daily-json") {
+          await downloadExternalBillingDailyExport(fid, dailyExportDate.trim(), "json");
+        } else if (kind === "daily-csv") {
+          await downloadExternalBillingDailyExport(fid, dailyExportDate.trim(), "csv");
+        } else if (kind === "weekly-json") {
+          await downloadExternalBillingWeeklyExport(fid, weeklyExportWeekStart.trim(), "json");
+        } else {
+          await downloadExternalBillingWeeklyExport(fid, weeklyExportWeekStart.trim(), "csv");
+        }
+        setExternalExportOk(true);
+        window.setTimeout(() => setExternalExportOk(false), 6000);
       } catch (e: unknown) {
         const raw = e instanceof Error && e.message ? e.message : "";
-        setDailyExportErr(
+        setExternalExportErr(
           normalizeUserFacingError(raw, language) || t("billingPage.externalBillingDailyFailed")
         );
       } finally {
-        setDailyExportBusy(null);
+        setExternalExportBusy(null);
       }
     },
-    [dailyExportDate, effectiveFacilityId, language, t]
+    [dailyExportDate, weeklyExportWeekStart, effectiveFacilityId, language, t]
   );
+
+  const loadExternalExportCertification = useCallback(async () => {
+    if (!effectiveFacilityId) return;
+    setExternalExportCertificationLoading(true);
+    try {
+      const summary =
+        externalExportMode === "daily"
+          ? await fetchExternalBillingDailyCertification(effectiveFacilityId, dailyExportDate.trim())
+          : await fetchExternalBillingWeeklyCertification(effectiveFacilityId, weeklyExportWeekStart.trim());
+      setExternalExportCertification(summary);
+    } catch {
+      setExternalExportCertification(null);
+    } finally {
+      setExternalExportCertificationLoading(false);
+    }
+  }, [dailyExportDate, effectiveFacilityId, externalExportMode, weeklyExportWeekStart]);
+
+  useEffect(() => {
+    if (!effectiveFacilityId) return;
+    void loadExternalExportCertification();
+  }, [effectiveFacilityId, loadExternalExportCertification]);
 
   const openReadinessExplainer = useCallback(
     async (encounter: {
@@ -289,71 +345,163 @@ export default function BillingPage() {
             maxWidth: 640,
           }}
         >
-          <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.externalBillingDailySectionTitle")}</h2>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-            {t("billingPage.externalBillingDailySectionSubtitle")}
+          <h2 style={{ margin: "0 0 4px", fontSize: 16 }}>{t("billingPage.externalExportSectionTitle")}</h2>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+            {t("billingPage.externalExportSectionSubtitle")}
           </p>
-          <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-            <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "#334155" }}>
-              <span>{t("billingPage.externalBillingDailyDateLabel")}</span>
-              <input
-                type="date"
-                value={dailyExportDate}
-                onChange={(e) => {
-                  setDailyExportErr(null);
-                  setDailyExportOk(false);
-                  setDailyExportDate(e.target.value);
-                }}
-                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 14 }}
-              />
-            </label>
-          </div>
-          {dailyExportErr ? (
-            <p style={{ margin: "0 0 12px", color: "#b91c1c", fontSize: 13 }} role="alert">
-              {dailyExportErr}
-            </p>
-          ) : null}
-          {dailyExportOk ? (
-            <p style={{ margin: "0 0 12px", color: "#047857", fontSize: 13 }} role="status">
-              {t("billingPage.externalBillingDailySucceeded")}
-            </p>
-          ) : null}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#475569", lineHeight: 1.45 }}>
+            {t("billingPage.externalExportThirdPartyHelper")}
+          </p>
+          <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8 }}>
             <button
               type="button"
-              disabled={Boolean(dailyExportBusy)}
-              onClick={() => void runDailyExternalExport("json")}
+              onClick={() => setExternalExportMode("daily")}
               style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                background: dailyExportBusy === "json" ? "#f1f5f9" : "#fff",
-                cursor: dailyExportBusy ? "wait" : "pointer",
+                padding: "5px 10px",
+                borderRadius: 9999,
+                border: externalExportMode === "daily" ? "2px solid #0f766e" : "1px solid #cbd5e1",
+                background: externalExportMode === "daily" ? "#ecfdf5" : "#fff",
+                fontSize: 12,
                 fontWeight: 600,
-                fontSize: 14,
+                cursor: "pointer",
               }}
             >
-              {dailyExportBusy === "json"
-                ? t("billingPage.externalBillingDailyBusy")
-                : t("billingPage.externalBillingDailyDownloadJson")}
+              {t("billingPage.externalExportModeDaily")}
             </button>
             <button
               type="button"
-              disabled={Boolean(dailyExportBusy)}
-              onClick={() => void runDailyExternalExport("csv")}
+              onClick={() => setExternalExportMode("weekly")}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 9999,
+                border: externalExportMode === "weekly" ? "2px solid #0f766e" : "1px solid #cbd5e1",
+                background: externalExportMode === "weekly" ? "#ecfdf5" : "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t("billingPage.externalExportModeWeekly")}
+            </button>
+          </div>
+          <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+            {externalExportMode === "daily" ? (
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "#334155" }}>
+                <span>{t("billingPage.externalBillingDailyDateLabel")}</span>
+                <input
+                  type="date"
+                  value={dailyExportDate}
+                  onChange={(e) => {
+                    setExternalExportErr(null);
+                    setExternalExportOk(false);
+                    setDailyExportDate(e.target.value);
+                  }}
+                  style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 14 }}
+                />
+              </label>
+            ) : (
+              <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "#334155" }}>
+                <span>{t("billingPage.externalExportWeekStartLabel")}</span>
+                <input
+                  type="date"
+                  value={weeklyExportWeekStart}
+                  onChange={(e) => {
+                    setExternalExportErr(null);
+                    setExternalExportOk(false);
+                    setWeeklyExportWeekStart(e.target.value);
+                  }}
+                  style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 14 }}
+                />
+              </label>
+            )}
+          </div>
+          {externalExportCertificationLoading ? (
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
+          ) : externalExportCertification ? (
+            <ExternalBillingExportCertificationPanel certification={externalExportCertification} t={t} />
+          ) : null}
+          {externalExportErr ? (
+            <p style={{ margin: "12px 0", color: "#b91c1c", fontSize: 13 }} role="alert">
+              {externalExportErr}
+            </p>
+          ) : null}
+          {externalExportOk ? (
+            <p style={{ margin: "12px 0", color: "#047857", fontSize: 13 }} role="status">
+              {t("billingPage.externalBillingDailySucceeded")}
+            </p>
+          ) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalExport("daily-json")}
               style={{
                 padding: "8px 14px",
                 borderRadius: 8,
                 border: "1px solid #cbd5e1",
-                background: dailyExportBusy === "csv" ? "#f1f5f9" : "#fff",
-                cursor: dailyExportBusy ? "wait" : "pointer",
+                background: externalExportBusy === "daily-json" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
                 fontWeight: 600,
                 fontSize: 14,
               }}
             >
-              {dailyExportBusy === "csv"
+              {externalExportBusy === "daily-json"
                 ? t("billingPage.externalBillingDailyBusy")
-                : t("billingPage.externalBillingDailyDownloadCsv")}
+                : t("billingPage.externalExportDownloadDailyJson")}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalExport("daily-csv")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: externalExportBusy === "daily-csv" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {externalExportBusy === "daily-csv"
+                ? t("billingPage.externalBillingDailyBusy")
+                : t("billingPage.externalExportDownloadDailyCsv")}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalExport("weekly-json")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: externalExportBusy === "weekly-json" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {externalExportBusy === "weekly-json"
+                ? t("billingPage.externalBillingDailyBusy")
+                : t("billingPage.externalExportDownloadWeeklyJson")}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(externalExportBusy)}
+              onClick={() => void runExternalExport("weekly-csv")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: externalExportBusy === "weekly-csv" ? "#f1f5f9" : "#fff",
+                cursor: externalExportBusy ? "wait" : "pointer",
+                fontWeight: 600,
+                fontSize: 14,
+              }}
+            >
+              {externalExportBusy === "weekly-csv"
+                ? t("billingPage.externalBillingDailyBusy")
+                : t("billingPage.externalExportDownloadWeeklyCsv")}
             </button>
           </div>
         </div>
