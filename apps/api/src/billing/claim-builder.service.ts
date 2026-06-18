@@ -16,6 +16,7 @@ import {
   type ClaimEncounterValidation,
 } from "./claim-validation.util";
 import { BillingService } from "./billing.service";
+import { applyManualReviewGateToEncounterClaims } from "./billing-ledger-artifact.util";
 
 export type {
   ClaimEncounterValidation,
@@ -455,7 +456,7 @@ export class ClaimBuilderService {
   ) {}
 
   async buildEncounterClaims(facilityId: string, encounterId: string): Promise<EncounterClaimsResult> {
-    const manualReviewGate = await this.billingService.assertEncounterManualReviewResolved(facilityId, encounterId);
+    const manualReviewGate = await this.billingService.getEncounterManualReviewGate(facilityId, encounterId);
     const [events, clinicalDxCount] = await Promise.all([
       this.prisma.billingEvent.findMany({
         where: { facilityId, encounterId },
@@ -470,6 +471,7 @@ export class ClaimBuilderService {
         ? await this.billingService.getDoNotBillBillingEventIdsForEncounter(facilityId, encounterId)
         : new Set<string>();
     const billableEvents = doNotBillEventIds.size > 0 ? events.filter((event) => !doNotBillEventIds.has(event.id)) : events;
-    return buildEncounterClaimsFromEvents(billableEvents, clinicalDxCount);
+    const assembled = buildEncounterClaimsFromEvents(billableEvents, clinicalDxCount);
+    return applyManualReviewGateToEncounterClaims(assembled, manualReviewGate);
   }
 }

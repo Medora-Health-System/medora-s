@@ -45,13 +45,15 @@ export type ClaimValidationIssueCode =
   | "PROFESSIONAL_PACKAGE_WITHOUT_PROFESSIONAL_LINES"
   | "MED_ADMIN_ROUTE_MISSING_FOR_ADMIN_CPT"
   | "CLAIM_PACKAGE_INCONSISTENT"
-  | "ENCOUNTER_BILLING_SIDE_MIX_REVIEW";
+  | "ENCOUNTER_BILLING_SIDE_MIX_REVIEW"
+  | "MANUAL_BILLING_REVIEW_UNRESOLVED";
 
 export type ClaimValidationIssue = {
   code: ClaimValidationIssueCode;
   severity: "warning" | "blocker";
   meta?: {
     suppressedCount?: number;
+    unresolvedCount?: number;
   };
 };
 

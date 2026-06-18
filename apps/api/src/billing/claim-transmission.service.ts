@@ -19,6 +19,10 @@ import {
 } from "./claim-submission-state-machine.util";
 import { ClaimExportService } from "./claim-export.service";
 import {
+  buildBillingLedgerArtifactNotReadyPayload,
+  BILLING_LEDGER_ARTIFACT_STATUS,
+} from "./billing-ledger-artifact.util";
+import {
   classifyOutboundAttemptFailure,
   nextRetryAtForOutboundFailureOrdinal,
 } from "./clearinghouse-retry-policy.util";
@@ -230,6 +234,14 @@ export class ClaimTransmissionService {
   }
 
   async getEncounterSubmissionDebug(facilityId: string, encounterId: string) {
+    const encounter = await this.prisma.encounter.findFirst({
+      where: { id: encounterId, facilityId },
+      select: { id: true },
+    });
+    if (!encounter) {
+      throw new NotFoundException("Encounter not found");
+    }
+
     const submissions = await this.prisma.claimSubmission.findMany({
       where: { facilityId, encounterId },
       orderBy: { createdAt: "desc" },
@@ -238,7 +250,30 @@ export class ClaimTransmissionService {
         acknowledgments: { orderBy: { receivedAt: "desc" } },
       },
     });
-    const exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
+    let exportSnapshot: Awaited<ReturnType<ClaimExportService["buildEncounterClaimExport"]>>;
+    try {
+      exportSnapshot = await this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      const notReady = buildBillingLedgerArtifactNotReadyPayload({
+        blockers: ["CLAIM_EXPORT_NOT_READY"],
+        warnings: [],
+        summary: null,
+        message: error instanceof Error ? error.message : "Claim export not ready",
+      });
+      return {
+        encounterId,
+        status: BILLING_LEDGER_ARTIFACT_STATUS.NOT_READY,
+        claimReady: false,
+        blockedByCompleteness: true,
+        submissionGateReasonCode: "CLAIM_NOT_READY_FOR_SUBMISSION",
+        submissionGateBlockers: notReady.blockers,
+        blockers: notReady.blockers,
+        warnings: notReady.warnings,
+        summary: notReady.summary,
+        submissions: [],
+      };
+    }
     const submissionGate = evaluateSubmissionGate(exportSnapshot.summary, "encounter");
 
     return {

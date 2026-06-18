@@ -882,6 +882,14 @@ export default {
       "Des lignes de réclamation sont assemblées alors que certaines lignes du registre n’ont toujours pas de code mappable — vérifier le routage et le codage.",
     claimValidation_ENCOUNTER_BILLING_SIDE_MIX_REVIEW:
       "Cette visite mélange des lignes « les deux forfaits » et « côté inconnu » — vérifier l’affectation aux forfaits.",
+    claimValidation_MANUAL_BILLING_REVIEW_UNRESOLVED:
+      "La revue manuelle de facturation n’est pas terminée pour une ou plusieurs commandes de cette rencontre.",
+    claimArtifactsNotReady:
+      "Les données d’aperçu de réclamation ne sont pas prêtes. Consultez les déficiences ci-dessous ; l’export et la soumission restent désactivés.",
+    claimArtifactSectionNotReady: "Non prêt",
+    x12PreviewNotReady: "L’aperçu X12 n’est pas prêt — résolvez d’abord les déficiences de réclamation.",
+    submissionDebugNotReady:
+      "Le débogage de soumission n’est pas prêt — les prérequis d’export de réclamation sont incomplets.",
     claimWarning_MISSING_BILLABLE_CODES: "Code facturable manquant (forfait ou visite).",
     claimWarning_NO_CLAIM_LINES: "Aucune ligne CPT/HCPCS dans ce forfait.",
     claimWarning_BOTH_SIDE_UNCODED: "Au moins une ligne « les deux forfaits » n’a pas de code mappable.",

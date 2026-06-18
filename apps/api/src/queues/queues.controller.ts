@@ -1,6 +1,7 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
+import { buildBillingLedgerArtifactNotReadyPayload } from "../billing/billing-ledger-artifact.util";
 import { QueuesService } from "./queues.service";
 import { ClaimBuilderService } from "../billing/claim-builder.service";
 import { ClaimExportService } from "../billing/claim-export.service";
@@ -68,21 +69,63 @@ export class QueuesController {
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterClaimAssembly(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.claimBuilderService.buildEncounterClaims(facilityId, encounterId);
+    try {
+      return await this.claimBuilderService.buildEncounterClaims(facilityId, encounterId);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) {
+        const message = typeof error.message === "string" ? error.message : "Claim assembly not ready";
+        return buildBillingLedgerArtifactNotReadyPayload({
+          blockers: [message],
+          warnings: [],
+          summary: null,
+          message,
+        });
+      }
+      throw error;
+    }
   }
 
   @Get("billing/encounters/:encounterId/claim-export")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterClaimExport(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
+    try {
+      return await this.claimExportService.buildEncounterClaimExport(facilityId, encounterId);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) {
+        const message = typeof error.message === "string" ? error.message : "Claim export not ready";
+        return buildBillingLedgerArtifactNotReadyPayload({
+          blockers: [message],
+          warnings: [],
+          summary: null,
+          message,
+        });
+      }
+      throw error;
+    }
   }
 
   @Get("billing/encounters/:encounterId/x12-preview")
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterX12Preview(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.x12837GeneratorService.buildEncounterX12Preview(facilityId, encounterId);
+    try {
+      return await this.x12837GeneratorService.buildEncounterX12Preview(facilityId, encounterId);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) {
+        const message = typeof error.message === "string" ? error.message : "X12 preview not ready";
+        return buildBillingLedgerArtifactNotReadyPayload({
+          blockers: [message],
+          warnings: [],
+          summary: null,
+          message,
+        });
+      }
+      throw error;
+    }
   }
 
   @Post("billing/encounters/:encounterId/submission-preview")
@@ -103,7 +146,29 @@ export class QueuesController {
   @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN, RoleCode.FRONT_DESK)
   async getEncounterSubmissionDebug(@Param("encounterId") encounterId: string, @Req() req: any) {
     const facilityId = req.facilityId;
-    return this.claimTransmissionService.getEncounterSubmissionDebug(facilityId, encounterId);
+    try {
+      return await this.claimTransmissionService.getEncounterSubmissionDebug(facilityId, encounterId);
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      if (error instanceof BadRequestException) {
+        const message = typeof error.message === "string" ? error.message : "Submission debug not ready";
+        return {
+          encounterId,
+          ...buildBillingLedgerArtifactNotReadyPayload({
+            blockers: [message],
+            warnings: [],
+            summary: null,
+            message,
+          }),
+          claimReady: false,
+          blockedByCompleteness: true,
+          submissionGateReasonCode: "CLAIM_NOT_READY_FOR_SUBMISSION",
+          submissionGateBlockers: [message],
+          submissions: [],
+        };
+      }
+      throw error;
+    }
   }
 
   @Get("billing/encounters/:encounterId/claim-ops")

@@ -106,7 +106,15 @@ export class X12837GeneratorService {
           },
         };
       }
-      throw e;
+      return {
+        professional: null,
+        facility: null,
+        summary: {
+          readyForGeneration: false,
+          warnings: ["X12_PREVIEW_NOT_READY"],
+          missingFields: ["CLAIM_EXPORT_NOT_READY"],
+        },
+      };
     }
 
     const patient = await this.prisma.patient.findUnique({

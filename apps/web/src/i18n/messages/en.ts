@@ -974,6 +974,13 @@ export default {
       "Claim lines were assembled while some billing-side rows still lack mappable codes — review routing and coding.",
     claimValidation_ENCOUNTER_BILLING_SIDE_MIX_REVIEW:
       "This encounter mixes BOTH-side and UNKNOWN-side billing rows — review package assignment.",
+    claimValidation_MANUAL_BILLING_REVIEW_UNRESOLVED:
+      "Manual billing review is unresolved for one or more order items on this encounter.",
+    claimArtifactsNotReady:
+      "Claim preview data is not ready yet. Review billing deficiencies below; export and submission stay disabled until resolved.",
+    claimArtifactSectionNotReady: "Not ready",
+    x12PreviewNotReady: "X12 preview is not ready — resolve claim deficiencies first.",
+    submissionDebugNotReady: "Submission debug is not ready — claim export prerequisites are incomplete.",
     claimWarning_MISSING_BILLABLE_CODES: "Missing billable code (package or encounter).",
     claimWarning_NO_CLAIM_LINES: "No CPT/HCPCS lines in this package.",
     claimWarning_BOTH_SIDE_UNCODED: "At least one BOTH-side ledger row has no mappable code.",
