@@ -12,6 +12,10 @@ import {
   shouldShowIncompleteChartsOpsChips,
   shouldShowIncompleteChartsOwnershipBadge,
 } from "@/features/emergency/edIncompleteChartsUiCleanup";
+import {
+  shouldShowTrackboardBedStatusChip,
+  shouldShowTrackboardOwnershipBadge,
+} from "@/features/emergency/edTrackboardBadgeCleanup";
 
 const webSrcRoot = join(import.meta.dirname, "../..");
 
@@ -50,9 +54,9 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
 
   it("My Incomplete Charts hides Occupied bed status chip via view guard", () => {
     expect(shouldShowIncompleteChartsBedStatusChip("incompleteCharts")).toBe(false);
-    expect(shouldShowIncompleteChartsBedStatusChip("trackboard")).toBe(true);
+    expect(shouldShowTrackboardBedStatusChip("trackboard")).toBe(false);
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("shouldShowIncompleteChartsBedStatusChip(boardViewMode)");
+    expect(trackboard).toContain("shouldShowTrackboardBedStatusChip(boardViewMode)");
   });
 
   it("My Incomplete Charts hides Monitoring acuity chip via view guard", () => {
@@ -64,7 +68,7 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
 
   it("My Incomplete Charts hides Assigned to you ownership badge", () => {
     expect(shouldShowIncompleteChartsOwnershipBadge("incompleteCharts")).toBe(false);
-    expect(shouldShowIncompleteChartsOwnershipBadge("myPatients")).toBe(true);
+    expect(shouldShowIncompleteChartsOwnershipBadge("myPatients")).toBe(false);
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
     expect(trackboard).toContain("shouldShowIncompleteChartsOwnershipBadge(boardViewMode)");
     expect(trackboard).toContain("edLifecycle.myPatients.ownershipBadge");
@@ -124,7 +128,7 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
   });
 
   it("Trackboard still shows active operational chips", () => {
-    expect(shouldShowIncompleteChartsBedStatusChip("trackboard")).toBe(true);
+    expect(shouldShowIncompleteChartsBedStatusChip("trackboard")).toBe(false);
     expect(shouldShowIncompleteChartsAcuityChip("trackboard")).toBe(true);
     expect(shouldShowIncompleteChartsOpsChips("trackboard")).toBe(true);
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
@@ -133,7 +137,8 @@ describe("edIncompleteChartsUiCleanup (MEDUI.ED.LIFECYCLE.6C)", () => {
   });
 
   it("My Patients still shows ownership badge when applicable", () => {
-    expect(shouldShowIncompleteChartsOwnershipBadge("myPatients")).toBe(true);
+    expect(shouldShowIncompleteChartsOwnershipBadge("myPatients")).toBe(false);
+    expect(shouldShowIncompleteChartsAcuityChip("myPatients")).toBe(true);
   });
 
   it("certification panel still renders deficiencies", () => {

@@ -1,5 +1,9 @@
 import type { EdIncompleteChartBadgeKey } from "@/features/emergency/edIncompleteChartsFilter";
 import type { EdLifecycleBoardView } from "@/features/emergency/edEncounterLifecycleNavigation";
+import {
+  shouldShowTrackboardBedStatusChip,
+  shouldShowTrackboardOwnershipBadge,
+} from "@/features/emergency/edTrackboardBadgeCleanup";
 
 /** Certification / deficiency badges suppressed on My Incomplete Charts cards (detail lives in Review certification). */
 export const INCOMPLETE_CHARTS_SUPPRESSED_BADGE_KEYS: readonly EdIncompleteChartBadgeKey[] = [
@@ -26,19 +30,19 @@ export function resolveIncompleteChartsVisibleBadgeKeys(
   return badges.filter((key) => !hidden.has(key));
 }
 
-/** Bed occupancy chip (Occupied, etc.) — departed patients are not active census. */
+/** Bed occupancy chip — hidden on all encounter row views (see edTrackboardBadgeCleanup). */
 export function shouldShowIncompleteChartsBedStatusChip(view: EdLifecycleBoardView): boolean {
-  return !isMyIncompleteChartsBoardView(view);
+  return shouldShowTrackboardBedStatusChip(view);
 }
 
-/** Acuity chip (Monitoring / Critical / Stable) — operational board signal only. */
+/** Acuity chip (Monitoring / Critical / Stable) — hidden on departed incomplete charts only. */
 export function shouldShowIncompleteChartsAcuityChip(view: EdLifecycleBoardView): boolean {
   return !isMyIncompleteChartsBoardView(view);
 }
 
-/** "Assigned to you" duplicates Nurse: me / Provider: me on personalized incomplete charts. */
+/** "Assigned to you" — hidden on all encounter row views (see edTrackboardBadgeCleanup). */
 export function shouldShowIncompleteChartsOwnershipBadge(view: EdLifecycleBoardView): boolean {
-  return !isMyIncompleteChartsBoardView(view);
+  return shouldShowTrackboardOwnershipBadge(view);
 }
 
 /** Operational follow-up chips (orders pending, reassessment, LOS escalation). */

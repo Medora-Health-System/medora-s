@@ -70,6 +70,7 @@ import {
   shouldShowIncompleteChartsOpsChips,
   shouldShowIncompleteChartsOwnershipBadge,
 } from "@/features/emergency/edIncompleteChartsUiCleanup";
+import { shouldShowTrackboardBedStatusChip } from "@/features/emergency/edTrackboardBadgeCleanup";
 import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
 import {
   fetchFacilityBedBoard,
@@ -1219,7 +1220,9 @@ export function EmergencyTrackboardView() {
                                 <MedoraCardBadge compact={usesCompactCensus} soft={primaryStatusSoft}>{primaryStatusLabel}</MedoraCardBadge>
                               </span>
                               <EdBedStatusChip
-                                status={shouldShowIncompleteChartsBedStatusChip(boardViewMode) ? bedStatus : null}
+                                status={
+                                  shouldShowTrackboardBedStatusChip(boardViewMode) ? bedStatus : null
+                                }
                                 compact={usesCompactCensus}
                               />
                               {sortieInfirmierOk ? (
