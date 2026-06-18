@@ -12331,6 +12331,7 @@ export default {
       EARLY_ADMINISTRATION: "Administré en avance",
       LATE_ADMINISTRATION: "Administré en retard",
       MEDICATION_RESPONSE_DOCUMENTED: "Réponse médicamenteuse",
+      ALLERGY_REVIEW_RECOMMENDED: "Revue des allergies recommandée",
     },
   },
   marAdministrationVariance: {
@@ -12720,6 +12721,37 @@ export default {
       recommended: "Réponse recommandée",
       overdue: "Réponse en retard",
       adverseEscalation: "Envisager une revue des allergies",
+    },
+  },
+  marAllergyReview: {
+    recommendation: {
+      review: "Envisager une revue des allergies",
+      highPriority: "Revue des allergies haute priorité recommandée",
+    },
+    history: {
+      title: "Revue des allergies recommandée",
+    },
+    panel: {
+      title: "Recommandation de revue des allergies",
+      advisoryOnly: "Avis seulement — ne crée pas d'allergie et ne bloque pas les soins.",
+      recommendationLabel: "Recommandation de revue",
+      medication: "Médicament",
+      reaction: "Réaction",
+      time: "Heure",
+      reporter: "Documenté par",
+      reviewAllergy: "Revoir les allergies",
+      dismissRecommendation: "Ignorer la recommandation",
+      dismissError: "Impossible d'ignorer la recommandation.",
+    },
+    provider: {
+      notice: "Réaction médicamenteuse potentielle documentée",
+      reviewDetails: "Voir les détails",
+    },
+    ordering: {
+      banner: "Réaction indésirable antérieure potentielle documentée pour ce médicament.",
+      guidance: "Revoir les informations d'allergie si cliniquement approprié.",
+      continueOrder: "Poursuivre l'ordonnance",
+      reviewDetails: "Voir les détails",
     },
   },
   marShiftTimeline: {

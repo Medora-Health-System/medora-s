@@ -39,6 +39,10 @@ import {
   parseMarMedicationResponseNotes,
   sortMarMedicationResponsesNewestFirst,
 } from "./marMedicationResponseGovernance.js";
+import {
+  parseMarAllergyReviewCandidatesFromNotes,
+} from "./marAllergyCandidate.js";
+import { resolveMarAllergyReviewRecommendationMessageKey } from "./marAllergyReviewGovernance.js";
 
 const REFUSED_NOTES_PREFIX = "Refused:";
 
@@ -445,6 +449,48 @@ export function normalizeMedicationAdministrationHistoryResponseRows(input: {
     medicationResponsePainBefore: response.painBefore,
     medicationResponsePainAfter: response.painAfter,
     originalAdministrationIdForResponse: input.administrationId,
+    readOnly: true,
+  }));
+}
+
+/** Expand MAR row into ALLERGY_REVIEW_RECOMMENDED history entries (H10, newest first). */
+export function normalizeMedicationAdministrationHistoryAllergyReviewRows(input: {
+  marEntry: MedicationAdministrationHistoryEntry;
+  administrationId: string;
+  notes?: string | null;
+}): MedicationAdministrationHistoryEntry[] {
+  const candidates = parseMarAllergyReviewCandidatesFromNotes(input.notes);
+  if (candidates.length === 0) return [];
+
+  return candidates.map((candidate, index) => ({
+    id: `${input.administrationId}:allergy-review:${index}:${candidate.detectedAt}`,
+    source: "MAR" as const,
+    encounterId: input.marEntry.encounterId,
+    orderItemId: input.marEntry.orderItemId,
+    medicationLabel: input.marEntry.medicationLabel,
+    doseDisplay: input.marEntry.doseDisplay,
+    route: input.marEntry.route,
+    eventType: "ALLERGY_REVIEW_RECOMMENDED" as const,
+    eventAt: candidate.detectedAt,
+    documentedAt: candidate.detectedAt,
+    performedByDisplay: candidate.documentedBy ?? input.marEntry.performedByDisplay,
+    performedByRole: input.marEntry.performedByRole,
+    reasonCode: candidate.recommendationLevel,
+    reasonDetail: candidate.reactionText,
+    isPrn: input.marEntry.isPrn,
+    prnIndication: input.marEntry.prnIndication,
+    infusionPhase: null,
+    medicationDoseInstanceId: input.marEntry.medicationDoseInstanceId,
+    allergyReviewRecommendationLevel: candidate.recommendationLevel,
+    allergyReviewRecommendationMessageKey: resolveMarAllergyReviewRecommendationMessageKey(
+      candidate.recommendationLevel
+    ),
+    allergyReviewReactionText: candidate.reactionText,
+    allergyReviewMedicationName: candidate.medicationName,
+    allergyReviewDocumentedBy: candidate.documentedBy,
+    allergyReviewCandidateId: candidate.candidateId,
+    allergyReviewDismissedAt: candidate.dismissedAt ?? null,
+    originalAdministrationIdForAllergyReview: input.administrationId,
     readOnly: true,
   }));
 }

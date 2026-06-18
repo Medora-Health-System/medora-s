@@ -12307,6 +12307,7 @@ export default {
       EARLY_ADMINISTRATION: "Administered early",
       LATE_ADMINISTRATION: "Administered late",
       MEDICATION_RESPONSE_DOCUMENTED: "Medication response",
+      ALLERGY_REVIEW_RECOMMENDED: "Allergy review recommended",
     },
   },
   marAdministrationVariance: {
@@ -12694,6 +12695,37 @@ export default {
       recommended: "Response recommended",
       overdue: "Response overdue",
       adverseEscalation: "Consider allergy review",
+    },
+  },
+  marAllergyReview: {
+    recommendation: {
+      review: "Consider allergy review",
+      highPriority: "High-priority allergy review recommended",
+    },
+    history: {
+      title: "Allergy review recommended",
+    },
+    panel: {
+      title: "Allergy review recommendation",
+      advisoryOnly: "Advisory only — does not create an allergy or block care.",
+      recommendationLabel: "Review recommendation",
+      medication: "Medication",
+      reaction: "Reaction",
+      time: "Time",
+      reporter: "Reporter",
+      reviewAllergy: "Review allergy",
+      dismissRecommendation: "Dismiss recommendation",
+      dismissError: "Unable to dismiss recommendation.",
+    },
+    provider: {
+      notice: "Potential medication-related reaction documented",
+      reviewDetails: "Review details",
+    },
+    ordering: {
+      banner: "Potential prior adverse reaction documented for this medication.",
+      guidance: "Review allergy information if clinically appropriate.",
+      continueOrder: "Continue order",
+      reviewDetails: "Review details",
     },
   },
   marShiftTimeline: {

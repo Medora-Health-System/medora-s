@@ -39,6 +39,8 @@ import {
   type MedicationOrderedDoseSnapshotJson,
   type MedicationSafetyGovernanceSnapshot,
   parseMarMedicationResponseNotes,
+  parseMarAllergyReviewCandidatesFromNotes,
+  filterActiveMarAllergyReviewCandidates,
   buildMarMedicationResponseTimelineBadge,
   sortMarMedicationResponsesNewestFirst,
   type MarMedicationResponseSeverity,
@@ -172,6 +174,17 @@ export type MarShiftTimelineCellItem = {
     showAdverseEscalation: boolean;
   } | null;
   medicationResponseAdverseEscalation?: boolean;
+  allergyReviewCandidates?: Array<{
+    candidateId: string;
+    medicationName: string;
+    medicationClass: string | null;
+    reactionText: string;
+    reactionCategory: string;
+    detectedAt: string;
+    documentedBy: string | null;
+    recommendationLevel: string;
+    dismissedAt?: string | null;
+  }>;
 };
 
 export type MarShiftTimelineRowCell = {
@@ -757,6 +770,9 @@ export class MarShiftTimelineService {
       const medicationResponseAdverseEscalation = medicationResponses.some(
         (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
       );
+      const allergyReviewCandidates = filterActiveMarAllergyReviewCandidates(
+        parseMarAllergyReviewCandidatesFromNotes(administrationNotes)
+      );
 
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
@@ -854,6 +870,8 @@ export class MarShiftTimelineService {
         medicationResponseBadge,
         medicationResponseFollowUp,
         medicationResponseAdverseEscalation,
+        allergyReviewCandidates:
+          allergyReviewCandidates.length > 0 ? allergyReviewCandidates : undefined,
       };
 
       const rowMeta = {

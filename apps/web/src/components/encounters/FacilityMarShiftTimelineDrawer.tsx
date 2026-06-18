@@ -39,6 +39,8 @@ import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/Medicati
 import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
 import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
 import { MedicationResponseDocumentationPanel } from "@/components/mar/MedicationResponseDocumentationPanel";
+import { MedicationAllergyReviewPanel } from "@/components/mar/MedicationAllergyReviewPanel";
+import type { MarAllergyCandidate } from "@medora/shared";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
 import {
   buildMarClinicalTimeDocumentationNotes,
@@ -934,6 +936,20 @@ export function FacilityMarShiftTimelineDrawer({
               facilityTimeZone={facilityTimeZone}
               readOnly={readOnly}
               onSaved={onActionSuccess}
+            />
+          ) : null}
+
+          {encounterId?.trim() &&
+          item.medicationAdministrationId?.trim() &&
+          item.allergyReviewCandidates &&
+          item.allergyReviewCandidates.length > 0 ? (
+            <MedicationAllergyReviewPanel
+              encounterId={encounterId}
+              administrationId={item.medicationAdministrationId}
+              candidates={item.allergyReviewCandidates as MarAllergyCandidate[]}
+              facilityTimeZone={facilityTimeZone}
+              readOnly={readOnly}
+              onDismissed={onActionSuccess}
             />
           ) : null}
 

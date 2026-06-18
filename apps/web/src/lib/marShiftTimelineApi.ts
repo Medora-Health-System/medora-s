@@ -118,6 +118,17 @@ export type MarShiftTimelineCellItem = {
     responseCount: number;
   } | null;
   medicationResponseAdverseEscalation?: boolean;
+  allergyReviewCandidates?: Array<{
+    candidateId: string;
+    medicationName: string;
+    medicationClass: string | null;
+    reactionText: string;
+    reactionCategory: string;
+    detectedAt: string;
+    documentedBy: string | null;
+    recommendationLevel: string;
+    dismissedAt?: string | null;
+  }>;
   medicationAdministrationId?: string | null;
   medicationResponses?: Array<{
     responseCode: string;

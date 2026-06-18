@@ -30,6 +30,10 @@ import {
   buildMarMedicationResponseAnalyticsMetrics,
   type MarMedicationResponseAnalyticsMetrics,
 } from "./marMedicationResponseAnalytics.js";
+import {
+  buildMarAllergyReviewAnalyticsMetrics,
+  type MarAllergyReviewAnalyticsMetrics,
+} from "./marAllergyReviewAnalytics.js";
 
 export type MarAnalyticsAggregates = {
   readOnly: typeof MAR_ANALYTICS_READ_ONLY;
@@ -48,6 +52,7 @@ export type MarAnalyticsAggregates = {
   administrationVariances: MarAdministrationVarianceAnalyticsMetrics;
   timingOverrides: MarTimingOverrideAnalyticsMetrics;
   medicationResponses: MarMedicationResponseAnalyticsMetrics;
+  allergyReview: MarAllergyReviewAnalyticsMetrics;
 };
 
 export type MarAdministrationAnalyticsMetrics = {
@@ -506,6 +511,14 @@ export function buildMarAnalyticsAggregates(input: MarAnalyticsInput): MarAnalyt
     eligibleAdministrationCount: administrations.totalAdministrations,
     projections: input.medicationResponses ?? [],
   });
+  const allergyReview = buildMarAllergyReviewAnalyticsMetrics({
+    administrations: (input.allergyReviewAdministrations ?? []).map((row) => ({
+      id: row.id,
+      notes: row.notes,
+      medicationLabel: row.medicationLabel,
+    })),
+    dismissedCandidateIds: input.dismissedAllergyCandidateIds,
+  });
 
   return {
     readOnly: MAR_ANALYTICS_READ_ONLY,
@@ -534,6 +547,7 @@ export function buildMarAnalyticsAggregates(input: MarAnalyticsInput): MarAnalyt
     administrationVariances,
     timingOverrides,
     medicationResponses,
+    allergyReview,
   };
 }
 
@@ -552,6 +566,12 @@ export function projectMarAnalyticsInputFromSnapshots(input: {
   administrationVariances?: import("./marAnalyticsAdministrationVariance.js").MarAnalyticsAdministrationVarianceProjection[];
   timingOverrides?: import("./marAnalyticsTimingOverride.js").MarAnalyticsTimingOverrideProjection[];
   medicationResponses?: import("./marMedicationResponseAnalytics.js").MarMedicationResponseAnalyticsProjection[];
+  allergyReviewAdministrations?: Array<{
+    id: string;
+    notes?: string | null;
+    medicationLabel?: string | null;
+  }>;
+  dismissedAllergyCandidateIds?: string[];
 }): MarAnalyticsInput {
   return {
     facilityId: input.facilityId,
@@ -569,5 +589,11 @@ export function projectMarAnalyticsInputFromSnapshots(input: {
       : undefined,
     timingOverrides: input.timingOverrides ? [...input.timingOverrides] : undefined,
     medicationResponses: input.medicationResponses ? [...input.medicationResponses] : undefined,
+    allergyReviewAdministrations: input.allergyReviewAdministrations
+      ? [...input.allergyReviewAdministrations]
+      : undefined,
+    dismissedAllergyCandidateIds: input.dismissedAllergyCandidateIds
+      ? [...input.dismissedAllergyCandidateIds]
+      : undefined,
   };
 }

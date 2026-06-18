@@ -3,6 +3,7 @@ import {
   formatMarShiftTimelineClinicianDisplay,
   normalizeMedicationAdministrationHistoryMarRow,
   normalizeMedicationAdministrationHistoryResponseRows,
+  normalizeMedicationAdministrationHistoryAllergyReviewRows,
   normalizeMedicationAdministrationHistoryCorrectionRow,
   normalizeMedicationAdministrationHistoryOrderCancelRow,
   normalizeMedicationAdministrationHistoryScheduleAdjustmentRow,
@@ -186,7 +187,12 @@ export class MedicationAdministrationHistoryService {
         administrationId: row.id,
         notes: row.notes,
       });
-      return [marEntry, ...responseEntries];
+      const allergyReviewEntries = normalizeMedicationAdministrationHistoryAllergyReviewRows({
+        marEntry,
+        administrationId: row.id,
+        notes: row.notes,
+      });
+      return [marEntry, ...responseEntries, ...allergyReviewEntries];
     });
 
     const cancelEntries = await this.loadOrderCancelHistoryEntries({

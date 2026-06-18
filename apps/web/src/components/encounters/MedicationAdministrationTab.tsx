@@ -164,6 +164,7 @@ import {
   marRecordModalEffectiveTimeClientError,
 } from "@/features/mar/marRecordModalEffectiveTime";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
+import { MedicationAllergyReviewProviderNotice } from "@/components/mar/MedicationAllergyReviewProviderNotice";
 import {
   buildMarClinicalTimeDocumentationNotes,
   marClinicalDateTimeLocalToUtcIso,
@@ -2399,6 +2400,7 @@ export function MedicationAdministrationTab({
           {error}
         </p>
       ) : null}
+      <MedicationAllergyReviewProviderNotice facilityId={facilityId} encounterId={encounterId} />
       {marQueuedOfflineNotice ? (
         <div
           role="alert"

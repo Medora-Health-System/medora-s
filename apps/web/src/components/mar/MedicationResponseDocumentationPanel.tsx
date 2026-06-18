@@ -7,6 +7,7 @@ import {
   marPrnAdministrationRequiresPainScore,
   resolveMarMedicationResponseLabelKey,
   resolveMarMedicationResponseSeverity,
+  resolveMedicationResponseAllergyReviewRecommendation,
   resolveMedicationResponseVisibilityTier,
   buildMarMedicationResponseFollowUpSummary,
   sortMarMedicationResponsesNewestFirst,
@@ -146,14 +147,25 @@ export function MedicationResponseDocumentationPanel({
             {t("marMedicationResponse.panel.comment")}: {response.responseDetail}
           </div>
         ) : null}
-        {response.responseCode === "ADVERSE_REACTION_REPORTED" ? (
-          <div
-            data-testid="mar-medication-response-adverse-escalation"
-            style={{ marginTop: 6, fontSize: 12, color: "#b45309", fontWeight: 600 }}
-          >
-            {t("marMedicationResponse.followUp.adverseEscalation")}
-          </div>
-        ) : null}
+        {response.responseCode === "ADVERSE_REACTION_REPORTED" ? (() => {
+          const allergyReview = resolveMedicationResponseAllergyReviewRecommendation({
+            responseCode: response.responseCode,
+            responseDetail: response.responseDetail,
+            medicationName: item.medicationLabel ?? item.primaryText,
+            detectedAt: response.documentedAt,
+          });
+          const messageKey = allergyReview.recommendationMessageKey;
+          if (!messageKey) return null;
+          return (
+            <div
+              data-testid="mar-medication-response-allergy-review-recommendation"
+              data-recommendation-level={allergyReview.recommendationLevel}
+              style={{ marginTop: 6, fontSize: 12, color: "#b45309", fontWeight: 600 }}
+            >
+              {t("marAllergyReview.panel.recommendationLabel")}: {t(messageKey)}
+            </div>
+          );
+        })() : null}
       </div>
     );
   };

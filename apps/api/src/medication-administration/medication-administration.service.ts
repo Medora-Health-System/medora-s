@@ -21,6 +21,7 @@ import type {
   MedicationAdministrationEffectiveTimeDto,
   MedicationAdministrationClinicalCorrectionDto,
   MarMedicationResponseDocumentDto,
+  MarAllergyReviewDismissDto,
 } from "@medora/shared";
 import {
   buildMedicationAdministrationCandidate,
@@ -67,6 +68,10 @@ import {
   isMarMedicationResponseDocumentationEligible,
   isMarShiftTimelineHoldNotes,
   isMarMissedDoseNotes,
+  resolveMedicationResponseAllergyReviewRecommendation,
+  buildMarAllergyReviewCandidateNotes,
+  buildMarAllergyReviewDismissedNotes,
+  parseMarAllergyReviewCandidatesFromNotes,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import {
@@ -2201,9 +2206,43 @@ export class MedicationAdministrationService {
       throw new BadRequestException(notesResult.message);
     }
 
+    const documentedAt = new Date().toISOString();
+    let mergedNotes = notesResult.notes;
+    let allergyReview: ReturnType<typeof resolveMedicationResponseAllergyReviewRecommendation> | null =
+      null;
+
+    if (dto.responseCode === "ADVERSE_REACTION_REPORTED") {
+      const actor = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      });
+      const documentedBy = [actor?.firstName, actor?.lastName].filter(Boolean).join(" ").trim() || null;
+      const medicationName =
+        row.medicationLabelSnapshot?.trim() ||
+        row.orderItem?.manualLabel?.trim() ||
+        "Medication";
+      allergyReview = resolveMedicationResponseAllergyReviewRecommendation({
+        responseCode: dto.responseCode,
+        responseDetail: dto.responseDetail ?? null,
+        medicationName,
+        medicationClass: row.orderItem?.manualSecondaryText?.trim() || null,
+        reactionText: dto.responseDetail ?? null,
+        detectedAt: documentedAt,
+        documentedBy,
+        administrationId: medicationAdministrationId,
+        orderItemId: row.orderItemId,
+      });
+      if (allergyReview.allergyCandidate) {
+        mergedNotes = buildMarAllergyReviewCandidateNotes(
+          mergedNotes,
+          allergyReview.allergyCandidate
+        );
+      }
+    }
+
     const updated = await this.prisma.medicationAdministration.update({
       where: { id: medicationAdministrationId },
-      data: { notes: notesResult.notes },
+      data: { notes: mergedNotes },
     });
 
     await this.audit.log(AuditAction.UPDATE, "MEDICATION_ADMINISTRATION", {
@@ -2220,6 +2259,7 @@ export class MedicationAdministrationService {
         encounterId: row.encounterId,
         responseCode: dto.responseCode,
         source: "MAR_MEDICATION_RESPONSE",
+        allergyReviewLevel: allergyReview?.recommendationLevel ?? null,
       },
     });
 
@@ -2227,6 +2267,94 @@ export class MedicationAdministrationService {
       id: updated.id,
       notes: updated.notes,
       responseCode: dto.responseCode,
+      allergyReview,
+    };
+  }
+
+  /**
+   * Append-only allergy review dismiss acknowledgment (MEDUI.ED.MAR.H10).
+   * Does not remove candidate lines or history events.
+   */
+  async dismissAllergyReviewRecommendation(
+    encounterId: string,
+    facilityId: string,
+    medicationAdministrationId: string,
+    dto: MarAllergyReviewDismissDto,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    if (
+      !roleCodes.includes(RoleCode.RN) &&
+      !roleCodes.includes(RoleCode.PROVIDER) &&
+      !roleCodes.includes(RoleCode.ADMIN)
+    ) {
+      throw new BadRequestException("Rôle non autorisé pour cette action.");
+    }
+
+    const row = await this.prisma.medicationAdministration.findFirst({
+      where: { id: medicationAdministrationId, encounterId, facilityId },
+      include: { encounter: true },
+    });
+    if (!row) {
+      throw new NotFoundException("Administration introuvable.");
+    }
+
+    assertEncounterNotSigned(row.encounter);
+    if (row.encounter.status !== "OPEN") {
+      throw new BadRequestException("La consultation doit être ouverte.");
+    }
+
+    const candidates = parseMarAllergyReviewCandidatesFromNotes(row.notes);
+    const candidate = candidates.find((c) => c.candidateId === dto.candidateId);
+    if (!candidate) {
+      throw new BadRequestException("Recommandation de revue des allergies introuvable.");
+    }
+    if (candidate.dismissedAt?.trim()) {
+      return { id: row.id, notes: row.notes, candidateId: dto.candidateId, alreadyDismissed: true };
+    }
+
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const dismissedBy = [actor?.firstName, actor?.lastName].filter(Boolean).join(" ").trim() || null;
+    const dismissedAt = new Date().toISOString();
+    const notes = buildMarAllergyReviewDismissedNotes(row.notes, {
+      candidateId: dto.candidateId,
+      dismissedAt,
+      dismissedBy,
+    });
+
+    const updated = await this.prisma.medicationAdministration.update({
+      where: { id: medicationAdministrationId },
+      data: { notes },
+    });
+
+    await this.audit.log(AuditAction.UPDATE, "MEDICATION_ADMINISTRATION", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: medicationAdministrationId,
+      ip,
+      userAgent,
+      critical: false,
+      metadata: {
+        medicationAdministrationId,
+        encounterId: row.encounterId,
+        candidateId: dto.candidateId,
+        source: "MAR_ALLERGY_REVIEW_DISMISS",
+      },
+    });
+
+    return {
+      id: updated.id,
+      notes: updated.notes,
+      candidateId: dto.candidateId,
+      dismissedAt,
+      alreadyDismissed: false,
     };
   }
 }

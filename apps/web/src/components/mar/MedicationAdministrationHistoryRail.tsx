@@ -143,6 +143,38 @@ function HistoryRailEntryCard({
           {entry.medicationResponseAdverseEscalationLine}
         </div>
       ) : null}
+      {entry.allergyReviewRecommendationLine ? (
+        <div
+          data-testid="mar-administration-history-allergy-review-recommendation"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#b45309", fontWeight: 600 }}
+        >
+          {entry.allergyReviewRecommendationLine}
+        </div>
+      ) : null}
+      {entry.allergyReviewMedicationLine ? (
+        <div
+          data-testid="mar-administration-history-allergy-review-medication"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.allergyReviewMedicationLine}
+        </div>
+      ) : null}
+      {entry.allergyReviewReactionLine ? (
+        <div
+          data-testid="mar-administration-history-allergy-review-reaction"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.allergyReviewReactionLine}
+        </div>
+      ) : null}
+      {entry.allergyReviewReporterLine ? (
+        <div
+          data-testid="mar-administration-history-allergy-review-reporter"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.allergyReviewReporterLine}
+        </div>
+      ) : null}
       {entry.correctionTypeLabelKey ? (
         <div
           data-testid="mar-administration-history-correction-type"

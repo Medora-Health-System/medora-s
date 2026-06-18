@@ -48,6 +48,7 @@ import {
 } from "@/lib/advancedMedicationSafetyLineMappers";
 import { AdvancedMedicationSafetyPanel } from "@/components/medication/AdvancedMedicationSafetyPanel";
 import { ClinicalLatestVitalsBanner } from "@/components/clinical/ClinicalLatestVitalsBanner";
+import { MedicationAllergyOrderingBanner } from "@/components/mar/MedicationAllergyOrderingBanner";
 import {
   buildClinicalDraftKey,
   clinicalDraftPayloadSignature,
@@ -1018,6 +1019,15 @@ export function CreateOrderModal({
     const activeEncounterLines = encounterOrdersToAdvancedMedicationSafetyLines(encounterOrdersSnapshot);
     return computeAdvancedMedicationSafetyWarnings({ stagedLines, activeEncounterLines });
   }, [activeTab, formData.items, encounterOrdersSnapshot]);
+
+  const orderingMedicationLabel = useMemo(() => {
+    if (activeTab !== "MEDICATION") return null;
+    for (const item of formData.items) {
+      const label = (item.manualLabel ?? item._label)?.trim();
+      if (label) return label;
+    }
+    return null;
+  }, [activeTab, formData.items]);
 
   const changeTab = (tab: CreateOrderModalTab) => {
     const nextStagedItems = isOrderTypeKey(activeTab)
@@ -2320,6 +2330,14 @@ export function CreateOrderModal({
 
               {(activeTab === "LAB" || activeTab === "IMAGING" || activeTab === "MEDICATION") ? (
                 <ClinicalLatestVitalsBanner encounterId={encounterId} facilityId={facilityId} />
+              ) : null}
+
+              {activeTab === "MEDICATION" && orderingMedicationLabel ? (
+                <MedicationAllergyOrderingBanner
+                  facilityId={facilityId}
+                  encounterId={encounterId}
+                  medicationName={orderingMedicationLabel}
+                />
               ) : null}
 
               {medicationAllergyDocSummary &&

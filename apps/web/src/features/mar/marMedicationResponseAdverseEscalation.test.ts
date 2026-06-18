@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { resolveMarMedicationResponseAdverseEscalationHint } from "@medora/shared";
 
 describe("marMedicationResponseAdverseEscalation", () => {
-  it("ADVERSE_REACTION_REPORTED shows Consider allergy review in panel source", () => {
+  it("ADVERSE_REACTION_REPORTED shows tiered allergy review recommendation in panel source", () => {
     const panelSrc = readFileSync(
       join(process.cwd(), "src/components/mar/MedicationResponseDocumentationPanel.tsx"),
       "utf8"
     );
-    expect(panelSrc).toContain("mar-medication-response-adverse-escalation");
-    expect(panelSrc).toContain("marMedicationResponse.followUp.adverseEscalation");
+    expect(panelSrc).toContain("mar-medication-response-allergy-review-recommendation");
+    expect(panelSrc).toContain("resolveMedicationResponseAllergyReviewRecommendation");
   });
 
   it("adverse reaction does not modify allergy list", () => {
@@ -22,8 +22,13 @@ describe("marMedicationResponseAdverseEscalation", () => {
       join(process.cwd(), "src/lib/medicationAdministrationHistoryRail.ts"),
       "utf8"
     );
-    expect(panelSrc).not.toContain("allergy");
+    const serviceSrc = readFileSync(
+      join(process.cwd(), "../api/src/medication-administration/medication-administration.service.ts"),
+      "utf8"
+    );
+    expect(serviceSrc).not.toMatch(/createAllergy|PatientAllergy|updateAllergyList/i);
     expect(historySrc).not.toMatch(/updateAllergy|createAllergy|allergyList/i);
+    expect(panelSrc).toContain("marAllergyReview");
   });
 
   it("resolveMarMedicationResponseAdverseEscalationHint detects adverse reaction", () => {

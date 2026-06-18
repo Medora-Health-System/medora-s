@@ -16,6 +16,7 @@ export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "ADMINISTRATION_CORRECTION",
   "SCHEDULE_TIME_CHANGED",
   "MEDICATION_RESPONSE_DOCUMENTED",
+  "ALLERGY_REVIEW_RECOMMENDED",
 ] as const;
 
 export type MedicationAdministrationHistoryEventType =
@@ -88,6 +89,15 @@ export type MedicationAdministrationHistoryEntry = {
   medicationResponsePainBefore?: number | null;
   medicationResponsePainAfter?: number | null;
   originalAdministrationIdForResponse?: string | null;
+  /** Present for ALLERGY_REVIEW_RECOMMENDED rows (MEDUI.ED.MAR.H10). */
+  allergyReviewRecommendationLevel?: string | null;
+  allergyReviewRecommendationMessageKey?: string | null;
+  allergyReviewReactionText?: string | null;
+  allergyReviewMedicationName?: string | null;
+  allergyReviewDocumentedBy?: string | null;
+  allergyReviewCandidateId?: string | null;
+  allergyReviewDismissedAt?: string | null;
+  originalAdministrationIdForAllergyReview?: string | null;
   readOnly: true;
 };
 

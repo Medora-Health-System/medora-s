@@ -58,6 +58,10 @@ export type MedicationAdministrationHistoryRailEntry = {
   medicationResponsePainLabel?: string | null;
   medicationResponseCommentLine?: string | null;
   medicationResponseAdverseEscalationLine?: string | null;
+  allergyReviewRecommendationLine?: string | null;
+  allergyReviewMedicationLine?: string | null;
+  allergyReviewReactionLine?: string | null;
+  allergyReviewReporterLine?: string | null;
 };
 
 const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, PriorityBadgeSoft> = {
@@ -76,6 +80,7 @@ const HISTORY_BADGE_SOFT: Record<MedicationAdministrationHistoryEventType, Prior
   EARLY_ADMINISTRATION: { bg: "#eff6ff", text: "#1e40af", border: "#bfdbfe" },
   LATE_ADMINISTRATION: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
   MEDICATION_RESPONSE_DOCUMENTED: { bg: "#ecfdf5", text: "#047857", border: "#a7f3d0" },
+  ALLERGY_REVIEW_RECOMMENDED: { bg: "#fffbeb", text: "#92400e", border: "#fde68a" },
 };
 
 export function resolveMarAdministrationHistoryRailLayoutMode(
@@ -194,6 +199,11 @@ function formatReasonLine(
     const label = labelKey ? t(labelKey) : responseCode;
     return `${t("marMedicationResponse.history.response")}: ${label}`;
   }
+  if (entry.eventType === "ALLERGY_REVIEW_RECOMMENDED") {
+    const messageKey = entry.allergyReviewRecommendationMessageKey?.trim();
+    const label = messageKey ? t(messageKey) : t("marAllergyReview.history.title");
+    return `${t("marAllergyReview.panel.recommendationLabel")}: ${label}`;
+  }
   if (
     (entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION") &&
     code
@@ -256,6 +266,7 @@ export function buildMedicationAdministrationHistoryRailEntry(
   const isVarianceEvent =
     entry.eventType === "EARLY_ADMINISTRATION" || entry.eventType === "LATE_ADMINISTRATION";
   const isMedicationResponseEvent = entry.eventType === "MEDICATION_RESPONSE_DOCUMENTED";
+  const isAllergyReviewEvent = entry.eventType === "ALLERGY_REVIEW_RECOMMENDED";
   const responseCode = entry.medicationResponseCode ?? entry.reasonCode;
   const responseLabelKey = resolveMarMedicationResponseLabelKey(responseCode);
   const responsePainLabel =
@@ -335,7 +346,25 @@ export function buildMedicationAdministrationHistoryRailEntry(
     medicationResponseAdverseEscalationLine:
       isMedicationResponseEvent &&
       (entry.medicationResponseCode ?? entry.reasonCode) === "ADVERSE_REACTION_REPORTED"
-        ? input.t("marMedicationResponse.followUp.adverseEscalation")
+        ? entry.allergyReviewRecommendationMessageKey
+          ? `${input.t("marAllergyReview.panel.recommendationLabel")}: ${input.t(entry.allergyReviewRecommendationMessageKey)}`
+          : input.t("marMedicationResponse.followUp.adverseEscalation")
+        : null,
+    allergyReviewRecommendationLine:
+      isAllergyReviewEvent && entry.allergyReviewRecommendationMessageKey?.trim()
+        ? `${input.t("marAllergyReview.panel.recommendationLabel")}: ${input.t(entry.allergyReviewRecommendationMessageKey)}`
+        : null,
+    allergyReviewMedicationLine:
+      isAllergyReviewEvent && entry.allergyReviewMedicationName?.trim()
+        ? `${input.t("marAllergyReview.panel.medication")}: ${entry.allergyReviewMedicationName}`
+        : null,
+    allergyReviewReactionLine:
+      isAllergyReviewEvent && entry.allergyReviewReactionText?.trim()
+        ? `${input.t("marAllergyReview.panel.reaction")}: ${entry.allergyReviewReactionText}`
+        : null,
+    allergyReviewReporterLine:
+      isAllergyReviewEvent && entry.allergyReviewDocumentedBy?.trim()
+        ? `${input.t("marAllergyReview.panel.reporter")}: ${entry.allergyReviewDocumentedBy}`
         : null,
   };
 }

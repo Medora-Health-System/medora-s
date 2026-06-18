@@ -71,6 +71,13 @@ export type MarAnalyticsInput = {
   timingOverrides?: import("./marAnalyticsTimingOverride.js").MarAnalyticsTimingOverrideProjection[];
   /** MEDUI.ED.MAR.H9L — medication response documentation projections. */
   medicationResponses?: import("./marMedicationResponseAnalytics.js").MarMedicationResponseAnalyticsProjection[];
+  /** MEDUI.ED.MAR.H10 — allergy review recommendation projections (notes-based). */
+  allergyReviewAdministrations?: Array<{
+    id: string;
+    notes?: string | null;
+    medicationLabel?: string | null;
+  }>;
+  dismissedAllergyCandidateIds?: string[];
 };
 
 export const MAR_ANALYTICS_READ_ONLY = true as const;
