@@ -94,16 +94,26 @@ describe("edIncompleteChartsFilter (MEDUI.ED.LIFECYCLE.5)", () => {
     expect(resolveIncompleteChartsEncounters(rows).map((r) => r.id)).toEqual(["e-inc"]);
   });
 
-  it("excludes READY_FOR_CLOSURE from incomplete charts and active trackboard", () => {
+  it("includes READY_FOR_CLOSURE in incomplete charts workspace", () => {
     const row = {
       ...departedIncompleteRow("e-ready"),
       providerDocumentationStatus: "SIGNED",
       dispositionSafetyReadiness: { canClose: true },
     };
-    const state = resolveTrackboardEncounterLifecycleState(row);
-    expect(state).toBe(EdEncounterLifecycleState.READY_FOR_CLOSURE);
-    expect(resolveIncompleteChartsEncounters([row])).toEqual([]);
+    expect(resolveIncompleteChartsEncounters([row]).map((r) => r.id)).toEqual(["e-ready"]);
+    expect(resolveTrackboardEncounterLifecycleState(row)).toBe(
+      EdEncounterLifecycleState.READY_FOR_CLOSURE
+    );
+  });
+
+  it("excludes READY_FOR_CLOSURE from active trackboard", () => {
+    const row = {
+      ...departedIncompleteRow("e-ready"),
+      providerDocumentationStatus: "SIGNED",
+      dispositionSafetyReadiness: { canClose: true },
+    };
     expect(resolveActiveTrackboardEncounters([row])).toEqual([]);
+    expect(resolveIncompleteChartsEncounters([row]).map((r) => r.id)).toEqual(["e-ready"]);
   });
 
   it("excludes CLOSED_ENCOUNTER", () => {

@@ -46,6 +46,7 @@ export * from "./encounters/erNotesV1LegacyRead.js";
 export * from "./encounters/edRoomLabel.js";
 export * from "./encounters/edDispositionExecutionV1.js";
 export * from "./encounters/edEncounterLifecycle.js";
+export * from "./encounters/edClosedEncounterCertification.js";
 export * from "./encounters/governedRoomLabel.js";
 export * from "./emergency/canDocumentEdTriage.js";
 export * from "./encounters/facilityBedGovernance.js";

@@ -61,6 +61,7 @@ import {
   resolveEdIncompleteChartBadgeKeys,
   resolveIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
+import { EdClosedEncounterCertificationPanel } from "@/features/emergency/EdClosedEncounterCertificationPanel";
 import {
   fetchFacilityBedBoard,
   findBedBoardUnit,
@@ -212,6 +213,7 @@ type OpenEncounterRow = {
   providerNote?: string | null;
   treatmentPlan?: string | null;
   billingFinalizationStatus?: string | null;
+  billingReadinessSnapshotJson?: unknown;
   dischargedAt?: string | null;
   dischargeSummaryJson?: unknown;
   admissionSummaryJson?: unknown;
@@ -282,7 +284,7 @@ function acuityLabelKey(tier: AcuityTier): "emergencyTrackboard.acuityCritical" 
 
 export function EmergencyTrackboardView() {
   const { t, language } = useI18n();
-  const { facilityId: facilityIdFromHook, ready, roles, userId } = useFacilityAndRoles();
+  const { facilityId: facilityIdFromHook, ready, roles, userId, facilities } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [rows, setRows] = useState<OpenEncounterRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -300,6 +302,8 @@ export function EmergencyTrackboardView() {
   const [edBedBoard, setEdBedBoard] = useState<FacilityBedBoardResponse | null>(null);
   const [boardViewMode, setBoardViewMode] = useState<EdLifecycleBoardView>("trackboard");
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
+  const [certificationPanelEncounter, setCertificationPanelEncounter] =
+    useState<OpenEncounterRow | null>(null);
   const [bedBoardStatusFilter, setBedBoardStatusFilter] = useState<BedBoardStatusFilterId>("all");
   const [layoutMode, setLayoutMode] = useState<ErTrackboardLayoutMode>("desktopDense");
   /**
@@ -325,6 +329,12 @@ export function EmergencyTrackboardView() {
   const canManageBedStatus = canManageBedOperationalStatus(roles);
   const stackedCardLayout = erTrackboardUsesStackedCardLayout(layoutMode);
   const usesCompactCensus = erTrackboardUsesCompactCensus(layoutMode);
+
+  const facilityName = useMemo(() => {
+    if (!facilityId) return null;
+    const match = facilities.find((f) => f.id === facilityId);
+    return match?.name?.trim() || null;
+  }, [facilities, facilityId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1242,6 +1252,31 @@ export function EmergencyTrackboardView() {
                               >
                                 {t("emergencyTrackboard.chartLink")}
                               </Link>
+                              {boardViewMode === "incompleteCharts" ? (
+                                <button
+                                  type="button"
+                                  data-testid={`ed-certification-review-${encounter.id}`}
+                                  onClick={() => setCertificationPanelEncounter(encounter)}
+                                  style={erTrackboardCensusActionButtonStyle(
+                                    {
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "4px 10px",
+                                      borderRadius: 8,
+                                      border: "1px solid #fde68a",
+                                      backgroundColor: "#fffbeb",
+                                      color: "#92400e",
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: "pointer",
+                                    },
+                                    layoutMode
+                                  )}
+                                >
+                                  {t("edLifecycle.incompleteCharts.reviewCertification")}
+                                </button>
+                              ) : null}
                               <Link
                                 href={emergencyActiveWorkspacePath(encounter.id)}
                                 style={erTrackboardCensusActionButtonStyle(
@@ -1415,6 +1450,14 @@ export function EmergencyTrackboardView() {
           initialUnitCode={roomAssignmentLaunch.prefillFromBedBoard?.unitCode ?? null}
           onClose={() => setRoomAssignmentLaunch(null)}
           onSaved={handleRoomAssignmentSaved}
+        />
+      ) : null}
+      {certificationPanelEncounter && facilityId ? (
+        <EdClosedEncounterCertificationPanel
+          encounter={certificationPanelEncounter}
+          facilityId={facilityId}
+          facilityName={facilityName}
+          onClose={() => setCertificationPanelEncounter(null)}
         />
       ) : null}
     </div>
