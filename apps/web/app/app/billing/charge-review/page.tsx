@@ -337,6 +337,16 @@ export default function ChargeReviewPage() {
                     {t("chargeCaptureReview.manualReviewFlag")}
                   </p>
                 ) : null}
+                {selectedRow.reasons.includes("PROCEDURE_CODE_REVIEW") ? (
+                  <p style={{ margin: "8px 0 0", fontSize: 12 }}>
+                    <Link
+                      href={`/app/billing/encounters/${selectedRow.encounterId}?autoMapping=1`}
+                      style={{ color: "#2563eb", fontWeight: 600 }}
+                    >
+                      {t("billingPage.autoMappingFindMappingLink")}
+                    </Link>
+                  </p>
+                ) : null}
                 {selectedRow.reasons.length > 0 ? (
                   <div data-testid="charge-review-summary-missing">
                     <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4 }}>

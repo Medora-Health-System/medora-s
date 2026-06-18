@@ -19,6 +19,7 @@ import type { Response } from "express";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { BillingService } from "./billing.service";
 import { ExternalBillingExportService } from "./external-billing-export.service";
+import { BillingAutoMappingService } from "./billing-auto-mapping.service";
 import { ChargeCaptureReviewService } from "../encounters/charge-capture-review.service";
 import { CodingIntegrityReviewService } from "../encounters/coding-integrity-review.service";
 import { ClaimAssemblyPreviewService } from "../encounters/claim-assembly-preview.service";
@@ -58,6 +59,7 @@ export class BillingController {
     private readonly codingIntegrityReviewService: CodingIntegrityReviewService,
     private readonly claimAssemblyPreviewService: ClaimAssemblyPreviewService,
     private readonly procedureRevenueReviewService: ProcedureRevenueReviewService,
+    private readonly billingAutoMapping: BillingAutoMappingService,
   ) {}
 
   /** MEDPROC.7 — enterprise procedure revenue review queue (preview only). */
@@ -669,5 +671,36 @@ export class BillingController {
   async getExternalBillingMonthlyCertification(@Query("month") month: string, @Req() req: any) {
     if (!month?.trim()) throw new BadRequestException("month is required (YYYY-MM)");
     return this.externalBillingExport.getMonthlyExportCertification(req.facilityId, month.trim());
+  }
+
+  @Get("billing/auto-mapping/encounters/:encounterId/preview")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async previewBillingAutoMapping(@Param("encounterId") encounterId: string, @Req() req: any) {
+    return this.billingAutoMapping.previewAutoMappingsForEncounter(req.facilityId, encounterId);
+  }
+
+  @Get("billing/auto-mapping/preview")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async previewBillingAutoMappingFacility(@Req() req: any, @Query("limit") limitRaw?: string) {
+    const limit = limitRaw ? Number.parseInt(limitRaw, 10) : undefined;
+    return this.billingAutoMapping.previewAutoMappingsForFacility(req.facilityId, {
+      limit: Number.isFinite(limit) ? limit : undefined,
+    });
+  }
+
+  @Post("billing/auto-mapping/encounters/:encounterId/apply")
+  @RequireRoles(RoleCode.BILLING, RoleCode.ADMIN)
+  async applyBillingAutoMapping(
+    @Param("encounterId") encounterId: string,
+    @Body() body: { candidateIds?: string[] },
+    @Req() req: any
+  ) {
+    const candidateIds = Array.isArray(body?.candidateIds) ? body.candidateIds.filter((id) => typeof id === "string") : [];
+    return this.billingAutoMapping.applyAutoMappingsForEncounter(
+      req.facilityId,
+      encounterId,
+      candidateIds,
+      req.user?.userId
+    );
   }
 }

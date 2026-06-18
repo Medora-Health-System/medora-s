@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { apiFetch } from "@/lib/apiClient";
 import { downloadExternalBillingEncounterExport } from "@/lib/externalBillingExportApi";
 import { useI18n } from "@/lib/i18n";
@@ -17,6 +17,7 @@ import {
   readBillingCaptureV1,
 } from "@medora/shared";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { BillingAutoMappingPanel } from "@/features/billing/BillingAutoMappingPanel";
 import { EncounterBillingExportReadinessCard } from "@/components/billing/EncounterBillingExportReadinessCard";
 import { EncounterBillingLedgerReadinessCard } from "@/components/billing/EncounterBillingLedgerReadinessCard";
 import { EncounterFacilityFeeReadinessCard } from "@/components/billing/EncounterFacilityFeeReadinessCard";
@@ -936,6 +937,7 @@ function toDraft(ev: LedgerEventRow): LineDraft {
 
 export default function BillingEncounterLedgerPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const encounterId = params.encounterId as string;
   const { t, language } = useI18n();
   const { facilityId, ready, roles } = useFacilityAndRoles();
@@ -948,6 +950,7 @@ export default function BillingEncounterLedgerPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [showAutoMappingPanel, setShowAutoMappingPanel] = useState(searchParams.get("autoMapping") === "1");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<LineDraft | null>(null);
   const [savingLineId, setSavingLineId] = useState<string | null>(null);
@@ -4003,11 +4006,41 @@ export default function BillingEncounterLedgerPage() {
             </div>
           </div>
 
-          <div style={{ marginBottom: 16, fontSize: 14, color: "#334155" }}>
-            <strong>{t("billingPage.billingSummaryTotal")}:</strong> {data.summary.totalEvents} ·{" "}
-            {t("billingPage.colNeedsReview")}: {data.summary.needsReview} · {t("billingPage.colMissingCode")}:{" "}
-            {data.summary.missingCode}
+          <div style={{ marginBottom: 16, fontSize: 14, color: "#334155", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+            <span>
+              <strong>{t("billingPage.billingSummaryTotal")}:</strong> {data.summary.totalEvents} ·{" "}
+              {t("billingPage.colNeedsReview")}: {data.summary.needsReview} · {t("billingPage.colMissingCode")}:{" "}
+              {data.summary.missingCode}
+            </span>
+            {facilityId ? (
+              <button
+                type="button"
+                data-testid="billing-auto-mapping-open"
+                onClick={() => setShowAutoMappingPanel((open) => !open)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #0f766e",
+                  background: showAutoMappingPanel ? "#ecfdf5" : "#fff",
+                  color: "#0f766e",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {t("billingPage.autoMappingFindButton")}
+              </button>
+            ) : null}
           </div>
+          {showAutoMappingPanel && facilityId ? (
+            <BillingAutoMappingPanel
+              facilityId={facilityId}
+              encounterId={encounterId}
+              t={t}
+              onApplied={() => void load()}
+              onClose={() => setShowAutoMappingPanel(false)}
+            />
+          ) : null}
           <div
             style={{
               display: "flex",

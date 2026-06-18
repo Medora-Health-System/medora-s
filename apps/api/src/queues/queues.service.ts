@@ -587,9 +587,37 @@ export class QueuesService {
       return row;
     }
     const updated = await this.prisma.$transaction(async (tx) => {
+      const codingKeys = new Set([
+        "procedureCode",
+        "hcpcsCode",
+        "diagnosisCodes",
+        "billingSide",
+        "codeType",
+        "revenueCode",
+        "modifier1",
+        "modifier2",
+      ]);
+      const isManualCodingEdit = Object.keys(auditDelta).some((k) => codingKeys.has(k));
+      const prevMeta =
+        row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+          ? (row.metadata as Record<string, unknown>)
+          : {};
       const u = await tx.billingEvent.update({
         where: { id: billingEventId },
-        data,
+        data: {
+          ...data,
+          ...(isManualCodingEdit
+            ? {
+                metadata: {
+                  ...prevMeta,
+                  manualLedgerEdit: {
+                    at: new Date().toISOString(),
+                    userId: userId ?? null,
+                  },
+                } as Prisma.InputJsonValue,
+              }
+            : {}),
+        },
       });
       await syncBillingCaptureItemFromLedgerRow(tx, u);
       return u;
