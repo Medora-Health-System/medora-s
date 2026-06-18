@@ -48,10 +48,9 @@ import { EdBedStatusChip } from "@/components/encounters/BedOperationalStatusChi
 import {
   ED_LIFECYCLE_BOARD_VIEWS,
   ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS,
-  ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS,
-  isEdLifecyclePlaceholderView,
   type EdLifecycleBoardView,
 } from "@/features/emergency/edEncounterLifecycleNavigation";
+import { EdAllEncountersArchiveWorkspace } from "@/features/emergency/EdAllEncountersArchiveWorkspace";
 import {
   isEncounterAssignedToCurrentUser,
   resolveMyActivePatientsEncounters,
@@ -312,6 +311,7 @@ export function EmergencyTrackboardView() {
   const [bedIndex, setBedIndex] = useState<Map<string, FacilityBedBoardBedRow>>(new Map());
   const [edBedBoard, setEdBedBoard] = useState<FacilityBedBoardResponse | null>(null);
   const [boardViewMode, setBoardViewMode] = useState<EdLifecycleBoardView>("trackboard");
+  const [archiveRefreshNonce, setArchiveRefreshNonce] = useState(0);
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
   const [certificationPanelEncounter, setCertificationPanelEncounter] =
     useState<OpenEncounterRow | null>(null);
@@ -691,21 +691,23 @@ export function EmergencyTrackboardView() {
         </header>
 
         <div style={erTrackboardFiltersRowStyle(layoutMode)} data-testid="emergency-trackboard-filters">
-          <div style={erTrackboardSearchFieldStyle()}>
-            <span style={{ ...filterLabel, marginBottom: 3 }}>{t("emergencyTrackboard.searchLabel")}</span>
-            <input
-              type="search"
-              aria-label={t("emergencyTrackboard.searchAria")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("emergencyTrackboard.searchPlaceholder")}
-              style={{
-                ...inputBase,
-                height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
-                fontSize: 14,
-              }}
-            />
-          </div>
+          {boardViewMode !== "allEncounters" ? (
+            <div style={erTrackboardSearchFieldStyle()}>
+              <span style={{ ...filterLabel, marginBottom: 3 }}>{t("emergencyTrackboard.searchLabel")}</span>
+              <input
+                type="search"
+                aria-label={t("emergencyTrackboard.searchAria")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("emergencyTrackboard.searchPlaceholder")}
+                style={{
+                  ...inputBase,
+                  height: layoutMode === "desktopDense" ? 40 : ER_TRACKBOARD_TOUCH_TARGET_MIN_PX,
+                  fontSize: 14,
+                }}
+              />
+            </div>
+          ) : null}
           <div style={erTrackboardFilterActionsStyle(layoutMode)}>
             <div
               role="group"
@@ -746,12 +748,16 @@ export function EmergencyTrackboardView() {
             </div>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                if (boardViewMode === "allEncounters") {
+                  setArchiveRefreshNonce((nonce) => nonce + 1);
+                  return;
+                }
                 void loadEncounters({
                   silent: hasLoadedOnceRef.current,
                   showRefreshIndicator: hasLoadedOnceRef.current,
-                })
-              }
+                });
+              }}
               disabled={isInitialLoading && !hasLoadedOnceRef.current}
               style={erTrackboardTouchControlStyle(
                 {
@@ -790,15 +796,8 @@ export function EmergencyTrackboardView() {
           </p>
         ) : null}
 
-        {isEdLifecyclePlaceholderView(boardViewMode) ? (
-          <div
-            style={lifecyclePlaceholderPanelStyle}
-            data-testid={`ed-lifecycle-placeholder-${boardViewMode}`}
-          >
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#334155" }}>
-              {t(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[boardViewMode]!)}
-            </p>
-          </div>
+        {boardViewMode === "allEncounters" ? (
+          <EdAllEncountersArchiveWorkspace facilityId={facilityId ?? ""} refreshNonce={archiveRefreshNonce} />
         ) : boardViewMode === "bedBoard" ? (
           edBedBoardUnit ? (
             <>

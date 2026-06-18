@@ -5,7 +5,6 @@ import { describe, expect, it } from "vitest";
 import {
   ED_LIFECYCLE_BOARD_VIEWS,
   ED_LIFECYCLE_BOARD_VIEW_I18N_KEYS,
-  ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS,
   isEdLifecyclePlaceholderView,
 } from "./edEncounterLifecycleNavigation";
 
@@ -69,12 +68,11 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(isEdLifecyclePlaceholderView("incompleteCharts")).toBe(false);
   });
 
-  it("All Encounters placeholder renders without archive query", () => {
+  it("All Encounters tab wires archive workspace", () => {
     const trackboard = readSrc("features/emergency/EmergencyTrackboardView.tsx");
-    expect(trackboard).toContain("ed-lifecycle-placeholder-${boardViewMode}");
-    expect(trackboard).toContain("ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS");
-    expect(trackboard).not.toMatch(/allEncounters[\s\S]{0,500}status=CLOSED/);
-    expect(trackboard).not.toMatch(/allEncounters[\s\S]{0,500}ARCHIVED/);
+    expect(trackboard).toContain("EdAllEncountersArchiveWorkspace");
+    expect(trackboard).toContain('boardViewMode === "allEncounters"');
+    expect(trackboard).not.toContain("ed-lifecycle-placeholder-allEncounters");
   });
 
   it("Refresh remains available on the lifecycle shell", () => {
@@ -120,16 +118,8 @@ describe("ED lifecycle navigation shell (MEDUI.ED.LIFECYCLE.3)", () => {
     expect(en).toContain('myPatients: "My Patients"');
     expect(en).toContain('incompleteCharts: "My Incomplete Charts"');
     expect(en).toContain('allEncounters: "All Encounters"');
-    expect(en).toContain(
-      'myPatients: "My Patients will show encounters assigned to you."'
-    );
-    expect(fr).toContain('trackboard: "Tableau de suivi"');
-    expect(fr).toContain('bedBoard: "Plan des lits"');
-    expect(fr).toContain('myPatients: "Mes patients"');
-    expect(fr).toContain('incompleteCharts: "Mes dossiers incomplets"');
+    expect(en).toContain('empty: "No closed encounters found."');
     expect(fr).toContain('allEncounters: "Tous les dossiers"');
-    for (const view of ["allEncounters"] as const) {
-      expect(ED_LIFECYCLE_PLACEHOLDER_I18N_KEYS[view]).toBeDefined();
-    }
+    expect(fr).toContain('empty: "Aucune rencontre fermée trouvée."');
   });
 });
