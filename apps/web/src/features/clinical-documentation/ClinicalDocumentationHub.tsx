@@ -11,11 +11,13 @@ import {
   type ClinicalDocumentationCard,
   type ClinicalDocumentationCategory,
   countClinicalDocumentationCardsByCategory,
+  filterClinicalDocumentationCardsByRole,
   listClinicalDocumentationCardsByCategory,
   listClinicalDocumentationCardsForCareSetting,
   requiresImmediateWitnessCaptureForPayload,
   searchClinicalDocumentationCards,
   selectClinicalDocumentationPayloadSummary,
+  type ClinicalDocumentationRoleFilter,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -222,6 +224,8 @@ export function ClinicalDocumentationHub({
     [cardAccessMode]
   );
   const [selectedCategory, setSelectedCategory] = useState<ClinicalDocumentationCategory | "ALL">("ALL");
+  const [selectedRoleFilter, setSelectedRoleFilter] =
+    useState<ClinicalDocumentationRoleFilter>("ALL");
   const [search, setSearch] = useState("");
   const [entries, setEntries] = useState<ClinicalDocumentationEntryRow[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
@@ -274,17 +278,19 @@ export function ClinicalDocumentationHub({
 
   const scopedCards = useMemo(() => {
     const categoryFilter = selectedCategory === "ALL" ? "ALL" : selectedCategory;
+    let cards: ClinicalDocumentationCard[];
     if (search.trim().length > 0) {
-      return searchClinicalDocumentationCards(search, locale, {
+      cards = searchClinicalDocumentationCards(search, locale, {
         careSetting,
         category: categoryFilter,
       });
+    } else if (selectedCategory === "ALL") {
+      cards = listClinicalDocumentationCardsForCareSetting(careSetting);
+    } else {
+      cards = listClinicalDocumentationCardsByCategory(selectedCategory, careSetting);
     }
-    if (selectedCategory === "ALL") {
-      return listClinicalDocumentationCardsForCareSetting(careSetting);
-    }
-    return listClinicalDocumentationCardsByCategory(selectedCategory, careSetting);
-  }, [careSetting, locale, search, selectedCategory]);
+    return filterClinicalDocumentationCardsByRole(cards, selectedRoleFilter);
+  }, [careSetting, locale, search, selectedCategory, selectedRoleFilter]);
 
   const intakeOutputTotals = useMemo(() => {
     const ioEntries = resolvedEntries
@@ -711,6 +717,50 @@ export function ClinicalDocumentationHub({
         })}
       </div>
 
+      <div
+        role="tablist"
+        aria-label={t("clinicalDocumentation.roleFilterAria")}
+        data-testid="clinical-documentation-role-filters"
+        style={{
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          paddingBottom: 4,
+          marginBottom: 12,
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {(
+          [
+            ["ALL", "clinicalDocumentation.roleFilterAll"],
+            ["PROVIDER", "clinicalDocumentation.roleFilterProvider"],
+            ["RN", "clinicalDocumentation.roleFilterNursing"],
+            ["MULTI_ROLE", "clinicalDocumentation.roleFilterMultiRole"],
+            ["TECHNICIAN_RT", "clinicalDocumentation.roleFilterTechnicianRt"],
+          ] as const
+        ).map(([roleFilter, labelKey]) => {
+          const active = selectedRoleFilter === roleFilter;
+          return (
+            <button
+              key={roleFilter}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-testid={`clinical-documentation-role-filter-${roleFilter.toLowerCase()}`}
+              onClick={() => setSelectedRoleFilter(roleFilter)}
+              style={{
+                ...chipBase,
+                fontWeight: active ? 600 : 500,
+                background: active ? "#dbeafe" : "#fff",
+                color: active ? "#1d4ed8" : "#334155",
+              }}
+            >
+              {t(labelKey)}
+            </button>
+          );
+        })}
+      </div>
+
       {selectedCategory !== "ALL" ? (
         <p
           data-testid="clinical-documentation-category-description"
@@ -764,16 +814,23 @@ export function ClinicalDocumentationHub({
         <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{t("clinicalDocumentation.noCards")}</p>
       ) : (
         <div
-          data-testid="clinical-documentation-cards-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-            gap: 10,
-            maxHeight: "min(52vh, 520px)",
-            overflowY: "auto",
-            minWidth: 0,
-          }}
+          data-testid="clinical-documentation-catalog"
+          style={{ width: "100%", minWidth: 0, overflowX: "visible" }}
         >
+          <div
+            data-testid="clinical-documentation-cards-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 10,
+              maxHeight: "min(52vh, 520px)",
+              overflowY: "auto",
+              overflowX: "visible",
+              minWidth: 0,
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
           {scopedCards.map((c) => (
             <article
               key={c.id}
@@ -1193,6 +1250,7 @@ export function ClinicalDocumentationHub({
               ) : null}
             </article>
           ))}
+          </div>
         </div>
       )}
 

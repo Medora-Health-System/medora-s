@@ -156,3 +156,15 @@ export function formatClinicalDocumentationDetailInline(
     .map((row) => `${row.label} ${row.value}`)
     .join(" · ");
 }
+
+/** Structured display lines for ED Summary and legal chart views. */
+export function resolveClinicalDocumentationStructuredDisplayLines(
+  entry: ClinicalDataProjectionEntry,
+  locale: ClinicalDocumentationSummaryLocale
+): Array<{ key: string; value: string }> {
+  const detailRows = buildClinicalDocumentationDetailRows(entry, locale);
+  if (detailRows.length > 0) {
+    return detailRows.map((row) => ({ key: row.label, value: row.value }));
+  }
+  return selectClinicalDocumentationPayloadSummary(entry, locale);
+}

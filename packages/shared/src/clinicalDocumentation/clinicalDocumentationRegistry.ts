@@ -8,8 +8,10 @@ import type {
 } from "./clinicalDocumentationTypes.js";
 import {
   countVisibleClinicalDocumentationCardsByCategory,
+  filterClinicalDocumentationCardsByRole,
   listVisibleClinicalDocumentationCards,
   searchVisibleClinicalDocumentationCards,
+  type ClinicalDocumentationRoleFilter,
 } from "./clinicalDocumentationCatalog.js";
 
 export {
@@ -4150,6 +4152,8 @@ export function searchClinicalDocumentationCards(
     options
   );
 }
+
+export { filterClinicalDocumentationCardsByRole, type ClinicalDocumentationRoleFilter };
 
 export function countClinicalDocumentationCardsByCategory(
   category: ClinicalDocumentationCategory,

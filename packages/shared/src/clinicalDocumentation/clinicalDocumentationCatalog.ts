@@ -378,11 +378,14 @@ export function searchVisibleClinicalDocumentationCards(
     const title = locale === "fr" ? card.titleFr : card.titleEn;
     const desc = locale === "fr" ? card.descriptionFr : card.descriptionEn;
     const categoryLabels = getClinicalDocumentationCardCategories(card).join(" ");
+    const roleHaystack = clinicalDocumentationRoleSearchHaystack(card.primaryRole);
     const haystack = [
       title,
       desc,
       card.id,
+      card.primaryRole,
       categoryLabels,
+      roleHaystack,
       ...card.tags,
       ...card.searchAliases,
       ...resolved.aliases,
@@ -392,6 +395,43 @@ export function searchVisibleClinicalDocumentationCards(
       .toLowerCase();
     return haystack.includes(q);
   });
+}
+
+export type ClinicalDocumentationRoleFilter =
+  | "ALL"
+  | "PROVIDER"
+  | "RN"
+  | "MULTI_ROLE"
+  | "TECHNICIAN_RT";
+
+const CLINICAL_DOCUMENTATION_ROLE_SEARCH_ALIASES: Record<
+  ClinicalDocumentationCard["primaryRole"],
+  readonly string[]
+> = {
+  PROVIDER: ["provider", "physician", "doctor", "md", "np", "pa", "aprn", "clinician"],
+  RN: ["nursing", "nurse", "rn"],
+  MULTI_ROLE: ["multi-role", "multi role", "shared"],
+  TECHNICIAN: ["technician", "tech"],
+  RT: ["respiratory", "rt", "respiratory therapy"],
+  LAB: ["lab", "laboratory"],
+  RADIOLOGY: ["radiology", "imaging"],
+};
+
+function clinicalDocumentationRoleSearchHaystack(
+  role: ClinicalDocumentationCard["primaryRole"]
+): string {
+  return [role, ...(CLINICAL_DOCUMENTATION_ROLE_SEARCH_ALIASES[role] ?? [])].join(" ");
+}
+
+export function filterClinicalDocumentationCardsByRole(
+  cards: readonly ClinicalDocumentationCard[],
+  roleFilter: ClinicalDocumentationRoleFilter
+): ClinicalDocumentationCard[] {
+  if (roleFilter === "ALL") return [...cards];
+  if (roleFilter === "PROVIDER") return cards.filter((card) => card.primaryRole === "PROVIDER");
+  if (roleFilter === "RN") return cards.filter((card) => card.primaryRole === "RN");
+  if (roleFilter === "MULTI_ROLE") return cards.filter((card) => card.primaryRole === "MULTI_ROLE");
+  return cards.filter((card) => card.primaryRole === "TECHNICIAN" || card.primaryRole === "RT");
 }
 
 export function countVisibleClinicalDocumentationCardsByCategory(

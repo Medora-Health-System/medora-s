@@ -34,6 +34,11 @@ import {
   SCORE_PHQ9_CARD_ID,
   SCORE_GAD7_CARD_ID,
   SCORE_CSSRS_CARD_ID,
+  SCORE_HEART_CARD_ID,
+  SCORE_RTS_CARD_ID,
+  SCORE_WELLS_PE_CARD_ID,
+  SCORE_PERC_CARD_ID,
+  SCORE_GENEVA_CARD_ID,
 } from "./foundationCatalogCompletionPayloads.js";
 import {
   ELOPEMENT_RISK_ASSESSMENT_CARD_ID,
@@ -76,7 +81,8 @@ export type ClinicalDataSummarySectionId =
   | "RESPIRATORY"
   | "CARDIAC"
   | "INTAKE_OUTPUT"
-  | "BEHAVIORAL_HEALTH";
+  | "BEHAVIORAL_HEALTH"
+  | "OTHER_CLINICAL_DOCUMENTATION";
 
 export type ClinicalDataSummaryMetric = {
   metricId: string;
@@ -189,17 +195,90 @@ function metricFromEntry(
   };
 }
 
-function scoreMetric(
+function scoreMetricFromEntry(
   entry: ClinicalDataProjectionEntry,
   metricId: string,
   label: string,
   locale: ClinicalDocumentationSummaryLocale
 ): ClinicalDataSummaryMetric | null {
+  const detailRows = buildClinicalDocumentationDetailRows(entry, locale);
   const value =
     payloadTotalScore(entry.payloadJson) ??
-    findSummaryValue(summaryLines(entry, locale), /score|total|nihss/i);
+    findSummaryValue(summaryLines(entry, locale), /score|total|nihss|risk|level|niveau/i) ??
+    detailRows[0]?.value ??
+    summaryLines(entry, locale)[0]?.value;
   if (!value) return null;
   return metricFromEntry(entry, metricId, label, value, locale);
+}
+
+function buildCardiacRiskScoreMetrics(
+  entries: readonly ClinicalDataProjectionEntry[],
+  locale: ClinicalDocumentationSummaryLocale
+): ClinicalDataSummaryMetric[] {
+  const specs: Array<{ cardIds: readonly string[]; metricId: string; labelEn: string; labelFr: string }> =
+    [
+      { cardIds: [SCORE_HEART_CARD_ID], metricId: "heart", labelEn: "HEART Score", labelFr: "Score HEART" },
+      {
+        cardIds: [SCORE_RTS_CARD_ID],
+        metricId: "rts",
+        labelEn: "Revised Trauma Score",
+        labelFr: "Score traumatologique révisé",
+      },
+      {
+        cardIds: [SCORE_WELLS_PE_CARD_ID],
+        metricId: "wells_pe",
+        labelEn: "Wells PE Score",
+        labelFr: "Score de Wells (EP)",
+      },
+      { cardIds: [SCORE_PERC_CARD_ID], metricId: "perc", labelEn: "PERC Rule", labelFr: "Règle PERC" },
+      {
+        cardIds: [SCORE_GENEVA_CARD_ID],
+        metricId: "geneva",
+        labelEn: "Geneva Score",
+        labelFr: "Score de Genève",
+      },
+    ];
+
+  const metrics: ClinicalDataSummaryMetric[] = [];
+  for (const spec of specs) {
+    const entry = latestEntryByCardIds(entries, spec.cardIds);
+    if (!entry) continue;
+    const label = locale === "en" ? spec.labelEn : spec.labelFr;
+    const metric = scoreMetricFromEntry(entry, spec.metricId, label, locale);
+    if (metric) metrics.push(metric);
+  }
+  return metrics;
+}
+
+function buildUnmappedEntryMetrics(
+  entries: readonly ClinicalDataProjectionEntry[],
+  locale: ClinicalDocumentationSummaryLocale,
+  projectedEntryIds: ReadonlySet<string>
+): ClinicalDataSummaryMetric[] {
+  const metrics: ClinicalDataSummaryMetric[] = [];
+  const seenCardIds = new Set<string>();
+
+  for (const entry of sortNewestFirst(activeEntries(entries))) {
+    if (projectedEntryIds.has(entry.id)) continue;
+    if (seenCardIds.has(entry.cardId)) continue;
+    seenCardIds.add(entry.cardId);
+
+    const detailRows = buildClinicalDocumentationDetailRows(entry, locale);
+    const label = locale === "fr" ? entry.cardTitleFr : entry.cardTitleEn;
+    const value =
+      payloadTotalScore(entry.payloadJson) ??
+      findSummaryValue(summaryLines(entry, locale), /score|severity|risk|level|total|niveau/i) ??
+      detailRows[0]?.value ??
+      summaryLines(entry, locale)[0]?.value ??
+      label;
+    metrics.push(metricFromEntry(entry, `other_${entry.cardId}`, label, value, locale));
+  }
+
+  return metrics;
+}
+
+function collectProjectedEntryIds(sections: ClinicalDataSummarySection[]): Set<string> {
+  return new Set(sections.flatMap((section) => section.metrics.map((metric) => metric.entryId)));
 }
 
 function buildNeurologyMetrics(
@@ -213,7 +292,7 @@ function buildNeurologyMetrics(
     NIHSS_ASSESSMENT_CARD_ID,
   ]);
   if (nihssEntry) {
-    const m = scoreMetric(
+    const m = scoreMetricFromEntry(
       nihssEntry,
       "nihss",
       locale === "en" ? "NIHSS" : "NIHSS",
@@ -227,7 +306,7 @@ function buildNeurologyMetrics(
     GLASGOW_COMA_SCALE_ASSESSMENT_CARD_ID,
   ]);
   if (gcsEntry) {
-    const m = scoreMetric(gcsEntry, "gcs", locale === "en" ? "GCS" : "GCS", locale);
+    const m = scoreMetricFromEntry(gcsEntry, "gcs", locale === "en" ? "GCS" : "GCS", locale);
     if (m) metrics.push(m);
   }
 
@@ -460,6 +539,7 @@ function buildCardiacMetrics(
   ];
 
   const metrics: ClinicalDataSummaryMetric[] = [];
+  metrics.push(...buildCardiacRiskScoreMetrics(entries, locale));
   for (const spec of specs) {
     const entry = latestEntryByCardIds(entries, spec.cardIds);
     if (!entry) continue;
@@ -623,9 +703,17 @@ export function buildClinicalDataSummarySections(
     { sectionId: "BEHAVIORAL_HEALTH", build: () => buildBehavioralHealthMetrics(entries, locale) },
   ];
 
-  return sectionBuilders
+  const sections = sectionBuilders
     .map(({ sectionId, build }) => ({ sectionId, metrics: build() }))
     .filter((section) => section.metrics.length > 0);
+
+  const projectedEntryIds = collectProjectedEntryIds(sections);
+  const otherMetrics = buildUnmappedEntryMetrics(entries, locale, projectedEntryIds);
+  if (otherMetrics.length > 0) {
+    sections.push({ sectionId: "OTHER_CLINICAL_DOCUMENTATION", metrics: otherMetrics });
+  }
+
+  return sections;
 }
 
 export function buildClinicalDataSummaryProjection(

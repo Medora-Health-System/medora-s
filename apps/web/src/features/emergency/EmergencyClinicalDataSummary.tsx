@@ -33,6 +33,8 @@ function sectionTitleKey(sectionId: ClinicalDataSummarySectionId): string {
       return "emergencyClinicalData.summary.sections.cardiac";
     case "BEHAVIORAL_HEALTH":
       return "emergencyClinicalData.summary.sections.behavioralHealth";
+    case "OTHER_CLINICAL_DOCUMENTATION":
+      return "emergencyClinicalData.summary.sections.otherClinicalDocumentation";
     default:
       return "emergencyClinicalData.summary.sections.neurology";
   }

@@ -25,6 +25,7 @@ import {
 import {
   appendBloodProductPatientSummaryLines,
   EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS,
+  resolveClinicalDocumentationStructuredDisplayLines,
   selectClinicalDocumentationPayloadSummary,
 } from "@medora/shared";
 import { EnterpriseEncounterCommandTimeline } from "@/components/encounters/EnterpriseEncounterCommandTimeline";
@@ -1012,7 +1013,7 @@ export function EmergencyVisitSummaryPanel({
                   const title =
                     language === "en" ? entry.cardTitleEn : entry.cardTitleFr;
                   const summaryLocale = language === "en" ? "en" : "fr";
-                  const summaryLines = (
+                  const bloodProductLines = (
                     EDOC7_BLOOD_PRODUCT_DOCUMENTATION_CARD_IDS as readonly string[]
                   ).includes(entry.cardId)
                     ? appendBloodProductPatientSummaryLines(
@@ -1024,7 +1025,15 @@ export function EmergencyVisitSummaryPanel({
                           witnessStatus: entry.witnessStatus,
                         }
                       )
-                    : selectClinicalDocumentationPayloadSummary(entry, summaryLocale);
+                    : [];
+                  const summaryLines =
+                    bloodProductLines.length > 0
+                      ? bloodProductLines
+                      : resolveClinicalDocumentationStructuredDisplayLines(entry, summaryLocale);
+                  const fallbackSummaryLines =
+                    summaryLines.length > 0
+                      ? summaryLines
+                      : selectClinicalDocumentationPayloadSummary(entry, summaryLocale);
                   return (
                     <li
                       key={entry.id}
@@ -1061,9 +1070,9 @@ export function EmergencyVisitSummaryPanel({
                             )}
                         </div>
                       ) : null}
-                      {summaryLines.length > 0 ? (
+                      {fallbackSummaryLines.length > 0 ? (
                         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "#475569" }}>
-                          {summaryLines.map((line) => (
+                          {fallbackSummaryLines.map((line) => (
                             <li key={`${entry.id}-${line.key}`}>
                               <strong>{line.key}</strong>: {line.value}
                             </li>
