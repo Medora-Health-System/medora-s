@@ -25,6 +25,20 @@ export function invalidateGetRequestDedupeForPath(path: string, facilityId?: str
   invalidateGetRequestDedupeKey(buildGetDedupeKey(path, facilityId));
 }
 
+/** Verification helper — true when a fresh GET would return cached payload. */
+export function hasGetDedupeCachedResult(
+  key: string,
+  ttlMs: number = DEFAULT_GET_DEDUPE_TTL_MS
+): boolean {
+  const entry = entries.get(key);
+  if (!entry?.result) return false;
+  return Date.now() - entry.result.settledAt < ttlMs;
+}
+
+export function getGetDedupeCachedValue<T>(key: string): T | undefined {
+  return entries.get(key)?.result?.value as T | undefined;
+}
+
 export async function dedupeGetRequest<T>(
   key: string,
   fn: () => Promise<T>,
