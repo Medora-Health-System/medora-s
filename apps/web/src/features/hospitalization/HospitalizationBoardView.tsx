@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -19,7 +19,21 @@ import type { HospitalisationBoardEncounterRow } from "@/lib/hospitalisationBoar
 import type { ObservationOperationalSnapshot, EncounterBedUnitCode } from "@medora/shared";
 import { canReadFreestandingErObservationPatients } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
-import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
+import {
+  dispatchEncounterRoomAssignmentRefresh,
+  MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH,
+  type EncounterRoomAssignmentRefreshDetail,
+} from "@/lib/applyEncounterRoomAssignmentUpdate";
+import {
+  applyBedBoardStatusPatch,
+  rebuildFacilityBedBoardUnitsFromEncounters,
+} from "@/lib/bedBoardMutationPatch";
+import {
+  applyTrackboardRoomMutationPatch,
+  mergeTrackboardEncounterUpdate,
+  reconcilePendingRoomPatches,
+} from "@/lib/trackboardMutationPatch";
+import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
 import {
   MedoraCard,
   MedoraCardBadge,
@@ -514,6 +528,7 @@ export function HospitalizationBoardView() {
   const [facilityBedBoard, setFacilityBedBoard] = useState<FacilityBedBoardResponse | null>(null);
   const [assignPickerBed, setAssignPickerBed] = useState<FacilityBedBoardBedRow | null>(null);
   const [bedBoardStatusFilter, setBedBoardStatusFilter] = useState<BedBoardStatusFilterId>("all");
+  const pendingRoomPatchesRef = useRef<Map<string, EncounterRoomUpdateResponse>>(new Map());
 
   const isProvider = roles.includes("PROVIDER");
   const isNurse = roles.includes("RN");
@@ -601,7 +616,18 @@ export function HospitalizationBoardView() {
         fetchHospitalisationEncounters(facilityId),
         fetchFacilityBedBoard(facilityId).catch(() => null),
       ]);
-      setEncounters(data || []);
+      const nextRows = data || [];
+      setEncounters((prev) => {
+        const merged = mergeTrackboardEncounterUpdate(
+          prev,
+          nextRows,
+          pendingRoomPatchesRef.current
+        );
+        reconcilePendingRoomPatches(merged, pendingRoomPatchesRef.current);
+        return shouldReplaceEncounterRows(prev, merged) || pendingRoomPatchesRef.current.size > 0
+          ? merged
+          : prev;
+      });
       if (bedBoard) {
         setFacilityBedBoard(bedBoard);
         setBedIndex(indexBedBoardByKey(bedBoard));
@@ -758,22 +784,74 @@ export function HospitalizationBoardView() {
     }
   }, [effectiveFacilityId]);
 
+  const handleBedStatusUpdated = useCallback(
+    (updatedBed: FacilityBedBoardBedRow) => {
+      setFacilityBedBoard((prev) => {
+        if (!prev) return prev;
+        const nextBoard = applyBedBoardStatusPatch(prev, updatedBed);
+        setBedIndex(indexBedBoardByKey(nextBoard));
+        return nextBoard;
+      });
+      void refreshFacilityBedBoard();
+    },
+    [refreshFacilityBedBoard]
+  );
+
   const handleRoomAssignmentSaved = useCallback(
     (patch: EncounterRoomUpdateResponse) => {
       const savedEncounterId = patch.id || roomAssignmentLaunch?.encounter.id;
+      const fid = effectiveFacilityId;
       if (savedEncounterId) {
-        setEncounters((prev) =>
-          prev.map((row) =>
-            row.id === savedEncounterId ? applyEncounterRoomAssignmentUpdate(row, patch) : row
-          )
-        );
+        pendingRoomPatchesRef.current.set(savedEncounterId, patch);
+        setEncounters((prev) => {
+          const nextRows = applyTrackboardRoomMutationPatch(prev, patch);
+          if (fid) {
+            setFacilityBedBoard((prevBoard) => {
+              const nextBoard = rebuildFacilityBedBoardUnitsFromEncounters({
+                facilityId: fid,
+                units: ["MS", "ICU", "OBS"],
+                encounters: nextRows,
+                previousBoard: prevBoard,
+              });
+              if (nextBoard) {
+                setBedIndex(indexBedBoardByKey(nextBoard));
+                return nextBoard;
+              }
+              return prevBoard;
+            });
+          }
+          return nextRows;
+        });
+        if (fid) {
+          dispatchEncounterRoomAssignmentRefresh({
+            encounterId: savedEncounterId,
+            facilityId: fid,
+            patch,
+          });
+        }
       }
       setRoomAssignmentLaunch(null);
       void loadEncounters({ silent: true });
       void refreshFacilityBedBoard();
     },
-    [loadEncounters, refreshFacilityBedBoard, roomAssignmentLaunch?.encounter.id]
+    [effectiveFacilityId, loadEncounters, refreshFacilityBedBoard, roomAssignmentLaunch?.encounter.id]
   );
+
+  useEffect(() => {
+    if (!effectiveFacilityId || typeof window === "undefined") return;
+    const onRoomAssignmentRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<EncounterRoomAssignmentRefreshDetail>).detail;
+      if (!detail || detail.facilityId !== effectiveFacilityId) return;
+      pendingRoomPatchesRef.current.set(detail.encounterId, detail.patch);
+      setEncounters((prev) => applyTrackboardRoomMutationPatch(prev, detail.patch));
+      void loadEncounters({ silent: true });
+      void refreshFacilityBedBoard();
+    };
+    window.addEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+    return () => {
+      window.removeEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+    };
+  }, [effectiveFacilityId, loadEncounters, refreshFacilityBedBoard]);
 
   const hospitalAssignCandidates = useMemo((): BedBoardAssignCandidate[] => {
     if (!assignPickerBed) return [];
@@ -1019,7 +1097,7 @@ export function HospitalizationBoardView() {
                 canAssignRoom={canAssignRoom}
                 canManageBedStatus={canManageBedStatus}
                 onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
-                onBedStatusUpdated={() => void refreshFacilityBedBoard()}
+                onBedStatusUpdated={handleBedStatusUpdated}
               />
             ))}
           </section>

@@ -8,6 +8,7 @@ export type EncounterWithGovernedRoom = {
   governedRoomDisplay?: string | null;
   governedRoomUnit?: string | null;
   governedRoomHasAssignment?: boolean;
+  updatedAt?: string | null;
 };
 
 export const MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH = "medora:encounter-room-assignment-refresh";
@@ -50,6 +51,9 @@ export function applyEncounterRoomAssignmentUpdate<T extends EncounterWithGovern
   }
   if (Object.prototype.hasOwnProperty.call(roomUpdate, "governedRoomHasAssignment")) {
     next.governedRoomHasAssignment = roomUpdate.governedRoomHasAssignment ?? false;
+  }
+  if (Object.prototype.hasOwnProperty.call(roomUpdate, "updatedAt")) {
+    next.updatedAt = roomUpdate.updatedAt ?? null;
   }
 
   return next;

@@ -23,6 +23,7 @@ export type EncounterRoomUpdateResponse = {
   governedRoomDisplay?: string | null;
   governedRoomUnit?: string | null;
   governedRoomHasAssignment?: boolean;
+  updatedAt?: string | null;
 };
 
 /** Canonical PATCH path for governed room assignment (K.10B.10). */

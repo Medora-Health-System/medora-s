@@ -35,7 +35,11 @@ import {
   sortRowsByRoomLabel,
 } from "@medora/shared";
 import type { EncounterRoomUpdateResponse } from "@/lib/roomAssignmentApi";
-import { applyEncounterRoomAssignmentUpdate } from "@/lib/applyEncounterRoomAssignmentUpdate";
+import {
+  dispatchEncounterRoomAssignmentRefresh,
+  MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH,
+  type EncounterRoomAssignmentRefreshDetail,
+} from "@/lib/applyEncounterRoomAssignmentUpdate";
 import { RoomAssignmentModal } from "@/components/encounters/RoomAssignmentModal";
 import { BedBoardUnitSection } from "@/components/encounters/BedBoardUnitSection";
 import { BedBoardStatusFilterBar } from "@/components/encounters/BedBoardStatusFilterBar";
@@ -61,6 +65,15 @@ import {
   resolveMyIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
 import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
+import {
+  applyBedBoardStatusPatch,
+  mergeBedBoardRoomUpdate,
+} from "@/lib/bedBoardMutationPatch";
+import {
+  applyTrackboardRoomMutationPatch,
+  mergeTrackboardEncounterUpdate,
+  reconcilePendingRoomPatches,
+} from "@/lib/trackboardMutationPatch";
 import {
   isMyIncompleteChartsBoardView,
   resolveIncompleteChartsVisibleBadgeKeys,
@@ -232,6 +245,7 @@ type OpenEncounterRow = {
   governedRoomDisplay?: string | null;
   governedRoomUnit?: string | null;
   governedRoomHasAssignment?: boolean;
+  updatedAt?: string | null;
 };
 
 function filterOpenEncountersBySearch(
@@ -300,6 +314,7 @@ export function EmergencyTrackboardView() {
   const [isRefreshingSilently, setIsRefreshingSilently] = useState(false);
   const [silentRefreshError, setSilentRefreshError] = useState(false);
   const hasLoadedOnceRef = useRef(false);
+  const pendingRoomPatchesRef = useRef<Map<string, EncounterRoomUpdateResponse>>(new Map());
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   /** Phase 10A — per-row assignment in-flight + per-row error (transient UI only). */
@@ -384,7 +399,17 @@ export function EmergencyTrackboardView() {
       ]);
       const arr = Array.isArray(data) ? data : [];
       const nextRows = arr as OpenEncounterRow[];
-      setRows((prev) => (shouldReplaceEncounterRows(prev, nextRows) ? nextRows : prev));
+      setRows((prev) => {
+        const merged = mergeTrackboardEncounterUpdate(
+          prev,
+          nextRows,
+          pendingRoomPatchesRef.current
+        );
+        reconcilePendingRoomPatches(merged, pendingRoomPatchesRef.current);
+        return shouldReplaceEncounterRows(prev, merged) || pendingRoomPatchesRef.current.size > 0
+          ? merged
+          : prev;
+      });
       hasLoadedOnceRef.current = true;
       setSilentRefreshError(false);
       if (bedBoard) {
@@ -570,22 +595,74 @@ export function EmergencyTrackboardView() {
     }
   }, [facilityId]);
 
+  const handleBedStatusUpdated = useCallback(
+    (updatedBed: FacilityBedBoardBedRow) => {
+      setEdBedBoard((prev) => {
+        if (!prev) return prev;
+        const nextBoard = applyBedBoardStatusPatch(prev, updatedBed);
+        setBedIndex(indexBedBoardByKey(nextBoard));
+        return nextBoard;
+      });
+      void refreshEdBedBoard();
+    },
+    [refreshEdBedBoard]
+  );
+
   const handleRoomAssignmentSaved = useCallback(
     (patch: EncounterRoomUpdateResponse) => {
       const savedEncounterId = patch.id || roomAssignmentLaunch?.encounter.id;
       if (savedEncounterId) {
-        setRows((prev) =>
-          prev.map((row) =>
-            row.id === savedEncounterId ? applyEncounterRoomAssignmentUpdate(row, patch) : row
-          )
-        );
+        pendingRoomPatchesRef.current.set(savedEncounterId, patch);
+        setRows((prev) => {
+          const nextRows = applyTrackboardRoomMutationPatch(prev, patch);
+          if (facilityId) {
+            setEdBedBoard((prevBoard) => {
+              const { board, bedIndex: nextBedIndex } = mergeBedBoardRoomUpdate({
+                board: prevBoard,
+                bedIndex: new Map(),
+                facilityId,
+                unit: "ED",
+                encounters: nextRows,
+              });
+              if (board) {
+                setBedIndex(nextBedIndex);
+                return board;
+              }
+              return prevBoard;
+            });
+          }
+          return nextRows;
+        });
+        if (facilityId) {
+          dispatchEncounterRoomAssignmentRefresh({
+            encounterId: savedEncounterId,
+            facilityId,
+            patch,
+          });
+        }
       }
       setRoomAssignmentLaunch(null);
       void loadEncounters({ silent: true });
       void refreshEdBedBoard();
     },
-    [loadEncounters, refreshEdBedBoard, roomAssignmentLaunch?.encounter.id]
+    [facilityId, loadEncounters, refreshEdBedBoard, roomAssignmentLaunch?.encounter.id]
   );
+
+  useEffect(() => {
+    if (!facilityId || typeof window === "undefined") return;
+    const onRoomAssignmentRefresh = (event: Event) => {
+      const detail = (event as CustomEvent<EncounterRoomAssignmentRefreshDetail>).detail;
+      if (!detail || detail.facilityId !== facilityId) return;
+      pendingRoomPatchesRef.current.set(detail.encounterId, detail.patch);
+      setRows((prev) => applyTrackboardRoomMutationPatch(prev, detail.patch));
+      void loadEncounters({ silent: true });
+      void refreshEdBedBoard();
+    };
+    window.addEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+    return () => {
+      window.removeEventListener(MEDORA_ENCOUNTER_ROOM_ASSIGNMENT_REFRESH, onRoomAssignmentRefresh);
+    };
+  }, [facilityId, loadEncounters, refreshEdBedBoard]);
 
   const inputBase: React.CSSProperties = {
     height: 40,
@@ -816,7 +893,7 @@ export function EmergencyTrackboardView() {
                 canAssignRoom={canAssignRoom}
                 canManageBedStatus={canManageBedStatus}
                 onAvailableBedClick={(bed) => setAssignPickerBed(bed)}
-                onBedStatusUpdated={() => void refreshEdBedBoard()}
+                onBedStatusUpdated={handleBedStatusUpdated}
               />
             </>
           ) : (
