@@ -150,6 +150,24 @@ const cardShell: React.CSSProperties = {
   minWidth: 0,
 };
 
+const catalogCardShell: React.CSSProperties = {
+  ...cardShell,
+  flex: "0 0 auto",
+  width: 220,
+  minWidth: 220,
+  maxWidth: 280,
+  scrollSnapAlign: "start",
+  maxHeight: "min(52vh, 520px)",
+  overflowY: "auto",
+};
+
+function handleCatalogHorizontalWheel(event: React.WheelEvent<HTMLDivElement>) {
+  const container = event.currentTarget;
+  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+  container.scrollLeft += event.deltaY;
+  event.preventDefault();
+}
+
 type BasicItem = { key: string; value: string };
 
 type ImmediateWitnessDraft = {
@@ -815,17 +833,21 @@ export function ClinicalDocumentationHub({
       ) : (
         <div
           data-testid="clinical-documentation-catalog"
-          style={{ width: "100%", minWidth: 0, overflowX: "visible" }}
+          data-role-filter={selectedRoleFilter}
+          style={{ width: "100%", minWidth: 0 }}
         >
           <div
-            data-testid="clinical-documentation-cards-grid"
+            data-testid="clinical-documentation-catalog-scroll"
+            onWheel={handleCatalogHorizontalWheel}
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              display: "flex",
+              flexWrap: "nowrap",
               gap: 10,
-              maxHeight: "min(52vh, 520px)",
-              overflowY: "auto",
-              overflowX: "visible",
+              overflowX: "auto",
+              overflowY: "hidden",
+              scrollSnapType: "x proximity",
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: 4,
               minWidth: 0,
               width: "100%",
               boxSizing: "border-box",
@@ -837,7 +859,8 @@ export function ClinicalDocumentationHub({
               data-testid="clinical-documentation-card"
               data-card-id={c.id}
               data-category={c.category}
-              style={cardShell}
+              data-primary-role={c.primaryRole}
+              style={catalogCardShell}
             >
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#0f172a", lineHeight: 1.35 }}>
                 {cardTitle(c, locale)}
