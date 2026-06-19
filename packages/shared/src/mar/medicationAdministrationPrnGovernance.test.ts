@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyMarPrnReasonGroup,
+  formatMarPrnReasonForLocale,
   isPrnMedicationOrder,
   marPrnAdministrationRequiresPainScore,
   marPrnReasonCodesForGroup,
@@ -108,5 +109,23 @@ describe("medicationAdministrationPrnGovernance (K.10B.7)", () => {
     expect(parsed.painScore).toBe(8);
     expect(parsed.painLocation).toBe("Abdomen");
     expect(formatPrnMarAdministrationCellSummary(merged, "en")).toBe("Pain 8/10");
+  });
+
+  it("formatMarPrnReasonForLocale maps legacy French labels to English", () => {
+    expect(formatMarPrnReasonForLocale({ label: "Douleur modérée" }, "en")).toBe("Moderate pain");
+    expect(formatMarPrnReasonForLocale({ label: "Vomissements" }, "en")).toBe("Vomiting");
+  });
+
+  it("formatMarPrnReasonForLocale maps stable codes to French", () => {
+    expect(formatMarPrnReasonForLocale({ code: "moderate_pain" }, "fr")).toBe("Douleur modérée");
+    expect(formatMarPrnReasonForLocale({ code: "vomiting" }, "fr")).toBe("Vomissements");
+  });
+
+  it("formatPrnMarAdministrationCellSummary prefers code over legacy French label", () => {
+    const notes = [
+      "MAR_PRN_REASON:moderate_pain",
+      "MAR_PRN_REASON_LABEL:Douleur modérée",
+    ].join("\n");
+    expect(formatPrnMarAdministrationCellSummary(notes, "en")).toBe("Moderate pain");
   });
 });

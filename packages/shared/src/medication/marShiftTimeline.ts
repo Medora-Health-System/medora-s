@@ -199,7 +199,7 @@ export type MarShiftTimelineAdministrationEnrichment = {
 
 export function buildMarShiftTimelineTitle(facilityName: string): string {
   const name = facilityName.trim() || "Facility";
-  return `${name} MAR SHIFT TIMELINE`;
+  return `${name} Shift Timeline`;
 }
 
 export function parseMarShiftTimelineShiftCode(

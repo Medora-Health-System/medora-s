@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel } from "@medora/shared";
+import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel, formatMarPrnReasonForLocale } from "@medora/shared";
 import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
@@ -357,7 +357,10 @@ export function FacilityMarShiftTimelineDrawer({
     },
     {
       label: t("marShiftTimeline.drawer.prnReason"),
-      value: item.prnReasonLabel,
+      value: formatMarPrnReasonForLocale(
+        { code: item.prnReasonCode, label: item.prnReasonLabel },
+        language === "en" ? "en" : "fr"
+      ),
       testId: "mar-shift-timeline-drawer-prn-reason",
     },
     {

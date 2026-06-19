@@ -93,15 +93,15 @@ describe("MAR language, time picker, action enablement (M1.8B.7K.8)", () => {
 
   it("start time input is enabled when START effective time API is supported", () => {
     expect(MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED).toBe(true);
-    expect(drawer).toContain('type="datetime-local"');
-    expect(drawer).not.toContain("disabled={readOnly || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}");
+    expect(drawer).toContain("MedicationClinicalDateTimeField");
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-start-time"');
     expect(drawer).toContain(
       "disabled={readOnly || submitting || !MAR_SHIFT_TIMELINE_START_TIME_API_SUPPORTED}"
     );
   });
 
   it("stop time input is enabled for editable drawer", () => {
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-stop-time"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-stop-time"');
     expect(drawer).toContain("disabled={readOnly || submitting}");
   });
 

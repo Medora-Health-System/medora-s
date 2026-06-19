@@ -58,14 +58,13 @@ export type ResolveClientUiLanguageInput = {
   fallback?: SupportedLanguage;
 };
 
-/**
- * Client UI language priority (MEDUI.2C login boundary):
- * 1. Explicit user-selected language in localStorage
- * 2. Active facility language when known
- * 3. Cached facility language from a prior authenticated session
- * 4. Browser language when supported
- * 5. English fallback
- */
+  /**
+   * Client UI language priority (MEDUI.2C login boundary):
+   * 1. Explicit user-selected language in localStorage
+   * 2. Active facility language when known
+   * 3. Cached facility language from a prior authenticated session
+   * 4. English fallback (browser language does not override default)
+   */
 export function resolveClientUiLanguage(input: ResolveClientUiLanguageInput = {}): SupportedLanguage {
   const fallback = input.fallback ?? defaultLanguage;
 
@@ -79,10 +78,6 @@ export function resolveClientUiLanguage(input: ResolveClientUiLanguageInput = {}
 
   if (isSupportedLanguage(input.cachedFacilityLanguage ?? null)) {
     return input.cachedFacilityLanguage as SupportedLanguage;
-  }
-
-  if (input.browserLanguage) {
-    return input.browserLanguage;
   }
 
   return fallback;

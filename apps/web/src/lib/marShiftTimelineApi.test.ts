@@ -20,7 +20,7 @@ describe("marShiftTimelineApi (M1.8B.7K.2)", () => {
     vi.mocked(apiFetch).mockResolvedValue({
       enabled: true,
       facility: { id: "fac-1", name: "St. Mary Hospital" },
-      title: "St. Mary Hospital MAR SHIFT TIMELINE",
+      title: "St. Mary Hospital Shift Timeline",
       viewer: { userId: "u1", displayName: "Jessica RN", role: "RN" },
       shift: { code: "7A_7P", label: "7A–7P", startAt: "", endAt: "", columns: [] },
       rows: [],

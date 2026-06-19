@@ -175,9 +175,13 @@ export function resolveMedicationAdministrationHistoryReasonFields(input: {
   }
   if (input.eventType === "PRN_ADMINISTERED") {
     const parsed = parseMarPrnAdministrationFromNotes(input.notes);
+    const detail =
+      parsed.reasonCode === "other" && parsed.reasonLabel?.trim()
+        ? parsed.reasonLabel.trim()
+        : null;
     return {
       reasonCode: parsed.reasonCode,
-      reasonDetail: parsed.reasonLabel,
+      reasonDetail: detail,
     };
   }
   if (input.eventType === "INFUSION_STOP") {
@@ -340,7 +344,7 @@ export function normalizeMedicationAdministrationHistoryMarRow(
     reasonCode: reason.reasonCode,
     reasonDetail: reason.reasonDetail,
     isPrn: isPrnEntry,
-    prnIndication: prnParsed.indication ?? prnParsed.reasonLabel,
+    prnIndication: prnParsed.indication ?? null,
     infusionPhase,
     medicationDoseInstanceId: row.medicationDoseInstanceId?.trim() || null,
     ...varianceFields,

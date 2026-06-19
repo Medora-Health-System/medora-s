@@ -923,16 +923,11 @@ export function EmergencyChartView() {
           </section>
 
           <section aria-labelledby="section-mar">
-            <h2 id="section-mar" style={sectionTitle}>
-              {t("emergencyChartView.sectionMarHeading")}
-            </h2>
             {canFetchMarTab ? (
               <MedoraCard leftAccentColor="#059669" variant="default">
                 <MedoraCardInner>
-                  <MedoraCardIdentity initials="M">
-                    <MedoraCardTitle title={t("emergencyWorkspace.marTitle")} />
-                  </MedoraCardIdentity>
-                  <div style={{ width: "100%", marginTop: 12 }}>
+                  <MedoraCardTitle title={t("emergencyWorkspace.marTitle")} />
+                  <div style={{ width: "100%", marginTop: 8 }}>
                     <MedicationAdministrationTab
                       encounterId={encounterId}
                       facilityId={fid}
@@ -941,6 +936,7 @@ export function EmergencyChartView() {
                       providerDocumentationStatus={encounter.providerDocumentationStatus}
                       roleCodes={roles}
                       facilityTimeZone={facilityTimeZone}
+                      embeddedWorkspaceLayout
                     />
                   </div>
                 </MedoraCardInner>

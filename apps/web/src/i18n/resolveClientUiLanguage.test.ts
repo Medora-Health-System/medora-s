@@ -44,8 +44,8 @@ describe("resolveClientUiLanguage (MEDUI.2C)", () => {
     ).toBe("en");
   });
 
-  it("uses browser French when no stored or facility preference exists", () => {
-    expect(resolveClientUiLanguage({ browserLanguage: "fr" })).toBe("fr");
+  it("uses English fallback when browser French is the only signal", () => {
+    expect(resolveClientUiLanguage({ browserLanguage: "fr" })).toBe("en");
   });
 
   it("prefers stored user language over cached facility language", () => {

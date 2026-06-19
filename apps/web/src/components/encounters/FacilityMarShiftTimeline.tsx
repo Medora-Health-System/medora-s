@@ -7,6 +7,7 @@ import {
   type MarShiftTimelineShiftCode,
   isMarShiftTimelineItemActionable,
   formatMarShiftTimelineClinicalDateTime,
+  buildMarShiftTimelineTitle,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -24,6 +25,7 @@ import {
   marShiftTimelineAdministrationVarianceCellStyle,
   marShiftTimelineMedicationResponseBadgeStyle,
   marShiftTimelineMedicationResponseFollowUpStyle,
+  localizeMarTimelinePrnCellText,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -68,6 +70,8 @@ export type FacilityMarShiftTimelineProps = {
   onRegisterReopenDrawer?: (
     reopen: (orderItemId: string, medicationDoseInstanceId?: string | null, scheduledAt?: string | null) => void
   ) => void;
+  /** Flatter layout when nested inside ED MAR card (no duplicate chrome). */
+  embedded?: boolean;
 };
 
 type DrawerSelection = MarShiftTimelineDrawerSelection;
@@ -86,6 +90,7 @@ export function FacilityMarShiftTimeline({
   onRegisterRefresh,
   onRegisterCloseDrawer,
   onRegisterReopenDrawer,
+  embedded = false,
 }: FacilityMarShiftTimelineProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -207,57 +212,55 @@ export function FacilityMarShiftTimeline({
     onRegisterCloseDrawer?.(() => setDrawerSelection(null));
   }, [onRegisterCloseDrawer]);
 
-  const title =
-    data?.title?.trim() ||
-    (data?.facility?.name
-      ? `${data.facility.name} MAR SHIFT TIMELINE`
-      : t("marShiftTimeline.titleFallback"));
+  const title = (() => {
+    const raw = data?.title?.trim();
+    if (raw) {
+      return raw
+        .replace(/\s+MAR\s+SHIFT\s+TIMELINE$/i, " Shift Timeline")
+        .replace(/\s+SHIFT\s+TIMELINE$/i, " Shift Timeline");
+    }
+    if (data?.facility?.name) return buildMarShiftTimelineTitle(data.facility.name);
+    return t("marShiftTimeline.titleFallback");
+  })();
 
   const viewerName = data?.viewer?.displayName?.trim() || "—";
   const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale, facilityTimeZone);
+  const uiLocale = language === "en" ? "en" : "fr";
 
   return (
     <section
       data-testid="facility-mar-shift-timeline"
+      data-embedded={embedded ? "true" : "false"}
       aria-label={title}
       style={{
-        marginBottom: compact ? 10 : 14,
-        border: "1px solid #e2e8f0",
-        borderRadius: 12,
-        backgroundColor: "#f8fafc",
-        padding: compact ? "10px 12px" : "12px 14px",
+        marginBottom: embedded ? 0 : compact ? 10 : 14,
+        border: embedded ? "none" : "1px solid #e2e8f0",
+        borderRadius: embedded ? 0 : 12,
+        backgroundColor: embedded ? "transparent" : "#f8fafc",
+        padding: embedded ? 0 : compact ? "10px 12px" : "12px 14px",
       }}
     >
-      <header style={{ marginBottom: compact ? 8 : 10 }}>
-        <div
+      <header style={{ marginBottom: embedded ? 6 : compact ? 8 : 10 }}>
+        <h2
+          data-testid="mar-shift-timeline-title"
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: 8,
-            marginBottom: 6,
+            margin: 0,
+            fontSize: embedded ? 14 : compact ? 15 : 17,
+            fontWeight: embedded ? 600 : 700,
+            lineHeight: 1.25,
+            color: "#334155",
           }}
         >
-          <h2
-            data-testid="mar-shift-timeline-title"
-            style={{ margin: 0, fontSize: compact ? 15 : 17, lineHeight: 1.25, flex: 1 }}
-          >
-            {title}
-          </h2>
-          <span
-            data-testid="mar-shift-timeline-current-time"
-            style={{ fontSize: 13, color: "#475569", whiteSpace: "nowrap" }}
-          >
-            {interpolateMessage(t("marShiftTimeline.currentTimeLine"), { datetime: headerClockText })}
-          </span>
-        </div>
+          {title}
+        </h2>
         <div
+          data-testid="mar-shift-timeline-metadata"
           style={{
             display: "flex",
             flexWrap: "wrap",
             alignItems: "center",
-            gap: "8px 16px",
+            gap: "4px 8px",
+            marginTop: 4,
             fontSize: 13,
             color: "#475569",
           }}
@@ -265,7 +268,8 @@ export function FacilityMarShiftTimeline({
           <span data-testid="mar-shift-timeline-viewer">
             {interpolateMessage(t("marShiftTimeline.nurseLine"), { name: viewerName })}
           </span>
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span aria-hidden="true">·</span>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: 0 }}>
             <span>{t("marShiftTimeline.shiftLabel")}</span>
             <select
               data-testid="mar-shift-timeline-shift-select"
@@ -286,6 +290,13 @@ export function FacilityMarShiftTimeline({
               ))}
             </select>
           </label>
+          <span aria-hidden="true">·</span>
+          <span
+            data-testid="mar-shift-timeline-current-time"
+            style={{ whiteSpace: "nowrap" }}
+          >
+            {interpolateMessage(t("marShiftTimeline.currentTimeLine"), { datetime: headerClockText })}
+          </span>
         </div>
         {historicalReadOnly ? (
           <p
@@ -634,7 +645,11 @@ export function FacilityMarShiftTimeline({
                                     data-testid="mar-shift-timeline-tertiary-text"
                                     style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}
                                   >
-                                    {item.tertiaryText}
+                                    {localizeMarTimelinePrnCellText(
+                                      item.tertiaryText,
+                                      uiLocale,
+                                      item.prnReasonCode
+                                    )}
                                   </div>
                                 ) : null}
                               </button>

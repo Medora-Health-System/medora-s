@@ -15,12 +15,12 @@ import {
 import { wallClockToUtc } from "./medicationDoseExpansionPlanner.js";
 
 describe("marShiftTimeline (M1.8B.7K.1)", () => {
-  it("buildMarShiftTimelineTitle uses facility name, not Medora MAR", () => {
+  it("buildMarShiftTimelineTitle uses facility name shift timeline", () => {
     expect(buildMarShiftTimelineTitle("St. Mary Hospital")).toBe(
-      "St. Mary Hospital MAR SHIFT TIMELINE"
+      "St. Mary Hospital Shift Timeline"
     );
     expect(buildMarShiftTimelineTitle("Medora Demo Facility")).toBe(
-      "Medora Demo Facility MAR SHIFT TIMELINE"
+      "Medora Demo Facility Shift Timeline"
     );
   });
 

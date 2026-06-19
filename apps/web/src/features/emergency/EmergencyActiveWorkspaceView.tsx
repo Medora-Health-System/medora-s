@@ -1227,7 +1227,11 @@ export function EmergencyActiveWorkspaceView() {
           data-layout-mode={layoutMode}
           data-compact-tablet-header={compactTabletHeader ? "true" : "false"}
         >
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>{sectionTitle[activeSection]}</h2>
+          {activeSection !== "mar" ? (
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "#0f172a" }}>
+              {sectionTitle[activeSection]}
+            </h2>
+          ) : null}
 
           {activeSection === "visitSummary" ? (
             <EmergencyErSummaryClosureSurface
@@ -1309,10 +1313,8 @@ export function EmergencyActiveWorkspaceView() {
           {activeSection === "mar" && canFetchMarTab ? (
             <MedoraCard leftAccentColor="#059669" variant="default">
               <MedoraCardInner>
-                <MedoraCardIdentity initials="M">
-                  <MedoraCardTitle title={t("emergencyWorkspace.marTitle")} />
-                </MedoraCardIdentity>
-                <div style={{ width: "100%", marginTop: 12 }}>
+                <MedoraCardTitle title={t("emergencyWorkspace.marTitle")} />
+                <div style={{ width: "100%", marginTop: 8 }}>
                   <MedicationAdministrationTab
                     encounterId={encounterId}
                     facilityId={fid}
@@ -1321,6 +1323,7 @@ export function EmergencyActiveWorkspaceView() {
                     providerDocumentationStatus={encounter.providerDocumentationStatus}
                     roleCodes={roles}
                     facilityTimeZone={facilityTimeZone}
+                    embeddedWorkspaceLayout
                   />
                 </div>
               </MedoraCardInner>

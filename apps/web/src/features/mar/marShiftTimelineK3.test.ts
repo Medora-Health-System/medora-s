@@ -142,8 +142,8 @@ describe("MAR unified timeline shell (M1.8B.7K.3)", () => {
   });
 
   it("drawer shows editable stop time field for IN_PROGRESS IVPB", () => {
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-stop-time"');
-    expect(drawer).toContain('type="datetime-local"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-stop-time"');
+    expect(drawer).toContain("MedicationClinicalDateTimeField");
     expect(defaultMarShiftTimelineStopTimeValue(sampleItem())).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 
@@ -157,7 +157,8 @@ describe("MAR unified timeline shell (M1.8B.7K.3)", () => {
       actions: ["ADMINISTER", "START_INFUSION", "REFUSE", "HOLD", "VIEW_ORDER"],
     });
     expect(marShiftTimelinePrimaryDrawerAction(dueItem)).toBe("START_INFUSION");
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-start-time"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-start-time"');
+    expect(drawer).toContain("MedicationClinicalDateTimeField");
     expect(defaultMarShiftTimelineStartTimeValue(dueItem)).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 

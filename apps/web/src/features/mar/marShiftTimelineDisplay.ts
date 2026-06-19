@@ -4,6 +4,7 @@ import {
   resolveMarShiftTimelineStatusColorKey,
   resolveMarShiftTimelinePerformerLabel,
   resolveMarMedicationTimingOverrideReasonLabel,
+  formatMarPrnReasonForLocale,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcIso,
   resolveFacilityTimezone,
@@ -425,4 +426,22 @@ export function marShiftTimelinePrnRowStyle(): CSSProperties {
     backgroundColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.backgroundColor,
     borderColor: MAR_SHIFT_TIMELINE_STATUS_COLORS.prnRow.borderColor,
   };
+}
+
+/** Re-localize PRN summary text baked at API build time (legacy French labels). */
+export function localizeMarTimelinePrnCellText(
+  text: string | null | undefined,
+  locale: "en" | "fr",
+  prnReasonCode?: string | null
+): string | null {
+  const trimmed = text?.trim();
+  if (!trimmed) return null;
+  const painMatch = trimmed.match(/^(Pain|Douleur)\s+(\d+)\/10$/i);
+  if (painMatch) {
+    const score = painMatch[2];
+    return locale === "en" ? `Pain ${score}/10` : `Douleur ${score}/10`;
+  }
+  return (
+    formatMarPrnReasonForLocale({ code: prnReasonCode, label: trimmed }, locale) ?? trimmed
+  );
 }

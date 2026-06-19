@@ -4,6 +4,7 @@ import {
   resolveClinicalViewportMode,
   type ClinicalViewportMode,
 } from "@/lib/clinicalViewport";
+import type { SupportedLanguage } from "@/i18n/config";
 import type {
   MedicationAdministrationHistoryEntry,
   MedicationAdministrationHistoryEventType,
@@ -14,6 +15,7 @@ import {
   resolveMarRescheduleReasonLabelKey,
   resolveMarMedicationTimingOverrideReasonLabelKey,
   resolveMarMedicationResponseLabelKey,
+  formatMarPrnReasonForLocale,
 } from "@medora/shared";
 import {
   isMarClinicalCorrectionReviewRecommended,
@@ -165,12 +167,18 @@ function formatPerformerLine(entry: MedicationAdministrationHistoryEntry): strin
 
 function formatReasonLine(
   entry: MedicationAdministrationHistoryEntry,
-  t: (key: string) => string
+  t: (key: string) => string,
+  language: SupportedLanguage
 ): string | null {
   const code = entry.reasonCode?.trim();
   const detail = entry.reasonDetail?.trim();
   if (!code && !detail) return null;
   const prefix = t("marAdministrationHistory.reasonPrefix");
+  const locale = language === "en" ? "en" : "fr";
+  if (entry.eventType === "PRN_ADMINISTERED") {
+    const label = formatMarPrnReasonForLocale({ code, label: detail }, locale);
+    return label ? `${prefix}${label}` : null;
+  }
   if (entry.eventType === "INFUSION_STOP" && code) {
     const labelKey = resolveMedicationInfusionStopReasonI18nKey(code);
     const label = labelKey ? t(labelKey) : code;
@@ -236,6 +244,7 @@ export function buildMedicationAdministrationHistoryRailEntry(
   input: {
     formatClinicalTime: (iso: string) => string;
     t: (key: string) => string;
+    language?: SupportedLanguage;
   }
 ): MedicationAdministrationHistoryRailEntry {
   const statusLabelKey = `marAdministrationHistory.eventType.${entry.eventType}`;
@@ -286,7 +295,7 @@ export function buildMedicationAdministrationHistoryRailEntry(
       ? input.formatClinicalTime(entry.documentedAt!)
       : null,
     performerLine: formatPerformerLine(entry),
-    reasonLine: formatReasonLine(entry, input.t),
+    reasonLine: formatReasonLine(entry, input.t, input.language ?? "fr"),
     prnIndicationLine: entry.prnIndication?.trim()
       ? `${input.t("marAdministrationHistory.prnIndicationPrefix")}${entry.prnIndication.trim()}`
       : null,
@@ -374,6 +383,7 @@ export function buildMedicationAdministrationHistoryRailEntries(
   input: {
     formatClinicalTime: (iso: string) => string;
     t: (key: string) => string;
+    language?: SupportedLanguage;
   }
 ): MedicationAdministrationHistoryRailEntry[] {
   return entries.map((entry) => buildMedicationAdministrationHistoryRailEntry(entry, input));

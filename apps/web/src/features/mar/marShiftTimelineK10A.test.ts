@@ -90,7 +90,7 @@ function buildTenPCellTimeline(): MarShiftTimelineResponse {
   return {
     enabled: true,
     facility: { id: "fac-1", name: "Demo", timeZone: haitiTz },
-    title: "Demo MAR SHIFT TIMELINE",
+    title: "Demo Shift Timeline",
     viewer: { userId: "u1", displayName: "RN", role: "NURSE" },
     shift: {
       code: "7P_7A",

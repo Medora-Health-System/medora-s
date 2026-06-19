@@ -6,6 +6,25 @@ import {
 import { parseMedicationFrequencyCode } from "../medication/medicationFrequencyCatalog.js";
 import { getMedicationFrequencyDefinition } from "../medication/medicationFrequencyCatalog.js";
 import { extractMarUserFreeTextNotes } from "./medicationAdministrationInjectionSite.js";
+import {
+  MAR_PRN_REASON_CODES,
+  type MarPrnReasonCode,
+  formatMarPrnReasonForLocale,
+  isMarPrnReasonCode,
+  marPrnReasonLabel,
+} from "./marPrnReasonLocale.js";
+
+export {
+  MAR_PRN_REASON_CODES,
+  type MarPrnReasonCode,
+  marPrnReasonLabelFr,
+  marPrnReasonLabelEn,
+  marPrnReasonLabel,
+  normalizeMarPrnReasonCodeFromStoredValue,
+  normalizeMarPrnReasonCode,
+  formatMarPrnReasonForLocale,
+  isMarPrnReasonCode,
+} from "./marPrnReasonLocale.js";
 
 /** Machine-readable MAR notes line for PRN reason code. */
 export const MAR_PRN_REASON_NOTE_PREFIX = "MAR_PRN_REASON:";
@@ -34,30 +53,6 @@ export type MarPrnReasonGroup =
   | "fever"
   | "anxiety_sleep"
   | "general";
-
-export const MAR_PRN_REASON_CODES = [
-  "mild_pain",
-  "moderate_pain",
-  "severe_pain",
-  "nausea",
-  "vomiting",
-  "nausea_vomiting",
-  "wheezing",
-  "shortness_of_breath",
-  "cough",
-  "low_o2",
-  "itching",
-  "rash",
-  "allergic_reaction",
-  "hives",
-  "fever",
-  "insomnia",
-  "anxiety",
-  "agitation",
-  "other",
-] as const;
-
-export type MarPrnReasonCode = (typeof MAR_PRN_REASON_CODES)[number];
 
 export type MarPrnOrderMetadata = {
   isPrn: boolean;
@@ -260,68 +255,6 @@ export function marPrnReasonCodesForGroup(group: MarPrnReasonGroup): readonly Ma
   }
 }
 
-export function marPrnReasonLabelFr(code: MarPrnReasonCode): string {
-  const labels: Record<MarPrnReasonCode, string> = {
-    mild_pain: "Douleur légère",
-    moderate_pain: "Douleur modérée",
-    severe_pain: "Douleur sévère",
-    nausea: "Nausées",
-    vomiting: "Vomissements",
-    nausea_vomiting: "Nausées/vomissements",
-    wheezing: "Sifflements",
-    shortness_of_breath: "Dyspnée",
-    cough: "Toux",
-    low_o2: "O2 bas",
-    itching: "Démangeaisons",
-    rash: "Éruption cutanée",
-    allergic_reaction: "Réaction allergique",
-    hives: "Urticaire",
-    fever: "Fièvre",
-    insomnia: "Insomnie",
-    anxiety: "Anxiété",
-    agitation: "Agitation",
-    other: "Autre",
-  };
-  return labels[code];
-}
-
-export function marPrnReasonLabelEn(code: MarPrnReasonCode): string {
-  const labels: Record<MarPrnReasonCode, string> = {
-    mild_pain: "Mild pain",
-    moderate_pain: "Moderate pain",
-    severe_pain: "Severe pain",
-    nausea: "Nausea",
-    vomiting: "Vomiting",
-    nausea_vomiting: "Nausea/vomiting",
-    wheezing: "Wheezing",
-    shortness_of_breath: "Shortness of breath",
-    cough: "Cough",
-    low_o2: "Low O2",
-    itching: "Itching",
-    rash: "Rash",
-    allergic_reaction: "Allergic reaction",
-    hives: "Hives",
-    fever: "Fever",
-    insomnia: "Insomnia",
-    anxiety: "Anxiety",
-    agitation: "Agitation",
-    other: "Other",
-  };
-  return labels[code];
-}
-
-export function marPrnReasonLabel(
-  code: MarPrnReasonCode,
-  locale: "fr" | "en" = "fr"
-): string {
-  return locale === "en" ? marPrnReasonLabelEn(code) : marPrnReasonLabelFr(code);
-}
-
-export function isMarPrnReasonCode(value: string | null | undefined): value is MarPrnReasonCode {
-  const v = value?.trim();
-  return Boolean(v && (MAR_PRN_REASON_CODES as readonly string[]).includes(v));
-}
-
 /** Pain PRN meds require 0–10 pain score at administration. */
 export function marPrnAdministrationRequiresPainScore(input: {
   medicationLabel?: string | null;
@@ -406,9 +339,12 @@ export function formatPrnMarAdministrationCellSummary(
     const painWord = locale === "en" ? "Pain" : "Douleur";
     return `${painWord} ${parsed.painScore}/10`;
   }
-  if (parsed.reasonLabel?.trim()) return parsed.reasonLabel.trim();
-  if (parsed.reasonCode) return marPrnReasonLabel(parsed.reasonCode, locale);
-  return null;
+  if (parsed.reasonCode) {
+    return marPrnReasonLabel(parsed.reasonCode, locale);
+  }
+  const fromLegacyLabel = formatMarPrnReasonForLocale({ label: parsed.reasonLabel }, locale);
+  if (fromLegacyLabel) return fromLegacyLabel;
+  return parsed.reasonLabel?.trim() || null;
 }
 
 export function mergePrnAdministrationIntoMarNotes(input: {
@@ -462,6 +398,7 @@ export function resolveMarTimelinePrnDisplayFields(input: {
   administrationNotes?: string | null;
 }): {
   orderPrnIndication: string | null;
+  prnReasonCode: string | null;
   prnReasonLabel: string | null;
   prnPainScore: number | null;
   prnPainLocation: string | null;
@@ -470,6 +407,7 @@ export function resolveMarTimelinePrnDisplayFields(input: {
   return {
     orderPrnIndication:
       parsePrnIndicationFromDirections(input.directionsSig) ?? parsed.indication,
+    prnReasonCode: parsed.reasonCode,
     prnReasonLabel: parsed.reasonLabel,
     prnPainScore: parsed.painScore,
     prnPainLocation: parsed.painLocation,

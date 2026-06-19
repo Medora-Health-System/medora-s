@@ -381,7 +381,7 @@ function eventLinePrimaryTitle(
   const en = typeof e.lineLabelEn === "string" ? e.lineLabelEn.trim() : "";
   const fr = typeof e.lineLabelFr === "string" ? e.lineLabelFr.trim() : "";
   const fromEncounter = resolveOrderEventTitleFromEncounterOrders(e, language, tr, orders).trim();
-  const apiPreferred = language === "fr" ? fr || en : en || fr;
+  const apiPreferred = language === "fr" ? fr || en : en;
   const apiOk = apiPreferred.length > 0 && !isLikelyGenericOrderLineTitle(apiPreferred);
   if (apiOk) return apiPreferred;
   if (fromEncounter) return fromEncounter;
