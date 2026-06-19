@@ -61,6 +61,7 @@ import { EmergencyErOrdersPanel } from "@/features/emergency/EmergencyErOrdersPa
 import { EmergencyErNursingHandoffPanel } from "@/features/emergency/EmergencyErNursingHandoffPanel";
 import { NursingDischargeExecutionSection } from "@/features/emergency/NursingDischargeExecutionSection";
 import { EmergencyErNotesPanel } from "@/features/emergency/EmergencyErNotesPanel";
+import { EmergencyClinicalDataPanel } from "@/features/emergency/EmergencyClinicalDataPanel";
 import { emergencyChartPath, genericEncounterPath } from "@/features/emergency/emergencyRoutes";
 import {
   parseErWorkspaceSection,
@@ -613,6 +614,7 @@ export function EmergencyActiveWorkspaceView() {
       mar: t("emergencyWorkspace.sectionTitle.mar"),
       orders: t("emergencyWorkspace.sectionTitle.orders"),
       diagnostics: t("emergencyWorkspace.sectionTitle.diagnostics"),
+      clinicalData: t("emergencyWorkspace.sectionTitle.clinicalData"),
       notes: t("emergencyWorkspace.sectionTitle.notes"),
       nursing: t("emergencyWorkspace.sectionTitle.nursing"),
       providerMse: t("emergencyWorkspace.sectionTitle.providerMse"),
@@ -670,6 +672,15 @@ export function EmergencyActiveWorkspaceView() {
         initials: "Dx",
         ariaLabel: t("emergencyWorkspace.tileAria.diagnostics"),
         disabled: false,
+      },
+      {
+        kind: "section",
+        id: "clinicalData",
+        accent: "#0284c7",
+        initials: "CD",
+        ariaLabel: t("emergencyWorkspace.tileAria.clinicalData"),
+        disabled: false,
+        dataTestId: "ed-dashboard-tile-clinical-data",
       },
       {
         kind: "section",
@@ -1365,6 +1376,14 @@ export function EmergencyActiveWorkspaceView() {
               roles={roles}
               cdsIntent={cdsIntent}
               onConsumeIntent={handleConsumeIntent}
+            />
+          ) : null}
+
+          {activeSection === "clinicalData" ? (
+            <EmergencyClinicalDataPanel
+              encounterId={encounterId}
+              facilityId={fid}
+              facilityTimeZone={facilityTimeZone}
             />
           ) : null}
 

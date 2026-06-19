@@ -23,6 +23,7 @@ const DASHBOARD_SHORT_LABELS: Record<string, string> = {
   M: "Medications",
   R: "Results",
   Dx: "Diagnostics",
+  CD: "Clinical Data",
   NA: "Nurse Assessment",
   N: "Notes",
   D: "Disposition",
@@ -36,6 +37,7 @@ export type ErDashboardTile = {
   initials: string;
   ariaLabel: string;
   disabled: boolean;
+  dataTestId?: string;
 };
 
 export function EmergencyErWorkspaceSectionNav({
@@ -102,6 +104,7 @@ export function EmergencyErWorkspaceSectionNav({
                   disabled={q.disabled}
                   aria-label={q.ariaLabel}
                   aria-current={selected ? "true" : undefined}
+                  data-testid={q.dataTestId}
                   onClick={() => {
                     if (!q.disabled) onSelect(q.id);
                   }}

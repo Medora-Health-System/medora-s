@@ -6,6 +6,7 @@ export type ErWorkspaceSection =
   | "mar"
   | "orders"
   | "diagnostics"
+  | "clinicalData"
   | "notes"
   | "nursing"
   | "providerMse"
@@ -18,6 +19,7 @@ const ER_WORKSPACE_SECTIONS = new Set<ErWorkspaceSection>([
   "mar",
   "orders",
   "diagnostics",
+  "clinicalData",
   "notes",
   "nursing",
   "providerMse",
@@ -32,6 +34,7 @@ const ER_WORKSPACE_SECTION_ALIASES: Record<string, ErWorkspaceSection> = {
   mar: "mar",
   orders: "orders",
   diagnostics: "diagnostics",
+  clinicaldata: "clinicalData",
   notes: "notes",
   nursing: "nursing",
   providermse: "providerMse",

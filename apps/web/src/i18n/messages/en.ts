@@ -6424,6 +6424,7 @@ export default {
       mar: "Medication Administration",
       orders: "Orders",
       diagnostics: "Diagnoses",
+      clinicalData: "Clinical Data",
       notes: "Notes",
       nursing: "ED nursing reassessment",
       providerMse: "ED provider assessment",
@@ -6436,6 +6437,7 @@ export default {
       mar: "MAR",
       results: "Results",
       diagnostics: "Diagnoses",
+      clinicalData: "Clinical Data",
       nursing: "Nursing",
       notes: "Notes",
       disposition: "Disposition",
@@ -6494,6 +6496,38 @@ export default {
     sectionProviderEval: "Provider assessment",
     sectionTeamExecution: "Team execution",
     triageLockedSubline: "Reserved for certain roles. Open the full chart.",
+  },
+  emergencyClinicalData: {
+    title: "Clinical Data",
+    subtitle:
+      "Review structured ED documentation, flowsheets, scores, screens, intake/output, safety, and monitoring.",
+    readOnlyBanner:
+      "Clinical Data is read-only. Nursing documentation remains owned by nursing workflows.",
+    reviewPreviewEmpty:
+      "Read-only provider review. Editing remains under Nursing Assessment.",
+    summaryTitle: "Clinical Data Summary",
+    summaryPlaceholder: "Summary projection will populate from saved clinical documentation.",
+    summary: {
+      clinicalSummary: "Clinical Summary",
+      recentDocumentation: "Recent Clinical Documentation",
+      intake24h: "24h Intake",
+      output24h: "24h Output",
+      netBalance: "Net Balance",
+      insufficientData: "Not enough documentation available",
+      sections: {
+        neurology: "Neurology",
+        withdrawalPsych: "Withdrawal / Psych",
+        respiratory: "Respiratory",
+        cardiac: "Cardiac",
+        behavioralHealth: "Behavioral Health",
+        intakeOutput: "Intake & Output",
+      },
+      status: {
+        documented: "Documented",
+        pendingWitness: "Pending witness",
+        voided: "Voided",
+      },
+    },
   },
   emergencyVisitSummaryPanel: {
     cardTitle: "ED visit summary",
@@ -14018,6 +14052,7 @@ export default {
     noCards: "No cards match this filter.",
     categoryCardCount: "{count} cards in this category",
     actionOpen: "Open",
+    actionReview: "Review",
     actionFoundation: "Foundation only",
     actionComingSoon: "Coming soon",
     savedEntriesTitle: "Recent saved documentation",

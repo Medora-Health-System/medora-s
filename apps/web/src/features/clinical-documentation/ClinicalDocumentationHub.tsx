@@ -171,15 +171,30 @@ export function ClinicalDocumentationHub({
   encounterId,
   facilityId,
   onClose,
+  accessMode = "edit",
+  showHeader = true,
+  showSavedEntries = true,
+  externalEntries,
+  externalEntriesLoading = false,
+  skipEntriesFetch = false,
 }: {
   careSetting?: "ED" | "OBSERVATION" | "INPATIENT" | "ICU" | "TELEMETRY" | "CLINIC" | "URGENT_CARE";
   encounterId?: string;
   facilityId?: string;
   onClose?: () => void;
+  /** `review` — read-only provider mirror; no save/witness mutations. */
+  accessMode?: "edit" | "review";
+  showHeader?: boolean;
+  showSavedEntries?: boolean;
+  /** Parent-provided entries (Clinical Data panel — single fetch). */
+  externalEntries?: ClinicalDocumentationEntryRow[];
+  externalEntriesLoading?: boolean;
+  skipEntriesFetch?: boolean;
 }) {
   const { t, language } = useI18n();
   const { userId, roles } = useFacilityAndRoles();
   const locale = language === "en" ? "en" : "fr";
+  const isReviewMode = accessMode === "review";
   const [selectedCategory, setSelectedCategory] = useState<ClinicalDocumentationCategory | "ALL">("ALL");
   const [search, setSearch] = useState("");
   const [entries, setEntries] = useState<ClinicalDocumentationEntryRow[]>([]);
@@ -198,6 +213,7 @@ export function ClinicalDocumentationHub({
   const canPersist = Boolean(encounterId && facilityId);
 
   const loadEntries = useCallback(async () => {
+    if (skipEntriesFetch) return;
     if (!encounterId || !facilityId) return;
     setLoadingEntries(true);
     try {
@@ -208,11 +224,15 @@ export function ClinicalDocumentationHub({
     } finally {
       setLoadingEntries(false);
     }
-  }, [encounterId, facilityId]);
+  }, [encounterId, facilityId, skipEntriesFetch]);
 
   useEffect(() => {
+    if (skipEntriesFetch) return;
     void loadEntries();
-  }, [loadEntries]);
+  }, [loadEntries, skipEntriesFetch]);
+
+  const resolvedEntries = skipEntriesFetch ? (externalEntries ?? []) : entries;
+  const resolvedLoadingEntries = skipEntriesFetch ? externalEntriesLoading : loadingEntries;
 
   const scopedCards = useMemo(() => {
     const categoryFilter = selectedCategory === "ALL" ? "ALL" : selectedCategory;
@@ -229,7 +249,7 @@ export function ClinicalDocumentationHub({
   }, [careSetting, locale, search, selectedCategory]);
 
   const intakeOutputTotals = useMemo(() => {
-    const ioEntries = entries
+    const ioEntries = resolvedEntries
       .filter(
         (e) =>
           !e.voidedAt &&
@@ -240,7 +260,7 @@ export function ClinicalDocumentationHub({
         payload: (e.payloadJson ?? {}) as Record<string, unknown>,
       }));
     return calculateIntakeOutputTotals(ioEntries);
-  }, [entries]);
+  }, [resolvedEntries]);
 
   const showIntakeOutputTotals =
     intakeOutputTotals.totalIntakeMl > 0 ||
@@ -251,6 +271,13 @@ export function ClinicalDocumentationHub({
     CLINICAL_DOCUMENTATION_CATEGORY_META.find((m) => m.id === id);
 
   const openLabel = (card: ClinicalDocumentationCard) => {
+    if (isReviewMode) {
+      if (card.implementationStatus === "AVAILABLE") return t("clinicalDocumentation.actionReview");
+      if (card.implementationStatus === "FOUNDATION_ONLY") {
+        return t("clinicalDocumentation.actionFoundation");
+      }
+      return t("clinicalDocumentation.actionComingSoon");
+    }
     if (card.implementationStatus === "AVAILABLE") return t("clinicalDocumentation.actionOpen");
     if (card.implementationStatus === "FOUNDATION_ONLY") {
       return t("clinicalDocumentation.actionFoundation");
@@ -387,7 +414,7 @@ export function ClinicalDocumentationHub({
 
   return (
     <div
-      data-testid="clinical-documentation-hub"
+      data-testid={isReviewMode ? "clinical-documentation-hub-review" : "clinical-documentation-hub"}
       style={{
         marginTop: 12,
         border: "1px solid #e2e8f0",
@@ -398,43 +425,63 @@ export function ClinicalDocumentationHub({
         maxWidth: "100%",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 10,
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: 10,
-        }}
-      >
-        <div style={{ minWidth: 0, flex: "1 1 240px" }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
-            {t("clinicalDocumentation.hubTitle")}
-          </h3>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
-            {t("clinicalDocumentation.hubSubtitle")}
-          </p>
+      {showHeader ? (
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 10,
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+        >
+          <div style={{ minWidth: 0, flex: "1 1 240px" }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#0f172a" }}>
+              {t("clinicalDocumentation.hubTitle")}
+            </h3>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+              {t("clinicalDocumentation.hubSubtitle")}
+            </p>
+          </div>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: "6px 12px",
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              {t("clinicalDocumentation.closeHub")}
+            </button>
+          ) : null}
         </div>
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "6px 12px",
-              fontSize: 12,
-              borderRadius: 8,
-              border: "1px solid #cbd5e1",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            {t("clinicalDocumentation.closeHub")}
-          </button>
-        ) : null}
-      </div>
+      ) : null}
 
-      {canPersist ? (
+      {isReviewMode ? (
+        <p
+          data-testid="clinical-documentation-read-only-banner"
+          style={{
+            margin: showHeader ? "0 0 12px" : "0 0 12px",
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: "1px solid #bfdbfe",
+            background: "#eff6ff",
+            color: "#1e40af",
+            fontSize: 13,
+            lineHeight: 1.45,
+          }}
+        >
+          {t("emergencyClinicalData.readOnlyBanner")}
+        </p>
+      ) : null}
+
+      {canPersist && showSavedEntries ? (
         <section
           data-testid="clinical-documentation-saved-entries"
           style={{
@@ -448,15 +495,15 @@ export function ClinicalDocumentationHub({
           <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
             {t("clinicalDocumentation.savedEntriesTitle")}
           </p>
-          {loadingEntries ? (
+          {resolvedLoadingEntries ? (
             <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{t("common.loading")}</p>
-          ) : entries.length === 0 ? (
+          ) : resolvedEntries.length === 0 ? (
             <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
               {t("clinicalDocumentation.savedEntriesEmpty")}
             </p>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
-              {entries.map((entry) => {
+              {resolvedEntries.map((entry) => {
                 const pendingWitness = clinicalDocumentationPendingWitness(entry);
                 const showWitness =
                   canPersist &&
@@ -531,7 +578,7 @@ export function ClinicalDocumentationHub({
                         ))}
                       </ul>
                     ) : null}
-                    {showWitness ? (
+                    {showWitness && !isReviewMode ? (
                       <button
                         type="button"
                         data-testid="clinical-documentation-witness-button"
@@ -744,9 +791,12 @@ export function ClinicalDocumentationHub({
               </p>
               <button
                 type="button"
-                disabled={c.implementationStatus !== "AVAILABLE" || !canPersist}
+                data-testid={
+                  isReviewMode ? "clinical-documentation-card-review-button" : "clinical-documentation-card-open-button"
+                }
+                disabled={c.implementationStatus !== "AVAILABLE"}
                 onClick={() => {
-                  if (c.implementationStatus !== "AVAILABLE" || !canPersist) return;
+                  if (c.implementationStatus !== "AVAILABLE") return;
                   setExpandedCardId((prev) => (prev === c.id ? null : c.id));
                   setSaveMessage(null);
                 }}
@@ -758,18 +808,74 @@ export function ClinicalDocumentationHub({
                   fontWeight: 600,
                   borderRadius: 8,
                   border: "1px solid #cbd5e1",
-                  background:
-                    c.implementationStatus === "AVAILABLE" && canPersist ? "#0f172a" : "#f1f5f9",
-                  color:
-                    c.implementationStatus === "AVAILABLE" && canPersist ? "#fff" : "#94a3b8",
-                  cursor:
-                    c.implementationStatus === "AVAILABLE" && canPersist ? "pointer" : "not-allowed",
+                  background: c.implementationStatus === "AVAILABLE" ? "#0f172a" : "#f1f5f9",
+                  color: c.implementationStatus === "AVAILABLE" ? "#fff" : "#94a3b8",
+                  cursor: c.implementationStatus === "AVAILABLE" ? "pointer" : "not-allowed",
                 }}
               >
                 {openLabel(c)}
               </button>
 
-              {expandedCardId === c.id && isEdoc3ObservationFormCard(c.id) ? (
+              {isReviewMode && expandedCardId === c.id ? (
+                <div
+                  data-testid="clinical-documentation-review-preview"
+                  style={{
+                    marginTop: 8,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "1px solid #e2e8f0",
+                    background: "#f8fafc",
+                  }}
+                >
+                  {(() => {
+                    const latest = [...resolvedEntries]
+                      .filter((entry) => !entry.voidedAt && entry.cardId === c.id)
+                      .sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      )[0];
+                    if (!latest) {
+                      return (
+                        <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+                          {t("emergencyClinicalData.reviewPreviewEmpty")}
+                        </p>
+                      );
+                    }
+                    const summary = selectClinicalDocumentationPayloadSummary(latest, locale);
+                    return (
+                      <>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a" }}>
+                          {entryDisplayTitle(latest, locale)}
+                        </p>
+                        <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>
+                          {t("clinicalDocumentation.entryMeta")
+                            .replace("{author}", latest.authorDisplayName)
+                            .replace("{role}", latest.authorRoleTitle)
+                            .replace("{when}", formatWhen(latest.createdAt))}
+                        </p>
+                        {summary.length > 0 ? (
+                          <ul
+                            style={{
+                              margin: "8px 0 0",
+                              paddingLeft: 16,
+                              fontSize: 12,
+                              color: "#334155",
+                            }}
+                          >
+                            {summary.map((line) => (
+                              <li key={`${latest.id}-${line.key}`}>
+                                <strong>{line.key}</strong>: {line.value}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : null}
+
+              {!isReviewMode && expandedCardId === c.id && isEdoc3ObservationFormCard(c.id) ? (
                 <ClinicalDocumentationObservationForm
                   cardId={c.id}
                   saving={saving}
@@ -777,7 +883,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc4StrokeFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc4StrokeFormCard(c.id) ? (
                 <ClinicalDocumentationStrokeForm
                   cardId={c.id}
                   saving={saving}
@@ -785,7 +891,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc11StrokeNeuroReassessmentFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc11StrokeNeuroReassessmentFormCard(c.id) ? (
                 <ClinicalDocumentationStrokeNeuroReassessmentForm
                   cardId={c.id}
                   saving={saving}
@@ -793,7 +899,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc12RespiratoryDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc12RespiratoryDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationRespiratoryForm
                   cardId={c.id}
                   saving={saving}
@@ -801,7 +907,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc13PainDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc13PainDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationPainForm
                   cardId={c.id}
                   saving={saving}
@@ -809,7 +915,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc14NeurologicalDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc14NeurologicalDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationNeurologicalForm
                   cardId={c.id}
                   saving={saving}
@@ -817,7 +923,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc14FallRiskSafetyDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc14FallRiskSafetyDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationFallRiskForm
                   cardId={c.id}
                   saving={saving}
@@ -825,7 +931,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc15CardiacMonitoringDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc15CardiacMonitoringDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationCardiacMonitoringForm
                   cardId={c.id}
                   saving={saving}
@@ -833,7 +939,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc16BehavioralHealthDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc16BehavioralHealthDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationBehavioralHealthForm
                   cardId={c.id}
                   saving={saving}
@@ -841,7 +947,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc17DeviceMonitoringDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc17DeviceMonitoringDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationDeviceMonitoringForm
                   cardId={c.id}
                   saving={saving}
@@ -849,7 +955,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc18SepsisMonitoringDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc18SepsisMonitoringDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationSepsisMonitoringForm
                   cardId={c.id}
                   saving={saving}
@@ -857,7 +963,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc19NursingAdmissionCarePlanDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc19NursingAdmissionCarePlanDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationNursingAdmissionCarePlanForm
                   cardId={c.id}
                   saving={saving}
@@ -865,7 +971,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc20SkinWoundPressureInjuryDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc20SkinWoundPressureInjuryDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationSkinWoundForm
                   cardId={c.id}
                   saving={saving}
@@ -873,7 +979,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc21DialysisRenalFluidManagementDocumentationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc21DialysisRenalFluidManagementDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationRenalForm
                   cardId={c.id}
                   saving={saving}
@@ -881,7 +987,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id &&
+              {!isReviewMode && expandedCardId === c.id &&
               isEdoc22PatientEducationDischargeTeachingDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationEducationForm
                   cardId={c.id}
@@ -890,7 +996,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id &&
+              {!isReviewMode && expandedCardId === c.id &&
               isEdoc23ProceduralSafetyThrombolyticDocumentationFormCard(c.id) ? (
                 <ClinicalDocumentationProceduralSafetyForm
                   cardId={c.id}
@@ -899,7 +1005,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc23bFlowsheetCompletionFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc23bFlowsheetCompletionFormCard(c.id) ? (
                 <ClinicalDocumentationFlowsheetCompletionForm
                   cardId={c.id}
                   saving={saving}
@@ -907,7 +1013,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc23bScoreScreenCompletionFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc23bScoreScreenCompletionFormCard(c.id) ? (
                 <ClinicalDocumentationScoreScreenCompletionForm
                   cardId={c.id}
                   saving={saving}
@@ -915,7 +1021,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc5IntakeOutputFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc5IntakeOutputFormCard(c.id) ? (
                 <ClinicalDocumentationIntakeOutputForm
                   cardId={c.id}
                   saving={saving}
@@ -923,7 +1029,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc6RestraintFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc6RestraintFormCard(c.id) ? (
                 <ClinicalDocumentationRestraintForm
                   cardId={c.id}
                   saving={saving}
@@ -931,7 +1037,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc7BloodProductFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc7BloodProductFormCard(c.id) ? (
                 <ClinicalDocumentationBloodProductForm
                   cardId={c.id}
                   saving={saving}
@@ -939,7 +1045,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc8HighAlertInfusionFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc8HighAlertInfusionFormCard(c.id) ? (
                 <ClinicalDocumentationHighAlertInfusionForm
                   cardId={c.id}
                   saving={saving}
@@ -947,7 +1053,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc9BelongingsValuablesFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc9BelongingsValuablesFormCard(c.id) ? (
                 <ClinicalDocumentationBelongingsValuablesForm
                   cardId={c.id}
                   saving={saving}
@@ -955,7 +1061,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && isEdoc10ProceduralSedationFormCard(c.id) ? (
+              {!isReviewMode && expandedCardId === c.id && isEdoc10ProceduralSedationFormCard(c.id) ? (
                 <ClinicalDocumentationProceduralSedationForm
                   cardId={c.id}
                   saving={saving}
@@ -963,7 +1069,7 @@ export function ClinicalDocumentationHub({
                 />
               ) : null}
 
-              {expandedCardId === c.id && c.id === EDOC_BASIC_STRUCTURED_CARD_ID ? (
+              {!isReviewMode && expandedCardId === c.id && c.id === EDOC_BASIC_STRUCTURED_CARD_ID ? (
                 <div
                   data-testid="clinical-documentation-basic-form"
                   style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}

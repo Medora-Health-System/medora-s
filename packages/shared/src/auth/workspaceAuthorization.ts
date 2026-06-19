@@ -9,6 +9,7 @@ export type WorkspaceTileId =
   | "MEDICATIONS"
   | "RESULTS"
   | "DIAGNOSTICS"
+  | "CLINICAL_DATA"
   | "NURSING_ASSESSMENT"
   | "NOTES"
   | "DISPOSITION"
@@ -24,6 +25,7 @@ export const ED_WORKSPACE_TILE_IDS: readonly WorkspaceTileId[] = [
   "MEDICATIONS",
   "RESULTS",
   "DIAGNOSTICS",
+  "CLINICAL_DATA",
   "NURSING_ASSESSMENT",
   "NOTES",
   "DISPOSITION",
@@ -57,6 +59,7 @@ const PROVIDER_EMERGENCY_TILES: WorkspaceTileId[] = [
   "ORDERS",
   "RESULTS",
   "DIAGNOSTICS",
+  "CLINICAL_DATA",
   "NOTES",
   "DISPOSITION",
   "SUMMARY",

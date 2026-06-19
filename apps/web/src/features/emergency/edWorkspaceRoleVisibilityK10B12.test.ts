@@ -87,6 +87,6 @@ describe("edWorkspaceRoleVisibility (MEDUI.ED.ROLE.1)", () => {
   });
 
   it("Administration sees entire dashboard", () => {
-    expect(getVisibleEdWorkspaceTiles({ roleCodes: ["ADMIN"] })).toHaveLength(10);
+    expect(getVisibleEdWorkspaceTiles({ roleCodes: ["ADMIN"] })).toHaveLength(11);
   });
 });

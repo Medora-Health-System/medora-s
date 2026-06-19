@@ -6394,6 +6394,7 @@ export default {
       mar: "Administration médicamenteuse",
       orders: "Ordres",
       diagnostics: "Diagnostics",
+      clinicalData: "Données cliniques",
       notes: "Notes",
       nursing: "Réévaluation infirmière (urgences)",
       providerMse: "Évaluation médicale (urgences)",
@@ -6406,6 +6407,7 @@ export default {
       mar: "MAR",
       results: "Résultats",
       diagnostics: "Diagnostics",
+      clinicalData: "Données cliniques",
       nursing: "Soins infirmiers",
       notes: "Notes",
       disposition: "Disposition",
@@ -6464,6 +6466,39 @@ export default {
     sectionProviderEval: "Évaluation médicale",
     sectionTeamExecution: "Exécution équipe",
     triageLockedSubline: "Réservé à certains rôles. Ouvrez le dossier complet.",
+  },
+  emergencyClinicalData: {
+    title: "Données cliniques",
+    subtitle:
+      "Consulter la documentation structurée des urgences, feuilles de suivi, scores, dépistages, apports/pertes, sécurité et surveillance.",
+    readOnlyBanner:
+      "Les données cliniques sont en lecture seule. La documentation infirmière reste sous la responsabilité des soins infirmiers.",
+    reviewPreviewEmpty:
+      "Consultation en lecture seule pour le médecin. La saisie reste sous Évaluation infirmière.",
+    summaryTitle: "Synthèse des données cliniques",
+    summaryPlaceholder:
+      "La synthèse sera alimentée à partir de la documentation clinique enregistrée.",
+    summary: {
+      clinicalSummary: "Résumé clinique",
+      recentDocumentation: "Documentation clinique récente",
+      intake24h: "Apports 24 h",
+      output24h: "Sorties 24 h",
+      netBalance: "Bilan net",
+      insufficientData: "Documentation insuffisante",
+      sections: {
+        neurology: "Neurologie",
+        withdrawalPsych: "Sevrage",
+        respiratory: "Respiratoire",
+        cardiac: "Cardiaque",
+        behavioralHealth: "Santé comportementale",
+        intakeOutput: "Entrées et sorties",
+      },
+      status: {
+        documented: "Documenté",
+        pendingWitness: "Témoin en attente",
+        voided: "Annulé",
+      },
+    },
   },
   emergencyVisitSummaryPanel: {
     cardTitle: "Synthèse de visite (urgences)",
@@ -14051,6 +14086,7 @@ export default {
     noCards: "Aucune fiche ne correspond à ce filtre.",
     categoryCardCount: "{count} fiches dans cette catégorie",
     actionOpen: "Ouvrir",
+    actionReview: "Consulter",
     actionFoundation: "Fondation seulement",
     actionComingSoon: "Bientôt disponible",
     savedEntriesTitle: "Documentation enregistrée récente",

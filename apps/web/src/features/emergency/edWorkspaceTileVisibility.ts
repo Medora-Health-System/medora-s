@@ -15,6 +15,7 @@ export type EdWorkspaceTileId =
   | "MEDICATIONS"
   | "RESULTS"
   | "DIAGNOSTICS"
+  | "CLINICAL_DATA"
   | "NURSING_ASSESSMENT"
   | "NOTES"
   | "DISPOSITION"
@@ -30,6 +31,7 @@ export const ED_WORKSPACE_ALL_TILE_IDS: readonly EdWorkspaceTileId[] = [
   "MEDICATIONS",
   "RESULTS",
   "DIAGNOSTICS",
+  "CLINICAL_DATA",
   "NURSING_ASSESSMENT",
   "NOTES",
   "DISPOSITION",
@@ -43,6 +45,7 @@ const TILE_TO_SECTION: Record<EdWorkspaceTileId, ErWorkspaceSection> = {
   MEDICATIONS: "mar",
   RESULTS: "results",
   DIAGNOSTICS: "diagnostics",
+  CLINICAL_DATA: "clinicalData",
   NURSING_ASSESSMENT: "nursing",
   NOTES: "notes",
   DISPOSITION: "disposition",
@@ -56,6 +59,7 @@ const SECTION_TO_TILE: Record<ErWorkspaceSection, EdWorkspaceTileId> = {
   mar: "MEDICATIONS",
   results: "RESULTS",
   diagnostics: "DIAGNOSTICS",
+  clinicalData: "CLINICAL_DATA",
   nursing: "NURSING_ASSESSMENT",
   notes: "NOTES",
   disposition: "DISPOSITION",

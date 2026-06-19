@@ -10,6 +10,7 @@ function tileLetters(tiles: string[]): string {
     MEDICATIONS: "M",
     RESULTS: "R",
     DIAGNOSTICS: "Dx",
+    CLINICAL_DATA: "CD",
     NURSING_ASSESSMENT: "NA",
     NOTES: "N",
     DISPOSITION: "D",
@@ -27,7 +28,7 @@ describe("workspaceAuthorization (MEDUI.AUTH.ROLE.1)", () => {
       profession: "ADMIN",
       department: "ICU",
     });
-    expect(tileLetters(perms.visibleTiles)).toBe("T|ME|O|M|R|Dx|NA|N|D|S");
+    expect(tileLetters(perms.visibleTiles)).toBe("T|ME|O|M|R|Dx|CD|NA|N|D|S");
     expect(perms.canPerformMedicalExam).toBe(true);
     expect(perms.canAdministerMedication).toBe(true);
   });
@@ -37,7 +38,7 @@ describe("workspaceAuthorization (MEDUI.AUTH.ROLE.1)", () => {
       profession: "PROVIDER",
       department: "EMERGENCY",
     });
-    expect(tileLetters(perms.visibleTiles)).toBe("ME|O|R|Dx|N|D|S");
+    expect(tileLetters(perms.visibleTiles)).toBe("ME|O|R|Dx|CD|N|D|S");
     expect(perms.canPerformMedicalExam).toBe(true);
     expect(perms.canDocumentTriage).toBe(false);
     expect(perms.canAdministerMedication).toBe(false);
@@ -123,7 +124,7 @@ describe("workspaceAuthorization (MEDUI.AUTH.ROLE.1)", () => {
       profession: "PROVIDER",
       department: null,
     });
-    expect(tileLetters(perms.visibleTiles)).toBe("ME|O|R|Dx|N|D|S");
+    expect(tileLetters(perms.visibleTiles)).toBe("ME|O|R|Dx|CD|N|D|S");
   });
 
   it("Technician + null department with LAB role infers laboratory in GENERAL context", () => {

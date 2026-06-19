@@ -8,6 +8,8 @@ describe("parseErWorkspaceSection", () => {
     expect(parseErWorkspaceSection("providerMse")).toBe("providerMse");
     expect(parseErWorkspaceSection("triage")).toBe("triage");
     expect(parseErWorkspaceSection("disposition")).toBe("disposition");
+    expect(parseErWorkspaceSection("clinicalData")).toBe("clinicalData");
+    expect(parseErWorkspaceSection("clinicaldata")).toBe("clinicalData");
   });
 
   it("accepts lowercase aliases for camelCase sections", () => {
