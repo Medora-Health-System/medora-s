@@ -7,7 +7,7 @@ import {
   resolveClinicalDataAccessMode,
 } from "./edClinicalDataWorkspaceGovernance";
 
-describe("edClinicalDataEditableGovernance (MEDUI.ED.CLINICAL_DATA.3)", () => {
+describe("edClinicalDataEditableGovernance (MEDUI.ED.CLINICAL_DATA.3/4)", () => {
   it("1 — Provider can edit Provider-owned forms from Clinical Data", () => {
     expect(
       resolveClinicalDataAccessMode({
@@ -28,18 +28,11 @@ describe("edClinicalDataEditableGovernance (MEDUI.ED.CLINICAL_DATA.3)", () => {
     ).toBe("editable");
   });
 
-  it("3 — Provider cannot edit Nursing-owned forms unless nurse role present", () => {
+  it("3 — Provider can edit Nursing-owned forms from Clinical Data (Phase 4)", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "RN",
         userRoles: ["PROVIDER"],
-        sourceWorkspace: "clinicalData",
-      })
-    ).toBe("review");
-    expect(
-      resolveClinicalDataAccessMode({
-        formOwner: "RN",
-        userRoles: ["PROVIDER", "RN"],
         sourceWorkspace: "clinicalData",
       })
     ).toBe("editable");
@@ -55,24 +48,17 @@ describe("edClinicalDataEditableGovernance (MEDUI.ED.CLINICAL_DATA.3)", () => {
     ).toBe("editable");
   });
 
-  it("5 — Nurse reviews Provider-owned forms unless provider role present", () => {
+  it("5 — Nurse can edit Provider-owned forms from Clinical Data (Phase 4)", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "PROVIDER",
         userRoles: ["RN"],
         sourceWorkspace: "clinicalData",
       })
-    ).toBe("review");
-    expect(
-      resolveClinicalDataAccessMode({
-        formOwner: "PROVIDER",
-        userRoles: ["RN", "PROVIDER"],
-        sourceWorkspace: "clinicalData",
-      })
     ).toBe("editable");
   });
 
-  it("Phase 3 is not globally read-only", () => {
+  it("Phase 4 is not globally read-only", () => {
     expect(ED_CLINICAL_DATA_READ_ONLY).toBe(false);
   });
 
@@ -90,11 +76,18 @@ describe("edClinicalDataEditableGovernance (MEDUI.ED.CLINICAL_DATA.3)", () => {
         userRoles: ["PROVIDER"],
         mode: "edit",
       })
+    ).toBe(true);
+    expect(
+      canOpenClinicalDataFormForRole({
+        formOwner: "RN",
+        userRoles: ["BILLING"],
+        mode: "edit",
+      })
     ).toBe(false);
   });
 });
 
-describe("edClinicalData button labels (MEDUI.ED.CLINICAL_DATA.3)", () => {
+describe("edClinicalData button labels (MEDUI.ED.CLINICAL_DATA.3/4)", () => {
   it("6 — Open for editable, Review for review-only in hub", () => {
     const hub = readFileSync(
       join(import.meta.dirname, "../../features/clinical-documentation/ClinicalDocumentationHub.tsx"),

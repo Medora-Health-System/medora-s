@@ -877,7 +877,9 @@ export function ClinicalDocumentationHub({
                     if (!latest) {
                       return (
                         <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
-                          {t("emergencyClinicalData.reviewPreviewEmpty")}
+                          {workspaceContext === "clinicalData"
+                            ? t("clinicalDocumentation.savedEntriesEmpty")
+                            : t("emergencyClinicalData.reviewPreviewEmpty")}
                         </p>
                       );
                     }

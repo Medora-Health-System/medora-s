@@ -8,7 +8,7 @@ function readSrc(relativePath: string): string {
   return readFileSync(join(webRoot, relativePath), "utf8");
 }
 
-describe("edClinicalDataSummaryDetails (MEDUI.ED.CLINICAL_DATA.3)", () => {
+describe("edClinicalDataSummaryDetails (MEDUI.ED.CLINICAL_DATA.3/4)", () => {
   const summary = readSrc("features/emergency/EmergencyClinicalDataSummary.tsx");
 
   it("10 — Clinical Summary remains visible", () => {
@@ -16,15 +16,14 @@ describe("edClinicalDataSummaryDetails (MEDUI.ED.CLINICAL_DATA.3)", () => {
     expect(summary).toContain("emergencyClinicalData.summary.clinicalSummary");
   });
 
-  it("summary metrics include detail expansion", () => {
+  it("summary metrics include inline detail expansion", () => {
     expect(summary).toContain("clinical-data-summary-metric");
-    expect(summary).toContain("secondaryDetailLines");
+    expect(summary).toContain("formatClinicalDocumentationDetailInline");
     expect(summary).toContain("detailRows");
   });
 
-  it("summary shows form title not only score", () => {
+  it("summary shows form title and inline details", () => {
     expect(summary).toContain("formTitle");
-    expect(summary).toContain("metric.label");
-    expect(summary).toContain("metric.value");
+    expect(summary).toContain("clinical-data-summary-metric-inline");
   });
 });

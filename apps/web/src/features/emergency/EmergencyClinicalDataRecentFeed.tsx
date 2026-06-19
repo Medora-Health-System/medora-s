@@ -9,14 +9,25 @@ import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationA
 import { useI18n } from "@/lib/i18n";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 
-const rowCard: React.CSSProperties = {
-  flex: "0 0 auto",
-  minWidth: 260,
-  maxWidth: 420,
+const cardShell: React.CSSProperties = {
   border: "1px solid #e2e8f0",
   borderRadius: 10,
   background: "#fff",
   padding: "8px 10px",
+  minWidth: 0,
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const rowCard: React.CSSProperties = {
+  flex: "0 0 auto",
+  minWidth: 220,
+  maxWidth: 360,
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  background: "#f8fafc",
+  padding: "6px 8px",
   textAlign: "left",
   cursor: "pointer",
 };
@@ -51,7 +62,7 @@ export function EmergencyClinicalDataRecentFeed({
   return (
     <section
       data-testid="emergency-clinical-data-recent-feed"
-      style={{ marginTop: 10, minWidth: 0 }}
+      style={cardShell}
     >
       <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
         {t("emergencyClinicalData.summary.recentDocumentation")}
@@ -67,15 +78,17 @@ export function EmergencyClinicalDataRecentFeed({
             display: "flex",
             gap: 8,
             overflowX: "auto",
-            paddingBottom: 4,
+            paddingBottom: 2,
             flexWrap: "nowrap",
+            flex: 1,
+            minHeight: 0,
           }}
         >
           {feed.slice(0, 16).map((item) => {
             const expanded = expandedIds.has(item.id);
             const inline = formatClinicalDocumentationDetailInline(
               item.detailRows,
-              expanded ? item.detailRows.length : 5
+              expanded ? item.detailRows.length : 6
             );
             return (
               <button
@@ -87,8 +100,9 @@ export function EmergencyClinicalDataRecentFeed({
               >
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{titleFor(item)}</div>
                 <div
+                  data-testid="clinical-data-recent-feed-inline"
                   style={{
-                    marginTop: 4,
+                    marginTop: 3,
                     fontSize: 11,
                     color: "#334155",
                     lineHeight: 1.35,
@@ -97,10 +111,10 @@ export function EmergencyClinicalDataRecentFeed({
                 >
                   {inline}
                 </div>
-                <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>
+                <div style={{ marginTop: 3, fontSize: 11, color: "#64748b" }}>
                   {item.authorRoleTitle} {item.authorDisplayName} · {formatTime(item.documentedAt)}
                 </div>
-                {item.detailRows.length > 5 ? (
+                {item.detailRows.length > 6 ? (
                   <span
                     role="presentation"
                     onClick={(e) => {
@@ -114,7 +128,7 @@ export function EmergencyClinicalDataRecentFeed({
                     }}
                     style={{
                       display: "inline-block",
-                      marginTop: 4,
+                      marginTop: 3,
                       fontSize: 11,
                       color: "#0369a1",
                       fontWeight: 600,

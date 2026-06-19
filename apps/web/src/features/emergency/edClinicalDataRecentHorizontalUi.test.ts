@@ -19,8 +19,10 @@ describe("edClinicalDataRecentHorizontalUi (MEDUI.ED.CLINICAL_DATA.3)", () => {
   });
 
   it("18 — recent feed does not render giant vertical block", () => {
-    expect(feed).not.toContain("flexDirection: \"column\"");
     expect(feed).not.toContain("gridTemplateColumns: \"72px");
+    const horiz = feed.slice(feed.indexOf('data-testid="clinical-data-recent-feed-horizontal"'));
+    expect(horiz).toContain('display: "flex"');
+    expect(horiz).not.toContain('flexDirection: "column"');
   });
 
   it("16 — recent feed sorted newest first via shared builder", () => {

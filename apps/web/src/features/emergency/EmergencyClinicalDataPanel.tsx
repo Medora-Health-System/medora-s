@@ -63,21 +63,41 @@ export function EmergencyClinicalDataPanel({
           {loadingEntries ? (
             <p style={{ margin: "12px 0 0", fontSize: 13, color: "#64748b" }}>{t("common.loading")}</p>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr)",
-                gap: 10,
-                marginTop: 8,
-              }}
-            >
-              <EmergencyClinicalDataSummary entries={entries} facilityTimeZone={facilityTimeZone} />
-              <EmergencyClinicalDataRecentFeed
-                entries={entries}
-                facilityTimeZone={facilityTimeZone}
-                onSelectEntry={setDetailEntryId}
+            <>
+              <style
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    .clinical-data-header-grid {
+                      display: grid;
+                      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                      gap: 16px;
+                      margin-top: 8px;
+                      align-items: stretch;
+                    }
+                    .clinical-data-header-grid > * {
+                      min-width: 0;
+                      height: 100%;
+                    }
+                    @media (max-width: 767.98px) {
+                      .clinical-data-header-grid {
+                        grid-template-columns: minmax(0, 1fr);
+                      }
+                    }
+                  `,
+                }}
               />
-            </div>
+              <div
+                className="clinical-data-header-grid"
+                data-testid="clinical-data-header-grid"
+              >
+                <EmergencyClinicalDataSummary entries={entries} facilityTimeZone={facilityTimeZone} />
+                <EmergencyClinicalDataRecentFeed
+                  entries={entries}
+                  facilityTimeZone={facilityTimeZone}
+                  onSelectEntry={setDetailEntryId}
+                />
+              </div>
+            </>
           )}
 
           <div style={{ marginTop: 12 }}>

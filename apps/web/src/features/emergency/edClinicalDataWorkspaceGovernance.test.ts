@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ED_CLINICAL_DATA_REQUIRED_CATEGORIES,
   canOpenClinicalDataFormForRole,
+  hasClinicalDataDocumentationAccess,
   resolveClinicalDataAccessMode,
 } from "./edClinicalDataWorkspaceGovernance";
 
@@ -16,14 +17,14 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
     ).toBe(true);
   });
 
-  it("Provider cannot edit Nursing-owned forms from Clinical Data", () => {
+  it("Provider can edit Nursing-owned forms from Clinical Data (Phase 4 shared workspace)", () => {
     expect(
       canOpenClinicalDataFormForRole({
         formOwner: "RN",
         userRoles: ["PROVIDER"],
         mode: "edit",
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("RN can edit from Nursing Assessment workspace", () => {
@@ -36,7 +37,7 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
     ).toBe("editable");
   });
 
-  it("RN can edit Nursing-owned forms from Clinical Data", () => {
+  it("RN can edit from Clinical Data workspace", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "RN",
@@ -46,7 +47,7 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
     ).toBe("editable");
   });
 
-  it("Provider can edit Provider-owned forms from Clinical Data", () => {
+  it("Provider can edit from Clinical Data regardless of form owner", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "PROVIDER",
@@ -54,14 +55,21 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
         sourceWorkspace: "clinicalData",
       })
     ).toBe("editable");
-  });
-
-  it("Provider reviews Nursing-owned CIWA from Clinical Data", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "RN",
         userRoles: ["PROVIDER"],
         sourceWorkspace: "clinicalData",
+      })
+    ).toBe("editable");
+  });
+
+  it("Provider reviews Nursing-owned forms only in Nursing Assessment when not RN", () => {
+    expect(
+      resolveClinicalDataAccessMode({
+        formOwner: "RN",
+        userRoles: ["PROVIDER"],
+        sourceWorkspace: "nursingAssessment",
       })
     ).toBe("review");
   });
@@ -88,5 +96,12 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
     expect(ED_CLINICAL_DATA_REQUIRED_CATEGORIES).toContain("STROKE_DOCUMENTATION");
     expect(ED_CLINICAL_DATA_REQUIRED_CATEGORIES).toContain("CARDIAC_MONITORING_DOCUMENTATION");
     expect(ED_CLINICAL_DATA_REQUIRED_CATEGORIES).toHaveLength(10);
+  });
+
+  it("hasClinicalDataDocumentationAccess recognizes clinical role aliases", () => {
+    expect(hasClinicalDataDocumentationAccess(["PROVIDER"])).toBe(true);
+    expect(hasClinicalDataDocumentationAccess(["PHYSICIAN"])).toBe(true);
+    expect(hasClinicalDataDocumentationAccess(["NP"])).toBe(true);
+    expect(hasClinicalDataDocumentationAccess(["BILLING"])).toBe(false);
   });
 });

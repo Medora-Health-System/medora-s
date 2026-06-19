@@ -2,15 +2,32 @@ import type { ClinicalDocumentationRole } from "@medora/shared";
 
 export type ClinicalDataAccessMode = "editable" | "review";
 
-/** @deprecated Phase 3 — Clinical Data supports role-based edit. Kept for test compatibility. */
+/** @deprecated Phase 4 — Clinical Data supports shared clinical documentation access. */
 export const ED_CLINICAL_DATA_READ_ONLY = false;
 
 export type ClinicalDataFormOwner = ClinicalDocumentationRole;
 
 export type ClinicalDataWorkspaceSource = "clinicalData" | "nursingAssessment";
 
+/** Roles that may document from the shared Clinical Data workspace. */
+export const CLINICAL_DATA_DOCUMENTATION_ROLE_CODES = [
+  "PROVIDER",
+  "PHYSICIAN",
+  "NURSE",
+  "RN",
+  "NP",
+  "PA",
+  "APRN",
+  "CLINICIAN",
+] as const;
+
 function normalizeRoleCodes(roleCodes: readonly string[]): string[] {
   return roleCodes.map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+export function hasClinicalDataDocumentationAccess(roleCodes: readonly string[]): boolean {
+  const roles = normalizeRoleCodes(roleCodes);
+  return CLINICAL_DATA_DOCUMENTATION_ROLE_CODES.some((code) => roles.includes(code));
 }
 
 function isNursingRole(roleCodes: readonly string[]): boolean {
@@ -50,10 +67,16 @@ export function canOpenClinicalDataFormForRole(input: {
     sourceWorkspace: "clinicalData",
   });
   if (input.mode === "edit") return access === "editable";
-  return isProviderRole(input.userRoles) || isNursingRole(input.userRoles);
+  const roles = normalizeRoleCodes(input.userRoles);
+  return (
+    hasClinicalDataDocumentationAccess(input.userRoles) ||
+    roles.includes("FRONT_DESK") ||
+    roles.includes("BILLING") ||
+    roles.includes("ADMIN")
+  );
 }
 
-/** Resolve per-form access mode for Clinical Data vs Nursing Assessment. */
+/** Resolve access mode for Clinical Data vs Nursing Assessment. */
 export function resolveClinicalDataAccessMode(input: {
   formOwner: ClinicalDataFormOwner;
   userRoles: readonly string[];
@@ -62,10 +85,10 @@ export function resolveClinicalDataAccessMode(input: {
   workspace?: ClinicalDataWorkspaceSource;
 }): ClinicalDataAccessMode {
   const workspace = input.sourceWorkspace ?? input.workspace ?? "clinicalData";
-  const editable = canEditFormOwner(input.formOwner, input.userRoles);
-  if (workspace === "nursingAssessment") {
-    return editable ? "editable" : "review";
+  if (workspace === "clinicalData") {
+    return hasClinicalDataDocumentationAccess(input.userRoles) ? "editable" : "review";
   }
+  const editable = canEditFormOwner(input.formOwner, input.userRoles);
   return editable ? "editable" : "review";
 }
 
