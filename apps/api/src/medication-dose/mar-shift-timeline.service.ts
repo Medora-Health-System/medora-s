@@ -113,6 +113,7 @@ export type MarShiftTimelineCellItem = {
   administeredByInitials: string | null;
   completionSummary: string | null;
   orderPrnIndication?: string | null;
+  prnReasonCode?: string | null;
   prnReasonLabel?: string | null;
   prnPainScore?: number | null;
   prnPainLocation?: string | null;
@@ -795,6 +796,7 @@ export class MarShiftTimelineService {
         administeredByInitials: enrichment?.administeredByInitials ?? null,
         completionSummary: enrichment?.completionSummary ?? (resolvedTertiaryText || null),
         orderPrnIndication: prnDisplay.orderPrnIndication,
+        prnReasonCode: prnDisplay.prnReasonCode,
         prnReasonLabel: prnDisplay.prnReasonLabel,
         prnPainScore: prnDisplay.prnPainScore,
         prnPainLocation: prnDisplay.prnPainLocation,

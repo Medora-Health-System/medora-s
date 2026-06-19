@@ -72,13 +72,13 @@ describe("imaging taxonomy 3C-M1 schema safety", () => {
       schema.indexOf("model ImagingStudyAlias")
     );
     expect(imagingBlock).toMatch(
-      /lateralityClassifier\s+TermClassifier\?\s+@relation\("ImagingLateralityClassifier"[\s\S]*onDelete: SetNull, onUpdate: NoAction/
+      /lateralityClassifier\s+TermClassifier\?\s+@relation\("ImagingLateralityClassifier", fields: \[lateralityClassifierId\], references: \[id\], onUpdate: NoAction/
     );
     expect(imagingBlock).toMatch(
-      /anatomicSubregionClassifier\s+TermClassifier\?\s+@relation\("ImagingAnatomicSubregionClassifier"[\s\S]*onDelete: SetNull, onUpdate: NoAction/
+      /anatomicSubregionClassifier\s+TermClassifier\?\s+@relation\("ImagingAnatomicSubregionClassifier", fields: \[anatomicSubregionClassifierId\], references: \[id\], onUpdate: NoAction/
     );
     expect(imagingBlock).toMatch(
-      /protocolClassifier\s+TermClassifier\?\s+@relation\("ImagingProtocolClassifier"[\s\S]*onDelete: SetNull, onUpdate: NoAction/
+      /protocolClassifier\s+TermClassifier\?\s+@relation\("ImagingProtocolClassifier", fields: \[protocolClassifierId\], references: \[id\], onUpdate: NoAction/
     );
 
     const classifierBlock = schema.slice(

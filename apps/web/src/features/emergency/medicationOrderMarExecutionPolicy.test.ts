@@ -44,8 +44,8 @@ describe("Orders dashboard medication MAR execution policy (M1.8B.7K.5)", () => 
   });
 
   it("lab/imaging/care acknowledge actions remain in non-MAR branch", () => {
-    expect(panel).toContain('t("erEmergencyOrders.acknowledgeOrder")');
-    expect(panel).toContain('t("erEmergencyOrders.completeOrder")');
+    expect(panel).toContain('erLifecycleActionLabel(itemId, "acknowledge", "erEmergencyOrders.acknowledgeOrder")');
+    expect(panel).toContain('erLifecycleActionLabel(itemId, "complete", "erEmergencyOrders.completeOrder")');
   });
 
   it("resolveMedicationOrderMarStatusLabel maps refused and held MAR outcomes", () => {

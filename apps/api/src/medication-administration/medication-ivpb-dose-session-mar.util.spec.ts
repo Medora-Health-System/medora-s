@@ -100,10 +100,23 @@ describe("medication-ivpb-dose-session-mar.util (M1.8B.7J.3)", () => {
     expect(ctx.skipOrderLineCompletion).toBe(true);
   });
 
-  it("rejects START from PLANNED", () => {
+  it("allows START from PLANNED", () => {
+    const ctx = resolveLoadedIvpbDoseSessionMarContext({
+      doseInstance: { ...baseDose, doseStatus: "PLANNED" } as never,
+      featureFlags: flagsOn,
+      action: "START",
+      infusionSessionId: "session-1",
+      requestOrderItemId: "oi-1",
+      requestEncounterId: "enc-1",
+      requestFacilityId: "fac-1",
+    });
+    expect(ctx.nextDoseStatus).toBe("IN_PROGRESS");
+  });
+
+  it("rejects START from HELD", () => {
     expect(() =>
       resolveLoadedIvpbDoseSessionMarContext({
-        doseInstance: { ...baseDose, doseStatus: "PLANNED" } as never,
+        doseInstance: { ...baseDose, doseStatus: "HELD" } as never,
         featureFlags: flagsOn,
         action: "START",
         infusionSessionId: "session-1",

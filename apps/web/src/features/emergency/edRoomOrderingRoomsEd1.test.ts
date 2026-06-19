@@ -11,7 +11,7 @@ describe("ROOMS.ED.1 — ED trackboard room sorting wiring", () => {
   it("trackboard sorts filtered encounters with sortRowsByRoomLabel", () => {
     expect(trackboardSource).toContain("sortRowsByRoomLabel");
     expect(trackboardSource).toContain("sortedFiltered");
-    expect(trackboardSource).toMatch(/sortedFiltered\.map\(/);
+    expect(trackboardSource).toMatch(/encounterListRows\.map\(/);
   });
 });
 

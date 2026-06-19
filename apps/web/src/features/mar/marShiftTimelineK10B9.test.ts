@@ -24,11 +24,10 @@ describe("marShiftTimelineK10B9 — administration safety governance", () => {
     "utf8"
   );
 
-  it("MAR tab uses single schedule timing governance layer", () => {
-    expect(marTab).toContain("evaluateMarScheduleAdministrationTiming");
-    expect(marTab).toContain("validateMarScheduleTimingGovernance");
-    expect(marTab).toContain("buildMarScheduleTimingDocumentation");
-    expect(marTab).toContain("MAR_SCHEDULE_EARLY_REASON_CODES");
+  it("MAR tab uses advisory timing layer without hard-blocking schedule governance", () => {
+    expect(marTab).toContain("resolveMarMedicationTimingAdvisory");
+    expect(marTab).toContain("mar-outside-window-advisory");
+    expect(marTab).not.toContain("validateMarScheduleTimingGovernance");
     expect(marTab).not.toContain("useFacilityAndRoles");
   });
 

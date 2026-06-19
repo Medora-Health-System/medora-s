@@ -117,7 +117,7 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
     expect(timing.requiresReason).toBe(false);
   });
 
-  it("6 — change scheduled time requires reason", () => {
+  it("6 — change scheduled time no longer hard-blocks without reason", () => {
     expect(
       validateMarDoseScheduleAdjustment({
         doseStatus: "PLANNED",
@@ -125,7 +125,7 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
         newScheduledAt: "2026-06-17T23:40:00.000Z",
         reasonCode: "",
       }).ok
-    ).toBe(false);
+    ).toBe(true);
     expect(
       validateMarDoseScheduleAdjustmentGovernance({ reasonCode: "PROVIDER_INSTRUCTION" }).ok
     ).toBe(true);

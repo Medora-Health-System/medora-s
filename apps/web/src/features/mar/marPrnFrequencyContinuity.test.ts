@@ -96,8 +96,8 @@ describe("marPrnFrequencyContinuity (H9J.1)", () => {
 
   it("MedicationAdministrationTab skips schedule variance for PRN", () => {
     const tab = readSrc("components/encounters/MedicationAdministrationTab.tsx");
-    expect(tab).toContain("!modalItem.isPrn");
-    expect(tab).toMatch(/scheduledAt\?\.trim\(\)[\s\S]*!modalItem\.isPrn/);
+    expect(tab).toContain("modalItem.isPrn ? null : modalItem.scheduledAt");
+    expect(tab).toContain("isPrn: modalItem.isPrn");
   });
 
   it("API skips schedule timing governance for PRN lines", () => {

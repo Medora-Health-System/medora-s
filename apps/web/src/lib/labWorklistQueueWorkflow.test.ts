@@ -79,7 +79,7 @@ describe("lab worklist page — queue wiring", () => {
 
   it("renders workflow button with stable data-testid and refreshes queue after action", () => {
     expect(labPageSource).toContain('data-testid={`lab-worklist-workflow-${workflowAction}-${item.id}`}');
-    expect(labPageSource).toContain("await loadQueue()");
+    expect(labPageSource).toContain("void loadQueue({ silent: true })");
     expect(labPageSource).toContain("pendingWorkflowAction");
   });
 

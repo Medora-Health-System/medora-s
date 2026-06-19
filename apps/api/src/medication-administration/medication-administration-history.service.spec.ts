@@ -19,6 +19,9 @@ function makeHistoryService(overrides: Record<string, unknown> = {}) {
     medicationAdministration: {
       findMany: medicationAdministrationFindMany,
     },
+    medicationDoseInstance: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     medicationAdministrationCorrection: {
       findMany: correctionFindMany,
     },

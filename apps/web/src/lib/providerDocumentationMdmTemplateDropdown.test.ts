@@ -90,9 +90,13 @@ describe("providerDocumentationMdmTemplateDropdown — section structure", () =>
 describe("providerDocumentationMdmTemplateDropdown — catalog", () => {
   it("lists high value templates before existing templates", () => {
     const options = buildMdmTemplateDropdownOptions(traumaTemplate);
-    expect(options.slice(0, 6).every((option) => option.group === "highValue")).toBe(true);
+    const highValueIds = options.filter((option) => option.group === "highValue").map((option) => option.id);
+    const expectedHighValueIds = HIGH_VALUE_MDM_TEMPLATES.map((item) => item.id).filter(
+      (id) => id !== "hv-ekg-normal"
+    );
+    expect(highValueIds).toEqual(expectedHighValueIds);
     const firstExistingIndex = options.findIndex((option) => option.group === "existing");
-    expect(firstExistingIndex).toBeGreaterThanOrEqual(6);
+    expect(firstExistingIndex).toBeGreaterThanOrEqual(expectedHighValueIds.length);
   });
 
   it("includes all six high-value options", () => {
@@ -116,7 +120,7 @@ describe("providerDocumentationMdmTemplateDropdown — catalog", () => {
       .map((option) => option.fragmentKey);
     expect(labels).toContain("erMseMdmChips.waTrauma");
     expect(labels).toContain("erMseMdmChips.planReassess");
-    expect(labels).toContain("providerDocumentationComplaintIntel.laceration.mdmNeurovascularExamDocumented");
+    expect(labels).toContain("erMseMdmGuidance.tetanusConsidered");
   });
 });
 

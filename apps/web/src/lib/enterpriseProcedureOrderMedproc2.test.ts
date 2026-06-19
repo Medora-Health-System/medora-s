@@ -18,12 +18,12 @@ const modalSource = readFileSync(
 describe("MEDPROC.2 CreateOrderModal enterprise procedure wiring", () => {
   it("sends enterpriseProcedureId for catalog selection", () => {
     expect(modalSource).toContain("_enterpriseProcedureId?.trim()");
-    expect(modalSource).toContain("enterpriseProcedureId: it._enterpriseProcedureId.trim()");
+    expect(modalSource).toContain("if (explicit) return { enterpriseProcedureId: explicit }");
   });
 
   it("omits enterpriseProcedureId for custom care tasks", () => {
     expect(modalSource).toContain("addCustomCareTaskLine");
-    expect(modalSource).toMatch(/enterpriseProcedureId:\s*it\._enterpriseProcedureId\.trim\(\)/);
+    expect(modalSource).toMatch(/addCareLine\(label\)/);
   });
 
   it("maps canonical ids for core procedures", () => {

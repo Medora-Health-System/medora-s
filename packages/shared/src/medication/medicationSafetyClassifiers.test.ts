@@ -27,11 +27,11 @@ describe("medicationSafetyClassifiers", () => {
   it("exposes expected domain counts", () => {
     expect(MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS).toEqual({
       CONTROLLED_SUBSTANCE: 6,
-      HIGH_ALERT: 12,
+      HIGH_ALERT: 13,
       SAFETY_REQUIREMENT: 11,
       LASA: 4,
     });
-    expect(MEDICATION_SAFETY_CLASSIFIER_TOTAL_COUNT).toBe(33);
+    expect(MEDICATION_SAFETY_CLASSIFIER_TOTAL_COUNT).toBe(34);
   });
 
   it("parses valid enum codes", () => {
@@ -64,7 +64,7 @@ describe("medicationSafetyClassifierManifest", () => {
   it("is complete and has no duplicate codes", () => {
     expect(() => assertMedicationSafetyClassifierManifest(MEDICATION_SAFETY_CLASSIFIER_MANIFEST)).not.toThrow();
     expect(findDuplicateMedicationSafetyClassifierCodes(MEDICATION_SAFETY_CLASSIFIER_MANIFEST)).toEqual([]);
-    expect(MEDICATION_SAFETY_CLASSIFIER_MANIFEST).toHaveLength(33);
+    expect(MEDICATION_SAFETY_CLASSIFIER_MANIFEST).toHaveLength(34);
     expect(MANIFEST_DOMAIN_COUNTS).toEqual(MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS);
   });
 

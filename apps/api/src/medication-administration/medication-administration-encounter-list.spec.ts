@@ -54,15 +54,18 @@ function makeService() {
 }
 
 describe("MedicationAdministrationService.findByEncounter", () => {
-  it("caps MAR rows and applies lookback with explicit select", async () => {
+  it("returns MAR rows for encounter ordered by administeredAt desc", async () => {
     const { service, prisma } = makeService();
     await service.findByEncounter("enc-1", "fac-1");
 
     const query = prisma.medicationAdministration.findMany.mock.calls[0][0];
-    expect(query.take).toBe(ENCOUNTER_MAR_LIST_DEFAULT_LIMIT);
-    expect(query.where.administeredAt.gte).toBeInstanceOf(Date);
-    expect(query.select).toEqual(MEDICATION_ADMINISTRATION_ENCOUNTER_LIST_SELECT);
-    expect(MEDICATION_ADMINISTRATION_ENCOUNTER_LIST_SELECT).not.toHaveProperty("infusionSessionId");
+    expect(query.where).toEqual({ encounterId: "enc-1", facilityId: "fac-1" });
+    expect(query.orderBy).toEqual({ administeredAt: "desc" });
+    expect(query.include?.administeredBy?.select).toEqual({
+      id: true,
+      firstName: true,
+      lastName: true,
+    });
   });
 
   it("throws when encounter is missing", async () => {

@@ -211,7 +211,7 @@ describe("Recurring IVPB dose session linkage (M1.8B.7J.3)", () => {
     const result = await ordersService.stopMedicationInfusion(
       facilityId,
       orderItemId,
-      { stoppedAt },
+      { stoppedAt, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       userId
     );
@@ -262,7 +262,7 @@ describe("Recurring IVPB dose session linkage (M1.8B.7J.3)", () => {
     await ordersService.stopMedicationInfusion(
       facilityId,
       orderItemId,
-      {},
+      { stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       userId
     );
@@ -305,7 +305,7 @@ describe("Recurring IVPB dose session linkage (M1.8B.7J.3)", () => {
     const result = await ordersService.stopMedicationInfusion(
       facilityId,
       orderItemId,
-      { medicationDoseInstanceId: dose.id },
+      { medicationDoseInstanceId: dose.id, stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       userId
     );

@@ -49,7 +49,7 @@ describe("marShiftTimelineK10B5 — schedule timing governance + placement", () 
     );
     expect(source).toContain("resolveMarMedicationTimingAdvisory");
     expect(source).toContain("mar-outside-window-advisory");
-    expect(source).toContain('t("marScheduleTiming.outsideWindowAdvisory")');
+    expect(source).toContain("timingAdvisory.messageKey");
     expect(source).toContain("marClinicalDateTimeLocalToUtcIso");
   });
 

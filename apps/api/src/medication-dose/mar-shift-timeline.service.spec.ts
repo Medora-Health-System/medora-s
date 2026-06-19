@@ -280,11 +280,11 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     setSchedulingFlags(true, true);
   });
 
-  it("response title uses facility name MAR SHIFT TIMELINE", async () => {
+  it("response title uses facility name Shift Timeline", async () => {
     const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
       shiftCode: "7A_7P",
     });
-    expect(result.title).toBe(`${facilityName} MAR SHIFT TIMELINE`);
+    expect(result.title).toBe(`${facilityName} Shift Timeline`);
     expect(result.title).not.toContain("Medora MAR");
     expect(result.facility.name).toBe(facilityName);
   });
@@ -866,7 +866,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     await ordersService.stopMedicationInfusion(
       facilityId,
       orderItemId,
-      {},
+      { stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       nurseUserId
     );
@@ -917,7 +917,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     await ordersService.stopMedicationInfusion(
       facilityId,
       dose.orderItemId,
-      {},
+      { stopReasonCode: "COMPLETED" },
       [RoleCode.RN],
       nurseUserId
     );
@@ -1575,7 +1575,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       await ordersService.stopMedicationInfusion(
         facilityId,
         orderItem.id,
-        { stoppedAt: customStop },
+        { stoppedAt: customStop, stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         nurseUserId
       );
@@ -2489,7 +2489,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       await ordersService.stopMedicationInfusion(
         facilityId,
         completedDose.orderItemId,
-        {},
+        { stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         nurseUserId
       );
@@ -2547,7 +2547,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       await ordersService.stopMedicationInfusion(
         facilityId,
         completedDose.orderItemId,
-        {},
+        { stopReasonCode: "COMPLETED" },
         [RoleCode.RN],
         nurseUserId
       );

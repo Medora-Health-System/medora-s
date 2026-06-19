@@ -757,6 +757,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         administeredByInitials: enrichment?.administeredByInitials ?? null,
         completionSummary: enrichment?.completionSummary ?? (resolvedTertiaryText || null),
         orderPrnIndication: prnDisplay.orderPrnIndication,
+        prnReasonCode: prnDisplay.prnReasonCode,
         prnReasonLabel: prnDisplay.prnReasonLabel,
         prnPainScore: prnDisplay.prnPainScore,
         prnPainLocation: prnDisplay.prnPainLocation,

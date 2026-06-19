@@ -212,7 +212,7 @@ describe("MEDPROC.1 create order integration guards", () => {
     expect(modalSource).toContain("addCareCatalogProcedure");
     expect(modalSource).toContain("create-order-care-catalog-");
     expect(modalSource).toContain("_enterpriseProcedureId");
-    expect(modalSource).toContain("enterpriseProcedureId: it._enterpriseProcedureId.trim()");
+    expect(modalSource).toContain("if (explicit) return { enterpriseProcedureId: explicit }");
   });
 
   it("preserves care presets and custom care task", () => {

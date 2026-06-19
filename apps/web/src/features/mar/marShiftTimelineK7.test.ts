@@ -99,14 +99,14 @@ describe("MAR timezone placement + drawer times (M1.8B.7K.7)", () => {
   });
 
   it("drawer shows visible start time field with datetime-local control", () => {
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-start-time"');
-    expect(drawer).toContain('type="datetime-local"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-start-time"');
+    expect(drawer).toContain("MedicationClinicalDateTimeField");
     expect(drawer).toContain("marShiftTimeline.drawer.startTimeField");
     expect(drawer).toContain("formatMarShiftTimelineClinicalDateTime");
   });
 
   it("drawer shows visible stop time field for IN_PROGRESS IVPB", () => {
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-stop-time"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-stop-time"');
     expect(drawer).toContain("defaultMarShiftTimelineStopTimeValue");
   });
 

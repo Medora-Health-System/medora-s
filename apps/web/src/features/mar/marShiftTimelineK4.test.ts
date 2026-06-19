@@ -162,7 +162,7 @@ describe("MAR unified action workflow (M1.8B.7K.4)", () => {
   it("IN_PROGRESS IVPB drawer enables Stop infusion action", () => {
     expect(isMarShiftTimelineActionEnabled("STOP_INFUSION", sampleItem(), enabledHandlers)).toBe(true);
     expect(drawer).toContain("onExecuteStopInfusion");
-    expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-stop-time"');
+    expect(drawer).toContain('testId="mar-shift-timeline-drawer-stop-time"');
   });
 
   it("COMPLETED drawer is read-only without enabled mutation buttons", () => {

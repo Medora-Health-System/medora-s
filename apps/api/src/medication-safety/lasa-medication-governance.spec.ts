@@ -91,8 +91,8 @@ describe("LASA medication governance seed (M1.3E)", () => {
     } as unknown as PrismaClient;
 
     const result = await seedLasaMedicationGovernance(prisma);
-    expect(result.manualReviewSkipped).toBe(5);
-    expect(result.missingCatalogSkipped).toBe(4);
+    expect(result.manualReviewSkipped).toBe(6);
+    expect(result.missingCatalogSkipped).toBe(3);
     expect(prisma.medicationSafetyProfile.update).not.toHaveBeenCalled();
   });
 

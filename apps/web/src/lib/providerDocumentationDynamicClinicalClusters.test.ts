@@ -121,8 +121,8 @@ describe("providerDocumentationDynamicClinicalClusters (19P)", () => {
     expect(clusters[0]?.id).toBe("psychiatric_safety");
     expect(clusters[0]?.severity).toBe("high");
     const keys = clusters[0]?.suggestions.map((item) => item.fragmentKey) ?? [];
-    expect(keys).toContain("providerDocumentationComplaintIntel.psychiatricBehavioral.diffBehavioralCrisis");
-    expect(keys).toContain("providerDocumentationComplaintIntel.psychiatricBehavioral.mdmInvoluntaryHoldConsidered");
+    expect(keys).toContain("providerDocumentationComplaintIntel.psychiatricBehavioral.diffImminentSuicideRisk");
+    expect(keys).toContain("providerDocumentationComplaintIntel.psychiatricBehavioral.planSuicidePrecautionsInitiated");
   });
 
   it("removes clusters when trigger text is removed", () => {

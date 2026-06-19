@@ -9,14 +9,14 @@ import { seedMedicationSafetyClassifiers } from "../../prisma/helpers/seed-medic
 
 describe("medication safety classifier foundation (M1.3B)", () => {
   it("manifest has expected totals by domain", () => {
-    expect(MEDICATION_SAFETY_CLASSIFIER_TOTAL_COUNT).toBe(33);
+    expect(MEDICATION_SAFETY_CLASSIFIER_TOTAL_COUNT).toBe(34);
     expect(MEDICATION_SAFETY_CLASSIFIER_DOMAIN_COUNTS).toEqual({
       CONTROLLED_SUBSTANCE: 6,
-      HIGH_ALERT: 12,
+      HIGH_ALERT: 13,
       SAFETY_REQUIREMENT: 11,
       LASA: 4,
     });
-    expect(MEDICATION_SAFETY_CLASSIFIER_MANIFEST).toHaveLength(33);
+    expect(MEDICATION_SAFETY_CLASSIFIER_MANIFEST).toHaveLength(34);
   });
 
   it("rejects invalid classifier codes at validation boundary", () => {

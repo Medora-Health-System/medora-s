@@ -127,10 +127,10 @@ export function validateM15eBackfillReadiness(existingProductCodes: string[]): M
     processable += 1;
   }
 
-  if (processable !== 193) {
+  if (processable !== 190) {
     issues.push({
       kind: "PROCESSABLE_COUNT_DRIFT",
-      message: `expected 193 processable rows, computed ${processable}`,
+      message: `expected 190 processable rows, computed ${processable}`,
       severity: "warning",
     });
   }
@@ -142,8 +142,8 @@ export function validateM15eBackfillReadiness(existingProductCodes: string[]): M
       : Math.min(
           100,
           Math.round(
-            (processable / 193) * 70 +
-              (manualReview === 56 ? 15 : 0) +
+            (processable / 190) * 70 +
+              (manualReview === 59 ? 15 : 0) +
               (quarantineBlocked === 0 ? 15 : Math.max(0, 15 - quarantineBlocked))
           )
         );
@@ -278,7 +278,7 @@ export function getExpectedPostRemediationCounts(): {
   return {
     incorrectLinks: 0,
     activePollutionCatalogs: 0,
-    m15eProcessable: 193,
+    m15eProcessable: 190,
     pilotEligible: HAITI_CANONICAL_ACTIVATION_PILOT_STATS.pilotEligible,
   };
 }

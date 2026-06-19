@@ -172,7 +172,7 @@ describe("medicationDoseExpansionPlanner (M1.8B.7H.1)", () => {
     expect(result).toEqual({ ok: false, reason: "UNSUPPORTED_EXPANSION_STRATEGY" });
   });
 
-  it("computes due windows for interval strategy", () => {
+  it("computes due windows for interval strategy (1-hour early/late tolerance)", () => {
     const result = planMedicationDoseExpansionSlots({
       anchorAt,
       horizonEndAt: new Date(anchorAt.getTime() + 6 * 60 * 60 * 1000),
@@ -188,7 +188,7 @@ describe("medicationDoseExpansionPlanner (M1.8B.7H.1)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const slot = result.slots[0]!;
-    expect(slot.dueWindowStartAt.toISOString()).toBe("2026-06-10T09:30:00.000Z");
+    expect(slot.dueWindowStartAt.toISOString()).toBe("2026-06-10T09:00:00.000Z");
     expect(slot.dueWindowEndAt.toISOString()).toBe("2026-06-10T11:00:00.000Z");
     expect(slot.overdueAt.toISOString()).toBe("2026-06-10T11:00:00.000Z");
   });
