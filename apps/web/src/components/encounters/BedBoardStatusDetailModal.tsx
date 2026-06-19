@@ -17,6 +17,7 @@ import {
 } from "@/lib/bedStatusPresentation";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
 
 const HOUSEKEEPING_ACTIONS: ManualBedOperationalStatus[] = [
   "DIRTY",
@@ -133,9 +134,19 @@ export function BedBoardStatusDetailModal({
     setError(null);
     try {
       const bedKey = bed.storageKey || bed.bedKey;
+      logBedBoardMutationDebug("BedBoardStatusDetailModal.save", {
+        action: pendingAction,
+        bedKey,
+        facilityId,
+        note: note.trim() || null,
+      });
       const updated = await updateFacilityBedStatus(facilityId, bedKey, {
         status: pendingAction,
         reasonText: note.trim() || undefined,
+      });
+      logBedBoardMutationDebug("BedBoardStatusDetailModal.saved", {
+        bedKey,
+        status: updated.status,
       });
       onStatusUpdated?.(updated);
       onClose();

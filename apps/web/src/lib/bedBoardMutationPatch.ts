@@ -2,12 +2,15 @@ import {
   buildBedBoardOccupancySummary,
   buildFacilityBedBoardView,
   composeFacilityBedBoard,
+  parseCanonicalBedKey,
   type BedBoardOccupancyRow,
   type BedOperationalOverlayRecord,
   type EncounterBedUnitCode,
 } from "@medora/shared";
 import type { FacilityBedBoardBedRow, FacilityBedBoardResponse } from "@/lib/bedBoardApi";
 import { indexBedBoardByKey } from "@/lib/bedBoardApi";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
+import { normalizeBedBoardApiRow } from "@/lib/normalizeBedBoardApiRow";
 
 export type BedBoardEncounterOccupancySource = {
   id: string;
@@ -22,14 +25,30 @@ export type BedBoardEncounterOccupancySource = {
   } | null;
 };
 
+function bedRowLookupKeys(bed: Pick<FacilityBedBoardBedRow, "bedKey" | "storageKey">): string[] {
+  const keys = new Set<string>();
+  for (const candidate of [bed.storageKey, bed.bedKey]) {
+    if (!candidate) continue;
+    keys.add(candidate);
+    const parsed = parseCanonicalBedKey(candidate);
+    if (parsed) {
+      keys.add(`${parsed.unit}:${parsed.room}`);
+      keys.add(`${parsed.unit}-${parsed.room}`);
+    }
+  }
+  return [...keys];
+}
+
+function bedRowsMatch(
+  existing: Pick<FacilityBedBoardBedRow, "bedKey" | "storageKey">,
+  updated: Pick<FacilityBedBoardBedRow, "bedKey" | "storageKey">
+): boolean {
+  const updatedKeys = bedRowLookupKeys(updated);
+  return bedRowLookupKeys(existing).some((key) => updatedKeys.includes(key));
+}
+
 function normalizeWebBedRow(bed: FacilityBedBoardBedRow): FacilityBedBoardBedRow {
-  return {
-    ...bed,
-    storageKey: bed.storageKey || bed.bedKey,
-    displayKey: bed.displayKey || bed.display,
-    unit: bed.unit ?? bed.unitCode,
-    patientDisplay: bed.patientDisplay ?? bed.occupantPatientName,
-  };
+  return normalizeBedBoardApiRow(bed);
 }
 
 export function extractOperationalOverlaysFromBedBoard(
@@ -151,20 +170,15 @@ export function applyBedBoardStatusPatch(
   board: FacilityBedBoardResponse,
   updatedBed: FacilityBedBoardBedRow
 ): FacilityBedBoardResponse {
-  const updatedKey = updatedBed.storageKey || updatedBed.bedKey;
+  const normalizedUpdated = normalizeWebBedRow(updatedBed);
   let matched = false;
   const units = board.units.map((unit) => {
     const beds = unit.beds.map((bed) => {
-      const bedKey = bed.storageKey || bed.bedKey;
-      if (bedKey !== updatedKey) return bed;
+      if (!bedRowsMatch(bed, normalizedUpdated)) return bed;
       matched = true;
       return normalizeWebBedRow({
         ...bed,
-        ...updatedBed,
-        storageKey: updatedBed.storageKey || updatedBed.bedKey,
-        displayKey: updatedBed.displayKey || updatedBed.display,
-        unit: updatedBed.unit ?? updatedBed.unitCode,
-        patientDisplay: updatedBed.patientDisplay ?? updatedBed.occupantPatientName,
+        ...normalizedUpdated,
       });
     });
     return {
@@ -172,6 +186,13 @@ export function applyBedBoardStatusPatch(
       beds,
       summary: buildBedBoardOccupancySummary(beds),
     };
+  });
+  logBedBoardMutationDebug("applyBedBoardStatusPatch", {
+    matched,
+    updatedBedKey: normalizedUpdated.bedKey,
+    beforeStatus: board.units.flatMap((unit) => unit.beds).find((bed) => bedRowsMatch(bed, normalizedUpdated))
+      ?.status,
+    afterStatus: normalizedUpdated.status,
   });
   if (!matched) return board;
   return {

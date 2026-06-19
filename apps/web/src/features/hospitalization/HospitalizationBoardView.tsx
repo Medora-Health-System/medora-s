@@ -28,6 +28,8 @@ import {
   applyBedBoardStatusPatch,
   rebuildFacilityBedBoardUnitsFromEncounters,
 } from "@/lib/bedBoardMutationPatch";
+import { invalidateClinicalBoardGetCache } from "@/lib/invalidateClinicalBoardGetCache";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
 import {
   applyTrackboardRoomMutationPatch,
   mergeTrackboardEncounterUpdate,
@@ -777,7 +779,12 @@ export function HospitalizationBoardView() {
   const refreshFacilityBedBoard = useCallback(async () => {
     const fid = effectiveFacilityId;
     if (!fid) return;
+    invalidateClinicalBoardGetCache(fid, ["MS", "ICU", "OBS"]);
     const bedBoard = await fetchFacilityBedBoard(fid).catch(() => null);
+    logBedBoardMutationDebug("refreshFacilityBedBoard.result", {
+      facilityId: fid,
+      received: bedBoard?.generatedAt ?? null,
+    });
     if (bedBoard) {
       setFacilityBedBoard(bedBoard);
       setBedIndex(indexBedBoardByKey(bedBoard));

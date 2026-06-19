@@ -65,6 +65,8 @@ import {
   resolveMyIncompleteChartsEncounters,
 } from "@/features/emergency/edIncompleteChartsFilter";
 import { shouldReplaceEncounterRows } from "@/features/emergency/edTrackboardSilentRefresh";
+import { invalidateClinicalBoardGetCache } from "@/lib/invalidateClinicalBoardGetCache";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
 import {
   applyBedBoardStatusPatch,
   mergeBedBoardRoomUpdate,
@@ -588,7 +590,12 @@ export function EmergencyTrackboardView() {
 
   const refreshEdBedBoard = useCallback(async () => {
     if (!facilityId) return;
+    invalidateClinicalBoardGetCache(facilityId, ["ED"]);
     const bedBoard = await fetchFacilityBedBoard(facilityId, "ED").catch(() => null);
+    logBedBoardMutationDebug("refreshEdBedBoard.result", {
+      facilityId,
+      received: bedBoard?.generatedAt ?? null,
+    });
     if (bedBoard) {
       setEdBedBoard(bedBoard);
       setBedIndex(indexBedBoardByKey(bedBoard));
@@ -597,6 +604,10 @@ export function EmergencyTrackboardView() {
 
   const handleBedStatusUpdated = useCallback(
     (updatedBed: FacilityBedBoardBedRow) => {
+      logBedBoardMutationDebug("handleBedStatusUpdated", {
+        bedKey: updatedBed.bedKey,
+        status: updatedBed.status,
+      });
       setEdBedBoard((prev) => {
         if (!prev) return prev;
         const nextBoard = applyBedBoardStatusPatch(prev, updatedBed);
@@ -611,6 +622,7 @@ export function EmergencyTrackboardView() {
   const handleRoomAssignmentSaved = useCallback(
     (patch: EncounterRoomUpdateResponse) => {
       const savedEncounterId = patch.id || roomAssignmentLaunch?.encounter.id;
+      logBedBoardMutationDebug("handleRoomAssignmentSaved", { patch, savedEncounterId });
       if (savedEncounterId) {
         pendingRoomPatchesRef.current.set(savedEncounterId, patch);
         setRows((prev) => {

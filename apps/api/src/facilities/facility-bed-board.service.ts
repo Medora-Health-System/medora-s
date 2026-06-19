@@ -14,6 +14,7 @@ import {
   buildCanonicalBedKey,
   buildFacilityBedBoardView,
   composeFacilityBedBoard,
+  enrichComposedBedBoardRow,
   findComposedBedBoardRow,
   formatCanonicalBedDisplay,
   isManualBedOperationalStatusWritable,
@@ -172,7 +173,16 @@ export class FacilityBedBoardService {
     if (!row) {
       throw new NotFoundException("Bed not found");
     }
-    return row;
+    if (process.env.BEDBOARD_MUTATION_DEBUG === "true") {
+      console.debug("[Medora BedBoardMutation:updateBedStatus]", {
+        facilityId,
+        bedKey: parsed.bedKey,
+        oldStatus,
+        newStatus: status,
+        responseStatus: row.status,
+      });
+    }
+    return enrichComposedBedBoardRow(row);
   }
 
   assertBedAssignableOrThrow(input: {

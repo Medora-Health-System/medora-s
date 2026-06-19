@@ -2021,7 +2021,17 @@ export class EncountersService {
       },
     });
 
-    return this.buildEncounterRoomUpdateResponse(updated);
+    const response = this.buildEncounterRoomUpdateResponse(updated);
+    if (process.env.BEDBOARD_MUTATION_DEBUG === "true") {
+      console.debug("[Medora BedBoardMutation:updateRoom]", {
+        facilityId,
+        encounterId: id,
+        roomFrom: encounter.roomLabel ?? null,
+        roomTo: resolvedRoomLabel ?? null,
+        response,
+      });
+    }
+    return response;
   }
 
   private buildEncounterRoomUpdateResponse(

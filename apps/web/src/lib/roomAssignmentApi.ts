@@ -1,5 +1,7 @@
 import { apiFetch } from "./apiClient";
 import type { EncounterCareUnitCode, EncounterRoomChangeReasonCode } from "@medora/shared";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
+import { invalidateClinicalBoardGetCache } from "@/lib/invalidateClinicalBoardGetCache";
 
 export type EncounterRoomUpdatePayload = {
   room: string | null;
@@ -36,9 +38,28 @@ export async function updateEncounterRoomAssignment(
   encounterId: string,
   payload: EncounterRoomUpdatePayload
 ): Promise<EncounterRoomUpdateResponse> {
-  return apiFetch(encounterRoomAssignmentPath(encounterId), {
+  const patchAt = new Date().toISOString();
+  logBedBoardMutationDebug("updateEncounterRoomAssignment.request", {
+    patchAt,
+    facilityId,
+    encounterId,
+    payload,
+  });
+  const response = (await apiFetch(encounterRoomAssignmentPath(encounterId), {
     method: "PATCH",
     facilityId,
     body: JSON.stringify(payload),
-  }) as Promise<EncounterRoomUpdateResponse>;
+  })) as EncounterRoomUpdateResponse;
+  const invalidation = invalidateClinicalBoardGetCache(facilityId);
+  logBedBoardMutationDebug("updateEncounterRoomAssignment.response", {
+    patchAt,
+    invalidatedAt: invalidation.invalidatedAt,
+    dedupeKeys: invalidation.dedupeKeys,
+    facilityId,
+    encounterId,
+    returnedRoomLabel: response.roomLabel ?? null,
+    returnedGovernedRoomDisplay: response.governedRoomDisplay ?? null,
+    response,
+  });
+  return response;
 }

@@ -5,6 +5,10 @@ import type {
   BedStatusUpdateDto,
   EncounterBedUnitCode,
 } from "@medora/shared";
+import { buildGetDedupeKey } from "@/lib/getRequestDedupe";
+import { logBedBoardMutationDebug } from "@/lib/bedBoardMutationDebug";
+import { invalidateClinicalBoardGetCache } from "@/lib/invalidateClinicalBoardGetCache";
+import { normalizeBedBoardApiRow } from "@/lib/normalizeBedBoardApiRow";
 
 export type FacilityBedBoardBedRow = {
   bedKey: string;
@@ -43,7 +47,13 @@ export async function fetchFacilityBedBoard(
   unit?: EncounterBedUnitCode
 ): Promise<FacilityBedBoardResponse> {
   const query = unit ? `?unit=${encodeURIComponent(unit)}` : "";
-  return apiFetch(`/facilities/${facilityId}/bed-board${query}`, {
+  const path = `/facilities/${facilityId}/bed-board${query}`;
+  logBedBoardMutationDebug("fetchFacilityBedBoard.get", {
+    getAt: new Date().toISOString(),
+    path,
+    dedupeKey: buildGetDedupeKey(path, facilityId),
+  });
+  return apiFetch(path, {
     facilityId,
   }) as Promise<FacilityBedBoardResponse>;
 }
@@ -53,11 +63,30 @@ export async function updateFacilityBedStatus(
   bedKey: string,
   payload: BedStatusUpdateDto
 ): Promise<FacilityBedBoardBedRow> {
-  return apiFetch(`/facilities/${facilityId}/beds/${encodeURIComponent(bedKey)}/status`, {
+  const patchAt = new Date().toISOString();
+  logBedBoardMutationDebug("updateFacilityBedStatus.request", {
+    patchAt,
+    facilityId,
+    bedKey,
+    payload,
+  });
+  const raw = (await apiFetch(`/facilities/${facilityId}/beds/${encodeURIComponent(bedKey)}/status`, {
     method: "PATCH",
     facilityId,
     body: JSON.stringify(payload),
-  }) as Promise<FacilityBedBoardBedRow>;
+  })) as FacilityBedBoardBedRow;
+  const invalidation = invalidateClinicalBoardGetCache(facilityId);
+  const normalized = normalizeBedBoardApiRow(raw);
+  logBedBoardMutationDebug("updateFacilityBedStatus.response", {
+    patchAt,
+    invalidatedAt: invalidation.invalidatedAt,
+    dedupeKeys: invalidation.dedupeKeys,
+    facilityId,
+    bedKey,
+    returnedStatus: normalized.status,
+    response: normalized,
+  });
+  return normalized;
 }
 
 export type FacilityBedStatusHistoryEntry = {
