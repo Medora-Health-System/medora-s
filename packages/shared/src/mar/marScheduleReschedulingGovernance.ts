@@ -3,7 +3,6 @@
 import { MAR_DOSE_SCHEDULE_ADJUSTMENT_REASON_CODES } from "./marUniversalAdministrationTimingGovernance.js";
 import {
   isMarMedicationTimingOverrideReasonCode,
-  validateMarMedicationTimingOverride,
   normalizeMarMedicationTimingOverrideReasonCode,
 } from "./marMedicationTimingOverrideGovernance.js";
 
@@ -122,18 +121,10 @@ export function buildMarRescheduleSummary(input: {
   ].join(" | ");
 }
 
-export function validateMarRescheduleGovernance(input: {
+export function validateMarRescheduleGovernance(_input: {
   reasonCode?: string | null;
   otherText?: string | null;
   movedMinutes?: number;
-}): { ok: true } | { ok: false; code: "REASON_REQUIRED" | "OTHER_DETAIL_REQUIRED" } {
-  const result = validateMarMedicationTimingOverride({
-    overrideKind: "SCHEDULE_CHANGE",
-    movedMinutes: input.movedMinutes ?? 31,
-    reasonCode: input.reasonCode,
-    reasonDetail: input.otherText,
-  });
-  if (result.ok) return { ok: true };
-  if (result.code === "DETAIL_REQUIRED") return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
-  return { ok: false, code: "REASON_REQUIRED" };
+}): { ok: true } {
+  return { ok: true };
 }

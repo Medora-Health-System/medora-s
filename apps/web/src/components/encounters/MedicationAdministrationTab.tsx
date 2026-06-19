@@ -463,6 +463,7 @@ export function MedicationAdministrationTab({
   roleCodes = [],
   encounterAllergySource = null,
   facilityTimeZone = null,
+  embeddedWorkspaceLayout = false,
 }: {
   encounterId: string;
   facilityId: string;
@@ -476,6 +477,8 @@ export function MedicationAdministrationTab({
   encounterAllergySource?: EncounterMarAllergySource;
   /** Facility IANA timezone from encounter page shell (not fetched inside this tab). */
   facilityTimeZone?: string | null;
+  /** Flatter MAR timeline when nested in ED workspace card. */
+  embeddedWorkspaceLayout?: boolean;
 }) {
   const { t, language } = useI18n();
   const clinicalData = useEncounterClinicalDataOptional();
@@ -2359,6 +2362,7 @@ export function MedicationAdministrationTab({
           assignedToUserId={currentUserId}
           viewerUserId={currentUserId}
           compact={marCompact}
+          embedded={embeddedWorkspaceLayout}
           facilityTimeZone={clinicalTz}
           selectedDateLocal={marSelectedDateLocal}
           historicalReadOnly={!marHistoricalTimeline.isToday}

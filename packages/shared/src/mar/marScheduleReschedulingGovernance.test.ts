@@ -54,8 +54,8 @@ describe("marScheduleReschedulingGovernance", () => {
     expect(summary).toContain("risk=MODERATE");
   });
 
-  it("requires OTHER detail", () => {
-    expect(validateMarRescheduleGovernance({ reasonCode: "OTHER" }).ok).toBe(false);
+  it("does not hard-block OTHER without detail (advisory reschedule governance)", () => {
+    expect(validateMarRescheduleGovernance({ reasonCode: "OTHER" }).ok).toBe(true);
     expect(
       validateMarRescheduleGovernance({ reasonCode: "OTHER", otherText: "Clinic delay" }).ok
     ).toBe(true);

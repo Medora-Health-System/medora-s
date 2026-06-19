@@ -24,24 +24,22 @@ describe("marInfusionTimingOverrideGovernance (H9E)", () => {
     expect(computeMarInfusionTimingMovedMinutes(clinicalAt, saveAt)).toBeGreaterThan(0);
   });
 
-  it("4 — start time reason required when changed", () => {
+  it("4 — start time changed does not require reason", () => {
     const result = validateMarInfusionClinicalTimeOverride({
       clinicalAt: "2026-06-03T09:00:00.000Z",
       saveAt,
       reasonCode: null,
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(["REASON_REQUIRED", "INVALID_REASON"]).toContain(result.code);
+    expect(result.ok).toBe(true);
   });
 
-  it("5 — stop time reason required when changed", () => {
+  it("5 — stop time changed does not require reason", () => {
     const result = validateMarInfusionClinicalTimeOverride({
       clinicalAt: "2026-06-03T16:00:00.000Z",
       saveAt,
       reasonCode: "",
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(["REASON_REQUIRED", "INVALID_REASON"]).toContain(result.code);
+    expect(result.ok).toBe(true);
   });
 
   it("6 — duration helpers use clinical vs save delta", () => {

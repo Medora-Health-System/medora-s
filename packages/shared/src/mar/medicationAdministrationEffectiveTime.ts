@@ -76,7 +76,8 @@ export function medicationAdminEffectiveTimesDiffer(
   return effectiveAdministeredTime.getTime() !== originalAdministeredAt.getTime();
 }
 
-export function medicationAdminEffectiveTimeRequiresReason(input: {
+/** Advisory-only — timing variance never requires a reason (MEDUI.ED.MAR.HOTFIX.TIME.2). */
+export function medicationAdminEffectiveTimeRequiresReason(_input: {
   effectiveAdministeredTime: Date;
   originalAdministeredAt: Date;
   systemDocumentedAt: Date;
@@ -87,44 +88,16 @@ export function medicationAdminEffectiveTimeRequiresReason(input: {
   afterOrderDiscontinued: boolean;
   beforeOrderExisted: boolean;
 }): boolean {
-  const {
-    effectiveAdministeredTime,
-    originalAdministeredAt,
-    systemDocumentedAt,
-    orderCreatedAt,
-    orderItemCreatedAt,
-    adjustmentVersion,
-    controlledMedication,
-    afterOrderDiscontinued,
-    beforeOrderExisted,
-  } = input;
-
-  if (controlledMedication) return true;
-  if (adjustmentVersion > 0) return true;
-  if (beforeOrderExisted) return true;
-  if (afterOrderDiscontinued) return true;
-  if (effectiveAdministeredTime.getTime() < orderCreatedAt.getTime()) return true;
-  if (orderItemCreatedAt && effectiveAdministeredTime.getTime() < orderItemCreatedAt.getTime()) return true;
-  if (medicationAdminEffectiveTimeIsLargeBackdate(effectiveAdministeredTime, systemDocumentedAt)) return true;
-
   return false;
 }
 
-export function medicationAdminEffectiveTimeRequiresDetailedReason(input: {
+/** Advisory-only — large backdate may show supervisory warning but never blocks save. */
+export function medicationAdminEffectiveTimeRequiresDetailedReason(_input: {
   effectiveAdministeredTime: Date;
   systemDocumentedAt: Date;
   reason?: string | null;
 }): boolean {
-  if (
-    !medicationAdminEffectiveTimeIsLargeBackdate(
-      input.effectiveAdministeredTime,
-      input.systemDocumentedAt
-    )
-  ) {
-    return false;
-  }
-  const trimmed = input.reason?.trim() ?? "";
-  return trimmed.length < MEDICATION_ADMIN_LARGE_BACKDATE_MIN_REASON_LENGTH;
+  return false;
 }
 
 export type MedicationAdminEffectiveTimeValidationCode =
@@ -157,14 +130,6 @@ export function validateMedicationAdministrationEffectiveTime(input: {
     effectiveAdministeredTime,
     now,
     encounterAnchorAt,
-    originalAdministeredAt,
-    systemDocumentedAt,
-    orderCreatedAt,
-    orderItemCreatedAt,
-    orderCancelledAt,
-    adjustmentVersion,
-    reason,
-    controlledMedication,
     marActionAdministered,
   } = input;
 
@@ -179,42 +144,6 @@ export function validateMedicationAdministrationEffectiveTime(input: {
   }
   if (effectiveAdministeredTime.getTime() < encounterAnchorAt.getTime()) {
     return { ok: false, code: "BEFORE_ENCOUNTER", messageKey: "marTab.adminTime.beforeEncounter" };
-  }
-
-  const orderItemAnchor = orderItemCreatedAt ?? orderCreatedAt;
-  const beforeOrderExisted = effectiveAdministeredTime.getTime() < orderItemAnchor.getTime();
-  const afterOrderDiscontinued =
-    orderCancelledAt != null && effectiveAdministeredTime.getTime() > orderCancelledAt.getTime();
-
-  const needsReason = medicationAdminEffectiveTimeRequiresReason({
-    effectiveAdministeredTime,
-    originalAdministeredAt,
-    systemDocumentedAt,
-    orderCreatedAt,
-    orderItemCreatedAt,
-    adjustmentVersion,
-    controlledMedication,
-    afterOrderDiscontinued,
-    beforeOrderExisted,
-  });
-
-  const reasonTrimmed = reason?.trim() ?? "";
-  if (needsReason && !reasonTrimmed) {
-    return { ok: false, code: "REASON_REQUIRED", messageKey: "marTab.adminTime.reasonRequired" };
-  }
-
-  if (
-    medicationAdminEffectiveTimeRequiresDetailedReason({
-      effectiveAdministeredTime,
-      systemDocumentedAt,
-      reason: reasonTrimmed,
-    })
-  ) {
-    return {
-      ok: false,
-      code: "REASON_TOO_SHORT_FOR_LARGE_BACKDATE",
-      messageKey: "marTab.adminTime.reasonTooShortForLargeBackdate",
-    };
   }
 
   return { ok: true };

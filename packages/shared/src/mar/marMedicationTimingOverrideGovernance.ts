@@ -165,7 +165,7 @@ export function assessMarMedicationTimingOverrideRequirement(input: {
   else if (absMoved > 60) severity = "MODERATE";
   else if (absMoved > MAR_ADMINISTRATION_VARIANCE_ON_TIME_THRESHOLD_MINUTES) severity = "LOW";
 
-  const reasonRequired = input.overrideKind === "SCHEDULE_CHANGE";
+  const reasonRequired = false;
   const reviewRecommended = false;
   const detailRequired = false;
 
@@ -202,7 +202,7 @@ export function validateMarMedicationTimingOverride(input: {
   isPrn?: boolean;
   reasonCode?: string | null;
   reasonDetail?: string | null;
-}): { ok: true; advisory?: MarMedicationTimingAdvisory } | { ok: false; code: "REASON_REQUIRED" | "DETAIL_REQUIRED" | "INVALID_REASON" } {
+}): { ok: true; advisory?: MarMedicationTimingAdvisory } {
   const requirement = assessMarMedicationTimingOverrideRequirement({
     overrideKind: input.overrideKind,
     movedMinutes: input.movedMinutes,
@@ -211,19 +211,8 @@ export function validateMarMedicationTimingOverride(input: {
     documentedAt: input.documentedAt,
     isPrn: input.isPrn,
   });
-  if (!requirement.reasonRequired) {
-    return requirement.advisory ? { ok: true, advisory: requirement.advisory } : { ok: true };
-  }
-
-  const canonical = normalizeMarMedicationTimingOverrideReasonCode(input.reasonCode);
-  if (!canonical) return { ok: false, code: "INVALID_REASON" };
-
-  if (requirement.detailRequired && !input.reasonDetail?.trim()) {
-    return { ok: false, code: "DETAIL_REQUIRED" };
-  }
-  if (canonical === "OTHER" && !input.reasonDetail?.trim()) {
-    return { ok: false, code: "DETAIL_REQUIRED" };
-  }
+  void input.reasonCode;
+  void input.reasonDetail;
   return requirement.advisory ? { ok: true, advisory: requirement.advisory } : { ok: true };
 }
 

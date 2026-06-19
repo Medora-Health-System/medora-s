@@ -6411,7 +6411,7 @@ export default {
       disposition: "Disposition",
       visitSummary: "Synthèse et clôture",
     },
-    marTitle: "Administration médicamenteuse (MAR)",
+    marTitle: "Administration des médicaments",
     marUnavailableTitle: "MAR",
     marUnavailableSubline: "Non disponible pour ce rôle sur cette page.",
     marTabLink: "Onglet MAR (dossier)",
@@ -12860,6 +12860,22 @@ export default {
       saveFailed: "Impossible d'enregistrer l'ajustement.",
       infusionDeferred:
         "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.",
+      apiErrors: {
+        MAR_EFFECTIVE_TIME_FUTURE: "L'heure d'administration ne peut pas être dans le futur.",
+        MAR_EFFECTIVE_TIME_BEFORE_ENCOUNTER:
+          "L'heure d'administration ne peut pas précéder le début de la consultation.",
+        MAR_EFFECTIVE_TIME_REASON_REQUIRED: "Un motif est requis pour cet ajustement d'heure.",
+        MAR_EFFECTIVE_TIME_REASON_TOO_SHORT:
+          "Un motif détaillé est requis pour les corrections d'heure importantes.",
+        MAR_EFFECTIVE_TIME_INVALID: "Horodatage invalide.",
+        MAR_EFFECTIVE_TIME_NOT_ADMINISTERED:
+          "Seules les administrations documentées (administré) peuvent être ajustées.",
+        MAR_EFFECTIVE_TIME_INFUSION_DEFERRED:
+          "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.",
+        MAR_EFFECTIVE_TIME_PENDING_SYNC:
+          "L'ajustement d'heure n'est pas disponible pendant la synchronisation.",
+        MAR_EFFECTIVE_TIME_REJECTED: "Ajustement d'heure refusé.",
+      },
     },
   },
   marHistorical: {
@@ -13320,8 +13336,8 @@ export default {
     },
   },
   marShiftTimeline: {
-    titleFallback: "QUART MAR",
-    currentTimeLine: "Aujourd'hui : {datetime}",
+    titleFallback: "Chronologie de quart",
+    currentTimeLine: "Heure actuelle : {datetime}",
     nurseLine: "Infirmier(ère) : {name}",
     shiftLabel: "Quart :",
     patientRoomColumn: "Patient / Chambre",

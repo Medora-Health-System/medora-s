@@ -1659,14 +1659,14 @@ export class MedicationAdministrationService {
       return { prismaFields: {}, auditExtras: {} };
     }
     if (input.marActionResolved !== "administered") {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
+      this.throwMarEffectiveTimeValidationError("NOT_ADMINISTERED");
     }
     if (!effectiveRaw) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+      this.throwMarEffectiveTimeValidationError("INVALID_TIME");
     }
     const effectiveAt = parseMedicationAdministrationEffectiveTimeIso(effectiveRaw);
     if (!effectiveAt) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+      this.throwMarEffectiveTimeValidationError("INVALID_TIME");
     }
 
     const originalAdministeredAt =
@@ -1705,7 +1705,7 @@ export class MedicationAdministrationService {
       marActionAdministered: true,
     });
     if (!validation.ok) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));
+      this.throwMarEffectiveTimeValidationError(validation.code);
     }
 
     const effectiveAtUtc = new Date(toMedicationAdministrationEffectiveTimeIsoUtc(effectiveAt));
@@ -1727,25 +1727,51 @@ export class MedicationAdministrationService {
     };
   }
 
+  private static readonly MAR_EFFECTIVE_TIME_API_CODES: Record<
+    MedicationAdminEffectiveTimeValidationCode,
+    string
+  > = {
+    FUTURE_TIME: "MAR_EFFECTIVE_TIME_FUTURE",
+    BEFORE_ENCOUNTER: "MAR_EFFECTIVE_TIME_BEFORE_ENCOUNTER",
+    REASON_REQUIRED: "MAR_EFFECTIVE_TIME_REASON_REQUIRED",
+    REASON_TOO_SHORT_FOR_LARGE_BACKDATE: "MAR_EFFECTIVE_TIME_REASON_TOO_SHORT",
+    INVALID_TIME: "MAR_EFFECTIVE_TIME_INVALID",
+    NOT_ADMINISTERED: "MAR_EFFECTIVE_TIME_NOT_ADMINISTERED",
+    INFUSION_DEFERRED: "MAR_EFFECTIVE_TIME_INFUSION_DEFERRED",
+    PENDING_SYNC: "MAR_EFFECTIVE_TIME_PENDING_SYNC",
+  };
+
+  private static readonly MAR_EFFECTIVE_TIME_API_MESSAGES_EN: Record<
+    MedicationAdminEffectiveTimeValidationCode,
+    string
+  > = {
+    FUTURE_TIME: "Administration time cannot be in the future.",
+    BEFORE_ENCOUNTER: "Administration time cannot be before the encounter started.",
+    REASON_REQUIRED: "A reason is required for this time adjustment.",
+    REASON_TOO_SHORT_FOR_LARGE_BACKDATE:
+      "A detailed reason is required for large retroactive time corrections.",
+    INVALID_TIME: "Invalid timestamp.",
+    NOT_ADMINISTERED: "Only documented administrations can have time adjusted.",
+    INFUSION_DEFERRED: "Time adjustment for IV infusions is not available yet.",
+    PENDING_SYNC: "Time adjustment is not available while sync is pending.",
+  };
+
+  private throwMarEffectiveTimeValidationError(code: MedicationAdminEffectiveTimeValidationCode): never {
+    const errorCode =
+      MedicationAdministrationService.MAR_EFFECTIVE_TIME_API_CODES[code] ??
+      "MAR_EFFECTIVE_TIME_REJECTED";
+    const message =
+      MedicationAdministrationService.MAR_EFFECTIVE_TIME_API_MESSAGES_EN[code] ??
+      "Effective time adjustment rejected.";
+    throw marValidationBadRequest(errorCode, message);
+  }
+
+  /** @deprecated Use throwMarEffectiveTimeValidationError — kept for infusion-deferred paths. */
   private marEffectiveTimeValidationMessage(code: MedicationAdminEffectiveTimeValidationCode): string {
-    switch (code) {
-      case "FUTURE_TIME":
-        return "L'heure d'administration ne peut pas être dans le futur.";
-      case "BEFORE_ENCOUNTER":
-        return "L'heure d'administration ne peut pas précéder le début de la consultation.";
-      case "REASON_REQUIRED":
-        return "Un motif est requis pour cet ajustement d'heure.";
-      case "REASON_TOO_SHORT_FOR_LARGE_BACKDATE":
-        return "Un motif détaillé est requis pour les corrections d'heure importantes.";
-      case "NOT_ADMINISTERED":
-        return "Seules les administrations documentées (administré) peuvent être ajustées.";
-      case "INFUSION_DEFERRED":
-        return "L'ajustement d'heure pour les perfusions IV n'est pas disponible pour l'instant.";
-      case "INVALID_TIME":
-        return "Horodatage invalide.";
-      default:
-        return "Ajustement d'heure refusé.";
-    }
+    return (
+      MedicationAdministrationService.MAR_EFFECTIVE_TIME_API_MESSAGES_EN[code] ??
+      "Effective time adjustment rejected."
+    );
   }
 
   private async roleCodesForFacility(userId: string, facilityId: string): Promise<RoleCode[]> {
@@ -1806,7 +1832,7 @@ export class MedicationAdministrationService {
         infusionPhase: row.infusionPhase,
       })
     ) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("NOT_ADMINISTERED"));
+      this.throwMarEffectiveTimeValidationError("NOT_ADMINISTERED");
     }
 
     const infusionStopTerminal = medicationAdministrationRowIsInfusionStop(
@@ -1817,7 +1843,7 @@ export class MedicationAdministrationService {
 
     const effectiveAt = parseMedicationAdministrationEffectiveTimeIso(dto.effectiveAdministeredTime);
     if (!effectiveAt) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage("INVALID_TIME"));
+      this.throwMarEffectiveTimeValidationError("INVALID_TIME");
     }
 
     const systemNow = new Date();
@@ -1859,7 +1885,7 @@ export class MedicationAdministrationService {
       }),
     });
     if (!validation.ok) {
-      throw new BadRequestException(this.marEffectiveTimeValidationMessage(validation.code));
+      this.throwMarEffectiveTimeValidationError(validation.code);
     }
 
     const previousEffective = row.effectiveAdministeredAt;

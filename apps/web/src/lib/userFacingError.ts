@@ -256,7 +256,11 @@ export function normalizeUserFacingError(
 
   /** EN UI: pass through ASCII API errors Nest returns (avoid generic "Something went wrong"). */
   if (locale === "en") {
-    if (/^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion)/i.test(s)) {
+    if (
+      /^(aucune|impossible|ligne|veuillez|horodatage|la perfusion|perfusion|un motif|une |le motif|l'heure|l'ajustement|seules les)/i.test(
+        s
+      )
+    ) {
       return "Something went wrong.";
     }
     if (s.length >= 3 && s.length <= 500 && !/[^\x00-\x7F]/.test(s)) {

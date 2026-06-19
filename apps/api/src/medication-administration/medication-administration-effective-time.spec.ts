@@ -130,21 +130,20 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
     ).rejects.toMatchObject({ message: expect.stringContaining("futur") });
   });
 
-  it("requires reason for controlled medication", async () => {
+  it("allows controlled medication time adjustment with auto-assigned reason when omitted", async () => {
     const row = makeAdminRow();
     const { service, update } = makeService(row);
     const prisma = (service as unknown as { prisma: { catalogMedication: { findUnique: jest.Mock } } }).prisma;
     prisma.catalogMedication.findUnique.mockResolvedValue({ isControlled: true });
-    await expect(
-      service.setEffectiveAdministeredAt(
-        "enc-1",
-        "fac-1",
-        "mar-1",
-        { effectiveAdministeredTime: "2026-05-16T13:55:00.000Z" },
-        "user-rn"
-      )
-    ).rejects.toMatchObject({ message: expect.stringContaining("motif") });
-    expect(update).not.toHaveBeenCalled();
+    const result = await service.setEffectiveAdministeredAt(
+      "enc-1",
+      "fac-1",
+      "mar-1",
+      { effectiveAdministeredTime: "2026-05-16T13:55:00.000Z" },
+      "user-rn"
+    );
+    expect(update).toHaveBeenCalled();
+    expect(result.effectiveAdministeredAtReason).toContain("DOCUMENTED_WRONG_TIME");
   });
 
   it("rejects wrong facility row (not found)", async () => {
@@ -264,25 +263,22 @@ describe("MedicationAdministrationService.setEffectiveAdministeredAt", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("rejects large backdate with short reason using clear message", async () => {
+  it("allows large backdate with short reason via clinical correction path", async () => {
     const row = makeAdminRow({
       createdAt: new Date("2026-05-18T14:30:00Z"),
     });
     const { service, update } = makeService(row);
-    await expect(
-      service.setEffectiveAdministeredAt(
-        "enc-1",
-        "fac-1",
-        "mar-1",
-        {
-          effectiveAdministeredTime: "2026-05-16T10:00:00.000Z",
-          reason: "too short",
-        },
-        "user-rn"
-      )
-    ).rejects.toMatchObject({
-      message: expect.stringContaining("motif détaillé"),
-    });
-    expect(update).not.toHaveBeenCalled();
+    const result = await service.setEffectiveAdministeredAt(
+      "enc-1",
+      "fac-1",
+      "mar-1",
+      {
+        effectiveAdministeredTime: "2026-05-16T10:00:00.000Z",
+        reason: "too short",
+      },
+      "user-rn"
+    );
+    expect(update).toHaveBeenCalled();
+    expect(result.effectiveAdministeredAtReason).toContain("LATE_DOCUMENTATION");
   });
 });

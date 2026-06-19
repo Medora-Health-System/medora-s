@@ -69,6 +69,13 @@ export function governanceBlockerCodeFromMessage(message: string): string | null
   if (m.includes("Early administration requires a reason")) return "MAR_EARLY_ADMIN_REASON_REQUIRED";
   if (m.includes("Late administration requires a reason")) return "MAR_LATE_ADMIN_REASON_REQUIRED";
   if (m.includes("Missed dose requires a reason")) return "MAR_MISSED_REASON_REQUIRED";
+  if (m.includes("Un motif est requis pour cet ajustement")) return "MAR_EFFECTIVE_TIME_REASON_REQUIRED";
+  if (m.includes("motif détaillé est requis pour les corrections d'heure")) {
+    return "MAR_EFFECTIVE_TIME_REASON_TOO_SHORT";
+  }
+  if (m.includes("heure d'administration ne peut pas être dans le futur")) {
+    return "MAR_EFFECTIVE_TIME_FUTURE";
+  }
   if (m.includes("Données invalides") || m.includes("Invalid")) return "DTO_VALIDATION_FAILED";
   return null;
 }

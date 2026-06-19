@@ -84,18 +84,18 @@ describe("marMedicationTimingOverrideGovernance", () => {
     ).toBe(true);
   });
 
-  it("always requires reason for schedule change", () => {
+  it("does not require reason for schedule change (advisory only)", () => {
     expect(
       assessMarMedicationTimingOverrideRequirement({
         overrideKind: "SCHEDULE_CHANGE",
         movedMinutes: 10,
       }).reasonRequired
-    ).toBe(true);
+    ).toBe(false);
     expect(
       validateMarMedicationTimingOverride({
         overrideKind: "SCHEDULE_CHANGE",
         movedMinutes: 10,
-        reasonCode: "PROCEDURE_SCHEDULE",
+        reasonCode: null,
       }).ok
     ).toBe(true);
   });

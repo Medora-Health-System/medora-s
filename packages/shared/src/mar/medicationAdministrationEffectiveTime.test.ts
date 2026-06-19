@@ -19,7 +19,7 @@ describe("medicationAdministrationEffectiveTime", () => {
     expect(medicationAdministrationRowIsInfusionTerminal("Routine dose")).toBe(false);
   });
 
-  it("requires reason for controlled medication", () => {
+  it("does not require reason for controlled medication timing adjustment", () => {
     expect(
       medicationAdminEffectiveTimeRequiresReason({
         effectiveAdministeredTime: originalAdmin,
@@ -32,7 +32,7 @@ describe("medicationAdministrationEffectiveTime", () => {
         afterOrderDiscontinued: false,
         beforeOrderExisted: false,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("rejects future timestamps", () => {
@@ -54,9 +54,9 @@ describe("medicationAdministrationEffectiveTime", () => {
     if (!result.ok) expect(result.code).toBe("FUTURE_TIME");
   });
 
-  it("requires detailed reason for >24h backdate from system documentation", () => {
+  it("allows large backdate without detailed reason (advisory only)", () => {
     const effective = new Date("2026-05-16T10:00:00Z");
-    const short = validateMedicationAdministrationEffectiveTime({
+    const result = validateMedicationAdministrationEffectiveTime({
       effectiveAdministeredTime: effective,
       now,
       encounterAnchorAt: encounterAnchor,
@@ -66,28 +66,11 @@ describe("medicationAdministrationEffectiveTime", () => {
       orderItemCreatedAt: orderItemCreated,
       orderCancelledAt: null,
       adjustmentVersion: 0,
-      reason: "too short",
+      reason: "",
       controlledMedication: false,
       marActionAdministered: true,
     });
-    expect(short.ok).toBe(false);
-    if (!short.ok) expect(short.code).toBe("REASON_TOO_SHORT_FOR_LARGE_BACKDATE");
-
-    const ok = validateMedicationAdministrationEffectiveTime({
-      effectiveAdministeredTime: effective,
-      now,
-      encounterAnchorAt: encounterAnchor,
-      originalAdministeredAt: originalAdmin,
-      systemDocumentedAt: systemDoc,
-      orderCreatedAt: orderCreated,
-      orderItemCreatedAt: orderItemCreated,
-      orderCancelledAt: null,
-      adjustmentVersion: 0,
-      reason: "Patient received medication yesterday evening before charting was available",
-      controlledMedication: false,
-      marActionAdministered: true,
-    });
-    expect(ok.ok).toBe(true);
+    expect(result.ok).toBe(true);
   });
 
   it("PATCH DTO accepts effectiveAdministeredAt alias", () => {

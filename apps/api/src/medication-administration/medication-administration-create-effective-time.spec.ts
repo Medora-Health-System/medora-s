@@ -1,5 +1,7 @@
+import { BadRequestException } from "@nestjs/common";
 import { MedicationMarAction, RoleCode } from "@prisma/client";
 import { MedicationAdministrationService } from "./medication-administration.service";
+import { badRequestExceptionCode } from "./mar-create-validation-log.util";
 
 function makeEncounter() {
   return {
@@ -145,16 +147,70 @@ describe("MedicationAdministrationService.create effectiveAdministeredAt", () =>
     ).rejects.toMatchObject({ message: expect.stringContaining("administr") });
   });
 
-  it("rejects future effective time", async () => {
+  it("accepts adjusted clinical time at create without reason", async () => {
+    const documented = new Date("2026-05-16T14:00:00Z");
+    const effectiveIso = "2026-05-16T13:00:00.000Z";
+    const marCreate = jest.fn().mockResolvedValue({
+      id: "mar-3",
+      administeredAt: documented,
+      effectiveAdministeredAt: new Date(effectiveIso),
+      marAction: MedicationMarAction.administered,
+      administeredBy: { id: "u1", firstName: "A", lastName: "B" },
+    });
+    const prisma = {
+      encounter: {
+        findFirst: jest.fn().mockResolvedValue(makeEncounter()),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      billingEvent: { upsert: jest.fn().mockResolvedValue({}) },
+      orderItem: { findFirst: jest.fn().mockResolvedValue(makeOrderItem()) },
+      catalogMedication: {
+        findUnique: jest.fn().mockResolvedValue({ isControlled: true }),
+      },
+      medicationAdministration: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { administeredQuantity: 0 }, _count: { _all: 0 } }),
+        create: marCreate,
+      },
+      userRole: {
+        findMany: jest.fn().mockResolvedValue([{ role: { code: RoleCode.RN } }]),
+      },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          medicationAdministration: { create: marCreate },
+          orderItem: { update: jest.fn() },
+          orderEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
+          userRole: {
+            findMany: jest.fn().mockResolvedValue([{ role: { code: RoleCode.RN } }]),
+          },
+        };
+        return fn(tx);
+      }),
+    };
+    const service = new MedicationAdministrationService(prisma as never, { log: auditLog } as never);
+    await service.create("enc-1", "fac-1", "user-rn", {
+      orderItemId: "oi-1",
+      marAction: "administered",
+      administeredAt: documented,
+      effectiveAdministeredAt: effectiveIso,
+    });
+    expect(marCreate).toHaveBeenCalled();
+  });
+
+  it("rejects future effective time with structured code", async () => {
     const service = makeService(jest.fn());
-    await expect(
-      service.create("enc-1", "fac-1", "user-rn", {
+    try {
+      await service.create("enc-1", "fac-1", "user-rn", {
         orderItemId: "oi-1",
         marAction: "administered",
         administeredAt: new Date("2026-05-16T14:00:00Z"),
         effectiveAdministeredAt: "2099-01-01T12:00:00.000Z",
         effectiveAdministeredAtReason: "test",
-      })
-    ).rejects.toMatchObject({ message: expect.stringContaining("futur") });
+      });
+      throw new Error("expected rejection");
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect(badRequestExceptionCode(err as BadRequestException)).toBe("MAR_EFFECTIVE_TIME_FUTURE");
+    }
   });
 });

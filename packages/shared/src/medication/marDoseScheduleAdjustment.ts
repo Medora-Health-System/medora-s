@@ -4,10 +4,6 @@ import {
   DEFAULT_LATE_TOLERANCE_MINUTES,
   DEFAULT_OVERDUE_GRACE_MINUTES,
 } from "./medicationDosePassWindowDefaults.js";
-import {
-  isMarMedicationTimingOverrideReasonCode,
-  validateMarMedicationTimingOverride,
-} from "../mar/marMedicationTimingOverrideGovernance.js";
 import { assessMarRescheduleRisk } from "../mar/marRescheduleRiskAssessment.js";
 import type { MarRescheduleRiskSeverity } from "../mar/marRescheduleRiskAssessment.js";
 import { isTerminalMedicationDoseStatus, parseMedicationDoseStatus } from "./medicationDoseStatus.js";
@@ -181,22 +177,9 @@ export function validateMarDoseScheduleAdjustment(input: {
   }
 
   const movedMinutes = Math.round(Math.abs(next.getTime() - original.getTime()) / 60_000);
-  const reasonValidation = validateMarMedicationTimingOverride({
-    overrideKind: "SCHEDULE_CHANGE",
-    movedMinutes,
-    reasonCode: input.reasonCode,
-    reasonDetail: input.reasonDetail,
-  });
-  if (!reasonValidation.ok) {
-    if (reasonValidation.code === "DETAIL_REQUIRED") {
-      return { ok: false, code: "OTHER_DETAIL_REQUIRED" };
-    }
-    return { ok: false, code: "REASON_REQUIRED" };
-  }
-
-  if (!isMarMedicationTimingOverrideReasonCode(input.reasonCode)) {
-    return { ok: false, code: "REASON_REQUIRED" };
-  }
+  void movedMinutes;
+  void input.reasonCode;
+  void input.reasonDetail;
 
   return { ok: true, newScheduledAt: next };
 }

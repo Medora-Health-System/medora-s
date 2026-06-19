@@ -6421,7 +6421,7 @@ export default {
       triage: "ED triage",
       visitSummary: "Summary and closure",
       results: "ED results & studies",
-      mar: "Medication administration",
+      mar: "Medication Administration",
       orders: "Orders",
       diagnostics: "Diagnoses",
       notes: "Notes",
@@ -6441,7 +6441,7 @@ export default {
       disposition: "Disposition",
       visitSummary: "Summary and closure",
     },
-    marTitle: "Medication administration (MAR)",
+    marTitle: "Medication Administration",
     marUnavailableTitle: "MAR",
     marUnavailableSubline: "Not available for this role on this page.",
     marTabLink: "MAR tab (chart)",
@@ -9931,7 +9931,7 @@ export default {
       clinic: "Provider documentation",
       diagnostics: "Diagnoses",
       orders: "Orders",
-      mar: "Medication administration",
+      mar: "Medication Administration",
       results: "Results",
       observationSummary: "Observation summary",
       clinicalTimeline: "Clinical timeline",
@@ -12685,7 +12685,7 @@ export default {
     columnWhen: "Date and time",
     empty: "No medication administrations recorded for this encounter.",
     noLinkedOrder: "No linked order",
-    title: "Medication administration",
+    title: "Medication Administration",
     columnMedication: "Medication",
     columnCategory: "Category",
     columnCategoryValue: "Medication",
@@ -12833,6 +12833,22 @@ export default {
         "For adjustments more than 24 hours back, the reason must be at least 15 characters.",
       saveFailed: "Could not save adjustment.",
       infusionDeferred: "Time adjustment for IV infusions is not available yet.",
+      apiErrors: {
+        MAR_EFFECTIVE_TIME_FUTURE: "Administration time cannot be in the future.",
+        MAR_EFFECTIVE_TIME_BEFORE_ENCOUNTER:
+          "Administration time cannot be before the encounter started.",
+        MAR_EFFECTIVE_TIME_REASON_REQUIRED: "A reason is required for this time adjustment.",
+        MAR_EFFECTIVE_TIME_REASON_TOO_SHORT:
+          "A detailed reason is required for large retroactive time corrections.",
+        MAR_EFFECTIVE_TIME_INVALID: "Invalid timestamp.",
+        MAR_EFFECTIVE_TIME_NOT_ADMINISTERED:
+          "Only documented administrations can have time adjusted.",
+        MAR_EFFECTIVE_TIME_INFUSION_DEFERRED:
+          "Time adjustment for IV infusions is not available yet.",
+        MAR_EFFECTIVE_TIME_PENDING_SYNC:
+          "Time adjustment is not available while sync is pending.",
+        MAR_EFFECTIVE_TIME_REJECTED: "Effective time adjustment rejected.",
+      },
     },
   },
   marHistorical: {
@@ -13291,8 +13307,8 @@ export default {
     },
   },
   marShiftTimeline: {
-    titleFallback: "MAR SHIFT TIMELINE",
-    currentTimeLine: "Today: {datetime}",
+    titleFallback: "Shift Timeline",
+    currentTimeLine: "Current Time: {datetime}",
     nurseLine: "Nurse: {name}",
     shiftLabel: "Shift:",
     patientRoomColumn: "Patient / Room",

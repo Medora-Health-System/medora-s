@@ -8,6 +8,7 @@ import {
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
+import { resolveMarEffectiveTimeErrorMessage } from "@/features/mar/marEffectiveTimeErrorMessage";
 import {
   buildClinicalDraftKey,
   createClinicalDraft,
@@ -20,8 +21,6 @@ import {
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import {
   medicationAdminTimeModalIsLargeBackdate,
-  medicationAdminTimeModalRequiresDetailedReason,
-  medicationAdminTimeModalRequiresReason,
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 
 const MAR_EFFECTIVE_TIME_DRAFT_VERSION = "mar-effective-time-correction-v1";
@@ -178,31 +177,7 @@ export function MedicationAdministrationEffectiveTimeModal({
     workflowEditable,
   });
 
-  const reasonRequired = useMemo(() => {
-    if (!effectiveIso) return controlledMedication;
-    return (
-      controlledMedication ||
-      medicationAdminTimeModalRequiresReason({
-        effectiveAdministeredTimeIso: effectiveIso,
-        originalAdministeredAt,
-        systemDocumentedAt,
-        orderCreatedAt,
-        orderItemCreatedAt,
-        adjustmentVersion,
-        controlledMedication,
-        orderCancelledAt,
-      })
-    );
-  }, [
-    effectiveIso,
-    originalAdministeredAt,
-    systemDocumentedAt,
-    orderCreatedAt,
-    orderItemCreatedAt,
-    adjustmentVersion,
-    controlledMedication,
-    orderCancelledAt,
-  ]);
+  const reasonRequired = false;
 
   const largeBackdate = useMemo(() => {
     if (!effectiveIso) return false;
@@ -212,15 +187,6 @@ export function MedicationAdministrationEffectiveTimeModal({
     });
   }, [effectiveIso, systemDocumentedAt]);
 
-  const reasonTooShort = useMemo(() => {
-    if (!effectiveIso) return false;
-    return medicationAdminTimeModalRequiresDetailedReason({
-      effectiveAdministeredTimeIso: effectiveIso,
-      systemDocumentedAt,
-      reason,
-    });
-  }, [effectiveIso, systemDocumentedAt, reason]);
-
   if (!open) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,14 +195,6 @@ export function MedicationAdministrationEffectiveTimeModal({
     const iso = toFacilityUtcIso(clinicalLocal);
     if (!iso) {
       setError(t("marTab.adminTime.invalidTime"));
-      return;
-    }
-    if (reasonRequired && !reason.trim()) {
-      setError(t("marTab.adminTime.reasonRequired"));
-      return;
-    }
-    if (reasonTooShort) {
-      setError(t("marTab.adminTime.reasonTooShortForLargeBackdate"));
       return;
     }
     try {
@@ -249,6 +207,11 @@ export function MedicationAdministrationEffectiveTimeModal({
       setDraftRestoredAt(null);
       setDraftSavedLocallyAt(null);
     } catch (err) {
+      const fromCode = resolveMarEffectiveTimeErrorMessage(err, language, t);
+      if (fromCode) {
+        setError(fromCode);
+        return;
+      }
       const raw = err instanceof Error ? err.message : "";
       const fromServer = raw.trim()
         ? normalizeUserFacingError(raw, language) ?? raw.trim()
