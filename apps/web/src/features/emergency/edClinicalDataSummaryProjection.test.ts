@@ -50,8 +50,9 @@ describe("edClinicalDataSummaryProjection (MEDUI.ED.CLINICAL_DATA.2)", () => {
     expect(summary).toContain("emergency-clinical-data-summary");
   });
 
-  it("22 — read-only mode preserved (panel uses review hub)", () => {
-    expect(panel).toContain('accessMode="review"');
+  it("22 — per-card access mode via clinicalData workspace", () => {
+    expect(panel).toContain('workspaceContext="clinicalData"');
+    expect(hub).toContain("resolveClinicalDataAccessMode");
   });
 
   it("23 — Clinical Data tile unchanged in active workspace", () => {

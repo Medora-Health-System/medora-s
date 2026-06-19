@@ -13,19 +13,8 @@ const sectionShell: React.CSSProperties = {
   border: "1px solid #e2e8f0",
   borderRadius: 10,
   background: "#fff",
-  padding: "10px 12px",
+  padding: "8px 10px",
   minWidth: 0,
-};
-
-const metricRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(72px, 0.35fr) minmax(48px, 0.2fr) minmax(0, 1fr)",
-  gap: 8,
-  alignItems: "baseline",
-  fontSize: 12,
-  lineHeight: 1.35,
-  padding: "4px 0",
-  borderBottom: "1px solid #f1f5f9",
 };
 
 function sectionTitleKey(sectionId: ClinicalDataSummarySectionId): string {
@@ -43,6 +32,16 @@ function sectionTitleKey(sectionId: ClinicalDataSummarySectionId): string {
     default:
       return "emergencyClinicalData.summary.sections.neurology";
   }
+}
+
+function secondaryDetailLines(
+  metric: { value: string; detailRows: Array<{ label: string; value: string }> },
+  max = 4
+): string[] {
+  return metric.detailRows
+    .filter((row) => row.value !== metric.value && !row.value.includes(metric.value))
+    .slice(0, max)
+    .map((row) => `${row.label}: ${row.value}`);
 }
 
 export function EmergencyClinicalDataSummary({
@@ -75,7 +74,7 @@ export function EmergencyClinicalDataSummary({
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
           {t("emergencyClinicalData.summary.clinicalSummary")}
         </p>
-        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.45 }}>
+        <p style={{ margin: "6px 0 0", fontSize: 12, color: "#64748b" }}>
           {t("emergencyClinicalData.summary.insufficientData")}
         </p>
       </section>
@@ -83,15 +82,15 @@ export function EmergencyClinicalDataSummary({
   }
 
   return (
-    <section data-testid="emergency-clinical-data-summary">
-      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+    <section data-testid="emergency-clinical-data-summary" style={{ minWidth: 0 }}>
+      <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
         {t("emergencyClinicalData.summary.clinicalSummary")}
       </p>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 10,
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: 8,
         }}
       >
         {projection.sections.map((section) => (
@@ -100,20 +99,38 @@ export function EmergencyClinicalDataSummary({
             data-testid={`clinical-data-summary-section-${section.sectionId.toLowerCase()}`}
             style={sectionShell}
           >
-            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#334155" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
               {t(sectionTitleKey(section.sectionId))}
             </p>
-            {section.metrics.map((metric) => (
-              <div key={`${metric.entryId}-${metric.metricId}`} style={metricRow}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>{metric.label}</span>
-                <span style={{ fontWeight: 600, color: "#0369a1" }}>{metric.value}</span>
-                <span style={{ color: "#64748b", textAlign: "right" }}>
-                  {metric.authorRoleTitle} {metric.authorDisplayName}
-                  {" · "}
-                  {formatTime(metric.documentedAt)}
-                </span>
-              </div>
-            ))}
+            {section.metrics.map((metric) => {
+              const formTitle = locale === "fr" ? metric.formTitleFr : metric.formTitleEn;
+              const details = secondaryDetailLines(metric);
+              return (
+                <div
+                  key={`${metric.entryId}-${metric.metricId}`}
+                  data-testid="clinical-data-summary-metric"
+                  style={{
+                    padding: "4px 0",
+                    borderBottom: "1px solid #f1f5f9",
+                    fontSize: 11,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, color: "#0f172a" }}>{formTitle}</div>
+                  <div style={{ color: "#0369a1", fontWeight: 600 }}>
+                    {metric.label} {metric.value}
+                  </div>
+                  {details.map((line) => (
+                    <div key={line} style={{ color: "#475569" }}>
+                      {line}
+                    </div>
+                  ))}
+                  <div style={{ color: "#64748b" }}>
+                    {metric.authorRoleTitle} {metric.authorDisplayName} · {formatTime(metric.documentedAt)}
+                  </div>
+                </div>
+              );
+            })}
           </article>
         ))}
 
@@ -122,41 +139,28 @@ export function EmergencyClinicalDataSummary({
             data-testid="clinical-data-summary-section-intake_output"
             style={sectionShell}
           >
-            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#334155" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>
               {t("emergencyClinicalData.summary.sections.intakeOutput")}
             </p>
             {projection.intakeOutput.totalIntakeMl != null ? (
-              <div style={metricRow}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                  {t("emergencyClinicalData.summary.intake24h")}
-                </span>
-                <span style={{ fontWeight: 600, color: "#0369a1" }}>
-                  {projection.intakeOutput.totalIntakeMl} mL
-                </span>
-                <span />
+              <div style={{ fontSize: 11, padding: "2px 0" }}>
+                {t("emergencyClinicalData.summary.intake24h")}:{" "}
+                <strong>{projection.intakeOutput.totalIntakeMl} mL</strong>
               </div>
             ) : null}
             {projection.intakeOutput.totalOutputMl != null ? (
-              <div style={metricRow}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                  {t("emergencyClinicalData.summary.output24h")}
-                </span>
-                <span style={{ fontWeight: 600, color: "#0369a1" }}>
-                  {projection.intakeOutput.totalOutputMl} mL
-                </span>
-                <span />
+              <div style={{ fontSize: 11, padding: "2px 0" }}>
+                {t("emergencyClinicalData.summary.output24h")}:{" "}
+                <strong>{projection.intakeOutput.totalOutputMl} mL</strong>
               </div>
             ) : null}
             {projection.intakeOutput.netBalanceMl != null ? (
-              <div style={{ ...metricRow, borderBottom: "none" }}>
-                <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                  {t("emergencyClinicalData.summary.netBalance")}
-                </span>
-                <span style={{ fontWeight: 600, color: "#0369a1" }}>
+              <div style={{ fontSize: 11, padding: "2px 0" }}>
+                {t("emergencyClinicalData.summary.netBalance")}:{" "}
+                <strong>
                   {projection.intakeOutput.netBalanceMl >= 0 ? "+" : ""}
                   {projection.intakeOutput.netBalanceMl} mL
-                </span>
-                <span />
+                </strong>
               </div>
             ) : null}
           </article>

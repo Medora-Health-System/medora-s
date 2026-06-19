@@ -1,11 +1,13 @@
 import type { ClinicalDocumentationRole } from "@medora/shared";
 
-/** Phase 1 — Clinical Data is a read-only provider review workspace. */
-export const ED_CLINICAL_DATA_READ_ONLY = true;
+export type ClinicalDataAccessMode = "editable" | "review";
 
-export type ClinicalDataAccessMode = "review" | "edit";
+/** @deprecated Phase 3 — Clinical Data supports role-based edit. Kept for test compatibility. */
+export const ED_CLINICAL_DATA_READ_ONLY = false;
 
 export type ClinicalDataFormOwner = ClinicalDocumentationRole;
+
+export type ClinicalDataWorkspaceSource = "clinicalData" | "nursingAssessment";
 
 function normalizeRoleCodes(roleCodes: readonly string[]): string[] {
   return roleCodes.map((code) => code.trim().toUpperCase()).filter(Boolean);
@@ -20,52 +22,54 @@ function isProviderRole(roleCodes: readonly string[]): boolean {
   return normalizeRoleCodes(roleCodes).includes("PROVIDER");
 }
 
+function canEditFormOwner(
+  formOwner: ClinicalDataFormOwner,
+  userRoles: readonly string[]
+): boolean {
+  if (formOwner === "PROVIDER") return isProviderRole(userRoles);
+  if (formOwner === "RN" || formOwner === "TECHNICIAN" || formOwner === "RT") {
+    return isNursingRole(userRoles);
+  }
+  if (formOwner === "MULTI_ROLE") {
+    return isProviderRole(userRoles) || isNursingRole(userRoles);
+  }
+  return false;
+}
+
 /**
  * Whether the user may open a catalog form from the Clinical Data workspace.
- * Phase 1: all forms open in review mode only.
  */
 export function canOpenClinicalDataFormForRole(input: {
   formOwner: ClinicalDataFormOwner;
   userRoles: readonly string[];
   mode: "review" | "edit";
 }): boolean {
-  if (input.mode === "edit") {
-    if (ED_CLINICAL_DATA_READ_ONLY) return false;
-    if (input.formOwner === "RN" || input.formOwner === "TECHNICIAN" || input.formOwner === "RT") {
-      return isNursingRole(input.userRoles);
-    }
-    if (input.formOwner === "PROVIDER") {
-      return isProviderRole(input.userRoles);
-    }
-    return isNursingRole(input.userRoles) || isProviderRole(input.userRoles);
-  }
+  const access = resolveClinicalDataAccessMode({
+    formOwner: input.formOwner,
+    userRoles: input.userRoles,
+    sourceWorkspace: "clinicalData",
+  });
+  if (input.mode === "edit") return access === "editable";
   return isProviderRole(input.userRoles) || isNursingRole(input.userRoles);
 }
 
-/** Resolve access mode for a form opened from Clinical Data vs Nursing Assessment. */
+/** Resolve per-form access mode for Clinical Data vs Nursing Assessment. */
 export function resolveClinicalDataAccessMode(input: {
   formOwner: ClinicalDataFormOwner;
   userRoles: readonly string[];
-  workspace: "clinicalData" | "nursingAssessment";
+  sourceWorkspace: ClinicalDataWorkspaceSource;
+  /** @deprecated use sourceWorkspace */
+  workspace?: ClinicalDataWorkspaceSource;
 }): ClinicalDataAccessMode {
-  if (input.workspace === "nursingAssessment") {
-    if (input.formOwner === "PROVIDER" && isProviderRole(input.userRoles)) return "edit";
-    if (
-      (input.formOwner === "RN" ||
-        input.formOwner === "TECHNICIAN" ||
-        input.formOwner === "RT" ||
-        input.formOwner === "MULTI_ROLE") &&
-      isNursingRole(input.userRoles)
-    ) {
-      return "edit";
-    }
-    return "review";
+  const workspace = input.sourceWorkspace ?? input.workspace ?? "clinicalData";
+  const editable = canEditFormOwner(input.formOwner, input.userRoles);
+  if (workspace === "nursingAssessment") {
+    return editable ? "editable" : "review";
   }
-  if (ED_CLINICAL_DATA_READ_ONLY) return "review";
-  return resolveClinicalDataAccessMode({ ...input, workspace: "nursingAssessment" });
+  return editable ? "editable" : "review";
 }
 
-/** Required Clinical Documentation categories for provider Clinical Data review (Phase 1). */
+/** Required Clinical Documentation categories for provider Clinical Data review. */
 export const ED_CLINICAL_DATA_REQUIRED_CATEGORIES = [
   "FLOWSHEETS",
   "SCORES_AND_SCREENS",

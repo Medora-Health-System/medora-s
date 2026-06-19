@@ -33,8 +33,9 @@ describe("edClinicalDataCatalogReuse (MEDUI.ED.CLINICAL_DATA.1)", () => {
     expect(nursing).not.toContain('accessMode="review"');
   });
 
-  it("Clinical Data hub uses review mode", () => {
-    expect(panel).toContain('accessMode="review"');
+  it("Clinical Data hub uses clinicalData workspace context", () => {
+    expect(panel).toContain('workspaceContext="clinicalData"');
+    expect(hub).toContain("workspaceContext");
   });
 
   it("hub exposes category filters from shared CLINICAL_DOCUMENTATION_CATEGORY_META", () => {

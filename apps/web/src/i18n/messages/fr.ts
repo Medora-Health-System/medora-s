@@ -6499,6 +6499,15 @@ export default {
         voided: "Annulé",
       },
     },
+    detail: {
+      viewDetails: "Voir les détails",
+      openForm: "Ouvrir le formulaire",
+      reviewOnly: "Consultation seule",
+      completedBy: "Documenté par",
+      score: "Score",
+      severity: "Sévérité",
+      providerNotified: "Médecin avisé",
+    },
   },
   emergencyVisitSummaryPanel: {
     cardTitle: "Synthèse de visite (urgences)",

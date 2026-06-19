@@ -6528,6 +6528,15 @@ export default {
         voided: "Voided",
       },
     },
+    detail: {
+      viewDetails: "View details",
+      openForm: "Open form",
+      reviewOnly: "Review only",
+      completedBy: "Completed by",
+      score: "Score",
+      severity: "Severity",
+      providerNotified: "Provider notified",
+    },
   },
   emergencyVisitSummaryPanel: {
     cardTitle: "ED visit summary",

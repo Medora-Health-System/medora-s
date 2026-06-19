@@ -1,43 +1,48 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { buildClinicalDataRecentHighlights } from "@medora/shared";
+import React, { useMemo, useState } from "react";
+import {
+  buildClinicalDataRecentHighlights,
+  formatClinicalDocumentationDetailInline,
+} from "@medora/shared";
 import type { ClinicalDocumentationEntryRow } from "@/lib/clinicalDocumentationApi";
 import { useI18n } from "@/lib/i18n";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 
+const rowCard: React.CSSProperties = {
+  flex: "0 0 auto",
+  minWidth: 260,
+  maxWidth: 420,
+  border: "1px solid #e2e8f0",
+  borderRadius: 10,
+  background: "#fff",
+  padding: "8px 10px",
+  textAlign: "left",
+  cursor: "pointer",
+};
+
 export function EmergencyClinicalDataRecentFeed({
   entries,
   facilityTimeZone,
+  onSelectEntry,
 }: {
   entries: ClinicalDocumentationEntryRow[];
   facilityTimeZone?: string | null;
+  onSelectEntry: (entryId: string) => void;
 }) {
   const { t, language } = useI18n();
+  const locale = language === "en" ? "en" : "fr";
+  const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(() => new Set());
 
-  const feed = useMemo(() => buildClinicalDataRecentHighlights(entries), [entries]);
+  const feed = useMemo(
+    () => buildClinicalDataRecentHighlights(entries, locale),
+    [entries, locale]
+  );
 
   const formatTime = (iso: string) => {
     const formatted = formatClinicalInstantForFacility(iso, facilityTimeZone, language);
     const parts = formatted.split(", ");
     return parts.length > 1 ? parts[parts.length - 1]! : formatted;
-  };
-
-  const formatDate = (iso: string) => {
-    const formatted = formatClinicalInstantForFacility(iso, facilityTimeZone, language);
-    const parts = formatted.split(", ");
-    return parts[0] ?? formatted;
-  };
-
-  const statusLabel = (status: "DOCUMENTED" | "PENDING_WITNESS" | "VOIDED") => {
-    switch (status) {
-      case "PENDING_WITNESS":
-        return t("emergencyClinicalData.summary.status.pendingWitness");
-      case "VOIDED":
-        return t("emergencyClinicalData.summary.status.voided");
-      default:
-        return t("emergencyClinicalData.summary.status.documented");
-    }
   };
 
   const titleFor = (item: (typeof feed)[number]) =>
@@ -46,15 +51,9 @@ export function EmergencyClinicalDataRecentFeed({
   return (
     <section
       data-testid="emergency-clinical-data-recent-feed"
-      style={{
-        marginTop: 14,
-        border: "1px solid #e2e8f0",
-        borderRadius: 12,
-        background: "#fff",
-        padding: "10px 12px",
-      }}
+      style={{ marginTop: 10, minWidth: 0 }}
     >
-      <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
+      <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#0f172a" }}>
         {t("emergencyClinicalData.summary.recentDocumentation")}
       </p>
       {feed.length === 0 ? (
@@ -62,47 +61,72 @@ export function EmergencyClinicalDataRecentFeed({
           {t("clinicalDocumentation.savedEntriesEmpty")}
         </p>
       ) : (
-        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 6 }}>
-          {feed.slice(0, 12).map((item) => (
-            <li
-              key={item.id}
-              data-testid="clinical-data-recent-feed-row"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "72px minmax(0, 1fr) auto",
-                gap: 10,
-                alignItems: "center",
-                padding: "6px 0",
-                borderBottom: "1px solid #f1f5f9",
-                fontSize: 12,
-              }}
-            >
-              <div style={{ color: "#64748b" }}>
-                <div style={{ fontWeight: 600, color: "#334155" }}>{formatTime(item.documentedAt)}</div>
-                <div>{formatDate(item.documentedAt)}</div>
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, color: "#0f172a" }}>{titleFor(item)}</div>
-                <div style={{ color: "#64748b" }}>
-                  {item.authorRoleTitle} {item.authorDisplayName}
-                </div>
-              </div>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  borderRadius: 9999,
-                  background: item.status === "PENDING_WITNESS" ? "#fef3c7" : "#f1f5f9",
-                  color: item.status === "PENDING_WITNESS" ? "#92400e" : "#475569",
-                  whiteSpace: "nowrap",
-                }}
+        <div
+          data-testid="clinical-data-recent-feed-horizontal"
+          style={{
+            display: "flex",
+            gap: 8,
+            overflowX: "auto",
+            paddingBottom: 4,
+            flexWrap: "nowrap",
+          }}
+        >
+          {feed.slice(0, 16).map((item) => {
+            const expanded = expandedIds.has(item.id);
+            const inline = formatClinicalDocumentationDetailInline(
+              item.detailRows,
+              expanded ? item.detailRows.length : 5
+            );
+            return (
+              <button
+                key={item.id}
+                type="button"
+                data-testid="clinical-data-recent-feed-row"
+                style={rowCard}
+                onClick={() => onSelectEntry(item.id)}
               >
-                {statusLabel(item.status)}
-              </span>
-            </li>
-          ))}
-        </ul>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#0f172a" }}>{titleFor(item)}</div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 11,
+                    color: "#334155",
+                    lineHeight: 1.35,
+                    whiteSpace: "normal",
+                  }}
+                >
+                  {inline}
+                </div>
+                <div style={{ marginTop: 4, fontSize: 11, color: "#64748b" }}>
+                  {item.authorRoleTitle} {item.authorDisplayName} · {formatTime(item.documentedAt)}
+                </div>
+                {item.detailRows.length > 5 ? (
+                  <span
+                    role="presentation"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(item.id)) next.delete(item.id);
+                        else next.add(item.id);
+                        return next;
+                      });
+                    }}
+                    style={{
+                      display: "inline-block",
+                      marginTop: 4,
+                      fontSize: 11,
+                      color: "#0369a1",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {t("emergencyClinicalData.detail.viewDetails")}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
       )}
     </section>
   );

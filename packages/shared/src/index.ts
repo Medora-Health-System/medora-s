@@ -58,6 +58,7 @@ export * from "./schemas/bedStatus.js";
 export * from "./clinicalDocumentation/clinicalDocumentationRegistry.js";
 export * from "./clinicalDocumentation/clinicalDocumentationEntry.js";
 export * from "./clinicalDocumentation/clinicalDataSummaryProjection.js";
+export * from "./clinicalDocumentation/clinicalDocumentationDetailRows.js";
 export * from "./clinicalDocumentation/clinicalDocumentationLegalCoverageHarness.js";
 export * from "./clinicalDocumentation/clinicalDocumentationRuntimeCoverageHarness.js";
 export * from "./clinicalDocumentation/clinicalDocumentationPayloadGovernance.js";

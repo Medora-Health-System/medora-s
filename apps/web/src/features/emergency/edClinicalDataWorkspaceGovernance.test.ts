@@ -1,16 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  ED_CLINICAL_DATA_READ_ONLY,
   ED_CLINICAL_DATA_REQUIRED_CATEGORIES,
   canOpenClinicalDataFormForRole,
   resolveClinicalDataAccessMode,
 } from "./edClinicalDataWorkspaceGovernance";
 
-describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA.1)", () => {
-  it("Phase 1 is read-only", () => {
-    expect(ED_CLINICAL_DATA_READ_ONLY).toBe(true);
-  });
-
+describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA)", () => {
   it("Provider can view Nursing-owned forms in review mode", () => {
     expect(
       canOpenClinicalDataFormForRole({
@@ -36,39 +31,49 @@ describe("edClinicalDataWorkspaceGovernance (MEDUI.ED.CLINICAL_DATA.1)", () => {
       resolveClinicalDataAccessMode({
         formOwner: "RN",
         userRoles: ["RN"],
-        workspace: "nursingAssessment",
+        sourceWorkspace: "nursingAssessment",
       })
-    ).toBe("edit");
+    ).toBe("editable");
   });
 
-  it("RN review mode from Clinical Data is still read-only when flag on", () => {
+  it("RN can edit Nursing-owned forms from Clinical Data", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "RN",
         userRoles: ["RN"],
-        workspace: "clinicalData",
+        sourceWorkspace: "clinicalData",
       })
-    ).toBe("review");
+    ).toBe("editable");
   });
 
-  it("Provider Clinical Data workspace is always review", () => {
+  it("Provider can edit Provider-owned forms from Clinical Data", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "PROVIDER",
         userRoles: ["PROVIDER"],
-        workspace: "clinicalData",
+        sourceWorkspace: "clinicalData",
+      })
+    ).toBe("editable");
+  });
+
+  it("Provider reviews Nursing-owned CIWA from Clinical Data", () => {
+    expect(
+      resolveClinicalDataAccessMode({
+        formOwner: "RN",
+        userRoles: ["PROVIDER"],
+        sourceWorkspace: "clinicalData",
       })
     ).toBe("review");
   });
 
-  it("Multi-role forms open review-only from Clinical Data", () => {
+  it("Multi-role forms editable by Provider from Clinical Data", () => {
     expect(
       resolveClinicalDataAccessMode({
         formOwner: "MULTI_ROLE",
         userRoles: ["PROVIDER"],
-        workspace: "clinicalData",
+        sourceWorkspace: "clinicalData",
       })
-    ).toBe("review");
+    ).toBe("editable");
   });
 
   it("includes all required Phase 1 categories", () => {

@@ -48,6 +48,7 @@ import {
   summarizeClinicalDocumentationPayload,
 } from "./clinicalDocumentationEntry.js";
 import type { ClinicalDocumentationSummaryLocale } from "./clinicalDocumentationSummaryLocale.js";
+import { buildClinicalDocumentationDetailRows } from "./clinicalDocumentationDetailRows.js";
 
 const MS_PER_HOUR = 60 * 60 * 1000;
 const IO_24H_WINDOW_MS = 24 * MS_PER_HOUR;
@@ -86,6 +87,9 @@ export type ClinicalDataSummaryMetric = {
   documentedAt: string;
   entryId: string;
   cardId: string;
+  formTitleEn: string;
+  formTitleFr: string;
+  detailRows: Array<{ label: string; value: string }>;
 };
 
 export type ClinicalDataSummarySection = {
@@ -111,6 +115,7 @@ export type ClinicalDataRecentFeedItem = {
   category: string;
   status: "DOCUMENTED" | "PENDING_WITNESS" | "VOIDED";
   cardId: string;
+  detailRows: Array<{ label: string; value: string }>;
 };
 
 export type ClinicalDataSummaryProjection = {
@@ -169,7 +174,6 @@ function metricFromEntry(
   value: string,
   locale: ClinicalDocumentationSummaryLocale
 ): ClinicalDataSummaryMetric {
-  void locale;
   return {
     metricId,
     label,
@@ -179,6 +183,9 @@ function metricFromEntry(
     documentedAt: entry.createdAt,
     entryId: entry.id,
     cardId: entry.cardId,
+    formTitleEn: entry.cardTitleEn,
+    formTitleFr: entry.cardTitleFr,
+    detailRows: buildClinicalDocumentationDetailRows(entry, locale),
   };
 }
 
@@ -584,7 +591,8 @@ function feedStatus(entry: ClinicalDataProjectionEntry): ClinicalDataRecentFeedI
 }
 
 export function buildClinicalDataRecentHighlights(
-  entries: readonly ClinicalDataProjectionEntry[]
+  entries: readonly ClinicalDataProjectionEntry[],
+  locale: ClinicalDocumentationSummaryLocale = "en"
 ): ClinicalDataRecentFeedItem[] {
   return sortNewestFirst(activeEntries(entries)).map((entry) => ({
     id: entry.id,
@@ -596,6 +604,7 @@ export function buildClinicalDataRecentHighlights(
     category: entry.category,
     status: feedStatus(entry),
     cardId: entry.cardId,
+    detailRows: buildClinicalDocumentationDetailRows(entry, locale),
   }));
 }
 
