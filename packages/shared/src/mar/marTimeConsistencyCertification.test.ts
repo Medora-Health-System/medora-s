@@ -7,6 +7,7 @@ import {
 import {
   buildMarTimeConsistencySnapshot,
   certifyMarTimeConsistency,
+  detectMarOneHourModalTimelineMismatch,
   detectMarTimeConsistencyOneHourOffsetRegression,
 } from "./marTimeConsistencyCertification.js";
 
@@ -159,5 +160,28 @@ describe("marTimeConsistencyCertification (MEDUI.ED.MAR.TIME.CERTIFICATION.1)", 
         browserOffsetDisplayTime: facilityDisplay,
       })
     ).toBe(false);
+  });
+
+  it("detectMarOneHourModalTimelineMismatch catches timeline vs modal 1-hour drift", () => {
+    const instant = wallClockToUtc(2026, 6, 19, 2, 0, chicago);
+    const iso = instant.toISOString();
+    const timeline = formatMedicationTimeInFacilityZone({
+      iso,
+      facilityTimezone: chicago,
+      locale: "en-US",
+    });
+    const wrongModal = formatMedicationTimeInFacilityZone({
+      iso,
+      facilityTimezone: "America/New_York",
+      locale: "en-US",
+    });
+    expect(
+      detectMarOneHourModalTimelineMismatch({
+        storedUtcIso: iso,
+        facilityTimezone: chicago,
+        timelineDisplayTime: timeline,
+        modalDisplayTime: wrongModal,
+      })
+    ).toBe(true);
   });
 });

@@ -149,7 +149,6 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { medicationMarIntendedTimingUrgency } from "@/lib/medicationMarIntendedUrgency";
 import {
   canAdjustMedicationAdministrationTime,
-  datetimeLocalValueToUtcIso,
   resolveMedicationAdministrationDisplayTimes,
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
 import {
@@ -160,6 +159,7 @@ import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClin
 import { MedicationAllergyReviewProviderNotice } from "@/components/mar/MedicationAllergyReviewProviderNotice";
 import {
   buildMarClinicalTimeDocumentationNotes,
+  currentMarClinicalDateTimeLocalValue,
   marClinicalDateTimeLocalToUtcIso,
   validateMarClinicalDateTimeField,
 } from "@/features/mar/marUniversalMedicationActionTime";
@@ -703,7 +703,7 @@ export function MedicationAdministrationTab({
   useEffect(() => {
     if (!modalItem) return;
     const tz = resolveClinicalTimeZone({ facilityTimeZone });
-    setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
+    setModalEffectiveTimeLocal(currentMarClinicalDateTimeLocalValue(tz));
     setModalClinicalTimeReasonCode("");
     setModalEffectiveTimeReason("");
     setModalShowEffectiveTimeEditor(true);
@@ -712,7 +712,7 @@ export function MedicationAdministrationTab({
   const clearModalEffectiveTime = useCallback(() => {
     const tz = resolveClinicalTimeZone({ facilityTimeZone });
     setModalShowEffectiveTimeEditor(true);
-    setModalEffectiveTimeLocal(clinicalDatetimeLocalFromInstant(new Date(), tz));
+    setModalEffectiveTimeLocal(currentMarClinicalDateTimeLocalValue(tz));
     setModalEffectiveTimeReason("");
     setModalClinicalTimeReasonCode("");
   }, [facilityTimeZone]);
@@ -4296,6 +4296,7 @@ export function MedicationAdministrationTab({
             orderCancelledAt={orderCancelledAt}
             adjustmentVersion={row.effectiveAdministeredAtVersion ?? 0}
             controlledMedication={Boolean(linkedOrderItem?.catalogMedication?.isControlled)}
+            facilityTimeZone={clinicalTz}
             t={t}
             saving={adminTimeSaving}
             onClose={() => {

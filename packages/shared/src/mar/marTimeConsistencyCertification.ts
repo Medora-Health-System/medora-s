@@ -1,6 +1,9 @@
 /** MEDUI.ED.MAR.TIME.CERTIFICATION.1 — certify medication display time consistency. */
 
-import { resolveMedicationClinicalDisplayTime } from "../clinical/clinicalTimeZone.js";
+import {
+  resolveMedicationClinicalDisplayTime,
+  formatClinicalInstantInFacilityTimeZone,
+} from "../clinical/clinicalTimeZone.js";
 
 export type MarTimeConsistencySnapshot = {
   storedUtcIso: string;
@@ -10,6 +13,7 @@ export type MarTimeConsistencySnapshot = {
   doseScheduledDisplayTime: string;
   marTimelineDisplayTime: string;
   administrationModalDisplayTime: string;
+  postHocAdjustTimeDisplayTime: string;
   historyRailDisplayTime: string;
 };
 
@@ -19,6 +23,7 @@ export type MarTimeConsistencyField =
   | "doseScheduledDisplayTime"
   | "marTimelineDisplayTime"
   | "administrationModalDisplayTime"
+  | "postHocAdjustTimeDisplayTime"
   | "historyRailDisplayTime";
 
 const DISPLAY_FIELDS: MarTimeConsistencyField[] = [
@@ -27,6 +32,7 @@ const DISPLAY_FIELDS: MarTimeConsistencyField[] = [
   "doseScheduledDisplayTime",
   "marTimelineDisplayTime",
   "administrationModalDisplayTime",
+  "postHocAdjustTimeDisplayTime",
   "historyRailDisplayTime",
 ];
 
@@ -55,6 +61,7 @@ export function buildMarTimeConsistencySnapshot(input: {
     doseScheduledDisplayTime: display,
     marTimelineDisplayTime: display,
     administrationModalDisplayTime: display,
+    postHocAdjustTimeDisplayTime: display,
     historyRailDisplayTime: display,
   };
 }
@@ -112,4 +119,30 @@ export function detectMarTimeConsistencyOneHourOffsetRegression(input: {
   const browserMinutes = Number(browserMatch[1]) * 60 + Number(browserMatch[2]);
   const delta = Math.abs(facilityMinutes - browserMinutes);
   return delta >= 59 && delta <= 61;
+}
+
+/** Detects production bug: timeline 02:00 AM vs modal 03:00 AM for same UTC instant. */
+export function detectMarOneHourModalTimelineMismatch(input: {
+  storedUtcIso: string;
+  facilityTimezone: string;
+  timelineDisplayTime: string;
+  modalDisplayTime: string;
+  locale?: string;
+}): boolean {
+  void input.storedUtcIso;
+  void input.facilityTimezone;
+  void input.locale;
+
+  const extractMinutes = (display: string): number | null => {
+    const match = /(\d{1,2}):(\d{2})/.exec(display);
+    if (!match) return null;
+    return Number(match[1]) * 60 + Number(match[2]);
+  };
+
+  const timelineMinutes = extractMinutes(input.timelineDisplayTime);
+  const modalMinutes = extractMinutes(input.modalDisplayTime);
+  if (timelineMinutes == null || modalMinutes == null) return false;
+
+  const crossDelta = Math.abs(timelineMinutes - modalMinutes);
+  return crossDelta >= 59 && crossDelta <= 61;
 }

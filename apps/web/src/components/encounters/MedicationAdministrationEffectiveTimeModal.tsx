@@ -1,8 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { parseMedicationAdministrationEffectiveTimeIso } from "@medora/shared";
-import { MEDICATION_ADMINISTRATION_CORRECTION_REASON_CODES } from "@medora/shared";
+import {
+  MEDICATION_ADMINISTRATION_CORRECTION_REASON_CODES,
+  datetimeLocalToUtcIsoInFacilityTimeZone,
+  utcIsoToDatetimeLocalValueInFacilityTimeZone,
+} from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import {
@@ -16,18 +19,10 @@ import {
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 import {
-  datetimeLocalValueToUtcIso,
   medicationAdminTimeModalIsLargeBackdate,
   medicationAdminTimeModalRequiresDetailedReason,
   medicationAdminTimeModalRequiresReason,
 } from "@/features/mar/medicationAdministrationEffectiveTimeDisplay";
-
-function toDatetimeLocalValue(iso: string): string {
-  const d = parseMedicationAdministrationEffectiveTimeIso(iso);
-  if (!d) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 const MAR_EFFECTIVE_TIME_DRAFT_VERSION = "mar-effective-time-correction-v1";
 const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
@@ -57,6 +52,7 @@ export function MedicationAdministrationEffectiveTimeModal({
   orderCancelledAt,
   adjustmentVersion,
   controlledMedication,
+  facilityTimeZone,
   t,
   onClose,
   onSave,
@@ -76,6 +72,7 @@ export function MedicationAdministrationEffectiveTimeModal({
   orderCancelledAt: Date | null;
   adjustmentVersion: number;
   controlledMedication: boolean;
+  facilityTimeZone?: string | null;
   t: (key: string) => string;
   onClose: () => void;
   onSave: (payload: {
@@ -86,7 +83,13 @@ export function MedicationAdministrationEffectiveTimeModal({
   saving: boolean;
 }) {
   const { language } = useI18n();
-  const [clinicalLocal, setClinicalLocal] = useState(() => toDatetimeLocalValue(defaultEffectiveIso));
+  const resolvedFacilityTz = facilityTimeZone ?? null;
+  const [clinicalLocal, setClinicalLocal] = useState(() =>
+    utcIsoToDatetimeLocalValueInFacilityTimeZone({
+      iso: defaultEffectiveIso,
+      facilityTimezone: resolvedFacilityTz,
+    })
+  );
   const [reason, setReason] = useState("");
   const [correctionReasonCode, setCorrectionReasonCode] = useState("DOCUMENTED_WRONG_TIME");
   const [error, setError] = useState<string | null>(null);
@@ -108,14 +111,27 @@ export function MedicationAdministrationEffectiveTimeModal({
 
   useEffect(() => {
     if (open) {
-      setClinicalLocal(toDatetimeLocalValue(defaultEffectiveIso));
+      setClinicalLocal(
+        utcIsoToDatetimeLocalValueInFacilityTimeZone({
+          iso: defaultEffectiveIso,
+          facilityTimezone: resolvedFacilityTz,
+        })
+      );
       setReason("");
       setCorrectionReasonCode("DOCUMENTED_WRONG_TIME");
       setError(null);
       setDraftRestoredAt(null);
       setDraftSavedLocallyAt(null);
     }
-  }, [open, defaultEffectiveIso]);
+  }, [open, defaultEffectiveIso, resolvedFacilityTz]);
+
+  const toFacilityUtcIso = (local: string) =>
+    datetimeLocalToUtcIsoInFacilityTimeZone({
+      localValue: local,
+      facilityTimezone: resolvedFacilityTz,
+    });
+
+  const effectiveIso = useMemo(() => toFacilityUtcIso(clinicalLocal), [clinicalLocal, resolvedFacilityTz]);
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -161,8 +177,6 @@ export function MedicationAdministrationEffectiveTimeModal({
     dirty: Boolean(open && workflowEditable && reason.trim() && draftSavedLocallyAt),
     workflowEditable,
   });
-
-  const effectiveIso = useMemo(() => datetimeLocalValueToUtcIso(clinicalLocal), [clinicalLocal]);
 
   const reasonRequired = useMemo(() => {
     if (!effectiveIso) return controlledMedication;
@@ -212,7 +226,7 @@ export function MedicationAdministrationEffectiveTimeModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const iso = datetimeLocalValueToUtcIso(clinicalLocal);
+    const iso = toFacilityUtcIso(clinicalLocal);
     if (!iso) {
       setError(t("marTab.adminTime.invalidTime"));
       return;

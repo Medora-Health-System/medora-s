@@ -9,6 +9,7 @@ import {
 import { useI18n } from "@/lib/i18n";
 import {
   defaultMarClinicalDateTimeLocalValue,
+  currentMarClinicalDateTimeLocalValue,
   marClinicalDateTimeLocalToUtcIso,
 } from "@/features/mar/marUniversalMedicationActionTime";
 import { toMarShiftTimelineDateTimeLocalValue } from "@/features/mar/marShiftTimelineDisplay";
@@ -105,7 +106,7 @@ export function MedicationClinicalDateTimeField({
   };
 
   const handleNow = () => {
-    onChange(defaultMarClinicalDateTimeLocalValue(documentedAt, facilityTimeZone));
+    onChange(currentMarClinicalDateTimeLocalValue(facilityTimeZone));
   };
 
   return (

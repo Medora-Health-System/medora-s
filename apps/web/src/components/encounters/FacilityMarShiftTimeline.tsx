@@ -214,7 +214,7 @@ export function FacilityMarShiftTimeline({
       : t("marShiftTimeline.titleFallback"));
 
   const viewerName = data?.viewer?.displayName?.trim() || "—";
-  const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale);
+  const headerClockText = formatMarShiftTimelineHeaderClock(headerNow, dateLocale, facilityTimeZone);
 
   return (
     <section

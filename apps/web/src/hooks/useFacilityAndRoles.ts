@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { resolveFacilityTimezone } from "@medora/shared";
 import { fetchAuthMeSession } from "@/lib/authSessionMe";
 
 export type UserFacilityOption = { id: string; name: string };
@@ -109,11 +110,7 @@ export function useFacilityAndRoles() {
     /** Read the facility-scoped policy from any matching role row (server emits it on every entry). */
     const activePolicyRow = frsTyped.find((fr) => String(fr.facilityId) === fidKey);
     setAllowRnLabResultSubmission(activePolicyRow?.allowRnLabResultSubmission === true);
-    setFacilityTimeZone(
-      typeof activePolicyRow?.timezone === "string" && activePolicyRow.timezone.trim()
-        ? activePolicyRow.timezone.trim()
-        : "UTC"
-    );
+    setFacilityTimeZone(resolveFacilityTimezone(activePolicyRow?.timezone));
     const activeDepartmentId = activePolicyRow?.departmentId;
     setDepartmentId(typeof activeDepartmentId === "string" && activeDepartmentId.trim() ? activeDepartmentId : null);
     const activeDepartmentCode = activePolicyRow?.departmentCode;

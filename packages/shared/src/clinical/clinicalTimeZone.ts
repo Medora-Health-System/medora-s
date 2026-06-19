@@ -2,30 +2,29 @@ import {
   getZonedWallClockParts,
   wallClockToUtc,
 } from "../medication/medicationDoseExpansionPlanner.js";
+import {
+  MEDORA_DEFAULT_FACILITY_TIMEZONE,
+  resolveFacilityTimezone,
+} from "./facilityTimezoneDefaults.js";
 
-export const CLINICAL_TIME_ZONE_FALLBACK = "UTC";
+/** @deprecated Use MEDORA_DEFAULT_FACILITY_TIMEZONE for clinical paths. */
+export const CLINICAL_TIME_ZONE_FALLBACK = MEDORA_DEFAULT_FACILITY_TIMEZONE;
 
-/** Single clinical timezone authority: facility → hospital → UTC (M1.8B.7K.10B.1). */
+/** Single clinical timezone authority: facility → hospital → enterprise default (MEDUI.ENTERPRISE.TIMEZONE.1). */
 export function resolveClinicalTimeZone(input: {
   facilityTimeZone?: string | null;
   hospitalTimeZone?: string | null;
 }): string {
   for (const raw of [input.facilityTimeZone, input.hospitalTimeZone]) {
-    const tz = normalizeClinicalTimeZone(raw);
-    if (tz !== CLINICAL_TIME_ZONE_FALLBACK || raw?.trim() === "UTC") return tz;
+    if (raw?.trim()) {
+      return resolveFacilityTimezone(raw);
+    }
   }
-  return CLINICAL_TIME_ZONE_FALLBACK;
+  return MEDORA_DEFAULT_FACILITY_TIMEZONE;
 }
 
 export function normalizeClinicalTimeZone(raw: string | null | undefined): string {
-  const tz = raw?.trim();
-  if (!tz) return CLINICAL_TIME_ZONE_FALLBACK;
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone: tz });
-    return tz;
-  } catch {
-    return CLINICAL_TIME_ZONE_FALLBACK;
-  }
+  return resolveFacilityTimezone(raw);
 }
 
 function pad2(value: number): string {
@@ -39,7 +38,7 @@ export function clinicalDatetimeLocalFromInstant(
 ): string {
   const date = instant instanceof Date ? instant : new Date(instant);
   if (Number.isNaN(date.getTime())) return "";
-  const tz = resolveClinicalTimeZone({ facilityTimeZone });
+  const tz = resolveFacilityTimezone(facilityTimeZone);
   const parts = getZonedWallClockParts(date, tz);
   return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}T${pad2(parts.hour)}:${pad2(parts.minute)}`;
 }
@@ -52,7 +51,7 @@ export function clinicalDatetimeLocalToUtcDate(
   if (!localValue?.trim()) return null;
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(localValue.trim());
   if (!match) return null;
-  const tz = resolveClinicalTimeZone({ facilityTimeZone });
+  const tz = resolveFacilityTimezone(facilityTimeZone);
   const date = wallClockToUtc(
     Number(match[1]),
     Number(match[2]),
@@ -109,12 +108,49 @@ export function formatClinicalDateTimeInZone(
   if (instant == null) return "";
   const date = instant instanceof Date ? instant : new Date(instant);
   if (Number.isNaN(date.getTime())) return "";
-  const tz = resolveClinicalTimeZone({ facilityTimeZone });
+  const tz = resolveFacilityTimezone(facilityTimeZone);
   return new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+/** Canonical display helper — UTC instant formatted in resolved facility timezone. */
+export function formatClinicalInstantInFacilityTimeZone(input: {
+  iso: string | Date | null | undefined;
+  facilityTimezone: string | null | undefined;
+  locale?: string;
+}): string {
+  if (input.iso == null) return "";
+  return formatClinicalDateTimeInZone(
+    input.iso,
+    input.locale ?? "en-US",
+    resolveFacilityTimezone(input.facilityTimezone)
+  );
+}
+
+/** Parse facility-local datetime-local → UTC ISO. Never uses browser timezone. */
+export function datetimeLocalToUtcIsoInFacilityTimeZone(input: {
+  localValue: string | null | undefined;
+  facilityTimezone: string | null | undefined;
+}): string | null {
+  return clinicalDatetimeLocalToUtcIso(
+    input.localValue,
+    resolveFacilityTimezone(input.facilityTimezone)
+  );
+}
+
+/** UTC instant → facility-local datetime-local string (YYYY-MM-DDTHH:mm). */
+export function utcIsoToDatetimeLocalValueInFacilityTimeZone(input: {
+  iso: string | Date | null | undefined;
+  facilityTimezone: string | null | undefined;
+}): string {
+  if (input.iso == null) return "";
+  return clinicalDatetimeLocalFromInstant(
+    input.iso,
+    resolveFacilityTimezone(input.facilityTimezone)
+  );
 }
 
 export type ClinicalTimeTraceStep = {
@@ -133,7 +169,7 @@ export function traceClinicalInstantInZone(
   hourBucketLabel: (instant: Date, tz: string) => string
 ): ClinicalTimeTraceStep {
   const date = instant instanceof Date ? instant : new Date(instant);
-  const tz = resolveClinicalTimeZone({ facilityTimeZone });
+  const tz = resolveFacilityTimezone(facilityTimeZone);
   const parts = getZonedWallClockParts(date, tz);
   return {
     field,

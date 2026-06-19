@@ -4,9 +4,9 @@ import {
   resolveMarShiftTimelineStatusColorKey,
   resolveMarShiftTimelinePerformerLabel,
   resolveMarMedicationTimingOverrideReasonLabel,
-  toMedicationAdministrationEffectiveTimeIsoUtc,
   clinicalDatetimeLocalFromInstant,
   clinicalDatetimeLocalToUtcIso,
+  resolveFacilityTimezone,
   isMarShiftTimelineItemActionable,
 } from "@medora/shared";
 import type {
@@ -211,7 +211,7 @@ function padDateTimeLocalPart(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-/** `datetime-local` value from ISO instant in facility (or browser) local wall clock. */
+/** `datetime-local` value from ISO instant in resolved facility wall clock (never browser-local). */
 export function toMarShiftTimelineDateTimeLocalValue(
   iso: string | null | undefined,
   facilityTimeZone?: string | null
@@ -219,22 +219,15 @@ export function toMarShiftTimelineDateTimeLocalValue(
   if (!iso?.trim()) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
-  const tz = facilityTimeZone?.trim();
-  if (tz) return clinicalDatetimeLocalFromInstant(date, tz);
-  return `${date.getFullYear()}-${padDateTimeLocalPart(date.getMonth() + 1)}-${padDateTimeLocalPart(date.getDate())}T${padDateTimeLocalPart(date.getHours())}:${padDateTimeLocalPart(date.getMinutes())}`;
+  return clinicalDatetimeLocalFromInstant(date, resolveFacilityTimezone(facilityTimeZone));
 }
 
-/** Parse `datetime-local` wall clock in facility TZ → UTC ISO for API storage. */
+/** Parse `datetime-local` wall clock in resolved facility TZ → UTC ISO for API storage. */
 export function marShiftTimelineDateTimeLocalToUtcIso(
   localValue: string | null | undefined,
   facilityTimeZone?: string | null
 ): string | null {
-  const tz = facilityTimeZone?.trim();
-  if (tz) return clinicalDatetimeLocalToUtcIso(localValue, tz);
-  if (!localValue?.trim()) return null;
-  const date = new Date(localValue);
-  if (Number.isNaN(date.getTime())) return null;
-  return toMedicationAdministrationEffectiveTimeIsoUtc(date);
+  return clinicalDatetimeLocalToUtcIso(localValue, resolveFacilityTimezone(facilityTimeZone));
 }
 
 export function defaultMarShiftTimelineStartTimeValue(
@@ -260,8 +253,14 @@ export function defaultMarShiftTimelineStopTimeValue(
   return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone);
 }
 
-export function formatMarShiftTimelineHeaderClock(date: Date, locale: string): string {
+export function formatMarShiftTimelineHeaderClock(
+  date: Date,
+  locale: string,
+  facilityTimeZone?: string | null
+): string {
+  const tz = resolveFacilityTimezone(facilityTimeZone);
   return new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
     month: "numeric",
     day: "numeric",
     year: "numeric",

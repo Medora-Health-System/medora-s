@@ -11,10 +11,10 @@ import { wallClockToUtc } from "../medication/medicationDoseExpansionPlanner.js"
 describe("clinicalTimeZone (K.10B.1)", () => {
   const haitiTz = "America/Port-au-Prince";
 
-  it("resolveClinicalTimeZone prefers facility over hospital over UTC", () => {
+  it("resolveClinicalTimeZone prefers facility over hospital over enterprise default", () => {
     expect(resolveClinicalTimeZone({ facilityTimeZone: haitiTz })).toBe(haitiTz);
     expect(resolveClinicalTimeZone({ facilityTimeZone: null, hospitalTimeZone: haitiTz })).toBe(haitiTz);
-    expect(resolveClinicalTimeZone({})).toBe("UTC");
+    expect(resolveClinicalTimeZone({})).toBe("America/Chicago");
   });
 
   it("clinicalDatetimeLocal round-trips facility wall clock", () => {

@@ -17,6 +17,13 @@ export function defaultMarClinicalDateTimeLocalValue(
   return toMarShiftTimelineDateTimeLocalValue(documentedAtIso, facilityTimeZone);
 }
 
+/** Current instant as facility-local datetime-local (for MAR "Now" button). */
+export function currentMarClinicalDateTimeLocalValue(
+  facilityTimeZone?: string | null
+): string {
+  return toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone);
+}
+
 export function marClinicalDateTimeLocalToUtcIso(
   localValue: string,
   facilityTimeZone?: string | null
