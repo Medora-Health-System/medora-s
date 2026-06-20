@@ -42,6 +42,20 @@ function normalizeToken(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Short tokens (e.g. "uti") must not match inside unrelated words ("precautions"). */
+function labelIncludesKeyword(labelText: string, keyword: string): boolean {
+  const token = normalizeToken(keyword);
+  if (!token) return false;
+  if (token.length <= 4) {
+    return new RegExp(`\\b${escapeRegExp(token)}\\b`).test(labelText);
+  }
+  return labelText.includes(token);
+}
+
 function prefixToken(raw: string): string {
   return normalizeIcdCode(raw.replace(/\.\*$/, "").replace(/\*$/, ""));
 }
@@ -170,7 +184,7 @@ export function resolveClinicalConditionFamily(input: {
     if (!passesGuardrails(family, context)) continue;
     for (const keyword of family.keywords ?? []) {
       const token = normalizeToken(keyword);
-      if (token && labelText.includes(token)) {
+      if (token && labelIncludesKeyword(labelText, keyword)) {
         if (!bestKeyword || token.length > bestKeyword.tokenLen) {
           bestKeyword = { family, tokenLen: token.length, token };
         }
