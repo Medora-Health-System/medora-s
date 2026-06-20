@@ -55,4 +55,24 @@ pnpm verify:api
 
 ---
 
+## Medora release rule
+
+**No commit, push, or PR** until **all** of the following pass:
+
+```bash
+pnpm --filter @medora/shared build
+pnpm --filter @medora/api run build
+pnpm --filter @medora/web exec tsc --noEmit
+pnpm --filter @medora/web run build
+```
+
+Plus:
+
+- **Targeted feature tests** for the changed area (not only the global verify script).
+- **Clinical mapping audit** when diagnosis-to-template logic, ICD mappings, or discharge instruction templates change (`edDischargeCoverageAuditLevel2`, mapping review).
+
+This rule applies to ED discharge diagnosis work and all other Medora-S changes. The granular commands above are the required release gate; `pnpm verify` remains a convenient shortcut when it covers the same checks.
+
+---
+
 **Approver**: _________________  **Date**: _________________

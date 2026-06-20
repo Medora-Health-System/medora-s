@@ -98,6 +98,9 @@ import {
   EPISTAXIS_SUGGESTED_TEXT,
   GASTROENTERITIS_SUGGESTED_TEXT,
   GENERIC_ED_DISCHARGE_SUGGESTED_TEXT,
+  TYPE_2_DIABETES_SUGGESTED_TEXT,
+  VACCINATION_VISIT_SUGGESTED_TEXT,
+  WELLNESS_VISIT_SUGGESTED_TEXT,
   HEADACHE_SUGGESTED_TEXT,
   HYPERGLYCEMIA_SUGGESTED_TEXT,
   HYPOGLYCEMIA_SUGGESTED_TEXT,
@@ -418,6 +421,13 @@ export const BATCH_13_ENDOCRINE_METABOLIC_TEMPLATE_IDS = [
   "diabetes_sick_day_precautions_v1",
 ] as const;
 
+/** Phase MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.2 — common diagnosis-tab templates. */
+export const BATCH_14_ED_COMMON_DIAGNOSIS_TEMPLATE_IDS = [
+  "vaccination_visit_v1",
+  "wellness_visit_v1",
+  "type_2_diabetes_v1",
+] as const;
+
 const ACCESSED_AT = "2026-05-18";
 const GOVERNANCE_EFFECTIVE_FROM = "2026-05-18";
 
@@ -622,6 +632,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ...BATCH_1_GOVERNANCE,
     diagnosisMappings: {
       icdFamily: ["J06", "R05"],
+      icdExact: ["J00"],
       keyword: [
         "upper respiratory infection",
         "uri",
@@ -743,7 +754,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     riskCategory: "low_to_moderate",
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
-      icdExact: ["R19.7"],
+      icdExact: ["R19.7", "A09", "K59.1"],
       icdFamily: ["R19", "A08"],
       keyword: ["diarrhea", "gastroenteritis", "loose stool"],
     },
@@ -833,8 +844,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     riskCategory: "low_to_moderate",
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
-      icdFamily: ["H66", "J02"],
-      keyword: ["ear pain", "otitis", "sore throat", "pharyngitis"],
+      icdFamily: ["H66", "J02", "J03"],
+      keyword: ["ear pain", "otitis", "sore throat", "pharyngitis", "tonsillitis"],
     },
     sourceReferences: [
       {
@@ -890,7 +901,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     riskCategory: "low_to_moderate",
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
-      icdFamily: ["L03"],
+      icdFamily: ["L03", "L08"],
+      icdExact: ["L08.9"],
       keyword: ["cellulitis", "skin infection", "abscess"],
     },
     sourceReferences: [
@@ -1136,7 +1148,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ...BATCH_GOVERNANCE_DRAFT,
     diagnosisMappings: {
       icdExact: ["K59.00"],
-      icdFamily: ["K59"],
+      icdFamily: ["K59.0"],
       keyword: ["constipation"],
     },
     sourceReferences: [
@@ -1229,7 +1241,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         "tia",
         "transient ischemic attack",
         "stroke-like symptoms",
-        "weakness",
         "numbness",
         "speech difficulty",
       ],
@@ -1574,8 +1585,6 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       "worsening_symptoms",
     ],
     diagnosisMappings: {
-      icdExact: ["J00"],
-      icdFamily: ["J00"],
       keyword: ["pediatric uri", "pediatric upper respiratory", "child cold", "rhume enfant"],
     },
     sourceReferences: [
@@ -3017,10 +3026,12 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       requiresEmergencyEscalation: true,
     },
     diagnosisMappings: {
+      icdFamily: ["R53"],
       keyword: [
         "high risk medical weakness",
         "hrm general weakness",
         "generalized weakness high risk medical",
+        "generalized weakness",
       ],
     },
     sourceReferences: [
@@ -4054,6 +4065,80 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       registryFollowUp("sickday-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT,
+  },
+  {
+    id: "type_2_diabetes_v1",
+    version: "1.0.0",
+    title: "Type 2 diabetes outpatient discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low_to_moderate",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["E11.9"],
+      icdFamily: ["E11"],
+      keyword: ["type 2 diabetes", "diabetes type 2", "diabète de type 2"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Diabetes type 2",
+        url: "https://medlineplus.gov/diabetestype2.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("t2dm-pcp", "PRIMARY_CARE", ED_DEFAULT_PCP_FOLLOW_UP_TIMING),
+    ],
+    suggestedText: TYPE_2_DIABETES_SUGGESTED_TEXT,
+  },
+  {
+    id: "vaccination_visit_v1",
+    version: "1.0.0",
+    title: "Vaccination / immunization visit discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["Z23"],
+      keyword: ["vaccination", "immunization", "vaccine"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Vaccines",
+        url: "https://medlineplus.gov/vaccines.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("vacc-pcp", "PRIMARY_CARE", ED_DEFAULT_PCP_FOLLOW_UP_TIMING),
+    ],
+    suggestedText: VACCINATION_VISIT_SUGGESTED_TEXT,
+  },
+  {
+    id: "wellness_visit_v1",
+    version: "1.0.0",
+    title: "General wellness / routine visit discharge documentation",
+    specialtyCategory: "primary_care",
+    riskCategory: "low",
+    ...BATCH_GOVERNANCE_DRAFT,
+    diagnosisMappings: {
+      icdExact: ["Z00.0"],
+      icdFamily: ["Z00"],
+      keyword: ["wellness visit", "general medical examination", "routine checkup"],
+    },
+    sourceReferences: [
+      {
+        label: "MedlinePlus — Health screenings",
+        url: "https://medlineplus.gov/healthcheckup.html",
+        publisher: "U.S. National Library of Medicine (MedlinePlus)",
+        accessedAt: ACCESSED_AT,
+      },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("well-pcp", "PRIMARY_CARE", ED_DEFAULT_PCP_FOLLOW_UP_TIMING),
+    ],
+    suggestedText: WELLNESS_VISIT_SUGGESTED_TEXT,
   },
   {
     id: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,

@@ -3,6 +3,10 @@
  * No cross-language fallback at apply time.
  */
 
+import {
+  applyGoldStandardToSuggestedTextBody,
+} from "./providerDischargeTemplateGoldStandard";
+
 export type ProviderDischargeTemplateLocale = "en" | "fr";
 
 export const PROVIDER_DISCHARGE_TEMPLATE_LOCALES = ["en", "fr"] as const satisfies readonly ProviderDischargeTemplateLocale[];
@@ -74,7 +78,7 @@ export function getProviderDischargeSuggestedTextBody(
   if (!body) {
     throw new ProviderDischargeTemplateLocaleError(`[${template.id}] missing suggestedText.${locale}`);
   }
-  return body;
+  return applyGoldStandardToSuggestedTextBody(template.id, body, locale);
 }
 
 export function suggestedTextBodyBlob(body: ProviderDischargeTemplateSuggestedTextBody): string {

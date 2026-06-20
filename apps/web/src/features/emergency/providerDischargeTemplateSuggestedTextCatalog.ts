@@ -2942,22 +2942,100 @@ export const DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT: ProviderDischargeTemp
     }
   );
 
+export const TYPE_2_DIABETES_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for type 2 diabetes-related care needs. Continue routine diabetes self-care and outpatient follow-up as discussed during this visit.",
+      diagnosisInstructions:
+        "Follow the diabetes care plan reviewed during this visit. Monitor blood sugar at home if you have a monitor and know your targets. Do not change your usual diabetes medications without clinician guidance.",
+      medicationTreatment:
+        "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.",
+      returnPrecautions:
+        "Return to the emergency department immediately for symptoms of very high or low blood sugar, confusion, severe vomiting, dehydration, chest pain, or if you feel unsafe at home.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour un besoin de suivi lié au diabète de type 2. Poursuivez l'autosurveillance habituelle et le suivi ambulatoire selon les consignes reçues.",
+      diagnosisInstructions:
+        "Suivez le plan de soins du diabète revu lors de cette visite. Surveillez la glycémie à domicile si vous disposez d'un appareil et connaissez vos cibles. Ne modifiez pas vos médicaments habituels sans avis clinique.",
+      medicationTreatment:
+        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.",
+      returnPrecautions:
+        "Retournez aux urgences immédiatement en cas de glycémie très élevée ou très basse, de confusion, de vomissements sévères, de déshydratation, de douleur thoracique ou si vous ne vous sentez pas en sécurité à domicile.",
+    }
+  );
+
 export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
   localizedSuggestedText(
     {
-      description: "",
-      diagnosisInstructions: "",
-      medicationTreatment: "",
-      returnPrecautions: "",
-      returnWorkSchool: "",
-      treatment: "",
+      description:
+        "You were evaluated in the emergency department. Your clinician reviewed your symptoms and provided discharge instructions for outpatient care.",
+      diagnosisInstructions:
+        "Follow the instructions discussed during your visit. Rest as needed and monitor your symptoms at home. Contact your clinician if you have questions about your care plan.",
+      medicationTreatment:
+        "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.",
+      returnPrecautions:
+        "Return to the emergency department immediately if symptoms worsen, new concerning symptoms develop, or you feel unsafe at home.",
+      returnWorkSchool: "Return to work or school when you feel able and as directed by your clinician.",
     },
     {
-      description: "",
-      diagnosisInstructions: "",
-      medicationTreatment: "",
-      returnPrecautions: "",
-      returnWorkSchool: "",
-      treatment: "",
+      description:
+        "Vous avez été pris en charge aux urgences. Votre clinicien a évalué vos symptômes et a fourni des consignes de sortie pour un suivi ambulatoire.",
+      diagnosisInstructions:
+        "Suivez les instructions discutées lors de votre visite. Reposez-vous selon vos besoins et surveillez vos symptômes à domicile. Contactez votre clinicien si vous avez des questions sur votre plan de soins.",
+      medicationTreatment:
+        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.",
+      returnPrecautions:
+        "Retournez aux urgences immédiatement si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.",
+      returnWorkSchool: "Reprenez le travail ou les cours lorsque vous vous sentez apte et selon les directives de votre clinicien.",
+    }
+  );
+
+export const VACCINATION_VISIT_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were seen in the emergency department for vaccination or immunization needs. Outpatient follow-up may be needed to complete recommended vaccines or monitoring.",
+      diagnosisInstructions:
+        "Follow vaccine instructions given during this visit. Monitor for injection-site soreness, mild fever, or fatigue as discussed. Keep your vaccination record available for future visits.",
+      medicationTreatment:
+        "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.",
+      returnPrecautions:
+        "Return to the emergency department immediately for severe allergic reaction symptoms (trouble breathing, swelling of face or throat, widespread rash, fainting), high fever, or if you feel unsafe at home.",
+    },
+    {
+      description:
+        "Vous avez consulté aux urgences pour un besoin de vaccination ou d'immunisation. Un suivi ambulatoire peut être nécessaire pour compléter les vaccins recommandés ou la surveillance.",
+      diagnosisInstructions:
+        "Suivez les consignes vaccinales reçues lors de cette visite. Surveillez une douleur au site d'injection, une fièvre légère ou une fatigue selon les indications reçues. Conservez votre carnet de vaccination pour les prochaines visites.",
+      medicationTreatment:
+        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.",
+      returnPrecautions:
+        "Retournez aux urgences immédiatement en cas de réaction allergique sévère (difficulté à respirer, gonflement du visage ou de la gorge, éruption généralisée, évanouissement), de fièvre élevée ou si vous ne vous sentez pas en sécurité à domicile.",
+    }
+  );
+
+export const WELLNESS_VISIT_SUGGESTED_TEXT: ProviderDischargeTemplateSuggestedText =
+  localizedSuggestedText(
+    {
+      description:
+        "You were evaluated in the emergency department for a general health visit or routine follow-up concern. Continue routine care with your primary clinician as recommended.",
+      diagnosisInstructions:
+        "Follow any lifestyle, screening, or preventive care recommendations discussed during this visit. Keep scheduled primary care appointments.",
+      medicationTreatment:
+        "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.",
+      returnPrecautions:
+        "Return to the emergency department immediately if new severe symptoms develop, symptoms worsen, or you feel unsafe at home.",
+    },
+    {
+      description:
+        "Vous avez été pris en charge aux urgences pour une visite de santé générale ou un suivi de routine. Poursuivez les soins habituels avec votre médecin traitant selon les recommandations.",
+      diagnosisInstructions:
+        "Suivez les recommandations de mode de vie, de dépistage ou de soins préventifs discutées lors de cette visite. Respectez vos rendez-vous de soins primaires.",
+      medicationTreatment:
+        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.",
+      returnPrecautions:
+        "Retournez aux urgences immédiatement si de nouveaux symptômes sévères apparaissent, si les symptômes s'aggravent ou si vous ne vous sentez pas en sécurité à domicile.",
     }
   );
