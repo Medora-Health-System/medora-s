@@ -10,6 +10,7 @@ import {
 import { calculateAge } from "@/lib/patientDisplay";
 import { hydrateProviderDischargeDocumentationForm } from "./providerDischargeDocumentationModel";
 import type { ProviderDischargeDiagnosisCard } from "./providerDischargeDocumentationModel";
+import { mergeMedicationNamesForDischargeContext } from "./providerDischargeMedicationContext";
 
 export type PatientSpecificDischargeAdditionSeverity = "info" | "caution" | "high_risk";
 
@@ -941,6 +942,9 @@ export function buildPatientSpecificDischargeContextFromDischargeJson(
     patientAgeYears: input.patientAgeYears,
     diagnosisCodes,
     diagnosisLabels,
-    medicationNames: input.medicationNames,
+    medicationNames: mergeMedicationNamesForDischargeContext({
+      dischargeSummaryJson,
+      explicitMedicationNames: input.medicationNames,
+    }),
   });
 }

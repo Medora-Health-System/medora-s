@@ -24,6 +24,10 @@ import {
   buildPatientSpecificDischargeContextFromDischargeJson,
   type PatientSpecificDischargeContext,
 } from "@/features/emergency/providerDischargePatientSpecificAdditions";
+import {
+  mergeMedicationNamesForDischargeContext,
+  type DischargeMedicationSourceInput,
+} from "@/features/emergency/providerDischargeMedicationContext";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -71,34 +75,38 @@ function appendProviderDischargeDocumentationPrintSection(
   dischargeSummaryJson: unknown,
   language: SupportedLanguage,
   patientDob?: string | null,
-  patientSpecificDischargeContext?: PatientSpecificDischargeContext
+  patientSpecificDischargeContext?: PatientSpecificDischargeContext,
+  dischargeMedicationSources?: DischargeMedicationSourceInput
 ): void {
+  const wiredMedicationNames = mergeMedicationNamesForDischargeContext({
+    dischargeSummaryJson,
+    ...dischargeMedicationSources,
+    explicitMedicationNames: [
+      ...(dischargeMedicationSources?.explicitMedicationNames ?? []),
+      ...(patientSpecificDischargeContext?.medicationNames ?? []),
+    ],
+  });
   const baseContext = buildPatientSpecificDischargeContextFromDischargeJson(dischargeSummaryJson, {
     patientDob,
-    medicationNames: patientSpecificDischargeContext?.medicationNames,
+    medicationNames: wiredMedicationNames.length ? wiredMedicationNames : undefined,
     historyCodes: patientSpecificDischargeContext?.diagnosisCodes,
     historyLabels: patientSpecificDischargeContext?.diagnosisLabels,
     patientAgeYears: patientSpecificDischargeContext?.patientAgeYears,
   });
   const renderOptions: ProviderDischargeDocumentationRenderOptions = {
-    patientContext: patientSpecificDischargeContext ?
-      {
-        ...baseContext,
-        ...patientSpecificDischargeContext,
-        diagnosisCodes: [
-          ...(baseContext.diagnosisCodes ?? []),
-          ...(patientSpecificDischargeContext.diagnosisCodes ?? []),
-        ],
-        diagnosisLabels: [
-          ...(baseContext.diagnosisLabels ?? []),
-          ...(patientSpecificDischargeContext.diagnosisLabels ?? []),
-        ],
-        medicationNames: [
-          ...(baseContext.medicationNames ?? []),
-          ...(patientSpecificDischargeContext.medicationNames ?? []),
-        ],
-      }
-    : baseContext,
+    patientContext: {
+      ...baseContext,
+      ...(patientSpecificDischargeContext ?? {}),
+      diagnosisCodes: [
+        ...(baseContext.diagnosisCodes ?? []),
+        ...(patientSpecificDischargeContext?.diagnosisCodes ?? []),
+      ],
+      diagnosisLabels: [
+        ...(baseContext.diagnosisLabels ?? []),
+        ...(patientSpecificDischargeContext?.diagnosisLabels ?? []),
+      ],
+      medicationNames: wiredMedicationNames.length ? wiredMedicationNames : baseContext.medicationNames,
+    },
   };
   const block = buildProviderDischargeDocumentationSummaryBlock(
     dischargeSummaryJson,
@@ -153,9 +161,18 @@ export function getDischargePrintHtml(params: {
   language: SupportedLanguage;
   /** Optional enriched context (e.g. home medications, problem list) for append-only additions. */
   patientSpecificDischargeContext?: PatientSpecificDischargeContext;
+  /** Optional medication sources for discharge personalization (no API fetch in print). */
+  dischargeMedicationSources?: DischargeMedicationSourceInput;
 }): string {
-  const { patient, encounter, facilityName, primaryDiagnosis, language, patientSpecificDischargeContext } =
-    params;
+  const {
+    patient,
+    encounter,
+    facilityName,
+    primaryDiagnosis,
+    language,
+    patientSpecificDischargeContext,
+    dischargeMedicationSources,
+  } = params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -232,7 +249,8 @@ export function getDischargePrintHtml(params: {
     encounter.dischargeSummaryJson,
     language,
     patient.dob,
-    patientSpecificDischargeContext
+    patientSpecificDischargeContext,
+    dischargeMedicationSources
   );
 
   if (d && dischargeSummaryHasPatientInstructions(d)) {

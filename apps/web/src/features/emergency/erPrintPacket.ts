@@ -45,6 +45,10 @@ import type { EdClinicalTimelineEntry } from "@medora/shared";
 import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
 import { buildPatientSpecificDischargeContextFromDischargeJson } from "@/features/emergency/providerDischargePatientSpecificAdditions";
+import {
+  mergeMedicationNamesForDischargeContext,
+  type DischargeMedicationSourceInput,
+} from "@/features/emergency/providerDischargeMedicationContext";
 import { readNursingDischargeExecutionStored } from "@/features/emergency/nursingDischargeExecutionModel";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import {
@@ -137,11 +141,17 @@ function appendProviderDischargeDocumentationPrint(
   body: string[],
   language: SupportedLanguage,
   dischargeSummaryJson: unknown,
-  patientDob?: string | null
+  patientDob?: string | null,
+  medicationSources?: DischargeMedicationSourceInput
 ): void {
+  const wiredMedicationNames = mergeMedicationNamesForDischargeContext({
+    dischargeSummaryJson,
+    ...medicationSources,
+  });
   const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language, {
     patientContext: buildPatientSpecificDischargeContextFromDischargeJson(dischargeSummaryJson, {
       patientDob,
+      medicationNames: wiredMedicationNames.length ? wiredMedicationNames : undefined,
     }),
   });
   if (!block) return;
@@ -434,7 +444,12 @@ export function getErPrintPacketHtml(params: {
     }
   }
 
-  appendProviderDischargeDocumentationPrint(body, language, encounter.dischargeSummaryJson, patient.dob);
+  appendProviderDischargeDocumentationPrint(body, language, encounter.dischargeSummaryJson, patient.dob, {
+    nursingAssessment: encounter.nursingAssessment,
+    dischargeSummaryJson: encounter.dischargeSummaryJson,
+    medicationOrderRows: medicationOrderRows ?? undefined,
+    marEventRows: marEventRows ?? undefined,
+  });
 
   body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
   appendEmtalaBlock(body, language, loc, emtalaDerived);

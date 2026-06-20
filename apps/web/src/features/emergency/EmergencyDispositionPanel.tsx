@@ -51,6 +51,10 @@ import {
 import { buildProviderDischargeDocumentationPreviewSections } from "@/features/emergency/providerDischargeDocumentationSummary";
 import type { PatientSpecificDischargeContext } from "@/features/emergency/providerDischargePatientSpecificAdditions";
 import { buildPatientSpecificDischargeContext } from "@/features/emergency/providerDischargePatientSpecificAdditions";
+import {
+  mergeMedicationNamesForDischargeContext,
+  type DischargeMedicationSourceInput,
+} from "@/features/emergency/providerDischargeMedicationContext";
 import { EdDispositionPreviewPanel } from "@/features/emergency/EdDispositionPreviewPanel";
 import {
   edDispositionTouchButtonStyle,
@@ -124,6 +128,7 @@ export function EmergencyDispositionPanel({
   canEditNursingDischarge,
   canEditMedicalDischarge,
   patientSpecificDischargeContext,
+  dischargeMedicationSources,
 }: {
   encounterId: string;
   facilityId: string;
@@ -134,6 +139,8 @@ export function EmergencyDispositionPanel({
   canEditNursingDischarge: boolean;
   canEditMedicalDischarge: boolean;
   patientSpecificDischargeContext?: PatientSpecificDischargeContext;
+  /** Optional medication sources (orders, MAR, home meds) for discharge personalization. */
+  dischargeMedicationSources?: DischargeMedicationSourceInput;
 }) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
@@ -267,12 +274,33 @@ export function EmergencyDispositionPanel({
     return opt?.label ?? dischargeForm.dischargeMode.trim();
   }, [OUTCOME_OPTIONS, outcomeUi, dischargeForm.dischargeMode]);
 
+  const wiredMedicationNames = useMemo(
+    () =>
+      mergeMedicationNamesForDischargeContext({
+        nursingAssessment: encounter.nursingAssessment,
+        dischargeSummaryJson: encounter.dischargeSummaryJson,
+        providerDischargeForm: providerDischargeDoc,
+        ...dischargeMedicationSources,
+        explicitMedicationNames: [
+          ...(dischargeMedicationSources?.explicitMedicationNames ?? []),
+          ...(patientSpecificDischargeContext?.medicationNames ?? []),
+        ],
+      }),
+    [
+      dischargeMedicationSources,
+      encounter.dischargeSummaryJson,
+      encounter.nursingAssessment,
+      patientSpecificDischargeContext?.medicationNames,
+      providerDischargeDoc,
+    ]
+  );
+
   const resolvedPatientDischargeContext = useMemo((): PatientSpecificDischargeContext | undefined => {
     const base = buildPatientSpecificDischargeContext({
       patientDob: encounter.patient?.dob ?? null,
       diagnosisCodes: providerDischargeDoc.diagnosisRefs.map((r) => r.code),
       diagnosisLabels: providerDischargeDoc.diagnosisRefs.map((r) => r.label),
-      medicationNames: patientSpecificDischargeContext?.medicationNames,
+      medicationNames: wiredMedicationNames.length ? wiredMedicationNames : undefined,
       patientAgeYears: patientSpecificDischargeContext?.patientAgeYears,
     });
     if (!patientSpecificDischargeContext) return base;
@@ -287,12 +315,14 @@ export function EmergencyDispositionPanel({
         ...(base.diagnosisLabels ?? []),
         ...(patientSpecificDischargeContext.diagnosisLabels ?? []),
       ],
-      medicationNames: [
-        ...(base.medicationNames ?? []),
-        ...(patientSpecificDischargeContext.medicationNames ?? []),
-      ],
+      medicationNames: wiredMedicationNames.length ? wiredMedicationNames : base.medicationNames,
     };
-  }, [encounter.patient?.dob, patientSpecificDischargeContext, providerDischargeDoc.diagnosisRefs]);
+  }, [
+    encounter.patient?.dob,
+    patientSpecificDischargeContext,
+    providerDischargeDoc.diagnosisRefs,
+    wiredMedicationNames,
+  ]);
 
   const previewModel = useMemo(() => {
     const base = buildErDispositionPreviewModel(
