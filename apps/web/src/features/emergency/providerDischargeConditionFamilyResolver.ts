@@ -8,6 +8,10 @@ import {
   type ClinicalConditionFamilyDefinition,
   type ClinicalConditionFamilyId,
 } from "./providerDischargeConditionFamilies";
+import {
+  evaluatePediatricFeverAgePolicy,
+  isPediatricFeverIcdCode,
+} from "./providerDischargePediatricFeverAgePolicy";
 import { GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID } from "./providerDischargeTemplateRegistry";
 
 export type ClinicalConditionFamilyMatchLevel =
@@ -19,10 +23,18 @@ export type ClinicalConditionFamilyMatchLevel =
 export type ClinicalConditionFamilyResolveContext = {
   /** Patient age in years when available from chart context. */
   patientAgeYears?: number;
+  /** Patient date of birth (ISO) — used to derive age when years not supplied. */
+  patientDob?: string;
   /** Documented patient sex when available. */
   patientSex?: "female" | "male" | "unknown";
   /** Explicit pregnancy context when available. */
   isPregnant?: boolean;
+  /** Encounter billing/class context when available from chart. */
+  encounterClass?: "ED" | "INPATIENT" | "OBSERVATION" | "OUTPATIENT";
+  /** Fever policy: waive adult fever minAge when unknown age defaults to adult template. */
+  feverAdultDefaultUnknownAge?: boolean;
+  /** Fever policy: force generic when pediatric label lacks age confirmation. */
+  feverForceGenericFallback?: boolean;
 };
 
 export type ClinicalConditionFamilyResolveResult = {
@@ -83,7 +95,10 @@ function passesGuardrails(
     if (age >= maxAge) return false;
   }
   if (minAge !== undefined) {
-    if (age === undefined) return false;
+    if (age === undefined) {
+      if (context?.feverAdultDefaultUnknownAge && family.id === "fever") return true;
+      return false;
+    }
     if (age < minAge) return false;
   }
   const requiredSex = family.guardrails?.sex?.sex;
@@ -124,6 +139,35 @@ function resultFromFamily(
   };
 }
 
+function buildEffectiveFamilyResolveContext(
+  input: {
+    code?: string;
+    displayName?: string;
+    label?: string;
+    context?: ClinicalConditionFamilyResolveContext;
+  }
+): ClinicalConditionFamilyResolveContext | undefined {
+  const feverPolicy = evaluatePediatricFeverAgePolicy({
+    code: input.code,
+    displayName: input.displayName,
+    label: input.label,
+    patientAgeYears: input.context?.patientAgeYears,
+    patientDob: input.context?.patientDob,
+  });
+
+  const resolvedAge =
+    feverPolicy.resolvedAgeYears ?? input.context?.patientAgeYears;
+
+  return {
+    ...input.context,
+    patientAgeYears: resolvedAge,
+    feverAdultDefaultUnknownAge:
+      input.context?.feverAdultDefaultUnknownAge ?? feverPolicy.feverAdultDefaultUnknownAge,
+    feverForceGenericFallback:
+      input.context?.feverForceGenericFallback ?? feverPolicy.forceGenericFallback,
+  };
+}
+
 export function resolveClinicalConditionFamily(input: {
   code?: string;
   displayName?: string;
@@ -134,7 +178,16 @@ export function resolveClinicalConditionFamily(input: {
   const labelText = normalizeToken(
     [input.displayName, input.label, input.code].filter(Boolean).join(" ")
   );
-  const context = input.context;
+  const context = buildEffectiveFamilyResolveContext(input);
+
+  if (context?.feverForceGenericFallback && isPediatricFeverIcdCode(code)) {
+    return {
+      familyId: null,
+      family: null,
+      templateId: GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
+      matchLevel: "generic",
+    };
+  }
 
   const families = getRoutableClinicalConditionFamilies();
 

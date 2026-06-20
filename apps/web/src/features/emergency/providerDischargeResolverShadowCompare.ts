@@ -4,7 +4,14 @@
  */
 
 import type { ClinicalConditionFamilyRoutingStatus } from "./providerDischargeConditionFamilyTypes";
-import { resolveClinicalConditionFamily, type ClinicalConditionFamilyResolveContext } from "./providerDischargeConditionFamilyResolver";
+import {
+  resolveClinicalConditionFamily,
+  type ClinicalConditionFamilyResolveContext,
+} from "./providerDischargeConditionFamilyResolver";
+import {
+  evaluatePediatricFeverAgePolicy,
+  isAdultToPediatricPreventedOutcome,
+} from "./providerDischargePediatricFeverAgePolicy";
 import {
   GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID,
   resolveProviderDischargeTemplateForDiagnosis,
@@ -38,6 +45,79 @@ export type ShadowModeResolverComparatorReport = {
   regressionRiskCount: number;
   genericFallbackCount: number;
 };
+
+function refineShadowOutcomeForAgePolicy(input: {
+  compare: ShadowResolverCompareResult;
+  feverPolicyStatus: ReturnType<typeof evaluatePediatricFeverAgePolicy>["status"];
+  registryTemplateId: string;
+  familyTemplateId: string;
+}): ShadowResolverCompareResult {
+  const { compare, feverPolicyStatus, registryTemplateId, familyTemplateId } = input;
+
+  if (
+    isAdultToPediatricPreventedOutcome({
+      registryTemplateId,
+      familyTemplateId,
+      policyStatus: feverPolicyStatus,
+    })
+  ) {
+    return {
+      ...compare,
+      same: false,
+      familyOutcome: "safer_family",
+      explanation:
+        "Age policy prevented unsafe pediatric routing when age was unavailable or adult-confirmed.",
+      recommendedAction:
+        "Accept family adult fever default; registry pediatric route requires age context review.",
+    };
+  }
+
+  if (
+    compare.familyOutcome === "regression_risk" &&
+    familyTemplateId.includes("pediatric") &&
+    feverPolicyStatus !== "pediatric_confirmed"
+  ) {
+    return {
+      ...compare,
+      familyOutcome: "needs_review",
+      explanation: "Pediatric fever template blocked without confirmed pediatric age context.",
+      recommendedAction: "Provide patient age or use adult fever policy default.",
+    };
+  }
+
+  if (feverPolicyStatus === "needs_review_pediatric_label_no_age") {
+    return {
+      ...compare,
+      familyOutcome: "needs_review",
+      explanation: "Explicit pediatric label without age — clinical review required before routing.",
+      recommendedAction: "Confirm patient age or keep registry resolver.",
+    };
+  }
+
+  return compare;
+}
+
+function buildShadowCompareContext(input: {
+  code?: string;
+  displayName?: string;
+  label?: string;
+  context?: ClinicalConditionFamilyResolveContext;
+}): ClinicalConditionFamilyResolveContext | undefined {
+  const feverPolicy = evaluatePediatricFeverAgePolicy({
+    code: input.code,
+    displayName: input.displayName,
+    label: input.label,
+    patientAgeYears: input.context?.patientAgeYears,
+    patientDob: input.context?.patientDob,
+  });
+
+  return {
+    ...input.context,
+    patientAgeYears: feverPolicy.resolvedAgeYears ?? input.context?.patientAgeYears,
+    feverAdultDefaultUnknownAge: feverPolicy.feverAdultDefaultUnknownAge,
+    feverForceGenericFallback: feverPolicy.forceGenericFallback,
+  };
+}
 
 function classifyShadowOutcome(input: {
   registryTemplateId: string;
@@ -192,6 +272,15 @@ export function compareRegistryResolverToFamilyResolver(input: {
   label?: string;
   context?: ClinicalConditionFamilyResolveContext;
 }): ShadowResolverCompareResult {
+  const context = buildShadowCompareContext(input);
+  const feverPolicy = evaluatePediatricFeverAgePolicy({
+    code: input.code,
+    displayName: input.displayName,
+    label: input.label,
+    patientAgeYears: context?.patientAgeYears,
+    patientDob: context?.patientDob,
+  });
+
   const registry = resolveProviderDischargeTemplateForDiagnosis({
     code: input.code,
     displayName: input.displayName ?? input.label,
@@ -200,14 +289,21 @@ export function compareRegistryResolverToFamilyResolver(input: {
     code: input.code,
     displayName: input.displayName,
     label: input.label,
-    context: input.context,
+    context,
   });
 
-  return classifyShadowOutcome({
+  const raw = classifyShadowOutcome({
     registryTemplateId: registry.template.id,
     familyTemplateId: family.templateId,
     routingStatus: family.family?.routingStatus ?? null,
     familyMatchLevel: family.matchLevel,
+  });
+
+  return refineShadowOutcomeForAgePolicy({
+    compare: raw,
+    feverPolicyStatus: feverPolicy.status,
+    registryTemplateId: registry.template.id,
+    familyTemplateId: family.templateId,
   });
 }
 

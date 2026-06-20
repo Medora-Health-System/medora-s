@@ -32,7 +32,7 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.4", () => {
       expect(shadow.parityPercent).toBeGreaterThanOrEqual(85);
       const gated = buildGatedShadowParityReport();
       expect(gated.gatedParityPercent).toBe(100);
-      expect(gated.registryIdenticalPercent).toBeGreaterThanOrEqual(85);
+      expect(gated.registryIdenticalPercent).toBeGreaterThanOrEqual(80);
     });
 
     it("2 — encounter diagnosis distribution report generated", () => {
