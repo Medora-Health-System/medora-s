@@ -4,7 +4,7 @@
  */
 
 import {
-  CLINICAL_CONDITION_FAMILY_DEFINITIONS,
+  getRoutableClinicalConditionFamilies,
   type ClinicalConditionFamilyDefinition,
   type ClinicalConditionFamilyId,
 } from "./providerDischargeConditionFamilies";
@@ -122,8 +122,10 @@ export function resolveClinicalConditionFamily(input: {
   );
   const context = input.context;
 
+  const families = getRoutableClinicalConditionFamilies();
+
   if (code) {
-    for (const family of CLINICAL_CONDITION_FAMILY_DEFINITIONS) {
+    for (const family of families) {
       if (!passesGuardrails(family, context)) continue;
       if (isExcluded(code, family)) continue;
       for (const exact of family.icdExact ?? []) {
@@ -139,7 +141,7 @@ export function resolveClinicalConditionFamily(input: {
       prefix: string;
     } | null = null;
 
-    for (const family of CLINICAL_CONDITION_FAMILY_DEFINITIONS) {
+    for (const family of families) {
       if (!passesGuardrails(family, context)) continue;
       if (isExcluded(code, family)) continue;
       for (const rawPrefix of family.icdPrefixes ?? []) {
@@ -164,7 +166,7 @@ export function resolveClinicalConditionFamily(input: {
     token: string;
   } | null = null;
 
-  for (const family of CLINICAL_CONDITION_FAMILY_DEFINITIONS) {
+  for (const family of families) {
     if (!passesGuardrails(family, context)) continue;
     for (const keyword of family.keywords ?? []) {
       const token = normalizeToken(keyword);
