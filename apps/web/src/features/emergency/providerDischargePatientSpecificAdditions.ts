@@ -4,6 +4,9 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import {
+  resolveMedicationRiskDischargeAdditions,
+} from "./providerDischargeMedicationRiskRules";
 import { calculateAge } from "@/lib/patientDisplay";
 import { hydrateProviderDischargeDocumentationForm } from "./providerDischargeDocumentationModel";
 import type { ProviderDischargeDiagnosisCard } from "./providerDischargeDocumentationModel";
@@ -830,11 +833,34 @@ export function sortPatientSpecificDischargeAdditions(
   });
 }
 
-export function resolvePatientSpecificDischargeAdditions(input: {
+export function normalizeDischargeAdditionTextKey(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function mergePatientSpecificAndMedicationAdditions(
+  clinical: PatientSpecificDischargeAddition[],
+  medication: PatientSpecificDischargeAddition[]
+): PatientSpecificDischargeAddition[] {
+  const seenIds = new Set<string>();
+  const seenTexts = new Set<string>();
+  const merged: PatientSpecificDischargeAddition[] = [];
+
+  for (const addition of [...clinical, ...medication]) {
+    if (seenIds.has(addition.id)) continue;
+    const textKey = normalizeDischargeAdditionTextKey(addition.text);
+    if (seenTexts.has(textKey)) continue;
+    seenIds.add(addition.id);
+    seenTexts.add(textKey);
+    merged.push(addition);
+  }
+
+  return merged;
+}
+
+export function resolveClinicalPatientSpecificDischargeAdditions(input: {
   templateIds: readonly string[];
   context: PatientSpecificDischargeContext;
   locale: SupportedLanguage;
-  maxAdditions?: number;
 }): PatientSpecificDischargeAddition[] {
   const signals = resolvePatientSignals(input.templateIds, input.context);
   if (!signals.hasAnyTemplate) return [];
@@ -862,7 +888,21 @@ export function resolvePatientSpecificDischargeAdditions(input: {
     });
   }
 
-  const sorted = sortPatientSpecificDischargeAdditions(additions);
+  return additions;
+}
+
+export function resolvePatientSpecificDischargeAdditions(input: {
+  templateIds: readonly string[];
+  context: PatientSpecificDischargeContext;
+  locale: SupportedLanguage;
+  maxAdditions?: number;
+}): PatientSpecificDischargeAddition[] {
+  if (input.templateIds.length === 0) return [];
+
+  const clinical = resolveClinicalPatientSpecificDischargeAdditions(input);
+  const medication = resolveMedicationRiskDischargeAdditions(input);
+  const merged = mergePatientSpecificAndMedicationAdditions(clinical, medication);
+  const sorted = sortPatientSpecificDischargeAdditions(merged);
   const limit = input.maxAdditions ?? MAX_PATIENT_SPECIFIC_ADDITIONS;
   return sorted.slice(0, limit);
 }
