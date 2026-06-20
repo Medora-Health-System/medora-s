@@ -7,6 +7,7 @@ import { DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES } from "./providerDischarg
 import { PHASE1_CLINICAL_CONDITION_FAMILIES } from "./providerDischargeConditionFamiliesPhase1";
 import { TIER1_CLINICAL_CONDITION_FAMILIES } from "./providerDischargeConditionFamiliesTier1";
 import { TIER2_CLINICAL_CONDITION_FAMILIES } from "./providerDischargeConditionFamiliesTier2";
+import { TIER3_GAP_CLOSURE_CLINICAL_CONDITION_FAMILIES } from "./providerDischargeConditionFamiliesTier3GapClosure";
 import type {
   ClinicalConditionFamilyDefinition,
   ClinicalConditionFamilyReviewStatus,
@@ -34,6 +35,7 @@ export const CLINICAL_CONDITION_FAMILY_DEFINITIONS: readonly ClinicalConditionFa
   ...TIER1_CLINICAL_CONDITION_FAMILIES,
   ...TIER2_CLINICAL_CONDITION_FAMILIES,
   ...DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES,
+  ...TIER3_GAP_CLOSURE_CLINICAL_CONDITION_FAMILIES,
 ];
 
 export function getClinicalConditionFamilyById(
@@ -44,6 +46,14 @@ export function getClinicalConditionFamilyById(
 
 export function getRoutableClinicalConditionFamilies(): readonly ClinicalConditionFamilyDefinition[] {
   return CLINICAL_CONDITION_FAMILY_DEFINITIONS.filter(
-    (f) => f.routingStatus !== "UNSAFE_DO_NOT_MAP"
+    (f) =>
+      f.routingStatus !== "UNSAFE_DO_NOT_MAP" &&
+      f.routingStatus !== "DEFERRED_SPECIALTY_ONLY"
   );
+}
+
+export function getFamiliesByRoutingStatus(
+  status: ClinicalConditionFamilyRoutingStatus
+): readonly ClinicalConditionFamilyDefinition[] {
+  return CLINICAL_CONDITION_FAMILY_DEFINITIONS.filter((f) => f.routingStatus === status);
 }

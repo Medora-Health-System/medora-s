@@ -9,7 +9,8 @@ export type ClinicalConditionFamilyReviewStatus = "draft" | "reviewed" | "approv
 export type ClinicalConditionFamilyRoutingStatus =
   | "READY"
   | "NEEDS_REVIEW"
-  | "UNSAFE_DO_NOT_MAP";
+  | "UNSAFE_DO_NOT_MAP"
+  | "DEFERRED_SPECIALTY_ONLY";
 
 export type EdClinicalDomain =
   | "Respiratory"

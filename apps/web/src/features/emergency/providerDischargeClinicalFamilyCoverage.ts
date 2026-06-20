@@ -11,6 +11,7 @@ import {
 import {
   EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP,
 } from "./providerDischargeConditionFamiliesDomainExtensions";
+import { TIER3_EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP } from "./providerDischargeConditionFamiliesTier3GapClosure";
 import type { EdClinicalDomain } from "./providerDischargeConditionFamilyTypes";
 import { resolveClinicalConditionFamily } from "./providerDischargeConditionFamilyResolver";
 import {
@@ -112,6 +113,9 @@ export function buildTemplateToFamilyMap(): Map<string, string> {
   }
 
   for (const [templateId, familyId] of Object.entries(EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP)) {
+    map.set(templateId, familyId);
+  }
+  for (const [templateId, familyId] of Object.entries(TIER3_EXPLICIT_REGISTRY_TEMPLATE_FAMILY_MAP)) {
     map.set(templateId, familyId);
   }
 
@@ -466,6 +470,6 @@ export function buildResolverParityReport(
     saferFamilyCount,
     potentialRegressionCount,
     parityPercent,
-    targetMet: parityPercent >= 90,
+    targetMet: parityPercent >= 95,
   };
 }
