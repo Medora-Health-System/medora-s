@@ -16,6 +16,7 @@ import {
   type DischargeSummaryFieldsFr,
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
+import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -46,6 +47,37 @@ function line(label: string, value: string | null | undefined): string {
   const v = value?.trim();
   if (!v) return "";
   return `<p style="margin: 6px 0; line-height: 1.45;"><strong>${esc(label)}</strong> ${esc(v)}</p>`;
+}
+
+function summaryBlockLineToHtml(summaryLine: string): string {
+  const trimmed = summaryLine.trim();
+  if (!trimmed) return "";
+  const colonIdx = trimmed.indexOf(": ");
+  if (colonIdx > 0 && !trimmed.startsWith("•")) {
+    return line(trimmed.slice(0, colonIdx), trimmed.slice(colonIdx + 2));
+  }
+  return `<p style="margin: 6px 0; line-height: 1.45;">${esc(trimmed)}</p>`;
+}
+
+function appendProviderDischargeDocumentationPrintSection(
+  bodySections: string[],
+  dischargeSummaryJson: unknown,
+  language: SupportedLanguage
+): void {
+  const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language);
+  if (!block || block.lines.length === 0) return;
+
+  bodySections.push(
+    `<h2 style="font-size: 15px; margin: 18px 0 10px 0; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 4px;">${esc(
+      block.title
+    )}</h2>`
+  );
+  bodySections.push(`<div style="margin-bottom: 16px;">`);
+  for (const summaryLine of block.lines) {
+    const html = summaryBlockLineToHtml(summaryLine);
+    if (html) bodySections.push(html);
+  }
+  bodySections.push(`</div>`);
 }
 
 const DISCHARGE_CORE_FIELD_LABEL_KEYS: Record<(typeof DISCHARGE_SUMMARY_CORE_STRING_KEYS)[number], string> = {
@@ -151,6 +183,8 @@ export function getDischargePrintHtml(params: {
     }
   }
   bodySections.push(`</div>`);
+
+  appendProviderDischargeDocumentationPrintSection(bodySections, encounter.dischargeSummaryJson, language);
 
   if (d && dischargeSummaryHasPatientInstructions(d)) {
     const loc = printDateLocale(language);

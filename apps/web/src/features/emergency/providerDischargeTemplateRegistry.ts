@@ -490,6 +490,11 @@ const ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE = {
 /** @deprecated Use BATCH_GOVERNANCE_DRAFT */
 const BATCH_1_GOVERNANCE = BATCH_GOVERNANCE_DRAFT;
 
+/** MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.1 — default ED outpatient follow-up windows. */
+export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING = "within 1–2 days";
+export const ED_DEFAULT_SPECIALIST_FOLLOW_UP_TIMING = "within 1–2 days or as clinically appropriate";
+export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING_OR_DIRECTED = "within 1–2 days or as directed";
+
 function registryFollowUp(
   id: string,
   specialty: string,
@@ -533,8 +538,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("chest-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("chest-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("chest-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("chest-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: CHEST_PAIN_SUGGESTED_TEXT,
   },
@@ -571,9 +576,9 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("abd-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("abd-gi", "GASTROENTEROLOGY", "as clinically appropriate"),
-      registryFollowUp("abd-surgery", "GENERAL_SURGERY", "as clinically appropriate"),
+      registryFollowUp("abd-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("abd-gi", "GASTROENTEROLOGY", "within 1–2 days or as clinically appropriate"),
+      registryFollowUp("abd-surgery", "GENERAL_SURGERY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: ABDOMINAL_PAIN_SUGGESTED_TEXT,
   },
@@ -603,7 +608,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("headache-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("headache-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("headache-neuro", "NEUROLOGY", "for recurrent or severe symptoms"),
     ],
     suggestedText: HEADACHE_SUGGESTED_TEXT,
@@ -640,7 +645,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("uri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("uri-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: URI_COUGH_SUGGESTED_TEXT,
   },
   {
@@ -670,7 +675,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("uti-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed"),
+      registryFollowUp("uti-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("uti-urology", "UROLOGY", "for recurrent or complicated symptoms"),
     ],
     suggestedText: UTI_SUGGESTED_TEXT,
@@ -727,7 +732,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("nausea-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("nausea-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: NAUSEA_VOMITING_SUGGESTED_TEXT,
   },
   {
@@ -762,7 +767,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("gastro-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("gastro-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: GASTROENTERITIS_SUGGESTED_TEXT,
   },
   {
@@ -791,7 +796,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("back-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("back-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("back-ortho", "ORTHOPEDICS", "for persistent or recurrent symptoms"),
     ],
     suggestedText: BACK_PAIN_SUGGESTED_TEXT,
@@ -816,7 +821,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("dental-fu", "PRIMARY_CARE", "within several days", "Dentist or oral surgery as directed"),
+      registryFollowUp("dental-fu", "PRIMARY_CARE", "within 1–2 days", "Dentist or oral surgery as directed"),
     ],
     suggestedText: DENTAL_PAIN_SUGGESTED_TEXT,
   },
@@ -846,7 +851,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("otitis-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("otitis-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("otitis-ent", "ENT", "for recurrent or worsening symptoms"),
     ],
     suggestedText: OTITIS_PHARYNGITIS_SUGGESTED_TEXT,
@@ -872,8 +877,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("htn-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("htn-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("htn-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("htn-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: HYPERTENSION_SUGGESTED_TEXT,
   },
@@ -897,7 +902,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("cellulitis-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("cellulitis-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("cellulitis-wound", "WOUND_CARE", "if worsening or recurrent"),
     ],
     suggestedText: CELLULITIS_SUGGESTED_TEXT,
@@ -921,7 +926,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("dehydration-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("dehydration-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: DEHYDRATION_SUGGESTED_TEXT,
   },
   {
@@ -950,7 +955,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("asthma-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("asthma-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("asthma-pulm", "PULMONOLOGY", "for recurrent or severe symptoms"),
     ],
     suggestedText: ASTHMA_EXACERBATION_SUGGESTED_TEXT,
@@ -981,8 +986,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("copd-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("copd-pulm", "PULMONOLOGY", "as clinically appropriate"),
+      registryFollowUp("copd-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("copd-pulm", "PULMONOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: COPD_EXACERBATION_SUGGESTED_TEXT,
   },
@@ -1011,7 +1016,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("bronchitis-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("bronchitis-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: BRONCHITIS_SUGGESTED_TEXT,
   },
   {
@@ -1040,7 +1045,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("pneumonia-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("pneumonia-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("pneumonia-pulm", "PULMONOLOGY", "for recurrent or complicated illness"),
     ],
     suggestedText: PNEUMONIA_SUGGESTED_TEXT,
@@ -1065,8 +1070,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("syncope-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("syncope-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("syncope-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("syncope-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: SYNCOPE_SUGGESTED_TEXT,
   },
@@ -1091,7 +1096,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("vertigo-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("vertigo-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("vertigo-ent", "ENT", "for persistent vestibular symptoms"),
       registryFollowUp("vertigo-neuro", "NEUROLOGY", "for persistent or recurrent symptoms"),
     ],
@@ -1117,8 +1122,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("stone-urology", "UROLOGY", "within several days or as directed"),
-      registryFollowUp("stone-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("stone-urology", "UROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("stone-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: KIDNEY_STONE_SUGGESTED_TEXT,
   },
@@ -1143,7 +1148,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("constipation-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("constipation-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("constipation-gi", "GASTROENTEROLOGY", "for persistent or recurrent symptoms"),
     ],
     suggestedText: CONSTIPATION_SUGGESTED_TEXT,
@@ -1174,7 +1179,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("allergy-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("allergy-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("allergy-imm", "PRIMARY_CARE", "Allergy / Immunology if recurrent or trigger unclear"),
     ],
     suggestedText: ALLERGIC_REACTION_SUGGESTED_TEXT,
@@ -1205,7 +1210,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("head-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("head-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("head-neuro", "NEUROLOGY", "for persistent concussion symptoms"),
     ],
     suggestedText: MINOR_HEAD_INJURY_SUGGESTED_TEXT,
@@ -1244,8 +1249,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("tia-neuro", "NEUROLOGY", "within several days or as directed"),
-      registryFollowUp("tia-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("tia-neuro", "NEUROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("tia-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: TIA_STROKE_LIKE_SUGGESTED_TEXT,
   },
@@ -1275,8 +1280,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("seizure-neuro", "NEUROLOGY", "within several days or as directed"),
-      registryFollowUp("seizure-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("seizure-neuro", "NEUROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("seizure-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: SEIZURE_SUGGESTED_TEXT,
   },
@@ -1300,8 +1305,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("palp-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
-      registryFollowUp("palp-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("palp-pcp", "PRIMARY_CARE", "within 1–2 days"),
+      registryFollowUp("palp-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PALPITATIONS_SUGGESTED_TEXT,
   },
@@ -1332,9 +1337,9 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("sob-pcp", "PRIMARY_CARE", "within several days or as directed"),
-      registryFollowUp("sob-pulm", "PULMONOLOGY", "as clinically appropriate"),
-      registryFollowUp("sob-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("sob-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+      registryFollowUp("sob-pulm", "PULMONOLOGY", "within 1–2 days or as clinically appropriate"),
+      registryFollowUp("sob-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: SHORTNESS_OF_BREATH_SUGGESTED_TEXT,
   },
@@ -1357,7 +1362,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("chestwall-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("chestwall-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: CHEST_WALL_PAIN_SUGGESTED_TEXT,
   },
   {
@@ -1405,7 +1410,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("hypo-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("hypo-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("hypo-endo", "PRIMARY_CARE", "Endocrinology follow-up as directed"),
     ],
     suggestedText: HYPOGLYCEMIA_SUGGESTED_TEXT,
@@ -1431,7 +1436,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("hyper-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("hyper-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("hyper-endo", "PRIMARY_CARE", "Endocrinology follow-up as directed"),
     ],
     suggestedText: HYPERGLYCEMIA_SUGGESTED_TEXT,
@@ -1462,7 +1467,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("alc-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("alc-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
       registryFollowUp("alc-bh", "PSYCHIATRY", "Behavioral health / substance-use resources as appropriate"),
     ],
     suggestedText: ALCOHOL_INTOXICATION_SUGGESTED_TEXT,
@@ -1487,7 +1492,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("anx-pcp", "PRIMARY_CARE", "within 1–2 weeks"),
+      registryFollowUp("anx-pcp", "PRIMARY_CARE", "within 1–2 days"),
       registryFollowUp("anx-bh", "PSYCHIATRY", "Behavioral health follow-up as appropriate"),
     ],
     suggestedText: ANXIETY_PANIC_SUGGESTED_TEXT,
@@ -1522,7 +1527,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ],
     defaultFollowUps: [
       registryFollowUp("pf-pcp", "PRIMARY_CARE", "within 1–3 days if fever persists"),
-      registryFollowUp("pf-peds", "PEDIATRICS", "as clinically appropriate"),
+      registryFollowUp("pf-peds", "PEDIATRICS", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PEDIATRIC_FEVER_SUGGESTED_TEXT,
   },
@@ -1581,7 +1586,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("puri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("puri-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: PEDIATRIC_URI_SUGGESTED_TEXT,
   },
   {
@@ -1605,8 +1610,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("pot-peds", "PEDIATRICS", "within 1–2 weeks"),
-      registryFollowUp("pot-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("pot-peds", "PEDIATRICS", "within 1–2 days"),
+      registryFollowUp("pot-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PEDIATRIC_OTITIS_MEDIA_SUGGESTED_TEXT,
   },
@@ -1714,8 +1719,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("pa-peds", "PEDIATRICS", "within 1–2 weeks"),
-      registryFollowUp("pa-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("pa-peds", "PEDIATRICS", "within 1–2 days"),
+      registryFollowUp("pa-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PEDIATRIC_ASTHMA_EXACERBATION_SUGGESTED_TEXT,
   },
@@ -1805,8 +1810,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("pfs-peds", "PEDIATRICS", "within 1–2 weeks"),
-      registryFollowUp("pfs-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("pfs-peds", "PEDIATRICS", "within 1–2 days"),
+      registryFollowUp("pfs-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PEDIATRIC_FEBRILE_SEIZURE_SUGGESTED_TEXT,
   },
@@ -1839,7 +1844,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("pap-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("pap-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: PEDIATRIC_ABDOMINAL_PAIN_SUGGESTED_TEXT,
   },
   {
@@ -2070,8 +2075,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("pw-peds", "PEDIATRICS", "within 1–2 weeks"),
-      registryFollowUp("pw-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("pw-peds", "PEDIATRICS", "within 1–2 days"),
+      registryFollowUp("pw-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: PEDIATRIC_WHEEZING_SUGGESTED_TEXT,
   },
@@ -2108,7 +2113,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("pflu-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("pflu-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: PEDIATRIC_INFLUENZA_LIKE_ILLNESS_SUGGESTED_TEXT,
   },
   {
@@ -2186,7 +2191,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("odys-ob", "OBGYN", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("odys-ob", "OBGYN", "within 1–2 days")],
     suggestedText: OBGYN_DYSMENORRHEA_SUGGESTED_TEXT,
   },
   {
@@ -2293,7 +2298,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("ovag-ob", "OBGYN", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("ovag-ob", "OBGYN", "within 1–2 days")],
     suggestedText: OBGYN_VAGINITIS_SUGGESTED_TEXT,
   },
   {
@@ -2344,7 +2349,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("orl-ob", "OBGYN", "as clinically appropriate")],
+    defaultFollowUps: [registryFollowUp("orl-ob", "OBGYN", "within 1–2 days or as clinically appropriate")],
     suggestedText: OBGYN_ROUND_LIGAMENT_PAIN_SUGGESTED_TEXT,
   },
   {
@@ -2394,7 +2399,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bha-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+      registryFollowUp("bha-bh", "BEHAVIORAL_HEALTH", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_ANXIETY_PANIC_SYMPTOMS_SUGGESTED_TEXT,
   },
@@ -2422,7 +2427,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bhd-bh", "BEHAVIORAL_HEALTH", "within several days or as directed"),
+      registryFollowUp("bhd-bh", "BEHAVIORAL_HEALTH", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_DEPRESSION_CRISIS_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -2482,7 +2487,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bhai-sub", "SUBSTANCE_USE_TREATMENT", "within several days or as directed"),
+      registryFollowUp("bhai-sub", "SUBSTANCE_USE_TREATMENT", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_ALCOHOL_INTOXICATION_FOLLOW_UP_SUGGESTED_TEXT,
   },
@@ -2536,7 +2541,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bhsu-sub", "SUBSTANCE_USE_TREATMENT", "within several days or as directed"),
+      registryFollowUp("bhsu-sub", "SUBSTANCE_USE_TREATMENT", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_SUBSTANCE_USE_RESOURCES_SUGGESTED_TEXT,
   },
@@ -2618,7 +2623,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bhi-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+      registryFollowUp("bhi-bh", "BEHAVIORAL_HEALTH", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_INSOMNIA_STRESS_REACTION_SUGGESTED_TEXT,
   },
@@ -2645,7 +2650,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("bhg-bh", "BEHAVIORAL_HEALTH", "within 1–2 weeks or as directed"),
+      registryFollowUp("bhg-bh", "BEHAVIORAL_HEALTH", "within 1–2 days or as directed"),
     ],
     suggestedText: BEHAVIORAL_HEALTH_GRIEF_ADJUSTMENT_SUGGESTED_TEXT,
   },
@@ -2677,7 +2682,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tma-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tma-ortho", "ORTHOPEDICS", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_ANKLE_SPRAIN_SUGGESTED_TEXT,
   },
   {
@@ -2708,7 +2713,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmw-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tmw-ortho", "ORTHOPEDICS", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_WRIST_SPRAIN_SUGGESTED_TEXT,
   },
   {
@@ -2739,7 +2744,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmk-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tmk-ortho", "ORTHOPEDICS", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_KNEE_INJURY_SUGGESTED_TEXT,
   },
   {
@@ -2770,7 +2775,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tms-ortho", "ORTHOPEDICS", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tms-ortho", "ORTHOPEDICS", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_SHOULDER_PAIN_SUGGESTED_TEXT,
   },
   {
@@ -2800,7 +2805,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmb-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tmb-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_BACK_STRAIN_SUGGESTED_TEXT,
   },
   {
@@ -2830,7 +2835,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmn-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("tmn-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_NECK_STRAIN_SUGGESTED_TEXT,
   },
   {
@@ -2853,7 +2858,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmc-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("tmc-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: TRAUMA_MSK_CONTUSION_SUGGESTED_TEXT,
   },
   {
@@ -2877,7 +2882,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmr-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("tmr-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_RIB_INJURY_SUGGESTED_TEXT,
   },
   {
@@ -2950,7 +2955,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("tmm-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("tmm-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: TRAUMA_MSK_MVC_SORENESS_SUGGESTED_TEXT,
   },
   {
@@ -2978,7 +2983,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("cardiohtn-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed")],
+    defaultFollowUps: [registryFollowUp("cardiohtn-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: CARDIO_HYPERTENSION_ELEVATED_BP_SUGGESTED_TEXT,
   },
   {
@@ -3000,7 +3005,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("hrmf-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("hrmf-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: HIGH_RISK_MEDICAL_FATIGUE_SUGGESTED_TEXT,
   },
   {
@@ -3026,7 +3031,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("hrmw-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("hrmw-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: HIGH_RISK_MEDICAL_GENERAL_WEAKNESS_SUGGESTED_TEXT,
   },
   {
@@ -3050,7 +3055,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("hrmd-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("hrmd-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: HIGH_RISK_MEDICAL_DIZZINESS_SUGGESTED_TEXT,
   },
   {
@@ -3074,8 +3079,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("hrmh-pcp", "PRIMARY_CARE", "within several days or as directed"),
-      registryFollowUp("hrmh-neuro", "NEUROLOGY", "as clinically appropriate"),
+      registryFollowUp("hrmh-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+      registryFollowUp("hrmh-neuro", "NEUROLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: HIGH_RISK_MEDICAL_HEADACHE_SUGGESTED_TEXT,
   },
@@ -3103,7 +3108,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("hrmls-pcp", "PRIMARY_CARE", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("hrmls-pcp", "PRIMARY_CARE", "within 1–2 days or as directed")],
     suggestedText: HIGH_RISK_MEDICAL_LEG_SWELLING_SUGGESTED_TEXT,
   },
   {
@@ -3132,7 +3137,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("cardiocp-cardiology", "CARDIOLOGY", "within several days or as directed"),
+      registryFollowUp("cardiocp-cardiology", "CARDIOLOGY", "within 1–2 days or as directed"),
       registryFollowUp("cardiocp-ed", "EMERGENCY_MEDICINE", "if symptoms recur before cardiology follow-up"),
     ],
     suggestedText: CARDIO_CHEST_PAIN_FOLLOW_UP_SUGGESTED_TEXT,
@@ -3160,8 +3165,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("cardiosync-pcp", "PRIMARY_CARE", "within 1–2 weeks or as directed"),
-      registryFollowUp("cardiosync-cardiology", "CARDIOLOGY", "as clinically appropriate"),
+      registryFollowUp("cardiosync-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+      registryFollowUp("cardiosync-cardiology", "CARDIOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: CARDIO_SYNCOPE_FOLLOW_UP_SUGGESTED_TEXT,
   },
@@ -3188,7 +3193,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("cardioafib-cardiology", "CARDIOLOGY", "within several days or as directed")],
+    defaultFollowUps: [registryFollowUp("cardioafib-cardiology", "CARDIOLOGY", "within 1–2 days or as directed")],
     suggestedText: CARDIO_AFIB_RATE_CONTROLLED_SUGGESTED_TEXT,
   },
   {
@@ -3215,8 +3220,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("cardiohf-cardiology", "CARDIOLOGY", "within several days or as directed"),
-      registryFollowUp("cardiohf-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("cardiohf-cardiology", "CARDIOLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("cardiohf-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: CARDIO_HEART_FAILURE_SYMPTOMS_SUGGESTED_TEXT,
   },
@@ -3244,7 +3249,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("inffever-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("inffever-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: INFECTIOUS_FEVER_UNKNOWN_SOURCE_SUGGESTED_TEXT,
   },
@@ -3271,7 +3276,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("infuri-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("infuri-pcp", "PRIMARY_CARE", "within 1–2 days"),
     ],
     suggestedText: INFECTIOUS_UPPER_RESPIRATORY_INFECTION_SUGGESTED_TEXT,
   },
@@ -3297,7 +3302,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("infviral-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("infviral-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: INFECTIOUS_VIRAL_SYNDROME_SUGGESTED_TEXT,
   },
   {
@@ -3321,7 +3326,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("infphary-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("infphary-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: INFECTIOUS_PHARYNGITIS_SUGGESTED_TEXT,
   },
   {
@@ -3345,7 +3350,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("infsinus-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("infsinus-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: INFECTIOUS_SINUSITIS_SUGGESTED_TEXT,
   },
   {
@@ -3373,8 +3378,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("infpneum-pcp", "PRIMARY_CARE", "within several days or as directed"),
-      registryFollowUp("infpneum-pulm", "PULMONOLOGY", "as clinically appropriate"),
+      registryFollowUp("infpneum-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
+      registryFollowUp("infpneum-pulm", "PULMONOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: INFECTIOUS_PNEUMONIA_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3400,7 +3405,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("infcovid-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("infcovid-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: INFECTIOUS_COVID_LIKE_ILLNESS_SUGGESTED_TEXT,
   },
   {
@@ -3425,7 +3430,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         accessedAt: ACCESSED_AT,
       },
     ],
-    defaultFollowUps: [registryFollowUp("infgi-pcp", "PRIMARY_CARE", "if symptoms persist or worsen")],
+    defaultFollowUps: [registryFollowUp("infgi-pcp", "PRIMARY_CARE", "within 1–2 days")],
     suggestedText: GI_INFECTIOUS_GASTROENTERITIS_SUGGESTED_TEXT,
   },
   {
@@ -3451,7 +3456,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("infcell-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("infcell-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: INFECTIOUS_CELLULITIS_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3510,8 +3515,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("renalaki-neph", "NEPHROLOGY", "within several days or as directed"),
-      registryFollowUp("renalaki-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("renalaki-neph", "NEPHROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("renalaki-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: RENAL_AKI_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3536,7 +3541,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("renaldehyd-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("renaldehyd-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: RENAL_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3568,8 +3573,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("renalelect-neph", "NEPHROLOGY", "within several days or as directed"),
-      registryFollowUp("renalelect-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("renalelect-neph", "NEPHROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("renalelect-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: RENAL_ELECTROLYTE_ABNORMALITY_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3597,8 +3602,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("urocolic-uro", "UROLOGY", "within several days or as directed"),
-      registryFollowUp("urocolic-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("urocolic-uro", "UROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("urocolic-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: UROLOGY_RENAL_COLIC_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3623,7 +3628,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("urouti-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("urouti-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: UROLOGY_UTI_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3649,7 +3654,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("uropyelo-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("uropyelo-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: UROLOGY_PYELONEPHRITIS_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3676,8 +3681,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("urohem-uro", "UROLOGY", "within several days or as directed"),
-      registryFollowUp("urohem-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("urohem-uro", "UROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("urohem-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: UROLOGY_HEMATURIA_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3703,8 +3708,8 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("uroret-uro", "UROLOGY", "within several days or as directed"),
-      registryFollowUp("uroret-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("uroret-uro", "UROLOGY", "within 1–2 days or as directed"),
+      registryFollowUp("uroret-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: UROLOGY_URINARY_RETENTION_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3731,7 +3736,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ],
     defaultFollowUps: [
       registryFollowUp("urofoley-uro", "UROLOGY", "as directed"),
-      registryFollowUp("urofoley-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("urofoley-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: UROLOGY_FOLEY_CATHETER_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -3760,7 +3765,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ],
     defaultFollowUps: [
       registryFollowUp("dialysis-neph", "NEPHROLOGY", "as directed by dialysis team"),
-      registryFollowUp("dialysis-pcp", "PRIMARY_CARE", "as clinically appropriate"),
+      registryFollowUp("dialysis-pcp", "PRIMARY_CARE", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: DIALYSIS_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -3789,7 +3794,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("diabhyper-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("diabhyper-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: DIABETES_HYPERGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3818,7 +3823,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("diabhypo-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("diabhypo-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: DIABETES_HYPOGLYCEMIA_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3850,7 +3855,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     ],
     defaultFollowUps: [
       registryFollowUp("diabdka-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
-      registryFollowUp("diabdka-endo", "ENDOCRINOLOGY", "as clinically appropriate"),
+      registryFollowUp("diabdka-endo", "ENDOCRINOLOGY", "within 1–2 days or as clinically appropriate"),
     ],
     suggestedText: DIABETES_DKA_RETURN_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -3879,7 +3884,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("diabinsulin-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("diabinsulin-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: DIABETES_INSULIN_MANAGEMENT_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -3905,7 +3910,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("thyroid-endo", "ENDOCRINOLOGY", "within several days or as directed"),
+      registryFollowUp("thyroid-endo", "ENDOCRINOLOGY", "within 1–2 days or as directed"),
     ],
     suggestedText: ENDOCRINE_THYROID_SYMPTOM_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3932,7 +3937,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("metdehyd-pcp", "PRIMARY_CARE", "if symptoms persist or worsen"),
+      registryFollowUp("metdehyd-pcp", "PRIMARY_CARE", "within 1–2 days"),
     ],
     suggestedText: METABOLIC_DEHYDRATION_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3959,7 +3964,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("metnausea-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("metnausea-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: METABOLIC_NAUSEA_WEAKNESS_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -3987,7 +3992,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("metelect-endo", "ENDOCRINOLOGY", "within several days or as directed"),
+      registryFollowUp("metelect-endo", "ENDOCRINOLOGY", "within 1–2 days or as directed"),
     ],
     suggestedText: METABOLIC_ELECTROLYTE_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -4016,7 +4021,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("polyuria-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("polyuria-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: ENDOCRINE_POLYURIA_POLYDIPSIA_FOLLOWUP_SUGGESTED_TEXT,
   },
@@ -4046,7 +4051,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
       },
     ],
     defaultFollowUps: [
-      registryFollowUp("sickday-pcp", "PRIMARY_CARE", "within several days or as directed"),
+      registryFollowUp("sickday-pcp", "PRIMARY_CARE", "within 1–2 days or as directed"),
     ],
     suggestedText: DIABETES_SICK_DAY_PRECAUTIONS_SUGGESTED_TEXT,
   },
@@ -4065,6 +4070,9 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
         publisher: "Medora-S (internal governance scaffold)",
         accessedAt: ACCESSED_AT,
       },
+    ],
+    defaultFollowUps: [
+      registryFollowUp("generic-pcp", "PRIMARY_CARE", ED_DEFAULT_PCP_FOLLOW_UP_TIMING),
     ],
     suggestedText: GENERIC_ED_DISCHARGE_SUGGESTED_TEXT,
   },
