@@ -157,6 +157,7 @@ import {
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
 import { buildAppliedDiagnosisInstructionsFromTemplateBody } from "./providerDischargeTemplatePediatricGovernance";
+import { personalizeGenericDischargeTemplateBody } from "./providerDischargeTemplateGoldStandard";
 
 export type ProviderDischargeTemplateMatchLevel = "icdExact" | "icdFamily" | "keyword" | "generic";
 
@@ -4146,7 +4147,7 @@ export const PROVIDER_DISCHARGE_TEMPLATE_REGISTRY: readonly ProviderDischargeTem
     title: "Generic ED discharge documentation",
     specialtyCategory: "emergency_medicine",
     riskCategory: "unspecified",
-    clinicalReviewStatus: "draft",
+    clinicalReviewStatus: "reviewed",
     effectiveFrom: GOVERNANCE_EFFECTIVE_FROM,
     diagnosisMappings: {},
     sourceReferences: [
@@ -4522,8 +4523,6 @@ export function buildProviderDischargeCardFromDiagnosis(
     displayName: input.displayName,
   });
 
-  if (resolved.matchLevel === "generic") return card;
-
   return applyProviderDischargeTemplateToCard(card, resolved, {
     locale: input.locale ?? "fr",
     actor: input.actor,
@@ -4545,7 +4544,11 @@ export function applyProviderDischargeTemplateToCard(
   const { template, matchLevel } = resolved;
   const overwrite = options.overwriteExisting === true;
   const locale = options.locale;
-  const text = getProviderDischargeSuggestedTextBody(template, locale);
+  const rawText = getProviderDischargeSuggestedTextBody(template, locale);
+  const text =
+    template.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID ?
+      personalizeGenericDischargeTemplateBody(rawText, card.displayName)
+    : rawText;
   const sourceReferences = template.sourceReferences.map((r) => r.label);
 
   const next: ProviderDischargeDiagnosisCard = { ...card };

@@ -1500,11 +1500,24 @@ describe("edDisposition19Y", () => {
       expect(resolved.template.id).toBe("uri_cough_v1");
     });
 
-    it("generic fallback remains safe/empty", () => {
+    it("generic fallback is hospital-grade (not empty)", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "Unspecified" });
       expect(resolved.matchLevel).toBe("generic");
-      expect(resolved.template.suggestedText.en.description).toBe("");
-      expect(resolved.template.suggestedText.en.returnPrecautions).toBe("");
+      const body = getProviderDischargeSuggestedTextBody(resolved.template, "en");
+      expect(body.description).toContain("[diagnosis]");
+      expect(body.returnPrecautions).toContain("Return to the emergency department immediately");
+      const card = buildProviderDischargeCardFromDiagnosis({
+        sourceEncounterDiagnosisId: "dx-generic",
+        code: "Z99.99",
+        displayName: "Unspecified",
+        displayOrder: 0,
+        isPrimaryDiagnosis: true,
+        applyTemplateSuggestion: true,
+        locale: "en",
+      });
+      expect(card.description).toContain("Unspecified");
+      expect(card.diagnosisInstructions.trim().length).toBeGreaterThan(20);
+      expect(card.medicationTreatment).toContain("Do not start, stop, or change");
     });
 
     it("template text does not contain fabricated test/result language", () => {

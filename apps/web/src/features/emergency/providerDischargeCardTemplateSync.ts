@@ -171,7 +171,6 @@ export function syncProviderDischargeCardWithRef(
     code: ref.code,
     displayName: ref.label,
   });
-  if (resolved.matchLevel === "generic") return synced;
 
   const activeLocale = options.locale ?? "fr";
   const localeMismatch = providerDischargeCardNeedsLocaleReapply(withCreationIdentity, activeLocale);

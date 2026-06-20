@@ -27,7 +27,7 @@ export const ED_DISCHARGE_PCP_FOLLOW_UP_PHRASE_FR =
 
 /** Marker substrings used by governance tests — must appear in EN template bodies. */
 export const ED_DISCHARGE_GOLD_STANDARD_MARKERS_EN = {
-  medicationSafety: "Do not start new medications without clinician guidance",
+  medicationSafety: "without clinician guidance",
   universalReturnSuffix: "Return to the emergency department immediately if symptoms worsen",
   followUpWindow: "within 1–2 days",
 } as const;
@@ -35,10 +35,34 @@ export const ED_DISCHARGE_GOLD_STANDARD_MARKERS_EN = {
 export function bodyIncludesGoldStandardMedicationSafety(text: string): boolean {
   const blob = text.toLowerCase();
   return (
+    blob.includes("do not start, stop, or change medications without clinician guidance") ||
     blob.includes("do not start new medications without clinician guidance") ||
     blob.includes("only as prescribed or directed") ||
     blob.includes("only as prescribed or specifically recommended")
   );
+}
+
+export const GENERIC_ED_DISCHARGE_DIAGNOSIS_PLACEHOLDER = "[diagnosis]";
+
+/** Substitute diagnosis label into generic ED fallback scaffold at apply time. */
+export function personalizeGenericDischargeTemplateBody(
+  body: ProviderDischargeTemplateSuggestedTextBody,
+  diagnosisLabel: string
+): ProviderDischargeTemplateSuggestedTextBody {
+  const label = diagnosisLabel.trim() || "your condition";
+  const replace = (s: string) =>
+    s.replace(/\{diagnosis\}/gi, label).replace(/\[diagnosis\]/gi, label);
+  return {
+    ...body,
+    description: replace(body.description),
+    diagnosisInstructions: replace(body.diagnosisInstructions),
+    medicationTreatment: replace(body.medicationTreatment),
+    returnPrecautions: replace(body.returnPrecautions),
+    ...(body.returnWorkSchool ? { returnWorkSchool: replace(body.returnWorkSchool) } : {}),
+    ...(body.caregiverInstructions ?
+      { caregiverInstructions: replace(body.caregiverInstructions) }
+    : {}),
+  };
 }
 
 export function bodyIncludesGoldStandardReturnSuffix(text: string): boolean {

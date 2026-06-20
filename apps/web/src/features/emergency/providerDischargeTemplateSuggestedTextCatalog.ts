@@ -2970,22 +2970,22 @@ export const GENERIC_ED_DISCHARGE_SUGGESTED_TEXT: ProviderDischargeTemplateSugge
   localizedSuggestedText(
     {
       description:
-        "You were evaluated in the emergency department. Your clinician reviewed your symptoms and provided discharge instructions for outpatient care.",
+        "You were evaluated in the emergency department for [diagnosis]. Symptoms may evolve after an emergency visit.",
       diagnosisInstructions:
-        "Follow the instructions discussed during your visit. Rest as needed and monitor your symptoms at home. Contact your clinician if you have questions about your care plan.",
+        "Follow the care instructions discussed during your visit. Take medications only as prescribed or specifically recommended during this visit. Keep fluids, food, activity, wound care, and restrictions as directed for your condition.",
       medicationTreatment:
-        "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.",
+        "Use only medications prescribed or specifically recommended during this visit. Do not start, stop, or change medications without clinician guidance.",
       returnPrecautions:
         "Return to the emergency department immediately if symptoms worsen, new concerning symptoms develop, or you feel unsafe at home.",
       returnWorkSchool: "Return to work or school when you feel able and as directed by your clinician.",
     },
     {
       description:
-        "Vous avez été pris en charge aux urgences. Votre clinicien a évalué vos symptômes et a fourni des consignes de sortie pour un suivi ambulatoire.",
+        "Vous avez été pris en charge aux urgences pour [diagnosis]. Les symptômes peuvent évoluer après une visite aux urgences.",
       diagnosisInstructions:
-        "Suivez les instructions discutées lors de votre visite. Reposez-vous selon vos besoins et surveillez vos symptômes à domicile. Contactez votre clinicien si vous avez des questions sur votre plan de soins.",
+        "Suivez les consignes de soins discutées lors de votre visite. Prenez les médicaments uniquement selon la prescription ou les recommandations spécifiques reçues lors de cette visite. Maintenez l'hydratation, l'alimentation, l'activité, les soins de plaie et les restrictions selon les directives pour votre état.",
       medicationTreatment:
-        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas de nouveaux médicaments sans l'avis d'un clinicien.",
+        "Utilisez uniquement les médicaments prescrits ou recommandés spécifiquement lors de cette visite. N'introduisez pas, n'arrêtez pas et ne modifiez pas vos médicaments sans l'avis d'un clinicien.",
       returnPrecautions:
         "Retournez aux urgences immédiatement si les symptômes s'aggravent, si de nouveaux signes inquiétants apparaissent ou si vous ne vous sentez pas en sécurité à domicile.",
       returnWorkSchool: "Reprenez le travail ou les cours lorsque vous vous sentez apte et selon les directives de votre clinicien.",
