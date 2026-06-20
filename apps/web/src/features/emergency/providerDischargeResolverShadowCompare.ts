@@ -72,17 +72,25 @@ function classifyShadowOutcome(input: {
   }
 
   if (familyTemplateId === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID) {
+    if (registryTemplateId === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID) {
+      return {
+        registryTemplateId,
+        familyTemplateId,
+        same: true,
+        familyOutcome: "identical",
+        familyRoutingStatus: routingStatus,
+        explanation: "Both resolvers agree on generic fallback.",
+        recommendedAction: "No action — acceptable generic agreement.",
+      };
+    }
     return {
       registryTemplateId,
       familyTemplateId,
-      same: registryTemplateId === familyTemplateId,
+      same: false,
       familyOutcome: "generic_fallback",
       familyRoutingStatus: routingStatus,
       explanation: "Family resolver fell back to generic template.",
-      recommendedAction:
-        registryTemplateId !== GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID
-          ? "Extend family mapping for this ICD/label."
-          : "Both resolvers generic — acceptable.",
+      recommendedAction: "Extend family mapping for this ICD/label.",
     };
   }
 

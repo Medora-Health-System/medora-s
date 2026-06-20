@@ -13,6 +13,7 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       clinicalDomain: "Respiratory",
       icdExact: ["R06.02", "R06.00"],
       icdPrefixes: ["R06"],
+      excludeIcdExact: ["R06.2"],
       keywords: ["shortness of breath", "dyspnea", "breathlessness"],
       guardrails: {
         safety: { highRiskEscalation: true, requiresEdReturnPrecautions: true },
@@ -107,12 +108,18 @@ export const DOMAIN_EXTENSION_CLINICAL_CONDITION_FAMILIES: readonly ClinicalCond
       templateId: "alcohol_intoxication_v1",
       clinicalDomain: "Toxicology",
       icdPrefixes: ["F10", "Y91"],
+      excludeIcdExact: ["F10.239"],
+      excludeIcdPrefixes: ["F10.23"],
       keywords: ["alcohol intoxication", "intoxication"],
+      guardrails: {
+        safety: { requiresEdReturnPrecautions: true },
+      },
       specialtyCategory: "behavioral_health",
       riskCategory: "moderate",
-      clinicalRationale: "Alcohol intoxication follow-up; distinct from BH crisis family.",
+      clinicalRationale:
+        "Alcohol intoxication only; withdrawal codes excluded and routed to behavioral health withdrawal template.",
       reviewStatus: "reviewed",
-      routingStatus: "NEEDS_REVIEW",
+      routingStatus: "READY",
       sourceReferenceLabels: ["MedlinePlus — Alcohol use disorder"],
     },
     {

@@ -29,9 +29,9 @@ describe("MEDUI.ED.DISCHARGE.TEMPLATE_FAMILY_COVERAGE.4", () => {
       expect(dataset.length).toBeGreaterThan(50);
       const shadow = buildShadowModeValidationReport(buildClinicalTrafficDataset());
       expect(shadow.totalCompared).toBeGreaterThan(20);
-      expect(shadow.parityPercent).toBeGreaterThanOrEqual(70);
+      expect(shadow.parityPercent).toBeGreaterThanOrEqual(85);
       const gated = buildGatedShadowParityReport();
-      expect(gated.gatedParityPercent).toBeGreaterThanOrEqual(95);
+      expect(gated.gatedParityPercent).toBe(100);
       expect(gated.registryIdenticalPercent).toBeGreaterThanOrEqual(85);
     });
 

@@ -122,6 +122,9 @@ export const TIER2_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
     clinicalDomain: "Trauma",
     icdPrefixes: ["S09", "S00"],
     excludeIcdPrefixes: ["S06.0"],
+    icdExactTemplateOverrides: {
+      "S00.93XA": "pediatric_minor_head_injury_v1",
+    },
     keywords: ["minor head injury", "head injury", "scalp laceration"],
     specialtyCategory: "emergency_medicine",
     riskCategory: "moderate",
@@ -165,9 +168,9 @@ export const TIER2_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamily
     specialtyCategory: "hematology",
     riskCategory: "high",
     clinicalRationale:
-      "Conservative leg-swelling template only; no low-risk routing for confirmed DVT without anticoagulation context.",
-    reviewStatus: "draft",
-    routingStatus: "NEEDS_REVIEW",
+      "Conservative high-risk leg-swelling template for DVT evaluation discharge; confirmed DVT uses escalation template, not low-risk routing. PE remains UNSAFE_DO_NOT_MAP.",
+    reviewStatus: "reviewed",
+    routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Deep vein thrombosis"],
   },
   {

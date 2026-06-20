@@ -175,7 +175,11 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     templateId: "asthma_exacerbation_v1",
     additionalTemplateIds: ["pediatric_asthma_exacerbation_v1", "pediatric_wheezing_v1"],
     clinicalDomain: "Respiratory",
+    icdExact: ["R06.2"],
     icdPrefixes: ["J45"],
+    icdExactTemplateOverrides: {
+      "R06.2": "pediatric_wheezing_v1",
+    },
     keywords: ["asthma", "wheezing", "asthma exacerbation"],
     specialtyCategory: "pulmonology",
     riskCategory: "moderate",
@@ -336,18 +340,24 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
       "alcohol_intoxication_v1",
     ],
     clinicalDomain: "Behavioral Health",
-    icdExact: ["R45.851", "F41.0", "F41.9", "F32.9"],
+    icdExact: ["R45.851", "F41.0", "F41.9", "F32.9", "F10.239", "T40.2X5A"],
     icdPrefixes: ["F32"],
     keywords: [
       "bh suicidal ideation",
       "suicidal ideation",
       "bh depression crisis",
       "behavioral health crisis",
+      "bh alcohol withdrawal",
+      "bh opioid overdose",
+      "behavioral health crisis follow-up",
     ],
     icdExactTemplateOverrides: {
       "F41.0": "behavioral_health_anxiety_panic_symptoms_v1",
       "F41.9": "behavioral_health_anxiety_panic_symptoms_v1",
       "F32.9": "behavioral_health_depression_crisis_precautions_v1",
+      "R45.851": "behavioral_health_suicidal_ideation_precautions_v1",
+      "F10.239": "behavioral_health_alcohol_withdrawal_precautions_v1",
+      "T40.2X5A": "behavioral_health_opioid_overdose_aftercare_v1",
     },
     guardrails: {
       safety: {
@@ -358,9 +368,10 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
     },
     specialtyCategory: "behavioral_health",
     riskCategory: "high",
-    clinicalRationale: "Crisis safety planning and behavioral health follow-up; exact-code template overrides for anxiety/depression.",
-    reviewStatus: "draft",
-    routingStatus: "NEEDS_REVIEW",
+    clinicalRationale:
+      "Crisis safety planning with exact-code overrides; withdrawal and opioid aftercare separated from intoxication routing.",
+    reviewStatus: "reviewed",
+    routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Suicide", "MedlinePlus — Depression"],
   },
   {
@@ -392,12 +403,16 @@ export const PHASE1_CLINICAL_CONDITION_FAMILIES: readonly ClinicalConditionFamil
       "Z39.9": "obgyn_postpartum_warning_v1",
     },
     keywords: ["obgyn vaginal bleeding", "obgyn pelvic pain", "gynecologic bleeding"],
-    guardrails: { sex: { sex: "female" } },
+    guardrails: {
+      sex: { sex: "female" },
+      safety: { requiresEdReturnPrecautions: true, requiresSpecialistFollowUp: true },
+    },
     specialtyCategory: "obgyn",
     riskCategory: "moderate_to_high",
-    clinicalRationale: "Gynecologic bleeding and pelvic pain with OB/GYN follow-up; pregnancy-sensitive wording in templates.",
-    reviewStatus: "draft",
-    routingStatus: "NEEDS_REVIEW",
+    clinicalRationale:
+      "Gynecologic bleeding and pelvic pain with female sex guardrail and pregnancy-sensitive template overrides.",
+    reviewStatus: "reviewed",
+    routingStatus: "READY",
     sourceReferenceLabels: ["MedlinePlus — Vaginal bleeding", "MedlinePlus — Pelvic pain"],
   },
 ] as const;
