@@ -44,6 +44,7 @@ import {
 import type { EdClinicalTimelineEntry } from "@medora/shared";
 import { readErHandoffV1FromNursingAssessment } from "@medora/shared";
 import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
+import { buildPatientSpecificDischargeContextFromDischargeJson } from "@/features/emergency/providerDischargePatientSpecificAdditions";
 import { readNursingDischargeExecutionStored } from "@/features/emergency/nursingDischargeExecutionModel";
 import { i18nMessage } from "@/lib/i18nMessagesLookup";
 import {
@@ -135,9 +136,14 @@ function dischargeSummaryHasPatientInstructions(d: DischargeSummaryFieldsFr | nu
 function appendProviderDischargeDocumentationPrint(
   body: string[],
   language: SupportedLanguage,
-  dischargeSummaryJson: unknown
+  dischargeSummaryJson: unknown,
+  patientDob?: string | null
 ): void {
-  const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language);
+  const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language, {
+    patientContext: buildPatientSpecificDischargeContextFromDischargeJson(dischargeSummaryJson, {
+      patientDob,
+    }),
+  });
   if (!block) return;
   body.push(`<h2 style="margin: 16px 0 8px 0; font-size: 15px;">${esc(block.title)}</h2>`);
   for (const ln of block.lines) {
@@ -428,7 +434,7 @@ export function getErPrintPacketHtml(params: {
     }
   }
 
-  appendProviderDischargeDocumentationPrint(body, language, encounter.dischargeSummaryJson);
+  appendProviderDischargeDocumentationPrint(body, language, encounter.dischargeSummaryJson, patient.dob);
 
   body.push(h2(language, "printOutput.erPacket.sectionEmtalaSummary"));
   appendEmtalaBlock(body, language, loc, emtalaDerived);

@@ -33,6 +33,7 @@ export const providerDischargeDocumentation19YEn = {
   documentedBy: "Documented by",
   primary: "primary",
   diagnosisDocumentationSection: "Diagnosis documentation",
+  patientSpecificInstructionsSection: "Patient-specific instructions",
   dischargePlanningSection: "Discharge planning",
   summaryBlockTitle: "Provider discharge documentation",
   nursingSummaryBlockTitle: "Nursing discharge execution",

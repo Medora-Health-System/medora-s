@@ -15,7 +15,18 @@ import {
   type ProviderDischargeDocumentationForm,
   type ProviderDischargeFollowUpRow,
 } from "./providerDischargeDocumentationModel";
+import {
+  extractTemplateIdsFromDiagnosisCards,
+  resolvePatientSpecificDischargeAdditions,
+  type PatientSpecificDischargeAddition,
+  type PatientSpecificDischargeContext,
+} from "./providerDischargePatientSpecificAdditions";
 import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
+
+export type ProviderDischargeDocumentationRenderOptions = {
+  /** When omitted, patient-specific additions are not rendered (conservative default). */
+  patientContext?: PatientSpecificDischargeContext;
+};
 
 function p(locale: SupportedLanguage, key: string): string {
   return i18nMessage(locale, `providerDischargeDocumentation19Y.${key}`);
@@ -59,6 +70,61 @@ function localizedDiagnosisLine(
   return `${code} — ${getLocalizedDiagnosisDisplayLabel({ code, description: englishLabel }, locale)}${primarySuffix}`;
 }
 
+function appendPatientSpecificInstructionLines(
+  lines: string[],
+  selectedDocs: ProviderDischargeDiagnosisCard[],
+  locale: SupportedLanguage,
+  options?: ProviderDischargeDocumentationRenderOptions
+) {
+  if (!options?.patientContext) return;
+  const templateIds = extractTemplateIdsFromDiagnosisCards(selectedDocs);
+  const additions = resolvePatientSpecificDischargeAdditions({
+    templateIds,
+    context: options.patientContext,
+    locale,
+  });
+  if (!additions.length) return;
+  lines.push("");
+  lines.push(p(locale, "patientSpecificInstructionsSection"));
+  for (const addition of additions) {
+    lines.push(`• ${addition.text}`);
+  }
+}
+
+function buildPatientSpecificPreviewSection(
+  selectedDocs: ProviderDischargeDiagnosisCard[],
+  locale: SupportedLanguage,
+  options?: ProviderDischargeDocumentationRenderOptions
+): ErDispositionPreviewSection | null {
+  if (!options?.patientContext) return null;
+  const templateIds = extractTemplateIdsFromDiagnosisCards(selectedDocs);
+  const additions = resolvePatientSpecificDischargeAdditions({
+    templateIds,
+    context: options.patientContext,
+    locale,
+  });
+  if (!additions.length) return null;
+  return {
+    id: "providerPatientSpecific",
+    title: p(locale, "patientSpecificInstructionsSection"),
+    lines: additions.map((a) => `• ${a.text}`),
+  };
+}
+
+export function getPatientSpecificDischargeAdditionsForForm(
+  form: ProviderDischargeDocumentationForm,
+  locale: SupportedLanguage,
+  options?: ProviderDischargeDocumentationRenderOptions
+): PatientSpecificDischargeAddition[] {
+  if (!options?.patientContext) return [];
+  const selectedDocs = getSelectedDiagnosisDocs(form);
+  return resolvePatientSpecificDischargeAdditions({
+    templateIds: extractTemplateIdsFromDiagnosisCards(selectedDocs),
+    context: options.patientContext,
+    locale,
+  });
+}
+
 function appendDiagnosisCardLines(lines: string[], doc: ProviderDischargeDiagnosisCard, locale: SupportedLanguage) {
   const primarySuffix = doc.isPrimaryDiagnosis ? ` (${p(locale, "primary")})` : "";
   lines.push("");
@@ -94,7 +160,8 @@ function appendSharedPlanningLines(
 
 export function buildProviderDischargeDocumentationSummaryBlock(
   dischargeSummaryJson: unknown,
-  locale: SupportedLanguage
+  locale: SupportedLanguage,
+  options?: ProviderDischargeDocumentationRenderOptions
 ): VisitSummaryTextBlock | null {
   const form = hydrateProviderDischargeDocumentationForm(dischargeSummaryJson);
   const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);
@@ -123,11 +190,13 @@ export function buildProviderDischargeDocumentationSummaryBlock(
     for (const doc of selectedDocs) {
       appendDiagnosisCardLines(lines, doc, locale);
     }
+    appendPatientSpecificInstructionLines(lines, selectedDocs, locale, options);
     appendSharedPlanningLines(lines, form, locale);
   } else if (form.diagnosisDocs.length === 1) {
     lines.push("");
     lines.push(p(locale, "diagnosisDocumentationSection"));
     appendDiagnosisCardLines(lines, form.diagnosisDocs[0]!, locale);
+    appendPatientSpecificInstructionLines(lines, [form.diagnosisDocs[0]!], locale, options);
     appendSharedPlanningLines(lines, form, locale);
   } else {
     appendSharedPlanningLines(lines, form, locale);
@@ -193,7 +262,8 @@ function previewPushLine(lines: string[], label: string, value: string | null | 
 export function buildProviderDischargeDocumentationPreviewSections(
   providerForm: ProviderDischargeDocumentationForm,
   dischargeSummaryJson: unknown,
-  locale: SupportedLanguage
+  locale: SupportedLanguage,
+  options?: ProviderDischargeDocumentationRenderOptions
 ): ErDispositionPreviewSection[] {
   const meta = readProviderDischargeDocumentationMeta(dischargeSummaryJson);
   const selectedDocs = getSelectedDiagnosisDocs(providerForm);
@@ -228,6 +298,9 @@ export function buildProviderDischargeDocumentationPreviewSections(
       lines: docLines,
     });
   }
+
+  const patientSpecificSection = buildPatientSpecificPreviewSection(selectedDocs, locale, options);
+  if (patientSpecificSection) sections.push(patientSpecificSection);
 
   const planningLines: string[] = [];
   previewPushLine(planningLines, p(locale, "returnPrecautions"), providerForm.returnPrecautions);

@@ -16,7 +16,14 @@ import {
   type DischargeSummaryFieldsFr,
 } from "@/components/patient-chart/patientChartHelpers";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
-import { buildProviderDischargeDocumentationSummaryBlock } from "@/features/emergency/providerDischargeDocumentationSummary";
+import {
+  buildProviderDischargeDocumentationSummaryBlock,
+  type ProviderDischargeDocumentationRenderOptions,
+} from "@/features/emergency/providerDischargeDocumentationSummary";
+import {
+  buildPatientSpecificDischargeContextFromDischargeJson,
+  type PatientSpecificDischargeContext,
+} from "@/features/emergency/providerDischargePatientSpecificAdditions";
 
 export type DischargePrintPatient = {
   firstName?: string | null;
@@ -62,9 +69,42 @@ function summaryBlockLineToHtml(summaryLine: string): string {
 function appendProviderDischargeDocumentationPrintSection(
   bodySections: string[],
   dischargeSummaryJson: unknown,
-  language: SupportedLanguage
+  language: SupportedLanguage,
+  patientDob?: string | null,
+  patientSpecificDischargeContext?: PatientSpecificDischargeContext
 ): void {
-  const block = buildProviderDischargeDocumentationSummaryBlock(dischargeSummaryJson, language);
+  const baseContext = buildPatientSpecificDischargeContextFromDischargeJson(dischargeSummaryJson, {
+    patientDob,
+    medicationNames: patientSpecificDischargeContext?.medicationNames,
+    historyCodes: patientSpecificDischargeContext?.diagnosisCodes,
+    historyLabels: patientSpecificDischargeContext?.diagnosisLabels,
+    patientAgeYears: patientSpecificDischargeContext?.patientAgeYears,
+  });
+  const renderOptions: ProviderDischargeDocumentationRenderOptions = {
+    patientContext: patientSpecificDischargeContext ?
+      {
+        ...baseContext,
+        ...patientSpecificDischargeContext,
+        diagnosisCodes: [
+          ...(baseContext.diagnosisCodes ?? []),
+          ...(patientSpecificDischargeContext.diagnosisCodes ?? []),
+        ],
+        diagnosisLabels: [
+          ...(baseContext.diagnosisLabels ?? []),
+          ...(patientSpecificDischargeContext.diagnosisLabels ?? []),
+        ],
+        medicationNames: [
+          ...(baseContext.medicationNames ?? []),
+          ...(patientSpecificDischargeContext.medicationNames ?? []),
+        ],
+      }
+    : baseContext,
+  };
+  const block = buildProviderDischargeDocumentationSummaryBlock(
+    dischargeSummaryJson,
+    language,
+    renderOptions
+  );
   if (!block || block.lines.length === 0) return;
 
   bodySections.push(
@@ -111,8 +151,11 @@ export function getDischargePrintHtml(params: {
   /** Primary diagnosis for this encounter if known client-side */
   primaryDiagnosis?: string | null;
   language: SupportedLanguage;
+  /** Optional enriched context (e.g. home medications, problem list) for append-only additions. */
+  patientSpecificDischargeContext?: PatientSpecificDischargeContext;
 }): string {
-  const { patient, encounter, facilityName, primaryDiagnosis, language } = params;
+  const { patient, encounter, facilityName, primaryDiagnosis, language, patientSpecificDischargeContext } =
+    params;
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =
@@ -184,7 +227,13 @@ export function getDischargePrintHtml(params: {
   }
   bodySections.push(`</div>`);
 
-  appendProviderDischargeDocumentationPrintSection(bodySections, encounter.dischargeSummaryJson, language);
+  appendProviderDischargeDocumentationPrintSection(
+    bodySections,
+    encounter.dischargeSummaryJson,
+    language,
+    patient.dob,
+    patientSpecificDischargeContext
+  );
 
   if (d && dischargeSummaryHasPatientInstructions(d)) {
     const loc = printDateLocale(language);

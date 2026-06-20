@@ -33,6 +33,7 @@ export const providerDischargeDocumentation19YFr = {
   documentedBy: "Documenté par",
   primary: "principal",
   diagnosisDocumentationSection: "Documentation par diagnostic",
+  patientSpecificInstructionsSection: "Instructions propres au patient",
   dischargePlanningSection: "Planification de sortie",
   summaryBlockTitle: "Documentation médicale de sortie",
   nursingSummaryBlockTitle: "Exécution infirmière de sortie",
