@@ -158,6 +158,11 @@ import {
 } from "./providerDischargeDocumentationModel";
 import { buildAppliedDiagnosisInstructionsFromTemplateBody } from "./providerDischargeTemplatePediatricGovernance";
 import { personalizeGenericDischargeTemplateBody } from "./providerDischargeTemplateGoldStandard";
+import {
+  ED_DEFAULT_PCP_FOLLOW_UP_TIMING,
+  ED_DEFAULT_PCP_FOLLOW_UP_TIMING_OR_DIRECTED,
+  ED_DEFAULT_SPECIALIST_FOLLOW_UP_TIMING,
+} from "./providerDischargeFollowUpTimingLocale";
 
 export type ProviderDischargeTemplateMatchLevel = "icdExact" | "icdFamily" | "keyword" | "generic";
 
@@ -501,10 +506,11 @@ const ENDOCRINE_METABOLIC_TEMPLATE_GOVERNANCE = {
 /** @deprecated Use BATCH_GOVERNANCE_DRAFT */
 const BATCH_1_GOVERNANCE = BATCH_GOVERNANCE_DRAFT;
 
-/** MEDUI.ED.DISCHARGE.DIAGNOSIS_INSTRUCTIONS.1 — default ED outpatient follow-up windows. */
-export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING = "within 1–2 days";
-export const ED_DEFAULT_SPECIALIST_FOLLOW_UP_TIMING = "within 1–2 days or as clinically appropriate";
-export const ED_DEFAULT_PCP_FOLLOW_UP_TIMING_OR_DIRECTED = "within 1–2 days or as directed";
+export {
+  ED_DEFAULT_PCP_FOLLOW_UP_TIMING,
+  ED_DEFAULT_PCP_FOLLOW_UP_TIMING_OR_DIRECTED,
+  ED_DEFAULT_SPECIALIST_FOLLOW_UP_TIMING,
+} from "./providerDischargeFollowUpTimingLocale";
 
 function registryFollowUp(
   id: string,
@@ -4484,16 +4490,34 @@ export function resolveProviderDischargeTemplateForDiagnosis(input: {
   return { template: genericTemplate(), matchLevel: "generic" };
 }
 
-export type BuildProviderDischargeCardInput = {
+export type BuildProviderDischargeCardBaseInput = {
   sourceEncounterDiagnosisId: string;
   code: string;
   displayName: string;
   displayOrder: number;
   isPrimaryDiagnosis: boolean;
-  applyTemplateSuggestion?: boolean;
-  locale?: ProviderDischargeTemplateLocale;
   actor?: { displayName?: string; appliedAt?: string };
 };
+
+export type BuildProviderDischargeCardInput =
+  | (BuildProviderDischargeCardBaseInput & {
+      applyTemplateSuggestion?: false;
+      locale?: ProviderDischargeTemplateLocale;
+    })
+  | (BuildProviderDischargeCardBaseInput & {
+      applyTemplateSuggestion: true;
+      locale: ProviderDischargeTemplateLocale;
+    });
+
+export function requireProviderDischargeTemplateLocale(
+  locale: ProviderDischargeTemplateLocale | undefined,
+  context: string
+): ProviderDischargeTemplateLocale {
+  if (!locale) {
+    throw new Error(`providerDischarge: locale is required (${context})`);
+  }
+  return locale;
+}
 
 export function buildProviderDischargeCardFromDiagnosis(
   input: BuildProviderDischargeCardInput
@@ -4524,7 +4548,7 @@ export function buildProviderDischargeCardFromDiagnosis(
   });
 
   return applyProviderDischargeTemplateToCard(card, resolved, {
-    locale: input.locale ?? "fr",
+    locale: requireProviderDischargeTemplateLocale(input.locale, "buildProviderDischargeCardFromDiagnosis"),
     actor: input.actor,
     providerConfirmed: false,
     overwriteExisting: false,
@@ -4547,7 +4571,7 @@ export function applyProviderDischargeTemplateToCard(
   const rawText = getProviderDischargeSuggestedTextBody(template, locale);
   const text =
     template.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID ?
-      personalizeGenericDischargeTemplateBody(rawText, card.displayName)
+      personalizeGenericDischargeTemplateBody(rawText, card.displayName, locale)
     : rawText;
   const sourceReferences = template.sourceReferences.map((r) => r.label);
 

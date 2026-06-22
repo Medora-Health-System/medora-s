@@ -22,6 +22,10 @@ import {
   type PatientSpecificDischargeContext,
 } from "./providerDischargePatientSpecificAdditions";
 import { readNursingDischargeExecutionStored } from "./nursingDischargeExecutionModel";
+import {
+  localizeProviderDischargeFollowUpComments,
+  localizeProviderDischargeFollowUpTiming,
+} from "./providerDischargeFollowUpTimingLocale";
 
 export type ProviderDischargeDocumentationRenderOptions = {
   /** When omitted, patient-specific additions are not rendered (conservative default). */
@@ -54,10 +58,10 @@ function formatFollowUpRow(row: ProviderDischargeFollowUpRow, locale: SupportedL
     : row.specialty,
   ];
   if (row.providerOrFacility.trim()) parts.push(row.providerOrFacility.trim());
-  if (row.timing.trim()) parts.push(row.timing.trim());
+  if (row.timing.trim()) parts.push(localizeProviderDischargeFollowUpTiming(row.timing, locale));
   if (row.phone.trim()) parts.push(row.phone.trim());
   if (row.address.trim()) parts.push(row.address.trim());
-  if (row.comments.trim()) parts.push(row.comments.trim());
+  if (row.comments.trim()) parts.push(localizeProviderDischargeFollowUpComments(row.comments, locale));
   return parts.join(" · ");
 }
 

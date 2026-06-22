@@ -8,6 +8,7 @@ import {
   applyProviderDischargeTemplateToCard,
   buildProviderDischargeCardFromDiagnosis,
   PROVIDER_DISCHARGE_TEMPLATE_REGISTRY,
+  requireProviderDischargeTemplateLocale,
   resolveProviderDischargeTemplateForDiagnosis,
   type ProviderDischargeTemplateLocale,
 } from "./providerDischargeTemplateRegistry";
@@ -144,6 +145,13 @@ export type SyncProviderDischargeCardOptions = {
   forceOverwrite?: boolean;
 };
 
+function resolveSyncLocale(options: SyncProviderDischargeCardOptions): ProviderDischargeTemplateLocale {
+  return requireProviderDischargeTemplateLocale(
+    options.locale,
+    "syncProviderDischargeCardWithRef"
+  );
+}
+
 export function syncProviderDischargeCardWithRef(
   card: ProviderDischargeDiagnosisCard,
   ref: ProviderDischargeDiagnosisRef,
@@ -172,7 +180,7 @@ export function syncProviderDischargeCardWithRef(
     displayName: ref.label,
   });
 
-  const activeLocale = options.locale ?? "fr";
+  const activeLocale = resolveSyncLocale(options);
   const localeMismatch = providerDischargeCardNeedsLocaleReapply(withCreationIdentity, activeLocale);
   const overwrite =
     options.forceOverwrite === true ||
@@ -210,8 +218,12 @@ export function ensureProviderDischargeCardForRef(
     displayName: ref.label,
     displayOrder: options.displayOrder,
     isPrimaryDiagnosis: options.isPrimary,
-    applyTemplateSuggestion: options.applyTemplate ?? false,
-    locale: options.locale,
+    ...(options.applyTemplate ?
+      {
+        applyTemplateSuggestion: true as const,
+        locale: resolveSyncLocale(options),
+      }
+    : { applyTemplateSuggestion: false as const }),
     actor: options.actor,
   });
 

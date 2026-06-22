@@ -176,7 +176,7 @@ function resolveTemplateBodyForCertification(
   if (!template) return null;
   const raw = getProviderDischargeSuggestedTextBody(template, locale);
   if (templateId === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID) {
-    return personalizeGenericDischargeTemplateBody(raw, displayName);
+    return personalizeGenericDischargeTemplateBody(raw, displayName, locale);
   }
   return raw;
 }
@@ -366,7 +366,7 @@ export type GenericFallbackHospitalGradeCertification = {
 export function certifyGenericFallbackHospitalGrade(locale: "en" | "fr" = "en"): GenericFallbackHospitalGradeCertification {
   const template = PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.find((t) => t.id === GENERIC_PROVIDER_DISCHARGE_TEMPLATE_ID)!;
   const raw = getProviderDischargeSuggestedTextBody(template, locale);
-  const personalized = personalizeGenericDischargeTemplateBody(raw, "test diagnosis");
+  const personalized = personalizeGenericDischargeTemplateBody(raw, "test diagnosis", locale);
   const hasDescription = Boolean(personalized.description.trim());
   const hasInstructions = Boolean(personalized.diagnosisInstructions.trim());
   const hasMedicationTreatment = Boolean(personalized.medicationTreatment.trim());

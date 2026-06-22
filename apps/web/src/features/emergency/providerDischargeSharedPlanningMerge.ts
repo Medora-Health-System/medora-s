@@ -13,6 +13,7 @@ import {
   getProviderDischargeSuggestedTextBody,
   type ProviderDischargeTemplateLocale,
 } from "./providerDischargeTemplateLocale";
+import { localizeProviderDischargeFollowUpRows } from "./providerDischargeFollowUpTimingLocale";
 
 export type TemplateSharedFields = {
   returnPrecautions: string;
@@ -80,7 +81,9 @@ export function extractSharedFieldsFromTemplate(
   return {
     returnPrecautions: text.returnPrecautions,
     returnWorkSchool: text.returnWorkSchool,
-    defaultFollowUps: template.defaultFollowUps,
+    defaultFollowUps: template.defaultFollowUps?.length ?
+      localizeProviderDischargeFollowUpRows(template.defaultFollowUps, locale)
+    : undefined,
   };
 }
 

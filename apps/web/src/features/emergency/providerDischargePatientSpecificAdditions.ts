@@ -4,6 +4,7 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import { resolveProviderDischargeLocaleTextOrNull } from "./providerDischargeLocaleText";
 import {
   resolveMedicationRiskDischargeAdditions,
 } from "./providerDischargeMedicationRiskRules";
@@ -874,7 +875,8 @@ export function resolveClinicalPatientSpecificDischargeAdditions(input: {
     if (!isTemplateEligible(rule, input.templateIds)) continue;
     if (!rule.matches(signals)) continue;
 
-    const text = rule.text[input.locale] ?? rule.text.en;
+    const text = resolveProviderDischargeLocaleTextOrNull(rule.text, input.locale);
+    if (!text) continue;
     if (patientSpecificAdditionContainsForbiddenLanguage(text)) continue;
 
     seen.add(rule.id);

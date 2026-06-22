@@ -6,6 +6,7 @@ import type {
   ProviderDischargeTemplateLocale,
   ProviderDischargeTemplateSuggestedTextBody,
 } from "./providerDischargeTemplateLocale";
+import { resolveProviderDischargeFollowUpTimingCanonicalKey } from "./providerDischargeFollowUpTimingLocale";
 
 export const ED_DISCHARGE_MEDICATION_SAFETY_EN =
   "Use only medications prescribed or specifically recommended during this visit. Do not start new medications without clinician guidance.";
@@ -44,12 +45,22 @@ export function bodyIncludesGoldStandardMedicationSafety(text: string): boolean 
 
 export const GENERIC_ED_DISCHARGE_DIAGNOSIS_PLACEHOLDER = "[diagnosis]";
 
+const GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL: Record<ProviderDischargeTemplateLocale, string> = {
+  en: "your condition",
+  fr: "votre état",
+};
+
+export function genericDischargeEmptyDiagnosisLabel(locale: ProviderDischargeTemplateLocale): string {
+  return GENERIC_DISCHARGE_EMPTY_DIAGNOSIS_LABEL[locale];
+}
+
 /** Substitute diagnosis label into generic ED fallback scaffold at apply time. */
 export function personalizeGenericDischargeTemplateBody(
   body: ProviderDischargeTemplateSuggestedTextBody,
-  diagnosisLabel: string
+  diagnosisLabel: string,
+  locale: ProviderDischargeTemplateLocale
 ): ProviderDischargeTemplateSuggestedTextBody {
-  const label = diagnosisLabel.trim() || "your condition";
+  const label = diagnosisLabel.trim() || genericDischargeEmptyDiagnosisLabel(locale);
   const replace = (s: string) =>
     s.replace(/\{diagnosis\}/gi, label).replace(/\[diagnosis\]/gi, label);
   return {
@@ -75,7 +86,9 @@ export function bodyIncludesGoldStandardReturnSuffix(text: string): boolean {
 }
 
 export function followUpTimingUsesOneToTwoDays(timing: string): boolean {
-  const t = timing.toLowerCase();
+  const canonical =
+    resolveProviderDischargeFollowUpTimingCanonicalKey(timing)?.toLowerCase() ?? timing.toLowerCase();
+  const t = canonical;
   if (t.includes("1–2 week") || t.includes("1-2 week")) return false;
   if (t.includes("within 1–2 days") || t.includes("within 1-2 days")) return true;
   if (t.includes("within 1–3 days") || t.includes("3–5 days")) return true;
