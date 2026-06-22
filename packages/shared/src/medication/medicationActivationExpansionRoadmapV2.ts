@@ -42,7 +42,7 @@ const ED_TOKEN_HINTS = [
   "ondansetron",
 ];
 
-function classifyTrancheV2(record: MedicationActivationGovernanceRecord): MedicationExpansionTrancheV2Id {
+export function classifyTrancheV2(record: MedicationActivationGovernanceRecord): MedicationExpansionTrancheV2Id {
   const nameBlob = record.displayNameEn.toLowerCase();
   const routeLower = record.route.toLowerCase();
   if (ED_TOKEN_HINTS.some((t) => nameBlob.includes(t))) return "TRANCHE_3_ED";

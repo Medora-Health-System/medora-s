@@ -291,6 +291,8 @@ export * from "./medication/tdapGovernanceCertification.js";
 export * from "./medication/hospitalFormularyCoverageManifest.js";
 export * from "./medication/hospitalCoverageCertification.js";
 export * from "./medication/medicationActivationExpansionRoadmapV2.js";
+export * from "./medication/tranche1GovernedActivation.js";
+export * from "./medication/tranche2ChronicDiseaseActivation.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
