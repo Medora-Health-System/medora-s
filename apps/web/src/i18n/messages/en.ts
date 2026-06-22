@@ -1,5 +1,6 @@
 import { erTriageMessagesEn } from "./erTriage.en";
 import { providerDischargeDocumentation19YEn } from "./providerDischargeDocumentation19Y.en";
+import { tdapVaccineAdminEn } from "./tdapVaccineAdmin.en";
 import { providerDocumentationGiExtensionsComplaintIntelEn } from "./providerDocumentationGiExtensionsComplaintIntel.en";
 import { providerDocumentationPsychBehavioralComplaintIntelEn } from "./providerDocumentationPsychBehavioralComplaintIntel.en";
 import { providerDocumentationMedicationRefillComplaintIntelEn } from "./providerDocumentationMedicationRefillComplaintIntel.en";
@@ -11945,6 +11946,7 @@ export default {
       "Formats: PDF (dedicated field), PNG, JPEG or WebP. Max ~1.5 MB per file (server limit after encoding). Total JSON text + attachments: max 2.5 million characters.",
   },
   providerDischargeDocumentation19Y: providerDischargeDocumentation19YEn,
+  tdapVaccineAdmin: tdapVaccineAdminEn,
   emergencyDisposition: {
     preview: {
       dischargeModeLinePrefix: "Discharge disposition (chart):",
