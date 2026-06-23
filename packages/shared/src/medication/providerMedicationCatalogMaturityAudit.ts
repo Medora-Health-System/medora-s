@@ -229,7 +229,7 @@ export function buildMedicationEngineMaturityReport(): MedicationEngineMaturityR
   return [
     {
       domain: "Medication master/catalog",
-      currentCapability: "Dual model: Haiti CatalogMedication seed (249) + enterprise waves (477) + canonical MedicationProduct",
+      currentCapability: "Dual model: Haiti CatalogMedication seed (250) + enterprise waves (477) + canonical MedicationProduct",
       gaps: "No single unified runtime master; static manifests vs DB can drift",
       risk: "MEDIUM",
       maturityScore: 3,

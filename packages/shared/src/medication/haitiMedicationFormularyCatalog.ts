@@ -1,11 +1,11 @@
 /**
- * Haiti Phase 1 formulary source (249 unique catalog codes).
+ * Haiti Phase 1 formulary source (250 unique catalog codes).
  * Generated from apps/api/prisma/data/haiti-medications.ts — do not edit by hand.
  * Regenerate: node --experimental-strip-types scripts/generate-haiti-formulary-catalog-shared.mjs
  */
 import type { HaitiMedicationFormularyRow } from "./haitiCanonicalMedicationLinkageTypes.js";
 
-export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 249 as const;
+export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 250 as const;
 
 export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] = [
   {"code":"ACETAMINOPHEN_500","genericName":"Paracetamol","displayNameFr":"Paracétamol","strength":"500 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Analgésique / antipyrétique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Acetaminophen","Tylenol"]} as HaitiMedicationFormularyRow,
@@ -124,6 +124,7 @@ export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] =
   {"code":"GLICLAZIDE_80_MG_COMPRIME_ORAL","genericName":"Gliclazide","displayNameFr":"Gliclazide","strength":"80 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antidiabétique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Diamicron"]} as HaitiMedicationFormularyRow,
   {"code":"GRISEOFULVIN_500_MG_COMPRIME_ORAL","genericName":"Griseofulvin","displayNameFr":"Griséofulvine","strength":"500 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Antifongique","isEssential":false,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Grisovin"]} as HaitiMedicationFormularyRow,
   {"code":"HALOPERIDOL_5MG_ML_INJECTABLE","genericName":"Haloperidol","displayNameFr":"Halopéridol","displayNameEn":"Haloperidol","strength":"5 mg/mL","dosageForm":"injectable","route":"injectable","therapeuticClass":"Antipsychotique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Haldol","agitation","délirium","psychose urgence"]} as HaitiMedicationFormularyRow,
+  {"code":"ZIPRASIDONE_20_MG_GELULE_ORAL","genericName":"Ziprasidone","displayNameFr":"Ziprasidone","displayNameEn":"Ziprasidone","strength":"20 mg","dosageForm":"gélule","route":"orale","therapeuticClass":"Antipsychotique","isEssential":false,"isActive":false,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Geodon","agitation","psychose urgence","behavioral health"]} as HaitiMedicationFormularyRow,
   {"code":"HEPARIN_5000UI_ML_INJECTABLE","genericName":"Heparin","displayNameFr":"Héparine","displayNameEn":"Heparin","strength":"5,000 UI/mL","dosageForm":"injectable","route":"injectable","therapeuticClass":"Anticoagulant","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["héparine sodique","heparin sodium","anticoagulant urgence"]} as HaitiMedicationFormularyRow,
   {"code":"HYDROCHLOROTHIAZIDE_25","genericName":"Hydrochlorothiazide","displayNameFr":"Hydrochlorothiazide","strength":"25 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Diurétique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["HCTZ"]} as HaitiMedicationFormularyRow,
   {"code":"HYDROCORTISONE_1_CREME_TOPICAL","genericName":"Hydrocortisone","displayNameFr":"Hydrocortisone","strength":"1%","dosageForm":"crème","route":"topique","therapeuticClass":"Dermatologie","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["corticoïde crème"]} as HaitiMedicationFormularyRow,

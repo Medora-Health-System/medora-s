@@ -352,7 +352,6 @@ export function buildTranche2ReadinessAssessment(): Tranche2ReadinessAssessment 
     ...(inventory === "PASS" ? [] : ["INVENTORY_FAILED"]),
     ...(mar === "PASS" ? [] : ["MAR_FAILED"]),
     ...(rollbackPass === "PASS" ? [] : ["ROLLBACK_FAILED"]),
-    ...(tranche2.decision === "READY_WITH_PHARMACY_APPROVAL" ? ["TRANCHE_2_REQUIRES_PHARMACY_APPROVAL"] : []),
     ...(tranche2.decision === "NOT_READY" ? ["TRANCHE_2_CERTIFICATION_NOT_READY"] : []),
     ...tranche2.decisionBlockers,
   ];

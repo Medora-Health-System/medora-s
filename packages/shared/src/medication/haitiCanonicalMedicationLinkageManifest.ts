@@ -1,5 +1,5 @@
 /**
- * M1.5D — Haiti canonical linkage manifest (249 Haiti formulary codes).
+ * M1.5D — Haiti canonical linkage manifest (250 Haiti formulary codes).
  * Consumed by M1.5E seed/backfill — does not write to DB.
  */
 

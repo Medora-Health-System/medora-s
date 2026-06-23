@@ -200,7 +200,7 @@ export type Tranche2MaturityProjectionReport = {
 
 export type Tranche2CertificationDecision =
   | "READY_FOR_GOVERNED_ACTIVATION"
-  | "READY_WITH_PHARMACY_APPROVAL"
+  | "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY"
   | "NOT_READY";
 
 export type Tranche2CertificationReport = {
@@ -1137,7 +1137,9 @@ function resolveTranche2Decision(
   if (blockers.length > 0) return { decision: "NOT_READY", blockers };
 
   const needsPharmacy = report.duplicateRisk.byClassification.NEEDS_PHARMACY_REVIEW > 0;
-  if (needsPharmacy) return { decision: "READY_WITH_PHARMACY_APPROVAL", blockers: [] };
+  if (needsPharmacy) {
+    return { decision: "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY", blockers: [] };
+  }
 
   return { decision: "READY_FOR_GOVERNED_ACTIVATION", blockers: [] };
 }

@@ -331,7 +331,10 @@ describe("MEDUI.MEDICATION.EXPANSION_TRANCHE_2_CHRONIC_DISEASE.1", () => {
 
   it("32 — tranche 1 regression remains passing", () => {
     const tranche1 = runTranche1Certification();
-    expect(["READY_FOR_GOVERNED_ACTIVATION", "READY_WITH_PHARMACY_APPROVAL"]).toContain(tranche1.decision);
+    expect([
+      "READY_FOR_GOVERNED_ACTIVATION",
+      "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY",
+    ]).toContain(tranche1.decision);
   });
 
   it("33 — tdap governance remains restricted", () => {
@@ -350,7 +353,11 @@ describe("MEDUI.MEDICATION.EXPANSION_TRANCHE_2_CHRONIC_DISEASE.1", () => {
     const report = runTranche2Certification();
     expect(report.ticket).toBe("MEDUI.MEDICATION.EXPANSION_TRANCHE_2_CHRONIC_DISEASE.1");
     expect(report.eligibilityCertification.passCount).toBeGreaterThan(0);
-    expect(["READY_FOR_GOVERNED_ACTIVATION", "READY_WITH_PHARMACY_APPROVAL", "NOT_READY"]).toContain(report.decision);
+    expect([
+      "READY_FOR_GOVERNED_ACTIVATION",
+      "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY",
+      "NOT_READY",
+    ]).toContain(report.decision);
   });
 
   it("36 — chronic disease coverage impact report includes domains", () => {

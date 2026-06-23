@@ -177,7 +177,7 @@ export function buildTranche1ActivationPlan(): Tranche1ActivationPlan {
 export function buildActivationSafetyGateReport(): ActivationSafetyGateReport {
   return {
     requiredGates: [
-      "Pharmacy approval",
+      "Pharmacy review visibility",
       "Clinical approval if required",
       "Duplicate collision check",
       "Canonical search check",

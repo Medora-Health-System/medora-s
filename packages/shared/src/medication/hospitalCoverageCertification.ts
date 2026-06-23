@@ -421,7 +421,6 @@ export function resolveActivationReadiness(
   if (record.controlledSubstanceFlag) return "CONTROLLED_SUBSTANCE_RESTRICTED";
   if (record.highRiskFlag) return "HIGH_RISK_REVIEW_REQUIRED";
   if (record.requiresClinicalReview && record.status !== "ORDERABLE") return "CLINICAL_REVIEW_REQUIRED";
-  if (record.requiresPharmacyReview && record.status !== "ORDERABLE") return "PHARMACY_REVIEW_REQUIRED";
   if (cert.result === "PASS") return "READY_FOR_ACTIVATION";
   return "NOT_READY";
 }

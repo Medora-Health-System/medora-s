@@ -14,6 +14,7 @@ import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-searc
 import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
 import {
   listActiveTranche1PilotCatalogCodes,
+  listActiveTranche2ProviderOrderingCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -143,6 +144,19 @@ export class MedicationCatalogService {
           });
           sliced = [...sliced, ...pilotRows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
         }
+      }
+      const existingCodes = new Set(sliced.map((m) => m.code));
+      const tranche2Codes = listActiveTranche2ProviderOrderingCatalogCodes().filter((code) => !existingCodes.has(code));
+      if (tranche2Codes.length > 0 && sliced.length < limit) {
+        const tranche2Rows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: tranche2Codes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...tranche2Rows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
       }
     }
 

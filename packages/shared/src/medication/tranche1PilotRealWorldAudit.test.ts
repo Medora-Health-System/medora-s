@@ -106,9 +106,11 @@ describe("MEDUI.MEDICATION.TRANCHE_1_PILOT_REAL_WORLD_AUDIT.1", () => {
     expect(["PASS", "FAIL"]).toContain(readiness.billing);
     expect(["PASS", "FAIL"]).toContain(readiness.inventory);
     expect(["PASS", "FAIL"]).toContain(readiness.mar);
-    expect(["READY_FOR_GOVERNED_ACTIVATION", "READY_WITH_PHARMACY_APPROVAL", "NOT_READY"]).toContain(
-      readiness.certificationDecision
-    );
+    expect([
+      "READY_FOR_GOVERNED_ACTIVATION",
+      "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY",
+      "NOT_READY",
+    ]).toContain(readiness.certificationDecision);
   });
 
   it("07 — final decision is derived from current real-world audit blockers", () => {
@@ -124,6 +126,11 @@ describe("MEDUI.MEDICATION.TRANCHE_1_PILOT_REAL_WORLD_AUDIT.1", () => {
     if (blockers.length === 0 && audit.tranche2ReadinessAssessment.certificationDecision === "READY_FOR_GOVERNED_ACTIVATION") {
       expect(audit.finalDecision).toBe("READY_FOR_TRANCHE_2_ACTIVATION");
     } else if (blockers.length > 0) {
+      expect(audit.finalDecision).toBe("READY_WITH_BLOCKERS");
+    } else if (
+      audit.tranche2ReadinessAssessment.certificationDecision ===
+      "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY"
+    ) {
       expect(audit.finalDecision).toBe("READY_WITH_BLOCKERS");
     } else {
       expect(audit.finalDecision).toBe("NOT_READY");

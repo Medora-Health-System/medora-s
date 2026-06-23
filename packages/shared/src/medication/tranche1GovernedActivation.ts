@@ -150,7 +150,7 @@ export type MedicationEngineMaturityProjectionReport = {
 
 export type Tranche1CertificationDecision =
   | "READY_FOR_GOVERNED_ACTIVATION"
-  | "READY_WITH_PHARMACY_APPROVAL"
+  | "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY"
   | "NOT_READY";
 
 export type Tranche1CertificationReport = {
@@ -614,7 +614,7 @@ function resolveTranche1Decision(report: Omit<Tranche1CertificationReport, "deci
   }
 
   if (report.readinessMatrix.PHARMACY_REVIEW_REQUIRED > 0) {
-    return { decision: "READY_WITH_PHARMACY_APPROVAL", blockers: [] };
+    return { decision: "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY", blockers: [] };
   }
 
   return { decision: "READY_FOR_GOVERNED_ACTIVATION", blockers: [] };

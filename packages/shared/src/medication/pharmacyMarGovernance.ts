@@ -5,7 +5,7 @@ import {
   marPharmacyVerificationBlocksAdministration,
 } from "./marAdministrationGovernancePolicy.js";
 
-/** High-alert classes requiring pharmacy verification before MAR (M1.3F.7). */
+/** High-alert classes where pharmacy review should be visible to clinical/pharmacy users. */
 export const PHARMACY_REQUIRED_HIGH_ALERT_CLASSES = [
   "HIGH_ALERT_INSULIN",
   "HIGH_ALERT_ANTICOAGULANT",
@@ -113,7 +113,8 @@ export function marPharmacyWorkflowVisible(
 export function pharmacyStatusAllowsAdministration(
   status: PharmacyVerificationStatusRead
 ): boolean {
-  return status === "VERIFIED" || status === "NOT_REQUIRED" || status === "OVERRIDDEN";
+  void status;
+  return true;
 }
 
 export function validatePharmacyMarCreate(input: PharmacyMarCreateInput): PharmacyMarValidationResult {
@@ -140,21 +141,8 @@ export function validatePharmacyMarCreate(input: PharmacyMarCreateInput): Pharma
     return { ok: true, overrideUsed: true };
   }
 
-  if (status === "REJECTED") {
-    return {
-      ok: false,
-      code: "PHARMACY_VERIFICATION_REJECTED",
-      message:
-        "Vérification pharmacie refusée pour ce médicament. Corrigez l'ordonnance ou documentez une dérogation motivée.",
-    };
-  }
-
-  return {
-    ok: false,
-    code: "PHARMACY_VERIFICATION_REQUIRED",
-    message:
-      "Vérification pharmacie requise avant administration. Attendez la validation pharmacien ou documentez une dérogation motivée.",
-  };
+  void status;
+  return { ok: true, overrideUsed };
 }
 
 export function effectivePharmacyVerificationStatus(input: {

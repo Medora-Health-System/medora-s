@@ -112,7 +112,7 @@ export function buildActivationGovernanceRecord(
 
   const reviewReason =
     status === "NEEDS_PHARMACY_REVIEW"
-      ? "Pharmacy verification required before order-search activation"
+      ? "Pharmacy review visible during ordering and MAR workflow"
       : status === "NEEDS_CLINICAL_REVIEW"
         ? "Clinical / high-alert review required before activation"
         : null;

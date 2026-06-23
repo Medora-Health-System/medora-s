@@ -13568,18 +13568,18 @@ export default {
     errOverrideIncomplete: "Override reason and acknowledgment required.",
   },
   marPharmacy: {
-    title: "Pharmacy verification",
+    title: "Pharmacy review visible",
     description:
-      "This medication requires pharmacist verification before administration (Schedule II/III controlled or selected high-alert).",
-    warningSrOnly: "Pharmacy verification required warning",
-    verifiedBanner: "Pharmacy verification completed",
-    verifiedByPrefix: "Verified by",
-    pendingBanner: "Pending pharmacy verification — administration blocked unless override is documented.",
-    rejectedBanner: "Pharmacy verification rejected — correct the order or document an override.",
-    useOverride: "Administer without pharmacy verification (justified override)",
-    overrideReasonLabel: "Override reason (pharmacy)",
+      "Pharmacy may review this order. Pharmacy follow-up or supply may be needed, but this status does not block MAR administration by itself.",
+    warningSrOnly: "Pharmacy review visible",
+    verifiedBanner: "Pharmacy review completed",
+    verifiedByPrefix: "Reviewed by",
+    pendingBanner: "Pharmacy may review this order. Pharmacy follow-up may occur.",
+    rejectedBanner: "Pharmacy clarification requested — contact pharmacy/provider as needed. The existing order remains visible.",
+    useOverride: "Document pharmacy follow-up note",
+    overrideReasonLabel: "Pharmacy follow-up note",
     overrideAck:
-      "I confirm administration without documented pharmacy verification and accept responsibility for this override.",
+      "I confirm pharmacy follow-up context is documented. This is informational and does not replace medication safety hard stops.",
     backToStatus: "Return to pharmacy status",
   },
   marGovernance: {

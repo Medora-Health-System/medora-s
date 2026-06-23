@@ -260,14 +260,17 @@ describe("MedicationOrderSchedule persistence (M1.8B.7A.1)", () => {
     expect(await schedulesForOrder(order.id)).toHaveLength(0);
   });
 
-  it("vancomycin infusion + Q12H → no schedule row", async () => {
+  it("vancomycin infusion + Q12H → schedules immediately to MAR", async () => {
     setSchedulingFlags(true);
     const order = await createMedicationOrder({
       catalogItemId: vancomycinCatalogId,
       frequencyCode: "Q12H",
       route: "IVPB",
     });
-    expect(await schedulesForOrder(order.id)).toHaveLength(0);
+    const schedules = await schedulesForOrder(order.id);
+    expect(schedules).toHaveLength(1);
+    expect(schedules[0]!.scheduleClassification).toBe("RECURRING_IVPB");
+    expect(schedules[0]!.scheduleStatus).toBe("ACTIVE");
   });
 
   it("PRN + flags ON → ON_DEMAND schedule (no dose instances)", async () => {

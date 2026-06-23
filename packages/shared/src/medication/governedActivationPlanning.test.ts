@@ -28,9 +28,9 @@ describe("MEDUI.MEDICATION.GOVERNED_ACTIVATION_PLANNING.1", () => {
   it("02 — eligible medication inventory uses hospital readiness counts", () => {
     const inventory = buildEligibleMedicationActivationInventory();
     expect(inventory.immediatelyEligible).toBe(196);
-    expect(inventory.pharmacyReviewRequired).toBe(15);
+    expect(inventory.pharmacyReviewRequired).toBe(0);
     expect(inventory.clinicalReviewRequired).toBe(6);
-    expect(inventory.engineeringNotReady).toBe(227);
+    expect(inventory.engineeringNotReady).toBe(242);
   });
 
   it("03 — tranche 1 plan is planning-only and has candidates", () => {
@@ -57,7 +57,7 @@ describe("MEDUI.MEDICATION.GOVERNED_ACTIVATION_PLANNING.1", () => {
 
   it("05 — activation safety gates require approvals and audit before orderability", () => {
     const gates = buildActivationSafetyGateReport();
-    expect(gates.requiredGates).toContain("Pharmacy approval");
+    expect(gates.requiredGates).toContain("Pharmacy review visibility");
     expect(gates.requiredGates).toContain("Duplicate collision check");
     expect(gates.requiredGates).toContain("Canonical search check");
     expect(gates.requiredGates).toContain("Audit log");

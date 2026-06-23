@@ -81,7 +81,6 @@ export function isSafeForActivationWithoutEngineering(
   const onlyGovernanceBlockers = cert.blockers.every(
     (b) =>
       b.code === "ORDER_SEARCH_NOT_ENABLED" ||
-      b.code === "PHARMACY_REVIEW_INCOMPLETE" ||
       b.code === "CLINICAL_REVIEW_INCOMPLETE"
   );
 

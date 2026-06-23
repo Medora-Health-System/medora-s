@@ -41,7 +41,7 @@ describe("MEDUI.MEDICATION_CATALOG.HOSPITAL_ORDERABILITY_AND_TDAP.1", () => {
 
   it("02 — catalog source audit includes Haiti and enterprise waves", () => {
     const audit = buildMedicationCatalogSourceAudit({
-      haitiCatalog: 249,
+      haitiCatalog: 250,
       wave1: 45,
       wave2: 89,
       wave3: 116,

@@ -136,7 +136,10 @@ describe("MEDUI.MEDICATION.EXPANSION_TRANCHE_1_LOW_RISK.1", () => {
 
   it("16 — certification decision is not NOT_READY when safety passes", () => {
     const report = runTranche1Certification();
-    expect(["READY_FOR_GOVERNED_ACTIVATION", "READY_WITH_PHARMACY_APPROVAL"]).toContain(report.decision);
+    expect([
+      "READY_FOR_GOVERNED_ACTIVATION",
+      "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY",
+    ]).toContain(report.decision);
   });
 
   it("17 — thrombolytics blocked from eligibility", () => {

@@ -130,19 +130,13 @@ export function certifyMedicationActivation(
         message: "High-alert medication requires clinical review before order search",
       });
     }
-    if (record.requiresPharmacyReview && record.status === "NEEDS_PHARMACY_REVIEW") {
-      blockers.push({
-        code: "PHARMACY_REVIEW_INCOMPLETE",
-        message: record.reviewReason ?? "Pharmacy review required",
-      });
-    }
     if (record.requiresClinicalReview && record.status === "NEEDS_CLINICAL_REVIEW") {
       blockers.push({
         code: "CLINICAL_REVIEW_INCOMPLETE",
         message: record.reviewReason ?? "Clinical review required",
       });
     }
-    if (!record.orderSearchReady) {
+    if (!record.orderSearchReady && !(record.requiresPharmacyReview && record.status === "NEEDS_PHARMACY_REVIEW")) {
       blockers.push({
         code: "ORDER_SEARCH_NOT_ENABLED",
         message: record.reviewReason ?? record.restrictedReason ?? "Order search not enabled",
@@ -153,12 +147,6 @@ export function certifyMedicationActivation(
   if (record.status === "ORDERABLE") {
     if (record.enterpriseWave && !record.billingReady) {
       blockers.push({ code: "BILLING_VALIDATION_FAILED", message: "Billing manifest linkage required for enterprise activation" });
-    }
-    if (record.requiresPharmacyReview && record.enterpriseWave) {
-      blockers.push({
-        code: "PHARMACY_REVIEW_STILL_REQUIRED",
-        message: "Pharmacy review must be completed for enterprise activation",
-      });
     }
     if (record.requiresClinicalReview) {
       blockers.push({

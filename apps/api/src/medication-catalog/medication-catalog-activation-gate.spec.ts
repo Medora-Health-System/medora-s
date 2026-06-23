@@ -1,5 +1,8 @@
 import { MedicationCatalogService } from "./medication-catalog.service";
-import { listActiveTranche1PilotCatalogCodes } from "@medora/shared";
+import {
+  listActiveTranche1PilotCatalogCodes,
+  listActiveTranche2ProviderOrderingCatalogCodes,
+} from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
   const prisma = {
@@ -26,34 +29,36 @@ describe("MedicationCatalogService activation gate (19G)", () => {
   });
 
   it("excludes canonical-linked catalog rows failing order-search gate", async () => {
-    prisma.catalogMedication.findMany.mockResolvedValue([
-      {
-        id: "cat-inactive",
-        code: "A",
-        name: "Acetaminophen",
-        genericName: null,
-        displayNameEn: null,
-        displayNameFr: null,
-        strength: "500mg",
-        searchText: "acetaminophen",
-        isEssential: false,
-        sortPriority: 0,
-        isActive: true,
-      },
-      {
-        id: "cat-enabled",
-        code: "B",
-        name: "Ibuprofen",
-        genericName: null,
-        displayNameEn: null,
-        displayNameFr: null,
-        strength: "200mg",
-        searchText: "ibuprofen",
-        isEssential: false,
-        sortPriority: 0,
-        isActive: true,
-      },
-    ]);
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([
+        {
+          id: "cat-inactive",
+          code: "A",
+          name: "Acetaminophen",
+          genericName: null,
+          displayNameEn: null,
+          displayNameFr: null,
+          strength: "500mg",
+          searchText: "acetaminophen",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: true,
+        },
+        {
+          id: "cat-enabled",
+          code: "B",
+          name: "Ibuprofen",
+          genericName: null,
+          displayNameEn: null,
+          displayNameFr: null,
+          strength: "200mg",
+          searchText: "ibuprofen",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: true,
+        },
+      ])
+      .mockResolvedValueOnce([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(
       new Set(["cat-enabled"])
@@ -105,7 +110,8 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           sortPriority: 0,
           isActive: false,
         },
-      ]);
+      ])
+      .mockResolvedValueOnce([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -121,6 +127,34 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
     expect(res.items.map((i) => i.id)).toEqual(["cat-pilot"]);
     expect(res.items[0]?.code).toBe(pilotCode);
+  });
+
+  it("appends certified Tranche 2 provider-ordering rows after activation gate", async () => {
+    const tranche2Code = listActiveTranche2ProviderOrderingCatalogCodes()[0] ?? "TRANCHE2_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-tranche2",
+          code: tranche2Code,
+          name: "Lisinopril",
+          genericName: "Lisinopril",
+          displayNameEn: "Lisinopril",
+          displayNameFr: "Lisinopril",
+          strength: "10 mg",
+          searchText: "lisinopril",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "lisinopril", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-tranche2"]);
+    expect(res.items[0]?.code).toBe(tranche2Code);
   });
 
   it("does not append certified pilot rows outside pilot scope", async () => {
@@ -139,6 +173,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(2);
   });
 });

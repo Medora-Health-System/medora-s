@@ -13598,18 +13598,18 @@ export default {
     errOverrideIncomplete: "Motif et confirmation de dérogation requis.",
   },
   marPharmacy: {
-    title: "Vérification pharmacie",
+    title: "Revue pharmaceutique visible",
     description:
-      "Ce médicament nécessite une vérification pharmacien avant administration (substance contrôlée II/III ou médicament à haut risque).",
-    warningSrOnly: "Avertissement vérification pharmacie requise",
-    verifiedBanner: "Vérification pharmacie complétée",
-    verifiedByPrefix: "Vérifié par",
-    pendingBanner: "En attente de vérification pharmacie — administration bloquée sans dérogation.",
-    rejectedBanner: "Vérification pharmacie refusée — corrigez l'ordonnance ou documentez une dérogation.",
-    useOverride: "Administrer sans vérification pharmacie (dérogation motivée)",
-    overrideReasonLabel: "Motif de dérogation (pharmacie)",
+      "La pharmacie peut revoir cette commande. Un suivi pharmaceutique ou un approvisionnement par la pharmacie peut être nécessaire, mais ce statut ne bloque pas l'administration MAR à lui seul.",
+    warningSrOnly: "Revue pharmaceutique visible",
+    verifiedBanner: "Revue pharmaceutique complétée",
+    verifiedByPrefix: "Revu par",
+    pendingBanner: "La pharmacie peut revoir cette commande. Un suivi pharmaceutique peut être nécessaire.",
+    rejectedBanner: "Clarification pharmaceutique demandée — contactez la pharmacie ou le prescripteur au besoin. La commande existante reste visible.",
+    useOverride: "Documenter une note de suivi pharmaceutique",
+    overrideReasonLabel: "Note de suivi pharmaceutique",
     overrideAck:
-      "Je confirme l'administration sans vérification pharmacie documentée et j'assume la responsabilité de cette dérogation.",
+      "Je confirme que le contexte du suivi pharmaceutique est documenté. Ceci est informatif et ne remplace pas les vrais arrêts de sécurité médicamenteuse.",
     backToStatus: "Revenir au statut pharmacie",
   },
   marGovernance: {
