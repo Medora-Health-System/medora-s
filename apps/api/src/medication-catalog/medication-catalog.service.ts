@@ -19,6 +19,8 @@ import {
   listActiveInsulinDiabetesProviderOrderingCatalogCodes,
   listActiveVaccineProviderOrderingCatalogCodes,
   listActiveCriticalCareProviderOrderingCatalogCodes,
+  listActiveNeurologyProviderOrderingCatalogCodes,
+  listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -219,6 +221,36 @@ export class MedicationCatalogService {
           take: Math.max(0, limit - sliced.length),
         });
         sliced = [...sliced, ...criticalCareRows.filter((row) => !existingAfterVaccines.has(row.code))].slice(0, limit);
+      }
+      const existingAfterCriticalCare = new Set(sliced.map((m) => m.code));
+      const neurologyCodes = listActiveNeurologyProviderOrderingCatalogCodes().filter(
+        (code) => !existingAfterCriticalCare.has(code)
+      );
+      if (neurologyCodes.length > 0 && sliced.length < limit) {
+        const neurologyRows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: neurologyCodes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...neurologyRows.filter((row) => !existingAfterCriticalCare.has(row.code))].slice(0, limit);
+      }
+      const existingAfterNeurology = new Set(sliced.map((m) => m.code));
+      const infectiousDiseaseCodes = listActiveInfectiousDiseaseProviderOrderingCatalogCodes().filter(
+        (code) => !existingAfterNeurology.has(code)
+      );
+      if (infectiousDiseaseCodes.length > 0 && sliced.length < limit) {
+        const infectiousDiseaseRows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: infectiousDiseaseCodes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...infectiousDiseaseRows.filter((row) => !existingAfterNeurology.has(row.code))].slice(0, limit);
       }
     }
 

@@ -8,6 +8,8 @@ import { ENTERPRISE_WAVE1_FORMULARY_MANIFEST } from "./enterpriseWave1FormularyM
 import { ENTERPRISE_WAVE2_FORMULARY_MANIFEST } from "./enterpriseWave2FormularyManifest.js";
 import { ENTERPRISE_WAVE3_FORMULARY_MANIFEST } from "./enterpriseWave3FormularyManifest.js";
 import { ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST } from "./enterpriseWave4EdHospitalFormularyManifest.js";
+import { ENTERPRISE_ONCOLOGY_FORMULARY_MANIFEST } from "./enterpriseOncologyFormularyManifest.js";
+import { ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_FORMULARY_MANIFEST } from "./enterpriseNeurologyInfectiousDiseaseFormularyManifest.js";
 import {
   HOSPITAL_MEDICATION_COVERAGE_GROUPS,
   type HospitalMedicationCoverageRow,
@@ -131,6 +133,8 @@ export function buildUnifiedOrderabilityMap(): Map<string, MedicationOrderabilit
     ...ENTERPRISE_WAVE2_FORMULARY_MANIFEST,
     ...ENTERPRISE_WAVE3_FORMULARY_MANIFEST,
     ...ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_MANIFEST,
+    ...ENTERPRISE_ONCOLOGY_FORMULARY_MANIFEST,
+    ...ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_FORMULARY_MANIFEST,
   ] as EnterpriseLike[];
 
   for (const entry of enterpriseEntries) {

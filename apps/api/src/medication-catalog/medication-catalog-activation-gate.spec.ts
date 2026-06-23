@@ -6,6 +6,8 @@ import {
   listActiveInsulinDiabetesProviderOrderingCatalogCodes,
   listActiveVaccineProviderOrderingCatalogCodes,
   listActiveCriticalCareProviderOrderingCatalogCodes,
+  listActiveNeurologyProviderOrderingCatalogCodes,
+  listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -289,6 +291,75 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(criticalCareCode);
   });
 
+  it("appends certified neurology provider-ordering rows after existing activation gates", async () => {
+    const neurologyCode = listActiveNeurologyProviderOrderingCatalogCodes()[0] ?? "NEUROLOGY_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-neurology",
+          code: neurologyCode,
+          name: "Levetiracetam",
+          genericName: "Levetiracetam",
+          displayNameEn: "Levetiracetam",
+          displayNameFr: "Lévétiracétam",
+          strength: "500 mg",
+          searchText: "levetiracetam keppra seizure neurology",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "levetiracetam", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-neurology"]);
+    expect(res.items[0]?.code).toBe(neurologyCode);
+  });
+
+  it("appends certified infectious-disease provider-ordering rows after existing activation gates", async () => {
+    const infectiousDiseaseCode = listActiveInfectiousDiseaseProviderOrderingCatalogCodes()[0] ?? "ID_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-infectious-disease",
+          code: infectiousDiseaseCode,
+          name: "Daptomycin",
+          genericName: "Daptomycin",
+          displayNameEn: "Daptomycin",
+          displayNameFr: "Daptomycine",
+          strength: "500 mg",
+          searchText: "daptomycin infectious disease antibiotic",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "daptomycin", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-infectious-disease"]);
+    expect(res.items[0]?.code).toBe(infectiousDiseaseCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -305,6 +376,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(6);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(8);
   });
 });

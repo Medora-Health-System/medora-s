@@ -334,6 +334,8 @@ export * from "./medication/insulinDiabetesProviderOrderingActivation.js";
 export * from "./medication/vaccineProviderOrderingActivation.js";
 export * from "./medication/criticalCareProviderOrderingActivation.js";
 export * from "./medication/enterpriseFormularyGapAnalysis.js";
+export * from "./medication/oncologyGovernanceAndFormularyExpansion.js";
+export * from "./medication/neurologyInfectiousDiseaseProviderOrderingActivation.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";

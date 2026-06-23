@@ -7,6 +7,8 @@ import { ENTERPRISE_WAVE1_BILLING_BY_CODE } from "./enterpriseWave1BillingManife
 import { ENTERPRISE_WAVE2_BILLING_BY_CODE } from "./enterpriseWave2BillingManifest.js";
 import { ENTERPRISE_WAVE3_BILLING_BY_CODE } from "./enterpriseWave3BillingManifest.js";
 import { ENTERPRISE_WAVE4_ED_HOSPITAL_BILLING_BY_CODE } from "./enterpriseWave4EdHospitalBillingManifest.js";
+import { ENTERPRISE_ONCOLOGY_BILLING_BY_CODE } from "./enterpriseOncologyBillingManifest.js";
+import { ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_BILLING_BY_CODE } from "./enterpriseNeurologyInfectiousDiseaseBillingManifest.js";
 import { MEDICATION_BILLING_NDC_BY_CATALOG_CODE } from "./medicationBillingNdcByCatalogCode.js";
 
 export type MedicationBillingReadiness = {
@@ -14,7 +16,7 @@ export type MedicationBillingReadiness = {
   ndcReady: boolean;
   hcpcs: string | null;
   ndc11: string | null;
-  source: "wave1" | "wave2" | "wave3" | "wave4" | "haiti_ndc_map" | "none";
+  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "haiti_ndc_map" | "none";
 };
 
 function ndcFromEntry(entry: { ndc11?: string } | undefined): string | null {
@@ -65,6 +67,28 @@ export function resolveMedicationBillingReadiness(catalogCode: string): Medicati
       hcpcs: w4.hcpcs ?? null,
       ndc11: ndc,
       source: "wave4",
+    };
+  }
+  const oncology = ENTERPRISE_ONCOLOGY_BILLING_BY_CODE[catalogCode];
+  if (oncology) {
+    const ndc = ndcFromEntry(oncology);
+    return {
+      billingReady: Boolean(oncology.hcpcs?.trim()),
+      ndcReady: Boolean(ndc),
+      hcpcs: oncology.hcpcs ?? null,
+      ndc11: ndc,
+      source: "oncology",
+    };
+  }
+  const neurologyInfectiousDisease = ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_BILLING_BY_CODE[catalogCode];
+  if (neurologyInfectiousDisease) {
+    const ndc = ndcFromEntry(neurologyInfectiousDisease);
+    return {
+      billingReady: Boolean(neurologyInfectiousDisease.hcpcs?.trim()),
+      ndcReady: Boolean(ndc),
+      hcpcs: neurologyInfectiousDisease.hcpcs ?? null,
+      ndc11: ndc,
+      source: "neurology_infectious_disease",
     };
   }
   const haitiNdc = MEDICATION_BILLING_NDC_BY_CATALOG_CODE[catalogCode];
