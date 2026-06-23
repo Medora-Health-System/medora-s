@@ -15,7 +15,14 @@ import {
 import type { VaccineVisDocumentation } from "./vaccineVisGovernance.js";
 import { validateVaccineVisDocumentation } from "./vaccineVisGovernance.js";
 
-export type VaccineReviewedWith = "patient" | "spouse" | "parent" | "family";
+export type VaccineEducationRecipient =
+  | "patient"
+  | "parent"
+  | "guardian"
+  | "spouse"
+  | "family"
+  | "caregiver";
+export type VaccineReviewedWith = VaccineEducationRecipient;
 export type VaccineReviewedTopic =
   | "reason_for_medication"
   | "signs_of_allergic_reaction"
@@ -35,7 +42,7 @@ export type VaccineAdministrationDocumentation = {
   manufacturerId: VaccineManufacturerId | "";
   manufacturerDisplayName: string;
   visGiven: boolean;
-  visRecipient: "patient" | "family" | "none";
+  visRecipient: Exclude<VaccineEducationRecipient, "spouse"> | "none";
   visDate: string;
   visEditionDate?: string | null;
   allergiesVerified: boolean;
@@ -85,6 +92,8 @@ export type VaccineMarAdministrationHardeningReport = {
     migrationsRequired: false;
   };
 };
+
+export const VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX = "VACCINE_ADMINISTRATION_DOCUMENTATION:";
 
 const VACCINE_IDENTITY_BY_CODE_PREFIX: Record<string, { en: string; fr: string }> = {
   TDAP: { en: "Tdap vaccine", fr: "Vaccin Tdap" },
@@ -151,6 +160,28 @@ export function resolveVaccineAdministrationDisplayName(input: {
   return preferred?.trim() || input.displayNameEn?.trim() || input.displayNameFr?.trim() || "Vaccine";
 }
 
+export function isVaccineMedicationForMar(input: {
+  catalogCode?: string | null;
+  medicationLabel?: string | null;
+  genericName?: string | null;
+  therapeuticClass?: string | null;
+  cvxCode?: string | null;
+}): boolean {
+  const blob = [
+    input.catalogCode,
+    input.medicationLabel,
+    input.genericName,
+    input.therapeuticClass,
+    input.cvxCode,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
+  if (!blob.trim()) return false;
+  return /\b(vaccine|vaccin|immunization|immunisation|tdap|dtap|tetanus|diphtheria|pertussis|influenza|covid|mmr|varicella|pneumococcal|hpv|meningococcal|hepatitis)\b/.test(blob);
+}
+
 export function vaccineInjectionSiteLaterality(site: ImInjectionSiteId | ""): "right" | "left" | "other" | "" {
   if (!site) return "";
   if (site.startsWith("right_")) return "right";
@@ -187,7 +218,12 @@ export function validateVaccineAdministrationDocumentation(doc: VaccineAdministr
   if (doc.educationReviewed && doc.reviewedTopics.length === 0) errors.push("reviewed_topics_required");
   errors.push(...validateVaccineVisDocumentation({
     visGiven: doc.visGiven,
-    visRecipient: doc.visRecipient,
+    visRecipient:
+      doc.visRecipient === "parent" ||
+      doc.visRecipient === "guardian" ||
+      doc.visRecipient === "caregiver"
+        ? "family"
+        : doc.visRecipient,
     visDate: doc.visDate,
   }));
   return errors;
@@ -255,7 +291,7 @@ export function buildVaccineAdministrationAuditNote(
   if (lotBits.length) parts.push(`${lotBits.join(", ")}.`);
 
   if (doc.visGiven && doc.visDate.trim() && doc.visRecipient !== "none") {
-    const recipient = doc.visRecipient === "family" ? (locale === "fr" ? "la famille" : "family") : (locale === "fr" ? "le patient" : "patient");
+    const recipient = educationRecipientLabel(doc.visRecipient, locale);
     const visDate = formatDateForNote(doc.visDate, locale);
     parts.push(
       locale === "fr"
@@ -268,7 +304,7 @@ export function buildVaccineAdministrationAuditNote(
     parts.push(locale === "fr" ? "Allergies vérifiées et 5 bonnes pratiques confirmées." : "Allergies verified and 5 rights confirmed.");
   }
   if (doc.educationReviewed && doc.reviewedWith) {
-    const withWhom = doc.reviewedWith === "family" ? (locale === "fr" ? "la famille" : "family") : doc.reviewedWith === "parent" ? (locale === "fr" ? "le parent" : "parent") : doc.reviewedWith === "spouse" ? (locale === "fr" ? "le conjoint" : "spouse") : (locale === "fr" ? "le patient" : "patient");
+    const withWhom = educationRecipientLabel(doc.reviewedWith, locale);
     parts.push(
       locale === "fr"
         ? `Éducation revue avec ${withWhom}, incluant le motif du vaccin, les signes de réaction allergique et les précautions.`
@@ -293,6 +329,37 @@ export function serializeVaccineAdministrationDocumentation(doc: VaccineAdminist
     generatedNoteEn: buildVaccineAdministrationAuditNote(doc, "en"),
     generatedNoteFr: buildVaccineAdministrationAuditNote(doc, "fr"),
   };
+}
+
+export function serializeVaccineAdministrationDocumentationForMarNotes(
+  doc: VaccineAdministrationDocumentation
+): string {
+  return `${VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX}${JSON.stringify(serializeVaccineAdministrationDocumentation(doc))}`;
+}
+
+function asVaccineAdministrationDocumentation(value: unknown): VaccineAdministrationDocumentation | null {
+  if (!value || typeof value !== "object") return null;
+  const rec = value as Record<string, unknown>;
+  if (rec.type !== "vaccine_administration_documentation_v1") return null;
+  if (typeof rec.catalogCode !== "string" || typeof rec.vaccineDisplayName !== "string") return null;
+  return rec as unknown as VaccineAdministrationDocumentation;
+}
+
+export function parseVaccineAdministrationDocumentationFromMarNotes(
+  notes: string | null | undefined
+): VaccineAdministrationDocumentation | null {
+  if (!notes) return null;
+  for (const line of notes.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX)) continue;
+    const json = trimmed.slice(VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX.length);
+    try {
+      return asVaccineAdministrationDocumentation(JSON.parse(json));
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function pushRow(
@@ -339,6 +406,19 @@ export function buildCompletedVaccineAdministrationViewModel(
     rows,
     note: buildVaccineAdministrationAuditNote(doc, locale),
   };
+}
+
+function educationRecipientLabel(
+  recipient: VaccineEducationRecipient | "none" | "",
+  locale: "en" | "fr"
+): string {
+  if (recipient === "parent") return locale === "fr" ? "le parent" : "parent";
+  if (recipient === "guardian") return locale === "fr" ? "le tuteur" : "guardian";
+  if (recipient === "spouse") return locale === "fr" ? "le conjoint" : "spouse";
+  if (recipient === "family") return locale === "fr" ? "la famille" : "family";
+  if (recipient === "caregiver") return locale === "fr" ? "l'aidant" : "caregiver";
+  if (recipient === "patient") return locale === "fr" ? "le patient" : "patient";
+  return "";
 }
 
 const EN_LEAKAGE_IN_FR = /\b(administered|manufacturer|vaccine information statement|allergies verified|5 rights|education reviewed)\b/i;

@@ -98,6 +98,19 @@ import {
   type MarShiftTimelineShiftCode,
   MEDICATION_INFUSION_NURSE_STOP_REASON_CODES,
   type MedicationAdministrationHistoryEntry,
+  buildCompletedVaccineAdministrationViewModel,
+  buildVaccineAdministrationAuditNote,
+  isVaccineMedicationForMar,
+  parseVaccineAdministrationDocumentationFromMarNotes,
+  resolveVaccineAdministrationDisplayName,
+  serializeVaccineAdministrationDocumentationForMarNotes,
+  validateVaccineAdministrationDocumentation,
+  vaccineInjectionSiteLaterality,
+  vaccineManufacturerLabel,
+  VACCINE_MANUFACTURER_CATALOG,
+  type VaccineAdministrationDocumentation,
+  type VaccineEducationRecipient,
+  type VaccineReviewedTopic,
 } from "@medora/shared";
 import { startMedicationInfusion, stopMedicationInfusion } from "@/lib/medicationInfusionApi";
 import {
@@ -436,6 +449,51 @@ function buildMarNotes(
   return lines.join("\n");
 }
 
+const VACCINE_DEFAULT_TOPICS: VaccineReviewedTopic[] = [
+  "reason_for_medication",
+  "signs_of_allergic_reaction",
+  "precautions",
+];
+
+function removeVaccineDocumentationPayloadFromNotes(notes: string | null | undefined): string {
+  if (!notes) return "";
+  return notes
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("VACCINE_ADMINISTRATION_DOCUMENTATION:"))
+    .join("\n")
+    .trim();
+}
+
+function isTdapCatalogCode(code: string | null | undefined): boolean {
+  return (code ?? "").trim().toUpperCase().startsWith("TDAP_");
+}
+
+function vaccineModalDefaultDose(catalogCode: string | null | undefined): { dose: string; unit: string } {
+  if (isTdapCatalogCode(catalogCode)) return { dose: "0.5", unit: "mL" };
+  return { dose: "", unit: "mL" };
+}
+
+function vaccineValidationMessageKey(code: string): string {
+  const map: Record<string, string> = {
+    lot_number_required: "marTab.vaccine.errLotRequired",
+    expiration_date_required: "marTab.vaccine.errExpirationRequired",
+    manufacturer_required: "marTab.vaccine.errManufacturerRequired",
+    route_required: "marTab.vaccine.errRouteRequired",
+    site_required_for_im_vaccine: "marTab.vaccine.errSiteRequired",
+    laterality_required_for_im_vaccine: "marTab.vaccine.errSiteRequired",
+    administered_at_required: "marTab.vaccine.errAdministeredAtRequired",
+    administered_by_required: "marTab.vaccine.errAdministeredByRequired",
+    allergies_verified_required: "marTab.vaccine.errAllergiesRequired",
+    five_rights_required: "marTab.vaccine.errFiveRightsRequired",
+    vis_recipient_required_when_given: "marTab.vaccine.errVisRequired",
+    vis_date_required_when_given: "marTab.vaccine.errVisRequired",
+    education_reviewed_required: "marTab.vaccine.errEducationRequired",
+    reviewed_with_required: "marTab.vaccine.errReviewedWithRequired",
+    reviewed_topics_required: "marTab.vaccine.errReviewedTopicsRequired",
+  };
+  return map[code] ?? "marTab.vaccine.errRequired";
+}
+
 /**
  * Resolved MAR clinical outcome: prefer persisted `marAction` (ER-3.2), then legacy notes parse.
  * `OrderItem.status` only answers active vs terminal lifecycle for the Orders dashboard.
@@ -503,6 +561,9 @@ export function MedicationAdministrationTab({
     softSafetyWarnings: MedicationSafetyWarning[];
     advancedSafetyLine: AdvancedMedicationSafetyLine;
     routeHint: string;
+    catalogCode?: string | null;
+    catalogDisplayNameEn?: string | null;
+    catalogDisplayNameFr?: string | null;
     therapeuticClass?: string | null;
     ndcHint: string;
     hiddenBilling: MarHiddenBillingPayload;
@@ -539,6 +600,19 @@ export function MedicationAdministrationTab({
   const [modalAdminQty, setModalAdminQty] = useState("");
   const [modalBillingQty, setModalBillingQty] = useState("");
   const [modalNdc, setModalNdc] = useState("");
+  const [vaccineLotNumber, setVaccineLotNumber] = useState("");
+  const [vaccineExpirationDate, setVaccineExpirationDate] = useState("");
+  const [vaccineManufacturerId, setVaccineManufacturerId] = useState<VaccineAdministrationDocumentation["manufacturerId"]>("");
+  const [vaccineVisGiven, setVaccineVisGiven] = useState(false);
+  const [vaccineVisRecipient, setVaccineVisRecipient] = useState<VaccineAdministrationDocumentation["visRecipient"]>("none");
+  const [vaccineVisDate, setVaccineVisDate] = useState("");
+  const [vaccineAllergiesVerified, setVaccineAllergiesVerified] = useState(false);
+  const [vaccineFiveRightsConfirmed, setVaccineFiveRightsConfirmed] = useState(false);
+  const [vaccineEducationReviewed, setVaccineEducationReviewed] = useState(false);
+  const [vaccineReviewedWith, setVaccineReviewedWith] = useState<VaccineEducationRecipient | "">("");
+  const [vaccineReviewedTopics, setVaccineReviewedTopics] = useState<VaccineReviewedTopic[]>([]);
+  const [vaccineUnderstandingConfirmed, setVaccineUnderstandingConfirmed] = useState(false);
+  const [vaccineAmountWasted, setVaccineAmountWasted] = useState("");
   const [marAllergyDocSummary, setMarAllergyDocSummary] = useState<string | null>(null);
   const [marAllergySafetyAck, setMarAllergySafetyAck] = useState(false);
   const [marTimingOverrideAck, setMarTimingOverrideAck] = useState(false);
@@ -1052,6 +1126,9 @@ export function MedicationAdministrationTab({
       infusionClassifyPayload: MedicationInfusionCandidateInput;
       label: string;
       routeHint: string;
+      catalogCode: string | null;
+      catalogDisplayNameEn: string | null;
+      catalogDisplayNameFr: string | null;
       ndcHint: string;
       hiddenBilling: MarHiddenBillingPayload;
       billingUnitHint: string;
@@ -1128,6 +1205,9 @@ export function MedicationAdministrationTab({
           isInfusionLifecycleMed,
           infusionClassifyPayload,
           label,
+          catalogCode: typeof catRow?.code === "string" ? catRow.code : null,
+          catalogDisplayNameEn: typeof catRow?.displayNameEn === "string" ? catRow.displayNameEn : null,
+          catalogDisplayNameFr: typeof catRow?.displayNameFr === "string" ? catRow.displayNameFr : null,
           authorityLine: formatOrderAuthority(order as Record<string, unknown>, t),
           attributionLines: formatOrderAttributionLines(order as Record<string, unknown>, t, language),
           highRiskWarning: highRiskMedicationWarning({ ...it, label }, t),
@@ -1291,6 +1371,90 @@ export function MedicationAdministrationTab({
   }, [modalItem, modalAction, taskRows, modalDoseValue, modalRoute, modalAdminQty]);
 
   const modalResolvedRoute = modalRoute.trim() || modalItem?.routeHint || "";
+  const modalIsVaccine = useMemo(() => {
+    if (!modalItem) return false;
+    return isVaccineMedicationForMar({
+      catalogCode: modalItem.catalogCode,
+      medicationLabel: modalItem.label,
+      genericName: modalItem.genericName,
+      therapeuticClass: modalItem.therapeuticClass,
+    });
+  }, [modalItem]);
+  const modalVaccineDisplayName = useMemo(() => {
+    if (!modalItem) return "";
+    return resolveVaccineAdministrationDisplayName({
+      catalogCode: modalItem.catalogCode,
+      displayNameEn: modalItem.catalogDisplayNameEn ?? modalItem.label,
+      displayNameFr: modalItem.catalogDisplayNameFr ?? modalItem.label,
+      locale: language === "en" ? "en" : "fr",
+    });
+  }, [language, modalItem]);
+  const modalVaccineDocumentation = useMemo<VaccineAdministrationDocumentation | null>(() => {
+    if (!modalItem || !modalIsVaccine) return null;
+    const administeredAt = modalEffectiveTimeLocal.trim()
+      ? marClinicalDateTimeLocalToUtcIso(modalEffectiveTimeLocal, clinicalTz) || new Date().toISOString()
+      : new Date().toISOString();
+    return {
+      vaccineProductId: null,
+      catalogCode: modalItem.catalogCode ?? "",
+      vaccineDisplayName: modalVaccineDisplayName || modalItem.label,
+      dose: modalDoseValue.trim() || (isTdapCatalogCode(modalItem.catalogCode) ? "0.5" : ""),
+      unit: modalDoseUnit.trim() || (isTdapCatalogCode(modalItem.catalogCode) ? "mL" : ""),
+      route: modalResolvedRoute || (isTdapCatalogCode(modalItem.catalogCode) ? "IM" : ""),
+      site: modalInjectionSite,
+      laterality: vaccineInjectionSiteLaterality(modalInjectionSite),
+      lotNumber: vaccineLotNumber,
+      expirationDate: vaccineExpirationDate,
+      manufacturerId: vaccineManufacturerId,
+      manufacturerDisplayName: vaccineManufacturerLabel(vaccineManufacturerId, language === "en" ? "en" : "fr"),
+      visGiven: vaccineVisGiven,
+      visRecipient: vaccineVisGiven ? vaccineVisRecipient : "none",
+      visDate: vaccineVisGiven ? vaccineVisDate : "",
+      visEditionDate: null,
+      allergiesVerified: vaccineAllergiesVerified,
+      fiveRightsConfirmed: vaccineFiveRightsConfirmed,
+      educationReviewed: vaccineEducationReviewed,
+      reviewedWith: vaccineReviewedWith,
+      reviewedTopics: vaccineReviewedTopics,
+      understandingConfirmed: vaccineUnderstandingConfirmed,
+      amountWasted: vaccineAmountWasted,
+      administeredAt,
+      administeredBy: currentUserId,
+      administeredByCredentials: "",
+    };
+  }, [
+    clinicalTz,
+    currentUserId,
+    language,
+    modalDoseUnit,
+    modalDoseValue,
+    modalEffectiveTimeLocal,
+    modalInjectionSite,
+    modalIsVaccine,
+    modalItem,
+    modalResolvedRoute,
+    modalVaccineDisplayName,
+    vaccineAllergiesVerified,
+    vaccineAmountWasted,
+    vaccineEducationReviewed,
+    vaccineExpirationDate,
+    vaccineFiveRightsConfirmed,
+    vaccineLotNumber,
+    vaccineManufacturerId,
+    vaccineReviewedTopics,
+    vaccineReviewedWith,
+    vaccineUnderstandingConfirmed,
+    vaccineVisDate,
+    vaccineVisGiven,
+    vaccineVisRecipient,
+  ]);
+  const modalVaccineNotePreview = useMemo(
+    () =>
+      modalVaccineDocumentation
+        ? buildVaccineAdministrationAuditNote(modalVaccineDocumentation, language === "en" ? "en" : "fr")
+        : "",
+    [language, modalVaccineDocumentation]
+  );
   const modalIsContinuousInfusion =
     modalItem?.infusionClassifyPayload != null &&
     isMedicationInfusionCandidate(modalItem.infusionClassifyPayload);
@@ -1428,6 +1592,9 @@ export function MedicationAdministrationTab({
       softSafetyWarnings: row.softSafetyWarnings,
       advancedSafetyLine: row.advancedSafetyLine,
       routeHint: row.routeHint,
+      catalogCode: row.catalogCode,
+      catalogDisplayNameEn: row.catalogDisplayNameEn,
+      catalogDisplayNameFr: row.catalogDisplayNameFr,
       therapeuticClass: row.therapeuticClass,
       ndcHint: row.ndcHint,
       hiddenBilling: row.hiddenBilling,
@@ -1455,11 +1622,18 @@ export function MedicationAdministrationTab({
     setMarPainLocation("");
     setMarScheduleTimingReason("");
     setModalAction(hideAdmin ? "refused" : "administered");
-    setModalRoute(row.routeHint);
+    const vaccineDefaults = vaccineModalDefaultDose(row.catalogCode);
+    const vaccineDetected = isVaccineMedicationForMar({
+      catalogCode: row.catalogCode,
+      medicationLabel: row.label,
+      genericName,
+      therapeuticClass: row.therapeuticClass,
+    });
+    setModalRoute(vaccineDetected && isTdapCatalogCode(row.catalogCode) ? "IM" : row.routeHint);
     setModalInjectionSite("");
     setModalNotes("");
-    setModalDoseValue("");
-    setModalDoseUnit(row.billingUnitHint);
+    setModalDoseValue(vaccineDetected ? vaccineDefaults.dose : "");
+    setModalDoseUnit(vaccineDetected ? vaccineDefaults.unit : row.billingUnitHint);
     setModalAdminQty(formatMarModalDefaultAdministeredQuantity(row.orderedQuantity));
     setModalBillingQty("");
     setModalNdc(row.ndcHint);
@@ -1498,6 +1672,19 @@ export function MedicationAdministrationTab({
       pharmacyVerificationOverrideAcknowledged: false,
       useOverride: false,
     });
+    setVaccineLotNumber("");
+    setVaccineExpirationDate("");
+    setVaccineManufacturerId("");
+    setVaccineVisGiven(false);
+    setVaccineVisRecipient("none");
+    setVaccineVisDate("");
+    setVaccineAllergiesVerified(false);
+    setVaccineFiveRightsConfirmed(false);
+    setVaccineEducationReviewed(false);
+    setVaccineReviewedWith("");
+    setVaccineReviewedTopics(vaccineDetected ? [...VACCINE_DEFAULT_TOPICS] : []);
+    setVaccineUnderstandingConfirmed(false);
+    setVaccineAmountWasted("");
     setMarDraftRestoredAt(null);
     setMarDraftSavedLocallyAt(null);
     setMarSafetyDetailsOpen(false);
@@ -1755,6 +1942,13 @@ export function MedicationAdministrationTab({
         )
       );
       return;
+    }
+    if (modalAction === "administered" && modalIsVaccine && modalVaccineDocumentation) {
+      const vaccineErrors = validateVaccineAdministrationDocumentation(modalVaccineDocumentation);
+      if (vaccineErrors.length > 0) {
+        setModalSubmitError(t(vaccineValidationMessageKey(vaccineErrors[0] ?? "")));
+        return;
+      }
     }
     if (modalAction === "administered" && modalItem?.isPrn) {
       const clinicalTz = resolveClinicalTimeZone({ facilityTimeZone });
@@ -2077,6 +2271,15 @@ export function MedicationAdministrationTab({
               currentScheduledTime: modalItem.isPrn ? null : modalItem.scheduledAt,
             })
           : null;
+      const vaccineDocumentationNote =
+        modalAction === "administered" && modalVaccineDocumentation
+          ? [
+              serializeVaccineAdministrationDocumentationForMarNotes(modalVaccineDocumentation),
+              modalVaccineNotePreview,
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : null;
 
       const body = appendMedicationDoseInstanceIdToMarCreateBody(
         {
@@ -2108,6 +2311,7 @@ export function MedicationAdministrationTab({
             modalPrnEarlyAdministration
               ? `${MAR_PRN_EARLY_OVERRIDE_NOTE_PREFIX}${marPrnEarlyOverrideReason.trim()}`
               : null,
+            vaccineDocumentationNote,
           ]
             .filter(Boolean)
             .concat(modalNotes.trim() ? [modalNotes] : [])
@@ -2774,6 +2978,14 @@ export function MedicationAdministrationTab({
                   encounterOpen: encounterClinicalMutationsAllowed,
                   canAdjust: canAdjustAdminTime,
                 }).show;
+                const latestVaccineDocumentation = parseVaccineAdministrationDocumentationFromMarNotes(latest?.notes);
+                const latestVaccineView =
+                  latestVaccineDocumentation && marSaysAdministered
+                    ? buildCompletedVaccineAdministrationViewModel(
+                        latestVaccineDocumentation,
+                        language === "en" ? "en" : "fr"
+                      )
+                    : null;
 
                 const marControlsWithClock = (
                   <div style={infusionControlsStackStyle}>
@@ -2931,6 +3143,30 @@ export function MedicationAdministrationTab({
                         </div>
                       ) : null}
                       <MedicationMarSafetyGovernanceBadges governance={row.governanceDisplay} compact />
+                      {latestVaccineView ? (
+                        <div
+                          data-testid="completed-vaccine-readonly-details"
+                          style={{
+                            marginTop: 8,
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: "1px solid #e2e8f0",
+                            backgroundColor: "#f8fafc",
+                            fontSize: 12,
+                            color: "#334155",
+                          }}
+                        >
+                          {latestVaccineView.rows.map((detail) => (
+                            <div key={detail.key}>
+                              <strong>{language === "en" ? detail.labelEn : detail.labelFr}:</strong>{" "}
+                              {detail.value}
+                            </div>
+                          ))}
+                          {latestVaccineView.note ? (
+                            <div style={{ marginTop: 6 }}>{latestVaccineView.note}</div>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={marTableMetricCellStyle}>
                       {marLastAction}
@@ -2961,6 +3197,14 @@ export function MedicationAdministrationTab({
             .sort((a, b) => new Date(b.administeredAt).getTime() - new Date(a.administeredAt).getTime())
             .map((r) => {
               const label = resolveHistoryMedicationLabel(r);
+              const vaccineDocumentation = parseVaccineAdministrationDocumentationFromMarNotes(r.notes);
+              const vaccineView = vaccineDocumentation
+                ? buildCompletedVaccineAdministrationViewModel(
+                    vaccineDocumentation,
+                    language === "en" ? "en" : "fr"
+                  )
+                : null;
+              const visibleNotes = removeVaccineDocumentationPayloadFromNotes(r.notes);
               const historyClock = buildMedicationAdministrationRowClockAction({
                 administration: r,
                 encounterOpen: encounterClinicalMutationsAllowed,
@@ -3034,7 +3278,29 @@ export function MedicationAdministrationTab({
                     onOpenTimeCorrection={() => setAdminTimeModalRow(r)}
                     onSaved={handleMarCorrectionSaved}
                   />
-                  {r.notes?.trim() ? (
+                  {vaccineView ? (
+                    <div
+                      data-testid="vaccine-history-readonly-details"
+                      style={{
+                        marginTop: 8,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
+                        backgroundColor: "#fff",
+                        fontSize: 13,
+                        color: "#334155",
+                      }}
+                    >
+                      {vaccineView.rows.map((detail) => (
+                        <div key={detail.key}>
+                          <strong>{language === "en" ? detail.labelEn : detail.labelFr}:</strong>{" "}
+                          {detail.value}
+                        </div>
+                      ))}
+                      {vaccineView.note ? <div style={{ marginTop: 6 }}>{vaccineView.note}</div> : null}
+                    </div>
+                  ) : null}
+                  {visibleNotes ? (
                     <pre
                       style={{
                         margin: "8px 0 0 0",
@@ -3045,7 +3311,7 @@ export function MedicationAdministrationTab({
                         color: "#333",
                       }}
                     >
-                      {r.notes.trim()}
+                      {visibleNotes}
                     </pre>
                   ) : null}
                 </li>
@@ -3521,6 +3787,237 @@ export function MedicationAdministrationTab({
               </>
             ) : null}
 
+            {modalIsVaccine ? (
+              <section
+                data-testid="vaccine-mar-documentation-section"
+                style={{
+                  marginBottom: 14,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#f8fafc",
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>
+                  {t("marTab.vaccine.sectionTitle")}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <label>
+                    <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marTab.vaccine.lotNumber")} *
+                    </span>
+                    <input
+                      data-testid="vaccine-lot-number"
+                      value={vaccineLotNumber}
+                      onChange={(e) => setVaccineLotNumber(e.target.value)}
+                      disabled={submitting}
+                      style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                    />
+                  </label>
+                  <label>
+                    <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                      {t("marTab.vaccine.expirationDate")} *
+                    </span>
+                    <input
+                      data-testid="vaccine-expiration-date"
+                      type="date"
+                      value={vaccineExpirationDate}
+                      onChange={(e) => setVaccineExpirationDate(e.target.value)}
+                      disabled={submitting}
+                      style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                    />
+                  </label>
+                </div>
+                <label style={{ display: "block", marginTop: 10 }}>
+                  <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {t("marTab.vaccine.manufacturer")} *
+                  </span>
+                  <select
+                    data-testid="vaccine-manufacturer"
+                    value={vaccineManufacturerId}
+                    onChange={(e) =>
+                      setVaccineManufacturerId(e.target.value as VaccineAdministrationDocumentation["manufacturerId"])
+                    }
+                    disabled={submitting}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                  >
+                    <option value="">{t("marTab.vaccine.selectPlaceholder")}</option>
+                    {VACCINE_MANUFACTURER_CATALOG.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {language === "en" ? m.labelEn : m.labelFr}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+                    <input
+                      data-testid="vaccine-vis-given"
+                      type="checkbox"
+                      checked={vaccineVisGiven}
+                      onChange={(e) => setVaccineVisGiven(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    {t("marTab.vaccine.visGiven")}
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+                    <input
+                      data-testid="vaccine-allergies-verified"
+                      type="checkbox"
+                      checked={vaccineAllergiesVerified}
+                      onChange={(e) => setVaccineAllergiesVerified(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    {t("marTab.vaccine.allergiesVerified")} *
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+                    <input
+                      data-testid="vaccine-five-rights"
+                      type="checkbox"
+                      checked={vaccineFiveRightsConfirmed}
+                      onChange={(e) => setVaccineFiveRightsConfirmed(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    {t("marTab.vaccine.fiveRights")} *
+                  </label>
+                </div>
+                {vaccineVisGiven ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
+                    <label>
+                      <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                        {t("marTab.vaccine.visRecipient")} *
+                      </span>
+                      <select
+                        data-testid="vaccine-vis-recipient"
+                        value={vaccineVisRecipient}
+                        onChange={(e) =>
+                          setVaccineVisRecipient(e.target.value as VaccineAdministrationDocumentation["visRecipient"])
+                        }
+                        disabled={submitting}
+                        style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                      >
+                        <option value="none">{t("marTab.vaccine.selectPlaceholder")}</option>
+                        {(["patient", "parent", "guardian", "family", "caregiver"] as const).map((value) => (
+                          <option key={value} value={value}>
+                            {t(`marTab.vaccine.recipients.${value}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                        {t("marTab.vaccine.visDate")} *
+                      </span>
+                      <input
+                        data-testid="vaccine-vis-date"
+                        type="date"
+                        value={vaccineVisDate}
+                        onChange={(e) => setVaccineVisDate(e.target.value)}
+                        disabled={submitting}
+                        style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+                    <input
+                      data-testid="vaccine-education-reviewed"
+                      type="checkbox"
+                      checked={vaccineEducationReviewed}
+                      onChange={(e) => setVaccineEducationReviewed(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    {t("marTab.vaccine.educationReviewed")} *
+                  </label>
+                  <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 600 }}>
+                    <input
+                      data-testid="vaccine-understanding-confirmed"
+                      type="checkbox"
+                      checked={vaccineUnderstandingConfirmed}
+                      onChange={(e) => setVaccineUnderstandingConfirmed(e.target.checked)}
+                      disabled={submitting}
+                    />
+                    {t("marTab.vaccine.understandingConfirmed")} *
+                  </label>
+                </div>
+                <label style={{ display: "block", marginTop: 10 }}>
+                  <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {t("marTab.vaccine.reviewedWith")} *
+                  </span>
+                  <select
+                    data-testid="vaccine-reviewed-with"
+                    value={vaccineReviewedWith}
+                    onChange={(e) => setVaccineReviewedWith(e.target.value as VaccineEducationRecipient | "")}
+                    disabled={submitting}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                  >
+                    <option value="">{t("marTab.vaccine.selectPlaceholder")}</option>
+                    {(["patient", "parent", "guardian", "spouse", "family", "caregiver"] as const).map((value) => (
+                      <option key={value} value={value}>
+                        {t(`marTab.vaccine.recipients.${value}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div style={{ marginTop: 10 }}>
+                  <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {t("marTab.vaccine.reviewedTopics")} *
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                    {VACCINE_DEFAULT_TOPICS.map((topic) => (
+                      <label key={topic} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <input
+                          data-testid={`vaccine-topic-${topic}`}
+                          type="checkbox"
+                          checked={vaccineReviewedTopics.includes(topic)}
+                          onChange={() =>
+                            setVaccineReviewedTopics((prev) =>
+                              prev.includes(topic) ? prev.filter((x) => x !== topic) : [...prev, topic]
+                            )
+                          }
+                          disabled={submitting}
+                        />
+                        {t(`marTab.vaccine.topics.${topic}`)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <label style={{ display: "block", marginTop: 10 }}>
+                  <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {t("marTab.vaccine.amountWasted")}
+                  </span>
+                  <input
+                    data-testid="vaccine-amount-wasted"
+                    value={vaccineAmountWasted}
+                    onChange={(e) => setVaccineAmountWasted(e.target.value)}
+                    disabled={submitting}
+                    style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1", boxSizing: "border-box" }}
+                  />
+                </label>
+                <label style={{ display: "block", marginTop: 10 }}>
+                  <span style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
+                    {t("marTab.vaccine.notePreview")}
+                  </span>
+                  <textarea
+                    data-testid="vaccine-note-preview"
+                    readOnly
+                    value={modalVaccineNotePreview}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: 10,
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      backgroundColor: "#fff",
+                      boxSizing: "border-box",
+                      resize: "vertical",
+                    }}
+                  />
+                </label>
+              </section>
+            ) : null}
+
             <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600 }}>
               {t("marTab.doseUnitPlaceholder")}
             </label>
@@ -3881,6 +4378,13 @@ export function MedicationAdministrationTab({
                 disabled={(() => {
                   if (submitting) return true;
                   if (!modalItem || modalAction !== "administered") return false;
+                  if (
+                    modalIsVaccine &&
+                    modalVaccineDocumentation &&
+                    validateVaccineAdministrationDocumentation(modalVaccineDocumentation).length > 0
+                  ) {
+                    return true;
+                  }
                   if (
                     marModalRequiresInjectionSite({
                       marAction: modalAction,
