@@ -278,6 +278,7 @@ export * from "./medication/hospitalMedicationCoverageManifest.js";
 export * from "./medication/medicationOrderabilityCertification.js";
 export * from "./medication/vaccineManufacturerCatalog.js";
 export * from "./medication/vaccineVisGovernance.js";
+export * from "./medication/vaccineMarAdministrationDocumentation.js";
 export * from "./medication/tdapVaccineAdministration.js";
 export * from "./medication/providerMedicationCatalogMaturityAudit.js";
 export * from "./medication/tdapMedicationWorkflowAudit.js";

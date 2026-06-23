@@ -18,6 +18,11 @@ import {
   validateVaccineVisDocumentation,
 } from "./vaccineVisGovernance.js";
 import { ENTERPRISE_WAVE1_FORMULARY_BY_CODE } from "./enterpriseWave1FormularyManifest.js";
+import {
+  serializeVaccineAdministrationDocumentation,
+  vaccineInjectionSiteLaterality,
+  type VaccineAdministrationDocumentation,
+} from "./vaccineMarAdministrationDocumentation.js";
 
 export const TDAP_CATALOG_CODE = "TDAP_VACCINE_0.5_ML_INJECTABLE_INJECTABLEINTRAMUSCULAR" as const;
 
@@ -315,10 +320,39 @@ export function buildTdapVaccineAdministrationNote(
 
 /** Serialize form for MAR / progress note persistence. */
 export function serializeTdapVaccineAdministrationPayload(form: TdapVaccineAdministrationForm): Record<string, unknown> {
+  const genericDocumentation: VaccineAdministrationDocumentation = {
+    vaccineProductId: null,
+    catalogCode: TDAP_CATALOG_CODE,
+    vaccineDisplayName: "Tdap vaccine",
+    dose: form.doseValue,
+    unit: form.doseUnit,
+    route: form.route,
+    site: form.injectionSite,
+    laterality: vaccineInjectionSiteLaterality(form.injectionSite),
+    lotNumber: form.lotNumber,
+    expirationDate: form.expirationDate,
+    manufacturerId: form.manufacturerId,
+    manufacturerDisplayName: manufacturerDisplay(form, "en"),
+    visGiven: form.vis.visGiven,
+    visRecipient: form.vis.visRecipient,
+    visDate: form.vis.visDate,
+    visEditionDate: null,
+    allergiesVerified: form.allergiesVerified,
+    fiveRightsConfirmed: form.confirmedFiveRights,
+    educationReviewed: form.medicationInformationReviewed,
+    reviewedWith: form.reviewedWith,
+    reviewedTopics: form.reviewedTopics,
+    understandingConfirmed: form.verbalizedUnderstanding,
+    amountWasted: form.amountWasted,
+    administeredAt: form.administeredAt,
+    administeredBy: form.administeringClinicianName,
+    administeredByCredentials: form.administeringClinicianCredentials,
+  };
   return {
     type: "tdap_vaccine_administration_v1",
     catalogCode: TDAP_CATALOG_CODE,
     ...form,
+    genericVaccineDocumentation: serializeVaccineAdministrationDocumentation(genericDocumentation),
     generatedNoteEn: buildTdapVaccineAdministrationNote(form, "en"),
     generatedNoteFr: buildTdapVaccineAdministrationNote(form, "fr"),
   };

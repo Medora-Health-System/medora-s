@@ -98,6 +98,23 @@ export type MedicationOrderIdentityResult = {
 const FALLBACK_EN = "Medication (label unavailable)";
 const FALLBACK_FR = "Médicament (libellé indisponible)";
 
+const EXACT_VACCINE_DISPLAY_BY_CODE_PREFIX: Record<string, { en: string; fr: string }> = {
+  TDAP: { en: "Tdap vaccine", fr: "Vaccin Tdap" },
+  TD: { en: "Td vaccine", fr: "Vaccin Td" },
+  DTAP: { en: "DTaP vaccine", fr: "Vaccin DTaP" },
+};
+
+function exactVaccineDisplayFromCode(code: string | null | undefined): { en: string; fr: string } | null {
+  const normalized = (code ?? "").trim().toUpperCase();
+  if (!normalized) return null;
+  // Tdap, Td, and DTaP are clinically distinct products. Preserve exact product identity
+  // from the catalog code before considering generic/canonical display labels.
+  if (normalized.startsWith("TDAP_")) return EXACT_VACCINE_DISPLAY_BY_CODE_PREFIX.TDAP;
+  if (normalized.startsWith("DTAP_")) return EXACT_VACCINE_DISPLAY_BY_CODE_PREFIX.DTAP;
+  if (normalized.startsWith("TD_")) return EXACT_VACCINE_DISPLAY_BY_CODE_PREFIX.TD;
+  return null;
+}
+
 /** Normalize strength tokens for equality checks (M1.7A.6). */
 export function normalizeMedicationStrengthToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -233,6 +250,18 @@ function resolveMedicationNames(input: ResolveMedicationOrderIdentityInput): Nam
   const prod = input.medicationProduct;
   const legacy = prod?.legacyCatalogMedication;
   const concept = prod?.concept;
+  const exactVaccine =
+    exactVaccineDisplayFromCode(cat?.code) ??
+    exactVaccineDisplayFromCode(legacy?.code) ??
+    exactVaccineDisplayFromCode(prod?.code);
+  if (exactVaccine) {
+    return {
+      nameEn: exactVaccine.en,
+      nameFr: exactVaccine.fr,
+      source: "catalog_code_inn",
+      confidence: "high",
+    };
+  }
   const manual = acceptableManualOrderLine(
     input.orderLine ?? { catalogItemType: "MEDICATION", manualLabel: null, manualSecondaryText: null }
   );
