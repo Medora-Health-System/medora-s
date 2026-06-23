@@ -74,10 +74,18 @@ export type NonBlockingPharmacyPolicyReport = {
   trueHardStops: readonly MedicationTrueHardStop[];
 };
 
+export type Tranche2LegacyPharmacyApprovalDecision = "READY_WITH_PHARMACY_APPROVAL";
+
+export type Tranche2NonBlockingOrderabilityDecision =
+  | "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY"
+  | "READY_WITH_BLOCKERS"
+  | "NOT_READY";
+
 export type Tranche2NonBlockingOrderabilityReport = {
   previousBlockingDecision: "READY_WITH_PHARMACY_APPROVAL";
   correctedDecision: "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY";
-  currentCertificationDecision: Tranche2CertificationDecision;
+  currentCertificationDecision: Tranche2CertificationDecision | Tranche2LegacyPharmacyApprovalDecision;
+  nonBlockingDecision: Tranche2NonBlockingOrderabilityDecision;
   providerMayOrder: boolean;
   orderAppearsOnMar: boolean;
   pharmacyReviewParallel: boolean;
@@ -186,16 +194,44 @@ export function buildNonBlockingPharmacyPolicyReport(): NonBlockingPharmacyPolic
   };
 }
 
+export function resolveTranche2NonBlockingOrderabilityDecision(input: {
+  certificationDecision: Tranche2CertificationDecision | Tranche2LegacyPharmacyApprovalDecision;
+  decisionBlockers?: readonly string[];
+  trueHardStops?: readonly MedicationTrueHardStop[];
+}): Tranche2NonBlockingOrderabilityDecision {
+  if ((input.trueHardStops ?? []).length > 0) return "NOT_READY";
+
+  const decision = String(input.certificationDecision);
+  if (decision === "NOT_READY") return "NOT_READY";
+
+  const blockers = input.decisionBlockers ?? [];
+  if (blockers.length > 0) return "READY_WITH_BLOCKERS";
+
+  if (
+    decision === "READY_FOR_GOVERNED_ACTIVATION" ||
+    decision === "READY_WITH_PHARMACY_APPROVAL" ||
+    decision === "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY"
+  ) {
+    return "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY";
+  }
+
+  return "READY_WITH_BLOCKERS";
+}
+
 export function buildTranche2NonBlockingOrderabilityReport(): Tranche2NonBlockingOrderabilityReport {
   const certification = runTranche2Certification();
+  const nonBlockingDecision = resolveTranche2NonBlockingOrderabilityDecision({
+    certificationDecision: certification.decision,
+    decisionBlockers: certification.decisionBlockers,
+  });
   const providerMayOrder =
-    certification.decision === "READY_FOR_GOVERNED_ACTIVATION" ||
-    certification.decision === "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY";
+    nonBlockingDecision === "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY";
 
   return {
     previousBlockingDecision: "READY_WITH_PHARMACY_APPROVAL",
     correctedDecision: "READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY",
     currentCertificationDecision: certification.decision,
+    nonBlockingDecision,
     providerMayOrder,
     orderAppearsOnMar: providerMayOrder,
     pharmacyReviewParallel: providerMayOrder,

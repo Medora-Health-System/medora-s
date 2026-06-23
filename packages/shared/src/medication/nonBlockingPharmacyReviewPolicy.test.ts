@@ -5,6 +5,7 @@ import {
   buildTranche2NonBlockingOrderabilityReport,
   buildTrueHardStopRegressionReport,
   evaluateNonBlockingPharmacyWorkflow,
+  resolveTranche2NonBlockingOrderabilityDecision,
   runNonBlockingPharmacyReviewCertification,
   TRUE_MEDICATION_HARD_STOPS,
 } from "./nonBlockingPharmacyReviewPolicy.js";
@@ -115,9 +116,34 @@ describe("nonBlockingPharmacyReviewPolicy (MEDUI.MEDICATION.TRANCHE_2_NONBLOCKIN
   it("17 — Tranche 2 is reclassified as orderable with pharmacy visibility", () => {
     const report = buildTranche2NonBlockingOrderabilityReport();
     expect(report.correctedDecision).toBe("READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY");
+    expect(report.nonBlockingDecision).toBe("READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY");
     expect(report.pharmacyApprovalRequiredToProceed).toBe(false);
     expect(report.providerMayOrder).toBe(true);
     expect(report.orderAppearsOnMar).toBe(true);
+  });
+
+  it("17A — pharmacy-review-only legacy Tranche 2 decision normalizes to provider ordering", () => {
+    expect(
+      resolveTranche2NonBlockingOrderabilityDecision({
+        certificationDecision: "READY_WITH_PHARMACY_APPROVAL",
+        decisionBlockers: [],
+      })
+    ).toBe("READY_FOR_PROVIDER_ORDERING_WITH_PHARMACY_REVIEW_VISIBILITY");
+  });
+
+  it("17B — true hard stops remain NOT_READY", () => {
+    expect(
+      resolveTranche2NonBlockingOrderabilityDecision({
+        certificationDecision: "READY_WITH_PHARMACY_APPROVAL",
+        decisionBlockers: [],
+        trueHardStops: ["PATIENT_ALLERGY_HARD_STOP"],
+      })
+    ).toBe("NOT_READY");
+  });
+
+  it("17C — old pharmacy approval is not used as the new policy final decision", () => {
+    const report = buildTranche2NonBlockingOrderabilityReport();
+    expect(report.nonBlockingDecision).not.toBe("READY_WITH_PHARMACY_APPROVAL");
   });
 
   it("18 — no wording says pharmacy approval required", () => {
