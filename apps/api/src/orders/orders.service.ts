@@ -69,6 +69,9 @@ import {
   parseCareProcedureEffectiveClinicalTimeIso,
   resolveMedicationOrderItemFrequencyCode,
   toCareProcedureEffectiveClinicalTimeIsoUtc,
+  validatePilotOrderPlacement,
+  isActiveTranche1PilotMedication,
+  type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
 } from "@medora/shared";
@@ -942,7 +945,57 @@ export class OrdersService {
     });
   }
 
-  async create(encounterId: string, facilityId: string, data: OrderCreateDto, userId?: string, ip?: string, userAgent?: string) {
+  private async assertPilotMedicationOrderAllowed(
+    facilityId: string,
+    data: OrderCreateDto,
+    pilotScope: PilotScopeInput
+  ): Promise<void> {
+    if (data.type !== "MEDICATION") return;
+    const catalogIds = [
+      ...new Set(
+        data.items
+          .map((item) => (item.catalogItemType === "MEDICATION" ? item.catalogItemId?.trim() : ""))
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (catalogIds.length === 0) return;
+    const rows = await this.prisma.catalogMedication.findMany({
+      where: { id: { in: catalogIds } },
+      select: { id: true, code: true },
+    });
+    for (const row of rows) {
+      if (!isActiveTranche1PilotMedication(row.code)) continue;
+      const validation = validatePilotOrderPlacement({
+        ...pilotScope,
+        facilityId,
+        catalogCode: row.code,
+      });
+      if (!validation.allowed) {
+        logInfo("pilot_medication_order_blocked", {
+          facilityId,
+          userId: pilotScope.userId ?? null,
+          catalogMedicationId: row.id,
+          catalogCode: row.code,
+          blockers: validation.blockers,
+        });
+        throw new BadRequestException({
+          message: "Ce médicament pilote n'est pas disponible pour ce prescripteur ou cet établissement.",
+          errorCode: "PILOT_MEDICATION_ORDER_BLOCKED",
+          blockers: validation.blockers,
+        });
+      }
+    }
+  }
+
+  async create(
+    encounterId: string,
+    facilityId: string,
+    data: OrderCreateDto,
+    userId?: string,
+    ip?: string,
+    userAgent?: string,
+    pilotScope?: PilotScopeInput
+  ) {
     const encounter = await this.prisma.encounter.findFirst({
       where: { id: encounterId, facilityId },
       include: { patient: true, triage: { select: { vitalsJson: true } } },
@@ -957,6 +1010,12 @@ export class OrdersService {
     }
 
     assertEncounterNotSigned(encounter);
+
+    await this.assertPilotMedicationOrderAllowed(facilityId, data, {
+      facilityId,
+      userId,
+      ...(pilotScope ?? {}),
+    });
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,

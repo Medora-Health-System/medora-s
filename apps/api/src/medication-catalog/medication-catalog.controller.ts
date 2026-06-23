@@ -5,6 +5,18 @@ import { RoleCode } from "@prisma/client";
 import { MedicationCatalogService } from "./medication-catalog.service";
 import { searchMedicationsQuerySchema } from "./dto/search-medications.dto";
 
+function roleCodesFromRequest(req: any): string[] {
+  const candidates = [
+    req.user?.roles,
+    req.user?.roleCodes,
+    req.user?.role,
+  ].flat();
+  return candidates
+    .filter((role): role is string => typeof role === "string")
+    .map((role) => role.trim().toUpperCase())
+    .filter(Boolean);
+}
+
 @Controller("pharmacy/medications")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class MedicationCatalogController {
@@ -25,6 +37,12 @@ export class MedicationCatalogController {
       q: parsed.data.q,
       limit: parsed.data.limit,
       favoritesFirst: parsed.data.favoritesFirst,
+      pilotScope: {
+        facilityId,
+        userId: req.user?.userId,
+        providerGroupId: req.user?.providerGroupId || req.headers["x-provider-group-id"],
+        roleCodes: roleCodesFromRequest(req),
+      },
     });
   }
 

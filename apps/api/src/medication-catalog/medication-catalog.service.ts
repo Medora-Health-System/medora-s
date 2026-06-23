@@ -13,6 +13,12 @@ import {
 import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-search.mapper";
 import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
 import {
+  listActiveTranche1PilotCatalogCodes,
+  isTranche1PilotScopeAllowed,
+  type PilotScopeInput,
+} from "@medora/shared";
+import {
+  buildCatalogMedicationSearchWhere,
   buildCatalogMedicationAliasVisibilityWhere,
   buildCatalogMedicationVisibilityWhere,
   expandMedicationSearchQuery,
@@ -51,6 +57,7 @@ export class MedicationCatalogService {
       limit: number;
       favoritesFirst?: boolean;
       purpose?: "order" | "documentation";
+      pilotScope?: PilotScopeInput;
     }
   ): Promise<{ items: CatalogSearchItemDto[] }> {
     const q = query.q.trim().toLowerCase();
@@ -122,6 +129,21 @@ export class MedicationCatalogService {
         sliced.map((m) => m.id)
       );
       sliced = sliced.filter((m) => eligibleCatalogIds.has(m.id));
+      if (query.pilotScope && isTranche1PilotScopeAllowed(query.pilotScope)) {
+        const existingCodes = new Set(sliced.map((m) => m.code));
+        const pilotCodes = listActiveTranche1PilotCatalogCodes().filter((code) => !existingCodes.has(code));
+        if (pilotCodes.length > 0) {
+          const pilotRows = await this.prisma.catalogMedication.findMany({
+            where: {
+              code: { in: pilotCodes },
+              ...buildCatalogMedicationSearchWhere(searchTerms),
+            },
+            orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+            take: Math.max(0, limit - sliced.length),
+          });
+          sliced = [...sliced, ...pilotRows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
+        }
+      }
     }
 
     const favoriteIds = query.favoritesFirst

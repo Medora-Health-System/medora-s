@@ -106,7 +106,7 @@ export type GovernedTranche1PilotActivationReport = {
   };
 };
 
-const PILOT_SCOPE = {
+export const TRANCHE_1_PILOT_SCOPE = {
   facilityId: "pilot-facility-1",
   providerGroupId: "pilot-provider-group-1",
   activatedAt: "2026-06-23T13:00:00.000Z",
@@ -172,7 +172,7 @@ function forbiddenActivatedEntries(registry: MedicationActivationRegistry): Medi
 }
 
 export function buildTranche1PilotActivationRegistry(): MedicationActivationRegistry {
-  return buildTranche1MedicationActivationRegistry(PILOT_SCOPE);
+  return buildTranche1MedicationActivationRegistry(TRANCHE_1_PILOT_SCOPE);
 }
 
 export function buildTranche1ActivatedMedicationReport(
@@ -283,8 +283,8 @@ export function buildPilotRollbackVerificationReport(
     ? rollbackMedicationActivation({
         registry,
         catalogCode: first.catalogCode,
-        rolledBackAt: PILOT_SCOPE.activatedAt,
-        actor: PILOT_SCOPE.activatingAuthority,
+        rolledBackAt: TRANCHE_1_PILOT_SCOPE.activatedAt,
+        actor: TRANCHE_1_PILOT_SCOPE.activatingAuthority,
         reason: "Pilot rollback verification",
       })
     : registry;
@@ -305,21 +305,21 @@ export function buildPilotMonitoringVerificationReport(
     createActivationMonitoringEvent({
       catalogCode: firstCode,
       metric: "MEDICATION_ORDER",
-      eventAt: PILOT_SCOPE.activatedAt,
+      eventAt: TRANCHE_1_PILOT_SCOPE.activatedAt,
       facilityId: registry.facilityScope.facilityId,
       providerGroupId: registry.facilityScope.providerGroupId,
     }),
     createActivationMonitoringEvent({
       catalogCode: firstCode,
       metric: "PROVIDER_SEARCH",
-      eventAt: PILOT_SCOPE.activatedAt,
+      eventAt: TRANCHE_1_PILOT_SCOPE.activatedAt,
       facilityId: registry.facilityScope.facilityId,
       providerGroupId: registry.facilityScope.providerGroupId,
     }),
     createActivationMonitoringEvent({
       catalogCode: firstCode,
       metric: "PHARMACY_INTERVENTION",
-      eventAt: PILOT_SCOPE.activatedAt,
+      eventAt: TRANCHE_1_PILOT_SCOPE.activatedAt,
       facilityId: registry.facilityScope.facilityId,
       providerGroupId: registry.facilityScope.providerGroupId,
       detail: "Pharmacy oversight review",
@@ -327,7 +327,7 @@ export function buildPilotMonitoringVerificationReport(
     createActivationMonitoringEvent({
       catalogCode: firstCode,
       metric: "DUPLICATE_WARNING",
-      eventAt: PILOT_SCOPE.activatedAt,
+      eventAt: TRANCHE_1_PILOT_SCOPE.activatedAt,
       facilityId: registry.facilityScope.facilityId,
       providerGroupId: registry.facilityScope.providerGroupId,
       detail: "Duplicate warning metric initialized",

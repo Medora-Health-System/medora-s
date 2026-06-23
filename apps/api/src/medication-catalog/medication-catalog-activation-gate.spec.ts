@@ -1,4 +1,5 @@
 import { MedicationCatalogService } from "./medication-catalog.service";
+import { listActiveTranche1PilotCatalogCodes } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
   const prisma = {
@@ -84,5 +85,60 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     const res = await service.search("fac-1", { q: "fe", limit: 20, purpose: "documentation" });
     expect(res.items.map((i) => i.id)).toEqual(["cat-inactive"]);
     expect(activationGovernance.filterProviderSearchCatalogIds).not.toHaveBeenCalled();
+  });
+
+  it("appends certified pilot rows only inside Tranche 1 pilot scope", async () => {
+    const pilotCode = listActiveTranche1PilotCatalogCodes()[0] ?? "PILOT_LOW_RISK_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-pilot",
+          code: pilotCode,
+          name: "Acetaminophen",
+          genericName: "Acetaminophen",
+          displayNameEn: "Acetaminophen",
+          displayNameFr: "Acétaminophène",
+          strength: "500 mg",
+          searchText: "acetaminophen acetaminophene",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("pilot-facility-1", {
+      q: "acetaminophen",
+      limit: 20,
+      pilotScope: {
+        facilityId: "pilot-facility-1",
+        providerGroupId: "pilot-provider-group-1",
+        roleCodes: ["PROVIDER"],
+      },
+    });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-pilot"]);
+    expect(res.items[0]?.code).toBe(pilotCode);
+  });
+
+  it("does not append certified pilot rows outside pilot scope", async () => {
+    prisma.catalogMedication.findMany.mockResolvedValue([]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("other-facility", {
+      q: "acetaminophen",
+      limit: 20,
+      pilotScope: {
+        facilityId: "other-facility",
+        providerGroupId: "pilot-provider-group-1",
+        roleCodes: ["PROVIDER"],
+      },
+    });
+
+    expect(res.items).toEqual([]);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(1);
   });
 });

@@ -110,6 +110,11 @@ const RULES: Array<{ test: (s: string) => boolean; fr: string; en: string }> = [
     en: "Orders can only be created for an open encounter.",
   },
   {
+    test: (s) => /PILOT_MEDICATION_ORDER_BLOCKED|médicament pilote|pilot medication/i.test(s),
+    fr: "Ce médicament pilote n'est pas disponible pour ce prescripteur ou cet établissement.",
+    en: "This pilot medication is not available for this provider or facility.",
+  },
+  {
     test: (s) =>
       /ajoutez d'abord une assurance primaire|ajoutez d’abord une assurance primaire/i.test(s),
     fr: "Ajoutez d’abord une assurance primaire, puis l’assurance secondaire.",

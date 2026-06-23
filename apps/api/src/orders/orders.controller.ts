@@ -80,14 +80,14 @@ export class OrdersController {
     }
 
     const data = assertZodBody(orderCreateDtoSchema.safeParse(body));
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId, facilityId, isActive: true },
+      include: { role: true },
+    });
+    const codes = userRoles.flatMap((ur) => (ur.role ? [ur.role.code] : []));
 
     const orderType = data.type as string;
     if (orderType === "MEDICATION" || orderType === "CARE") {
-      const userRoles = await this.prisma.userRole.findMany({
-        where: { userId, facilityId, isActive: true },
-        include: { role: true },
-      });
-      const codes = userRoles.flatMap((ur) => (ur.role ? [ur.role.code] : []));
       if (!codes.includes(RoleCode.PROVIDER) && !codes.includes(RoleCode.ADMIN)) {
         if (!codes.includes(RoleCode.RN)) {
           throw new ForbiddenException(
@@ -126,7 +126,13 @@ export class OrdersController {
       data,
       userId,
       req.ip,
-      req.headers["user-agent"]
+      req.headers["user-agent"],
+      {
+        facilityId,
+        userId,
+        providerGroupId: req.user?.providerGroupId || req.headers["x-provider-group-id"],
+        roleCodes: codes,
+      }
     );
   }
 

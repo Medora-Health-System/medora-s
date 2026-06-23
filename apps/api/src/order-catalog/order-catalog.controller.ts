@@ -31,6 +31,18 @@ const CATALOG_MEDICATION_SEARCH_ROLES = [
   RoleCode.RN,
 ] as const;
 
+function roleCodesFromRequest(req: any): string[] {
+  const candidates = [
+    req.user?.roles,
+    req.user?.roleCodes,
+    req.user?.role,
+  ].flat();
+  return candidates
+    .filter((role): role is string => typeof role === "string")
+    .map((role) => role.trim().toUpperCase())
+    .filter(Boolean);
+}
+
 @Controller("catalog")
 @UseGuards(AuthGuard("jwt"), RolesGuard)
 export class OrderCatalogController {
@@ -61,6 +73,12 @@ export class OrderCatalogController {
       limit: parsed.data.limit,
       favoritesFirst: parsed.data.favoritesFirst ?? false,
       purpose: parsed.data.purpose ?? "order",
+      pilotScope: {
+        facilityId,
+        userId: req.user?.userId,
+        providerGroupId: req.user?.providerGroupId || req.headers["x-provider-group-id"],
+        roleCodes: roleCodesFromRequest(req),
+      },
     });
   }
 

@@ -318,6 +318,7 @@ export * from "./medication/hospitalFormularyReadyCertification.js";
 export * from "./medication/governedActivationPlanning.js";
 export * from "./medication/governedActivationRuntime.js";
 export * from "./medication/tranche1PilotActivation.js";
+export * from "./medication/tranche1PilotUiApiWiring.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
