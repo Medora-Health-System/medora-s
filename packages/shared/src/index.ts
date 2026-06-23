@@ -315,6 +315,8 @@ export * from "./medication/vaccineDuplicateProtection.js";
 export * from "./medication/vaccineI18nCertification.js";
 export * from "./medication/vaccinePediatricRemediation.js";
 export * from "./medication/hospitalFormularyReadyCertification.js";
+export * from "./medication/governedActivationPlanning.js";
+export * from "./medication/governedActivationRuntime.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
