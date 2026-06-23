@@ -323,6 +323,7 @@ export * from "./medication/tranche1PilotMonitoringValidation.js";
 export * from "./medication/tranche1PilotRealWorldAudit.js";
 export * from "./medication/nonBlockingPharmacyReviewPolicy.js";
 export * from "./medication/tranche2ProviderOrderingActivation.js";
+export * from "./medication/tranche2RealWorldMonitoring.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
