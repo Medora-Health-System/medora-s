@@ -330,6 +330,7 @@ export * from "./medication/tranche3EdActivationGapAnalysis.js";
 export * from "./medication/edCatalogGapRemediation.js";
 export * from "./medication/tranche3EdFinalRecheck.js";
 export * from "./medication/anticoagulationProviderOrderingActivation.js";
+export * from "./medication/insulinDiabetesProviderOrderingActivation.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";

@@ -3,6 +3,7 @@ import {
   listActiveTranche1PilotCatalogCodes,
   listActiveTranche2ProviderOrderingCatalogCodes,
   listActiveAnticoagulationProviderOrderingCatalogCodes,
+  listActiveInsulinDiabetesProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -193,6 +194,36 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(anticoagulationCode);
   });
 
+  it("appends certified insulin/diabetes provider-ordering rows after existing activation gates", async () => {
+    const diabetesCode = listActiveInsulinDiabetesProviderOrderingCatalogCodes()[0] ?? "DIABETES_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-diabetes",
+          code: diabetesCode,
+          name: "Insulin glargine",
+          genericName: "Insulin glargine",
+          displayNameEn: "Insulin glargine",
+          displayNameFr: "Insuline glargine",
+          strength: "100 UI/mL",
+          searchText: "insulin glargine diabetes",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "glargine", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-diabetes"]);
+    expect(res.items[0]?.code).toBe(diabetesCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -209,6 +240,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(3);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(4);
   });
 });

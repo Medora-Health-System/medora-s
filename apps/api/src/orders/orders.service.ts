@@ -75,6 +75,8 @@ import {
   validateTranche2ProviderOrderPlacement,
   isActiveAnticoagulationProviderOrderingMedication,
   validateAnticoagulationProviderOrderPlacement,
+  isActiveInsulinDiabetesProviderOrderingMedication,
+  validateInsulinDiabetesProviderOrderPlacement,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
@@ -1067,6 +1069,44 @@ export class OrdersService {
     }
   }
 
+  private async assertInsulinDiabetesMedicationOrderAllowed(
+    facilityId: string,
+    data: OrderCreateDto,
+    userId?: string
+  ): Promise<void> {
+    if (data.type !== "MEDICATION") return;
+    const catalogIds = [
+      ...new Set(
+        data.items
+          .map((item) => (item.catalogItemType === "MEDICATION" ? item.catalogItemId?.trim() : ""))
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (catalogIds.length === 0) return;
+    const rows = await this.prisma.catalogMedication.findMany({
+      where: { id: { in: catalogIds } },
+      select: { id: true, code: true },
+    });
+    for (const row of rows) {
+      if (!isActiveInsulinDiabetesProviderOrderingMedication(row.code)) continue;
+      const validation = validateInsulinDiabetesProviderOrderPlacement({ catalogCode: row.code });
+      if (!validation.allowed) {
+        logInfo("insulin_diabetes_medication_order_blocked", {
+          facilityId,
+          userId: userId ?? null,
+          catalogMedicationId: row.id,
+          catalogCode: row.code,
+          blockers: validation.blockers,
+        });
+        throw new BadRequestException({
+          message: "Ce médicament pour le diabète n'est pas disponible pour cette commande.",
+          errorCode: "INSULIN_DIABETES_MEDICATION_ORDER_BLOCKED",
+          blockers: validation.blockers,
+        });
+      }
+    }
+  }
+
   async create(
     encounterId: string,
     facilityId: string,
@@ -1098,6 +1138,7 @@ export class OrdersService {
     });
     await this.assertTranche2MedicationOrderAllowed(facilityId, data, userId);
     await this.assertAnticoagulationMedicationOrderAllowed(facilityId, data, userId);
+    await this.assertInsulinDiabetesMedicationOrderAllowed(facilityId, data, userId);
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,

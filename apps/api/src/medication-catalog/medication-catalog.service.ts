@@ -16,6 +16,7 @@ import {
   listActiveTranche1PilotCatalogCodes,
   listActiveTranche2ProviderOrderingCatalogCodes,
   listActiveAnticoagulationProviderOrderingCatalogCodes,
+  listActiveInsulinDiabetesProviderOrderingCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -173,6 +174,21 @@ export class MedicationCatalogService {
           take: Math.max(0, limit - sliced.length),
         });
         sliced = [...sliced, ...anticoagulationRows.filter((row) => !existingAfterTranche2.has(row.code))].slice(0, limit);
+      }
+      const existingAfterAnticoagulation = new Set(sliced.map((m) => m.code));
+      const diabetesCodes = listActiveInsulinDiabetesProviderOrderingCatalogCodes().filter(
+        (code) => !existingAfterAnticoagulation.has(code)
+      );
+      if (diabetesCodes.length > 0 && sliced.length < limit) {
+        const diabetesRows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: diabetesCodes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...diabetesRows.filter((row) => !existingAfterAnticoagulation.has(row.code))].slice(0, limit);
       }
     }
 
