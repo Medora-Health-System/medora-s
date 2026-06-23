@@ -9,6 +9,7 @@ import {
   listActiveNeurologyProviderOrderingCatalogCodes,
   listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
   listActiveCardiologyProviderOrderingCatalogCodes,
+  listActiveIvFluidsProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -396,6 +397,42 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(cardiologyCode);
   });
 
+  it("appends certified IV fluids provider-ordering rows after existing activation gates", async () => {
+    const ivFluidsCode = listActiveIvFluidsProviderOrderingCatalogCodes()[0] ?? "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-iv-fluids",
+          code: ivFluidsCode,
+          name: "Normal saline",
+          genericName: "Normal saline",
+          displayNameEn: "Normal saline",
+          displayNameFr: "Chlorure de sodium",
+          strength: "0.9% 1000 mL",
+          searchText: "normal saline ns iv fluid",
+          isEssential: true,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "normal saline", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-iv-fluids"]);
+    expect(res.items[0]?.code).toBe(ivFluidsCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -412,6 +449,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(9);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(10);
   });
 });
