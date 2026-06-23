@@ -15,6 +15,7 @@ import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-c
 import {
   listActiveTranche1PilotCatalogCodes,
   listActiveTranche2ProviderOrderingCatalogCodes,
+  listActiveAnticoagulationProviderOrderingCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -157,6 +158,21 @@ export class MedicationCatalogService {
           take: Math.max(0, limit - sliced.length),
         });
         sliced = [...sliced, ...tranche2Rows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
+      }
+      const existingAfterTranche2 = new Set(sliced.map((m) => m.code));
+      const anticoagulationCodes = listActiveAnticoagulationProviderOrderingCatalogCodes().filter(
+        (code) => !existingAfterTranche2.has(code)
+      );
+      if (anticoagulationCodes.length > 0 && sliced.length < limit) {
+        const anticoagulationRows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: anticoagulationCodes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...anticoagulationRows.filter((row) => !existingAfterTranche2.has(row.code))].slice(0, limit);
       }
     }
 
