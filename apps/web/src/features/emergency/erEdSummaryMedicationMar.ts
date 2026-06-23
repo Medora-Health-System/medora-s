@@ -1,4 +1,4 @@
-import { parseInjectionSiteFromMarNotes } from "@medora/shared";
+import { parseInjectionSiteFromMarNotes, sanitizeMarAdministrationVisibleNote } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
@@ -121,8 +121,12 @@ export function buildErEdSummaryMarEventRows(input: {
         : "";
     const dose = doseParts.length > 0 ? doseParts.join(" ") : administeredQuantity || "—";
     const route = readStr(admin.route) || "—";
-    const notes = readStr(admin.notes);
-    const injectionSiteId = parseInjectionSiteFromMarNotes(notes);
+    const notesRaw = readStr(admin.notes);
+    const notes = sanitizeMarAdministrationVisibleNote(
+      notesRaw,
+      input.language === "fr" ? "fr" : "en"
+    );
+    const injectionSiteId = parseInjectionSiteFromMarNotes(notesRaw);
     const injectionSite = injectionSiteId ? input.t(`marTab.injectionSites.${injectionSiteId}`) : "—";
     const administeredByUser = admin.administeredBy;
     const administeredBy =

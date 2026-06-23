@@ -9,6 +9,7 @@
 
 import type { ChartExportManifest } from "./chart-export.service";
 import {
+  sanitizeMarAdministrationVisibleNote,
   selectClinicalDocumentationCardTitle,
   selectClinicalDocumentationPayloadSummary,
   type ClinicalDocumentationSummaryLocale,
@@ -548,8 +549,12 @@ export function renderEncounterChartExportHtml(
         .join("")}
       </tbody></table>
       ${manifest.medicationAdministrations
-        .filter((m) => m.notes?.trim())
-        .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.notes!)}</div>`)
+        .map((m) => ({
+          id: m.id,
+          note: sanitizeMarAdministrationVisibleNote(m.notes, locale === "fr" ? "fr" : "en"),
+        }))
+        .filter((m) => m.note.trim())
+        .map((m) => `<h4>MAR notes (${esc(m.id)})</h4><div class="pre-text">${esc(m.note)}</div>`)
         .join("")}`;
 
   const medicationGovernanceInner =

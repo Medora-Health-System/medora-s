@@ -9,7 +9,9 @@ import {
   REQUIRED_VACCINE_ADMINISTRATION_DOCUMENTATION_FIELDS,
   resolveVaccineAdministrationDisplayName,
   normalizeVaccineAdministrationDocumentation,
+  sanitizeMarAdministrationVisibleNote,
   serializeVaccineAdministrationDocumentation,
+  serializeVaccineAdministrationDocumentationForMarNotes,
   validateVaccineAdministrationDocumentation,
   vaccineAdministrationNoteIsMonolingual,
   vaccineInjectionSiteLaterality,
@@ -115,7 +117,7 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_HARDENING.1", () => {
   it("08 — completed Tdap view includes site/laterality", () => {
     const view = buildCompletedVaccineAdministrationViewModel(doc(), "en");
     expect(view.rows.find((r) => r.key === "site")?.value).toContain("Right deltoid");
-    expect(view.rows.find((r) => r.key === "site")?.value).toContain("right");
+    expect(view.rows.find((r) => r.key === "site")?.labelEn).toBe("Injection site");
   });
 
   it("09 — completed Tdap view includes lot number", () => {
@@ -217,7 +219,7 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_HARDENING.1", () => {
 
   it("26 — completed read-only drawer displays saved site/laterality", () => {
     const view = buildCompletedVaccineAdministrationViewModel(doc(), "en");
-    expect(view.rows.find((r) => r.key === "site")?.value).toContain("right");
+    expect(view.rows.find((r) => r.key === "site")?.value).toBe("Right deltoid");
   });
 
   it("27 — no provider search activation occurred", () => {
@@ -266,5 +268,47 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_HARDENING.1", () => {
     expect(normalizeVaccineAdministrationDocumentation(doc({ visDate: "06/14/2026" })).visDate).toBe(
       "2026-06-14"
     );
+  });
+
+  it("35 — English visible note strips machine payload and French injection-site line", () => {
+    const raw = [
+      "Action: Administered",
+      "Site d'injection : Deltoïde droit",
+      "IM_INJECTION_SITE:right_deltoid",
+      serializeVaccineAdministrationDocumentationForMarNotes(doc()),
+      "TDAP_VACCINE_0.5_ML_INJECTABLE_INJECTABLEINTRAMUSCULAR",
+    ].join("\n");
+    const visible = sanitizeMarAdministrationVisibleNote(raw, "en");
+    expect(visible).toContain("Tdap vaccine");
+    expect(visible).toContain("right deltoid");
+    expect(visible).not.toContain("Site d'injection");
+    expect(visible).not.toContain("Deltoïde");
+    expect(visible).not.toContain("VACCINE_ADMINISTRATION_DOCUMENTATION");
+    expect(visible).not.toContain("IM_INJECTION_SITE");
+    expect(visible).not.toContain("catalogCode");
+    expect(visible).not.toContain("{");
+  });
+
+  it("36 — French visible note strips English injection-site line", () => {
+    const raw = [
+      "Action: Administered",
+      "Injection site: Right deltoid",
+      serializeVaccineAdministrationDocumentationForMarNotes(doc()),
+    ].join("\n");
+    const visible = sanitizeMarAdministrationVisibleNote(raw, "fr");
+    expect(visible).toContain("Vaccin dcaT");
+    expect(visible).toContain("deltoïde droit");
+    expect(visible).toContain("Fiche d'information vaccinale");
+    expect(visible).not.toContain("Injection site");
+    expect(visible).not.toContain("Right deltoid");
+    expect(visible).not.toContain("VACCINE_ADMINISTRATION_DOCUMENTATION");
+  });
+
+  it("37 — completed view formats injection site as a clinical row", () => {
+    const view = buildCompletedVaccineAdministrationViewModel(doc(), "en");
+    const site = view.rows.find((row) => row.key === "site");
+    expect(site?.labelEn).toBe("Injection site");
+    expect(site?.value).toBe("Right deltoid");
+    expect(`${site?.labelEn}: ${site?.value}`).toBe("Injection site: Right deltoid");
   });
 });

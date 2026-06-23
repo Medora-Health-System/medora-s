@@ -28,6 +28,7 @@ import {
   clinicalTimelineDisplayLabelForLocale,
   clinicalTimelineDisplayLabelFr,
   resolveClinicalTimelineDisplayEventType,
+  sanitizeMarAdministrationVisibleNote,
 } from "@medora/shared";
 import {
   diagnosisDisplayFr,
@@ -1014,7 +1015,7 @@ function renderMar(lang: SupportedLanguage, rows: AnyRecord[] | null): string {
       const performerName = performer
         ? `${pickString(performer, "firstName") ?? ""} ${pickString(performer, "lastName") ?? ""}`.trim()
         : "";
-      const notes = pickString(r, "notes");
+      const notes = sanitizeMarAdministrationVisibleNote(pickString(r, "notes"), lang === "fr" ? "fr" : "en");
       const parts: string[] = [];
       parts.push(
         `<strong>${esc(label)}</strong>${dose ? ` — ${esc(dose)}` : ""}${route ? ` — ${esc(route)}` : ""}`

@@ -6,6 +6,7 @@ import {
   isVaccineMedicationForMar,
   normalizeVaccineAdministrationDocumentation,
   parseVaccineAdministrationDocumentationFromMarNotes,
+  sanitizeMarAdministrationVisibleNote,
   serializeVaccineAdministrationDocumentationForMarNotes,
   validateVaccineAdministrationDocumentation,
   vaccineAdministrationNoteIsMonolingual,
@@ -210,5 +211,22 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_UI_WIRING.1", () => {
   it("25 — vaccine save blocker panel is visible in source", () => {
     expect(modalSource).toContain('data-testid="vaccine-save-validation-panel"');
     expect(modalSource).toContain("buildVaccineValidationBlockerReport");
+  });
+
+  it("26 — MAR history display uses sanitizer and does not render raw vaccine metadata", () => {
+    expect(modalSource).toContain("sanitizeMarAdministrationVisibleNote");
+    const visible = sanitizeMarAdministrationVisibleNote(
+      [
+        "Action: Administered",
+        "Site d'injection : Deltoïde droit",
+        "IM_INJECTION_SITE:right_deltoid",
+        serializeVaccineAdministrationDocumentationForMarNotes(doc()),
+      ].join("\n"),
+      "en"
+    );
+    expect(visible).toContain("Tdap vaccine");
+    expect(visible).not.toContain("Site d'injection");
+    expect(visible).not.toContain("VACCINE_ADMINISTRATION_DOCUMENTATION");
+    expect(visible).not.toContain("IM_INJECTION_SITE");
   });
 });

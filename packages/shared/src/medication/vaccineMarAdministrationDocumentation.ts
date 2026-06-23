@@ -122,7 +122,7 @@ export type VaccineValidationBlockerReport = {
 export const VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX = "VACCINE_ADMINISTRATION_DOCUMENTATION:";
 
 const VACCINE_IDENTITY_BY_CODE_PREFIX: Record<string, { en: string; fr: string }> = {
-  TDAP: { en: "Tdap vaccine", fr: "Vaccin Tdap" },
+  TDAP: { en: "Tdap vaccine", fr: "Vaccin dcaT" },
   TD: { en: "Td vaccine", fr: "Vaccin Td" },
   DTAP: { en: "DTaP vaccine", fr: "Vaccin DTaP" },
   INFLUENZA: { en: "Influenza vaccine", fr: "Vaccin contre la grippe" },
@@ -447,7 +447,7 @@ export function buildVaccineAdministrationAuditNote(
   const dose = [doc.dose.trim(), doc.unit.trim()].filter(Boolean).join(" ");
   parts.push(
     locale === "fr"
-      ? `${vaccineName} ${dose} ${doc.route.trim()} administré${site ? ` dans le ${site}` : ""}.`
+      ? `${vaccineName} ${dose} administré par voie ${doc.route.trim()}${site ? ` dans le ${site}` : ""}.`
       : `${vaccineName} ${dose} ${doc.route.trim()} administered${site ? ` in the ${site}` : ""}.`
   );
 
@@ -532,6 +532,57 @@ export function parseVaccineAdministrationDocumentationFromMarNotes(
   return null;
 }
 
+function looksLikeRawJsonLine(line: string): boolean {
+  const trimmed = line.trim();
+  return (
+    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+    /"type"\s*:\s*"vaccine_administration_documentation_v1"/.test(trimmed) ||
+    /"catalogCode"\s*:/.test(trimmed)
+  );
+}
+
+function isMarSystemNoteLine(line: string): boolean {
+  const trimmed = line.trim();
+  const lower = trimmed.toLowerCase();
+  if (!trimmed) return true;
+  if (trimmed.startsWith(VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX)) return true;
+  if (trimmed.startsWith("IM_INJECTION_SITE:")) return true;
+  if (looksLikeRawJsonLine(trimmed)) return true;
+  if (/\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+){2,}\b/.test(trimmed)) return true;
+  return (
+    lower.startsWith("action:") ||
+    lower.startsWith("action :") ||
+    lower.startsWith("route:") ||
+    lower.startsWith("route :") ||
+    lower.startsWith("voie:") ||
+    lower.startsWith("voie :") ||
+    lower.startsWith("injection site:") ||
+    lower.startsWith("injection site :") ||
+    lower.startsWith("site d'injection:") ||
+    lower.startsWith("site d'injection :")
+  );
+}
+
+export function sanitizeMarAdministrationVisibleNote(
+  notes: string | null | undefined,
+  locale: "en" | "fr"
+): string {
+  const vaccineDoc = parseVaccineAdministrationDocumentationFromMarNotes(notes);
+  if (vaccineDoc) {
+    return buildVaccineAdministrationAuditNote(
+      normalizeVaccineAdministrationDocumentation(vaccineDoc),
+      locale
+    );
+  }
+  if (!notes) return "";
+  return notes
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => !isMarSystemNoteLine(line))
+    .join("\n")
+    .trim();
+}
+
 function pushRow(
   rows: CompletedVaccineAdministrationViewRow[],
   key: string,
@@ -558,7 +609,7 @@ export function buildCompletedVaccineAdministrationViewModel(
   pushRow(rows, "vaccineName", "Vaccine", "Vaccin", vaccineName);
   pushRow(rows, "dose", "Dose", "Dose", [doc.dose, doc.unit].filter(Boolean).join(" "));
   pushRow(rows, "route", "Route", "Voie", doc.route);
-  pushRow(rows, "site", "Site / laterality", "Site / latéralité", [siteLabel(doc.site, locale), doc.laterality].filter(Boolean).join(" · "));
+  pushRow(rows, "site", "Injection site", "Site d'injection", siteLabel(doc.site, locale));
   pushRow(rows, "lotNumber", "Lot number", "Numéro de lot", doc.lotNumber);
   pushRow(rows, "expirationDate", "Expiration date", "Date d'expiration", formatDateForNote(doc.expirationDate, locale));
   pushRow(rows, "manufacturer", "Manufacturer", "Fabricant", manufacturerDisplay(doc, locale));

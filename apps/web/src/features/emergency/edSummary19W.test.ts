@@ -2,12 +2,19 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import {
   buildDocumentedProcedureSummaryMeta,
+  serializeVaccineAdministrationDocumentationForMarNotes,
+  type VaccineAdministrationDocumentation,
 } from "@medora/shared";
 import { buildErEdSummaryMarEventRows, buildErEdSummaryMedicationOrderRows } from "@/features/emergency/erEdSummaryMedicationMar";
 import { getErPrintPacketHtml } from "@/features/emergency/erPrintPacket";
 
 const CHART_EXPORT_HTML_SOURCE = readFileSync(
   new URL("../../../../api/src/encounters/chart-export-html.util.ts", import.meta.url),
+  "utf8"
+);
+
+const CHART_LIVE_PREVIEW_SOURCE = readFileSync(
+  new URL("../../components/encounters/EncounterChartLivePreview.ts", import.meta.url),
   "utf8"
 );
 
@@ -23,6 +30,37 @@ const t = (key: string) => {
   };
   return map[key] ?? key;
 };
+
+function vaccineDoc(): VaccineAdministrationDocumentation {
+  return {
+    vaccineProductId: null,
+    catalogCode: "TDAP_VACCINE_0.5_ML_INJECTABLE_INJECTABLEINTRAMUSCULAR",
+    vaccineDisplayName: "Tdap vaccine",
+    dose: "0.5",
+    unit: "mL",
+    route: "IM",
+    site: "right_deltoid",
+    laterality: "right",
+    lotNumber: "AB345BA2",
+    expirationDate: "2027-06-30",
+    manufacturerId: "sanofi_pasteur",
+    manufacturerDisplayName: "Sanofi Pasteur",
+    visGiven: true,
+    visRecipient: "patient",
+    visDate: "2026-06-22",
+    visEditionDate: null,
+    allergiesVerified: true,
+    fiveRightsConfirmed: true,
+    educationReviewed: true,
+    reviewedWith: "patient",
+    reviewedTopics: ["reason_for_medication", "signs_of_allergic_reaction", "precautions"],
+    understandingConfirmed: true,
+    amountWasted: "",
+    administeredAt: "2026-06-23T02:46:00.000Z",
+    administeredBy: "Elizabeth Posada",
+    administeredByCredentials: "RN",
+  };
+}
 
 describe("edSummary19W — locale-safe procedure summaries", () => {
   it("EN procedure display summary does not contain French UI phrases", () => {
@@ -123,6 +161,35 @@ describe("edSummary19W — medication orders and MAR", () => {
     expect(rows[0]?.action).toBe("Administered");
     expect(rows[0]?.injectionSite).toBe("Right deltoid");
   });
+
+  it("sanitizes vaccine MAR notes for registration and print rows", () => {
+    const dirtyNotes = [
+      "Action: Administered",
+      "Site d'injection : Deltoïde droit",
+      "IM_INJECTION_SITE:right_deltoid",
+      serializeVaccineAdministrationDocumentationForMarNotes(vaccineDoc()),
+    ].join("\n");
+    const rows = buildErEdSummaryMarEventRows({
+      language: "en",
+      t,
+      admins: [
+        {
+          id: "mar-vax",
+          medicationLabelSnapshot: "Tdap vaccine",
+          marAction: "administered",
+          route: "IM",
+          administeredAt: "2026-06-23T02:46:00.000Z",
+          notes: dirtyNotes,
+          administeredBy: { firstName: "Elizabeth", lastName: "Posada" },
+        },
+      ],
+    });
+    expect(rows[0]?.notes).toContain("Tdap vaccine");
+    expect(rows[0]?.notes).toContain("right deltoid");
+    expect(rows[0]?.notes).not.toContain("Site d'injection");
+    expect(rows[0]?.notes).not.toContain("VACCINE_ADMINISTRATION_DOCUMENTATION");
+    expect(rows[0]?.notes).not.toContain("IM_INJECTION_SITE");
+  });
 });
 
 describe("edSummary19W — provider documentation visibility", () => {
@@ -190,5 +257,13 @@ describe("edSummary19W — ER packet and chart export completeness", () => {
     expect(CHART_EXPORT_HTML_SOURCE).toContain('performedAt: "Performed at"');
     expect(CHART_EXPORT_HTML_SOURCE).toContain('roleProvider: "Provider documentation"');
     expect(CHART_EXPORT_HTML_SOURCE).toContain('performedAt: "Réalisée le"');
+  });
+
+  it("live chart preview sanitizes visible MAR notes", () => {
+    expect(CHART_LIVE_PREVIEW_SOURCE).toContain("sanitizeMarAdministrationVisibleNote");
+  });
+
+  it("server chart export sanitizes visible MAR notes", () => {
+    expect(CHART_EXPORT_HTML_SOURCE).toContain("sanitizeMarAdministrationVisibleNote");
   });
 });

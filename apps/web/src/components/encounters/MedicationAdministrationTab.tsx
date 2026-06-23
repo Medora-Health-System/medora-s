@@ -104,6 +104,7 @@ import {
   isVaccineMedicationForMar,
   parseVaccineAdministrationDocumentationFromMarNotes,
   normalizeVaccineAdministrationDocumentation,
+  sanitizeMarAdministrationVisibleNote,
   resolveVaccineAdministrationDisplayName,
   serializeVaccineAdministrationDocumentationForMarNotes,
   vaccineInjectionSiteLaterality,
@@ -455,15 +456,6 @@ const VACCINE_DEFAULT_TOPICS: VaccineReviewedTopic[] = [
   "signs_of_allergic_reaction",
   "precautions",
 ];
-
-function removeVaccineDocumentationPayloadFromNotes(notes: string | null | undefined): string {
-  if (!notes) return "";
-  return notes
-    .split("\n")
-    .filter((line) => !line.trim().startsWith("VACCINE_ADMINISTRATION_DOCUMENTATION:"))
-    .join("\n")
-    .trim();
-}
 
 function isTdapCatalogCode(code: string | null | undefined): boolean {
   return (code ?? "").trim().toUpperCase().startsWith("TDAP_");
@@ -3204,7 +3196,9 @@ export function MedicationAdministrationTab({
                     language === "en" ? "en" : "fr"
                   )
                 : null;
-              const visibleNotes = removeVaccineDocumentationPayloadFromNotes(r.notes);
+              const visibleNotes = vaccineView
+                ? ""
+                : sanitizeMarAdministrationVisibleNote(r.notes, language === "en" ? "en" : "fr");
               const historyClock = buildMedicationAdministrationRowClockAction({
                 administration: r,
                 encounterOpen: encounterClinicalMutationsAllowed,
