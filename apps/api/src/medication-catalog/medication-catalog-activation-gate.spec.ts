@@ -8,6 +8,7 @@ import {
   listActiveCriticalCareProviderOrderingCatalogCodes,
   listActiveNeurologyProviderOrderingCatalogCodes,
   listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
+  listActiveCardiologyProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -360,6 +361,41 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(infectiousDiseaseCode);
   });
 
+  it("appends certified cardiology provider-ordering rows after existing activation gates", async () => {
+    const cardiologyCode = listActiveCardiologyProviderOrderingCatalogCodes()[0] ?? "AMIODARONE_150MG_3ML_IV";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-cardiology",
+          code: cardiologyCode,
+          name: "Amiodarone",
+          genericName: "Amiodarone",
+          displayNameEn: "Amiodarone",
+          displayNameFr: "Amiodarone",
+          strength: "150 mg/3 mL",
+          searchText: "amiodarone antiarrhythmia cardiology",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "amiodarone", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-cardiology"]);
+    expect(res.items[0]?.code).toBe(cardiologyCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -376,6 +412,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(8);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(9);
   });
 });

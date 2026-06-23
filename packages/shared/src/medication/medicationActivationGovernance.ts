@@ -12,6 +12,7 @@ import { ENTERPRISE_WAVE3_FORMULARY_BY_CODE } from "./enterpriseWave3FormularyMa
 import { ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_BY_CODE } from "./enterpriseWave4EdHospitalFormularyManifest.js";
 import { ENTERPRISE_ONCOLOGY_FORMULARY_BY_CODE } from "./enterpriseOncologyFormularyManifest.js";
 import { ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_FORMULARY_BY_CODE } from "./enterpriseNeurologyInfectiousDiseaseFormularyManifest.js";
+import { ENTERPRISE_CARDIOLOGY_FORMULARY_BY_CODE } from "./enterpriseCardiologyFormularyManifest.js";
 
 /** Universal activation governance status (enterprise framework). */
 export type MedicationActivationGovernanceStatus =
@@ -60,6 +61,7 @@ function resolveEnterpriseWave(catalogCode: string): EnterpriseFormularyLike | n
     ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_ONCOLOGY_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_FORMULARY_BY_CODE[catalogCode] ??
+    ENTERPRISE_CARDIOLOGY_FORMULARY_BY_CODE[catalogCode] ??
     null
   );
 }
