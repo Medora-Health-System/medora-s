@@ -4,9 +4,11 @@ import { resolveMedicationOrderIdentity } from "./medicationOrderIdentity.js";
 import {
   buildCompletedVaccineAdministrationViewModel,
   buildVaccineAdministrationAuditNote,
+  buildVaccineValidationBlockerReport,
   buildVaccineMarAdministrationHardeningReport,
   REQUIRED_VACCINE_ADMINISTRATION_DOCUMENTATION_FIELDS,
   resolveVaccineAdministrationDisplayName,
+  normalizeVaccineAdministrationDocumentation,
   serializeVaccineAdministrationDocumentation,
   validateVaccineAdministrationDocumentation,
   vaccineAdministrationNoteIsMonolingual,
@@ -232,5 +234,37 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_HARDENING.1", () => {
     expect(vaccineInjectionSiteLaterality("right_deltoid")).toBe("right");
     expect(report.i18n.decision).toBe("PASS");
     expect(report.compatibility.activationChanged).toBe(false);
+  });
+
+  it("30 — validation blocker report exposes exact missing lot", () => {
+    const report = buildVaccineValidationBlockerReport(doc({ lotNumber: "" }));
+    expect(report.missingLotNumber).toBe(true);
+    expect(report.blockerCodes).toContain("missingLotNumber");
+  });
+
+  it("31 — right deltoid label normalizes to site and laterality", () => {
+    const normalized = normalizeVaccineAdministrationDocumentation(
+      doc({ site: "Right deltoid" as VaccineAdministrationDocumentation["site"], laterality: "" })
+    );
+    expect(normalized.site).toBe("right_deltoid");
+    expect(normalized.laterality).toBe("right");
+  });
+
+  it("32 — manufacturer display maps to centralized manufacturer id", () => {
+    const normalized = normalizeVaccineAdministrationDocumentation(
+      doc({ manufacturerId: "", manufacturerDisplayName: "Sanofi Pasteur" })
+    );
+    expect(normalized.manufacturerId).toBe("sanofi_pasteur");
+  });
+
+  it("33 — blank amount wasted does not block validation", () => {
+    expect(buildVaccineValidationBlockerReport(doc({ amountWasted: "" })).invalidAmountWasted).toBe(false);
+  });
+
+  it("34 — VIS date normalizes from input date formats", () => {
+    expect(buildVaccineValidationBlockerReport(doc({ visDate: "06/14/2026" })).ok).toBe(true);
+    expect(normalizeVaccineAdministrationDocumentation(doc({ visDate: "06/14/2026" })).visDate).toBe(
+      "2026-06-14"
+    );
   });
 });

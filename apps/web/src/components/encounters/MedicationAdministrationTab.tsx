@@ -98,13 +98,14 @@ import {
   type MarShiftTimelineShiftCode,
   MEDICATION_INFUSION_NURSE_STOP_REASON_CODES,
   type MedicationAdministrationHistoryEntry,
+  buildVaccineValidationBlockerReport,
   buildCompletedVaccineAdministrationViewModel,
   buildVaccineAdministrationAuditNote,
   isVaccineMedicationForMar,
   parseVaccineAdministrationDocumentationFromMarNotes,
+  normalizeVaccineAdministrationDocumentation,
   resolveVaccineAdministrationDisplayName,
   serializeVaccineAdministrationDocumentationForMarNotes,
-  validateVaccineAdministrationDocumentation,
   vaccineInjectionSiteLaterality,
   vaccineManufacturerLabel,
   VACCINE_MANUFACTURER_CATALOG,
@@ -471,27 +472,6 @@ function isTdapCatalogCode(code: string | null | undefined): boolean {
 function vaccineModalDefaultDose(catalogCode: string | null | undefined): { dose: string; unit: string } {
   if (isTdapCatalogCode(catalogCode)) return { dose: "0.5", unit: "mL" };
   return { dose: "", unit: "mL" };
-}
-
-function vaccineValidationMessageKey(code: string): string {
-  const map: Record<string, string> = {
-    lot_number_required: "marTab.vaccine.errLotRequired",
-    expiration_date_required: "marTab.vaccine.errExpirationRequired",
-    manufacturer_required: "marTab.vaccine.errManufacturerRequired",
-    route_required: "marTab.vaccine.errRouteRequired",
-    site_required_for_im_vaccine: "marTab.vaccine.errSiteRequired",
-    laterality_required_for_im_vaccine: "marTab.vaccine.errSiteRequired",
-    administered_at_required: "marTab.vaccine.errAdministeredAtRequired",
-    administered_by_required: "marTab.vaccine.errAdministeredByRequired",
-    allergies_verified_required: "marTab.vaccine.errAllergiesRequired",
-    five_rights_required: "marTab.vaccine.errFiveRightsRequired",
-    vis_recipient_required_when_given: "marTab.vaccine.errVisRequired",
-    vis_date_required_when_given: "marTab.vaccine.errVisRequired",
-    education_reviewed_required: "marTab.vaccine.errEducationRequired",
-    reviewed_with_required: "marTab.vaccine.errReviewedWithRequired",
-    reviewed_topics_required: "marTab.vaccine.errReviewedTopicsRequired",
-  };
-  return map[code] ?? "marTab.vaccine.errRequired";
 }
 
 /**
@@ -1448,12 +1428,26 @@ export function MedicationAdministrationTab({
     vaccineVisGiven,
     vaccineVisRecipient,
   ]);
-  const modalVaccineNotePreview = useMemo(
+  const modalNormalizedVaccineDocumentation = useMemo(
     () =>
       modalVaccineDocumentation
-        ? buildVaccineAdministrationAuditNote(modalVaccineDocumentation, language === "en" ? "en" : "fr")
+        ? normalizeVaccineAdministrationDocumentation(modalVaccineDocumentation)
+        : null,
+    [modalVaccineDocumentation]
+  );
+  const modalVaccineNotePreview = useMemo(
+    () =>
+      modalNormalizedVaccineDocumentation
+        ? buildVaccineAdministrationAuditNote(modalNormalizedVaccineDocumentation, language === "en" ? "en" : "fr")
         : "",
-    [language, modalVaccineDocumentation]
+    [language, modalNormalizedVaccineDocumentation]
+  );
+  const modalVaccineValidationBlockers = useMemo(
+    () =>
+      modalNormalizedVaccineDocumentation
+        ? buildVaccineValidationBlockerReport(modalNormalizedVaccineDocumentation)
+        : null,
+    [modalNormalizedVaccineDocumentation]
   );
   const modalIsContinuousInfusion =
     modalItem?.infusionClassifyPayload != null &&
@@ -1943,10 +1937,16 @@ export function MedicationAdministrationTab({
       );
       return;
     }
-    if (modalAction === "administered" && modalIsVaccine && modalVaccineDocumentation) {
-      const vaccineErrors = validateVaccineAdministrationDocumentation(modalVaccineDocumentation);
-      if (vaccineErrors.length > 0) {
-        setModalSubmitError(t(vaccineValidationMessageKey(vaccineErrors[0] ?? "")));
+    if (modalAction === "administered" && modalIsVaccine && modalVaccineValidationBlockers) {
+      if (!modalVaccineValidationBlockers.ok) {
+        setModalSubmitError(
+          t("marTab.vaccine.errSummary").replace(
+            "{fields}",
+            modalVaccineValidationBlockers.blockerCodes
+              .map((code) => t(`marTab.vaccine.blockers.${code}`))
+              .join(", ")
+          )
+        );
         return;
       }
     }
@@ -2272,9 +2272,9 @@ export function MedicationAdministrationTab({
             })
           : null;
       const vaccineDocumentationNote =
-        modalAction === "administered" && modalVaccineDocumentation
+        modalAction === "administered" && modalNormalizedVaccineDocumentation
           ? [
-              serializeVaccineAdministrationDocumentationForMarNotes(modalVaccineDocumentation),
+              serializeVaccineAdministrationDocumentationForMarNotes(modalNormalizedVaccineDocumentation),
               modalVaccineNotePreview,
             ]
               .filter(Boolean)
@@ -4335,6 +4335,34 @@ export function MedicationAdministrationTab({
               </div>
             ) : null}
 
+            {modalAction === "administered" &&
+            modalIsVaccine &&
+            modalVaccineValidationBlockers &&
+            !modalVaccineValidationBlockers.ok ? (
+              <div
+                role="alert"
+                data-testid="vaccine-save-validation-panel"
+                style={{
+                  marginTop: 14,
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #f59e0b",
+                  backgroundColor: "#fffbeb",
+                  color: "#92400e",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  lineHeight: 1.45,
+                }}
+              >
+                {t("marTab.vaccine.errSummary").replace(
+                  "{fields}",
+                  modalVaccineValidationBlockers.blockerCodes
+                    .map((code) => t(`marTab.vaccine.blockers.${code}`))
+                    .join(", ")
+                )}
+              </div>
+            ) : null}
+
             <div
               style={{
                 display: "flex",
@@ -4378,13 +4406,6 @@ export function MedicationAdministrationTab({
                 disabled={(() => {
                   if (submitting) return true;
                   if (!modalItem || modalAction !== "administered") return false;
-                  if (
-                    modalIsVaccine &&
-                    modalVaccineDocumentation &&
-                    validateVaccineAdministrationDocumentation(modalVaccineDocumentation).length > 0
-                  ) {
-                    return true;
-                  }
                   if (
                     marModalRequiresInjectionSite({
                       marAction: modalAction,

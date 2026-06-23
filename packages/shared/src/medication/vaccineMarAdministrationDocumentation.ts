@@ -6,9 +6,11 @@
 import {
   imInjectionSiteLabelsEn,
   imInjectionSiteLabelsFr,
+  imInjectionSiteValues,
   type ImInjectionSiteId,
 } from "../mar/medicationAdministrationInjectionSite.js";
 import {
+  VACCINE_MANUFACTURER_CATALOG,
   vaccineManufacturerLabel,
   type VaccineManufacturerId,
 } from "./vaccineManufacturerCatalog.js";
@@ -91,6 +93,30 @@ export type VaccineMarAdministrationHardeningReport = {
     marBehaviorChanged: false;
     migrationsRequired: false;
   };
+};
+
+export type VaccineValidationBlockerReport = {
+  missingLotNumber: boolean;
+  missingExpirationDate: boolean;
+  missingManufacturer: boolean;
+  missingManufacturerId: boolean;
+  missingRoute: boolean;
+  missingSite: boolean;
+  missingLaterality: boolean;
+  missingVisRecipient: boolean;
+  missingVisDate: boolean;
+  missingAllergiesVerified: boolean;
+  missingFiveRightsConfirmed: boolean;
+  missingEducationReviewed: boolean;
+  missingUnderstandingConfirmed: boolean;
+  missingReviewedWith: boolean;
+  missingReviewedTopics: boolean;
+  missingAdministeredAt: boolean;
+  missingAdministeredBy: boolean;
+  invalidDateFormat: boolean;
+  invalidAmountWasted: boolean;
+  blockerCodes: string[];
+  ok: boolean;
 };
 
 export const VACCINE_MAR_DOCUMENTATION_NOTE_PREFIX = "VACCINE_ADMINISTRATION_DOCUMENTATION:";
@@ -189,7 +215,151 @@ export function vaccineInjectionSiteLaterality(site: ImInjectionSiteId | ""): "r
   return "other";
 }
 
+function parseDateInput(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const us = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+  if (us) {
+    const [, mm, dd, yyyy] = us;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
+  }
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return trimmed;
+}
+
+function validDateInput(value: string): boolean {
+  const normalized = parseDateInput(value);
+  if (!normalized) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return false;
+  const parsed = new Date(`${normalized}T12:00:00`);
+  return !Number.isNaN(parsed.getTime());
+}
+
+function normalizeManufacturer(input: {
+  manufacturerId: VaccineManufacturerId | "";
+  manufacturerDisplayName: string;
+}): { manufacturerId: VaccineManufacturerId | ""; manufacturerDisplayName: string } {
+  if (input.manufacturerId) {
+    return {
+      manufacturerId: input.manufacturerId,
+      manufacturerDisplayName:
+        input.manufacturerDisplayName.trim() || vaccineManufacturerLabel(input.manufacturerId, "en"),
+    };
+  }
+  const display = input.manufacturerDisplayName.trim().toLowerCase();
+  if (!display) return { manufacturerId: "", manufacturerDisplayName: "" };
+  const match = VACCINE_MANUFACTURER_CATALOG.find(
+    (m) => m.labelEn.toLowerCase() === display || m.labelFr.toLowerCase() === display
+  );
+  return match
+    ? { manufacturerId: match.id, manufacturerDisplayName: input.manufacturerDisplayName.trim() || match.labelEn }
+    : { manufacturerId: "", manufacturerDisplayName: input.manufacturerDisplayName.trim() };
+}
+
+function normalizeInjectionSite(raw: string): ImInjectionSiteId | "" {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if ((imInjectionSiteValues as readonly string[]).includes(trimmed)) return trimmed as ImInjectionSiteId;
+  const lower = trimmed.toLowerCase();
+  for (const id of imInjectionSiteValues) {
+    if (
+      imInjectionSiteLabelsEn[id].toLowerCase() === lower ||
+      imInjectionSiteLabelsFr[id].toLowerCase() === lower
+    ) {
+      return id;
+    }
+  }
+  return "";
+}
+
+export function normalizeVaccineAdministrationDocumentation(
+  doc: VaccineAdministrationDocumentation
+): VaccineAdministrationDocumentation {
+  const site = normalizeInjectionSite(doc.site);
+  const manufacturer = normalizeManufacturer({
+    manufacturerId: doc.manufacturerId,
+    manufacturerDisplayName: doc.manufacturerDisplayName,
+  });
+  return {
+    ...doc,
+    site,
+    laterality: doc.laterality || vaccineInjectionSiteLaterality(site),
+    expirationDate: parseDateInput(doc.expirationDate),
+    visDate: doc.visGiven ? parseDateInput(doc.visDate) : "",
+    manufacturerId: manufacturer.manufacturerId,
+    manufacturerDisplayName: manufacturer.manufacturerDisplayName,
+    amountWasted: doc.amountWasted.trim(),
+  };
+}
+
+export function buildVaccineValidationBlockerReport(
+  rawDoc: VaccineAdministrationDocumentation
+): VaccineValidationBlockerReport {
+  const doc = normalizeVaccineAdministrationDocumentation(rawDoc);
+  const imRoute = doc.route.trim().toLowerCase() === "im" || doc.route.toLowerCase().includes("intramuscular");
+  const missingExpirationDate = !doc.expirationDate.trim();
+  const missingVisDate = doc.visGiven && !doc.visDate.trim();
+  const report: Omit<VaccineValidationBlockerReport, "blockerCodes" | "ok"> = {
+    missingLotNumber: !doc.lotNumber.trim(),
+    missingExpirationDate,
+    missingManufacturer: !doc.manufacturerId && !doc.manufacturerDisplayName.trim(),
+    missingManufacturerId: !doc.manufacturerId,
+    missingRoute: !doc.route.trim(),
+    missingSite: imRoute && !doc.site,
+    missingLaterality: imRoute && !doc.laterality,
+    missingVisRecipient: doc.visGiven && doc.visRecipient === "none",
+    missingVisDate,
+    missingAllergiesVerified: !doc.allergiesVerified,
+    missingFiveRightsConfirmed: !doc.fiveRightsConfirmed,
+    missingEducationReviewed: !doc.educationReviewed,
+    missingUnderstandingConfirmed: !doc.understandingConfirmed,
+    missingReviewedWith: !doc.reviewedWith,
+    missingReviewedTopics: doc.educationReviewed && doc.reviewedTopics.length === 0,
+    missingAdministeredAt: !doc.administeredAt.trim(),
+    missingAdministeredBy: !doc.administeredBy.trim(),
+    invalidDateFormat:
+      (!missingExpirationDate && !validDateInput(doc.expirationDate)) ||
+      (doc.visGiven && !missingVisDate && !validDateInput(doc.visDate)),
+    invalidAmountWasted: Boolean(doc.amountWasted.trim() && !Number.isFinite(Number(doc.amountWasted))),
+  };
+  const blockerCodes = Object.entries(report)
+    .filter(([, blocked]) => blocked)
+    .map(([code]) => code);
+  return {
+    ...report,
+    blockerCodes,
+    ok: blockerCodes.length === 0,
+  };
+}
+
+function validationCodesFromBlockerReport(report: VaccineValidationBlockerReport): string[] {
+  const codes: string[] = [];
+  if (report.missingLotNumber) codes.push("lot_number_required");
+  if (report.missingExpirationDate) codes.push("expiration_date_required");
+  if (report.missingManufacturer || report.missingManufacturerId) codes.push("manufacturer_required");
+  if (report.missingRoute) codes.push("route_required");
+  if (report.missingSite) codes.push("site_required_for_im_vaccine");
+  if (report.missingLaterality) codes.push("laterality_required_for_im_vaccine");
+  if (report.missingAdministeredAt) codes.push("administered_at_required");
+  if (report.missingAdministeredBy) codes.push("administered_by_required");
+  if (report.missingAllergiesVerified) codes.push("allergies_verified_required");
+  if (report.missingFiveRightsConfirmed) codes.push("five_rights_required");
+  if (report.missingEducationReviewed) codes.push("education_reviewed_required");
+  if (report.missingReviewedWith) codes.push("reviewed_with_required");
+  if (report.missingReviewedTopics) codes.push("reviewed_topics_required");
+  if (report.missingUnderstandingConfirmed) codes.push("understanding_confirmed_required");
+  if (report.missingVisRecipient) codes.push("vis_recipient_required_when_given");
+  if (report.missingVisDate) codes.push("vis_date_required_when_given");
+  if (report.invalidDateFormat) codes.push("invalid_date_format");
+  if (report.invalidAmountWasted) codes.push("invalid_amount_wasted");
+  return [...new Set(codes)];
+}
+
 export function validateVaccineAdministrationDocumentation(doc: VaccineAdministrationDocumentation): string[] {
+  const blockers = buildVaccineValidationBlockerReport(doc);
+  if (!blockers.ok) return validationCodesFromBlockerReport(blockers);
   const errors: string[] = [];
   const requiredText: Array<[keyof VaccineAdministrationDocumentation, string]> = [
     ["catalogCode", "catalog_code_required"],

@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildVaccineAdministrationAuditNote,
+  buildVaccineValidationBlockerReport,
   isVaccineMedicationForMar,
+  normalizeVaccineAdministrationDocumentation,
   parseVaccineAdministrationDocumentationFromMarNotes,
   serializeVaccineAdministrationDocumentationForMarNotes,
   validateVaccineAdministrationDocumentation,
@@ -52,6 +54,10 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_UI_WIRING.1", () => {
     expect(modalSource).toContain('data-testid="vaccine-lot-number"');
   });
 
+  it("00 — fully populated Tdap vaccine saves successfully by validation contract", () => {
+    expect(buildVaccineValidationBlockerReport(doc()).ok).toBe(true);
+  });
+
   it("02 — Tdap modal renders expiration date field", () => {
     expect(modalSource).toContain('data-testid="vaccine-expiration-date"');
   });
@@ -76,6 +82,15 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_UI_WIRING.1", () => {
     );
   });
 
+  it("06B — Right deltoid label passes validation and derives laterality", () => {
+    const normalized = normalizeVaccineAdministrationDocumentation(
+      doc({ site: "Right deltoid" as VaccineAdministrationDocumentation["site"], laterality: "" })
+    );
+    expect(normalized.site).toBe("right_deltoid");
+    expect(normalized.laterality).toBe("right");
+    expect(buildVaccineValidationBlockerReport(normalized).ok).toBe(true);
+  });
+
   it("07 — Tdap save blocked if lot missing", () => {
     expect(validateVaccineAdministrationDocumentation(doc({ lotNumber: "" }))).toContain("lot_number_required");
   });
@@ -90,6 +105,25 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_UI_WIRING.1", () => {
     expect(validateVaccineAdministrationDocumentation(doc({ manufacturerId: "", manufacturerDisplayName: "" }))).toContain(
       "manufacturer_required"
     );
+  });
+
+  it("09B — Sanofi Pasteur display maps to manufacturerId", () => {
+    const normalized = normalizeVaccineAdministrationDocumentation(
+      doc({ manufacturerId: "", manufacturerDisplayName: "Sanofi Pasteur" })
+    );
+    expect(normalized.manufacturerId).toBe("sanofi_pasteur");
+    expect(buildVaccineValidationBlockerReport(normalized).ok).toBe(true);
+  });
+
+  it("09C — blank amount wasted does not block save", () => {
+    const report = buildVaccineValidationBlockerReport(doc({ amountWasted: "" }));
+    expect(report.invalidAmountWasted).toBe(false);
+    expect(report.ok).toBe(true);
+  });
+
+  it("09D — VIS date from input formats passes validation", () => {
+    expect(buildVaccineValidationBlockerReport(doc({ visDate: "06/14/2026" })).ok).toBe(true);
+    expect(buildVaccineValidationBlockerReport(doc({ visDate: "2026-06-14" })).ok).toBe(true);
   });
 
   it("10 — Tdap save blocked if VIS recipient/date missing when VIS given", () => {
@@ -171,5 +205,10 @@ describe("MEDUI.MEDICATION.VACCINE_MAR_ADMINISTRATION_UI_WIRING.1", () => {
     const parsed = parseVaccineAdministrationDocumentationFromMarNotes(`Action: Administered\n${saved}`);
     expect(parsed?.lotNumber).toBe("U8653BA");
     expect(modalSource).toContain("completed-vaccine-readonly-details");
+  });
+
+  it("25 — vaccine save blocker panel is visible in source", () => {
+    expect(modalSource).toContain('data-testid="vaccine-save-validation-panel"');
+    expect(modalSource).toContain("buildVaccineValidationBlockerReport");
   });
 });
