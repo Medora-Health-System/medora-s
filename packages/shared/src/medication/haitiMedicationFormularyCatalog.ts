@@ -1,11 +1,11 @@
 /**
- * Haiti Phase 1 formulary source (250 unique catalog codes).
+ * Haiti Phase 1 formulary source (251 unique catalog codes).
  * Generated from apps/api/prisma/data/haiti-medications.ts — do not edit by hand.
  * Regenerate: node --experimental-strip-types scripts/generate-haiti-formulary-catalog-shared.mjs
  */
 import type { HaitiMedicationFormularyRow } from "./haitiCanonicalMedicationLinkageTypes.js";
 
-export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 250 as const;
+export const HAITI_MEDICATION_FORMULARY_EXPECTED_COUNT = 251 as const;
 
 export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] = [
   {"code":"ACETAMINOPHEN_500","genericName":"Paracetamol","displayNameFr":"Paracétamol","strength":"500 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Analgésique / antipyrétique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Acetaminophen","Tylenol"]} as HaitiMedicationFormularyRow,
@@ -221,6 +221,7 @@ export const HAITI_MEDICATION_FORMULARY_CATALOG: HaitiMedicationFormularyRow[] =
   {"code":"PIPERACILLIN_TAZOBACTAM_4_5G_IV","genericName":"Piperacillin-tazobactam","displayNameFr":"Pipéracilline-tazobactam","displayNameEn":"Piperacillin-tazobactam","strength":"4.5 g","dosageForm":"injectable","route":"intraveineuse","therapeuticClass":"Antibiotique","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"administrationType":"INFUSION","billingClass":"THERAPEUTIC","commonAliases":["Zosyn","piperacillin tazobactam","piperacillin and tazobactam","sepsis","antibiotique urgence"]} as HaitiMedicationFormularyRow,
   {"code":"PIROXICAM_20_MG_CAPSULE_ORAL","genericName":"Piroxicam","displayNameFr":"Piroxicam","strength":"20 mg","dosageForm":"gélule","route":"orale","therapeuticClass":"AINS","isEssential":false,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Feldene"]} as HaitiMedicationFormularyRow,
   {"code":"POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS","genericName":"Potassium Chloride","displayNameFr":"Chlorure de potassium","strength":"20 mEq/10 mL","dosageForm":"injectable","route":"intraveineuse","therapeuticClass":"Électrolyte","isEssential":false,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["KCl"]} as HaitiMedicationFormularyRow,
+  {"code":"POVIDONE_IODINE_10_SOLUTION_TOPICAL","genericName":"Povidone-Iodine","displayNameFr":"Povidone iodée","displayNameEn":"Povidone-Iodine","strength":"10%","dosageForm":"solution","route":"topique","therapeuticClass":"Antiseptique","isEssential":false,"isActive":false,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Betadine","povidone iodine","iode","wound care","soins des plaies"]} as HaitiMedicationFormularyRow,
   {"code":"PREDNISOLONE_15_MG_PER_5_ML_SIROP_ORAL","genericName":"Prednisolone","displayNameFr":"Prednisolone","strength":"15 mg/5 mL","dosageForm":"sirop","route":"orale","therapeuticClass":"Corticoïde","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Solupred sirop"]} as HaitiMedicationFormularyRow,
   {"code":"PREDNISOLONE_5_MG_COMPRIME_ORAL","genericName":"Prednisolone","displayNameFr":"Prednisolone","strength":"5 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Corticoïde","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Solupred"]} as HaitiMedicationFormularyRow,
   {"code":"PREDNISONE_20_MG_COMPRIME_ORAL","genericName":"Prednisone","displayNameFr":"Prednisone","strength":"20 mg","dosageForm":"comprimé","route":"orale","therapeuticClass":"Corticostéroide","isEssential":true,"isActive":true,"isControlled":false,"requiresWitness":false,"requiresDoubleSign":false,"commonAliases":["Deltasone"]} as HaitiMedicationFormularyRow,

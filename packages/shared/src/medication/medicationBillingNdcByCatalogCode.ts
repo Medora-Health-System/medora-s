@@ -48,6 +48,7 @@ const NDC_PRODUCT_BY_CATALOG_CODE: Record<
   ADENOSINE_6_MG_PER_2_ML_INJECTABLE_INTRAVENOUS: { productNdc: "67457-856-01", confidence: "review" },
   AMIODARONE_150_MG_PER_3_ML_INJECTABLE_INTRAVENOUS: { productNdc: "55150-180-01", confidence: "confirmed" },
   ZIPRASIDONE_20_MG_GELULE_ORAL: { productNdc: "60505-2528-06", confidence: "review" },
+  POVIDONE_IODINE_10_SOLUTION_TOPICAL: { productNdc: "0363-3736-10", confidence: "review" },
 };
 
 function buildNdcEntry(productNdc: string, confidence: "confirmed" | "review"): MedicationBillingNdcEntry | null {
