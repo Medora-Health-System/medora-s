@@ -312,6 +312,7 @@ export * from "./medication/vaccineMarWorkflowCertification.js";
 export * from "./medication/vaccineBillingCvxNdcCertification.js";
 export * from "./medication/vaccineDuplicateProtection.js";
 export * from "./medication/vaccineI18nCertification.js";
+export * from "./medication/vaccinePediatricRemediation.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
