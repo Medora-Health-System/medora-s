@@ -425,6 +425,10 @@ export function buildPediatricMedicationSafetyAuditReport(): PediatricMedication
 
 export function buildVaccineMarWorkflowCertificationReport(): VaccineMarWorkflowCertificationReport {
   const designFields = new Set(buildTdapWorkflowDesignReport().requiredFields.map((field) => field.field.toLowerCase()));
+  const genericDocumentationFields = new Set([
+    "allergy verified",
+    "caregiver/patient understanding",
+  ]);
   const requiredFields = [
     "vaccine name",
     "dose",
@@ -455,6 +459,7 @@ export function buildVaccineMarWorkflowCertificationReport(): VaccineMarWorkflow
       key.includes("laterality") ||
       key.includes("vis") ||
       key.includes("generated") ||
+      genericDocumentationFields.has(key) ||
       [...designFields].some((design) => design.includes(key) || key.includes(design.split(" ")[0] ?? key));
     return { field, required: true, supported };
   });
@@ -486,8 +491,9 @@ export function buildVaccineVISGovernanceCertificationReport(): VaccineVISGovern
 }
 
 export function buildVaccineManufacturerGovernanceReport(): VaccineManufacturerGovernanceReport {
-  const labels = VACCINE_MANUFACTURER_CATALOG.flatMap((entry) => [entry.labelEn, entry.labelFr]);
-  const duplicates = labels.length - new Set(labels).size;
+  const duplicateLabels = (labels: string[]) => labels.length - new Set(labels.map((label) => label.trim().toLowerCase())).size;
+  const duplicates = duplicateLabels(VACCINE_MANUFACTURER_CATALOG.map((entry) => entry.labelEn)) +
+    duplicateLabels(VACCINE_MANUFACTURER_CATALOG.map((entry) => entry.labelFr));
   const enFrLabels = VACCINE_MANUFACTURER_CATALOG.every((entry) => entry.labelEn.trim() && entry.labelFr.trim());
   const checks = {
     centralizedCatalog: VACCINE_MANUFACTURER_CATALOG.length > 0,

@@ -4,6 +4,7 @@ import {
   listActiveTranche2ProviderOrderingCatalogCodes,
   listActiveAnticoagulationProviderOrderingCatalogCodes,
   listActiveInsulinDiabetesProviderOrderingCatalogCodes,
+  listActiveVaccineProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -224,6 +225,37 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(diabetesCode);
   });
 
+  it("appends certified vaccine provider-ordering rows after existing activation gates", async () => {
+    const vaccineCode = listActiveVaccineProviderOrderingCatalogCodes()[0] ?? "VACCINE_MED";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-vaccine",
+          code: vaccineCode,
+          name: "Tdap vaccine",
+          genericName: "Tdap vaccine",
+          displayNameEn: "Tdap vaccine",
+          displayNameFr: "Vaccin dcaT",
+          strength: "0.5 mL",
+          searchText: "tdap vaccine tetanus diphtheria pertussis",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "tdap", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-vaccine"]);
+    expect(res.items[0]?.code).toBe(vaccineCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -240,6 +272,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(4);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(5);
   });
 });
