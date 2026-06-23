@@ -227,6 +227,7 @@ const ACTIVATED_AT = "2026-06-23T22:45:00.000Z";
 const NEUROLOGY_TARGETS: SpecialtyMedicationTarget[] = [
   { medication: "Keppra PO", domain: "NEUROLOGY", tokens: ["levetiracetam"], preferredCatalogCodes: ["LEVETIRACETAM_500_MG_COMPRIME_ORALE", "LEVETIRACETAM_750_MG_COMPRIME_ORALE"], routeHint: "PO", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Keppra IV", domain: "NEUROLOGY", tokens: ["levetiracetam"], preferredCatalogCodes: ["LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE", "LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
+  { medication: "Keppra IVPB", domain: "NEUROLOGY", tokens: ["levetiracetam"], preferredCatalogCodes: ["LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE", "LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Phenytoin PO", domain: "NEUROLOGY", tokens: ["phenytoin"], preferredCatalogCodes: ["PHENYTOIN_100_MG_COMPRIME_ORALE"], routeHint: "PO", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Dilantin IV", domain: "NEUROLOGY", tokens: ["phenytoin"], preferredCatalogCodes: ["PHENYTOIN_50_MG_ML_INJECTABLE_INTRAVEINEUSE"], routeHint: "IV", classification: "RESTRICTED_SPECIALTY_REVIEW" },
   { medication: "Fosphenytoin", domain: "NEUROLOGY", tokens: ["fosphenytoin", "fosphenytoine"], preferredCatalogCodes: ["FOSPHEYTOIN_100_MG_PE_INJECTABLE_INTRAVEINEUSE"], routeHint: "IV", classification: "RESTRICTED_SPECIALTY_REVIEW" },
@@ -239,10 +240,11 @@ const INFECTIOUS_DISEASE_TARGETS: SpecialtyMedicationTarget[] = [
   { medication: "Vancomycin PO", domain: "INFECTIOUS_DISEASE", tokens: ["vancomycin", "vancomycine"], preferredCatalogCodes: ["VANCOMYCIN_125_MG_COMPRIME_ORALE"], routeHint: "PO", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Vancomycin IV", domain: "INFECTIOUS_DISEASE", tokens: ["vancomycin", "vancomycine"], preferredCatalogCodes: ["VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE", "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE", "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Cefepime", domain: "INFECTIOUS_DISEASE", tokens: ["cefepime", "cefepime"], preferredCatalogCodes: ["CEFEPIME_2_G_POUDRE_INTRAVEINEUSE", "CEFEPIME_1G_INJECTABLE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
-  { medication: "Zosyn", domain: "INFECTIOUS_DISEASE", tokens: ["piperacillin", "tazobactam", "zosyn"], preferredCatalogCodes: ["PIPERACILLIN_TAZOBACTAM_4_5G_IV", "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE", "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
-  { medication: "Meropenem", domain: "INFECTIOUS_DISEASE", tokens: ["meropenem", "meropenem"], preferredCatalogCodes: ["MEROPENEM_1_G_INJECTABLE_INTRAVENOUS", "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE", "MEROPENEM_500_MG_POUDRE_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
+  { medication: "Zosyn", domain: "INFECTIOUS_DISEASE", tokens: ["piperacillin", "tazobactam", "zosyn"], preferredCatalogCodes: ["PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE", "PIPERACILLIN_TAZOBACTAM_4_5G_IV", "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
+  { medication: "Meropenem", domain: "INFECTIOUS_DISEASE", tokens: ["meropenem", "meropenem"], preferredCatalogCodes: ["MEROPENEM_1_G_POUDRE_INTRAVEINEUSE", "MEROPENEM_1_G_INJECTABLE_INTRAVENOUS", "MEROPENEM_500_MG_POUDRE_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
   { medication: "Daptomycin", domain: "INFECTIOUS_DISEASE", tokens: ["daptomycin"], preferredCatalogCodes: ["DAPTOMYCIN_500_MG_POUDRE_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
-  { medication: "Linezolid", domain: "INFECTIOUS_DISEASE", tokens: ["linezolid"], preferredCatalogCodes: ["LINEZOLID_600_MG_COMPRIME_ORALE", "LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE"], routeHint: "PO", classification: "READY_FOR_PROVIDER_ORDERING" },
+  { medication: "Linezolid PO", domain: "INFECTIOUS_DISEASE", tokens: ["linezolid"], preferredCatalogCodes: ["LINEZOLID_600_MG_COMPRIME_ORALE"], routeHint: "PO", classification: "READY_FOR_PROVIDER_ORDERING" },
+  { medication: "Linezolid IV", domain: "INFECTIOUS_DISEASE", tokens: ["linezolid"], preferredCatalogCodes: ["LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE"], routeHint: "IV", classification: "READY_FOR_PROVIDER_ORDERING" },
 ];
 
 const NEUROLOGY_REMEDIATION = [
@@ -259,8 +261,8 @@ const ID_REMEDIATION = [
   { medication: "Vancomycin PO", catalogCode: "VANCOMYCIN_125_MG_COMPRIME_ORALE", tokens: ["vancomycin"] },
   { medication: "Vancomycin IV", catalogCode: "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE", tokens: ["vancomycin"] },
   { medication: "Cefepime", catalogCode: "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE", tokens: ["cefepime"] },
-  { medication: "Piperacillin-Tazobactam", catalogCode: "PIPERACILLIN_TAZOBACTAM_4_5G_IV", tokens: ["piperacillin"] },
-  { medication: "Meropenem", catalogCode: "MEROPENEM_1_G_INJECTABLE_INTRAVENOUS", tokens: ["meropenem"] },
+  { medication: "Piperacillin-Tazobactam", catalogCode: "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE", tokens: ["piperacillin"] },
+  { medication: "Meropenem", catalogCode: "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE", tokens: ["meropenem"] },
   { medication: "Daptomycin", catalogCode: "DAPTOMYCIN_500_MG_POUDRE_INTRAVEINEUSE", tokens: ["daptomycin"] },
   { medication: "Linezolid", catalogCode: "LINEZOLID_600_MG_COMPRIME_ORALE", tokens: ["linezolid"] },
 ] as const;
@@ -791,7 +793,8 @@ export function runNeurologyInfectiousDiseaseProviderOrderingActivationReport():
     "Zosyn",
     "Meropenem",
     "Daptomycin",
-    "Linezolid",
+    "Linezolid PO",
+    "Linezolid IV",
     "Mannitol",
     "Hypertonic Saline",
   ];

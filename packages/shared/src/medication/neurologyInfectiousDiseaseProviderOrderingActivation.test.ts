@@ -46,7 +46,8 @@ describe("MEDUI.MEDICATION.NEUROLOGY_AND_INFECTIOUS_DISEASE_PROVIDER_ORDERING_EX
     const report = buildInfectiousDiseaseMedicationInventoryReport();
     expect(report.rows.some((row) => row.medication === "Vancomycin IV" && row.catalogCode)).toBe(true);
     expect(report.rows.some((row) => row.medication === "Daptomycin" && row.catalogCode)).toBe(true);
-    expect(report.rows.some((row) => row.medication === "Linezolid" && row.catalogCode)).toBe(true);
+    expect(report.rows.some((row) => row.medication === "Linezolid PO" && row.catalogCode)).toBe(true);
+    expect(report.rows.some((row) => row.medication === "Linezolid IV" && row.catalogCode)).toBe(true);
   });
 
   it("03 — catalog remediation adds missing neurology and ID rows", () => {
@@ -73,7 +74,7 @@ describe("MEDUI.MEDICATION.NEUROLOGY_AND_INFECTIOUS_DISEASE_PROVIDER_ORDERING_EX
     expect(neurology.readyForProviderOrdering).toEqual(expect.arrayContaining(["Keppra IV", "Keppra PO", "Mannitol"]));
     expect(neurology.restrictedSpecialtyReview).toEqual(expect.arrayContaining(["Fosphenytoin", "Dilantin IV"]));
     expect(infectiousDisease.readyForProviderOrdering).toEqual(
-      expect.arrayContaining(["Vancomycin IV", "Cefepime", "Zosyn", "Meropenem", "Daptomycin", "Linezolid"])
+      expect.arrayContaining(["Vancomycin IV", "Cefepime", "Zosyn", "Meropenem", "Daptomycin", "Linezolid PO", "Linezolid IV"])
     );
     expect(infectiousDisease.eligibleCatalogCodes.length).toBeGreaterThan(0);
   });
