@@ -7,6 +7,7 @@ import {
   ENTERPRISE_MEDICATION_REQUIRED_SEARCH_PAIRS,
   ENTERPRISE_MEDICATION_SEARCH_TYPOS,
 } from "./enterpriseMedicationAliasManifest.js";
+import { buildIvFluidSearchQueryExpansions } from "./enterpriseIvFluidsSearchAliasManifest.js";
 
 export function normalizeEnterpriseSearchToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
@@ -48,6 +49,11 @@ export function buildEnterpriseMedicationSearchQueryExpansions(): Readonly<
   for (const pair of ENTERPRISE_MEDICATION_REQUIRED_SEARCH_PAIRS) {
     add(pair.brand, pair.generic);
     add(pair.generic, pair.brand);
+  }
+
+  for (const [key, aliases] of Object.entries(buildIvFluidSearchQueryExpansions())) {
+    add(key, ...aliases);
+    for (const alias of aliases) add(alias, key);
   }
 
   const out: Record<string, readonly string[]> = {};

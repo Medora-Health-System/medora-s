@@ -49,6 +49,23 @@ describe("expandMedicationSearchQuery", () => {
     expect(terms).not.toContain("metformin");
     expect(terms).not.toContain("lovenox");
   });
+
+  it("IV fluids — expands NS to normal saline and sodium chloride", () => {
+    const terms = expandMedicationSearchQuery("ns");
+    expect(terms).toContain("normal saline");
+    expect(terms).toContain("sodium chloride");
+  });
+
+  it("IV fluids — expands D5 to d5w and dextrose", () => {
+    const terms = expandMedicationSearchQuery("d5");
+    expect(terms).toContain("d5w");
+    expect(terms).toContain("dextrose");
+  });
+
+  it("IV fluids — expands LR to lactated ringer", () => {
+    const terms = expandMedicationSearchQuery("lr");
+    expect(terms).toContain("lactated ringer");
+  });
 });
 
 describe("buildCatalogMedicationSearchWhere", () => {

@@ -146,6 +146,12 @@ async function main() {
     `✅ ED critical gap remediation M1.8B (clonidineProducts=${edGap.clonidineProductsCreated}, catalogAdminSynced=${edGap.catalogAdminTypesSynced}, productAdminSynced=${edGap.productAdminTypesSynced}, criticalAliases=${edGap.criticalAliasesUpserted}, harmonizationAliases=${edGap.harmonizationAliasesUpserted}, skippedMissing=${edGap.skippedMissingCatalog})`
   );
 
+  const { seedEnterpriseIvFluidsCatalog } = await import("./helpers/seed-enterprise-iv-fluids-catalog");
+  const ivFluidsCatalog = await seedEnterpriseIvFluidsCatalog(prisma, { dryRun: false });
+  console.log(
+    `✅ IV fluids catalog backfill (activated=${ivFluidsCatalog.activatedCatalogCodes}, created=${ivFluidsCatalog.catalogCreated}, enriched=${ivFluidsCatalog.catalogEnriched}, aliasesAdded=${ivFluidsCatalog.aliasesUpserted}, searchTextUpdated=${ivFluidsCatalog.searchTextUpdated})`
+  );
+
   if (
     process.env.MEDORA_ENTERPRISE_PILOT_ROLLBACK === "1" &&
     process.env.MEDORA_ENABLE_ENTERPRISE_FORMULARY_PILOT_ACTIVATION === "1"
