@@ -95,6 +95,8 @@ import {
   validatePsychiatryProviderOrderPlacement,
   isActiveGastroenterologyProviderOrderingMedication,
   validateGastroenterologyProviderOrderPlacement,
+  isActivePediatricsProviderOrderingMedication,
+  validatePediatricsProviderOrderPlacement,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
@@ -1429,6 +1431,44 @@ export class OrdersService {
     }
   }
 
+  private async assertPediatricsMedicationOrderAllowed(
+    facilityId: string,
+    data: OrderCreateDto,
+    userId?: string
+  ): Promise<void> {
+    if (data.type !== "MEDICATION") return;
+    const catalogIds = [
+      ...new Set(
+        data.items
+          .map((item) => (item.catalogItemType === "MEDICATION" ? item.catalogItemId?.trim() : ""))
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (catalogIds.length === 0) return;
+    const rows = await this.prisma.catalogMedication.findMany({
+      where: { id: { in: catalogIds } },
+      select: { id: true, code: true },
+    });
+    for (const row of rows) {
+      if (!isActivePediatricsProviderOrderingMedication(row.code)) continue;
+      const validation = validatePediatricsProviderOrderPlacement({ catalogCode: row.code });
+      if (!validation.allowed) {
+        logInfo("pediatrics_medication_order_blocked", {
+          facilityId,
+          userId: userId ?? null,
+          catalogMedicationId: row.id,
+          catalogCode: row.code,
+          blockers: validation.blockers,
+        });
+        throw new BadRequestException({
+          message: "Ce médicament pédiatrique n'est pas disponible pour cette commande.",
+          errorCode: "PEDIATRICS_MEDICATION_ORDER_BLOCKED",
+          blockers: validation.blockers,
+        });
+      }
+    }
+  }
+
   private async assertCardiologyMedicationOrderAllowed(
     facilityId: string,
     data: OrderCreateDto,
@@ -1508,6 +1548,7 @@ export class OrdersService {
     await this.assertObgynMedicationOrderAllowed(facilityId, data, userId);
     await this.assertPsychiatryMedicationOrderAllowed(facilityId, data, userId);
     await this.assertGastroenterologyMedicationOrderAllowed(facilityId, data, userId);
+    await this.assertPediatricsMedicationOrderAllowed(facilityId, data, userId);
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,

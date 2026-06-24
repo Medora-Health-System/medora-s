@@ -13,6 +13,7 @@ import {
   listActiveObgynProviderOrderingCatalogCodes,
   listActivePsychiatryProviderOrderingCatalogCodes,
   listActiveGastroenterologyProviderOrderingCatalogCodes,
+  listActivePediatricsProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -550,6 +551,46 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(gastroCode);
   });
 
+  it("appends certified pediatrics provider-ordering rows after existing activation gates", async () => {
+    const pedsCode = listActivePediatricsProviderOrderingCatalogCodes()[0] ?? "AMOXICILLIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-peds",
+          code: pedsCode,
+          name: "Amoxicillin suspension",
+          genericName: "Amoxicillin",
+          displayNameEn: "Amoxicillin",
+          displayNameFr: "Amoxicilline",
+          strength: "250 mg/5 mL",
+          searchText: "amoxicillin otitis media",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "amoxicillin", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-peds"]);
+    expect(res.items[0]?.code).toBe(pedsCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -566,6 +607,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(13);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(14);
   });
 });
