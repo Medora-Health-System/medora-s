@@ -20,6 +20,7 @@ import { listActivePsychiatryProviderOrderingCatalogCodes } from "./psychiatryPr
 import { listActiveGastroenterologyProviderOrderingCatalogCodes } from "./gastroenterologyProviderOrderingActivation.js";
 import { listActivePediatricsProviderOrderingCatalogCodes } from "./pediatricsProviderOrderingActivation.js";
 import { listActiveSurgeryPerioperativeProviderOrderingCatalogCodes } from "./surgeryPerioperativeProviderOrderingActivation.js";
+import { listActivePainManagementProviderOrderingCatalogCodes } from "./painManagementProviderOrderingActivation.js";
 import { isActiveTranche2ProviderOrderingMedication, validateTranche2ProviderOrderPlacement } from "./tranche2ProviderOrderingActivation.js";
 import {
   isActiveAnticoagulationProviderOrderingMedication,
@@ -71,6 +72,10 @@ import {
   isActiveSurgeryPerioperativeProviderOrderingMedication,
   validateSurgeryPerioperativeProviderOrderPlacement,
 } from "./surgeryPerioperativeProviderOrderingActivation.js";
+import {
+  isActivePainManagementProviderOrderingMedication,
+  validatePainManagementProviderOrderPlacement,
+} from "./painManagementProviderOrderingActivation.js";
 import {
   bindProviderOrderablePrewarm,
   getActiveCodesForDomain,
@@ -178,6 +183,22 @@ const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrd
     "gastroenterology",
     "pediatrics",
   ],
+  painManagement: [
+    "tranche2",
+    "anticoagulation",
+    "insulinDiabetes",
+    "vaccine",
+    "criticalCare",
+    "neurology",
+    "infectiousDisease",
+    "cardiology",
+    "ivFluids",
+    "obgyn",
+    "psychiatry",
+    "gastroenterology",
+    "pediatrics",
+    "surgery",
+  ],
 };
 
 const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
@@ -195,6 +216,7 @@ const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
   "gastroenterology",
   "pediatrics",
   "surgery",
+  "painManagement",
 ];
 
 const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly string[]> = {
@@ -212,6 +234,7 @@ const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly str
   gastroenterology: listActiveGastroenterologyProviderOrderingCatalogCodes,
   pediatrics: listActivePediatricsProviderOrderingCatalogCodes,
   surgery: listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
+  painManagement: listActivePainManagementProviderOrderingCatalogCodes,
 };
 
 let activeProviderOrderableCodes: ReadonlySet<string> | null = null;
@@ -328,6 +351,13 @@ const DOMAIN_ORDER_VALIDATORS: Array<{
     errorCode: "SURGERY_PERIOPERATIVE_MEDICATION_ORDER_BLOCKED",
     message: "Ce médicament périopératoire n'est pas disponible pour cette commande.",
     logEvent: "surgery_perioperative_medication_order_blocked",
+  },
+  {
+    isActive: isActivePainManagementProviderOrderingMedication,
+    validate: validatePainManagementProviderOrderPlacement,
+    errorCode: "PAIN_MANAGEMENT_MEDICATION_ORDER_BLOCKED",
+    message: "Ce médicament antalgique n'est pas disponible pour cette commande.",
+    logEvent: "pain_management_medication_order_blocked",
   },
 ];
 

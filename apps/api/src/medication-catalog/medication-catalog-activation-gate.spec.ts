@@ -15,6 +15,7 @@ import {
   listActiveGastroenterologyProviderOrderingCatalogCodes,
   listActivePediatricsProviderOrderingCatalogCodes,
   listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
+  listActivePainManagementProviderOrderingCatalogCodes,
   prewarmProviderOrderableCatalogCodesRegistry,
 } from "@medora/shared";
 
@@ -492,6 +493,30 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
     expect(res.items.map((i) => i.id)).toEqual(["cat-surgery"]);
     expect(res.items[0]?.code).toBe(surgeryCode);
+  });
+
+  it("appends certified pain-management provider-ordering rows after existing activation gates", async () => {
+    const painCode = listActivePainManagementProviderOrderingCatalogCodes()[0] ?? "KETOROLAC_15_MG_ML_INJECTABLE_INTRAVEINEUSE";
+    mockEmptyDirectSearchThenSupplementalRow({
+      id: "cat-pain",
+      code: painCode,
+      name: "Ketorolac IV",
+      genericName: "Ketorolac",
+      displayNameEn: "Ketorolac",
+      displayNameFr: "Kétorolac",
+      strength: "15 mg/mL",
+      searchText: "ketorolac pain ed",
+      isEssential: false,
+      sortPriority: 0,
+      isActive: false,
+    });
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "ketorolac", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-pain"]);
+    expect(res.items[0]?.code).toBe(painCode);
   });
 
   it("does not append certified pilot rows outside pilot scope", async () => {
