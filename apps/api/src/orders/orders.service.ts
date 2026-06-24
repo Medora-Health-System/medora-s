@@ -93,6 +93,8 @@ import {
   validateObgynProviderOrderPlacement,
   isActivePsychiatryProviderOrderingMedication,
   validatePsychiatryProviderOrderPlacement,
+  isActiveGastroenterologyProviderOrderingMedication,
+  validateGastroenterologyProviderOrderPlacement,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
@@ -1389,6 +1391,44 @@ export class OrdersService {
     }
   }
 
+  private async assertGastroenterologyMedicationOrderAllowed(
+    facilityId: string,
+    data: OrderCreateDto,
+    userId?: string
+  ): Promise<void> {
+    if (data.type !== "MEDICATION") return;
+    const catalogIds = [
+      ...new Set(
+        data.items
+          .map((item) => (item.catalogItemType === "MEDICATION" ? item.catalogItemId?.trim() : ""))
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (catalogIds.length === 0) return;
+    const rows = await this.prisma.catalogMedication.findMany({
+      where: { id: { in: catalogIds } },
+      select: { id: true, code: true },
+    });
+    for (const row of rows) {
+      if (!isActiveGastroenterologyProviderOrderingMedication(row.code)) continue;
+      const validation = validateGastroenterologyProviderOrderPlacement({ catalogCode: row.code });
+      if (!validation.allowed) {
+        logInfo("gastroenterology_medication_order_blocked", {
+          facilityId,
+          userId: userId ?? null,
+          catalogMedicationId: row.id,
+          catalogCode: row.code,
+          blockers: validation.blockers,
+        });
+        throw new BadRequestException({
+          message: "Ce médicament gastro-entérologique n'est pas disponible pour cette commande.",
+          errorCode: "GASTROENTEROLOGY_MEDICATION_ORDER_BLOCKED",
+          blockers: validation.blockers,
+        });
+      }
+    }
+  }
+
   private async assertCardiologyMedicationOrderAllowed(
     facilityId: string,
     data: OrderCreateDto,
@@ -1467,6 +1507,7 @@ export class OrdersService {
     await this.assertIvFluidsMedicationOrderAllowed(facilityId, data, userId);
     await this.assertObgynMedicationOrderAllowed(facilityId, data, userId);
     await this.assertPsychiatryMedicationOrderAllowed(facilityId, data, userId);
+    await this.assertGastroenterologyMedicationOrderAllowed(facilityId, data, userId);
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,

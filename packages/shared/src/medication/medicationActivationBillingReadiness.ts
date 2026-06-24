@@ -13,6 +13,7 @@ import { ENTERPRISE_CARDIOLOGY_BILLING_BY_CODE } from "./enterpriseCardiologyBil
 import { ENTERPRISE_IV_FLUIDS_BILLING_BY_CODE } from "./enterpriseIvFluidsBillingManifest.js";
 import { ENTERPRISE_OBGYN_BILLING_BY_CODE } from "./enterpriseObgynBillingManifest.js";
 import { ENTERPRISE_PSYCHIATRY_BILLING_BY_CODE } from "./enterprisePsychiatryBillingManifest.js";
+import { ENTERPRISE_GASTROENTEROLOGY_BILLING_BY_CODE } from "./enterpriseGastroenterologyBillingManifest.js";
 import { MEDICATION_BILLING_NDC_BY_CATALOG_CODE } from "./medicationBillingNdcByCatalogCode.js";
 
 export type MedicationBillingReadiness = {
@@ -20,7 +21,7 @@ export type MedicationBillingReadiness = {
   ndcReady: boolean;
   hcpcs: string | null;
   ndc11: string | null;
-  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "haiti_ndc_map" | "none";
+  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "gastroenterology" | "haiti_ndc_map" | "none";
 };
 
 function ndcFromEntry(entry: { ndc11?: string } | undefined): string | null {
@@ -137,6 +138,17 @@ export function resolveMedicationBillingReadiness(catalogCode: string): Medicati
       hcpcs: psychiatry.hcpcs ?? null,
       ndc11: ndc,
       source: "psychiatry",
+    };
+  }
+  const gastroenterology = ENTERPRISE_GASTROENTEROLOGY_BILLING_BY_CODE[catalogCode];
+  if (gastroenterology) {
+    const ndc = ndcFromEntry(gastroenterology);
+    return {
+      billingReady: Boolean(gastroenterology.hcpcs?.trim()),
+      ndcReady: Boolean(ndc),
+      hcpcs: gastroenterology.hcpcs ?? null,
+      ndc11: ndc,
+      source: "gastroenterology",
     };
   }
   const haitiNdc = MEDICATION_BILLING_NDC_BY_CATALOG_CODE[catalogCode];

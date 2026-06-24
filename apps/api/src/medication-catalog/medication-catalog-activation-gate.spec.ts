@@ -12,6 +12,7 @@ import {
   listActiveIvFluidsProviderOrderingCatalogCodes,
   listActiveObgynProviderOrderingCatalogCodes,
   listActivePsychiatryProviderOrderingCatalogCodes,
+  listActiveGastroenterologyProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -510,6 +511,45 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(psychiatryCode);
   });
 
+  it("appends certified gastroenterology provider-ordering rows after existing activation gates", async () => {
+    const gastroCode = listActiveGastroenterologyProviderOrderingCatalogCodes()[0] ?? "LACTULOSE_10_G_PER_15_ML_SIROP_ORAL";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-gastro",
+          code: gastroCode,
+          name: "Lactulose",
+          genericName: "Lactulose",
+          displayNameEn: "Lactulose",
+          displayNameFr: "Lactulose",
+          strength: "10 g/15 mL",
+          searchText: "lactulose hepatic encephalopathy",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "lactulose", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-gastro"]);
+    expect(res.items[0]?.code).toBe(gastroCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -526,6 +566,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(12);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(13);
   });
 });

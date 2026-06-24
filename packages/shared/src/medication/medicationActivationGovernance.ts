@@ -16,6 +16,7 @@ import { ENTERPRISE_CARDIOLOGY_FORMULARY_BY_CODE } from "./enterpriseCardiologyF
 import { ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE } from "./enterpriseIvFluidsFormularyManifest.js";
 import { ENTERPRISE_OBGYN_FORMULARY_BY_CODE } from "./enterpriseObgynFormularyManifest.js";
 import { ENTERPRISE_PSYCHIATRY_FORMULARY_BY_CODE } from "./enterprisePsychiatryFormularyManifest.js";
+import { ENTERPRISE_GASTROENTEROLOGY_FORMULARY_BY_CODE } from "./enterpriseGastroenterologyFormularyManifest.js";
 
 /** Universal activation governance status (enterprise framework). */
 export type MedicationActivationGovernanceStatus =
@@ -68,6 +69,7 @@ function resolveEnterpriseWave(catalogCode: string): EnterpriseFormularyLike | n
     ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_OBGYN_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_PSYCHIATRY_FORMULARY_BY_CODE[catalogCode] ??
+    ENTERPRISE_GASTROENTEROLOGY_FORMULARY_BY_CODE[catalogCode] ??
     null
   );
 }
