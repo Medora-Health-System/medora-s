@@ -41,6 +41,15 @@ describe("marMedicationResponseAdverseEscalation", () => {
           documentedAt: "2026-06-03T10:00:00.000Z",
           painBefore: null,
           painAfter: null,
+          painResponseTrend: null,
+          noAdverseReaction: null,
+          nausea: null,
+          vomiting: null,
+          itching: null,
+          sedation: null,
+          dizziness: null,
+          constipation: null,
+          respiratoryDepression: null,
         },
       ])
     ).toBe(true);

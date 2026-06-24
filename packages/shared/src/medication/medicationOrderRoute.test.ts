@@ -55,6 +55,16 @@ describe("medicationOrderRoute (M1.8B.3)", () => {
       ).toBe("IVPB");
     });
 
+    it("maps intraveineuse and IV aliases to IVP for routine IV push (MEDUI.MEDICATION.MORPHINE_ORDER_CREATE_RUNTIME_FIX.1)", () => {
+      expect(normalizeMedicationRoute("intraveineuse")).toBe("IVP");
+      expect(normalizeMedicationRoute("IV")).toBe("IVP");
+      expect(normalizeMedicationRoute("injection")).toBe("IVP");
+      expect(
+        normalizeMedicationRoute({ route: "intraveineuse", administrationType: "PUSH" })
+      ).toBe("IVP");
+      expect(normalizeMedicationRoute("IV_PUSH")).toBe("IVP");
+    });
+
     it("maps intraveineuse + INFUSION administrationType to IVPB (M1.8B.7C.1)", () => {
       expect(
         normalizeMedicationRoute({ route: "intraveineuse", administrationType: "INFUSION" })
@@ -67,14 +77,7 @@ describe("medicationOrderRoute (M1.8B.3)", () => {
       );
     });
 
-    it("does not map intraveineuse without INFUSION to structured route", () => {
-      expect(normalizeMedicationRoute("intraveineuse")).toBeUndefined();
-      expect(
-        normalizeMedicationRoute({ route: "intraveineuse", administrationType: "PUSH" })
-      ).toBeUndefined();
-    });
-
-    it("returns undefined for unsupported routes", () => {
+    it("does not map unsupported routes", () => {
       expect(normalizeMedicationRoute("INH")).toBeUndefined();
       expect(normalizeMedicationRoute("")).toBeUndefined();
       expect(normalizeMedicationRoute(null)).toBeUndefined();
@@ -87,6 +90,27 @@ describe("medicationOrderRoute (M1.8B.3)", () => {
   describe("medicationRouteSchema", () => {
     it("accepts SQ", () => {
       expect(medicationRouteSchema.safeParse("SQ").success).toBe(true);
+    });
+
+    it("accepts IV alias after preprocessing via order schema", async () => {
+      const { orderCreateDtoSchema } = await import("../schemas/patient.js");
+      const parsed = orderCreateDtoSchema.safeParse({
+        type: "MEDICATION",
+        prescriberName: "Dr Test",
+        items: [
+          {
+            catalogItemId: "550e8400-e29b-41d4-a716-446655440000",
+            catalogItemType: "MEDICATION",
+            quantity: 1,
+            route: "IV",
+            notes: "2 mg IVP now",
+          },
+        ],
+      });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.items[0]?.route).toBe("IVP");
+      }
     });
 
     it("rejects SC (must normalize before persist)", () => {

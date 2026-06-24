@@ -110,6 +110,10 @@ import {
   type OrderMedicationCatalogRow,
 } from "./order-medication-catalog-resolve.util";
 import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
+import {
+  logMedicationOrderCreateValidationFailure,
+  medicationOrderCreateBadRequest,
+} from "./order-create-validation.util";
 import { ORDER_ITEM_RESULT_LIST_SELECT, ORDER_ITEM_RESULT_SUMMARY_SELECT } from "./order-item-result.select";
 import {
   ENCOUNTER_ORDER_ATTRIBUTION_EVENTS_CAP,
@@ -974,6 +978,24 @@ export class OrdersService {
         catalogCode: row.code,
       });
       if (!validation.allowed) {
+        const failure = medicationOrderCreateBadRequest({
+          message: "Ce médicament pilote n'est pas disponible pour ce prescripteur ou cet établissement.",
+          errorCode: "PILOT_MEDICATION_ORDER_BLOCKED",
+          validatorName: "assertPilotMedicationOrderAllowed",
+          blockers: validation.blockers,
+          catalogCode: row.code,
+          catalogMedicationId: row.id,
+        });
+        logMedicationOrderCreateValidationFailure({
+          stage: "ORDER_CREATE",
+          validatorName: failure.validatorName,
+          failureReason: failure.message,
+          facilityId,
+          catalogCode: row.code,
+          catalogMedicationId: row.id,
+          errorCode: failure.errorCode,
+          blockers: validation.blockers,
+        });
         logInfo("pilot_medication_order_blocked", {
           facilityId,
           userId: pilotScope.userId ?? null,
@@ -981,11 +1003,7 @@ export class OrdersService {
           catalogCode: row.code,
           blockers: validation.blockers,
         });
-        throw new BadRequestException({
-          message: "Ce médicament pilote n'est pas disponible pour ce prescripteur ou cet établissement.",
-          errorCode: "PILOT_MEDICATION_ORDER_BLOCKED",
-          blockers: validation.blockers,
-        });
+        throw new BadRequestException(failure);
       }
     }
   }
@@ -1013,6 +1031,24 @@ export class OrdersService {
     for (const row of rows) {
       const validation = validateProviderOrderPlacementForCatalogCode(row.code);
       if (!validation) continue;
+      const failure = medicationOrderCreateBadRequest({
+        message: validation.message,
+        errorCode: validation.errorCode,
+        validatorName: "assertProviderMedicationOrdersAllowed",
+        blockers: validation.blockers,
+        catalogCode: row.code,
+        catalogMedicationId: row.id,
+      });
+      logMedicationOrderCreateValidationFailure({
+        stage: "ORDER_CREATE",
+        validatorName: failure.validatorName,
+        failureReason: failure.message,
+        facilityId,
+        catalogCode: row.code,
+        catalogMedicationId: row.id,
+        errorCode: failure.errorCode,
+        blockers: validation.blockers,
+      });
       logInfo(validation.logEvent, {
         facilityId,
         userId: userId ?? null,
@@ -1020,11 +1056,7 @@ export class OrdersService {
         catalogCode: row.code,
         blockers: validation.blockers,
       });
-      throw new BadRequestException({
-        message: validation.message,
-        errorCode: validation.errorCode,
-        blockers: validation.blockers,
-      });
+      throw new BadRequestException(failure);
     }
   }
 
@@ -1180,12 +1212,30 @@ export class OrdersService {
       });
     } catch (err: unknown) {
       const code = err && typeof err === "object" && "code" in err ? (err as { code?: unknown }).code : undefined;
+      const httpResponse =
+        err instanceof HttpException && typeof err.getResponse === "function"
+          ? err.getResponse()
+          : undefined;
+      const structured =
+        httpResponse && typeof httpResponse === "object"
+          ? (httpResponse as {
+              errorCode?: string;
+              validatorName?: string;
+              stage?: string;
+              catalogCode?: string;
+              blockers?: string[];
+            })
+          : undefined;
       ordersLog.error("order_create_failed", {
         facilityId,
         orderType: data.type,
         itemCount: data.items.length,
         errorName: err instanceof Error ? err.name : typeof err,
-        errorCode: typeof code === "string" ? code : undefined,
+        errorCode: structured?.errorCode ?? (typeof code === "string" ? code : undefined),
+        validatorName: structured?.validatorName ?? null,
+        stage: structured?.stage ?? "ORDER_CREATE",
+        catalogCode: structured?.catalogCode ?? null,
+        blockers: structured?.blockers ?? null,
       });
       medoraLogError("order_create_failed", {
         userId: userId ?? null,

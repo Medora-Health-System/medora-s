@@ -243,7 +243,7 @@ export function SelectedMedicationItems({
                   <option value="">{t("common.dash")}</option>
                   <option value="PO">PO</option>
                   <option value="IM">IM</option>
-                  <option value="IV">IV</option>
+                  <option value="IVP">IV</option>
                   <option value="IVP">IVP</option>
                   <option value="IVPB">IVPB</option>
                   <option value="SQ">SQ</option>

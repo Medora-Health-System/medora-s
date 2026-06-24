@@ -72,7 +72,13 @@ export function normalizeMedicationRoute(
   if (normalized === "IM" || normalized === "INTRAMUSCULAR" || normalized === "INTRAMUSCULAIRE") {
     return "IM";
   }
-  if (normalized === "IVP" || normalized === "IV PUSH") return "IVP";
+  if (
+    normalized === "IVP" ||
+    normalized === "IV PUSH" ||
+    normalized === "IV_PUSH"
+  ) {
+    return "IVP";
+  }
   if (normalized === "IVPB" || normalized === "IV PIGGYBACK" || normalized === "IV PIGGY BACK") {
     return "IVPB";
   }
@@ -91,10 +97,12 @@ export function normalizeMedicationRoute(
   if (
     normalized === "INTRAVEINEUSE" ||
     normalized === "INTRAVENOUS" ||
-    normalized === "IV"
+    normalized === "IV" ||
+    normalized === "INJECTION"
   ) {
     const admin = administrationType?.trim().toUpperCase();
     if (admin === "INFUSION") return "IVPB";
+    return "IVP";
   }
 
   if (normalized === "INJECTABLE") {

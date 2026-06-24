@@ -43,7 +43,12 @@ const ORAL_OPIOID_CATALOG_CODES = [
   "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
 ] as const;
 
-const DIRECT_IV_PUSH_CODES = ["HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE"] as const;
+const DIRECT_IV_PUSH_CODES = [
+  "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+  "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+  "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+  "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+] as const;
 
 function hasAcetaminophenComponent(catalogCode: string): boolean {
   return catalogCode.includes("ACETAMINOPHEN") || catalogCode.includes("CODEINE");
@@ -90,7 +95,13 @@ export function buildControlledSubstanceOralOpioidMarSupportReport(): Controlled
       catalogCode,
       medication: ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_BY_CODE[catalogCode]?.displayNameEn ?? catalogCode,
     })),
-    { catalogCode: "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE", medication: "Hydromorphone IV 0.5 mg/mL" },
+    ...DIRECT_IV_PUSH_CODES.map((catalogCode) => ({
+      catalogCode,
+      medication:
+        catalogCode === "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+          ? "Hydromorphone IV 0.5 mg/mL"
+          : "Morphine IV push",
+    })),
   ];
   const rows: ControlledSubstanceOralOpioidMarSupportRow[] = targets.map(({ catalogCode, medication }) => {
     const resolved = resolveControlledSubstanceDirectMarReady(catalogCode);

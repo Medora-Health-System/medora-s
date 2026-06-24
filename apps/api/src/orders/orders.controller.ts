@@ -44,6 +44,7 @@ import {
 } from "@medora/shared";
 import { RoleCode } from "@prisma/client";
 import { assertZodBody } from "../common/http/zod-parse";
+import { logOrderCreateZodFailure } from "./order-create-validation.util";
 
 @Controller()
 @UseGuards(AuthGuard("jwt"), RolesGuard)
@@ -79,7 +80,17 @@ export class OrdersController {
       throw new ForbiddenException("Authentification requise");
     }
 
-    const data = assertZodBody(orderCreateDtoSchema.safeParse(body));
+    const parsedOrderBody = orderCreateDtoSchema.safeParse(body);
+    if (!parsedOrderBody.success) {
+      logOrderCreateZodFailure({
+        error: parsedOrderBody.error,
+        requestId: typeof req.requestId === "string" ? req.requestId : undefined,
+        encounterId,
+        facilityId,
+        body,
+      });
+    }
+    const data = assertZodBody(parsedOrderBody);
     const userRoles = await this.prisma.userRole.findMany({
       where: { userId, facilityId, isActive: true },
       include: { role: true },

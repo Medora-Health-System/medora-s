@@ -8,7 +8,11 @@ import {
   normalizeEncounterRoomUnitCodeInput,
   type EncounterCareUnitCode,
 } from "../encounters/governedRoomLabel.js";
-import { MEDICATION_ORDER_ROUTES } from "../medication/medicationOrderRoute.js";
+import {
+  MEDICATION_ORDER_ROUTES,
+  normalizeMedicationRoute,
+  type MedicationOrderRoute,
+} from "../medication/medicationOrderRoute.js";
 import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "../medication/medicationInfusionStopReasonGovernance.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
@@ -489,6 +493,12 @@ export const medicationFulfillmentIntentSchema = z.enum(["ADMINISTER_CHART", "PH
 export type MedicationFulfillmentIntent = z.infer<typeof medicationFulfillmentIntentSchema>;
 export const medicationRouteSchema = z.enum(MEDICATION_ORDER_ROUTES);
 export type MedicationRoute = z.infer<typeof medicationRouteSchema>;
+
+/** Accept catalog/UI aliases (IV, intraveineuse, IV push) before enum validation. */
+function preprocessMedicationOrderRoute(v: unknown): MedicationOrderRoute | undefined {
+  if (v === "" || v === null || v === undefined) return undefined;
+  return normalizeMedicationRoute(String(v)) ?? undefined;
+}
 export const orderSourceSchema = z.enum(["PROVIDER_ORDER", "VERBAL_ORDER", "NURSING_PROTOCOL"]);
 export type OrderSource = z.infer<typeof orderSourceSchema>;
 
@@ -509,7 +519,7 @@ export const orderItemCreateDtoSchema = z.object({
   /** Prescription-only: ignored for LAB / IMAGING at persistence. */
   strength: z.string().max(512).optional(),
   /** MEDICATION only: structured route snapshot. */
-  route: medicationRouteSchema.optional(),
+  route: z.preprocess(preprocessMedicationOrderRoute, medicationRouteSchema.optional()),
   /** Prescription-only: ignored for LAB / IMAGING at persistence. */
   refillCount: z.number().int().min(0).max(99).optional(),
   /** MEDICATION only: default PHARMACY_DISPENSE when omitted (server). */
