@@ -14,6 +14,7 @@ import {
   listActivePsychiatryProviderOrderingCatalogCodes,
   listActiveGastroenterologyProviderOrderingCatalogCodes,
   listActivePediatricsProviderOrderingCatalogCodes,
+  listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -591,6 +592,47 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(pedsCode);
   });
 
+  it("appends certified surgery/perioperative provider-ordering rows after existing activation gates", async () => {
+    const surgeryCode = listActiveSurgeryPerioperativeProviderOrderingCatalogCodes()[0] ?? "METRONIDAZOLE_500_MG_PER_100_ML_PERFUSION_INTRAVENOUS";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-surgery",
+          code: surgeryCode,
+          name: "Metronidazole IV",
+          genericName: "Metronidazole",
+          displayNameEn: "Metronidazole",
+          displayNameFr: "Métronidazole",
+          strength: "500 mg/100 mL",
+          searchText: "metronidazole surgical prophylaxis",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "metronidazole", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-surgery"]);
+    expect(res.items[0]?.code).toBe(surgeryCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -607,6 +649,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(14);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(15);
   });
 });

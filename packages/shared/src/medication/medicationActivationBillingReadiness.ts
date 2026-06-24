@@ -15,6 +15,7 @@ import { ENTERPRISE_OBGYN_BILLING_BY_CODE } from "./enterpriseObgynBillingManife
 import { ENTERPRISE_PSYCHIATRY_BILLING_BY_CODE } from "./enterprisePsychiatryBillingManifest.js";
 import { ENTERPRISE_GASTROENTEROLOGY_BILLING_BY_CODE } from "./enterpriseGastroenterologyBillingManifest.js";
 import { ENTERPRISE_PEDIATRICS_BILLING_BY_CODE } from "./enterprisePediatricsBillingManifest.js";
+import { ENTERPRISE_SURGERY_PERIOPERATIVE_BILLING_BY_CODE } from "./enterpriseSurgeryPerioperativeBillingManifest.js";
 import { MEDICATION_BILLING_NDC_BY_CATALOG_CODE } from "./medicationBillingNdcByCatalogCode.js";
 
 export type MedicationBillingReadiness = {
@@ -22,7 +23,7 @@ export type MedicationBillingReadiness = {
   ndcReady: boolean;
   hcpcs: string | null;
   ndc11: string | null;
-  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "gastroenterology" | "pediatrics" | "haiti_ndc_map" | "none";
+  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "gastroenterology" | "pediatrics" | "surgery_perioperative" | "haiti_ndc_map" | "none";
 };
 
 function ndcFromEntry(entry: { ndc11?: string } | undefined): string | null {
@@ -161,6 +162,17 @@ export function resolveMedicationBillingReadiness(catalogCode: string): Medicati
       hcpcs: pediatrics.hcpcs ?? null,
       ndc11: ndc,
       source: "pediatrics",
+    };
+  }
+  const surgeryPerioperative = ENTERPRISE_SURGERY_PERIOPERATIVE_BILLING_BY_CODE[catalogCode];
+  if (surgeryPerioperative) {
+    const ndc = ndcFromEntry(surgeryPerioperative);
+    return {
+      billingReady: Boolean(surgeryPerioperative.hcpcs?.trim()),
+      ndcReady: Boolean(ndc),
+      hcpcs: surgeryPerioperative.hcpcs ?? null,
+      ndc11: ndc,
+      source: "surgery_perioperative",
     };
   }
   const haitiNdc = MEDICATION_BILLING_NDC_BY_CATALOG_CODE[catalogCode];
