@@ -6,6 +6,16 @@ import {
   CONTROLLED_SUBSTANCE_GOVERNANCE_MISSING_CATALOG_COUNT,
 } from "./controlledSubstanceGovernanceManifest.js";
 import {
+  buildControlledSubstanceBillingInventoryReport,
+  buildControlledSubstanceDeaComplianceReport,
+  buildControlledSubstanceGovernanceReport,
+  buildControlledSubstanceInventoryReport,
+  buildControlledSubstanceMarSafetyReport,
+  buildControlledSubstanceProviderOrderingEligibilityReport,
+  resetControlledSubstanceGovernanceCaches,
+  runControlledSubstanceGovernanceExpansionReport,
+} from "./controlledSubstanceGovernance.js";
+import {
   catalogRowMatchesGovernanceEntry,
   legacyControlledFlagsFromManifestEntry,
   manifestEntryMatchKey,
@@ -119,5 +129,73 @@ describe("controlledSubstanceGovernanceManifest", () => {
     const apply = CONTROLLED_SUBSTANCE_GOVERNANCE_MANIFEST.filter((e) => e.governanceStatus === "APPLY");
     const keys = apply.map(manifestEntryMatchKey);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("controlledSubstanceGovernanceExpansion", () => {
+  it("classifies every focus substance with governance labels", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const report = buildControlledSubstanceGovernanceReport();
+    expect(report.decision).toBe("PASS");
+    expect(report.unclassifiedCount).toBe(0);
+    expect(report.rows.length).toBeGreaterThanOrEqual(21);
+  });
+
+  it("protects against duplicate inventory rows by catalog code", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const inventory = buildControlledSubstanceInventoryReport();
+    const codes = inventory.rows.map((row) => row.catalogCode).filter(Boolean);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it("certifies DEA audit coverage without weakening safeguards", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const dea = buildControlledSubstanceDeaComplianceReport();
+    expect(dea.orderingProviderIdentification).toBe(true);
+    expect(dea.controlledMedicationAuditTrail).toBe(true);
+    expect(dea.witnessVerificationCapability).toBe(true);
+    expect(dea.overrideAuditing).toBe(true);
+    expect(dea.pharmacyVisibility).toBe(true);
+  });
+
+  it("certifies MAR safety controls", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const mar = buildControlledSubstanceMarSafetyReport();
+    expect(mar.decision).toBe("PASS");
+    expect(mar.witnessWorkflowSupport).toBe(true);
+    expect(mar.wasteDocumentation).toBe(true);
+    expect(mar.partialAdministrationAuditing).toBe(true);
+  });
+
+  it("audits billing without fabricated HCPCS/NDC mappings", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const billing = buildControlledSubstanceBillingInventoryReport();
+    expect(billing.fabricatedMappingCount).toBe(0);
+    expect(billing.decision).toBe("PASS");
+  });
+
+  it("excludes controlled substances from provider ordering activation", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const eligibility = buildControlledSubstanceProviderOrderingEligibilityReport();
+    expect(eligibility.activationExcluded).toBe(true);
+    expect(eligibility.activatedControlledCatalogCodes).toEqual([]);
+    expect(eligibility.readyForProviderOrdering).toContain("Tramadol");
+    expect(eligibility.restrictedSpecialtyReview).toEqual(
+      expect.arrayContaining(["Morphine", "Hydromorphone", "Fentanyl"])
+    );
+    expect(eligibility.controlledSubstanceBlocked).toEqual(
+      expect.arrayContaining(["Lorazepam", "Diazepam", "Midazolam", "Oxycodone"])
+    );
+  });
+
+  it("returns governance-ready final decision without activation", () => {
+    resetControlledSubstanceGovernanceCaches();
+    const report = runControlledSubstanceGovernanceExpansionReport();
+    expect(report.finalDecision).toBe("CONTROLLED_SUBSTANCE_GOVERNANCE_READY");
+    expect(report.compatibility.controlledSubstancesActivated).toBe(false);
+    expect(report.compatibility.providerSearchChanged).toBe(false);
+    expect(report.compatibility.orderabilityBehaviorChanged).toBe(false);
+    expect(report.compatibility.migrationsRequired).toBe(false);
+    expect(report.activationRoadmap.note).toContain("no automatic activation");
   });
 });
