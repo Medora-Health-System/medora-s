@@ -34,11 +34,12 @@ import {
   buildCriticalCareInfusionGovernanceReport,
   buildCriticalCareWorkflowCompatibilityReport,
 } from "./criticalCareCoverageAudit.js";
-import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
 import { listActiveAnticoagulationProviderOrderingCatalogCodes } from "./anticoagulationProviderOrderingActivation.js";
 import { listActiveInsulinDiabetesProviderOrderingCatalogCodes } from "./insulinDiabetesProviderOrderingActivation.js";
+import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
+import { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 export type CriticalCareProviderOrderingActivationDecision =
   | "CRITICAL_CARE_PROVIDER_ORDERING_ACTIVE"
@@ -284,11 +285,7 @@ function matchesCategory(record: MedicationOrderabilityRecord, category: Critica
 }
 
 function previousActiveCodes(): Set<string> {
-  return new Set([
-    ...listActiveAnticoagulationProviderOrderingCatalogCodes(),
-    ...listActiveInsulinDiabetesProviderOrderingCatalogCodes(),
-    ...listActiveVaccineProviderOrderingCatalogCodes(),
-  ]);
+  return new Set(getPriorProviderOrderableCatalogCodesForDomain("criticalCare"));
 }
 
 function categoryRows(): Array<{ category: CriticalCareInventoryCategory; record: MedicationOrderabilityRecord }> {

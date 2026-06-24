@@ -32,6 +32,7 @@ import { certifyProviderSearchCollisions } from "./providerSearchCanonicalizatio
 import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
 import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
+import { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 export type ObgynActivationDecision =
   | "OBGYN_PROVIDER_ORDERING_ACTIVE"
@@ -309,17 +310,7 @@ function findRecordForTarget(target: ObgynMedicationTarget): MedicationOrderabil
 }
 
 function previousActiveCodes(): Set<string> {
-  return new Set([
-    ...listActiveTranche2ProviderOrderingCatalogCodes(),
-    ...listActiveAnticoagulationProviderOrderingCatalogCodes(),
-    ...listActiveInsulinDiabetesProviderOrderingCatalogCodes(),
-    ...listActiveVaccineProviderOrderingCatalogCodes(),
-    ...listActiveCriticalCareProviderOrderingCatalogCodes(),
-    ...listActiveNeurologyProviderOrderingCatalogCodes(),
-    ...listActiveInfectiousDiseaseProviderOrderingCatalogCodes(),
-    ...listActiveCardiologyProviderOrderingCatalogCodes(),
-    ...listActiveIvFluidsProviderOrderingCatalogCodes(),
-  ]);
+  return new Set(getPriorProviderOrderableCatalogCodesForDomain("obgyn"));
 }
 
 function rowForTarget(target: ObgynMedicationTarget): ObgynInventoryRow {

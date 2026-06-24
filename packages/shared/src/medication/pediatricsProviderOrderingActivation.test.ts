@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach } from "vitest";
 import {
   buildPediatricsBillingInventoryReport,
   buildPediatricsCatalogRemediationReport,
@@ -15,8 +15,13 @@ import {
   resetPediatricsProviderOrderingActivationCaches,
   runPediatricsProviderOrderingExpansionReport,
 } from "./pediatricsProviderOrderingActivation.js";
+import { prewarmProviderOrderableCatalogCodesRegistry } from "./providerOrderableCatalogCodesRegistry.js";
 
 describe("MEDUI.MEDICATION.PEDIATRICS_PROVIDER_ORDERING_EXPANSION.1", () => {
+  beforeAll(() => {
+    prewarmProviderOrderableCatalogCodesRegistry();
+  });
+
   beforeEach(() => {
     resetPediatricsProviderOrderingActivationCaches();
   });

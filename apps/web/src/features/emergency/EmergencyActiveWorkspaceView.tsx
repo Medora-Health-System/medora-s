@@ -377,9 +377,15 @@ export function EmergencyActiveWorkspaceView() {
       }
       return;
     }
-    setLoading(true);
     setError(null);
     const cacheKey = `encounter:${fid}:${encounterId}`;
+    const cached = await getCachedRecord<EncounterShell>("encounter_summaries", cacheKey);
+    if (cached?.data) {
+      setEncounter(cached.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
       const raw = await apiFetch(`/encounters/${encounterId}`, { facilityId: fid });
       const enc = asApiObject<EncounterShell>(raw);
@@ -743,9 +749,29 @@ export function EmergencyActiveWorkspaceView() {
     );
   }
 
-  if (loading && !encounter) {
+  if (!encounter && loading) {
     return (
-      <div style={{ padding: 24, fontSize: 14, color: "#64748b" }}>{t("emergencyWorkspace.loading")}</div>
+      <div style={{ padding: 24, maxWidth: 960, margin: "0 auto", color: "#64748b" }}>
+        <p style={{ margin: "0 0 12px 0", fontSize: 13 }}>
+          <Link href="/app/emergency/trackboard" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+            {t("emergencyWorkspace.backTrackboard")}
+          </Link>
+        </p>
+        <h1 style={{ margin: "0 0 16px 0", fontSize: "1.35rem", fontWeight: 600, color: "#0f172a" }}>
+          {t("emergencyWorkspace.pageTitle")}
+        </h1>
+        <div
+          style={{
+            border: "1px solid #e2e8f0",
+            borderRadius: 16,
+            background: "#fff",
+            padding: 20,
+            fontSize: 14,
+          }}
+        >
+          {t("emergencyWorkspace.loading")}
+        </div>
+      </div>
     );
   }
 

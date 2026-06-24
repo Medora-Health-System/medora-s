@@ -31,6 +31,7 @@ import { certifyProviderSearchCollisions } from "./providerSearchCanonicalizatio
 import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
 import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
+import { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 export type PsychiatryActivationDecision =
   | "PSYCHIATRY_PROVIDER_ORDERING_ACTIVE"
@@ -341,18 +342,7 @@ function findRecordForTarget(target: PsychiatryMedicationTarget): MedicationOrde
 }
 
 function previousActiveCodes(): Set<string> {
-  return new Set([
-    ...listActiveTranche2ProviderOrderingCatalogCodes(),
-    ...listActiveAnticoagulationProviderOrderingCatalogCodes(),
-    ...listActiveInsulinDiabetesProviderOrderingCatalogCodes(),
-    ...listActiveVaccineProviderOrderingCatalogCodes(),
-    ...listActiveCriticalCareProviderOrderingCatalogCodes(),
-    ...listActiveNeurologyProviderOrderingCatalogCodes(),
-    ...listActiveInfectiousDiseaseProviderOrderingCatalogCodes(),
-    ...listActiveCardiologyProviderOrderingCatalogCodes(),
-    ...listActiveIvFluidsProviderOrderingCatalogCodes(),
-    ...listActiveObgynProviderOrderingCatalogCodes(),
-  ]);
+  return new Set(getPriorProviderOrderableCatalogCodesForDomain("psychiatry"));
 }
 
 function rowForTarget(target: PsychiatryMedicationTarget): PsychiatryInventoryRow {

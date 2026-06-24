@@ -155,21 +155,32 @@ export class MedicationDoseHorizonMaintenanceService implements OnModuleInit, On
 
       schedulesScanned = schedules.length;
       const horizonEndAt = resolveMedicationDoseMaintenanceHorizonEnd(now);
+      const scheduleIds = schedules.map((schedule) => schedule.id);
 
+      const latestFutureDoses =
+        scheduleIds.length > 0
+          ? await this.prisma.medicationDoseInstance.findMany({
+              where: {
+                medicationOrderScheduleId: { in: scheduleIds },
+                scheduledAt: { gt: now },
+                doseStatus: { notIn: [...SKIPPED_DOSE_STATUSES] },
+              },
+              orderBy: { scheduledAt: "desc" },
+              select: { medicationOrderScheduleId: true, scheduledAt: true },
+            })
+          : [];
+
+      const latestFutureByScheduleId = new Map<string, Date>();
+      for (const dose of latestFutureDoses) {
+        if (!latestFutureByScheduleId.has(dose.medicationOrderScheduleId)) {
+          latestFutureByScheduleId.set(dose.medicationOrderScheduleId, dose.scheduledAt);
+        }
+      }
+
+      const schedulesToExpand: string[] = [];
       for (const schedule of schedules) {
-        const latestFuture = await this.prisma.medicationDoseInstance.findFirst({
-          where: {
-            medicationOrderScheduleId: schedule.id,
-            scheduledAt: { gt: now },
-            doseStatus: { notIn: [...SKIPPED_DOSE_STATUSES] },
-          },
-          orderBy: { scheduledAt: "desc" },
-          select: { scheduledAt: true },
-        });
-
-        const futureCoverageMs = latestFuture
-          ? latestFuture.scheduledAt.getTime() - now.getTime()
-          : 0;
+        const latestFutureAt = latestFutureByScheduleId.get(schedule.id);
+        const futureCoverageMs = latestFutureAt ? latestFutureAt.getTime() - now.getTime() : 0;
 
         if (!shouldReplenishMedicationDoseHorizon(futureCoverageMs)) {
           schedulesSkipped += 1;
@@ -177,7 +188,11 @@ export class MedicationDoseHorizonMaintenanceService implements OnModuleInit, On
           continue;
         }
 
-        const result = await this.expansionService.expandForSchedule(schedule.id, {
+        schedulesToExpand.push(schedule.id);
+      }
+
+      for (const scheduleId of schedulesToExpand) {
+        const result = await this.expansionService.expandForSchedule(scheduleId, {
           horizonEndAt,
           featureFlags,
         });

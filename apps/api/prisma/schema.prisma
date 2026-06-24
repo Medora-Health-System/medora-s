@@ -1393,6 +1393,7 @@ model CatalogMedication {
   pharmacyVerifications                 PharmacyVerification[]
 
   @@index([ndc11])
+  @@index([isActive])
 }
 
 model MedicationAlias {

@@ -33,9 +33,10 @@ import {
 } from "./neurologyInfectiousDiseaseProviderOrderingActivation.js";
 import { resolveNeurologyIdIvpbFinalDecision } from "./neurologyInfectiousDiseaseIvpbWorkflowHardening.js";
 import { certifyProviderSearchCollisions } from "./providerSearchCanonicalization.js";
+import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
 import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
-import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
+import { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 export type IvFluidsActivationDecision =
   | "IV_FLUIDS_PROVIDER_ORDERING_ACTIVE"
@@ -306,16 +307,7 @@ function findRecordForTarget(target: IvFluidMedicationTarget): MedicationOrderab
 }
 
 function previousActiveCodes(): Set<string> {
-  return new Set([
-    ...listActiveTranche2ProviderOrderingCatalogCodes(),
-    ...listActiveAnticoagulationProviderOrderingCatalogCodes(),
-    ...listActiveInsulinDiabetesProviderOrderingCatalogCodes(),
-    ...listActiveVaccineProviderOrderingCatalogCodes(),
-    ...listActiveCriticalCareProviderOrderingCatalogCodes(),
-    ...listActiveNeurologyProviderOrderingCatalogCodes(),
-    ...listActiveInfectiousDiseaseProviderOrderingCatalogCodes(),
-    ...listActiveCardiologyProviderOrderingCatalogCodes(),
-  ]);
+  return new Set(getPriorProviderOrderableCatalogCodesForDomain("ivFluids"));
 }
 
 function rowForTarget(target: IvFluidMedicationTarget): IvFluidInventoryRow {

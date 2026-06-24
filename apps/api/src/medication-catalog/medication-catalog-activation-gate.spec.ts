@@ -15,6 +15,7 @@ import {
   listActiveGastroenterologyProviderOrderingCatalogCodes,
   listActivePediatricsProviderOrderingCatalogCodes,
   listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
+  prewarmProviderOrderableCatalogCodesRegistry,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -37,6 +38,10 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     activationGovernance as never
   );
 
+  beforeAll(() => {
+    prewarmProviderOrderableCatalogCodesRegistry();
+  });
+
   beforeEach(() => {
     jest.resetAllMocks();
     prisma.catalogMedication.findMany.mockResolvedValue([]);
@@ -46,6 +51,11 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     canonicalRead.getReadMetadataByCatalogIds.mockResolvedValue(new Map());
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
   });
+
+  function mockEmptyDirectSearchThenSupplementalRow(row: Record<string, unknown> | Record<string, unknown>[]) {
+    const rows = Array.isArray(row) ? row : [row];
+    prisma.catalogMedication.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce(rows);
+  }
 
   it("excludes canonical-linked catalog rows failing order-search gate", async () => {
     prisma.catalogMedication.findMany
@@ -150,10 +160,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified Tranche 2 provider-ordering rows after activation gate", async () => {
     const tranche2Code = listActiveTranche2ProviderOrderingCatalogCodes()[0] ?? "TRANCHE2_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-tranche2",
           code: tranche2Code,
           name: "Lisinopril",
@@ -165,8 +172,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+        });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -178,11 +184,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified anticoagulation provider-ordering rows after existing activation gates", async () => {
     const anticoagulationCode = listActiveAnticoagulationProviderOrderingCatalogCodes()[0] ?? "ANTICOAG_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-anticoag",
           code: anticoagulationCode,
           name: "Warfarin",
@@ -194,8 +196,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -207,12 +208,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified insulin/diabetes provider-ordering rows after existing activation gates", async () => {
     const diabetesCode = listActiveInsulinDiabetesProviderOrderingCatalogCodes()[0] ?? "DIABETES_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-diabetes",
           code: diabetesCode,
           name: "Insulin glargine",
@@ -224,8 +220,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -237,13 +232,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified vaccine provider-ordering rows after existing activation gates", async () => {
     const vaccineCode = listActiveVaccineProviderOrderingCatalogCodes()[0] ?? "VACCINE_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-vaccine",
           code: vaccineCode,
           name: "Tdap vaccine",
@@ -255,8 +244,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -268,14 +256,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified critical-care provider-ordering rows after existing activation gates", async () => {
     const criticalCareCode = listActiveCriticalCareProviderOrderingCatalogCodes()[0] ?? "CRITICAL_CARE_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-critical-care",
           code: criticalCareCode,
           name: "Norepinephrine",
@@ -287,8 +268,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -300,16 +280,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified neurology provider-ordering rows after existing activation gates", async () => {
     const neurologyCode = listActiveNeurologyProviderOrderingCatalogCodes()[0] ?? "NEUROLOGY_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-neurology",
           code: neurologyCode,
           name: "Levetiracetam",
@@ -321,8 +292,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -334,17 +304,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified infectious-disease provider-ordering rows after existing activation gates", async () => {
     const infectiousDiseaseCode = listActiveInfectiousDiseaseProviderOrderingCatalogCodes()[0] ?? "ID_MED";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-infectious-disease",
           code: infectiousDiseaseCode,
           name: "Daptomycin",
@@ -356,8 +316,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -369,17 +328,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified cardiology provider-ordering rows after existing activation gates", async () => {
     const cardiologyCode = listActiveCardiologyProviderOrderingCatalogCodes()[0] ?? "AMIODARONE_150MG_3ML_IV";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-cardiology",
           code: cardiologyCode,
           name: "Amiodarone",
@@ -391,8 +340,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -404,18 +352,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified IV fluids provider-ordering rows after existing activation gates", async () => {
     const ivFluidsCode = listActiveIvFluidsProviderOrderingCatalogCodes()[0] ?? "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-iv-fluids",
           code: ivFluidsCode,
           name: "Normal saline",
@@ -427,8 +364,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: true,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -440,19 +376,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified OBGYN provider-ordering rows after existing activation gates", async () => {
     const obgynCode = listActiveObgynProviderOrderingCatalogCodes()[0] ?? "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-obgyn",
           code: obgynCode,
           name: "Oxytocin",
@@ -464,8 +388,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: true,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -477,20 +400,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified psychiatry provider-ordering rows after existing activation gates", async () => {
     const psychiatryCode = listActivePsychiatryProviderOrderingCatalogCodes()[0] ?? "HALOPERIDOL_2_MG_COMPRIME_ORALE";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-psychiatry",
           code: psychiatryCode,
           name: "Haloperidol",
@@ -502,8 +412,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -515,21 +424,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified gastroenterology provider-ordering rows after existing activation gates", async () => {
     const gastroCode = listActiveGastroenterologyProviderOrderingCatalogCodes()[0] ?? "LACTULOSE_10_G_PER_15_ML_SIROP_ORAL";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-gastro",
           code: gastroCode,
           name: "Lactulose",
@@ -541,8 +436,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -554,22 +448,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified pediatrics provider-ordering rows after existing activation gates", async () => {
     const pedsCode = listActivePediatricsProviderOrderingCatalogCodes()[0] ?? "AMOXICILLIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-peds",
           code: pedsCode,
           name: "Amoxicillin suspension",
@@ -581,8 +460,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -594,23 +472,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
   it("appends certified surgery/perioperative provider-ordering rows after existing activation gates", async () => {
     const surgeryCode = listActiveSurgeryPerioperativeProviderOrderingCatalogCodes()[0] ?? "METRONIDAZOLE_500_MG_PER_100_ML_PERFUSION_INTRAVENOUS";
-    prisma.catalogMedication.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
+    mockEmptyDirectSearchThenSupplementalRow({
           id: "cat-surgery",
           code: surgeryCode,
           name: "Metronidazole IV",
@@ -622,8 +484,7 @@ describe("MedicationCatalogService activation gate (19G)", () => {
           isEssential: false,
           sortPriority: 0,
           isActive: false,
-        },
-      ]);
+    });
     prisma.medicationAlias.findMany.mockResolvedValue([]);
     activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
 
@@ -649,6 +510,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(15);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(2);
   });
 });

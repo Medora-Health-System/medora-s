@@ -30,6 +30,7 @@ import { listActiveInsulinDiabetesProviderOrderingCatalogCodes } from "./insulin
 import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
 import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
 import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
+import { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 export type NeurologyInfectiousDiseaseActivationDecision =
   | "NEUROLOGY_AND_INFECTIOUS_DISEASE_ACTIVE"
@@ -334,13 +335,7 @@ function findRecordForTarget(target: SpecialtyMedicationTarget): MedicationOrder
 }
 
 function previousActiveCodes(): Set<string> {
-  return new Set([
-    ...listActiveTranche2ProviderOrderingCatalogCodes(),
-    ...listActiveAnticoagulationProviderOrderingCatalogCodes(),
-    ...listActiveInsulinDiabetesProviderOrderingCatalogCodes(),
-    ...listActiveVaccineProviderOrderingCatalogCodes(),
-    ...listActiveCriticalCareProviderOrderingCatalogCodes(),
-  ]);
+  return new Set(getPriorProviderOrderableCatalogCodesForDomain("neurology"));
 }
 
 function rowForTarget(target: SpecialtyMedicationTarget): SpecialtyInventoryRow {

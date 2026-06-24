@@ -14,20 +14,7 @@ import { mapMedicationToCatalogSearchItem } from "../order-catalog/catalog-searc
 import { enrichMedicationSearchItemsWithCanonical } from "./medication-catalog-canonical-enrich.util";
 import {
   listActiveTranche1PilotCatalogCodes,
-  listActiveTranche2ProviderOrderingCatalogCodes,
-  listActiveAnticoagulationProviderOrderingCatalogCodes,
-  listActiveInsulinDiabetesProviderOrderingCatalogCodes,
-  listActiveVaccineProviderOrderingCatalogCodes,
-  listActiveCriticalCareProviderOrderingCatalogCodes,
-  listActiveNeurologyProviderOrderingCatalogCodes,
-  listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
-  listActiveCardiologyProviderOrderingCatalogCodes,
-  listActiveIvFluidsProviderOrderingCatalogCodes,
-  listActiveObgynProviderOrderingCatalogCodes,
-  listActivePsychiatryProviderOrderingCatalogCodes,
-  listActiveGastroenterologyProviderOrderingCatalogCodes,
-  listActivePediatricsProviderOrderingCatalogCodes,
-  listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
+  getActiveProviderOrderableCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -158,211 +145,24 @@ export class MedicationCatalogService {
           sliced = [...sliced, ...pilotRows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
         }
       }
-      const existingCodes = new Set(sliced.map((m) => m.code));
-      const tranche2Codes = listActiveTranche2ProviderOrderingCatalogCodes().filter((code) => !existingCodes.has(code));
-      if (tranche2Codes.length > 0 && sliced.length < limit) {
-        const tranche2Rows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: tranche2Codes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...tranche2Rows.filter((row) => !existingCodes.has(row.code))].slice(0, limit);
-      }
-      const existingAfterTranche2 = new Set(sliced.map((m) => m.code));
-      const anticoagulationCodes = listActiveAnticoagulationProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterTranche2.has(code)
-      );
-      if (anticoagulationCodes.length > 0 && sliced.length < limit) {
-        const anticoagulationRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: anticoagulationCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...anticoagulationRows.filter((row) => !existingAfterTranche2.has(row.code))].slice(0, limit);
-      }
-      const existingAfterAnticoagulation = new Set(sliced.map((m) => m.code));
-      const diabetesCodes = listActiveInsulinDiabetesProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterAnticoagulation.has(code)
-      );
-      if (diabetesCodes.length > 0 && sliced.length < limit) {
-        const diabetesRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: diabetesCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...diabetesRows.filter((row) => !existingAfterAnticoagulation.has(row.code))].slice(0, limit);
-      }
-      const existingAfterDiabetes = new Set(sliced.map((m) => m.code));
-      const vaccineCodes = listActiveVaccineProviderOrderingCatalogCodes().filter((code) => !existingAfterDiabetes.has(code));
-      if (vaccineCodes.length > 0 && sliced.length < limit) {
-        const vaccineRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: vaccineCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...vaccineRows.filter((row) => !existingAfterDiabetes.has(row.code))].slice(0, limit);
-      }
-      const existingAfterVaccines = new Set(sliced.map((m) => m.code));
-      const criticalCareCodes = listActiveCriticalCareProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterVaccines.has(code)
-      );
-      if (criticalCareCodes.length > 0 && sliced.length < limit) {
-        const criticalCareRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: criticalCareCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...criticalCareRows.filter((row) => !existingAfterVaccines.has(row.code))].slice(0, limit);
-      }
-      const existingAfterCriticalCare = new Set(sliced.map((m) => m.code));
-      const neurologyCodes = listActiveNeurologyProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterCriticalCare.has(code)
-      );
-      if (neurologyCodes.length > 0 && sliced.length < limit) {
-        const neurologyRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: neurologyCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...neurologyRows.filter((row) => !existingAfterCriticalCare.has(row.code))].slice(0, limit);
-      }
-      const existingAfterNeurology = new Set(sliced.map((m) => m.code));
-      const infectiousDiseaseCodes = listActiveInfectiousDiseaseProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterNeurology.has(code)
-      );
-      if (infectiousDiseaseCodes.length > 0 && sliced.length < limit) {
-        const infectiousDiseaseRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: infectiousDiseaseCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...infectiousDiseaseRows.filter((row) => !existingAfterNeurology.has(row.code))].slice(0, limit);
-      }
-      const existingAfterInfectiousDisease = new Set(sliced.map((m) => m.code));
-      const cardiologyCodes = listActiveCardiologyProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterInfectiousDisease.has(code)
-      );
-      if (cardiologyCodes.length > 0 && sliced.length < limit) {
-        const cardiologyRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: cardiologyCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...cardiologyRows.filter((row) => !existingAfterInfectiousDisease.has(row.code))].slice(0, limit);
-      }
-      const existingAfterCardiology = new Set(sliced.map((m) => m.code));
-      const ivFluidsCodes = listActiveIvFluidsProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterCardiology.has(code)
-      );
-      if (ivFluidsCodes.length > 0 && sliced.length < limit) {
-        const ivFluidsRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: ivFluidsCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...ivFluidsRows.filter((row) => !existingAfterCardiology.has(row.code))].slice(0, limit);
-      }
-      const existingAfterIvFluids = new Set(sliced.map((m) => m.code));
-      const obgynCodes = listActiveObgynProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterIvFluids.has(code)
-      );
-      if (obgynCodes.length > 0 && sliced.length < limit) {
-        const obgynRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: obgynCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...obgynRows.filter((row) => !existingAfterIvFluids.has(row.code))].slice(0, limit);
-      }
-      const existingAfterObgyn = new Set(sliced.map((m) => m.code));
-      const psychiatryCodes = listActivePsychiatryProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterObgyn.has(code)
-      );
-      if (psychiatryCodes.length > 0 && sliced.length < limit) {
-        const psychiatryRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: psychiatryCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...psychiatryRows.filter((row) => !existingAfterObgyn.has(row.code))].slice(0, limit);
-      }
-      const existingAfterPsychiatry = new Set(sliced.map((m) => m.code));
-      const gastroenterologyCodes = listActiveGastroenterologyProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterPsychiatry.has(code)
-      );
-      if (gastroenterologyCodes.length > 0 && sliced.length < limit) {
-        const gastroenterologyRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: gastroenterologyCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...gastroenterologyRows.filter((row) => !existingAfterPsychiatry.has(row.code))].slice(0, limit);
-      }
-      const existingAfterGastroenterology = new Set(sliced.map((m) => m.code));
-      const pediatricsCodes = listActivePediatricsProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterGastroenterology.has(code)
-      );
-      if (pediatricsCodes.length > 0 && sliced.length < limit) {
-        const pediatricsRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: pediatricsCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...pediatricsRows.filter((row) => !existingAfterGastroenterology.has(row.code))].slice(0, limit);
-      }
-      const existingAfterPediatrics = new Set(sliced.map((m) => m.code));
-      const surgeryCodes = listActiveSurgeryPerioperativeProviderOrderingCatalogCodes().filter(
-        (code) => !existingAfterPediatrics.has(code)
-      );
-      if (surgeryCodes.length > 0 && sliced.length < limit) {
-        const surgeryRows = await this.prisma.catalogMedication.findMany({
-          where: {
-            code: { in: surgeryCodes },
-            ...buildCatalogMedicationSearchWhere(searchTerms),
-          },
-          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
-          take: Math.max(0, limit - sliced.length),
-        });
-        sliced = [...sliced, ...surgeryRows.filter((row) => !existingAfterPediatrics.has(row.code))].slice(0, limit);
+      if (sliced.length < limit) {
+        const activeProviderCodes = getActiveProviderOrderableCatalogCodes();
+        const existingCodes = new Set(sliced.map((m) => m.code));
+        const supplementalCodes = [...activeProviderCodes].filter((code) => !existingCodes.has(code));
+        if (supplementalCodes.length > 0) {
+          const providerOrderableRows = await this.prisma.catalogMedication.findMany({
+            where: {
+              code: { in: supplementalCodes },
+              ...buildCatalogMedicationSearchWhere(searchTerms),
+            },
+            orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+            take: Math.max(0, limit - sliced.length),
+          });
+          sliced = [
+            ...sliced,
+            ...providerOrderableRows.filter((row) => !existingCodes.has(row.code)),
+          ].slice(0, limit);
+        }
       }
     }
 

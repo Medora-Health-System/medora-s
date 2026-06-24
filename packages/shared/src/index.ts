@@ -347,6 +347,7 @@ export * from "./medication/gastroenterologyProviderOrderingActivation.js";
 export * from "./medication/pediatricsProviderOrderingActivation.js";
 export * from "./medication/surgeryPerioperativeProviderOrderingActivation.js";
 export * from "./medication/cardiologyProviderOrderingActivation.js";
+export * from "./medication/providerOrderableCatalogCodesRegistry.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";
 export * from "./medication/wave4CatalogCodeNormalization.js";
