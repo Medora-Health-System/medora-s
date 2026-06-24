@@ -11,6 +11,7 @@ import {
   listActiveCardiologyProviderOrderingCatalogCodes,
   listActiveIvFluidsProviderOrderingCatalogCodes,
   listActiveObgynProviderOrderingCatalogCodes,
+  listActivePsychiatryProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -471,6 +472,44 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(obgynCode);
   });
 
+  it("appends certified psychiatry provider-ordering rows after existing activation gates", async () => {
+    const psychiatryCode = listActivePsychiatryProviderOrderingCatalogCodes()[0] ?? "HALOPERIDOL_2_MG_COMPRIME_ORALE";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-psychiatry",
+          code: psychiatryCode,
+          name: "Haloperidol",
+          genericName: "Haloperidol",
+          displayNameEn: "Haloperidol",
+          displayNameFr: "Halopéridol",
+          strength: "2 mg",
+          searchText: "haloperidol antipsychotic psychiatry",
+          isEssential: false,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "haloperidol", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-psychiatry"]);
+    expect(res.items[0]?.code).toBe(psychiatryCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -487,6 +526,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(11);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(12);
   });
 });

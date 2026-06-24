@@ -339,6 +339,7 @@ export * from "./medication/neurologyInfectiousDiseaseProviderOrderingActivation
 export * from "./medication/neurologyInfectiousDiseaseIvpbWorkflowHardening.js";
 export * from "./medication/ivFluidsProviderOrderingActivation.js";
 export * from "./medication/obgynProviderOrderingActivation.js";
+export * from "./medication/psychiatryProviderOrderingActivation.js";
 export * from "./medication/cardiologyProviderOrderingActivation.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
 export * from "./medication/wave4AdministrationTypeRemediation.js";

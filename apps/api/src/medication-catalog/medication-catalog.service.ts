@@ -24,6 +24,7 @@ import {
   listActiveCardiologyProviderOrderingCatalogCodes,
   listActiveIvFluidsProviderOrderingCatalogCodes,
   listActiveObgynProviderOrderingCatalogCodes,
+  listActivePsychiatryProviderOrderingCatalogCodes,
   isTranche1PilotScopeAllowed,
   type PilotScopeInput,
 } from "@medora/shared";
@@ -299,6 +300,21 @@ export class MedicationCatalogService {
           take: Math.max(0, limit - sliced.length),
         });
         sliced = [...sliced, ...obgynRows.filter((row) => !existingAfterIvFluids.has(row.code))].slice(0, limit);
+      }
+      const existingAfterObgyn = new Set(sliced.map((m) => m.code));
+      const psychiatryCodes = listActivePsychiatryProviderOrderingCatalogCodes().filter(
+        (code) => !existingAfterObgyn.has(code)
+      );
+      if (psychiatryCodes.length > 0 && sliced.length < limit) {
+        const psychiatryRows = await this.prisma.catalogMedication.findMany({
+          where: {
+            code: { in: psychiatryCodes },
+            ...buildCatalogMedicationSearchWhere(searchTerms),
+          },
+          orderBy: [{ isEssential: "desc" }, { sortPriority: "asc" }, { name: "asc" }],
+          take: Math.max(0, limit - sliced.length),
+        });
+        sliced = [...sliced, ...psychiatryRows.filter((row) => !existingAfterObgyn.has(row.code))].slice(0, limit);
       }
     }
 

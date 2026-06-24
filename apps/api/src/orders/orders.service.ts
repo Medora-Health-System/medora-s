@@ -91,6 +91,8 @@ import {
   validateIvFluidsProviderOrderPlacement,
   isActiveObgynProviderOrderingMedication,
   validateObgynProviderOrderPlacement,
+  isActivePsychiatryProviderOrderingMedication,
+  validatePsychiatryProviderOrderPlacement,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
@@ -1349,6 +1351,44 @@ export class OrdersService {
     }
   }
 
+  private async assertPsychiatryMedicationOrderAllowed(
+    facilityId: string,
+    data: OrderCreateDto,
+    userId?: string
+  ): Promise<void> {
+    if (data.type !== "MEDICATION") return;
+    const catalogIds = [
+      ...new Set(
+        data.items
+          .map((item) => (item.catalogItemType === "MEDICATION" ? item.catalogItemId?.trim() : ""))
+          .filter((id): id is string => Boolean(id))
+      ),
+    ];
+    if (catalogIds.length === 0) return;
+    const rows = await this.prisma.catalogMedication.findMany({
+      where: { id: { in: catalogIds } },
+      select: { id: true, code: true },
+    });
+    for (const row of rows) {
+      if (!isActivePsychiatryProviderOrderingMedication(row.code)) continue;
+      const validation = validatePsychiatryProviderOrderPlacement({ catalogCode: row.code });
+      if (!validation.allowed) {
+        logInfo("psychiatry_medication_order_blocked", {
+          facilityId,
+          userId: userId ?? null,
+          catalogMedicationId: row.id,
+          catalogCode: row.code,
+          blockers: validation.blockers,
+        });
+        throw new BadRequestException({
+          message: "Ce médicament psychiatrique n'est pas disponible pour cette commande.",
+          errorCode: "PSYCHIATRY_MEDICATION_ORDER_BLOCKED",
+          blockers: validation.blockers,
+        });
+      }
+    }
+  }
+
   private async assertCardiologyMedicationOrderAllowed(
     facilityId: string,
     data: OrderCreateDto,
@@ -1426,6 +1466,7 @@ export class OrdersService {
     await this.assertCardiologyMedicationOrderAllowed(facilityId, data, userId);
     await this.assertIvFluidsMedicationOrderAllowed(facilityId, data, userId);
     await this.assertObgynMedicationOrderAllowed(facilityId, data, userId);
+    await this.assertPsychiatryMedicationOrderAllowed(facilityId, data, userId);
 
     await assertOrderCreateClinicalSafety(this.prisma, {
       encounterId,
