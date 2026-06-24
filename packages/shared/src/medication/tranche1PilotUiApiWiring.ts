@@ -16,6 +16,7 @@ import {
   buildTranche1PilotActivationRegistry,
   runGovernedTranche1PilotActivationReport,
 } from "./tranche1PilotActivation.js";
+import { isExemptFromTranche1PilotOrderGate } from "./pilotMedicationBlockerAudit.js";
 
 export type PilotUiApiWiringDecision = "READY_FOR_LIMITED_PROVIDER_PILOT" | "READY_WITH_BLOCKERS" | "NOT_READY";
 
@@ -250,6 +251,9 @@ export function filterPilotMedicationSearchRows(input: {
 }
 
 export function validatePilotOrderPlacement(input: PilotOrderPlacementInput): PilotOrderPlacementValidation {
+  if (isExemptFromTranche1PilotOrderGate(input.catalogCode)) {
+    return { allowed: true, blockers: [], messageKey: null };
+  }
   const registry = input.registry ?? buildTranche1PilotActivationRegistry();
   const blockers: string[] = [];
   const entry = pilotEntryByCode(input.catalogCode, registry);

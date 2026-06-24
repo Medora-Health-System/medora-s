@@ -2227,6 +2227,15 @@ export class MedicationAdministrationService {
       documentedAt: new Date().toISOString(),
       painBefore: dto.painBefore ?? null,
       painAfter: dto.painAfter ?? null,
+      painResponseTrend: dto.painResponseTrend ?? null,
+      noAdverseReaction: dto.noAdverseReaction ?? null,
+      nausea: dto.nausea ?? null,
+      vomiting: dto.vomiting ?? null,
+      itching: dto.itching ?? null,
+      sedation: dto.sedation ?? null,
+      dizziness: dto.dizziness ?? null,
+      constipation: dto.constipation ?? null,
+      respiratoryDepression: dto.respiratoryDepression ?? null,
     });
     if (!notesResult.ok) {
       throw new BadRequestException(notesResult.message);

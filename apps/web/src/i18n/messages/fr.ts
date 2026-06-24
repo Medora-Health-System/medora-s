@@ -13417,6 +13417,23 @@ export default {
       overdue: "Réponse en retard",
       adverseEscalation: "Envisager une revue des allergies",
     },
+    reassessment: {
+      awaiting: "Réévaluation de la douleur requise",
+      trend: "Évolution de la douleur",
+      trendPlaceholder: "Sélectionner…",
+      improved: "Améliorée",
+      same: "Identique",
+      worse: "Aggravée",
+      sideEffects: "Effets indésirables",
+      noAdverseReaction: "Aucune réaction indésirable",
+      nausea: "Nausées",
+      vomiting: "Vomissements",
+      itching: "Démangeaisons",
+      sedation: "Sédation",
+      dizziness: "Vertiges",
+      constipation: "Constipation",
+      respiratoryDepression: "Dépression respiratoire",
+    },
   },
   marAllergyReview: {
     recommendation: {

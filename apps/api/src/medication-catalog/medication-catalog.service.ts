@@ -16,6 +16,7 @@ import {
   listActiveTranche1PilotCatalogCodes,
   getActiveProviderOrderableCatalogCodes,
   isTranche1PilotScopeAllowed,
+  dedupeMedicationSearchCatalogCodes,
   type PilotScopeInput,
 } from "@medora/shared";
 import {
@@ -165,6 +166,8 @@ export class MedicationCatalogService {
         }
       }
     }
+
+    sliced = dedupeMedicationSearchCatalogCodes(sliced, getActiveProviderOrderableCatalogCodes());
 
     const favoriteIds = query.favoritesFirst
       ? await this.getFavoriteCatalogIds(facilityId, sliced.map((m) => m.id))

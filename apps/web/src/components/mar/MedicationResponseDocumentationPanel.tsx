@@ -11,6 +11,8 @@ import {
   resolveMedicationResponseVisibilityTier,
   buildMarMedicationResponseFollowUpSummary,
   sortMarMedicationResponsesNewestFirst,
+  resolveEnterprisePainReassessmentTimelineSecondaryText,
+  requiresEnterprisePainReassessment,
   type MarMedicationResponseCode,
   type ParsedMarMedicationResponse,
 } from "@medora/shared";
@@ -87,6 +89,15 @@ export function MedicationResponseDocumentationPanel({
   );
   const [painBefore, setPainBefore] = useState("");
   const [painAfter, setPainAfter] = useState("");
+  const [painResponseTrend, setPainResponseTrend] = useState<"IMPROVED" | "SAME" | "WORSE" | "">("");
+  const [noAdverseReaction, setNoAdverseReaction] = useState(false);
+  const [nausea, setNausea] = useState(false);
+  const [vomiting, setVomiting] = useState(false);
+  const [itching, setItching] = useState(false);
+  const [sedation, setSedation] = useState(false);
+  const [dizziness, setDizziness] = useState(false);
+  const [constipation, setConstipation] = useState(false);
+  const [respiratoryDepression, setRespiratoryDepression] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +109,10 @@ export function MedicationResponseDocumentationPanel({
     prnIndication: item.orderPrnIndication,
     prnReasonGroup: item.prnPainScore != null ? "pain" : undefined,
   });
+  const enterprisePainReassessment = requiresEnterprisePainReassessment({
+    medicationLabel: item.medicationLabel ?? item.primaryText,
+  });
+  const awaitingReassessment = item.secondaryText === "AWAITING_REASSESSMENT";
 
   const sectionTitle =
     visibilityTier === "RECOMMENDED"
@@ -187,11 +202,29 @@ export function MedicationResponseDocumentationPanel({
           responseTime: responseTimeIso ? new Date(responseTimeIso) : undefined,
           painBefore: painBefore.trim() === "" ? undefined : Number(painBefore),
           painAfter: painAfter.trim() === "" ? undefined : Number(painAfter),
+          painResponseTrend: painResponseTrend || undefined,
+          noAdverseReaction: noAdverseReaction || undefined,
+          nausea: nausea || undefined,
+          vomiting: vomiting || undefined,
+          itching: itching || undefined,
+          sedation: sedation || undefined,
+          dizziness: dizziness || undefined,
+          constipation: constipation || undefined,
+          respiratoryDepression: respiratoryDepression || undefined,
         },
       });
       setResponseDetail("");
       setPainBefore("");
       setPainAfter("");
+      setPainResponseTrend("");
+      setNoAdverseReaction(false);
+      setNausea(false);
+      setVomiting(false);
+      setItching(false);
+      setSedation(false);
+      setDizziness(false);
+      setConstipation(false);
+      setRespiratoryDepression(false);
       await onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("marMedicationResponse.panel.saveError"));
@@ -208,8 +241,8 @@ export function MedicationResponseDocumentationPanel({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 12,
-        border: "1px solid #e2e8f0",
-        background: "#ffffff",
+        border: awaitingReassessment ? "1px solid #d97706" : "1px solid #e2e8f0",
+        background: awaitingReassessment ? "#fef3c7" : "#ffffff",
       }}
     >
       <button
@@ -232,6 +265,15 @@ export function MedicationResponseDocumentationPanel({
         <span>{sectionTitle}</span>
         <span aria-hidden>{expanded ? "▾" : "▸"}</span>
       </button>
+
+      {awaitingReassessment ? (
+        <p
+          data-testid="mar-medication-response-awaiting-reassessment"
+          style={{ margin: "8px 0 0", fontSize: 12, color: "#92400e", fontWeight: 700 }}
+        >
+          {t("marMedicationResponse.reassessment.awaiting")}
+        </p>
+      ) : null}
 
       {followUpSummary.status === "RECOMMENDED" ? (
         <p
@@ -295,33 +337,84 @@ export function MedicationResponseDocumentationPanel({
             />
           </label>
 
-          {showPainFields ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
-                <span>{t("marMedicationResponse.panel.painBefore")}</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={painBefore}
-                  onChange={(e) => setPainBefore(e.target.value)}
-                  disabled={readOnly || submitting}
-                  data-testid="mar-medication-response-pain-before"
-                />
-              </label>
-              <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
-                <span>{t("marMedicationResponse.panel.painAfter")}</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={10}
-                  value={painAfter}
-                  onChange={(e) => setPainAfter(e.target.value)}
-                  disabled={readOnly || submitting}
-                  data-testid="mar-medication-response-pain-after"
-                />
-              </label>
-            </div>
+          {showPainFields || enterprisePainReassessment ? (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                  <span>{t("marMedicationResponse.panel.painBefore")}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={painBefore}
+                    onChange={(e) => setPainBefore(e.target.value)}
+                    disabled={readOnly || submitting}
+                    data-testid="mar-medication-response-pain-before"
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                  <span>{t("marMedicationResponse.panel.painAfter")}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={10}
+                    value={painAfter}
+                    onChange={(e) => setPainAfter(e.target.value)}
+                    disabled={readOnly || submitting}
+                    data-testid="mar-medication-response-pain-after"
+                  />
+                </label>
+              </div>
+              {enterprisePainReassessment ? (
+                <>
+                  <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                    <span>{t("marMedicationResponse.reassessment.trend")}</span>
+                    <select
+                      value={painResponseTrend}
+                      onChange={(e) =>
+                        setPainResponseTrend(e.target.value as "IMPROVED" | "SAME" | "WORSE" | "")
+                      }
+                      disabled={readOnly || submitting}
+                      data-testid="mar-medication-response-pain-trend"
+                    >
+                      <option value="">{t("marMedicationResponse.reassessment.trendPlaceholder")}</option>
+                      <option value="IMPROVED">{t("marMedicationResponse.reassessment.improved")}</option>
+                      <option value="SAME">{t("marMedicationResponse.reassessment.same")}</option>
+                      <option value="WORSE">{t("marMedicationResponse.reassessment.worse")}</option>
+                    </select>
+                  </label>
+                  <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
+                    <legend style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+                      {t("marMedicationResponse.reassessment.sideEffects")}
+                    </legend>
+                    <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
+                      {(
+                        [
+                          ["noAdverseReaction", noAdverseReaction, setNoAdverseReaction],
+                          ["nausea", nausea, setNausea],
+                          ["vomiting", vomiting, setVomiting],
+                          ["itching", itching, setItching],
+                          ["sedation", sedation, setSedation],
+                          ["dizziness", dizziness, setDizziness],
+                          ["constipation", constipation, setConstipation],
+                          ["respiratoryDepression", respiratoryDepression, setRespiratoryDepression],
+                        ] as const
+                      ).map(([key, checked, setter]) => (
+                        <label key={key} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => setter(e.target.checked)}
+                            disabled={readOnly || submitting}
+                          />
+                          {t(`marMedicationResponse.reassessment.${key}`)}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </>
+              ) : null}
+            </>
           ) : null}
 
           {error ? (

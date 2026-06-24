@@ -32,6 +32,15 @@ export type MarMedicationResponsePayload = {
   documentedAt?: string | null;
   painBefore?: number | null;
   painAfter?: number | null;
+  painResponseTrend?: "IMPROVED" | "SAME" | "WORSE" | null;
+  noAdverseReaction?: boolean | null;
+  nausea?: boolean | null;
+  vomiting?: boolean | null;
+  itching?: boolean | null;
+  sedation?: boolean | null;
+  dizziness?: boolean | null;
+  constipation?: boolean | null;
+  respiratoryDepression?: boolean | null;
 };
 
 export type ParsedMarMedicationResponse = {
@@ -41,6 +50,15 @@ export type ParsedMarMedicationResponse = {
   documentedAt: string;
   painBefore: number | null;
   painAfter: number | null;
+  painResponseTrend: "IMPROVED" | "SAME" | "WORSE" | null;
+  noAdverseReaction: boolean | null;
+  nausea: boolean | null;
+  vomiting: boolean | null;
+  itching: boolean | null;
+  sedation: boolean | null;
+  dizziness: boolean | null;
+  constipation: boolean | null;
+  respiratoryDepression: boolean | null;
 };
 
 export type MarMedicationResponseValidationResult =
@@ -133,6 +151,15 @@ export function validateMarMedicationResponse(
       documentedAt,
       painBefore,
       painAfter,
+      painResponseTrend: input.painResponseTrend ?? null,
+      noAdverseReaction: input.noAdverseReaction ?? null,
+      nausea: input.nausea ?? null,
+      vomiting: input.vomiting ?? null,
+      itching: input.itching ?? null,
+      sedation: input.sedation ?? null,
+      dizziness: input.dizziness ?? null,
+      constipation: input.constipation ?? null,
+      respiratoryDepression: input.respiratoryDepression ?? null,
     },
   };
 }
@@ -145,6 +172,15 @@ function serializeMarMedicationResponseLine(payload: ParsedMarMedicationResponse
     documentedAt: payload.documentedAt,
     painBefore: payload.painBefore,
     painAfter: payload.painAfter,
+    painResponseTrend: payload.painResponseTrend,
+    noAdverseReaction: payload.noAdverseReaction,
+    nausea: payload.nausea,
+    vomiting: payload.vomiting,
+    itching: payload.itching,
+    sedation: payload.sedation,
+    dizziness: payload.dizziness,
+    constipation: payload.constipation,
+    respiratoryDepression: payload.respiratoryDepression,
   })}`;
 }
 
@@ -163,6 +199,15 @@ export function buildMarMedicationResponseNotes(
     documentedAt: validated.value.documentedAt ?? new Date().toISOString(),
     painBefore: validated.value.painBefore ?? null,
     painAfter: validated.value.painAfter ?? null,
+    painResponseTrend: validated.value.painResponseTrend ?? null,
+    noAdverseReaction: validated.value.noAdverseReaction ?? null,
+    nausea: validated.value.nausea ?? null,
+    vomiting: validated.value.vomiting ?? null,
+    itching: validated.value.itching ?? null,
+    sedation: validated.value.sedation ?? null,
+    dizziness: validated.value.dizziness ?? null,
+    constipation: validated.value.constipation ?? null,
+    respiratoryDepression: validated.value.respiratoryDepression ?? null,
   });
 
   const base = existingNotes?.trim() ? `${existingNotes.trim()}\n` : "";
@@ -189,6 +234,9 @@ function parseResponseJson(raw: string): ParsedMarMedicationResponse | null {
 
     const painBefore = parsePainScore(parsed.painBefore);
     const painAfter = parsePainScore(parsed.painAfter);
+    const trendRaw = parsed.painResponseTrend;
+    const painResponseTrend =
+      trendRaw === "IMPROVED" || trendRaw === "SAME" || trendRaw === "WORSE" ? trendRaw : null;
 
     return {
       responseCode,
@@ -197,6 +245,16 @@ function parseResponseJson(raw: string): ParsedMarMedicationResponse | null {
       documentedAt,
       painBefore,
       painAfter,
+      painResponseTrend,
+      noAdverseReaction: typeof parsed.noAdverseReaction === "boolean" ? parsed.noAdverseReaction : null,
+      nausea: typeof parsed.nausea === "boolean" ? parsed.nausea : null,
+      vomiting: typeof parsed.vomiting === "boolean" ? parsed.vomiting : null,
+      itching: typeof parsed.itching === "boolean" ? parsed.itching : null,
+      sedation: typeof parsed.sedation === "boolean" ? parsed.sedation : null,
+      dizziness: typeof parsed.dizziness === "boolean" ? parsed.dizziness : null,
+      constipation: typeof parsed.constipation === "boolean" ? parsed.constipation : null,
+      respiratoryDepression:
+        typeof parsed.respiratoryDepression === "boolean" ? parsed.respiratoryDepression : null,
     };
   } catch {
     return null;

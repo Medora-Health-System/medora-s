@@ -213,10 +213,49 @@ function isMaintenanceMedication(input: MarMedicationResponseVisibilityInput): b
   return /\b(daily|bid|tid|qid|qhs|qam|qpm)\b/.test(text);
 }
 
+const MUSCLE_RELAXANT_TOKENS = [
+  "cyclobenzaprine",
+  "flexeril",
+  "methocarbamol",
+  "robaxin",
+  "tizanidine",
+  "zanaflex",
+] as const;
+
+const NSAID_TOPICAL_PAIN_TOKENS = [
+  "diclofenac",
+  "voltaren",
+  "lidocaine patch",
+  "ibuprofen",
+  "naproxen",
+  "ketorolac",
+  "toradol",
+] as const;
+
+const NEUROPATHIC_PAIN_TOKENS = ["gabapentin", "pregabalin", "neurontin", "lyrica"] as const;
+
+function isMuscleRelaxantMedication(input: MarMedicationResponseVisibilityInput): boolean {
+  const text = combinedMedicationText(input);
+  return MUSCLE_RELAXANT_TOKENS.some((token) => text.includes(token));
+}
+
+function isNsaidOrTopicalPainMedication(input: MarMedicationResponseVisibilityInput): boolean {
+  const text = combinedMedicationText(input);
+  return NSAID_TOPICAL_PAIN_TOKENS.some((token) => text.includes(token));
+}
+
+function isNeuropathicPainMedication(input: MarMedicationResponseVisibilityInput): boolean {
+  const text = combinedMedicationText(input);
+  return NEUROPATHIC_PAIN_TOKENS.some((token) => text.includes(token));
+}
+
 function isRecommendedMedication(input: MarMedicationResponseVisibilityInput): boolean {
   return (
     isPrnMedication(input) ||
     isPainMedication(input) ||
+    isMuscleRelaxantMedication(input) ||
+    isNsaidOrTopicalPainMedication(input) ||
+    isNeuropathicPainMedication(input) ||
     isAntiemeticMedication(input) ||
     isRespiratoryMedication(input) ||
     isSedativeMedication(input) ||

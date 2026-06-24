@@ -32,6 +32,7 @@ export const MAR_SHIFT_TIMELINE_STATUS_COLORS = {
     color: "#6B7280",
   },
   prnRow: { backgroundColor: "#FFFBE6", borderColor: "#E8D38A", color: "#664D03" },
+  awaitingReassessment: { backgroundColor: "#FEF3C7", borderColor: "#D97706", color: "#92400E" },
 } as const;
 
 export type MarShiftTimelineStatusColorKey = keyof typeof MAR_SHIFT_TIMELINE_STATUS_COLORS;
@@ -65,6 +66,8 @@ export function resolveMarShiftTimelineStatusColorKey(input: {
   const secondary = input.secondaryText?.trim().toUpperCase() ?? "";
 
   if (secondary === "REFUSED") return "refused";
+  if (secondary === "AWAITING_REASSESSMENT") return "awaitingReassessment";
+  if (secondary === "REASSESSMENT_COMPLETED") return "administered";
   if (status === "CANCELLED" || secondary === "CANCELED" || secondary === "ANNULÉ") {
     return "cancelled";
   }

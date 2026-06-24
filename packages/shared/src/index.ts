@@ -335,6 +335,7 @@ export * from "./medication/insulinDiabetesProviderOrderingActivation.js";
 export * from "./medication/vaccineProviderOrderingActivation.js";
 export * from "./medication/criticalCareProviderOrderingActivation.js";
 export * from "./medication/enterpriseFormularyGapAnalysis.js";
+export * from "./medication/enterpriseMedicationGapAnalysis.js";
 export * from "./medication/oncologyGovernanceAndFormularyExpansion.js";
 export * from "./medication/neurologyInfectiousDiseaseProviderOrderingActivation.js";
 export * from "./medication/neurologyInfectiousDiseaseIvpbWorkflowHardening.js";
@@ -384,6 +385,10 @@ export {
 export * from "./medication/controlledSubstanceOralOpioidMarSupport.js";
 export * from "./medication/controlledSubstanceMarWorkflowPolicy.js";
 export * from "./medication/controlledSubstancePostAdministrationAssessment.js";
+export * from "./medication/pilotMedicationBlockerAudit.js";
+export * from "./medication/medicationSearchDuplicateResolution.js";
+export * from "./medication/controlledSubstanceWaveCRuntimeRemediation.js";
+export * from "./mar/enterprisePainReassessmentWorkflow.js";
 export * from "./medication/cardiologyProviderOrderingActivation.js";
 export * from "./medication/providerOrderableCatalogCodesRegistry.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";

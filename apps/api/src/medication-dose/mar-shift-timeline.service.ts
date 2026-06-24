@@ -45,6 +45,7 @@ import {
   sortMarMedicationResponsesNewestFirst,
   type MarMedicationResponseSeverity,
   buildMarMedicationResponseFollowUpSummary,
+  resolveEnterprisePainReassessmentTimelineSecondaryText,
   type MarMedicationResponseFollowUpStatus,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
@@ -742,6 +743,17 @@ export class MarShiftTimelineService {
         secondaryText = scheduleAdjustment.badgeLabel ?? "RESCHEDULED";
       }
 
+      secondaryText = resolveEnterprisePainReassessmentTimelineSecondaryText(
+        {
+          catalogCode: catalogSnapshot?.catalogItemCode ?? null,
+          medicationLabel,
+          genericName: catalogSnapshot?.genericName ?? orderedSnapshot?.medicationLabel ?? null,
+          marAction: administrationNotes ? "administered" : null,
+          administrationNotes,
+        },
+        secondaryText
+      );
+
       const medicationResponses = sortMarMedicationResponsesNewestFirst(
         parseMarMedicationResponseNotes(administrationNotes)
       );
@@ -767,7 +779,15 @@ export class MarShiftTimelineService {
               responseCount: followUpSummary.responseCount,
               showAdverseEscalation: false,
             }
-          : null;
+          : secondaryText === "AWAITING_REASSESSMENT"
+            ? {
+                status: "RECOMMENDED" as const,
+                earliestAt: enrichment?.administeredAt ?? null,
+                latestAt: null,
+                responseCount: 0,
+                showAdverseEscalation: false,
+              }
+            : null;
       const medicationResponseAdverseEscalation = medicationResponses.some(
         (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
       );

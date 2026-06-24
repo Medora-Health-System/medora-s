@@ -71,6 +71,7 @@ import {
   toCareProcedureEffectiveClinicalTimeIsoUtc,
   validatePilotOrderPlacement,
   isActiveTranche1PilotMedication,
+  isExemptFromTranche1PilotOrderGate,
   validateProviderOrderPlacementForCatalogCode,
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
@@ -965,6 +966,7 @@ export class OrdersService {
       select: { id: true, code: true },
     });
     for (const row of rows) {
+      if (isExemptFromTranche1PilotOrderGate(row.code)) continue;
       if (!isActiveTranche1PilotMedication(row.code)) continue;
       const validation = validatePilotOrderPlacement({
         ...pilotScope,
