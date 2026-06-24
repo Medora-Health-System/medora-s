@@ -11,6 +11,7 @@ import { ENTERPRISE_ONCOLOGY_BILLING_BY_CODE } from "./enterpriseOncologyBilling
 import { ENTERPRISE_NEUROLOGY_INFECTIOUS_DISEASE_BILLING_BY_CODE } from "./enterpriseNeurologyInfectiousDiseaseBillingManifest.js";
 import { ENTERPRISE_CARDIOLOGY_BILLING_BY_CODE } from "./enterpriseCardiologyBillingManifest.js";
 import { ENTERPRISE_IV_FLUIDS_BILLING_BY_CODE } from "./enterpriseIvFluidsBillingManifest.js";
+import { ENTERPRISE_OBGYN_BILLING_BY_CODE } from "./enterpriseObgynBillingManifest.js";
 import { MEDICATION_BILLING_NDC_BY_CATALOG_CODE } from "./medicationBillingNdcByCatalogCode.js";
 
 export type MedicationBillingReadiness = {
@@ -18,7 +19,7 @@ export type MedicationBillingReadiness = {
   ndcReady: boolean;
   hcpcs: string | null;
   ndc11: string | null;
-  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "haiti_ndc_map" | "none";
+  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "haiti_ndc_map" | "none";
 };
 
 function ndcFromEntry(entry: { ndc11?: string } | undefined): string | null {
@@ -113,6 +114,17 @@ export function resolveMedicationBillingReadiness(catalogCode: string): Medicati
       hcpcs: ivFluids.hcpcs ?? null,
       ndc11: ndc,
       source: "iv_fluids",
+    };
+  }
+  const obgyn = ENTERPRISE_OBGYN_BILLING_BY_CODE[catalogCode];
+  if (obgyn) {
+    const ndc = ndcFromEntry(obgyn);
+    return {
+      billingReady: Boolean(obgyn.hcpcs?.trim()),
+      ndcReady: Boolean(ndc),
+      hcpcs: obgyn.hcpcs ?? null,
+      ndc11: ndc,
+      source: "obgyn",
     };
   }
   const haitiNdc = MEDICATION_BILLING_NDC_BY_CATALOG_CODE[catalogCode];

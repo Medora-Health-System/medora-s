@@ -10,6 +10,7 @@ import {
   listActiveInfectiousDiseaseProviderOrderingCatalogCodes,
   listActiveCardiologyProviderOrderingCatalogCodes,
   listActiveIvFluidsProviderOrderingCatalogCodes,
+  listActiveObgynProviderOrderingCatalogCodes,
 } from "@medora/shared";
 
 describe("MedicationCatalogService activation gate (19G)", () => {
@@ -433,6 +434,43 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     expect(res.items[0]?.code).toBe(ivFluidsCode);
   });
 
+  it("appends certified OBGYN provider-ordering rows after existing activation gates", async () => {
+    const obgynCode = listActiveObgynProviderOrderingCatalogCodes()[0] ?? "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE";
+    prisma.catalogMedication.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "cat-obgyn",
+          code: obgynCode,
+          name: "Oxytocin",
+          genericName: "Oxytocin",
+          displayNameEn: "Oxytocin",
+          displayNameFr: "Ocytocine",
+          strength: "10 units/mL",
+          searchText: "oxytocin pitocin ob labor",
+          isEssential: true,
+          sortPriority: 0,
+          isActive: false,
+        },
+      ]);
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "oxytocin", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-obgyn"]);
+    expect(res.items[0]?.code).toBe(obgynCode);
+  });
+
   it("does not append certified pilot rows outside pilot scope", async () => {
     prisma.catalogMedication.findMany.mockResolvedValue([]);
     prisma.medicationAlias.findMany.mockResolvedValue([]);
@@ -449,6 +487,6 @@ describe("MedicationCatalogService activation gate (19G)", () => {
     });
 
     expect(res.items).toEqual([]);
-    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(10);
+    expect(prisma.catalogMedication.findMany).toHaveBeenCalledTimes(11);
   });
 });
