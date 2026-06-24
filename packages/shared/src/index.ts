@@ -336,6 +336,7 @@ export * from "./medication/vaccineProviderOrderingActivation.js";
 export * from "./medication/criticalCareProviderOrderingActivation.js";
 export * from "./medication/enterpriseFormularyGapAnalysis.js";
 export * from "./medication/enterpriseMedicationGapAnalysis.js";
+export * from "./medication/productionOrderabilityCertification.js";
 export * from "./medication/oncologyGovernanceAndFormularyExpansion.js";
 export * from "./medication/neurologyInfectiousDiseaseProviderOrderingActivation.js";
 export * from "./medication/neurologyInfectiousDiseaseIvpbWorkflowHardening.js";
