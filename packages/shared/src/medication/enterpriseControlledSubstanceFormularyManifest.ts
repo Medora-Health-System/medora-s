@@ -1,0 +1,455 @@
+/**
+ * MEDUI.MEDICATION.CONTROLLED_SUBSTANCES_WAVE_A_B/C — catalog remediation for ED/floor controlled substances.
+ */
+
+type ControlledSubstanceFormularyEntry = {
+  catalogCode: string;
+  genericName: string;
+  displayNameFr: string;
+  displayNameEn: string;
+  strength: string;
+  dosageForm: string;
+  route: string;
+  therapeuticClass: string;
+  bucket: "CONTROLLED_SUBSTANCE_WAVE_A_B" | "CONTROLLED_SUBSTANCE_WAVE_C";
+  mode: "CREATE";
+  aliases: Array<{ text: string; language: "en" | "fr"; aliasType: "OTHER" }>;
+  searchTerms: string[];
+  governance: {
+    isControlled: boolean;
+    controlledSchedule: "II" | "III" | "IV" | "V" | null;
+    isHighAlert: boolean;
+    requiresWitness: false;
+    requiresDoubleSign: false;
+    lasaGroupId: string | null;
+    requiresPharmacyVerification: false;
+    pyxisWasteWitnessExternalized: boolean;
+    requiresSpecialtyReview?: boolean;
+  };
+  isEssential: false;
+  administrationType: string;
+  billingClass: string;
+};
+
+function alias(text: string, language: "en" | "fr") {
+  return { text, language, aliasType: "OTHER" as const };
+}
+
+function entry(
+  partial: Omit<ControlledSubstanceFormularyEntry, "bucket" | "mode" | "isEssential" | "governance"> & {
+    controlledSchedule: "II" | "III" | "IV" | "V";
+    administrationType: string;
+    bucket?: ControlledSubstanceFormularyEntry["bucket"];
+  }
+): ControlledSubstanceFormularyEntry {
+  return {
+    ...partial,
+    bucket: partial.bucket ?? "CONTROLLED_SUBSTANCE_WAVE_A_B",
+    mode: "CREATE",
+    isEssential: false,
+    governance: {
+      isControlled: true,
+      controlledSchedule: partial.controlledSchedule,
+      isHighAlert: partial.controlledSchedule === "II",
+      requiresWitness: false,
+      requiresDoubleSign: false,
+      lasaGroupId: null,
+      requiresPharmacyVerification: false,
+      pyxisWasteWitnessExternalized: true,
+    },
+  };
+}
+
+function waveCNonControlledEntry(
+  partial: Omit<ControlledSubstanceFormularyEntry, "bucket" | "mode" | "isEssential" | "governance"> & {
+    administrationType: string;
+  }
+): ControlledSubstanceFormularyEntry {
+  return {
+    ...partial,
+    bucket: "CONTROLLED_SUBSTANCE_WAVE_C",
+    mode: "CREATE",
+    isEssential: false,
+    governance: {
+      isControlled: false,
+      controlledSchedule: null,
+      isHighAlert: false,
+      requiresWitness: false,
+      requiresDoubleSign: false,
+      lasaGroupId: null,
+      requiresPharmacyVerification: false,
+      pyxisWasteWitnessExternalized: false,
+    },
+  };
+}
+
+export const ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_MANIFEST: ControlledSubstanceFormularyEntry[] = [
+  entry({
+    catalogCode: "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+    genericName: "Hydromorphone",
+    displayNameFr: "Hydromorphone",
+    displayNameEn: "Hydromorphone",
+    strength: "0.5 mg/mL",
+    dosageForm: "injectable",
+    route: "intraveineuse",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "IV",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Dilaudid 0.5 mg/mL", "en"), alias("hydromorphone 0.5", "fr")],
+    searchTerms: ["hydromorphone 0.5 mg ml", "dilaudid iv"],
+  }),
+  entry({
+    catalogCode: "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+    genericName: "Fentanyl",
+    displayNameFr: "Fentanyl",
+    displayNameEn: "Fentanyl",
+    strength: "25 mcg/mL",
+    dosageForm: "injectable",
+    route: "intraveineuse",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "IV",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("fentanyl 25 mcg", "en")],
+    searchTerms: ["fentanyl 25 mcg ml", "fentanyl iv"],
+  }),
+  entry({
+    catalogCode: "OXYCODONE_5_MG_COMPRIME_ORAL",
+    genericName: "Oxycodone",
+    displayNameFr: "Oxycodone",
+    displayNameEn: "Oxycodone",
+    strength: "5 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Roxicodone", "en"), alias("oxycodone IR", "en")],
+    searchTerms: ["oxycodone 5 mg", "oxycodone ir"],
+  }),
+  entry({
+    catalogCode: "ACETAMINOPHEN_CODEINE_300_15_COMPRIME_ORAL",
+    genericName: "Acetaminophen/Codeine",
+    displayNameFr: "Acétaminophène/Codeine #2",
+    displayNameEn: "Acetaminophen/Codeine #2",
+    strength: "300 mg / 15 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "III",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Tylenol #2", "en")],
+    searchTerms: ["acetaminophen codeine 2", "tylenol 2"],
+  }),
+  entry({
+    catalogCode: "ACETAMINOPHEN_CODEINE_300_30_COMPRIME_ORAL",
+    genericName: "Acetaminophen/Codeine",
+    displayNameFr: "Acétaminophène/Codeine #3",
+    displayNameEn: "Acetaminophen/Codeine #3",
+    strength: "300 mg / 30 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "III",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Tylenol #3", "en")],
+    searchTerms: ["acetaminophen codeine 3", "tylenol 3"],
+  }),
+  entry({
+    catalogCode: "ACETAMINOPHEN_CODEINE_300_60_COMPRIME_ORAL",
+    genericName: "Acetaminophen/Codeine",
+    displayNameFr: "Acétaminophène/Codeine #4",
+    displayNameEn: "Acetaminophen/Codeine #4",
+    strength: "300 mg / 60 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "III",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Tylenol #4", "en")],
+    searchTerms: ["acetaminophen codeine 4", "tylenol 4"],
+  }),
+  entry({
+    catalogCode: "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+    genericName: "Hydrocodone/Acetaminophen",
+    displayNameFr: "Hydrocodone/Acétaminophène 5/325",
+    displayNameEn: "Hydrocodone/Acetaminophen 5/325",
+    strength: "5 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Norco 5/325", "en"), alias("Vicodin", "en")],
+    searchTerms: ["hydrocodone acetaminophen 5 325", "norco"],
+  }),
+  entry({
+    catalogCode: "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+    genericName: "Hydrocodone/Acetaminophen",
+    displayNameFr: "Hydrocodone/Acétaminophène 7.5/325",
+    displayNameEn: "Hydrocodone/Acetaminophen 7.5/325",
+    strength: "7.5 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Norco 7.5/325", "en")],
+    searchTerms: ["hydrocodone acetaminophen 7.5 325", "norco 7.5"],
+  }),
+  entry({
+    catalogCode: "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+    genericName: "Hydrocodone/Acetaminophen",
+    displayNameFr: "Hydrocodone/Acétaminophène 10/325",
+    displayNameEn: "Hydrocodone/Acetaminophen 10/325",
+    strength: "10 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Norco 10/325", "en")],
+    searchTerms: ["hydrocodone acetaminophen 10 325", "norco 10"],
+  }),
+  entry({
+    catalogCode: "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+    genericName: "Oxycodone/Acetaminophen",
+    displayNameFr: "Oxycodone/Acétaminophène 5/325",
+    displayNameEn: "Oxycodone/Acetaminophen 5/325",
+    strength: "5 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Percocet 5/325", "en")],
+    searchTerms: ["oxycodone acetaminophen 5 325", "percocet"],
+  }),
+  entry({
+    catalogCode: "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+    genericName: "Oxycodone/Acetaminophen",
+    displayNameFr: "Oxycodone/Acétaminophène 7.5/325",
+    displayNameEn: "Oxycodone/Acetaminophen 7.5/325",
+    strength: "7.5 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Percocet 7.5/325", "en")],
+    searchTerms: ["oxycodone acetaminophen 7.5 325", "percocet 7.5"],
+  }),
+  entry({
+    catalogCode: "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+    genericName: "Oxycodone/Acetaminophen",
+    displayNameFr: "Oxycodone/Acétaminophène 10/325",
+    displayNameEn: "Oxycodone/Acetaminophen 10/325",
+    strength: "10 mg / 325 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Percocet 10/325", "en")],
+    searchTerms: ["oxycodone acetaminophen 10 325", "percocet 10"],
+  }),
+  entry({
+    catalogCode: "OXYCODONE_10_MG_COMPRIME_ORAL",
+    genericName: "Oxycodone",
+    displayNameFr: "Oxycodone",
+    displayNameEn: "Oxycodone",
+    strength: "10 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Antalgique opioïde",
+    controlledSchedule: "II",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    bucket: "CONTROLLED_SUBSTANCE_WAVE_C",
+    aliases: [alias("Roxicodone 10 mg", "en"), alias("oxycodone IR 10", "en")],
+    searchTerms: ["oxycodone 10 mg", "oxycodone ir 10"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL",
+    genericName: "Cyclobenzaprine",
+    displayNameFr: "Cyclobenzaprine",
+    displayNameEn: "Cyclobenzaprine",
+    strength: "5 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Flexeril 5 mg", "en")],
+    searchTerms: ["cyclobenzaprine 5 mg", "flexeril"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "CYCLOBENZAPRINE_10_MG_COMPRIME_ORAL",
+    genericName: "Cyclobenzaprine",
+    displayNameFr: "Cyclobenzaprine",
+    displayNameEn: "Cyclobenzaprine",
+    strength: "10 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Flexeril 10 mg", "en")],
+    searchTerms: ["cyclobenzaprine 10 mg", "flexeril 10"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "METHOCARBAMOL_500_MG_COMPRIME_ORAL",
+    genericName: "Methocarbamol",
+    displayNameFr: "Méthocarbamol",
+    displayNameEn: "Methocarbamol",
+    strength: "500 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Robaxin 500 mg", "en")],
+    searchTerms: ["methocarbamol 500 mg", "robaxin"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "METHOCARBAMOL_750_MG_COMPRIME_ORAL",
+    genericName: "Methocarbamol",
+    displayNameFr: "Méthocarbamol",
+    displayNameEn: "Methocarbamol",
+    strength: "750 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Robaxin 750 mg", "en")],
+    searchTerms: ["methocarbamol 750 mg", "robaxin 750"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "TIZANIDINE_2_MG_COMPRIME_ORAL",
+    genericName: "Tizanidine",
+    displayNameFr: "Tizanidine",
+    displayNameEn: "Tizanidine",
+    strength: "2 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Zanaflex 2 mg", "en")],
+    searchTerms: ["tizanidine 2 mg", "zanaflex"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "TIZANIDINE_4_MG_COMPRIME_ORAL",
+    genericName: "Tizanidine",
+    displayNameFr: "Tizanidine",
+    displayNameEn: "Tizanidine",
+    strength: "4 mg",
+    dosageForm: "comprimé",
+    route: "orale",
+    therapeuticClass: "Relaxant musculaire",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Zanaflex 4 mg", "en")],
+    searchTerms: ["tizanidine 4 mg", "zanaflex 4"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "LIDOCAINE_5_PATCH_TRANSDERMAL",
+    genericName: "Lidocaine",
+    displayNameFr: "Lidocaïne",
+    displayNameEn: "Lidocaine",
+    strength: "5%",
+    dosageForm: "patch",
+    route: "transdermique",
+    therapeuticClass: "Anesthésique local topique",
+    administrationType: "TRANSDERMAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Lidoderm", "en"), alias("lidocaine patch", "en")],
+    searchTerms: ["lidocaine 5 patch", "lidocaine patch", "lidoderm"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "DICLOFENAC_1_GEL_TOPICAL",
+    genericName: "Diclofenac",
+    displayNameFr: "Diclofénac",
+    displayNameEn: "Diclofenac",
+    strength: "1%",
+    dosageForm: "gel",
+    route: "topique",
+    therapeuticClass: "AINS topique",
+    administrationType: "TOPICAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Voltaren gel", "en")],
+    searchTerms: ["diclofenac 1 gel", "voltaren gel"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "GABAPENTIN_100_MG_GELULE_ORAL",
+    genericName: "Gabapentin",
+    displayNameFr: "Gabapentine",
+    displayNameEn: "Gabapentin",
+    strength: "100 mg",
+    dosageForm: "gélule",
+    route: "orale",
+    therapeuticClass: "Antalgique neuropathique",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Neurontin 100 mg", "en")],
+    searchTerms: ["gabapentin 100 mg", "neurontin 100"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "GABAPENTIN_400_MG_GELULE_ORAL",
+    genericName: "Gabapentin",
+    displayNameFr: "Gabapentine",
+    displayNameEn: "Gabapentin",
+    strength: "400 mg",
+    dosageForm: "gélule",
+    route: "orale",
+    therapeuticClass: "Antalgique neuropathique",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Neurontin 400 mg", "en")],
+    searchTerms: ["gabapentin 400 mg", "neurontin 400"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "PREGABALIN_50_MG_GELULE_ORAL",
+    genericName: "Pregabalin",
+    displayNameFr: "Prégabaline",
+    displayNameEn: "Pregabalin",
+    strength: "50 mg",
+    dosageForm: "gélule",
+    route: "orale",
+    therapeuticClass: "Antalgique neuropathique",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Lyrica 50 mg", "en")],
+    searchTerms: ["pregabalin 50 mg", "lyrica 50"],
+  }),
+  waveCNonControlledEntry({
+    catalogCode: "PREGABALIN_150_MG_GELULE_ORAL",
+    genericName: "Pregabalin",
+    displayNameFr: "Prégabaline",
+    displayNameEn: "Pregabalin",
+    strength: "150 mg",
+    dosageForm: "gélule",
+    route: "orale",
+    therapeuticClass: "Antalgique neuropathique",
+    administrationType: "ORAL",
+    billingClass: "THERAPEUTIC",
+    aliases: [alias("Lyrica 150 mg", "en")],
+    searchTerms: ["pregabalin 150 mg", "lyrica 150"],
+  }),
+];
+
+export const ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_BY_CODE = Object.fromEntries(
+  ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_MANIFEST.map((row) => [row.catalogCode, row])
+) as Record<string, ControlledSubstanceFormularyEntry>;

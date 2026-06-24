@@ -16,6 +16,7 @@ import {
   listActivePediatricsProviderOrderingCatalogCodes,
   listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
   listActivePainManagementProviderOrderingCatalogCodes,
+  listActiveControlledSubstanceProviderOrderingCatalogCodes,
   prewarmProviderOrderableCatalogCodesRegistry,
 } from "@medora/shared";
 
@@ -517,6 +518,30 @@ describe("MedicationCatalogService activation gate (19G)", () => {
 
     expect(res.items.map((i) => i.id)).toEqual(["cat-pain"]);
     expect(res.items[0]?.code).toBe(painCode);
+  });
+
+  it("appends certified controlled-substance provider-ordering rows after existing activation gates", async () => {
+    const csCode = listActiveControlledSubstanceProviderOrderingCatalogCodes()[0] ?? "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE";
+    mockEmptyDirectSearchThenSupplementalRow({
+      id: "cat-cs",
+      code: csCode,
+      name: "Morphine IV",
+      genericName: "Morphine",
+      displayNameEn: "Morphine",
+      displayNameFr: "Morphine",
+      strength: "2 mg/mL",
+      searchText: "morphine controlled",
+      isEssential: false,
+      sortPriority: 0,
+      isActive: false,
+    });
+    prisma.medicationAlias.findMany.mockResolvedValue([]);
+    activationGovernance.filterProviderSearchCatalogIds.mockResolvedValue(new Set());
+
+    const res = await service.search("fac-1", { q: "morphine", limit: 20 });
+
+    expect(res.items.map((i) => i.id)).toEqual(["cat-cs"]);
+    expect(res.items[0]?.code).toBe(csCode);
   });
 
   it("does not append certified pilot rows outside pilot scope", async () => {

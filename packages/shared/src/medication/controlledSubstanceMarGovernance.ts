@@ -5,6 +5,10 @@ export type ControlledSubstanceMarGovernanceContext = {
   requiresWitness: boolean;
   wasteDocumentationRecommended?: boolean;
   catalogMedicationId?: string | null;
+  /** Routine waste/witness handled in Pyxis — Medora does not hard-block. */
+  pyxisWasteWitnessExternalized?: boolean;
+  /** Medora second witness required (insulin, PCA/pump opioid, heparin IVPB, dual-sign). */
+  medoraWitnessRequired?: boolean;
 };
 
 export type ControlledSubstanceMarCreateInput = {
@@ -59,6 +63,10 @@ export function validateControlledSubstanceMarCreate(
   }
 
   const gov = input.governance!;
+
+  if (gov.pyxisWasteWitnessExternalized && !gov.medoraWitnessRequired) {
+    return { ok: true, witnessProvided: false, overrideUsed: false, wasteDocumented: false };
+  }
   const witnessUserId = trimOrNull(input.witnessUserId ?? undefined);
   const witnessDisplayName = trimOrNull(input.witnessDisplayName ?? undefined);
   const overrideReason = trimOrNull(input.overrideReason ?? undefined);

@@ -69,4 +69,20 @@ describe("controlledSubstanceMarGovernance (M1.3F.4)", () => {
   it("applies only on administered action", () => {
     expect(controlledSubstanceMarGovernanceApplies(controlledWitness, "refused")).toBe(false);
   });
+
+  it("Pyxis-externalized routine controlled substances skip Medora witness/waste hard stops", () => {
+    const pass = validateControlledSubstanceMarCreate({
+      marAction: "administered",
+      governance: {
+        isControlled: true,
+        requiresWitness: true,
+        pyxisWasteWitnessExternalized: true,
+        medoraWitnessRequired: false,
+      },
+      administeredByUserId: "nurse-1",
+      administeredQuantity: 1,
+      orderedQuantity: 2,
+    });
+    expect(pass.ok).toBe(true);
+  });
 });

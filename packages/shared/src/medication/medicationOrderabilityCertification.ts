@@ -18,6 +18,7 @@ import { ENTERPRISE_GASTROENTEROLOGY_FORMULARY_MANIFEST } from "./enterpriseGast
 import { ENTERPRISE_PEDIATRICS_FORMULARY_MANIFEST } from "./enterprisePediatricsFormularyManifest.js";
 import { ENTERPRISE_SURGERY_PERIOPERATIVE_FORMULARY_MANIFEST } from "./enterpriseSurgeryPerioperativeFormularyManifest.js";
 import { ENTERPRISE_PAIN_MANAGEMENT_FORMULARY_MANIFEST } from "./enterprisePainManagementFormularyManifest.js";
+import { ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_MANIFEST } from "./enterpriseControlledSubstanceFormularyManifest.js";
 import {
   HOSPITAL_MEDICATION_COVERAGE_GROUPS,
   type HospitalMedicationCoverageRow,
@@ -151,6 +152,7 @@ export function buildUnifiedOrderabilityMap(): Map<string, MedicationOrderabilit
     ...ENTERPRISE_PEDIATRICS_FORMULARY_MANIFEST,
     ...ENTERPRISE_SURGERY_PERIOPERATIVE_FORMULARY_MANIFEST,
     ...ENTERPRISE_PAIN_MANAGEMENT_FORMULARY_MANIFEST,
+    ...ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_MANIFEST,
   ] as EnterpriseLike[];
 
   for (const entry of enterpriseEntries) {

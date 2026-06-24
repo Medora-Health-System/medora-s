@@ -19,6 +19,7 @@ import { ENTERPRISE_PSYCHIATRY_FORMULARY_BY_CODE } from "./enterprisePsychiatryF
 import { ENTERPRISE_GASTROENTEROLOGY_FORMULARY_BY_CODE } from "./enterpriseGastroenterologyFormularyManifest.js";
 import { ENTERPRISE_PEDIATRICS_FORMULARY_BY_CODE } from "./enterprisePediatricsFormularyManifest.js";
 import { ENTERPRISE_SURGERY_PERIOPERATIVE_FORMULARY_BY_CODE } from "./enterpriseSurgeryPerioperativeFormularyManifest.js";
+import { ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_BY_CODE } from "./enterpriseControlledSubstanceFormularyManifest.js";
 
 /** Universal activation governance status (enterprise framework). */
 export type MedicationActivationGovernanceStatus =
@@ -74,6 +75,7 @@ function resolveEnterpriseWave(catalogCode: string): EnterpriseFormularyLike | n
     ENTERPRISE_GASTROENTEROLOGY_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_PEDIATRICS_FORMULARY_BY_CODE[catalogCode] ??
     ENTERPRISE_SURGERY_PERIOPERATIVE_FORMULARY_BY_CODE[catalogCode] ??
+    ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_BY_CODE[catalogCode] ??
     null
   );
 }
@@ -86,7 +88,7 @@ function resolveEnterpriseWaveLabel(catalogCode: string): MedicationActivationGo
   return null;
 }
 
-const SAFE_MAR_ADMIN_TYPES = new Set(["ORAL", "IM", "SQ", "PUSH", "INFUSION", "IV"]);
+const SAFE_MAR_ADMIN_TYPES = new Set(["ORAL", "IM", "SQ", "PUSH", "INFUSION", "IV", "TOPICAL", "TRANSDERMAL"]);
 
 export function mapLegacyOrderabilityToActivationStatus(
   record: MedicationOrderabilityRecord,

@@ -17,6 +17,7 @@ import { ENTERPRISE_GASTROENTEROLOGY_BILLING_BY_CODE } from "./enterpriseGastroe
 import { ENTERPRISE_PEDIATRICS_BILLING_BY_CODE } from "./enterprisePediatricsBillingManifest.js";
 import { ENTERPRISE_SURGERY_PERIOPERATIVE_BILLING_BY_CODE } from "./enterpriseSurgeryPerioperativeBillingManifest.js";
 import { ENTERPRISE_PAIN_MANAGEMENT_BILLING_BY_CODE } from "./enterprisePainManagementBillingManifest.js";
+import { ENTERPRISE_CONTROLLED_SUBSTANCE_BILLING_BY_CODE } from "./enterpriseControlledSubstanceBillingManifest.js";
 import { MEDICATION_BILLING_NDC_BY_CATALOG_CODE } from "./medicationBillingNdcByCatalogCode.js";
 
 export type MedicationBillingReadiness = {
@@ -24,7 +25,7 @@ export type MedicationBillingReadiness = {
   ndcReady: boolean;
   hcpcs: string | null;
   ndc11: string | null;
-  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "gastroenterology" | "pediatrics" | "surgery_perioperative" | "pain_management" | "haiti_ndc_map" | "none";
+  source: "wave1" | "wave2" | "wave3" | "wave4" | "oncology" | "neurology_infectious_disease" | "cardiology" | "iv_fluids" | "obgyn" | "psychiatry" | "gastroenterology" | "pediatrics" | "surgery_perioperative" | "pain_management" | "controlled_substance" | "haiti_ndc_map" | "none";
 };
 
 function ndcFromEntry(entry: { ndc11?: string } | undefined): string | null {
@@ -185,6 +186,17 @@ export function resolveMedicationBillingReadiness(catalogCode: string): Medicati
       hcpcs: painManagement.hcpcs ?? null,
       ndc11: ndc,
       source: "pain_management",
+    };
+  }
+  const controlledSubstance = ENTERPRISE_CONTROLLED_SUBSTANCE_BILLING_BY_CODE[catalogCode];
+  if (controlledSubstance) {
+    const ndc = ndcFromEntry(controlledSubstance);
+    return {
+      billingReady: Boolean(controlledSubstance.hcpcs?.trim()) || Boolean(ndc),
+      ndcReady: Boolean(ndc),
+      hcpcs: controlledSubstance.hcpcs ?? null,
+      ndc11: ndc,
+      source: "controlled_substance",
     };
   }
   const haitiNdc = MEDICATION_BILLING_NDC_BY_CATALOG_CODE[catalogCode];

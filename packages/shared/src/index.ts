@@ -347,6 +347,43 @@ export * from "./medication/gastroenterologyProviderOrderingActivation.js";
 export * from "./medication/pediatricsProviderOrderingActivation.js";
 export * from "./medication/surgeryPerioperativeProviderOrderingActivation.js";
 export * from "./medication/painManagementProviderOrderingActivation.js";
+export {
+  assertControlledSubstanceMedicationOrderAllowed,
+  buildControlledSubstanceBillingCodingInventoryReport,
+  buildControlledSubstanceCatalogRemediationReport,
+  buildControlledSubstanceExclusionCertificationReport,
+  buildControlledSubstanceI18nCertificationReport,
+  buildControlledSubstanceMarWorkflowCertificationReport,
+  buildControlledSubstancePerformanceRegressionReport,
+  buildControlledSubstanceProviderOrderingActivationReport,
+  buildControlledSubstanceProviderSearchSafetyReport,
+  buildControlledSubstanceRealLifeWorkflowReport,
+  buildControlledSubstanceRollbackReport,
+  buildControlledSubstanceWaveABBaselineReport,
+  buildControlledSubstanceWaveABInventoryReport,
+  buildControlledSubstanceWaveABProviderOrderingEligibilityReport,
+  buildControlledSubstanceWaveCBaselineReport,
+  buildControlledSubstanceWaveCInventoryReport,
+  buildControlledSubstanceWaveCCatalogRemediationReport,
+  buildControlledSubstanceWaveCProviderOrderingEligibilityReport,
+  buildControlledSubstanceWaveCProviderOrderingActivationReport,
+  buildControlledSubstanceWaveCPainReassessmentReport,
+  buildControlledSubstanceWaveCProviderSearchSafetyReport,
+  buildControlledSubstanceWaveCRollbackReport,
+  buildControlledSubstanceWaveCExclusionCertificationReport,
+  buildControlledSubstanceWaveCPerformanceRegressionReport,
+  buildControlledSubstanceWaveCI18nCertificationReport,
+  runControlledSubstanceWaveCExpansionReport,
+  isActiveControlledSubstanceProviderOrderingMedication,
+  listActiveControlledSubstanceProviderOrderingCatalogCodes,
+  resetControlledSubstanceProviderOrderingActivationCaches,
+  rollbackControlledSubstanceProviderOrderingActivation,
+  runControlledSubstanceWaveABExpansionReport,
+  validateControlledSubstanceProviderOrderPlacement,
+} from "./medication/controlledSubstanceProviderOrderingActivation.js";
+export * from "./medication/controlledSubstanceOralOpioidMarSupport.js";
+export * from "./medication/controlledSubstanceMarWorkflowPolicy.js";
+export * from "./medication/controlledSubstancePostAdministrationAssessment.js";
 export * from "./medication/cardiologyProviderOrderingActivation.js";
 export * from "./medication/providerOrderableCatalogCodesRegistry.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";
