@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import {
+  ENTERPRISE_IV_FLUIDS_BILLING_BY_CODE,
   ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE,
   ENTERPRISE_IV_FLUIDS_SEARCH_ALIAS_BY_CODE,
   ENTERPRISE_IV_FLUIDS_SEARCH_ALIAS_MANIFEST,
@@ -11,6 +12,35 @@ export type SeedEnterpriseIvFluidsCatalogOptions = {
   dryRun?: boolean;
 };
 
+export type IvFluidSeedBody = {
+  name: string;
+  genericName: string;
+  displayNameFr: string;
+  displayNameEn: string;
+  strength: string | null;
+  dosageForm: string | null;
+  route: string | null;
+  therapeuticClass: string;
+  administrationType: string;
+  billingClass: string;
+  sortPriority: number;
+  isEssential: boolean;
+  isActive: boolean;
+  isControlled: boolean;
+  controlledSchedule: null;
+  requiresWitness: boolean;
+  requiresDoubleSign: boolean;
+  searchText: string;
+  ndc11: string | null;
+  ndcDisplay: string | null;
+  billingCodeDefault: string | null;
+  billingUnitType: string | null;
+};
+
+export type IvFluidSeedResolveResult =
+  | { ok: true; catalogCode: string; body: IvFluidSeedBody; billingSourcePresent: boolean }
+  | { ok: false; catalogCode: string; reason: string };
+
 export type SeedEnterpriseIvFluidsCatalogResult = {
   dryRun: boolean;
   activatedCatalogCodes: number;
@@ -20,6 +50,7 @@ export type SeedEnterpriseIvFluidsCatalogResult = {
   aliasesUnchanged: number;
   searchTextUpdated: number;
   skippedMissingSharedArtifact: number;
+  skippedRows: Array<{ catalogCode: string; reason: string }>;
 };
 
 function normalizeAlias(alias: string): string {
@@ -33,6 +64,7 @@ function mergeSearchText(existing: string | null | undefined, tokens: string[]):
     .filter(Boolean);
   const seen = new Set(parts);
   for (const token of tokens) {
+    if (typeof token !== "string") continue;
     const t = token.trim().toLowerCase();
     if (t.length < 2 || seen.has(t)) continue;
     seen.add(t);
@@ -41,45 +73,182 @@ function mergeSearchText(existing: string | null | undefined, tokens: string[]):
   return parts.join(" ");
 }
 
-function resolveSeedBody(catalogCode: string) {
-  const formulary = ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE[catalogCode];
-  const orderability = buildUnifiedOrderabilityMap().get(catalogCode);
-  const aliasEntry = ENTERPRISE_IV_FLUIDS_SEARCH_ALIAS_BY_CODE[catalogCode];
-  if (!formulary && !orderability) return null;
+function safeMapLookup<T>(map: Record<string, T> | undefined | null, key: string): T | undefined {
+  if (!map || typeof map !== "object") return undefined;
+  return map[key];
+}
 
-  const displayNameEn = aliasEntry?.displayHint ?? formulary?.displayNameEn ?? orderability?.displayNameEn ?? catalogCode;
-  const displayNameFr = formulary?.displayNameFr ?? orderability?.displayNameFr ?? displayNameEn;
-  const genericName = formulary?.genericName ?? orderability?.genericName ?? displayNameEn;
-  const searchTokens = [
-    ...(aliasEntry?.aliases ?? []),
-    ...(aliasEntry?.searchTerms ?? []),
-    ...(formulary?.searchTerms ?? []),
+function collectSearchTokens(input: {
+  catalogCode: string;
+  aliasEntry?: {
+    aliases?: readonly string[];
+    searchTerms?: readonly string[];
+  };
+  formulary?: {
+    aliases?: Array<{ text: string }>;
+    searchTerms?: string[];
+    displayNameEn?: string;
+    displayNameFr?: string;
+    genericName?: string;
+  };
+  orderability?: {
+    displayNameEn?: string;
+    displayNameFr?: string;
+    genericName?: string;
+  };
+  displayNameEn: string;
+  displayNameFr: string;
+  genericName: string;
+}): string[] {
+  const formularyAliasTexts = (input.formulary?.aliases ?? [])
+    .map((alias) => alias?.text)
+    .filter((text): text is string => typeof text === "string" && text.trim().length >= 2);
+
+  return [
+    ...(input.aliasEntry?.aliases ?? []),
+    ...(input.aliasEntry?.searchTerms ?? []),
+    ...(input.formulary?.searchTerms ?? []),
+    ...formularyAliasTexts,
+    input.displayNameEn,
+    input.displayNameFr,
+    input.genericName,
+    input.catalogCode,
+  ];
+}
+
+type IvFluidSeedSourceInput = {
+  catalogCode: string;
+  formulary?: {
+    genericName?: string;
+    displayNameFr?: string;
+    displayNameEn?: string;
+    strength?: string;
+    dosageForm?: string;
+    route?: string;
+    therapeuticClass?: string;
+    administrationType?: string;
+    billingClass?: string;
+    aliases?: Array<{ text: string }>;
+    searchTerms?: string[];
+  };
+  orderability?: {
+    genericName?: string;
+    displayNameFr?: string;
+    displayNameEn?: string;
+    strength?: string;
+    dosageForm?: string;
+    route?: string;
+    therapeuticClass?: string;
+  };
+  aliasEntry?: {
+    genericName?: string;
+    displayHint?: string;
+    aliases?: readonly string[];
+    searchTerms?: readonly string[];
+  };
+  billing?: {
+    hcpcs?: string;
+    ndc11?: string;
+    ndcDisplay?: string;
+    billingUnitType?: string;
+  };
+};
+
+/** Build seed body from explicit manifest sources (testable without map imports). */
+export function buildIvFluidSeedBodyFromSources(input: IvFluidSeedSourceInput): IvFluidSeedResolveResult {
+  const trimmedCode = input.catalogCode.trim();
+  if (!trimmedCode) {
+    return { ok: false, catalogCode: input.catalogCode, reason: "missing_catalog_code" };
+  }
+
+  const { formulary, orderability, aliasEntry, billing } = input;
+  if (!formulary && !orderability && !aliasEntry) {
+    return { ok: false, catalogCode: trimmedCode, reason: "missing_formulary_orderability_and_alias" };
+  }
+
+  const displayNameEn =
+    aliasEntry?.displayHint?.trim() ||
+    formulary?.displayNameEn?.trim() ||
+    orderability?.displayNameEn?.trim() ||
+    "";
+  const displayNameFr =
+    formulary?.displayNameFr?.trim() || orderability?.displayNameFr?.trim() || displayNameEn;
+  const genericName =
+    formulary?.genericName?.trim() ||
+    orderability?.genericName?.trim() ||
+    aliasEntry?.genericName?.trim() ||
+    displayNameEn;
+
+  if (!displayNameEn) {
+    return { ok: false, catalogCode: trimmedCode, reason: "missing_required_display_name_en" };
+  }
+  if (!genericName) {
+    return { ok: false, catalogCode: trimmedCode, reason: "missing_required_generic_name" };
+  }
+
+  const route = formulary?.route?.trim() || orderability?.route?.trim() || null;
+  const dosageForm = formulary?.dosageForm?.trim() || orderability?.dosageForm?.trim() || null;
+  if (!route) {
+    return { ok: false, catalogCode: trimmedCode, reason: "missing_required_route" };
+  }
+  if (!dosageForm) {
+    return { ok: false, catalogCode: trimmedCode, reason: "missing_required_dosage_form" };
+  }
+
+  const searchTokens = collectSearchTokens({
+    catalogCode: trimmedCode,
+    aliasEntry,
+    formulary,
+    orderability,
     displayNameEn,
     displayNameFr,
     genericName,
-    catalogCode,
-  ];
+  });
 
   return {
-    name: displayNameFr || genericName,
-    genericName,
-    displayNameFr,
-    displayNameEn,
-    strength: formulary?.strength ?? orderability?.strength ?? null,
-    dosageForm: formulary?.dosageForm ?? orderability?.dosageForm ?? null,
-    route: formulary?.route ?? orderability?.route ?? null,
-    therapeuticClass: formulary?.therapeuticClass ?? orderability?.therapeuticClass ?? "Soluté",
-    administrationType: formulary?.administrationType ?? "INFUSION",
-    billingClass: formulary?.billingClass ?? "HYDRATION",
-    sortPriority: 0,
-    isEssential: true,
-    isActive: true,
-    isControlled: false,
-    controlledSchedule: null,
-    requiresWitness: false,
-    requiresDoubleSign: false,
-    searchText: mergeSearchText("", searchTokens),
+    ok: true,
+    catalogCode: trimmedCode,
+    billingSourcePresent: Boolean(billing?.hcpcs?.trim()),
+    body: {
+      name: displayNameFr || genericName,
+      genericName,
+      displayNameFr,
+      displayNameEn,
+      strength: formulary?.strength?.trim() || orderability?.strength?.trim() || null,
+      dosageForm,
+      route,
+      therapeuticClass: formulary?.therapeuticClass?.trim() || orderability?.therapeuticClass?.trim() || "Soluté",
+      administrationType: formulary?.administrationType?.trim() || "INFUSION",
+      billingClass: formulary?.billingClass?.trim() || "HYDRATION",
+      sortPriority: 0,
+      isEssential: true,
+      isActive: true,
+      isControlled: false,
+      controlledSchedule: null,
+      requiresWitness: false,
+      requiresDoubleSign: false,
+      searchText: mergeSearchText("", searchTokens),
+      ndc11: billing?.ndc11?.trim() || null,
+      ndcDisplay: billing?.ndcDisplay?.trim() || null,
+      billingCodeDefault: billing?.hcpcs?.trim() || null,
+      billingUnitType: billing?.billingUnitType?.trim() || null,
+    },
   };
+}
+
+/**
+ * Resolve catalog seed body for one IV fluid code.
+ * Exported for seed tests — does not write to the database.
+ */
+export function resolveIvFluidSeedBody(catalogCode: string): IvFluidSeedResolveResult {
+  const trimmedCode = catalogCode.trim();
+  return buildIvFluidSeedBodyFromSources({
+    catalogCode: trimmedCode,
+    formulary: safeMapLookup(ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE, trimmedCode),
+    orderability: buildUnifiedOrderabilityMap().get(trimmedCode),
+    aliasEntry: safeMapLookup(ENTERPRISE_IV_FLUIDS_SEARCH_ALIAS_BY_CODE, trimmedCode),
+    billing: safeMapLookup(ENTERPRISE_IV_FLUIDS_BILLING_BY_CODE, trimmedCode),
+  });
 }
 
 /**
@@ -100,17 +269,20 @@ export async function seedEnterpriseIvFluidsCatalog(
     aliasesUnchanged: 0,
     searchTextUpdated: 0,
     skippedMissingSharedArtifact: 0,
+    skippedRows: [],
   };
 
   const activatedCodes = listActiveIvFluidsProviderOrderingCatalogCodes();
   result.activatedCatalogCodes = activatedCodes.length;
 
   for (const catalogCode of activatedCodes) {
-    const body = resolveSeedBody(catalogCode);
-    if (!body) {
+    const resolved = resolveIvFluidSeedBody(catalogCode);
+    if (!resolved.ok) {
       result.skippedMissingSharedArtifact += 1;
+      result.skippedRows.push({ catalogCode, reason: resolved.reason });
       continue;
     }
+    const body = resolved.body;
 
     const existing = await prisma.catalogMedication.findUnique({
       where: { code: catalogCode },
@@ -140,6 +312,11 @@ export async function seedEnterpriseIvFluidsCatalog(
             administrationType: body.administrationType,
             billingClass: body.billingClass,
             isEssential: body.isEssential,
+            isActive: body.isActive,
+            ndc11: body.ndc11,
+            ndcDisplay: body.ndcDisplay,
+            billingCodeDefault: body.billingCodeDefault,
+            billingUnitType: body.billingUnitType,
             searchText: mergeSearchText(existing.searchText, body.searchText.split(/\s+/)),
           },
         });
