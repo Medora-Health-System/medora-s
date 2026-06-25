@@ -1,4 +1,10 @@
-import { parseInjectionSiteFromMarNotes, sanitizeMarAdministrationVisibleNote } from "@medora/shared";
+import {
+  parseInjectionSiteFromMarNotes,
+  sanitizeMarAdministrationVisibleNote,
+  parseMarMedicationResponseNotes,
+  sortMarMedicationResponsesNewestFirst,
+  type ParsedMarMedicationResponse,
+} from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
@@ -24,6 +30,15 @@ export type ErEdSummaryMarEventRow = {
   administeredBy: string;
   administeredAt: string;
   notes: string;
+};
+
+export type ErEdSummaryMedicationResponseRow = {
+  id: string;
+  medicationName: string;
+  dose: string;
+  route: string;
+  administeredAt: string;
+  response: ParsedMarMedicationResponse;
 };
 
 function readStr(value: unknown): string {
@@ -149,4 +164,57 @@ export function buildErEdSummaryMarEventRows(input: {
     });
   }
   return rows;
+}
+
+function readMedicationResponsesFromAdmin(admin: Record<string, unknown>): ParsedMarMedicationResponse[] {
+  const embedded = admin.medicationResponses;
+  if (Array.isArray(embedded) && embedded.length > 0) {
+    return embedded as ParsedMarMedicationResponse[];
+  }
+  return parseMarMedicationResponseNotes(readStr(admin.notes));
+}
+
+export function buildErEdSummaryMedicationResponseRows(input: {
+  admins: unknown[];
+  language: SupportedLanguage;
+}): ErEdSummaryMedicationResponseRow[] {
+  const rows: ErEdSummaryMedicationResponseRow[] = [];
+  const seen = new Set<string>();
+
+  for (const adminRaw of input.admins) {
+    if (!adminRaw || typeof adminRaw !== "object" || Array.isArray(adminRaw)) continue;
+    const admin = adminRaw as Record<string, unknown>;
+    const adminId = readStr(admin.id);
+    if (!adminId) continue;
+
+    const medicationName = readStr(admin.medicationLabelSnapshot) || "—";
+    const doseParts = [readStr(admin.doseValue), readStr(admin.doseUnit)].filter(Boolean);
+    const administeredQuantity =
+      admin.administeredQuantity != null && admin.administeredQuantity !== ""
+        ? String(admin.administeredQuantity)
+        : "";
+    const dose = doseParts.length > 0 ? doseParts.join(" ") : administeredQuantity || "—";
+    const route = readStr(admin.route) || "—";
+    const administeredAt = formatWhen(readStr(admin.administeredAt), input.language);
+
+    const responses = sortMarMedicationResponsesNewestFirst(readMedicationResponsesFromAdmin(admin));
+    for (const response of responses) {
+      const dedupeKey = `${adminId}:${response.documentedAt}:${response.responseCode}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      rows.push({
+        id: `${adminId}:response:${response.documentedAt}`,
+        medicationName,
+        dose,
+        route,
+        administeredAt,
+        response,
+      });
+    }
+  }
+
+  return rows.sort(
+    (a, b) =>
+      new Date(b.response.documentedAt).getTime() - new Date(a.response.documentedAt).getTime()
+  );
 }

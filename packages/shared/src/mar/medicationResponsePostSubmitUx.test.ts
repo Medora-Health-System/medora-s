@@ -73,6 +73,8 @@ describe("medicationResponseSummaryFormat", () => {
         documentedBy: null,
         documentedByInitials: null,
         documentedByDisplayName: null,
+        documentedByUserId: null,
+        documentedByName: null,
       })
     ).toEqual(["noAdverseReaction", "nausea"]);
   });

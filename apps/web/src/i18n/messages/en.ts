@@ -6613,6 +6613,8 @@ export default {
     marInjectionSite: "Injection site",
     marAdministeredBy: "Administered by",
     marNotes: "Notes",
+    medicationResponsesTitle: "Medication responses",
+    medResponseAdministered: "Administered",
     vitalsHistoryTitle: "Vitals history",
     vitalsHistoryEmpty: "No timestamped vitals rows for this encounter yet.",
     vitalsHistoryLoadError: "Vitals history unavailable.",

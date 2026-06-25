@@ -44,6 +44,8 @@ export type MarMedicationResponsePayload = {
   documentedBy?: string | null;
   documentedByInitials?: string | null;
   documentedByDisplayName?: string | null;
+  documentedByUserId?: string | null;
+  documentedByName?: string | null;
 };
 
 export type ParsedMarMedicationResponse = {
@@ -65,6 +67,8 @@ export type ParsedMarMedicationResponse = {
   documentedBy: string | null;
   documentedByInitials: string | null;
   documentedByDisplayName: string | null;
+  documentedByUserId: string | null;
+  documentedByName: string | null;
 };
 
 export type MarMedicationResponseValidationResult =
@@ -169,6 +173,8 @@ export function validateMarMedicationResponse(
       documentedBy: normalizeOptionalText(input.documentedBy),
       documentedByInitials: normalizeOptionalText(input.documentedByInitials),
       documentedByDisplayName: normalizeOptionalText(input.documentedByDisplayName),
+      documentedByUserId: normalizeOptionalText(input.documentedByUserId),
+      documentedByName: normalizeOptionalText(input.documentedByName),
     },
   };
 }
@@ -193,6 +199,8 @@ function serializeMarMedicationResponseLine(payload: ParsedMarMedicationResponse
     documentedBy: payload.documentedBy ?? null,
     documentedByInitials: payload.documentedByInitials ?? null,
     documentedByDisplayName: payload.documentedByDisplayName ?? null,
+    documentedByUserId: payload.documentedByUserId ?? null,
+    documentedByName: payload.documentedByName ?? null,
   })}`;
 }
 
@@ -223,6 +231,8 @@ export function buildMarMedicationResponseNotes(
     documentedBy: validated.value.documentedBy ?? null,
     documentedByInitials: validated.value.documentedByInitials ?? null,
     documentedByDisplayName: validated.value.documentedByDisplayName ?? null,
+    documentedByUserId: validated.value.documentedByUserId ?? null,
+    documentedByName: validated.value.documentedByName ?? null,
   });
 
   const base = existingNotes?.trim() ? `${existingNotes.trim()}\n` : "";
@@ -281,6 +291,14 @@ function parseResponseJson(raw: string): ParsedMarMedicationResponse | null {
       documentedByDisplayName:
         typeof parsed.documentedByDisplayName === "string" && parsed.documentedByDisplayName.trim()
           ? parsed.documentedByDisplayName.trim()
+          : null,
+      documentedByUserId:
+        typeof parsed.documentedByUserId === "string" && parsed.documentedByUserId.trim()
+          ? parsed.documentedByUserId.trim()
+          : null,
+      documentedByName:
+        typeof parsed.documentedByName === "string" && parsed.documentedByName.trim()
+          ? parsed.documentedByName.trim()
           : null,
     };
   } catch {

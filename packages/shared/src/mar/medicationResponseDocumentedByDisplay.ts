@@ -18,8 +18,24 @@ export function derivePersonInitials(name: string | null | undefined): string | 
 
 export type MedicationResponseDocumentedByInput = Pick<
   ParsedMarMedicationResponse,
-  "documentedBy" | "documentedByInitials" | "documentedByDisplayName"
+  | "documentedBy"
+  | "documentedByInitials"
+  | "documentedByDisplayName"
+  | "documentedByName"
+  | "documentedByUserId"
 >;
+
+export function hasMedicationResponseDocumentedByIdentity(
+  response: MedicationResponseDocumentedByInput
+): boolean {
+  return Boolean(
+    response.documentedByUserId?.trim() ||
+      response.documentedByInitials?.trim() ||
+      response.documentedByDisplayName?.trim() ||
+      response.documentedByName?.trim() ||
+      response.documentedBy?.trim()
+  );
+}
 
 /** Best available documented-by label for response summary display. */
 export function resolveMedicationResponseDocumentedByLabel(
@@ -28,7 +44,7 @@ export function resolveMedicationResponseDocumentedByLabel(
   const initials = response.documentedByInitials?.trim();
   if (initials) return initials;
 
-  const displayName = response.documentedByDisplayName?.trim();
+  const displayName = response.documentedByDisplayName?.trim() || response.documentedByName?.trim();
   if (displayName) {
     return derivePersonInitials(displayName) ?? displayName;
   }

@@ -6584,6 +6584,8 @@ export default {
     marInjectionSite: "Site d'injection",
     marAdministeredBy: "Administré par",
     marNotes: "Notes",
+    medicationResponsesTitle: "Réponses médicamenteuses",
+    medResponseAdministered: "Administré",
     vitalsHistoryTitle: "Signes vitaux (historique)",
     vitalsHistoryEmpty: "Aucun relevé horodaté pour cette consultation.",
     vitalsHistoryLoadError: "Historique des signes vitaux indisponible.",

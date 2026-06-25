@@ -29,6 +29,10 @@ import {
   clinicalTimelineDisplayLabelFr,
   resolveClinicalTimelineDisplayEventType,
   sanitizeMarAdministrationVisibleNote,
+  parseMarMedicationResponseNotes,
+  sortMarMedicationResponsesNewestFirst,
+  buildMedicationResponseSummaryFieldsFromParsed,
+  listMedicationResponseSideEffectKeys,
 } from "@medora/shared";
 import {
   diagnosisDisplayFr,
@@ -1032,6 +1036,129 @@ function renderMar(lang: SupportedLanguage, rows: AnyRecord[] | null): string {
   return `<ul style="margin:6px 0;padding-left:18px;">${items}</ul>`;
 }
 
+function marMedicationResponsePrintLabel(lang: SupportedLanguage, key: string): string {
+  const mapEn: Record<string, string> = {
+    outcome: "Response",
+    responseTime: "Response time",
+    documentedAt: "Documented",
+    by: "By",
+    pain: "Pain",
+    trend: "Pain trend",
+    sideEffects: "Side effects",
+    comment: "Comment",
+    administered: "Administered",
+    PAIN_REDUCED: "Pain reduced",
+    EFFECTIVE: "Effective",
+    NO_CHANGE: "No change",
+    ADVERSE_REACTION: "Adverse reaction",
+    noAdverseReaction: "No adverse reaction",
+    nausea: "Nausea",
+    vomiting: "Vomiting",
+    itching: "Itching",
+    sedation: "Sedation",
+    dizziness: "Dizziness",
+    constipation: "Constipation",
+    respiratoryDepression: "Respiratory depression",
+    IMPROVED: "Improved",
+    SAME: "Same",
+    WORSE: "Worse",
+    unknownAuthor: "Unknown",
+  };
+  const mapFr: Record<string, string> = {
+    outcome: "Réponse",
+    responseTime: "Heure de la réponse",
+    documentedAt: "Documenté",
+    by: "Par",
+    pain: "Douleur",
+    trend: "Évolution de la douleur",
+    sideEffects: "Effets indésirables",
+    comment: "Commentaire",
+    administered: "Administré",
+    PAIN_REDUCED: "Douleur réduite",
+    EFFECTIVE: "Efficace",
+    NO_CHANGE: "Sans changement",
+    ADVERSE_REACTION: "Réaction indésirable",
+    noAdverseReaction: "Aucune réaction indésirable",
+    nausea: "Nausées",
+    vomiting: "Vomissements",
+    itching: "Prurit",
+    sedation: "Sédation",
+    dizziness: "Vertiges",
+    constipation: "Constipation",
+    respiratoryDepression: "Dépression respiratoire",
+    IMPROVED: "Amélioration",
+    SAME: "Stable",
+    WORSE: "Aggravation",
+    unknownAuthor: "Inconnu",
+  };
+  const map = lang === "fr" ? mapFr : mapEn;
+  return map[key] ?? key;
+}
+
+function renderMedicationResponses(lang: SupportedLanguage, rows: AnyRecord[] | null): string {
+  if (rows == null || rows.length === 0) return "";
+  const responseRows: string[] = [];
+
+  for (const admin of rows) {
+    const embedded = asArray(admin.medicationResponses);
+    const responses =
+      embedded.length > 0
+        ? (embedded as ReturnType<typeof parseMarMedicationResponseNotes>)
+        : sortMarMedicationResponsesNewestFirst(parseMarMedicationResponseNotes(pickString(admin, "notes")));
+    if (responses.length === 0) continue;
+
+    const label = pickString(admin, "medicationLabelSnapshot") || tcommon(lang, "emptyDash");
+    const doseValue = admin.doseValue;
+    const doseUnit = pickString(admin, "doseUnit");
+    const dose =
+      doseValue != null && (typeof doseValue === "number" || typeof doseValue === "string")
+        ? `${String(doseValue)}${doseUnit ? ` ${doseUnit}` : ""}`
+        : "";
+    const route = pickString(admin, "route");
+    const administeredAt = fmtDt(pickString(admin, "administeredAt"), lang);
+    const header = [label, dose, route].filter(Boolean).join(" ");
+
+    for (const response of responses) {
+      const outcomeLabel =
+        marMedicationResponsePrintLabel(lang, response.responseCode) !== response.responseCode
+          ? marMedicationResponsePrintLabel(lang, response.responseCode)
+          : response.responseCode;
+      const sideEffects = listMedicationResponseSideEffectKeys(response);
+      const fields = buildMedicationResponseSummaryFieldsFromParsed({
+        response,
+        outcomeLabel: `${marMedicationResponsePrintLabel(lang, "outcome")}: ${outcomeLabel}`,
+        responseTimePrefix: marMedicationResponsePrintLabel(lang, "responseTime"),
+        documentedAtPrefix: marMedicationResponsePrintLabel(lang, "documentedAt"),
+        documentedByPrefix: marMedicationResponsePrintLabel(lang, "by"),
+        documentedByUnknownLabel: `${marMedicationResponsePrintLabel(lang, "by")}: ${marMedicationResponsePrintLabel(lang, "unknownAuthor")}`,
+        painPrefix: marMedicationResponsePrintLabel(lang, "pain"),
+        painTrendPrefix: marMedicationResponsePrintLabel(lang, "trend"),
+        sideEffectsPrefix: marMedicationResponsePrintLabel(lang, "sideEffects"),
+        commentPrefix: marMedicationResponsePrintLabel(lang, "comment"),
+        painTrendLabel: response.painResponseTrend
+          ? marMedicationResponsePrintLabel(lang, response.painResponseTrend)
+          : null,
+        sideEffectLabels: sideEffects.map((key) => marMedicationResponsePrintLabel(lang, key)),
+        formatInstant: (iso) => (iso ? fmtDt(iso, lang) : null),
+      });
+
+      const lines = [
+        `<strong>${esc(header)}</strong>`,
+        `<div style="font-size:11px;color:#475569;margin-top:2px;">${esc(marMedicationResponsePrintLabel(lang, "administered"))}: ${esc(administeredAt)}</div>`,
+        ...fields.map(
+          (field) =>
+            `<div style="font-size:11px;color:#475569;margin-top:2px;white-space:pre-wrap;">${esc(field.text)}</div>`
+        ),
+      ];
+      responseRows.push(`<li style="margin-bottom:8px;">${lines.join("")}</li>`);
+    }
+  }
+
+  if (responseRows.length === 0) return "";
+  const title = lang === "fr" ? "Réponses médicamenteuses" : "Medication responses";
+  return `<h3 style="font-size:12px;margin:14px 0 6px 0;font-weight:700;">${esc(title)}</h3><ul style="margin:6px 0;padding-left:18px;">${responseRows.join("")}</ul>`;
+}
+
 function renderPharmacyDispense(lang: SupportedLanguage, orders: AnyRecord[]): string {
   /**
    * Pharmacy dispenses for the encounter aren't returned by /encounters/:id/orders.
@@ -1319,6 +1446,7 @@ function getEncounterChartLivePreviewHtml(
 
   ${h2(lang, "sectionMar")}
   ${renderMar(lang, fetched.medicationAdministrations)}
+  ${renderMedicationResponses(lang, fetched.medicationAdministrations)}
 
   ${h2(lang, "sectionPharmacyDispense")}
   ${renderPharmacyDispense(lang, orders)}

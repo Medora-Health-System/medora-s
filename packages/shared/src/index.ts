@@ -123,6 +123,7 @@ export * from "./mar/marMedicationResponseVisibilityGovernance.js";
 export * from "./mar/medicationResponseEditability.js";
 export * from "./mar/medicationResponsePostSubmitState.js";
 export * from "./mar/medicationResponseDocumentedByDisplay.js";
+export * from "./mar/medicationResponseAuthorIdentity.js";
 export * from "./mar/medicationResponseSummaryFormat.js";
 export * from "./mar/medicationResponseTimelineDisplay.js";
 export * from "./mar/marMedicationResponseAnalytics.js";

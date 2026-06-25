@@ -45,6 +45,9 @@ function makeService() {
         },
       ]),
     },
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
   const audit = { log: jest.fn() };
   return {

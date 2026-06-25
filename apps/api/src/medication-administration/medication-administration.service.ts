@@ -72,7 +72,10 @@ import {
   buildMarAllergyReviewCandidateNotes,
   buildMarAllergyReviewDismissedNotes,
   parseMarAllergyReviewCandidatesFromNotes,
-  derivePersonInitials,
+  resolveMedicationResponseAuthorIdentity,
+  parseMarMedicationResponseNotes,
+  collectMedicationResponseAuthorUserIds,
+  enrichParsedMarMedicationResponsesAuthor,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import {
@@ -425,13 +428,32 @@ export class MedicationAdministrationService {
         administeredBy: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    return rows.map((r) => ({
-      ...r,
-      marAction: resolveMedicationMarActionFromStorage({
-        marAction: r.marAction ?? null,
-        notes: r.notes,
-      }),
-    }));
+
+    const allResponses = rows.flatMap((row) => parseMarMedicationResponseNotes(row.notes));
+    const authorUserIds = collectMedicationResponseAuthorUserIds(allResponses);
+    const authorUsers =
+      authorUserIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: authorUserIds } },
+            select: { id: true, firstName: true, lastName: true, email: true },
+          })
+        : [];
+    const authorUsersById = new Map(authorUsers.map((user) => [user.id, user]));
+
+    return rows.map((r) => {
+      const medicationResponses = enrichParsedMarMedicationResponsesAuthor(
+        parseMarMedicationResponseNotes(r.notes),
+        authorUsersById
+      );
+      return {
+        ...r,
+        marAction: resolveMedicationMarActionFromStorage({
+          marAction: r.marAction ?? null,
+          notes: r.notes,
+        }),
+        medicationResponses,
+      };
+    });
   }
 
   async create(
@@ -2223,11 +2245,12 @@ export class MedicationAdministrationService {
 
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true },
+      select: { id: true, firstName: true, lastName: true, email: true },
     });
-    const documentedByDisplayName =
-      [actor?.firstName, actor?.lastName].filter(Boolean).join(" ").trim() || null;
-    const documentedByInitials = derivePersonInitials(documentedByDisplayName);
+    if (!actor) {
+      throw new BadRequestException("Utilisateur introuvable.");
+    }
+    const authorIdentity = resolveMedicationResponseAuthorIdentity(actor);
 
     const notesResult = buildMarMedicationResponseNotes(row.notes, {
       responseCode: dto.responseCode,
@@ -2245,9 +2268,11 @@ export class MedicationAdministrationService {
       dizziness: dto.dizziness ?? null,
       constipation: dto.constipation ?? null,
       respiratoryDepression: dto.respiratoryDepression ?? null,
-      documentedBy: documentedByDisplayName,
-      documentedByDisplayName,
-      documentedByInitials,
+      documentedBy: authorIdentity.documentedByDisplayName,
+      documentedByDisplayName: authorIdentity.documentedByDisplayName,
+      documentedByInitials: authorIdentity.documentedByInitials,
+      documentedByUserId: authorIdentity.documentedByUserId,
+      documentedByName: authorIdentity.documentedByName,
     });
     if (!notesResult.ok) {
       throw new BadRequestException(notesResult.message);
@@ -2259,7 +2284,7 @@ export class MedicationAdministrationService {
       null;
 
     if (dto.responseCode === "ADVERSE_REACTION_REPORTED") {
-      const documentedBy = documentedByDisplayName;
+      const documentedBy = authorIdentity.documentedByDisplayName;
       const medicationName =
         row.medicationLabelSnapshot?.trim() ||
         row.orderItem?.manualLabel?.trim() ||

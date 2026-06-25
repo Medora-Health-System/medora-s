@@ -6,7 +6,10 @@ import { useI18n } from "@/lib/i18n";
 import {
   buildErEdSummaryMarEventRows,
   buildErEdSummaryMedicationOrderRows,
+  buildErEdSummaryMedicationResponseRows,
 } from "@/features/emergency/erEdSummaryMedicationMar";
+import { MedicationResponseSummaryCard } from "@/components/mar/MedicationResponseSummaryCard";
+import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
 export function ErMedicationMarSummaryCard({
   encounterId,
@@ -66,6 +69,21 @@ export function ErMedicationMarSummaryCard({
     () => buildErEdSummaryMarEventRows({ admins: state.admins, language, t }),
     [state.admins, language, t]
   );
+  const medicationResponses = useMemo(
+    () => buildErEdSummaryMedicationResponseRows({ admins: state.admins, language }),
+    [state.admins, language]
+  );
+  const formatInstant = useMemo(
+    () => (iso: string | null | undefined) => {
+      if (!iso?.trim()) return null;
+      try {
+        return formatEncounterChromeDateTime(iso, language);
+      } catch {
+        return iso;
+      }
+    },
+    [language]
+  );
 
   if (!enabled) return null;
 
@@ -114,7 +132,7 @@ export function ErMedicationMarSummaryCard({
     );
   }
 
-  if (medicationOrders.length === 0 && marEvents.length === 0) {
+  if (medicationOrders.length === 0 && marEvents.length === 0 && medicationResponses.length === 0) {
     return (
       <div style={shell}>
         <p style={titleStyle}>{t("emergencyVisitSummaryPanel.medicationMarTitle")}</p>
@@ -173,6 +191,32 @@ export function ErMedicationMarSummaryCard({
                   {t("emergencyVisitSummaryPanel.marNotes")}: {row.notes}
                 </div>
               ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {medicationResponses.length > 0 ? (
+        <div style={{ marginTop: 12 }} data-testid="encounter-summary-medication-responses">
+          <p style={{ ...titleStyle, fontSize: 13 }}>
+            {t("emergencyVisitSummaryPanel.medicationResponsesTitle")}
+          </p>
+          {medicationResponses.map((row) => (
+            <div key={row.id} style={rowStyle} data-testid="encounter-summary-medication-response-row">
+              <strong>
+                {[row.medicationName, row.dose !== "—" ? row.dose : null, row.route !== "—" ? row.route : null]
+                  .filter(Boolean)
+                  .join(" ")}
+              </strong>
+              <div>
+                {t("emergencyVisitSummaryPanel.medResponseAdministered")}: {row.administeredAt}
+              </div>
+              <MedicationResponseSummaryCard
+                response={row.response}
+                formatInstant={formatInstant}
+                t={t}
+                compact
+              />
             </div>
           ))}
         </div>

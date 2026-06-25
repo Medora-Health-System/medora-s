@@ -53,6 +53,8 @@ describe("marMedicationResponseAdverseEscalation", () => {
           documentedBy: null,
           documentedByInitials: null,
           documentedByDisplayName: null,
+          documentedByUserId: null,
+          documentedByName: null,
         },
       ])
     ).toBe(true);
