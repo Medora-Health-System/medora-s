@@ -13392,12 +13392,23 @@ export default {
     },
     history: {
       title: "Réponse médicamenteuse",
+      outcome: "Résultat",
       response: "Réponse",
       responseTime: "Heure de réponse",
       documentedAt: "Documenté",
       by: "Par",
       pain: "Douleur",
       comment: "Commentaire",
+      documentedByUnknown: "Inconnu",
+    },
+    timeline: {
+      recommended: "Réponse recommandée",
+      required: "Réponse requise",
+      overdue: "Réponse en retard",
+      completed: "Réponse complétée",
+      completedCount: "Réponse complétée ({count})",
+      badgeCompleted: "Réponse complétée",
+      badgeCompletedCount: "Réponse complétée ({count})",
     },
     panel: {
       recommendedTitle: "Réponse médicamenteuse recommandée",
@@ -13413,6 +13424,7 @@ export default {
       painLine: "Douleur : {before}/10 → {after}/10",
       save: "Enregistrer la réponse",
       submitResponse: "Soumettre la réponse",
+      addAdditionalResponse: "Ajouter une réponse supplémentaire",
       missingAdministrationId:
         "L'enregistrement d'administration est requis pour documenter une réponse.",
       saveError: "Impossible d'enregistrer la réponse.",
@@ -13554,6 +13566,16 @@ export default {
       cancelledAt: "Annulé le",
       scheduledActionNotice: "Médicament planifié — actions disponibles.",
       actionsHeading: "Actions",
+    },
+    clinicalAction: {
+      viewAdministration: "Administration terminée",
+      viewUpcoming: "Administration à venir",
+      viewCanceled: "Ordonnance annulée",
+      administer: "Administrer",
+      startInfusion: "Démarrer la perfusion",
+      stopInfusion: "Arrêter la perfusion",
+      refuse: "Refuser",
+      hold: "Mettre en attente",
     },
     actions: {
       ADMINISTER: "Administrer",

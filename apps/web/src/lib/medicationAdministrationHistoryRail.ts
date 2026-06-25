@@ -15,7 +15,9 @@ import {
   resolveMarRescheduleReasonLabelKey,
   resolveMarMedicationTimingOverrideReasonLabelKey,
   resolveMarMedicationResponseLabelKey,
+  resolveMedicationResponsePainTrendLabelKey,
   formatMarPrnReasonForLocale,
+  type MedicationResponseSideEffectKey,
 } from "@medora/shared";
 import {
   isMarClinicalCorrectionReviewRecommended,
@@ -58,6 +60,9 @@ export type MedicationAdministrationHistoryRailEntry = {
   medicationResponseTimeLabel?: string | null;
   medicationResponseDocumentedLabel?: string | null;
   medicationResponsePainLabel?: string | null;
+  medicationResponsePainTrendLabel?: string | null;
+  medicationResponseDocumentedByLabel?: string | null;
+  medicationResponseSideEffectsLabel?: string | null;
   medicationResponseCommentLine?: string | null;
   medicationResponseAdverseEscalationLine?: string | null;
   allergyReviewRecommendationLine?: string | null;
@@ -284,6 +289,18 @@ export function buildMedicationAdministrationHistoryRailEntry(
     entry.medicationResponsePainAfter != null
       ? `${input.t("marMedicationResponse.history.pain")}: ${entry.medicationResponsePainBefore}/10 → ${entry.medicationResponsePainAfter}/10`
       : null;
+  const responseTrendKey = resolveMedicationResponsePainTrendLabelKey(
+    entry.medicationResponsePainTrend ?? null
+  );
+  const responseSideEffectLabels =
+    isMedicationResponseEvent && entry.medicationResponseSideEffectKeys?.trim()
+      ? entry.medicationResponseSideEffectKeys
+          .split(",")
+          .filter(Boolean)
+          .map((key) =>
+            input.t(`marMedicationResponse.reassessment.${key as MedicationResponseSideEffectKey}`)
+          )
+      : [];
 
   return {
     id: entry.id,
@@ -347,6 +364,22 @@ export function buildMedicationAdministrationHistoryRailEntry(
         ? `${input.t("marMedicationResponse.history.documentedAt")}: ${input.formatClinicalTime(entry.documentedAt)}`
         : null,
     medicationResponsePainLabel: responsePainLabel,
+    medicationResponsePainTrendLabel:
+      isMedicationResponseEvent && responseTrendKey
+        ? `${input.t("marMedicationResponse.reassessment.trend")}: ${input.t(responseTrendKey)}`
+        : null,
+    medicationResponseDocumentedByLabel:
+      isMedicationResponseEvent
+        ? `${input.t("marMedicationResponse.history.by")}: ${
+            entry.medicationResponseDocumentedBy?.trim() ||
+            entry.performedByDisplay?.trim() ||
+            input.t("marMedicationResponse.history.documentedByUnknown")
+          }`
+        : null,
+    medicationResponseSideEffectsLabel:
+      isMedicationResponseEvent && responseSideEffectLabels.length > 0
+        ? `${input.t("marMedicationResponse.reassessment.sideEffects")}: ${responseSideEffectLabels.join(", ")}`
+        : null,
     medicationResponseCommentLine:
       isMedicationResponseEvent &&
       (entry.medicationResponseDetail ?? entry.reasonDetail)?.trim()

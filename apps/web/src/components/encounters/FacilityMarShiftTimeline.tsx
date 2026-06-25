@@ -8,6 +8,11 @@ import {
   isMarShiftTimelineItemActionable,
   formatMarShiftTimelineClinicalDateTime,
   buildMarShiftTimelineTitle,
+  isMarMedicationResponseInternalSecondaryText,
+  resolveMarMedicationResponseBadgeLabelKey,
+  resolveMarShiftTimelineLatestResponsePainScores,
+  isMedicationResponseRequired,
+  toMedicationResponseEditabilityInput,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import {
@@ -26,6 +31,7 @@ import {
   marShiftTimelineMedicationResponseBadgeStyle,
   marShiftTimelineMedicationResponseFollowUpStyle,
   localizeMarTimelinePrnCellText,
+  localizeMarShiftTimelineSecondaryText,
   reconcileMarShiftTimelineDrawerSelection,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
@@ -464,6 +470,17 @@ export function FacilityMarShiftTimeline({
                             const hasVariance = variance?.hasVariance === true;
                             const responseBadge = item.medicationResponseBadge;
                             const responseFollowUp = item.medicationResponseFollowUp;
+                            const internalResponseSecondary = isMarMedicationResponseInternalSecondaryText(
+                              item.secondaryText
+                            );
+                            const localizedSecondary = localizeMarShiftTimelineSecondaryText(item, t, {
+                              responseRequired: isMedicationResponseRequired(
+                                toMedicationResponseEditabilityInput(item)
+                              ),
+                            });
+                            const responsePainScores = resolveMarShiftTimelineLatestResponsePainScores(
+                              item.medicationResponses
+                            );
                             const responseBadgeStyle = responseBadge
                               ? marShiftTimelineMedicationResponseBadgeStyle(responseBadge.severity)
                               : null;
@@ -495,7 +512,7 @@ export function FacilityMarShiftTimeline({
                                 data-dose-status={item.doseStatus}
                                 data-read-only={readOnly ? "true" : "false"}
                                 data-prn-band={item.isPrnBand ? "true" : "false"}
-                                aria-label={`${item.primaryText} ${item.secondaryText} ${item.tertiaryText ?? ""}`.trim()}
+                                aria-label={`${item.primaryText} ${localizedSecondary ?? item.secondaryText ?? ""} ${item.tertiaryText ?? ""}`.trim()}
                                 title={buildMarShiftTimelineItemHoverTitle(item)}
                                 onClick={() =>
                                   setDrawerSelection({
@@ -578,10 +595,12 @@ export function FacilityMarShiftTimeline({
                                       color: responseBadgeStyle?.color as string,
                                     }}
                                   >
-                                    {responseBadge.displayLabel}
+                                    {t(
+                                      resolveMarMedicationResponseBadgeLabelKey(responseBadge.count)
+                                    ).replace("{count}", String(responseBadge.count))}
                                   </div>
                                 ) : null}
-                                {responseFollowUp ? (
+                                {responseFollowUp && !internalResponseSecondary ? (
                                   <div
                                     data-testid="mar-shift-timeline-response-follow-up"
                                     data-follow-up-status={responseFollowUp.status}
@@ -632,12 +651,28 @@ export function FacilityMarShiftTimeline({
                                       )}
                                     </div>
                                   </div>
+                                ) : localizedSecondary ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-secondary-text"
+                                    style={{ fontSize: 10, opacity: 0.9, marginTop: 2, fontWeight: 600 }}
+                                  >
+                                    {localizedSecondary}
+                                  </div>
                                 ) : item.secondaryText?.trim() ? (
                                   <div
                                     data-testid="mar-shift-timeline-secondary-text"
                                     style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}
                                   >
                                     {item.secondaryText}
+                                  </div>
+                                ) : null}
+                                {responsePainScores ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-response-pain"
+                                    style={{ fontSize: 10, opacity: 0.85, marginTop: 2 }}
+                                  >
+                                    {t("marMedicationResponse.history.pain")}: {responsePainScores.before}/10 →{" "}
+                                    {responsePainScores.after}/10
                                   </div>
                                 ) : null}
                                 {item.tertiaryText?.trim() ? (

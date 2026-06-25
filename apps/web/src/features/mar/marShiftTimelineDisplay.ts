@@ -9,6 +9,8 @@ import {
   clinicalDatetimeLocalToUtcIso,
   resolveFacilityTimezone,
   isMarShiftTimelineItemActionable,
+  isMarMedicationResponseInternalSecondaryText,
+  resolveMarMedicationResponseTimelineLabelKey,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -450,4 +452,48 @@ export function localizeMarTimelinePrnCellText(
   return (
     formatMarPrnReasonForLocale({ code: prnReasonCode, label: trimmed }, locale) ?? trimmed
   );
+}
+
+const CLINICAL_ACTION_LABEL_KEYS: Record<string, string> = {
+  VIEW_ADMINISTRATION: "marShiftTimeline.clinicalAction.viewAdministration",
+  VIEW_UPCOMING: "marShiftTimeline.clinicalAction.viewUpcoming",
+  VIEW_CANCELED: "marShiftTimeline.clinicalAction.viewCanceled",
+  ADMINISTER: "marShiftTimeline.clinicalAction.administer",
+  START_INFUSION: "marShiftTimeline.clinicalAction.startInfusion",
+  STOP_INFUSION: "marShiftTimeline.clinicalAction.stopInfusion",
+  REFUSE: "marShiftTimeline.clinicalAction.refuse",
+  HOLD: "marShiftTimeline.clinicalAction.hold",
+};
+
+export function resolveMarShiftTimelineClinicalActionLabelKey(
+  clinicalAction: string | null | undefined
+): string | null {
+  const key = clinicalAction?.trim();
+  if (!key) return null;
+  return CLINICAL_ACTION_LABEL_KEYS[key] ?? null;
+}
+
+export function localizeMarShiftTimelineSecondaryText(
+  item: Pick<
+    MarShiftTimelineCellItem,
+    "secondaryText" | "medicationResponseFollowUp" | "medicationResponses"
+  >,
+  t: (key: string) => string,
+  options?: { responseRequired?: boolean }
+): string | null {
+  const responseCount = item.medicationResponses?.length ?? 0;
+  const labelKey = resolveMarMedicationResponseTimelineLabelKey({
+    secondaryText: item.secondaryText,
+    medicationResponseFollowUp: item.medicationResponseFollowUp,
+    responseCount,
+    responseRequired: options?.responseRequired,
+  });
+  if (labelKey) {
+    const count = Math.max(responseCount, item.medicationResponseFollowUp?.responseCount ?? 0, 1);
+    return t(labelKey).replace("{count}", String(count));
+  }
+  if (isMarMedicationResponseInternalSecondaryText(item.secondaryText)) {
+    return null;
+  }
+  return item.secondaryText?.trim() || null;
 }

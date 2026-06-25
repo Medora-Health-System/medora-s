@@ -119,12 +119,36 @@ function HistoryRailEntryCard({
           {entry.medicationResponseDocumentedLabel}
         </div>
       ) : null}
+      {entry.medicationResponseDocumentedLabel ? (
+        <div
+          data-testid="mar-administration-history-response-documented-by"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponseDocumentedByLabel}
+        </div>
+      ) : null}
       {entry.medicationResponsePainLabel ? (
         <div
           data-testid="mar-administration-history-response-pain"
           style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
         >
           {entry.medicationResponsePainLabel}
+        </div>
+      ) : null}
+      {entry.medicationResponsePainTrendLabel ? (
+        <div
+          data-testid="mar-administration-history-response-pain-trend"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponsePainTrendLabel}
+        </div>
+      ) : null}
+      {entry.medicationResponseSideEffectsLabel ? (
+        <div
+          data-testid="mar-administration-history-response-side-effects"
+          style={{ marginTop: 4, fontSize: compact ? 12 : 13, color: "#64748b" }}
+        >
+          {entry.medicationResponseSideEffectsLabel}
         </div>
       ) : null}
       {entry.medicationResponseCommentLine ? (

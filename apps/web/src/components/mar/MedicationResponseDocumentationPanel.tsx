@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   MAR_MEDICATION_RESPONSE_CODES,
   formatMarShiftTimelineClinicalDateTime,
   marPrnAdministrationRequiresPainScore,
   resolveMarMedicationResponseLabelKey,
-  resolveMarMedicationResponseSeverity,
-  resolveMedicationResponseAllergyReviewRecommendation,
   resolveMedicationResponseVisibilityTier,
   buildMarMedicationResponseFollowUpSummary,
   sortMarMedicationResponsesNewestFirst,
@@ -16,6 +14,12 @@ import {
   canShowMedicationResponsePanel,
   isMedicationResponseRequired,
   toMedicationResponseEditabilityInput,
+  resolveMedicationResponsePanelState,
+  shouldShowMedicationResponseForm,
+  shouldShowMedicationResponseSubmitButton,
+  shouldShowAddAdditionalResponseButton,
+  shouldDefaultExpandMedicationResponsePanel,
+  resolveMarMedicationResponseBadgeLabelKey,
   type MarMedicationResponseCode,
   type ParsedMarMedicationResponse,
 } from "@medora/shared";
@@ -26,6 +30,7 @@ import {
   marShiftTimelineDateTimeLocalToUtcIso,
   toMarShiftTimelineDateTimeLocalValue,
 } from "@/features/mar/marShiftTimelineDisplay";
+import { MedicationResponseSummaryCard } from "@/components/mar/MedicationResponseSummaryCard";
 
 export type MedicationResponseDocumentationPanelProps = {
   item: MarShiftTimelineCellItem;
@@ -34,12 +39,6 @@ export type MedicationResponseDocumentationPanelProps = {
   readOnly?: boolean;
   onSaved?: () => void | Promise<void>;
 };
-
-function severityColor(severity: ReturnType<typeof resolveMarMedicationResponseSeverity>): string {
-  if (severity === "safety") return "#b45309";
-  if (severity === "neutral") return "#475569";
-  return "#047857";
-}
 
 export function MedicationResponseDocumentationPanel({
   item,
@@ -50,6 +49,7 @@ export function MedicationResponseDocumentationPanel({
 }: MedicationResponseDocumentationPanelProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+  const submitLockRef = useRef(false);
 
   const editabilityInput = useMemo(() => toMedicationResponseEditabilityInput(item), [item]);
   const showPanel = canShowMedicationResponsePanel(editabilityInput);
@@ -69,7 +69,7 @@ export function MedicationResponseDocumentationPanel({
   const savedResponses = useMemo(
     () =>
       sortMarMedicationResponsesNewestFirst(
-        (item.medicationResponses ?? []) as import("@medora/shared").ParsedMarMedicationResponse[]
+        (item.medicationResponses ?? []) as ParsedMarMedicationResponse[]
       ),
     [item.medicationResponses]
   );
@@ -89,12 +89,18 @@ export function MedicationResponseDocumentationPanel({
     [item, savedResponses]
   );
 
-  const [expanded, setExpanded] = useState(
-    () =>
-      visibilityTier === "RECOMMENDED" ||
-      item.secondaryText === "AWAITING_REASSESSMENT" ||
-      item.medicationResponseFollowUp?.status === "OVERDUE"
+  const awaitingReassessment = item.secondaryText === "AWAITING_REASSESSMENT";
+  const responseOverdue = followUpSummary.status === "OVERDUE";
+
+  const [expanded, setExpanded] = useState(() =>
+    shouldDefaultExpandMedicationResponsePanel({
+      responseCount: item.medicationResponses?.length ?? 0,
+      visibilityRecommended: visibilityTier === "RECOMMENDED",
+      awaitingReassessment,
+      responseOverdue,
+    })
   );
+  const [addingAdditional, setAddingAdditional] = useState(false);
   const [responseCode, setResponseCode] = useState<MarMedicationResponseCode>("EFFECTIVE");
   const [responseDetail, setResponseDetail] = useState("");
   const [responseTimeValue, setResponseTimeValue] = useState(() =>
@@ -113,6 +119,15 @@ export function MedicationResponseDocumentationPanel({
   const [respiratoryDepression, setRespiratoryDepression] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const panelState = resolveMedicationResponsePanelState({
+    responseCount: savedResponses.length,
+    expanded,
+    addingAdditional,
+  });
+  const showForm = responseEditable && shouldShowMedicationResponseForm(panelState);
+  const showSubmitButton = responseEditable && shouldShowMedicationResponseSubmitButton(panelState);
+  const showAddAdditionalButton = shouldShowAddAdditionalResponseButton(panelState, responseEditable);
 
   const resetForm = () => {
     setResponseCode("EFFECTIVE");
@@ -134,6 +149,20 @@ export function MedicationResponseDocumentationPanel({
     setError(null);
   };
 
+  const handleCancelForm = () => {
+    resetForm();
+    if (savedResponses.length > 0) {
+      setAddingAdditional(false);
+      setExpanded(false);
+    }
+  };
+
+  const handleAddAdditionalResponse = () => {
+    resetForm();
+    setAddingAdditional(true);
+    setExpanded(true);
+  };
+
   if (!showPanel) return null;
 
   const showPainFields = marPrnAdministrationRequiresPainScore({
@@ -147,9 +176,7 @@ export function MedicationResponseDocumentationPanel({
     directionsSig: item.orderPrnIndication,
     frequencyCode: item.frequencyCode,
   });
-  const awaitingReassessment = item.secondaryText === "AWAITING_REASSESSMENT";
   const responseRequired = isMedicationResponseRequired(editabilityInput);
-  const responseOverdue = followUpSummary.status === "OVERDUE";
 
   const sectionTitle = responseRequired
     ? t("marMedicationResponse.panel.requiredTitle")
@@ -157,73 +184,22 @@ export function MedicationResponseDocumentationPanel({
       ? t("marMedicationResponse.panel.recommendedTitle")
       : t("marMedicationResponse.panel.optionalTitle");
 
+  const responseCountBadge =
+    savedResponses.length > 0
+      ? t(resolveMarMedicationResponseBadgeLabelKey(savedResponses.length)).replace(
+          "{count}",
+          String(savedResponses.length)
+        )
+      : null;
+
   const formatInstant = (iso: string | null | undefined) =>
     iso?.trim()
       ? formatMarShiftTimelineClinicalDateTime(iso, dateLocale, facilityTimeZone ?? undefined)
       : null;
 
-  const renderSavedResponse = (response: ParsedMarMedicationResponse, index: number) => {
-    const labelKey = resolveMarMedicationResponseLabelKey(response.responseCode);
-    const responseLabel = labelKey ? t(labelKey) : response.responseCode;
-    const painLine =
-      response.painBefore != null && response.painAfter != null
-        ? `${t("marMedicationResponse.history.pain")}: ${response.painBefore}/10 → ${response.painAfter}/10`
-        : null;
-
-    return (
-      <div
-        key={`${response.documentedAt}-${index}`}
-        data-testid="mar-medication-response-saved"
-        style={{
-          marginTop: 8,
-          padding: "8px 10px",
-          borderRadius: 10,
-          border: "1px solid #e2e8f0",
-          background: "#f8fafc",
-          fontSize: 13,
-        }}
-      >
-        <div style={{ fontWeight: 600, color: severityColor(resolveMarMedicationResponseSeverity(response.responseCode)) }}>
-          {responseLabel}
-        </div>
-        {response.responseTime ? (
-          <div style={{ marginTop: 4, color: "#475569" }}>
-            {t("marMedicationResponse.panel.responseTime")}: {formatInstant(response.responseTime)}
-          </div>
-        ) : null}
-        <div style={{ marginTop: 4, color: "#475569" }}>
-          {t("marMedicationResponse.panel.documentedAt")}: {formatInstant(response.documentedAt)}
-        </div>
-        {painLine ? <div style={{ marginTop: 4, color: "#475569" }}>{painLine}</div> : null}
-        {response.responseDetail?.trim() ? (
-          <div style={{ marginTop: 4, color: "#334155" }}>
-            {t("marMedicationResponse.panel.comment")}: {response.responseDetail}
-          </div>
-        ) : null}
-        {response.responseCode === "ADVERSE_REACTION_REPORTED" ? (() => {
-          const allergyReview = resolveMedicationResponseAllergyReviewRecommendation({
-            responseCode: response.responseCode,
-            responseDetail: response.responseDetail,
-            medicationName: item.medicationLabel ?? item.primaryText,
-            detectedAt: response.documentedAt,
-          });
-          const messageKey = allergyReview.recommendationMessageKey;
-          if (!messageKey) return null;
-          return (
-            <div
-              data-testid="mar-medication-response-allergy-review-recommendation"
-              data-recommendation-level={allergyReview.recommendationLevel}
-              style={{ marginTop: 6, fontSize: 12, color: "#b45309", fontWeight: 600 }}
-            >
-              {t("marAllergyReview.panel.recommendationLabel")}: {t(messageKey)}
-            </div>
-          );
-        })() : null}
-      </div>
-    );
-  };
-
   const handleSubmit = async () => {
+    if (submitLockRef.current || submitting || !showSubmitButton) return;
+    submitLockRef.current = true;
     setError(null);
     setSubmitting(true);
     try {
@@ -251,22 +227,14 @@ export function MedicationResponseDocumentationPanel({
           respiratoryDepression: respiratoryDepression || undefined,
         },
       });
-      setResponseDetail("");
-      setPainBefore("");
-      setPainAfter("");
-      setPainResponseTrend("");
-      setNoAdverseReaction(false);
-      setNausea(false);
-      setVomiting(false);
-      setItching(false);
-      setSedation(false);
-      setDizziness(false);
-      setConstipation(false);
-      setRespiratoryDepression(false);
+      resetForm();
+      setAddingAdditional(false);
+      setExpanded(false);
       await onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("marMedicationResponse.panel.saveError"));
     } finally {
+      submitLockRef.current = false;
       setSubmitting(false);
     }
   };
@@ -275,6 +243,7 @@ export function MedicationResponseDocumentationPanel({
     <section
       data-testid="mar-medication-response-panel"
       data-visibility-tier={visibilityTier}
+      data-panel-state={panelState}
       style={{
         marginTop: 12,
         padding: "10px 12px",
@@ -300,7 +269,25 @@ export function MedicationResponseDocumentationPanel({
           fontSize: 14,
         }}
       >
-        <span>{sectionTitle}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span>{sectionTitle}</span>
+          {responseCountBadge ? (
+            <span
+              data-testid="mar-medication-response-count-badge"
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#047857",
+                background: "#ecfdf5",
+                border: "1px solid #a7f3d0",
+                borderRadius: 9999,
+                padding: "2px 8px",
+              }}
+            >
+              {responseCountBadge}
+            </span>
+          ) : null}
+        </span>
         <span aria-hidden>{expanded ? "▾" : "▸"}</span>
       </button>
 
@@ -348,10 +335,40 @@ export function MedicationResponseDocumentationPanel({
         </p>
       ) : null}
 
-      {savedResponses.map(renderSavedResponse)}
+      {savedResponses.map((response, index) => (
+        <MedicationResponseSummaryCard
+          key={`${response.documentedAt}-${index}`}
+          response={response}
+          formatInstant={formatInstant}
+          t={t}
+        />
+      ))}
 
-      {expanded && responseEditable ? (
-        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+      {showAddAdditionalButton ? (
+        <button
+          type="button"
+          onClick={handleAddAdditionalResponse}
+          data-testid="mar-medication-response-add-additional"
+          style={{
+            marginTop: 10,
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            color: "#0f766e",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {t("marMedicationResponse.panel.addAdditionalResponse")}
+        </button>
+      ) : null}
+
+      {showForm ? (
+        <div
+          data-testid="mar-medication-response-form"
+          style={{ marginTop: 10, display: "grid", gap: 10 }}
+        >
           <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
             <span>{t("marMedicationResponse.panel.responseTime")}</span>
             <input
@@ -479,42 +496,44 @@ export function MedicationResponseDocumentationPanel({
             </p>
           ) : null}
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => void handleSubmit()}
-              disabled={submitting}
-              data-testid="mar-medication-response-submit"
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                background: "#0f766e",
-                color: "#fff",
-                fontWeight: 600,
-                cursor: submitting ? "wait" : "pointer",
-              }}
-            >
-              {submitting ? t("common.saving") : t("marMedicationResponse.panel.submitResponse")}
-            </button>
-            <button
-              type="button"
-              onClick={resetForm}
-              disabled={submitting}
-              data-testid="mar-medication-response-cancel"
-              style={{
-                padding: "6px 12px",
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                background: "#fff",
-                color: "#334155",
-                fontWeight: 600,
-                cursor: submitting ? "wait" : "pointer",
-              }}
-            >
-              {t("common.cancel")}
-            </button>
-          </div>
+          {showSubmitButton ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={submitting}
+                data-testid="mar-medication-response-submit"
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  background: "#0f766e",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: submitting ? "wait" : "pointer",
+                }}
+              >
+                {submitting ? t("common.saving") : t("marMedicationResponse.panel.submitResponse")}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelForm}
+                disabled={submitting}
+                data-testid="mar-medication-response-cancel"
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  background: "#fff",
+                  color: "#334155",
+                  fontWeight: 600,
+                  cursor: submitting ? "wait" : "pointer",
+                }}
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

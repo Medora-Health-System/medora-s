@@ -2,49 +2,69 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  canDocumentMedicationResponse,
-  toMedicationResponseEditabilityInput,
+  resolveMedicationResponsePanelState,
+  shouldShowAddAdditionalResponseButton,
+  shouldShowMedicationResponseForm,
 } from "@medora/shared";
 
 const panelSrc = readFileSync(
   join(process.cwd(), "src/components/mar/MedicationResponseDocumentationPanel.tsx"),
   "utf8"
 );
+const summarySrc = readFileSync(
+  join(process.cwd(), "src/components/mar/MedicationResponseSummaryCard.tsx"),
+  "utf8"
+);
 
-describe("MedicationResponseDocumentationPanel", () => {
-  it("uses shared canDocumentMedicationResponse instead of drawer readOnly", () => {
-    expect(panelSrc).toContain("canDocumentMedicationResponse");
-    expect(panelSrc).not.toContain("responseReadOnly");
+describe("MedicationResponseDocumentationPanel post-submit UX", () => {
+  it("uses post-submit panel state model", () => {
+    expect(panelSrc).toContain("resolveMedicationResponsePanelState");
+    expect(panelSrc).toContain("data-panel-state");
+    expect(panelSrc).toContain("shouldShowMedicationResponseForm");
   });
 
-  it("renders submit response button", () => {
-    expect(panelSrc).toContain("mar-medication-response-submit");
-    expect(panelSrc).toContain("marMedicationResponse.panel.submitResponse");
+  it("collapses form and clears state after submit", () => {
+    expect(panelSrc).toContain("setAddingAdditional(false)");
+    expect(panelSrc).toContain("setExpanded(false)");
+    expect(panelSrc).toContain("resetForm()");
+    expect(panelSrc).toContain("await onSaved?.()");
   });
 
-  it("renders cancel button", () => {
-    expect(panelSrc).toContain("mar-medication-response-cancel");
-    expect(panelSrc).toContain("common.cancel");
+  it("hides submit when not in editing mode", () => {
+    expect(panelSrc).toContain("showSubmitButton");
+    expect(panelSrc).toContain("shouldShowMedicationResponseSubmitButton");
   });
 
-  it("shows missing administration message when submit blocked", () => {
-    expect(panelSrc).toContain("mar-medication-response-missing-administration");
-    expect(panelSrc).toContain("marMedicationResponse.panel.missingAdministrationId");
+  it("shows Add Additional Response after response exists", () => {
+    expect(panelSrc).toContain("mar-medication-response-add-additional");
+    expect(panelSrc).toContain("marMedicationResponse.panel.addAdditionalResponse");
+    expect(panelSrc).toContain("handleAddAdditionalResponse");
   });
 
-  it("expands by default when response overdue", () => {
-    expect(panelSrc).toContain('medicationResponseFollowUp?.status === "OVERDUE"');
+  it("guards duplicate submit with lock ref", () => {
+    expect(panelSrc).toContain("submitLockRef");
+    expect(panelSrc).toContain("if (submitLockRef.current || submitting || !showSubmitButton) return");
   });
 
-  it("completed overdue ketorolac remains editable via shared rule", () => {
-    const input = toMedicationResponseEditabilityInput({
-      primaryText: "Ketorolac 30 mg IV",
-      doseStatus: "COMPLETED",
-      secondaryText: "GIVEN",
-      administeredAt: "2026-06-22T06:00:00.000Z",
-      medicationAdministrationId: "admin-1",
-      medicationResponseFollowUp: { status: "OVERDUE" },
-    });
-    expect(canDocumentMedicationResponse(input)).toBe(true);
+  it("delegates response summary rendering to shared card", () => {
+    expect(panelSrc).toContain("MedicationResponseSummaryCard");
+    expect(summarySrc).toContain("buildMedicationResponseSummaryFields");
+    expect(summarySrc).toContain("resolveMedicationResponseDocumentedByLabel");
+  });
+
+  it("shows nurse-friendly response count badge", () => {
+    expect(panelSrc).toContain("resolveMarMedicationResponseBadgeLabelKey");
+    expect(panelSrc).toContain("mar-medication-response-count-badge");
+  });
+
+  it("RESPONSE_SUBMITTED hides form but allows add additional", () => {
+    expect(shouldShowMedicationResponseForm("RESPONSE_SUBMITTED")).toBe(false);
+    expect(shouldShowAddAdditionalResponseButton("RESPONSE_SUBMITTED", true)).toBe(true);
+  });
+
+  it("late documentation still opens editing form when expanded", () => {
+    expect(
+      resolveMedicationResponsePanelState({ responseCount: 0, expanded: true, addingAdditional: false })
+    ).toBe("EDITING_RESPONSE");
   });
 });

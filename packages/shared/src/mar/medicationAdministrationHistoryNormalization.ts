@@ -39,6 +39,8 @@ import {
   parseMarMedicationResponseNotes,
   sortMarMedicationResponsesNewestFirst,
 } from "./marMedicationResponseGovernance.js";
+import { resolveMedicationResponseDocumentedByLabel } from "./medicationResponseDocumentedByDisplay.js";
+import { listMedicationResponseSideEffectKeys } from "./medicationResponseSummaryFormat.js";
 import {
   parseMarAllergyReviewCandidatesFromNotes,
 } from "./marAllergyCandidate.js";
@@ -452,6 +454,9 @@ export function normalizeMedicationAdministrationHistoryResponseRows(input: {
     medicationResponseTime: response.responseTime,
     medicationResponsePainBefore: response.painBefore,
     medicationResponsePainAfter: response.painAfter,
+    medicationResponsePainTrend: response.painResponseTrend,
+    medicationResponseDocumentedBy: resolveMedicationResponseDocumentedByLabel(response),
+    medicationResponseSideEffectKeys: listMedicationResponseSideEffectKeys(response).join(","),
     originalAdministrationIdForResponse: input.administrationId,
     readOnly: true,
   }));

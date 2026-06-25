@@ -138,6 +138,18 @@ export type MarShiftTimelineCellItem = {
     documentedAt: string;
     painBefore: number | null;
     painAfter: number | null;
+    painResponseTrend?: "IMPROVED" | "SAME" | "WORSE" | null;
+    noAdverseReaction?: boolean | null;
+    nausea?: boolean | null;
+    vomiting?: boolean | null;
+    itching?: boolean | null;
+    sedation?: boolean | null;
+    dizziness?: boolean | null;
+    constipation?: boolean | null;
+    respiratoryDepression?: boolean | null;
+    documentedBy?: string | null;
+    documentedByInitials?: string | null;
+    documentedByDisplayName?: string | null;
   }>;
   administrationVariance?: {
     hasVariance: boolean;

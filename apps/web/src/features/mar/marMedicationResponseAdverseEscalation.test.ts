@@ -50,6 +50,9 @@ describe("marMedicationResponseAdverseEscalation", () => {
           dizziness: null,
           constipation: null,
           respiratoryDepression: null,
+          documentedBy: null,
+          documentedByInitials: null,
+          documentedByDisplayName: null,
         },
       ])
     ).toBe(true);

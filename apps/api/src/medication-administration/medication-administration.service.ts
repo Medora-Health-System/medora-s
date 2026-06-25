@@ -72,6 +72,7 @@ import {
   buildMarAllergyReviewCandidateNotes,
   buildMarAllergyReviewDismissedNotes,
   parseMarAllergyReviewCandidatesFromNotes,
+  derivePersonInitials,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import {
@@ -2220,6 +2221,14 @@ export class MedicationAdministrationService {
       throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
     }
 
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    const documentedByDisplayName =
+      [actor?.firstName, actor?.lastName].filter(Boolean).join(" ").trim() || null;
+    const documentedByInitials = derivePersonInitials(documentedByDisplayName);
+
     const notesResult = buildMarMedicationResponseNotes(row.notes, {
       responseCode: dto.responseCode,
       responseDetail: dto.responseDetail ?? null,
@@ -2236,6 +2245,9 @@ export class MedicationAdministrationService {
       dizziness: dto.dizziness ?? null,
       constipation: dto.constipation ?? null,
       respiratoryDepression: dto.respiratoryDepression ?? null,
+      documentedBy: documentedByDisplayName,
+      documentedByDisplayName,
+      documentedByInitials,
     });
     if (!notesResult.ok) {
       throw new BadRequestException(notesResult.message);
@@ -2247,11 +2259,7 @@ export class MedicationAdministrationService {
       null;
 
     if (dto.responseCode === "ADVERSE_REACTION_REPORTED") {
-      const actor = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { firstName: true, lastName: true },
-      });
-      const documentedBy = [actor?.firstName, actor?.lastName].filter(Boolean).join(" ").trim() || null;
+      const documentedBy = documentedByDisplayName;
       const medicationName =
         row.medicationLabelSnapshot?.trim() ||
         row.orderItem?.manualLabel?.trim() ||

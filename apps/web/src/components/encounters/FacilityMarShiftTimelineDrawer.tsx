@@ -14,6 +14,7 @@ import {
   marShiftTimelineDrawerPerformerValue,
   marShiftTimelineItemStatusStyle,
   marShiftTimelinePrimaryDrawerAction,
+  resolveMarShiftTimelineClinicalActionLabelKey,
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
   MAR_SHIFT_TIMELINE_HOLD_REASON_CODES,
@@ -308,7 +309,13 @@ export function FacilityMarShiftTimelineDrawer({
       label: t("marShiftTimeline.drawer.witness"),
       value: item.requiresWitness ? t("marShiftTimeline.drawer.witnessRequired") : null,
     },
-    { label: t("marShiftTimeline.drawer.clinicalAction"), value: item.clinicalAction },
+    {
+      label: t("marShiftTimeline.drawer.clinicalAction"),
+      value: (() => {
+        const labelKey = resolveMarShiftTimelineClinicalActionLabelKey(item.clinicalAction);
+        return labelKey ? t(labelKey) : item.clinicalAction;
+      })(),
+    },
     {
       label: t("marShiftTimeline.drawer.startedBy"),
       value: marShiftTimelineDrawerPerformerValue(item.startedByDisplay, item.startedByInitials),

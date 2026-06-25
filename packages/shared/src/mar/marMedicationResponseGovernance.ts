@@ -41,6 +41,9 @@ export type MarMedicationResponsePayload = {
   dizziness?: boolean | null;
   constipation?: boolean | null;
   respiratoryDepression?: boolean | null;
+  documentedBy?: string | null;
+  documentedByInitials?: string | null;
+  documentedByDisplayName?: string | null;
 };
 
 export type ParsedMarMedicationResponse = {
@@ -59,6 +62,9 @@ export type ParsedMarMedicationResponse = {
   dizziness: boolean | null;
   constipation: boolean | null;
   respiratoryDepression: boolean | null;
+  documentedBy: string | null;
+  documentedByInitials: string | null;
+  documentedByDisplayName: string | null;
 };
 
 export type MarMedicationResponseValidationResult =
@@ -160,6 +166,9 @@ export function validateMarMedicationResponse(
       dizziness: input.dizziness ?? null,
       constipation: input.constipation ?? null,
       respiratoryDepression: input.respiratoryDepression ?? null,
+      documentedBy: normalizeOptionalText(input.documentedBy),
+      documentedByInitials: normalizeOptionalText(input.documentedByInitials),
+      documentedByDisplayName: normalizeOptionalText(input.documentedByDisplayName),
     },
   };
 }
@@ -181,6 +190,9 @@ function serializeMarMedicationResponseLine(payload: ParsedMarMedicationResponse
     dizziness: payload.dizziness,
     constipation: payload.constipation,
     respiratoryDepression: payload.respiratoryDepression,
+    documentedBy: payload.documentedBy ?? null,
+    documentedByInitials: payload.documentedByInitials ?? null,
+    documentedByDisplayName: payload.documentedByDisplayName ?? null,
   })}`;
 }
 
@@ -208,6 +220,9 @@ export function buildMarMedicationResponseNotes(
     dizziness: validated.value.dizziness ?? null,
     constipation: validated.value.constipation ?? null,
     respiratoryDepression: validated.value.respiratoryDepression ?? null,
+    documentedBy: validated.value.documentedBy ?? null,
+    documentedByInitials: validated.value.documentedByInitials ?? null,
+    documentedByDisplayName: validated.value.documentedByDisplayName ?? null,
   });
 
   const base = existingNotes?.trim() ? `${existingNotes.trim()}\n` : "";
@@ -255,6 +270,18 @@ function parseResponseJson(raw: string): ParsedMarMedicationResponse | null {
       constipation: typeof parsed.constipation === "boolean" ? parsed.constipation : null,
       respiratoryDepression:
         typeof parsed.respiratoryDepression === "boolean" ? parsed.respiratoryDepression : null,
+      documentedBy:
+        typeof parsed.documentedBy === "string" && parsed.documentedBy.trim()
+          ? parsed.documentedBy.trim()
+          : null,
+      documentedByInitials:
+        typeof parsed.documentedByInitials === "string" && parsed.documentedByInitials.trim()
+          ? parsed.documentedByInitials.trim()
+          : null,
+      documentedByDisplayName:
+        typeof parsed.documentedByDisplayName === "string" && parsed.documentedByDisplayName.trim()
+          ? parsed.documentedByDisplayName.trim()
+          : null,
     };
   } catch {
     return null;

@@ -88,6 +88,9 @@ export type MedicationAdministrationHistoryEntry = {
   medicationResponseTime?: string | null;
   medicationResponsePainBefore?: number | null;
   medicationResponsePainAfter?: number | null;
+  medicationResponsePainTrend?: "IMPROVED" | "SAME" | "WORSE" | null;
+  medicationResponseDocumentedBy?: string | null;
+  medicationResponseSideEffectKeys?: string | null;
   originalAdministrationIdForResponse?: string | null;
   /** Present for ALLERGY_REVIEW_RECOMMENDED rows (MEDUI.ED.MAR.H10). */
   allergyReviewRecommendationLevel?: string | null;
