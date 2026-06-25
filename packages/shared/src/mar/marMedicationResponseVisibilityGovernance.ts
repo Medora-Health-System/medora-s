@@ -8,6 +8,7 @@ import {
   isPrnMedicationOrder,
   type MarPrnReasonGroup,
 } from "./medicationAdministrationPrnGovernance.js";
+import { requiresEnterprisePainReassessment } from "./enterprisePainReassessmentWorkflow.js";
 
 export type MarMedicationResponseVisibilityTier = "RECOMMENDED" | "OPTIONAL" | "HIDDEN";
 
@@ -250,6 +251,17 @@ function isNeuropathicPainMedication(input: MarMedicationResponseVisibilityInput
 }
 
 function isRecommendedMedication(input: MarMedicationResponseVisibilityInput): boolean {
+  if (
+    requiresEnterprisePainReassessment({
+      medicationLabel: input.medicationLabel,
+      genericName: input.genericName,
+      prnIndication: input.prnIndication,
+      directionsSig: input.directionsSig,
+      frequencyCode: input.frequencyCode,
+    })
+  ) {
+    return true;
+  }
   return (
     isPrnMedication(input) ||
     isPainMedication(input) ||

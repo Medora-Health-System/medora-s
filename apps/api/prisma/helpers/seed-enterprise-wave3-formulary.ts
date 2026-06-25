@@ -6,6 +6,10 @@ import type {
 } from "@medora/shared";
 import { mergeEnterpriseWave3GovernanceNotes } from "../../src/medication-master/enterprise-wave3.constants";
 import { loadEnterpriseWave3FormularySeedModules } from "./enterprise-wave3-formulary-seed-modules";
+import {
+  buildActiveProviderOrderableRegistryForSeed,
+  resolveEnterpriseSeedCatalogIsActive,
+} from "./seed-enterprise-medication-manifest";
 
 export class EnterpriseWave3FormularySeedError extends Error {
   constructor(
@@ -161,11 +165,26 @@ export async function seedEnterpriseWave3Formulary(
     failures: string[];
   }> = [];
 
+  const activeRegistry = buildActiveProviderOrderableRegistryForSeed();
+
   for (const rawEntry of manifest) {
     const entry = withWave3FormularyEntryDefaults(rawEntry);
     const billing = billingByCode[entry.catalogCode];
     if (!billing) {
       result.conflicts.push({ catalogCode: entry.catalogCode, reason: "missing billing spec" });
+      continue;
+    }
+
+    const existingCatalog = await prisma.catalogMedication.findUnique({
+      where: { code: entry.catalogCode },
+      select: { id: true, isActive: true },
+    });
+    if (!existingCatalog && entry.mode === "ENRICH") {
+      result.skippedMissingCatalog += 1;
+      result.conflicts.push({
+        catalogCode: entry.catalogCode,
+        reason: "ENRICH target catalog missing",
+      });
       continue;
     }
 
@@ -186,7 +205,11 @@ export async function seedEnterpriseWave3Formulary(
       ndcDisplay: billing.ndcDisplay ?? null,
       billingUnitType: billing.billingUnitType ?? null,
       isEssential: entry.isEssential ?? false,
-      isActive: false,
+      isActive: resolveEnterpriseSeedCatalogIsActive(
+        entry.catalogCode,
+        activeRegistry,
+        existingCatalog?.isActive
+      ),
       isControlled: entry.governance.isControlled,
       controlledSchedule: entry.governance.controlledSchedule ?? null,
       requiresWitness: entry.governance.requiresWitness,
@@ -196,41 +219,17 @@ export async function seedEnterpriseWave3Formulary(
 
     let catalogId: string;
     if (dryRun) {
-      const existing = await prisma.catalogMedication.findUnique({
-        where: { code: entry.catalogCode },
-        select: { id: true },
-      });
-      if (!existing && entry.mode === "ENRICH") {
-        result.skippedMissingCatalog += 1;
-        result.conflicts.push({
-          catalogCode: entry.catalogCode,
-          reason: "ENRICH target catalog missing",
-        });
-        continue;
-      }
-      catalogId = existing?.id ?? "dry-run";
-      if (existing) result.catalogEnriched += 1;
+      catalogId = existingCatalog?.id ?? "dry-run";
+      if (existingCatalog) result.catalogEnriched += 1;
       else result.catalogCreated += 1;
     } else {
-      const existing = await prisma.catalogMedication.findUnique({
-        where: { code: entry.catalogCode },
-        select: { id: true },
-      });
-      if (!existing && entry.mode === "ENRICH") {
-        result.skippedMissingCatalog += 1;
-        result.conflicts.push({
-          catalogCode: entry.catalogCode,
-          reason: "ENRICH target catalog missing",
-        });
-        continue;
-      }
       const row = await prisma.catalogMedication.upsert({
         where: { code: entry.catalogCode },
         update: upsertBody,
         create: { code: entry.catalogCode, ...upsertBody },
       });
       catalogId = row.id;
-      if (existing) result.catalogEnriched += 1;
+      if (existingCatalog) result.catalogEnriched += 1;
       else result.catalogCreated += 1;
 
       for (const alias of entry.aliases) {

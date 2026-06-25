@@ -1,0 +1,3568 @@
+{
+  "ticket": "MEDUI.MEDICATION.PRODUCTION_DB_PARITY_REMAINING_GAPS_ANALYSIS.1",
+  "generatedAt": "2026-06-25T15:26:06.380Z",
+  "summary": {
+    "activeRegistryCount": 219,
+    "match": 78,
+    "missing": 22,
+    "mismatch": 119,
+    "inactiveActiveMismatch": 111,
+    "billingGaps": 2,
+    "inventoryGaps": 33
+  },
+  "RemainingMissingDbRowsReport": [
+    {
+      "catalogCode": "DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "seed-haiti-medication-catalog.ts or unknown",
+      "whySeedDidNotCreate": "Not in any always-on seed pipeline"
+    },
+    {
+      "catalogCode": "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "seed-haiti-medication-catalog.ts or unknown",
+      "whySeedDidNotCreate": "Not in any always-on seed pipeline"
+    },
+    {
+      "catalogCode": "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "seed-haiti-medication-catalog.ts or unknown",
+      "whySeedDidNotCreate": "Not in any always-on seed pipeline"
+    },
+    {
+      "catalogCode": "VANCOMYCIN_125_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Infectious Disease"
+      ],
+      "manifestFiles": [
+        "enterpriseNeurologyInfectiousDiseaseFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseCardiologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "FUROSEMIDE_40_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseCardiologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "BUMETANIDE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseCardiologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseObgynFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "PENICILLIN_G_5_MILLION_UNITS_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseObgynFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "OLANZAPINE_10_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "OLANZAPINE_10_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "ZIPRASIDONE_20_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "LURASIDONE_40_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "DIVALPROEX_250_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "BENZTROPINE_1_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "HYDROXYZINE_25_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "PROPRANOLOL_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterprisePsychiatryFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only; wave4 enrich or new domain seed needed",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "RIFAXIMIN_550_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Gastroenterology"
+      ],
+      "manifestFiles": [
+        "enterpriseGastroenterologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "SENNA_8_6_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Gastroenterology"
+      ],
+      "manifestFiles": [
+        "enterpriseGastroenterologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "BISACODYL_5_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Gastroenterology"
+      ],
+      "manifestFiles": [
+        "enterpriseGastroenterologyFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "CEFDINIR_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+      "sourceDomains": [
+        "Tranche 1",
+        "Pediatrics"
+      ],
+      "manifestFiles": [
+        "enterprisePediatricsFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    },
+    {
+      "catalogCode": "ERYTHROMYCIN_0_5_OPHTHALMIQUE_OPHTHALMIQUE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Pediatrics"
+      ],
+      "manifestFiles": [
+        "enterprisePediatricsFormularyManifest.ts"
+      ],
+      "expectedSeedHelper": "NO_DEDICATED_SEED — domain manifest only",
+      "whySeedDidNotCreate": "Manifest defines CREATE row but no catalog seed helper exists — wave seeds only ENRICH existing Haiti rows"
+    }
+  ],
+  "RemainingMetadataMismatchReport": [
+    {
+      "catalogCode": "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SITAGLIPTIN_50_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Diabetes"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PIOGLITAZONE_30_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Diabetes"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "GLYBURIDE_2_5_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DOPAMINE_800_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PHENYLEPHRINE_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VASOPRESSIN_20_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VASOPRESSIN_40_UNITS_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DOBUTAMINE_250_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CALCIUM_CHLORIDE_10_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_2_G_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CALCIUM_GLUCONATE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CALCIUM_CHLORIDE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_4_G_100_ML_OB_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_40_G_1000_ML_OB_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CALCIUM_GLUCONATE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_BICARBONATE_50_MEQ_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_50_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_10_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_5_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_25_25_ML_NEONATAL_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_BICARBONATE_4_2_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXMEDETOMIDINE_100_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SUCCINYLCHOLINE_100_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "ROCURONIUM_50_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VECURONIUM_10_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VECURONIUM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PIPERACILLIN_TAZOBACTAM_2_25_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MEROPENEM_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Neurology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MANNITOL_20_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DAPTOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Infectious Disease"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Infectious Disease"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LABETALOL_100_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HYDRALAZINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DILTIAZEM_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "TICAGRELOR_90_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "NS 0.9% 250 mL",
+          "expectedValue": "Normal saline"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "NS 0.9% 1000 mL",
+          "expectedValue": "Sodium chloride"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "NS flush 10 mL",
+          "expectedValue": "Normal saline flush"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "D5W 500 mL",
+          "expectedValue": "Dextrose 5%"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "0.45% NS 500 mL",
+          "expectedValue": "Half normal saline"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "0.45% NS 1000 mL",
+          "expectedValue": "Half normal saline"
+        }
+      ]
+    },
+    {
+      "catalogCode": "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "Plasma-Lyte 1000 mL",
+          "expectedValue": "Plasma-Lyte"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "IV Fluids"
+      ],
+      "manifestFiles": [
+        "enterpriseIvFluidsFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-iv-fluids-catalog.ts",
+      "mismatches": [
+        {
+          "field": "displayNameEn",
+          "dbValue": "Normosol 1000 mL",
+          "expectedValue": "Normosol"
+        }
+      ]
+    },
+    {
+      "catalogCode": "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MISOPROSTOL_200_MCG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "TERBUTALINE_0_25_MG_SC_OB_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "BETAMETHASONE_12_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "RH_IMMUNE_GLOBULIN_300_MCG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "NIFEDIPINE_10_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LABETALOL_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "GENTAMICIN_40_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CLINDAMYCIN_900_MG_50_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "AZITHROMYCIN_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HALOPERIDOL_2_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "OLANZAPINE_5_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "RISPERIDONE_1_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "QUETIAPINE_100_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "ARIPIPRAZOLE_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LITHIUM_CARBONATE_450_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VALPROIC_ACID_500_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LAMOTRIGINE_100_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CARBAMAZEPINE_200_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SERTRALINE_50_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "FLUOXETINE_20_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "ESCITALOPRAM_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "CITALOPRAM_20_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "VENLAFAXINE_75_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "DULOXETINE_30_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "BUPROPION_150_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MIRTAZAPINE_15_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "SULFASALAZINE_500_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Gastroenterology"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+      "sourceDomains": [
+        "Pediatrics"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "KETOROLAC_30_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "BUPIVACAINE_0_5_INJECTABLE_INJECTABLE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "KETOROLAC_15_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Pain Management"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "BACLOFEN_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Pain Management"
+      ],
+      "manifestFiles": [
+        "enterpriseWave3FormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    },
+    {
+      "catalogCode": "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "manifestFiles": [
+        "enterpriseWave4EdHospitalFormularyManifest.ts"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "mismatches": [
+        {
+          "field": "isActive",
+          "dbValue": "false",
+          "expectedValue": "true"
+        }
+      ]
+    }
+  ],
+  "RemainingInactiveActiveMismatchReport": [
+    {
+      "catalogCode": "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Anticoagulation"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SITAGLIPTIN_50_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Diabetes"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "PIOGLITAZONE_30_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Diabetes"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "GLYBURIDE_2_5_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Diabetes"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DOPAMINE_800_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "PHENYLEPHRINE_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VASOPRESSIN_20_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VASOPRESSIN_40_UNITS_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DOBUTAMINE_250_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CALCIUM_CHLORIDE_10_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_2_G_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CALCIUM_GLUCONATE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CALCIUM_CHLORIDE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_4_G_100_ML_OB_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MAGNESIUM_SULFATE_40_G_1000_ML_OB_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CALCIUM_GLUCONATE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SODIUM_BICARBONATE_50_MEQ_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXTROSE_50_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXTROSE_10_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXTROSE_5_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXTROSE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXTROSE_25_25_ML_NEONATAL_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SODIUM_BICARBONATE_4_2_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DEXMEDETOMIDINE_100_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SUCCINYLCHOLINE_100_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "ROCURONIUM_50_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VECURONIUM_10_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VECURONIUM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "PIPERACILLIN_TAZOBACTAM_2_25_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MEROPENEM_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Critical Care"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Neurology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MANNITOL_20_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Neurology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DAPTOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Infectious Disease"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Infectious Disease"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LABETALOL_100_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HYDRALAZINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DILTIAZEM_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "TICAGRELOR_90_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Cardiology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MISOPROSTOL_200_MCG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "TERBUTALINE_0_25_MG_SC_OB_INJECTABLE_SOUS_CUTANEE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "BETAMETHASONE_12_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "RH_IMMUNE_GLOBULIN_300_MCG_INJECTABLE_INTRAMUSCULAIRE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "NIFEDIPINE_10_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LABETALOL_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "GENTAMICIN_40_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CLINDAMYCIN_900_MG_50_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "AZITHROMYCIN_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Tranche 1",
+        "OBGYN"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HALOPERIDOL_2_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "OLANZAPINE_5_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "RISPERIDONE_1_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "QUETIAPINE_100_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "ARIPIPRAZOLE_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LITHIUM_CARBONATE_450_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VALPROIC_ACID_500_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LAMOTRIGINE_100_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CARBAMAZEPINE_200_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SERTRALINE_50_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "FLUOXETINE_20_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "ESCITALOPRAM_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "CITALOPRAM_20_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "VENLAFAXINE_75_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "DULOXETINE_30_MG_GELULE_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "BUPROPION_150_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MIRTAZAPINE_15_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Psychiatry"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "SULFASALAZINE_500_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Gastroenterology"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+      "sourceDomains": [
+        "Pediatrics"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "KETOROLAC_30_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "BUPIVACAINE_0_5_INJECTABLE_INJECTABLE",
+      "sourceDomains": [
+        "Surgery"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "KETOROLAC_15_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Pain Management"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "BACLOFEN_10_MG_COMPRIME_ORALE",
+      "sourceDomains": [
+        "Tranche 1",
+        "Pain Management"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave3-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave3-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE3_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    },
+    {
+      "catalogCode": "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+      "sourceDomains": [
+        "Controlled Substances"
+      ],
+      "likelySeedHelper": "seed-enterprise-wave4-ed-hospital-formulary.ts (MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1)",
+      "fix": "Re-run seed-enterprise-wave4-ed-hospital-formulary with MEDORA_ENABLE_ENTERPRISE_WAVE4_ED_HOSPITAL_FORMULARY=1"
+    }
+  ],
+  "RemainingBillingMismatchReport": {
+    "missing": 1,
+    "partial": 1,
+    "rows": [
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "manifestHcpcs": "J3490",
+        "manifestNdc": "00000700190",
+        "dbBillingCodeDefault": null,
+        "dbNdc11": null,
+        "hasMedicationProduct": true,
+        "billingSource": "wave4"
+      },
+      {
+        "catalogCode": "LORAZEPAM_2MG_ML_INJECTABLE",
+        "classification": "MISSING",
+        "manifestHcpcs": "J2060",
+        "manifestNdc": "00000900115",
+        "dbBillingCodeDefault": null,
+        "dbNdc11": null,
+        "hasMedicationProduct": false,
+        "billingSource": "psychiatry"
+      }
+    ]
+  },
+  "RemainingInventoryMismatchReport": {
+    "withoutProductOrInventory": 33,
+    "rows": [
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "IV Fluids"
+        ]
+      },
+      {
+        "catalogCode": "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "LORAZEPAM_2MG_ML_INJECTABLE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "OXYCODONE_5_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "OXYCODONE_10_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "ACETAMINOPHEN_CODEINE_300_15_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "ACETAMINOPHEN_CODEINE_300_30_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "ACETAMINOPHEN_CODEINE_300_60_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "CYCLOBENZAPRINE_10_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "METHOCARBAMOL_500_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "METHOCARBAMOL_750_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "TIZANIDINE_2_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "TIZANIDINE_4_MG_COMPRIME_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "LIDOCAINE_5_PATCH_TRANSDERMAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "DICLOFENAC_1_GEL_TOPICAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "GABAPENTIN_100_MG_GELULE_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "GABAPENTIN_400_MG_GELULE_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "PREGABALIN_50_MG_GELULE_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      },
+      {
+        "catalogCode": "PREGABALIN_150_MG_GELULE_ORAL",
+        "inventoryItemCount": 0,
+        "medicationProductCount": 0,
+        "sourceDomains": [
+          "Tranche 1",
+          "Controlled Substances"
+        ]
+      }
+    ]
+  },
+  "finalDecision": "PRODUCTION_DB_REMAINING_GAPS_IDENTIFIED"
+}

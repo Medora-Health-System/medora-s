@@ -396,6 +396,7 @@ export * from "./medication/pilotMedicationBlockerAudit.js";
 export * from "./medication/medicationSearchDuplicateResolution.js";
 export * from "./medication/controlledSubstanceWaveCRuntimeRemediation.js";
 export * from "./mar/enterprisePainReassessmentWorkflow.js";
+export * from "./mar/marPainResponseTimelineProjection.js";
 export * from "./medication/cardiologyProviderOrderingActivation.js";
 export * from "./medication/providerOrderableCatalogCodesRegistry.js";
 export * from "./medication/enterpriseWave4EdHospitalHighAlertReview.js";

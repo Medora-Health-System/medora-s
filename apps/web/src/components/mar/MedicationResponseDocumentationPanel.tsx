@@ -52,6 +52,7 @@ export function MedicationResponseDocumentationPanel({
     doseStatus: item.doseStatus,
     secondaryText: item.secondaryText,
     medicationLabel: item.medicationLabel ?? item.primaryText,
+    genericName: item.medicationLabel ?? item.primaryText,
     frequencyCode: item.frequencyCode,
     prnIndication: item.orderPrnIndication,
     isFluidBolus: item.isFluidBolus,
@@ -81,7 +82,9 @@ export function MedicationResponseDocumentationPanel({
     [item, savedResponses]
   );
 
-  const [expanded, setExpanded] = useState(visibilityTier === "RECOMMENDED");
+  const [expanded, setExpanded] = useState(
+    visibilityTier === "RECOMMENDED" || item.secondaryText === "AWAITING_REASSESSMENT"
+  );
   const [responseCode, setResponseCode] = useState<MarMedicationResponseCode>("EFFECTIVE");
   const [responseDetail, setResponseDetail] = useState("");
   const [responseTimeValue, setResponseTimeValue] = useState(() =>
@@ -101,7 +104,7 @@ export function MedicationResponseDocumentationPanel({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (visibilityTier === "HIDDEN") return null;
+  if (visibilityTier === "HIDDEN" && item.secondaryText !== "AWAITING_REASSESSMENT") return null;
   if (!item.medicationAdministrationId?.trim()) return null;
 
   const showPainFields = marPrnAdministrationRequiresPainScore({
@@ -111,8 +114,12 @@ export function MedicationResponseDocumentationPanel({
   });
   const enterprisePainReassessment = requiresEnterprisePainReassessment({
     medicationLabel: item.medicationLabel ?? item.primaryText,
+    prnIndication: item.orderPrnIndication,
+    directionsSig: item.orderPrnIndication,
+    frequencyCode: item.frequencyCode,
   });
   const awaitingReassessment = item.secondaryText === "AWAITING_REASSESSMENT";
+  const responseReadOnly = readOnly && !awaitingReassessment;
 
   const sectionTitle =
     visibilityTier === "RECOMMENDED"
@@ -302,7 +309,7 @@ export function MedicationResponseDocumentationPanel({
               type="datetime-local"
               value={responseTimeValue}
               onChange={(e) => setResponseTimeValue(e.target.value)}
-              disabled={readOnly || submitting}
+              disabled={responseReadOnly || submitting}
               data-testid="mar-medication-response-time"
             />
           </label>
@@ -312,7 +319,7 @@ export function MedicationResponseDocumentationPanel({
             <select
               value={responseCode}
               onChange={(e) => setResponseCode(e.target.value as MarMedicationResponseCode)}
-              disabled={readOnly || submitting}
+              disabled={responseReadOnly || submitting}
               data-testid="mar-medication-response-code"
             >
               {MAR_MEDICATION_RESPONSE_CODES.map((code) => {
@@ -332,7 +339,7 @@ export function MedicationResponseDocumentationPanel({
               value={responseDetail}
               onChange={(e) => setResponseDetail(e.target.value)}
               rows={2}
-              disabled={readOnly || submitting}
+              disabled={responseReadOnly || submitting}
               data-testid="mar-medication-response-detail"
             />
           </label>
@@ -348,7 +355,7 @@ export function MedicationResponseDocumentationPanel({
                     max={10}
                     value={painBefore}
                     onChange={(e) => setPainBefore(e.target.value)}
-                    disabled={readOnly || submitting}
+                    disabled={responseReadOnly || submitting}
                     data-testid="mar-medication-response-pain-before"
                   />
                 </label>
@@ -360,7 +367,7 @@ export function MedicationResponseDocumentationPanel({
                     max={10}
                     value={painAfter}
                     onChange={(e) => setPainAfter(e.target.value)}
-                    disabled={readOnly || submitting}
+                    disabled={responseReadOnly || submitting}
                     data-testid="mar-medication-response-pain-after"
                   />
                 </label>
@@ -374,7 +381,7 @@ export function MedicationResponseDocumentationPanel({
                       onChange={(e) =>
                         setPainResponseTrend(e.target.value as "IMPROVED" | "SAME" | "WORSE" | "")
                       }
-                      disabled={readOnly || submitting}
+                      disabled={responseReadOnly || submitting}
                       data-testid="mar-medication-response-pain-trend"
                     >
                       <option value="">{t("marMedicationResponse.reassessment.trendPlaceholder")}</option>
@@ -405,7 +412,7 @@ export function MedicationResponseDocumentationPanel({
                             type="checkbox"
                             checked={checked}
                             onChange={(e) => setter(e.target.checked)}
-                            disabled={readOnly || submitting}
+                            disabled={responseReadOnly || submitting}
                           />
                           {t(`marMedicationResponse.reassessment.${key}`)}
                         </label>
@@ -423,7 +430,7 @@ export function MedicationResponseDocumentationPanel({
             </p>
           ) : null}
 
-          {!readOnly ? (
+          {!responseReadOnly ? (
             <button
               type="button"
               onClick={() => void handleSubmit()}

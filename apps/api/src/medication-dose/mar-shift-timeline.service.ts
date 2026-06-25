@@ -45,7 +45,7 @@ import {
   sortMarMedicationResponsesNewestFirst,
   type MarMedicationResponseSeverity,
   buildMarMedicationResponseFollowUpSummary,
-  resolveEnterprisePainReassessmentTimelineSecondaryText,
+  buildMarPainResponseTimelineProjection,
   type MarMedicationResponseFollowUpStatus,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
@@ -624,7 +624,7 @@ export class MarShiftTimelineService {
         requiresWitness,
         facilityTimeZone: shiftWindow.facilityTimeZone,
         enrichment: {
-          marAction: administrationNotes ? "administered" : null,
+          marAction: enrichment?.marAction ?? (enrichment?.administeredAt ? "administered" : null),
           marNotes: administrationNotes,
           marStartedAt: enrichment?.startedAt ?? null,
           marStoppedAt: enrichment?.stoppedAt ?? null,
@@ -743,51 +743,24 @@ export class MarShiftTimelineService {
         secondaryText = scheduleAdjustment.badgeLabel ?? "RESCHEDULED";
       }
 
-      secondaryText = resolveEnterprisePainReassessmentTimelineSecondaryText(
-        {
-          catalogCode: catalogSnapshot?.catalogItemCode ?? null,
-          medicationLabel,
-          genericName: catalogSnapshot?.genericName ?? orderedSnapshot?.medicationLabel ?? null,
-          marAction: administrationNotes ? "administered" : null,
-          administrationNotes,
-        },
-        secondaryText
-      );
-
-      const medicationResponses = sortMarMedicationResponsesNewestFirst(
-        parseMarMedicationResponseNotes(administrationNotes)
-      );
-      const medicationResponseBadge = buildMarMedicationResponseTimelineBadge(administrationNotes);
-      const followUpSummary = buildMarMedicationResponseFollowUpSummary({
-        doseStatus: parsedStatus,
-        secondaryText,
+      const painResponseProjection = buildMarPainResponseTimelineProjection({
+        catalogCode: catalogSnapshot?.catalogItemCode ?? null,
         medicationLabel,
+        genericName: catalogSnapshot?.genericName ?? orderedSnapshot?.medicationLabel ?? null,
+        marAction: enrichment?.marAction ?? (enrichment?.administeredAt ? "administered" : null),
+        administrationNotes,
+        administeredAt: enrichment?.administeredAt ?? null,
+        doseStatus: parsedStatus,
         frequencyCode,
         directionsSig,
-        route,
         prnIndication: prnDisplay.orderPrnIndication,
-        administeredAt: enrichment?.administeredAt ?? null,
-        administrationNotes,
-        responses: medicationResponses,
+        defaultSecondaryText: secondaryText,
       });
-      const medicationResponseFollowUp =
-        followUpSummary.status === "RECOMMENDED" || followUpSummary.status === "OVERDUE"
-          ? {
-              status: followUpSummary.status,
-              earliestAt: followUpSummary.earliestAt,
-              latestAt: followUpSummary.latestAt,
-              responseCount: followUpSummary.responseCount,
-              showAdverseEscalation: false,
-            }
-          : secondaryText === "AWAITING_REASSESSMENT"
-            ? {
-                status: "RECOMMENDED" as const,
-                earliestAt: enrichment?.administeredAt ?? null,
-                latestAt: null,
-                responseCount: 0,
-                showAdverseEscalation: false,
-              }
-            : null;
+      secondaryText = painResponseProjection.secondaryText;
+
+      const medicationResponses = painResponseProjection.medicationResponses ?? [];
+      const medicationResponseBadge = painResponseProjection.medicationResponseBadge;
+      const medicationResponseFollowUp = painResponseProjection.medicationResponseFollowUp;
       const medicationResponseAdverseEscalation = medicationResponses.some(
         (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
       );

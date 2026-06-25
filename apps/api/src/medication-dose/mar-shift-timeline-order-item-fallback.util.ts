@@ -19,6 +19,10 @@ import {
   resolveMarShiftTimelineMedicationLabel,
   resolveMarShiftTimelineTerminalOutcome,
   resolvePrnTimelineTerminalDisplay,
+  buildMarPainResponseTimelineProjection,
+  parseMarMedicationResponseNotes,
+  filterActiveMarAllergyReviewCandidates,
+  parseMarAllergyReviewCandidatesFromNotes,
   type MarShiftTimelineColumn,
   type MedicationSafetyGovernanceSnapshot,
 } from "@medora/shared";
@@ -124,6 +128,7 @@ type OrderItemFallbackRow = {
 };
 
 type CatalogSlice = {
+  code: string | null;
   displayNameFr: string | null;
   displayNameEn: string | null;
   genericName: string | null;
@@ -237,6 +242,7 @@ async function loadCatalogMap(
     where: { id: { in: catalogIds } },
     select: {
       id: true,
+      code: true,
       displayNameFr: true,
       displayNameEn: true,
       genericName: true,
@@ -249,6 +255,7 @@ async function loadCatalogMap(
       row.id,
       {
         displayNameFr: row.displayNameFr,
+        code: row.code,
         displayNameEn: row.displayNameEn,
         genericName: row.genericName,
         route: row.route,
@@ -724,6 +731,38 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       continue;
     }
 
+    const resolvedMarAction =
+      enrichment?.marAction ??
+      terminalMar?.marAction ??
+      (enrichment?.administeredAt || terminalMar?.administeredAt ? "administered" : null);
+    const painResponseProjection = buildMarPainResponseTimelineProjection({
+      catalogCode: catalog?.code ?? null,
+      medicationLabel,
+      genericName: catalog?.genericName ?? null,
+      marAction: resolvedMarAction,
+      administrationNotes,
+      administeredAt:
+        enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? null,
+      doseStatus: parsedStatus,
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig,
+      prnIndication: prnDisplay.orderPrnIndication,
+      defaultSecondaryText: secondaryText,
+    });
+    secondaryText = painResponseProjection.secondaryText;
+
+    const medicationResponses = painResponseProjection.medicationResponses ?? [];
+    const medicationResponseBadge = painResponseProjection.medicationResponseBadge;
+    const medicationResponseFollowUp = painResponseProjection.medicationResponseFollowUp;
+    const medicationResponseAdverseEscalation = medicationResponses.some(
+      (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
+    );
+    const allergyReviewCandidates = filterActiveMarAllergyReviewCandidates(
+      parseMarAllergyReviewCandidatesFromNotes(administrationNotes)
+    );
+    const medicationAdministrationId =
+      enrichment?.medicationAdministrationId ?? terminalMar?.id ?? null;
+
     placements.push({
       columnKey,
       patientId: encounter.patient.id,
@@ -805,6 +844,13 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
             continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
             fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
           }),
+        medicationAdministrationId,
+        medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
+        medicationResponseBadge,
+        medicationResponseFollowUp,
+        medicationResponseAdverseEscalation,
+        allergyReviewCandidates:
+          allergyReviewCandidates.length > 0 ? allergyReviewCandidates : undefined,
       },
     });
   }

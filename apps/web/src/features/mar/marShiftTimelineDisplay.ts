@@ -30,6 +30,12 @@ export function isMarShiftTimelineMutationAction(action: MarShiftTimelineDrawerA
 }
 
 export function isMarShiftTimelineDrawerReadOnly(item: MarShiftTimelineCellItem): boolean {
+  if (
+    item.secondaryText === "AWAITING_REASSESSMENT" &&
+    item.medicationAdministrationId?.trim()
+  ) {
+    return false;
+  }
   return !isMarShiftTimelineItemActionable(item);
 }
 

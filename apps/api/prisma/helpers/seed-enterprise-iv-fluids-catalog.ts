@@ -6,6 +6,8 @@ import {
   ENTERPRISE_IV_FLUIDS_SEARCH_ALIAS_MANIFEST,
   buildUnifiedOrderabilityMap,
   listActiveIvFluidsProviderOrderingCatalogCodes,
+  getActiveProviderOrderableCatalogCodes,
+  prewarmProviderOrderableCatalogCodesRegistry,
 } from "@medora/shared";
 
 export type SeedEnterpriseIvFluidsCatalogOptions = {
@@ -273,9 +275,18 @@ export async function seedEnterpriseIvFluidsCatalog(
   };
 
   const activatedCodes = listActiveIvFluidsProviderOrderingCatalogCodes();
-  result.activatedCatalogCodes = activatedCodes.length;
+  prewarmProviderOrderableCatalogCodesRegistry();
+  const activeRegistry = getActiveProviderOrderableCatalogCodes();
+  const manifestCodes = Object.keys(ENTERPRISE_IV_FLUIDS_FORMULARY_BY_CODE ?? {});
+  const seedCodes = [
+    ...new Set([
+      ...activatedCodes,
+      ...manifestCodes.filter((code) => activeRegistry.has(code)),
+    ]),
+  ];
+  result.activatedCatalogCodes = seedCodes.length;
 
-  for (const catalogCode of activatedCodes) {
+  for (const catalogCode of seedCodes) {
     const resolved = resolveIvFluidSeedBody(catalogCode);
     if (!resolved.ok) {
       result.skippedMissingSharedArtifact += 1;

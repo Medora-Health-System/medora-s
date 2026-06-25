@@ -1,6 +1,7 @@
 /**
  * MEDUI.MEDICATION.CONTROLLED_SUBSTANCES_WAVE_C_RUNTIME_REMEDIATION.1
  * Enterprise pain reassessment workflow after opioid / muscle relaxant / NSAID / pain medication administration.
+ * MEDUI.MEDICATION.MAR_PAIN_RESPONSE_AND_ENTERPRISE_SEED_ENGINE.1 — hardened classifier + status transition.
  */
 
 import {
@@ -45,20 +46,44 @@ const MUSCLE_RELAXANT_TOKENS = [
   "zanaflex",
 ] as const;
 
-const NSAID_AND_TOPICAL_PAIN_TOKENS = [
-  "diclofenac",
-  "voltaren",
-  "lidocaine patch",
-  "lidocaine 5",
+const ALWAYS_PAIN_NSAID_TOKENS = ["ketorolac", "toradol"] as const;
+
+const INDICATION_GATED_NSAID_TOKENS = [
   "ibuprofen",
+  "advil",
+  "motrin",
   "naproxen",
-  "ketorolac",
-  "toradol",
+  "aleve",
   "meloxicam",
   "celecoxib",
 ] as const;
 
+const TOPICAL_PAIN_TOKENS = [
+  "diclofenac",
+  "voltaren",
+  "lidocaine patch",
+  "lidocaine 5",
+  "lidocaine transdermal",
+] as const;
+
 const NEUROPATHIC_PAIN_TOKENS = ["gabapentin", "pregabalin", "neurontin", "lyrica"] as const;
+
+const ACETAMINOPHEN_TOKENS = ["acetaminophen", "paracetamol", "tylenol"] as const;
+
+const COMBINATION_OPIOID_TOKENS = ["norco", "percocet", "vicodin", "tylenol #3", "tylenol#3"] as const;
+
+const PAIN_INDICATION_MARKERS = [
+  "pain",
+  "douleur",
+  "mal",
+  "analges",
+  "analgesic",
+  "comfort",
+  "spasm",
+  "spasme",
+  "neuropathic",
+  "neuropath",
+] as const;
 
 function normalizeText(raw: string | null | undefined): string {
   return (raw ?? "")
@@ -76,18 +101,75 @@ function combinedMedicationText(input: {
   return normalizeText([input.catalogCode, input.medicationLabel, input.genericName].filter(Boolean).join(" "));
 }
 
+function combinedIndicationText(input: {
+  prnIndication?: string | null;
+  directionsSig?: string | null;
+  frequencyCode?: string | null;
+}): string {
+  return normalizeText(
+    [input.prnIndication, input.directionsSig, input.frequencyCode].filter(Boolean).join(" ")
+  );
+}
+
+function hasPainIndication(input: {
+  prnIndication?: string | null;
+  directionsSig?: string | null;
+  frequencyCode?: string | null;
+}): boolean {
+  const text = combinedIndicationText(input);
+  return PAIN_INDICATION_MARKERS.some((marker) => text.includes(marker));
+}
+
+function isPrnPainOrder(input: {
+  prnIndication?: string | null;
+  directionsSig?: string | null;
+  frequencyCode?: string | null;
+}): boolean {
+  const text = combinedIndicationText(input);
+  return /\bprn\b/.test(text) && hasPainIndication(input);
+}
+
+function textIncludesAny(text: string, tokens: readonly string[]): boolean {
+  return tokens.some((token) => text.includes(token));
+}
+
 /** Whether post-administration pain reassessment is required for this medication. */
 export function requiresEnterprisePainReassessment(input: {
   catalogCode?: string | null;
   medicationLabel?: string | null;
   genericName?: string | null;
+  prnIndication?: string | null;
+  directionsSig?: string | null;
+  frequencyCode?: string | null;
 }): boolean {
   const text = combinedMedicationText(input);
+  const painIndicated = hasPainIndication(input);
+
   if (isOpioidPainMedicationLabel(input.medicationLabel, input.genericName)) return true;
-  if (MUSCLE_RELAXANT_TOKENS.some((token) => text.includes(token))) return true;
-  if (NSAID_AND_TOPICAL_PAIN_TOKENS.some((token) => text.includes(token))) return true;
-  if (NEUROPATHIC_PAIN_TOKENS.some((token) => text.includes(token))) return true;
+  if (textIncludesAny(text, COMBINATION_OPIOID_TOKENS)) return true;
+  if (textIncludesAny(text, MUSCLE_RELAXANT_TOKENS)) return true;
+  if (textIncludesAny(text, TOPICAL_PAIN_TOKENS)) return true;
+  if (textIncludesAny(text, ALWAYS_PAIN_NSAID_TOKENS)) return true;
+  if (textIncludesAny(text, INDICATION_GATED_NSAID_TOKENS) && painIndicated) return true;
+  if (textIncludesAny(text, ACETAMINOPHEN_TOKENS) && painIndicated) return true;
+  if (textIncludesAny(text, NEUROPATHIC_PAIN_TOKENS) && painIndicated) return true;
+  if (isPrnPainOrder(input)) return true;
+
   return false;
+}
+
+function isAdministeredForReassessment(input: {
+  marAction?: string | null;
+  administrationNotes?: string | null;
+  administeredAt?: string | null;
+  doseStatus?: string | null;
+}): boolean {
+  const marAction = input.marAction?.trim().toLowerCase() ?? "";
+  if (marAction && marAction !== "administered") return false;
+  if (marAction === "administered") return true;
+  if (input.administeredAt?.trim()) return true;
+  const doseStatus = input.doseStatus?.trim().toUpperCase() ?? "";
+  return doseStatus === "COMPLETED";
 }
 
 export function resolveEnterprisePainReassessmentMarStatus(input: {
@@ -96,11 +178,14 @@ export function resolveEnterprisePainReassessmentMarStatus(input: {
   genericName?: string | null;
   marAction?: string | null;
   administrationNotes?: string | null;
+  administeredAt?: string | null;
+  doseStatus?: string | null;
+  prnIndication?: string | null;
+  directionsSig?: string | null;
+  frequencyCode?: string | null;
 }): EnterprisePainReassessmentMarStatus {
   if (!requiresEnterprisePainReassessment(input)) return "NOT_REQUIRED";
-  const marAction = input.marAction?.trim().toLowerCase() ?? "";
-  if (marAction && marAction !== "administered") return "NOT_REQUIRED";
-  if (!marAction && !input.administrationNotes?.trim()) return "NOT_REQUIRED";
+  if (!isAdministeredForReassessment(input)) return "NOT_REQUIRED";
   if (marAdministrationHasMedicationResponse(input.administrationNotes)) return "REASSESSMENT_COMPLETED";
   return "AWAITING_REASSESSMENT";
 }
@@ -144,7 +229,14 @@ export function buildPainReassessmentWorkflowReport(): PainReassessmentWorkflowR
     sideEffects: { noAdverseReaction: true },
   });
   return {
-    requiresReassessmentMedicationClasses: ["opioids", "muscle relaxants", "NSAIDs", "neuropathic pain agents"],
+    requiresReassessmentMedicationClasses: [
+      "opioids",
+      "muscle relaxants",
+      "NSAIDs",
+      "acetaminophen (pain indication)",
+      "neuropathic pain agents (pain indication)",
+      "topical pain agents",
+    ],
     marStatusValues: ["AWAITING_REASSESSMENT", "REASSESSMENT_COMPLETED", "NOT_REQUIRED"],
     sideEffectFields: [
       "noAdverseReaction",

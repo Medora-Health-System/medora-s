@@ -195,6 +195,8 @@ export type MarShiftTimelineAdministrationEnrichment = {
   administrationNotes?: string | null;
   /** Terminal MAR row id for response documentation (H9L). */
   medicationAdministrationId?: string | null;
+  /** Terminal MAR action (administered, refused, …) for pain reassessment projection. */
+  marAction?: string | null;
 };
 
 export function buildMarShiftTimelineTitle(facilityName: string): string {

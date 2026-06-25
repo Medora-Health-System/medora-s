@@ -141,6 +141,21 @@ async function main() {
     `✅ Controlled substance Wave C catalog backfill (waveC=${controlledSubstanceWaveC.waveCCatalogCodes}, created=${controlledSubstanceWaveC.catalogCreated}, enriched=${controlledSubstanceWaveC.catalogEnriched}, aliasesAdded=${controlledSubstanceWaveC.aliasesUpserted}, searchTextUpdated=${controlledSubstanceWaveC.searchTextUpdated}, skipped=${controlledSubstanceWaveC.skippedMissingManifest})`
   );
 
+  const { seedEnterpriseDomainFormularyCatalog } = await import(
+    "./helpers/seed-enterprise-domain-formulary-catalog"
+  );
+  const domainFormularyResults = await seedEnterpriseDomainFormularyCatalog(prisma, {
+    dryRun: false,
+    createProducts: process.env.MEDORA_ENABLE_ENTERPRISE_MANIFEST_PRODUCT_BACKFILL === "1",
+  });
+  if (domainFormularyResults.length > 0) {
+    const domainCreated = domainFormularyResults.reduce((sum, row) => sum + row.catalogCreated, 0);
+    const domainEnriched = domainFormularyResults.reduce((sum, row) => sum + row.catalogEnriched, 0);
+    console.log(
+      `✅ Enterprise domain formulary CREATE backfill (domains=${domainFormularyResults.length}, created=${domainCreated}, enriched=${domainEnriched})`
+    );
+  }
+
   if (process.env.MEDORA_ENABLE_ENTERPRISE_MEDICATION_SEARCH_ALIASES === "1") {
     const searchAlias = await seedEnterpriseMedicationSearchAliases(prisma, { dryRun: false });
     console.log(

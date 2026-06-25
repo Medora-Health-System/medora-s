@@ -22,6 +22,7 @@ const MAR_ENRICHMENT_SELECT = {
   infusionSessionKey: true,
   infusionPhase: true,
   notes: true,
+  marAction: true,
   administeredAt: true,
   effectiveAdministeredAt: true,
   administeredByUserId: true,
@@ -38,6 +39,7 @@ type MarEnrichmentRow = {
   infusionSessionKey: string | null;
   infusionPhase: string | null;
   notes: string | null;
+  marAction: string | null;
   administeredAt: Date;
   effectiveAdministeredAt: Date | null;
   administeredByUserId: string;
@@ -178,6 +180,11 @@ function mergeMarRowsForDose(
         medicationAdministrationRowIsInfusionStop(row.notes, row.infusionPhase)
       ) {
         push(row);
+        continue;
+      }
+      const action = row.marAction?.trim().toLowerCase() ?? "";
+      if (action === "administered" || action === "refused" || action === "not_available") {
+        push(row);
       }
     }
   }
@@ -280,6 +287,7 @@ function resolveDoseEnrichment(
     enrichment.administeredByInitials = admin.initials;
     enrichment.administrationNotes = terminalMar.notes?.trim() || null;
     enrichment.medicationAdministrationId = terminalMar.id;
+    enrichment.marAction = terminalMar.marAction?.trim() || null;
     enrichment.completionSummary = buildMarShiftTimelineCompletionSummary({
       doseKind: parsedKind ?? dose.doseKind,
       doseStatus: parsedStatus,
@@ -373,24 +381,7 @@ export async function loadMarShiftTimelineAdministrationEnrichment(
           { medicationDoseInstanceId: { in: doseIds } },
           ...(terminalMarIds.length > 0 ? [{ id: { in: terminalMarIds } }] : []),
           ...(sessionIds.length > 0 ? [{ infusionSessionId: { in: sessionIds } }] : []),
-          ...(orderItemIds.length > 0
-            ? [
-                {
-                  orderItemId: { in: orderItemIds },
-                  OR: [
-                    {
-                      infusionPhase: {
-                        in: [
-                          MedicationAdministrationInfusionPhase.INFUSION_START,
-                          MedicationAdministrationInfusionPhase.INFUSION_STOP,
-                        ],
-                      },
-                    },
-                    { infusionSessionKey: { not: null } },
-                  ],
-                },
-              ]
-            : []),
+          ...(orderItemIds.length > 0 ? [{ orderItemId: { in: orderItemIds } }] : []),
         ],
       },
       select: MAR_ENRICHMENT_SELECT,

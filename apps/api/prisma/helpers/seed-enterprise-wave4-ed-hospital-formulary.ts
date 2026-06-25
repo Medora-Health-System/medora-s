@@ -12,6 +12,10 @@ import {
 } from "@medora/shared";
 import { mergeEnterpriseWave4EdHospitalGovernanceNotes } from "../../src/medication-master/enterprise-wave4-ed-hospital.constants";
 import { loadEnterpriseWave4EdHospitalFormularySeedModules } from "./enterprise-wave4-ed-hospital-formulary-seed-modules";
+import {
+  buildActiveProviderOrderableRegistryForSeed,
+  resolveEnterpriseSeedCatalogIsActive,
+} from "./seed-enterprise-medication-manifest";
 
 export class EnterpriseWave4EdHospitalFormularySeedError extends Error {
   constructor(
@@ -266,6 +270,8 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
     failures: string[];
   }> = [];
 
+  const activeRegistry = buildActiveProviderOrderableRegistryForSeed();
+
   for (const rawEntry of manifest) {
     const entry = withWave4FormularyEntryDefaults(rawEntry);
     const billing = billingByCode[entry.catalogCode];
@@ -322,11 +328,15 @@ export async function seedEnterpriseWave4EdHospitalFormulary(
       ndcDisplay: billing.ndcDisplay ?? null,
       billingUnitType: billing.billingUnitType ?? null,
       isEssential: entry.isEssential ?? false,
-      isActive: resolveWave4CatalogIsActiveForSeed({
-        mode: entry.mode,
-        catalogCode: resolvedCatalogCode,
-        existingIsActive: existingCatalog?.isActive,
-      }),
+      isActive: resolveEnterpriseSeedCatalogIsActive(
+        resolvedCatalogCode,
+        activeRegistry,
+        resolveWave4CatalogIsActiveForSeed({
+          mode: entry.mode,
+          catalogCode: resolvedCatalogCode,
+          existingIsActive: existingCatalog?.isActive,
+        })
+      ),
       isControlled: entry.governance.isControlled,
       controlledSchedule: entry.governance.controlledSchedule ?? null,
       requiresWitness: entry.governance.requiresWitness,

@@ -1,0 +1,1492 @@
+{
+  "ticket": "MEDUI.MEDICATION.PRODUCTION_DB_SEED_PARITY_AUDIT.1",
+  "generatedAt": "2026-06-25T16:30:19.221Z",
+  "finalDecision": "PRODUCTION_DB_OUT_OF_SYNC",
+  "ProductionDatabaseConnectionReport": {
+    "ticket": "MEDUI.MEDICATION.PRODUCTION_DB_SEED_PARITY_AUDIT.1",
+    "databaseName": "railway",
+    "schema": "public",
+    "host": "switchyard.proxy.rlwy.net:16102/railway",
+    "migrationCount": 146,
+    "latestMigration": "20260910140000_catalog_medication_search_indexes",
+    "catalogMedicationRowCount": 729,
+    "medicationAliasRowCount": 2096,
+    "billingRowCount": 477,
+    "inventoryRowCount": 18,
+    "isProductionHost": true
+  },
+  "ProductionRegistryParityReport": {
+    "activeRegistryCount": 219,
+    "match": 209,
+    "missingDbRow": 0,
+    "dbMetadataMismatch": 10,
+    "duplicateDbRow": 0,
+    "missingCodes": [],
+    "mismatchSamples": [
+      {
+        "catalogCode": "DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      },
+      {
+        "catalogCode": "NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "DB_METADATA_MISMATCH",
+        "mismatches": [
+          "displayNameEn"
+        ]
+      }
+    ]
+  },
+  "EnterpriseFormularyParityReport": {
+    "domains": [
+      {
+        "domain": "Tranche 1",
+        "manifestCount": 188,
+        "dbCount": 185,
+        "missingRows": [
+          "POVIDONE_IODINE_10_SOLUTION_TOPICAL",
+          "SODIUM_CHLORIDE_0_9_500_ML_PERFUSION_INTRAVEINEUSE",
+          "SCOPOLAMINE_1_MG_OVER_3_DAYS_TRANSDERMAL_PATCH"
+        ],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Tranche 2",
+        "manifestCount": 2,
+        "dbCount": 2,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Critical Care",
+        "manifestCount": 52,
+        "dbCount": 52,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Neurology",
+        "manifestCount": 5,
+        "dbCount": 5,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Infectious Disease",
+        "manifestCount": 4,
+        "dbCount": 4,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Cardiology",
+        "manifestCount": 13,
+        "dbCount": 13,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "IV Fluids",
+        "manifestCount": 8,
+        "dbCount": 8,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Anticoagulation",
+        "manifestCount": 8,
+        "dbCount": 8,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Diabetes",
+        "manifestCount": 10,
+        "dbCount": 10,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Vaccines",
+        "manifestCount": 11,
+        "dbCount": 11,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "OBGYN",
+        "manifestCount": 18,
+        "dbCount": 18,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Psychiatry",
+        "manifestCount": 27,
+        "dbCount": 27,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Gastroenterology",
+        "manifestCount": 8,
+        "dbCount": 8,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Pediatrics",
+        "manifestCount": 10,
+        "dbCount": 10,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Surgery",
+        "manifestCount": 4,
+        "dbCount": 4,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Pain Management",
+        "manifestCount": 3,
+        "dbCount": 3,
+        "missingRows": [],
+        "duplicateRows": []
+      },
+      {
+        "domain": "Controlled Substances",
+        "manifestCount": 36,
+        "dbCount": 36,
+        "missingRows": [],
+        "duplicateRows": []
+      }
+    ]
+  },
+  "ProductionBillingParityReport": {
+    "activeMedicationCount": 219,
+    "ready": 157,
+    "partial": 42,
+    "missing": 20,
+    "duplicate": 0,
+    "partialSamples": [
+      {
+        "catalogCode": "DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "AMIODARONE_150MG_3ML_IV",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "METOPROLOL_5MG_5ML_IV",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "CLOPIDOGREL_75_MG_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "METRONIDAZOLE_500_MG_PER_100_ML_PERFUSION_INTRAVENOUS",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "MIDAZOLAM_5MG_ML_INJECTABLE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=false profile=true"
+      },
+      {
+        "catalogCode": "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "OXYCODONE_5_MG_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "OXYCODONE_10_MG_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      },
+      {
+        "catalogCode": "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+        "classification": "PARTIAL",
+        "detail": "hcpcs=true ndc=true profile=false"
+      }
+    ],
+    "missingSamples": [
+      {
+        "catalogCode": "VANCOMYCIN_125_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "FUROSEMIDE_40_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "BUMETANIDE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "PENICILLIN_G_5_MILLION_UNITS_POUDRE_INTRAVEINEUSE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "OLANZAPINE_10_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "OLANZAPINE_10_MG_INJECTABLE_INTRAMUSCULAIRE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "ZIPRASIDONE_20_MG_INJECTABLE_INTRAMUSCULAIRE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "LURASIDONE_40_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "DIVALPROEX_250_MG_GELULE_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "BENZTROPINE_1_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "HYDROXYZINE_25_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "PROPRANOLOL_10_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "RIFAXIMIN_550_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "SENNA_8_6_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "BISACODYL_5_MG_COMPRIME_ORALE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "CEFDINIR_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "ERYTHROMYCIN_0_5_OPHTHALMIQUE_OPHTHALMIQUE",
+        "classification": "MISSING"
+      },
+      {
+        "catalogCode": "LORAZEPAM_2MG_ML_INJECTABLE",
+        "classification": "MISSING"
+      }
+    ]
+  },
+  "ProductionInventoryParityReport": {
+    "activeMedicationCount": 219,
+    "withInventoryItems": 1,
+    "withMedicationProduct": 164,
+    "withNeither": 55,
+    "missingSamples": [
+      "DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+      "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "VANCOMYCIN_125_MG_COMPRIME_ORALE",
+      "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY",
+      "FUROSEMIDE_40_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+      "BUMETANIDE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+      "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+      "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+      "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+      "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+      "PENICILLIN_G_5_MILLION_UNITS_POUDRE_INTRAVEINEUSE",
+      "OLANZAPINE_10_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+      "OLANZAPINE_10_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "ZIPRASIDONE_20_MG_INJECTABLE_INTRAMUSCULAIRE",
+      "LURASIDONE_40_MG_COMPRIME_ORALE",
+      "DIVALPROEX_250_MG_GELULE_ORALE",
+      "BENZTROPINE_1_MG_COMPRIME_ORALE",
+      "HYDROXYZINE_25_MG_COMPRIME_ORALE",
+      "PROPRANOLOL_10_MG_COMPRIME_ORALE",
+      "RIFAXIMIN_550_MG_COMPRIME_ORALE"
+    ]
+  },
+  "ProductionSearchParityReport": {
+    "queriesRun": 19,
+    "appears": 19,
+    "missing": [],
+    "results": [
+      {
+        "query": "Morphine",
+        "appears": true,
+        "visibleCodes": [
+          "CTL_CAT_MORPHINE_4MG_ML_VIAL_PRI_ER_INVENTORY_PRD_CAT",
+          "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+          "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Hydromorphone",
+        "appears": true,
+        "visibleCodes": [
+          "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": true,
+        "canonicalCode": "HYDROMORPHONE_2MG_ML_INJECTABLE",
+        "canonicalInResults": false,
+        "aliasResolution": true
+      },
+      {
+        "query": "Fentanyl",
+        "appears": true,
+        "visibleCodes": [
+          "CTL_CAT_FENTANYL_100MCG_2ML_VIAL_PRI_ER_INVENTORY_PRD_CAT",
+          "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": true,
+        "canonicalCode": "FENTANYL_50MCG_ML_INJECTABLE",
+        "canonicalInResults": false,
+        "aliasResolution": false
+      },
+      {
+        "query": "Gabapentin",
+        "appears": true,
+        "visibleCodes": [
+          "GABAPENTIN_400_MG_GELULE_ORAL",
+          "GABAPENTIN_300_MG_GELULE_ORALE",
+          "GABAPENTIN_100_MG_GELULE_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "GABAPENTIN_300_MG_GELULE_ORALE",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Cyclobenzaprine",
+        "appears": true,
+        "visibleCodes": [
+          "CYCLOBENZAPRINE_10_MG_COMPRIME_ORAL",
+          "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Methocarbamol",
+        "appears": true,
+        "visibleCodes": [
+          "METHOCARBAMOL_750_MG_COMPRIME_ORAL",
+          "METHOCARBAMOL_500_MG_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "METHOCARBAMOL_500_MG_COMPRIME_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Tizanidine",
+        "appears": true,
+        "visibleCodes": [
+          "TIZANIDINE_2_MG_COMPRIME_ORAL",
+          "TIZANIDINE_4_MG_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "TIZANIDINE_2_MG_COMPRIME_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Lidocaine Patch",
+        "appears": true,
+        "visibleCodes": [
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "LIDOCAINE_2PCT_INJECTABLE",
+        "canonicalInResults": false,
+        "aliasResolution": false
+      },
+      {
+        "query": "Diclofenac Gel",
+        "appears": true,
+        "visibleCodes": [
+          "DICLOFENAC_1_GEL_TOPICAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "DICLOFENAC_50_MG_COMPRIME_ORAL",
+        "canonicalInResults": false,
+        "aliasResolution": false
+      },
+      {
+        "query": "Norco",
+        "appears": true,
+        "visibleCodes": [
+          "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": null,
+        "canonicalInResults": null,
+        "aliasResolution": false
+      },
+      {
+        "query": "Percocet",
+        "appears": true,
+        "visibleCodes": [
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": null,
+        "canonicalInResults": null,
+        "aliasResolution": false
+      },
+      {
+        "query": "Tylenol #3",
+        "appears": true,
+        "visibleCodes": [
+          "ACETAMINOPHEN_CODEINE_300_60_COMPRIME_ORAL",
+          "ACETAMINOPHEN_CODEINE_300_15_COMPRIME_ORAL",
+          "ACETAMINOPHEN_CODEINE_300_30_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": null,
+        "canonicalInResults": null,
+        "aliasResolution": false
+      },
+      {
+        "query": "NS",
+        "appears": true,
+        "visibleCodes": [
+          "DICLOFENAC_50_MG_COMPRIME_ORAL",
+          "LABETALOL_5MG_ML_IV",
+          "METRONIDAZOLE_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "CEFDINIR_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+          "ENALAPRIL_5_MG_COMPRIME_ORAL",
+          "DEXTROSE_SALINE_5_PER_0.9_PERFUSION_INTRAVENOUS",
+          "SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE",
+          "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+          "NPH_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "AZITHROMYCIN_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "KETOROLAC_30MG_IM",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "LABETALOL_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ANTACID_MIX_SUSPENSION_SUSPENSION_BUVABLE_ORAL",
+          "NAPROXEN_500_MG_COMPRIME_ORAL",
+          "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+          "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "METHYLDOPA_250_MG_COMPRIME_ORAL",
+          "CEPHALEXIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE",
+          "KETOPROFEN_100_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "DICLOFENAC_75_MG_PER_3_ML_INJECTABLE_INJECTION",
+          "ALBENDAZOLE_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_400_PER_57_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "LOSARTAN_100_MG_COMPRIME_ORAL",
+          "SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE",
+          "NYSTATIN_100000_UI_PER_ML_SUSPENSION_BUVABLE_ORAL",
+          "HYDRALAZINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NORMAL_SALINE_0.9_500_ML_PERFUSION_INTRAVENOUS",
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "KETOROLAC_15_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "MEBENDAZOLE_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "ENALAPRIL_10_MG_COMPRIME_ORAL",
+          "CLONIDINE_0_2_MG_COMPRIME_ORAL",
+          "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "IBUPROFEN_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "MELOXICAM_7.5_MG_COMPRIME_ORAL",
+          "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "VECURONIUM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "COTRIMOXAZOLE_240_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "KETOROLAC_30_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "CEFIXIME_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "NIFEDIPINE_20_MG_CAPSULE_ORAL",
+          "MELOXICAM_15_MG_COMPRIME_ORAL",
+          "NORMAL_SALINE_0.9_1_L_PERFUSION_INTRAVENOUS",
+          "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_7030_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL",
+          "SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "ALBENDAZOLE_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      },
+      {
+        "query": "LR",
+        "appears": true,
+        "visibleCodes": [
+          "RINGER_LACTATE_1_L_PERFUSION_INTRAVENOUS",
+          "MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+          "XYLOMETAZOLINE_0.1_SPRAY_NASAL_NASAL",
+          "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "RINGER_LACTATE_500_ML_PERFUSION_INTRAVENOUS",
+          "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      },
+      {
+        "query": "D5",
+        "appears": true,
+        "visibleCodes": [
+          "DEXTROSE_SALINE_5_PER_0.9_PERFUSION_INTRAVENOUS",
+          "DEXTROSE_5_1000_ML_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_50_INJECTABLE_INTRAVENOUS",
+          "DEXTROSE_25_25_ML_NEONATAL_INJECTABLE_INTRAVEINEUSE",
+          "DEXTROSE_50_50_ML_INJECTABLE_INTRAVEINEUSE",
+          "DEXTROSE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_5_500_ML_PERFUSION_INTRAVENOUS",
+          "DEXTROSE_10_250_ML_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE",
+          "DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "DEXTROSE_SALINE_5_0_45_PERFUSION_INTRAVEINEUSE",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      },
+      {
+        "query": "Pantoprazole",
+        "appears": true,
+        "visibleCodes": [
+          "CTL_CAT_PANTOPRAZOLE_40MG_TAB_PRI_ER_INVENTORY_PRD_CAT",
+          "PANTOPRAZOLE_40_MG_COMPRIME_ORAL",
+          "PANTOPRAZOLE_40MG_IV"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "PANTOPRAZOLE_40_MG_COMPRIME_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": false
+      },
+      {
+        "query": "Ceftriaxone",
+        "appears": true,
+        "visibleCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CTL_CAT_CEFTRIAXONE_1000MG_VIAL_PRI_ER_INVENTORY_PRD_CAT"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      },
+      {
+        "query": "Ondansetron",
+        "appears": true,
+        "visibleCodes": [
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "CTL_CAT_ZOFRAN_4MG_ODT_PRI_ER_INVENTORY_PRD_CAT",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "ONDANSETRON_4_MG_COMPRIME_ORAL",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      },
+      {
+        "query": "Albuterol",
+        "appears": true,
+        "visibleCodes": [
+          "CTL_CAT_ALBUTEROL_2_5MG_3ML_INHALATION_PRI_ER_INVENTORY_PRD_CAT",
+          "SALBUTAMOL_100_MCG_PER_DOSE_AROSOL_DOSEUR_INHALATION",
+          "SALBUTAMOL_2.5_MG_PER_2.5_ML_NBULISATION_INHALATION",
+          "SALBUTAMOL_100_MCG_PER_DOSE_INHALATEUR_INHALATION",
+          "SALBUTAMOL_2_MG_PER_5_ML_SIROP_ORAL",
+          "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION"
+        ],
+        "duplicateSuppressed": false,
+        "canonicalCode": "SALBUTAMOL_100_MCG_PER_DOSE_INHALATEUR_INHALATION",
+        "canonicalInResults": true,
+        "aliasResolution": true
+      }
+    ]
+  },
+  "ProductionRuntimeParityReport": {
+    "note": "Read-only validation; no patient orders persisted.",
+    "representativeCount": 9,
+    "fullyReady": 0,
+    "rows": [
+      {
+        "catalogCode": "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": true,
+        "dbRowPresent": true,
+        "productChainPresent": true
+      },
+      {
+        "catalogCode": "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": true,
+        "dbRowPresent": true,
+        "productChainPresent": true
+      },
+      {
+        "catalogCode": "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": true,
+        "dbRowPresent": true,
+        "productChainPresent": true
+      },
+      {
+        "catalogCode": "GABAPENTIN_300MG_ORAL",
+        "searchSupported": false,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": false,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": false,
+        "productChainPresent": false
+      },
+      {
+        "catalogCode": "SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": true,
+        "productChainPresent": true
+      },
+      {
+        "catalogCode": "PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "BLOOD_PRODUCT_NEVER_SCHEDULES",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": true,
+        "productChainPresent": false
+      },
+      {
+        "catalogCode": "DEXTROSE_5_1000_ML_PERFUSION_INTRAVEINEUSE",
+        "searchSupported": true,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": true,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": true,
+        "productChainPresent": true
+      },
+      {
+        "catalogCode": "ONDANSETRON_4MG_ORAL",
+        "searchSupported": false,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": false,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": false,
+        "productChainPresent": false
+      },
+      {
+        "catalogCode": "ALBUTEROL_2_5MG_3ML_NEB",
+        "searchSupported": false,
+        "selectionSupported": true,
+        "orderCreateDtoValid": false,
+        "orderPersistenceReady": false,
+        "marScheduleEligible": false,
+        "marScheduleReason": "SCHEDULING_FEATURE_FLAGS_OFF",
+        "painReassessmentApplicable": false,
+        "dbRowPresent": false,
+        "productChainPresent": false
+      }
+    ]
+  },
+  "ProductionSeedParityReport": {
+    "requiresSeed": false,
+    "missingActiveCatalogCodes": 0,
+    "seedAttribution": [],
+    "flagGatedSeedsPossiblyRequired": [],
+    "alwaysOnSeedsWithGaps": []
+  },
+  "ProductionMigrationParityReport": {
+    "localMigrationCount": 133,
+    "productionMigrationCount": 146,
+    "missingInProduction": [],
+    "extraInProduction": [],
+    "failedOrRolledBack": [],
+    "rolledBackHistoricalCount": 13,
+    "latestLocal": "20260910140000_catalog_medication_search_indexes",
+    "latestProduction": "20260910140000_catalog_medication_search_indexes",
+    "inSync": true
+  },
+  "ProductionDuplicateParityReport": {
+    "duplicateCatalogCodes": [],
+    "duplicateAliases": [
+      {
+        "alias": "enoxaparin",
+        "cnt": 2
+      },
+      {
+        "alias": "folate",
+        "cnt": 2
+      },
+      {
+        "alias": "opioïde urgence",
+        "cnt": 2
+      },
+      {
+        "alias": "escitalopram",
+        "cnt": 2
+      },
+      {
+        "alias": "douleur sévère",
+        "cnt": 3
+      },
+      {
+        "alias": "cytotec",
+        "cnt": 2
+      },
+      {
+        "alias": "d5w 500",
+        "cnt": 2
+      },
+      {
+        "alias": "tachycardie",
+        "cnt": 2
+      },
+      {
+        "alias": "pregabalin",
+        "cnt": 3
+      },
+      {
+        "alias": "diflucan",
+        "cnt": 3
+      },
+      {
+        "alias": "méthocarbamol",
+        "cnt": 2
+      },
+      {
+        "alias": "lr",
+        "cnt": 2
+      },
+      {
+        "alias": "pitressin",
+        "cnt": 2
+      },
+      {
+        "alias": "tizanidine",
+        "cnt": 2
+      },
+      {
+        "alias": "glucophage",
+        "cnt": 4
+      },
+      {
+        "alias": "convulsion",
+        "cnt": 2
+      },
+      {
+        "alias": "amiodarone",
+        "cnt": 2
+      },
+      {
+        "alias": "paralytique",
+        "cnt": 2
+      },
+      {
+        "alias": "mounjaro",
+        "cnt": 2
+      },
+      {
+        "alias": "sertraline",
+        "cnt": 2
+      },
+      {
+        "alias": "lexapro",
+        "cnt": 2
+      },
+      {
+        "alias": "clonidine",
+        "cnt": 2
+      },
+      {
+        "alias": "atenolol",
+        "cnt": 2
+      },
+      {
+        "alias": "ns 1000",
+        "cnt": 2
+      },
+      {
+        "alias": "metoprolol",
+        "cnt": 2
+      }
+    ],
+    "duplicateDisplayNamesEn": [
+      {
+        "display_name": "Lactated Ringer's",
+        "cnt": 2
+      },
+      {
+        "display_name": "Doxycycline",
+        "cnt": 2
+      },
+      {
+        "display_name": "Metamizole",
+        "cnt": 2
+      },
+      {
+        "display_name": "Vitamin A",
+        "cnt": 2
+      },
+      {
+        "display_name": "Milrinone",
+        "cnt": 2
+      },
+      {
+        "display_name": "Ketoconazole",
+        "cnt": 2
+      },
+      {
+        "display_name": "Carvedilol",
+        "cnt": 2
+      },
+      {
+        "display_name": "Calcium gluconate",
+        "cnt": 2
+      },
+      {
+        "display_name": "Albuterol",
+        "cnt": 5
+      },
+      {
+        "display_name": "Oxycodone",
+        "cnt": 2
+      },
+      {
+        "display_name": "Loratadine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Omeprazole",
+        "cnt": 2
+      },
+      {
+        "display_name": "Amlodipine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Escitalopram",
+        "cnt": 2
+      },
+      {
+        "display_name": "Gentamicin",
+        "cnt": 2
+      },
+      {
+        "display_name": "Prednisone",
+        "cnt": 2
+      },
+      {
+        "display_name": "Fentanyl",
+        "cnt": 3
+      },
+      {
+        "display_name": "Albendazole",
+        "cnt": 2
+      },
+      {
+        "display_name": "Acyclovir",
+        "cnt": 4
+      },
+      {
+        "display_name": "Linezolid",
+        "cnt": 2
+      },
+      {
+        "display_name": "Piperacillin tazobactam",
+        "cnt": 3
+      },
+      {
+        "display_name": "Diltiazem",
+        "cnt": 3
+      },
+      {
+        "display_name": "Phenylephrine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Meloxicam",
+        "cnt": 2
+      },
+      {
+        "display_name": "Enalapril",
+        "cnt": 2
+      },
+      {
+        "display_name": "Penicillin V",
+        "cnt": 2
+      },
+      {
+        "display_name": "Lidocaine",
+        "cnt": 4
+      },
+      {
+        "display_name": "Bupropion",
+        "cnt": 2
+      },
+      {
+        "display_name": "Sertraline",
+        "cnt": 2
+      },
+      {
+        "display_name": "Clonidine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Metoclopramide",
+        "cnt": 2
+      },
+      {
+        "display_name": "Misoprostol",
+        "cnt": 2
+      },
+      {
+        "display_name": "Fluoxetine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Ampicillin",
+        "cnt": 3
+      },
+      {
+        "display_name": "Tramadol",
+        "cnt": 2
+      },
+      {
+        "display_name": "Famotidine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Levetiracetam",
+        "cnt": 3
+      },
+      {
+        "display_name": "Regular insulin",
+        "cnt": 2
+      },
+      {
+        "display_name": "Sodium bicarbonate",
+        "cnt": 3
+      },
+      {
+        "display_name": "Ondansetron",
+        "cnt": 4
+      },
+      {
+        "display_name": "Aripiprazole",
+        "cnt": 2
+      },
+      {
+        "display_name": "Atenolol",
+        "cnt": 2
+      },
+      {
+        "display_name": "Hydrocortisone",
+        "cnt": 3
+      },
+      {
+        "display_name": "Aspirin",
+        "cnt": 3
+      },
+      {
+        "display_name": "Losartan",
+        "cnt": 2
+      },
+      {
+        "display_name": "Tizanidine",
+        "cnt": 2
+      },
+      {
+        "display_name": "Benzathine Penicillin G",
+        "cnt": 2
+      },
+      {
+        "display_name": "Hydromorphone",
+        "cnt": 4
+      },
+      {
+        "display_name": "Betamethasone",
+        "cnt": 2
+      },
+      {
+        "display_name": "Cefepime",
+        "cnt": 2
+      }
+    ],
+    "duplicateStrengths": [
+      {
+        "strength": "0.4mg",
+        "cnt": 2
+      },
+      {
+        "strength": "5%",
+        "cnt": 3
+      },
+      {
+        "strength": "50 mg/mL",
+        "cnt": 2
+      },
+      {
+        "strength": "5 mg / 325 mg",
+        "cnt": 2
+      },
+      {
+        "strength": "1 mg",
+        "cnt": 3
+      },
+      {
+        "strength": "0.25 mg",
+        "cnt": 2
+      },
+      {
+        "strength": "standard",
+        "cnt": 3
+      },
+      {
+        "strength": "250 mg/5 mL",
+        "cnt": 2
+      },
+      {
+        "strength": "200 mcg",
+        "cnt": 2
+      },
+      {
+        "strength": "0.5 mL",
+        "cnt": 10
+      },
+      {
+        "strength": "100 mg/2 mL",
+        "cnt": 2
+      },
+      {
+        "strength": "100 mg/5 mL",
+        "cnt": 4
+      },
+      {
+        "strength": "1.5 mg",
+        "cnt": 2
+      },
+      {
+        "strength": "1 mg/mL",
+        "cnt": 6
+      },
+      {
+        "strength": "2 g/50 mL",
+        "cnt": 2
+      },
+      {
+        "strength": "50 mcg/mL",
+        "cnt": 2
+      },
+      {
+        "strength": "1 g",
+        "cnt": 10
+      },
+      {
+        "strength": "5 mg/mL",
+        "cnt": 5
+      },
+      {
+        "strength": "16 mg/250 mL",
+        "cnt": 2
+      },
+      {
+        "strength": "750 mg",
+        "cnt": 2
+      },
+      {
+        "strength": "20 mg",
+        "cnt": 15
+      },
+      {
+        "strength": "325 mg",
+        "cnt": 2
+      },
+      {
+        "strength": "100 mcg/dose",
+        "cnt": 3
+      },
+      {
+        "strength": "2 mg/mL",
+        "cnt": 6
+      },
+      {
+        "strength": "125 mg/5 mL",
+        "cnt": 3
+      }
+    ],
+    "legacyActiveRows": []
+  },
+  "ProductionPerformanceParityReport": {
+    "expectedIndexes": [
+      "CatalogMedication_isActive_idx",
+      "CatalogMedication_searchText_trgm_idx",
+      "CatalogMedication_name_trgm_idx",
+      "CatalogMedication_genericName_trgm_idx",
+      "CatalogMedication_displayNameEn_trgm_idx",
+      "CatalogMedication_displayNameFr_trgm_idx",
+      "MedicationAlias_alias_trgm_idx"
+    ],
+    "present": [
+      "CatalogMedication_isActive_idx",
+      "CatalogMedication_searchText_trgm_idx",
+      "CatalogMedication_name_trgm_idx",
+      "CatalogMedication_genericName_trgm_idx",
+      "CatalogMedication_displayNameEn_trgm_idx",
+      "CatalogMedication_displayNameFr_trgm_idx",
+      "MedicationAlias_alias_trgm_idx"
+    ],
+    "missing": [],
+    "allCatalogMedicationIndexes": [
+      "CatalogMedication_code_key",
+      "CatalogMedication_displayNameEn_trgm_idx",
+      "CatalogMedication_displayNameFr_trgm_idx",
+      "CatalogMedication_genericName_trgm_idx",
+      "CatalogMedication_isActive_idx",
+      "CatalogMedication_name_trgm_idx",
+      "CatalogMedication_ndc11_idx",
+      "CatalogMedication_pkey",
+      "CatalogMedication_searchText_trgm_idx"
+    ],
+    "allMedicationAliasIndexes": [
+      "MedicationAlias_alias_idx",
+      "MedicationAlias_alias_trgm_idx",
+      "MedicationAlias_catalogMedicationId_alias_key",
+      "MedicationAlias_catalogMedicationId_idx",
+      "MedicationAlias_pkey"
+    ]
+  },
+  "ProductionParityRemediationPlan": {
+    "critical": [],
+    "high": [],
+    "medium": [
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for DEXTROSE_5_250_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for DEXTROSE_5_RINGER_LACTATE_1000_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for SODIUM_CHLORIDE_0_9_250_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for SODIUM_CHLORIDE_0_9_1000_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for SODIUM_CHLORIDE_0_9_10_ML_FLUSH_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for DEXTROSE_5_500_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for SODIUM_CHLORIDE_0_45_500_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for SODIUM_CHLORIDE_0_45_1000_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for PLASMALYTE_1000_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      },
+      {
+        "priority": "MEDIUM",
+        "issue": "Metadata mismatch for NORMOSOL_1000_ML_PERFUSION_INTRAVEINEUSE: displayNameEn",
+        "rootCause": "Catalog enrichment seed not re-run after manifest update",
+        "file": "apps/api/prisma/helpers/seed-enterprise-wave*-formulary.ts",
+        "migrationRequired": false,
+        "seedRequired": true,
+        "rebuildRequired": false,
+        "productionImpact": "Search labels or order display may differ from certified manifests"
+      }
+    ],
+    "low": []
+  },
+  "CompatibilityAudit": {
+    "readOnly": true,
+    "productionDataModified": false,
+    "manifestRegistryCompared": true,
+    "activeProviderOrderableCount": 219
+  },
+  "ExactFilesChanged": [
+    "apps/api/scripts/production-db-seed-parity-audit.ts",
+    "apps/api/package.json",
+    "exports/production-db-seed-parity-audit.json"
+  ],
+  "RecommendedCommitMessage": "audit(meds): production database seed parity audit"
+}
