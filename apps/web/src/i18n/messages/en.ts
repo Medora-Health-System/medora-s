@@ -13371,6 +13371,8 @@ export default {
     },
     panel: {
       recommendedTitle: "Medication Response Recommended",
+      requiredTitle: "Medication Response Required",
+      overdueTitle: "Response overdue",
       optionalTitle: "Document Response Optional",
       response: "Response",
       responseTime: "Response time",
@@ -13380,6 +13382,8 @@ export default {
       painAfter: "Pain after",
       painLine: "Pain: {before}/10 → {after}/10",
       save: "Save response",
+      submitResponse: "Submit Response",
+      missingAdministrationId: "Administration record is required to document a response.",
       saveError: "Unable to save response.",
     },
     followUp: {

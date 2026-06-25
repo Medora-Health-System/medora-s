@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  canDocumentMedicationResponse,
+  toMedicationResponseEditabilityInput,
+} from "@medora/shared";
 
 const panelSrc = readFileSync(
   join(process.cwd(), "src/components/mar/MedicationResponseDocumentationPanel.tsx"),
@@ -8,17 +12,39 @@ const panelSrc = readFileSync(
 );
 
 describe("MedicationResponseDocumentationPanel", () => {
-  it("renders recommended expanded by default", () => {
-    expect(panelSrc).toContain('useState(visibilityTier === "RECOMMENDED")');
-    expect(panelSrc).toContain("marMedicationResponse.panel.recommendedTitle");
+  it("uses shared canDocumentMedicationResponse instead of drawer readOnly", () => {
+    expect(panelSrc).toContain("canDocumentMedicationResponse");
+    expect(panelSrc).not.toContain("responseReadOnly");
   });
 
-  it("renders optional collapsed by default", () => {
-    expect(panelSrc).toContain("marMedicationResponse.panel.optionalTitle");
-    expect(panelSrc).toContain("{expanded ? (");
+  it("renders submit response button", () => {
+    expect(panelSrc).toContain("mar-medication-response-submit");
+    expect(panelSrc).toContain("marMedicationResponse.panel.submitResponse");
   });
 
-  it("does not render when visibility is hidden", () => {
-    expect(panelSrc).toContain('if (visibilityTier === "HIDDEN") return null');
+  it("renders cancel button", () => {
+    expect(panelSrc).toContain("mar-medication-response-cancel");
+    expect(panelSrc).toContain("common.cancel");
+  });
+
+  it("shows missing administration message when submit blocked", () => {
+    expect(panelSrc).toContain("mar-medication-response-missing-administration");
+    expect(panelSrc).toContain("marMedicationResponse.panel.missingAdministrationId");
+  });
+
+  it("expands by default when response overdue", () => {
+    expect(panelSrc).toContain('medicationResponseFollowUp?.status === "OVERDUE"');
+  });
+
+  it("completed overdue ketorolac remains editable via shared rule", () => {
+    const input = toMedicationResponseEditabilityInput({
+      primaryText: "Ketorolac 30 mg IV",
+      doseStatus: "COMPLETED",
+      secondaryText: "GIVEN",
+      administeredAt: "2026-06-22T06:00:00.000Z",
+      medicationAdministrationId: "admin-1",
+      medicationResponseFollowUp: { status: "OVERDUE" },
+    });
+    expect(canDocumentMedicationResponse(input)).toBe(true);
   });
 });

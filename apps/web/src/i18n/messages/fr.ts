@@ -13401,6 +13401,8 @@ export default {
     },
     panel: {
       recommendedTitle: "Réponse médicamenteuse recommandée",
+      requiredTitle: "Réponse médicamenteuse requise",
+      overdueTitle: "Réponse en retard",
       optionalTitle: "Documenter la réponse (optionnel)",
       response: "Réponse",
       responseTime: "Heure de réponse",
@@ -13410,6 +13412,9 @@ export default {
       painAfter: "Douleur après",
       painLine: "Douleur : {before}/10 → {after}/10",
       save: "Enregistrer la réponse",
+      submitResponse: "Soumettre la réponse",
+      missingAdministrationId:
+        "L'enregistrement d'administration est requis pour documenter une réponse.",
       saveError: "Impossible d'enregistrer la réponse.",
     },
     followUp: {

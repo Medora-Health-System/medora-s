@@ -11,8 +11,11 @@ import {
   resolveMedicationResponseVisibilityTier,
   buildMarMedicationResponseFollowUpSummary,
   sortMarMedicationResponsesNewestFirst,
-  resolveEnterprisePainReassessmentTimelineSecondaryText,
   requiresEnterprisePainReassessment,
+  canDocumentMedicationResponse,
+  canShowMedicationResponsePanel,
+  isMedicationResponseRequired,
+  toMedicationResponseEditabilityInput,
   type MarMedicationResponseCode,
   type ParsedMarMedicationResponse,
 } from "@medora/shared";
@@ -42,11 +45,15 @@ export function MedicationResponseDocumentationPanel({
   item,
   encounterId,
   facilityTimeZone = null,
-  readOnly = false,
+  readOnly: _readOnly = false,
   onSaved,
 }: MedicationResponseDocumentationPanelProps) {
   const { t, language } = useI18n();
   const dateLocale = language === "en" ? "en-US" : "fr-FR";
+
+  const editabilityInput = useMemo(() => toMedicationResponseEditabilityInput(item), [item]);
+  const showPanel = canShowMedicationResponsePanel(editabilityInput);
+  const responseEditable = canDocumentMedicationResponse(editabilityInput);
 
   const visibilityTier = resolveMedicationResponseVisibilityTier({
     doseStatus: item.doseStatus,
@@ -83,7 +90,10 @@ export function MedicationResponseDocumentationPanel({
   );
 
   const [expanded, setExpanded] = useState(
-    visibilityTier === "RECOMMENDED" || item.secondaryText === "AWAITING_REASSESSMENT"
+    () =>
+      visibilityTier === "RECOMMENDED" ||
+      item.secondaryText === "AWAITING_REASSESSMENT" ||
+      item.medicationResponseFollowUp?.status === "OVERDUE"
   );
   const [responseCode, setResponseCode] = useState<MarMedicationResponseCode>("EFFECTIVE");
   const [responseDetail, setResponseDetail] = useState("");
@@ -104,8 +114,27 @@ export function MedicationResponseDocumentationPanel({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (visibilityTier === "HIDDEN" && item.secondaryText !== "AWAITING_REASSESSMENT") return null;
-  if (!item.medicationAdministrationId?.trim()) return null;
+  const resetForm = () => {
+    setResponseCode("EFFECTIVE");
+    setResponseDetail("");
+    setResponseTimeValue(
+      toMarShiftTimelineDateTimeLocalValue(new Date().toISOString(), facilityTimeZone ?? undefined)
+    );
+    setPainBefore("");
+    setPainAfter("");
+    setPainResponseTrend("");
+    setNoAdverseReaction(false);
+    setNausea(false);
+    setVomiting(false);
+    setItching(false);
+    setSedation(false);
+    setDizziness(false);
+    setConstipation(false);
+    setRespiratoryDepression(false);
+    setError(null);
+  };
+
+  if (!showPanel) return null;
 
   const showPainFields = marPrnAdministrationRequiresPainScore({
     medicationLabel: item.medicationLabel ?? item.primaryText,
@@ -119,10 +148,12 @@ export function MedicationResponseDocumentationPanel({
     frequencyCode: item.frequencyCode,
   });
   const awaitingReassessment = item.secondaryText === "AWAITING_REASSESSMENT";
-  const responseReadOnly = readOnly && !awaitingReassessment;
+  const responseRequired = isMedicationResponseRequired(editabilityInput);
+  const responseOverdue = followUpSummary.status === "OVERDUE";
 
-  const sectionTitle =
-    visibilityTier === "RECOMMENDED"
+  const sectionTitle = responseRequired
+    ? t("marMedicationResponse.panel.requiredTitle")
+    : visibilityTier === "RECOMMENDED"
       ? t("marMedicationResponse.panel.recommendedTitle")
       : t("marMedicationResponse.panel.optionalTitle");
 
@@ -248,8 +279,8 @@ export function MedicationResponseDocumentationPanel({
         marginTop: 12,
         padding: "10px 12px",
         borderRadius: 12,
-        border: awaitingReassessment ? "1px solid #d97706" : "1px solid #e2e8f0",
-        background: awaitingReassessment ? "#fef3c7" : "#ffffff",
+        border: awaitingReassessment || responseOverdue ? "1px solid #d97706" : "1px solid #e2e8f0",
+        background: awaitingReassessment || responseOverdue ? "#fef3c7" : "#ffffff",
       }}
     >
       <button
@@ -299,9 +330,27 @@ export function MedicationResponseDocumentationPanel({
         </p>
       ) : null}
 
+      {responseOverdue ? (
+        <p
+          data-testid="mar-medication-response-overdue-title"
+          style={{ margin: "8px 0 0", fontSize: 12, color: "#b45309", fontWeight: 700 }}
+        >
+          {t("marMedicationResponse.panel.overdueTitle")}
+        </p>
+      ) : null}
+
+      {!responseEditable && !item.medicationAdministrationId?.trim() ? (
+        <p
+          data-testid="mar-medication-response-missing-administration"
+          style={{ margin: "8px 0 0", fontSize: 12, color: "#b45309", fontWeight: 600 }}
+        >
+          {t("marMedicationResponse.panel.missingAdministrationId")}
+        </p>
+      ) : null}
+
       {savedResponses.map(renderSavedResponse)}
 
-      {expanded ? (
+      {expanded && responseEditable ? (
         <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
           <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
             <span>{t("marMedicationResponse.panel.responseTime")}</span>
@@ -309,7 +358,7 @@ export function MedicationResponseDocumentationPanel({
               type="datetime-local"
               value={responseTimeValue}
               onChange={(e) => setResponseTimeValue(e.target.value)}
-              disabled={responseReadOnly || submitting}
+              disabled={submitting}
               data-testid="mar-medication-response-time"
             />
           </label>
@@ -319,7 +368,7 @@ export function MedicationResponseDocumentationPanel({
             <select
               value={responseCode}
               onChange={(e) => setResponseCode(e.target.value as MarMedicationResponseCode)}
-              disabled={responseReadOnly || submitting}
+              disabled={submitting}
               data-testid="mar-medication-response-code"
             >
               {MAR_MEDICATION_RESPONSE_CODES.map((code) => {
@@ -339,7 +388,7 @@ export function MedicationResponseDocumentationPanel({
               value={responseDetail}
               onChange={(e) => setResponseDetail(e.target.value)}
               rows={2}
-              disabled={responseReadOnly || submitting}
+              disabled={submitting}
               data-testid="mar-medication-response-detail"
             />
           </label>
@@ -355,7 +404,7 @@ export function MedicationResponseDocumentationPanel({
                     max={10}
                     value={painBefore}
                     onChange={(e) => setPainBefore(e.target.value)}
-                    disabled={responseReadOnly || submitting}
+                    disabled={submitting}
                     data-testid="mar-medication-response-pain-before"
                   />
                 </label>
@@ -367,7 +416,7 @@ export function MedicationResponseDocumentationPanel({
                     max={10}
                     value={painAfter}
                     onChange={(e) => setPainAfter(e.target.value)}
-                    disabled={responseReadOnly || submitting}
+                    disabled={submitting}
                     data-testid="mar-medication-response-pain-after"
                   />
                 </label>
@@ -381,7 +430,7 @@ export function MedicationResponseDocumentationPanel({
                       onChange={(e) =>
                         setPainResponseTrend(e.target.value as "IMPROVED" | "SAME" | "WORSE" | "")
                       }
-                      disabled={responseReadOnly || submitting}
+                      disabled={submitting}
                       data-testid="mar-medication-response-pain-trend"
                     >
                       <option value="">{t("marMedicationResponse.reassessment.trendPlaceholder")}</option>
@@ -412,7 +461,7 @@ export function MedicationResponseDocumentationPanel({
                             type="checkbox"
                             checked={checked}
                             onChange={(e) => setter(e.target.checked)}
-                            disabled={responseReadOnly || submitting}
+                            disabled={submitting}
                           />
                           {t(`marMedicationResponse.reassessment.${key}`)}
                         </label>
@@ -430,14 +479,13 @@ export function MedicationResponseDocumentationPanel({
             </p>
           ) : null}
 
-          {!responseReadOnly ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => void handleSubmit()}
               disabled={submitting}
-              data-testid="mar-medication-response-save"
+              data-testid="mar-medication-response-submit"
               style={{
-                justifySelf: "start",
                 padding: "6px 12px",
                 borderRadius: 8,
                 border: "1px solid #cbd5e1",
@@ -447,9 +495,26 @@ export function MedicationResponseDocumentationPanel({
                 cursor: submitting ? "wait" : "pointer",
               }}
             >
-              {submitting ? t("common.saving") : t("marMedicationResponse.panel.save")}
+              {submitting ? t("common.saving") : t("marMedicationResponse.panel.submitResponse")}
             </button>
-          ) : null}
+            <button
+              type="button"
+              onClick={resetForm}
+              disabled={submitting}
+              data-testid="mar-medication-response-cancel"
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#fff",
+                color: "#334155",
+                fontWeight: 600,
+                cursor: submitting ? "wait" : "pointer",
+              }}
+            >
+              {t("common.cancel")}
+            </button>
+          </div>
         </div>
       ) : null}
     </section>

@@ -120,6 +120,7 @@ export * from "./mar/marAuditCertification.js";
 export * from "./mar/marAnalyticsTimingOverride.js";
 export * from "./mar/marMedicationResponseGovernance.js";
 export * from "./mar/marMedicationResponseVisibilityGovernance.js";
+export * from "./mar/medicationResponseEditability.js";
 export * from "./mar/marMedicationResponseAnalytics.js";
 export * from "./mar/marMedicationResponseFollowUpGovernance.js";
 export * from "./mar/marAllergyReviewGovernance.js";
