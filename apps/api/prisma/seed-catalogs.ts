@@ -133,6 +133,14 @@ async function main() {
     );
   }
 
+  const { seedEnterpriseControlledSubstanceCatalog } = await import(
+    "./helpers/seed-enterprise-controlled-substance-catalog"
+  );
+  const controlledSubstanceWaveC = await seedEnterpriseControlledSubstanceCatalog(prisma, { dryRun: false });
+  console.log(
+    `✅ Controlled substance Wave C catalog backfill (waveC=${controlledSubstanceWaveC.waveCCatalogCodes}, created=${controlledSubstanceWaveC.catalogCreated}, enriched=${controlledSubstanceWaveC.catalogEnriched}, aliasesAdded=${controlledSubstanceWaveC.aliasesUpserted}, searchTextUpdated=${controlledSubstanceWaveC.searchTextUpdated}, skipped=${controlledSubstanceWaveC.skippedMissingManifest})`
+  );
+
   if (process.env.MEDORA_ENABLE_ENTERPRISE_MEDICATION_SEARCH_ALIASES === "1") {
     const searchAlias = await seedEnterpriseMedicationSearchAliases(prisma, { dryRun: false });
     console.log(
