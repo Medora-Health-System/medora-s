@@ -74,8 +74,13 @@ function findOrderItemInWorklistOrders(
   orders: unknown,
   itemId: string
 ): { status?: string; pharmacyDispenseRecord?: unknown | null } | null {
-  if (!Array.isArray(orders)) return null;
-  for (const order of orders) {
+  const normalized = Array.isArray(orders)
+    ? orders
+    : orders && typeof orders === "object" && Array.isArray((orders as { dispenseOrders?: unknown[] }).dispenseOrders)
+      ? (orders as { dispenseOrders: unknown[] }).dispenseOrders
+      : null;
+  if (!normalized) return null;
+  for (const order of normalized) {
     if (!order || typeof order !== "object") continue;
     const items = (order as { items?: unknown[] }).items;
     if (!Array.isArray(items)) continue;

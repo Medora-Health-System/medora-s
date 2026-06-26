@@ -182,7 +182,9 @@ export function buildErClinicalTimelineSourceRows(
       timestampIso: createdAt,
       actorName: order.orderedBy !== "—" ? order.orderedBy : null,
       actorRoleTitle: null,
-      summary: `${order.medicationName} — ${order.route} ${order.dose}`.trim(),
+      summary: `${order.medicationName} — ${order.route} ${order.dose}${
+        order.lifecycleSummaryLine ? ` · ${order.lifecycleSummaryLine}` : ""
+      }`.trim(),
       sourceType: "ORDER",
       sourceId: order.id,
     });

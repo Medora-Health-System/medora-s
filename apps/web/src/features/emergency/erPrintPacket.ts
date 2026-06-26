@@ -255,6 +255,7 @@ export function getErPrintPacketHtml(params: {
   triageAssessmentEntries?: ErPrintDocumentationHistoryEntry[] | null;
   medicationOrderRows?: ErEdSummaryMedicationOrderRow[] | null;
   marEventRows?: ErEdSummaryMarEventRow[] | null;
+  continuousInfusionSectionHtml?: string | null;
   procedureSummaries?: string[] | null;
   providerDocumentationSection?: ErPrintProviderDocumentationSection | null;
   clinicalTimelineEntries?: EdClinicalTimelineEntry[] | null;
@@ -279,6 +280,7 @@ export function getErPrintPacketHtml(params: {
     triageAssessmentEntries,
     medicationOrderRows,
     marEventRows,
+    continuousInfusionSectionHtml,
     procedureSummaries,
     providerDocumentationSection: providerDocumentationSectionParam,
     clinicalTimelineEntries,
@@ -527,6 +529,10 @@ export function getErPrintPacketHtml(params: {
   if (Array.isArray(medicationOrderRows) && medicationOrderRows.length > 0) {
     body.push(h2(language, "printOutput.erPacket.sectionMedicationOrders"));
     medicationOrderRows.forEach((row) => {
+      const lifecycleLine =
+        row.lifecycleSummaryLine != null && row.lifecycleSummaryLine.trim()
+          ? `<br/>${esc(row.lifecycleSummaryLine)}`
+          : "";
       body.push(
         `<p style="margin: 8px 0; font-size: 13px; line-height: 1.45;"><strong>${esc(row.medicationName)}</strong><br/>${esc(
           printT(language, "printOutput.erPacket.medOrderLine")
@@ -536,7 +542,7 @@ export function getErPrintPacketHtml(params: {
             .replace("{orderedBy}", row.orderedBy)
             .replace("{orderedAt}", row.orderedAt)
             .replace("{status}", row.status)
-        )}</p>`
+        )}${lifecycleLine}</p>`
       );
     });
   }
@@ -564,6 +570,11 @@ export function getErPrintPacketHtml(params: {
         )}${esc(injection)}${notes}</p>`
       );
     });
+  }
+
+  if (continuousInfusionSectionHtml?.trim()) {
+    body.push(h2(language, "printOutput.erPacket.sectionContinuousInfusions"));
+    body.push(continuousInfusionSectionHtml);
   }
 
   if (Array.isArray(procedureSummaries) && procedureSummaries.length > 0) {

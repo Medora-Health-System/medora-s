@@ -915,6 +915,13 @@ model OrderItem {
   enterpriseProcedureId                 String?
   /// M1.8B.7A.1 — structured frequency when present; null = legacy direct MAR forever.
   frequencyCode                         String?
+  /// Provider lifecycle: active, hold, discontinue, supersede (distinct from cancel).
+  medicationLifecycleStatus             MedicationOrderLifecycleStatus?
+  medicationLifecycleAt                   DateTime?
+  medicationLifecycleByUserId             String?
+  medicationLifecycleReason               String?
+  medicationLifecycleNote                 String?
+  replacesOrderItemId                     String?
   billingReviewDecisions                BillingReviewDecision[]
   infusionSessions                      InfusionSession[]
   medicationAdministrations             MedicationAdministration[]
@@ -930,6 +937,8 @@ model OrderItem {
   order                                 Order                                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
   pharmacyVerifications                 PharmacyVerification[]
   result                                Result?
+  replacesOrderItem                     OrderItem?                             @relation("MedicationOrderReplacement", fields: [replacesOrderItemId], references: [id])
+  replacementFor                        OrderItem[]                            @relation("MedicationOrderReplacement")
 
   @@index([orderId])
   @@index([status])
@@ -942,6 +951,8 @@ model OrderItem {
   @@index([medicationPackageId])
   @@index([enterpriseProcedureId])
   @@index([frequencyCode])
+  @@index([medicationLifecycleStatus])
+  @@index([replacesOrderItemId])
 }
 
 /// M1.8B.7A.1 — dormant scheduling intent (no dose instances, no MAR reads in this phase).
@@ -3154,6 +3165,22 @@ enum OrderEventType {
   STARTED
   COMPLETED
   CANCELLED
+  DISCONTINUED
+  ON_HOLD
+  RESUMED
+  MODIFIED
+  SUPERSEDED
+}
+
+/// Provider medication order lifecycle (edit / discontinue / supersede).
+enum MedicationOrderLifecycleStatus {
+  ACTIVE
+  ON_HOLD
+  DISCONTINUED
+  COMPLETED
+  EXPIRED
+  SUPERSEDED
+  CANCELED_ENTERED_IN_ERROR
 }
 
 /// Append-only clinical documentation / workflow events (S8A — INSERT only; no updates or deletes).

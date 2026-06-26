@@ -55,6 +55,8 @@ import {
   type MedicationAdministrationLifecycleState,
   type ParsedMarMedicationResponse,
   type ParsedRespiratoryMedicationResponse,
+  isMedicationDoseMarActionableForLifecycle,
+  resolveMedicationOrderLifecycleStatus,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -474,9 +476,18 @@ export class MarShiftTimelineService {
       orderItemIdsForDirections.length > 0
         ? await this.prisma.orderItem.findMany({
             where: { id: { in: orderItemIdsForDirections } },
-            select: { id: true, notes: true, frequencyCode: true },
+            select: {
+              id: true,
+              notes: true,
+              frequencyCode: true,
+              medicationLifecycleStatus: true,
+              medicationLifecycleAt: true,
+            },
           })
         : [];
+    const lifecycleByOrderItemId = new Map(
+      orderItemNotesRows.map((row) => [row.id, row])
+    );
     const directionsSigByOrderItemId = new Map<string, string | null>();
     for (const row of [...encounterOrderItemNotesRows, ...orderItemNotesRows]) {
       directionsSigByOrderItemId.set(row.id, row.notes?.trim() || null);
@@ -560,6 +571,24 @@ export class MarShiftTimelineService {
     for (const dose of doses) {
       const parsedStatus = parseMedicationDoseStatus(dose.doseStatus);
       if (!parsedStatus) continue;
+
+      const lifecycleRow = lifecycleByOrderItemId.get(dose.orderItemId);
+      const lifecycleStatus = resolveMedicationOrderLifecycleStatus(
+        lifecycleRow?.medicationLifecycleStatus ?? null
+      );
+      const hasActiveInfusion =
+        dose.doseStatus === "IN_PROGRESS" && dose.infusionSessionId != null;
+      if (
+        !isMedicationDoseMarActionableForLifecycle({
+          lifecycleStatus,
+          doseStatus: dose.doseStatus,
+          scheduledAt: dose.scheduledAt,
+          effectiveAt: lifecycleRow?.medicationLifecycleAt ?? null,
+          hasActiveInfusion,
+        })
+      ) {
+        continue;
+      }
 
       const directionsSigEarly = directionsSigByOrderItemId.get(dose.orderItemId) ?? null;
       const frequencySnapshotEarly = parseFrequencySnapshot(dose.frequencySnapshotJson);

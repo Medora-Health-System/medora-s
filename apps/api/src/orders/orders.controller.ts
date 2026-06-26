@@ -14,6 +14,7 @@ import {
 import { AuthGuard } from "@nestjs/passport";
 import { RolesGuard, RequireRoles } from "../common/guards/roles.guard";
 import { Roles } from "../common/auth/roles.decorator";
+import { MedicationOrderLifecycleService } from "./medication-order-lifecycle.service";
 import { OrdersService } from "./orders.service";
 import { OrdersContinuousFluidService } from "./orders-continuous-fluid.service";
 import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
@@ -40,6 +41,10 @@ import {
   continuousFluidStopDtoSchema,
   fluidBolusStartDtoSchema,
   fluidBolusCompleteDtoSchema,
+  medicationOrderDiscontinueAndReorderDtoSchema,
+  medicationOrderDiscontinueDtoSchema,
+  medicationOrderEditDtoSchema,
+  medicationOrderHoldDtoSchema,
   orderCancelDtoSchema,
   orderCreateDtoSchema,
   orderItemCompleteWithClinicalTimeDtoSchema,
@@ -54,6 +59,7 @@ import { logOrderCreateZodFailure } from "./order-create-validation.util";
 export class OrdersController {
   constructor(
     private readonly ordersService: OrdersService,
+    private readonly medicationOrderLifecycle: MedicationOrderLifecycleService,
     private readonly continuousFluid: OrdersContinuousFluidService,
     private readonly fluidBolus: OrdersFluidBolusService,
     private readonly labRadEffectiveTime: OrdersLabRadiologyEffectiveTimeService,
@@ -468,6 +474,108 @@ export class OrdersController {
       dto,
       codes,
       req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/discontinue")
+  @Roles("PROVIDER", "ADMIN")
+  async discontinueMedicationOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requise");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(medicationOrderDiscontinueDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.medicationOrderLifecycle.discontinueOrderItem(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/hold")
+  @Roles("PROVIDER", "ADMIN")
+  async holdMedicationOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requise");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(medicationOrderHoldDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.medicationOrderLifecycle.holdOrderItem(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/resume")
+  @Roles("PROVIDER", "ADMIN")
+  async resumeMedicationOrderItem(@Param("id") orderItemId: string, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requise");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.medicationOrderLifecycle.resumeOrderItem(
+      facilityId,
+      orderItemId,
+      codes,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/edit")
+  @Roles("PROVIDER", "ADMIN")
+  async editMedicationOrderItem(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requise");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(medicationOrderEditDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.medicationOrderLifecycle.editOrderItem(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/discontinue-and-reorder")
+  @Roles("PROVIDER", "ADMIN")
+  async discontinueAndReorderMedicationOrderItem(
+    @Param("id") orderItemId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requise");
+    const userId = req.user?.userId;
+    if (!userId) throw new ForbiddenException("Authentification requise");
+    const dto = assertZodBody(medicationOrderDiscontinueAndReorderDtoSchema.safeParse(body));
+    const codes = await this.roleCodesForFacility(userId, facilityId);
+    return this.medicationOrderLifecycle.discontinueAndReorder(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      userId,
       req.ip,
       req.headers["user-agent"]
     );

@@ -158,11 +158,51 @@ const btnPrimary = (mode: AncillaryLayoutMode): React.CSSProperties =>
     mode
   );
 
+import { medicationOrderLifecycleStatusLabelKey } from "@/lib/medicationOrderLifecycleApi";
+
+type PharmacyChartAdminLifecycleAlert = {
+  orderItemId: string;
+  encounterId: string;
+  medicationLabel: string;
+  lifecycleStatus: string;
+  lifecycleAt?: string | null;
+  lifecycleReason?: string | null;
+  lifecycleByDisplay?: string | null;
+  replacementOrderItemId?: string | null;
+  replacesOrderItemId?: string | null;
+  patient?: { firstName?: string | null; lastName?: string | null; mrn?: string | null } | null;
+};
+
+function normalizePharmacyWorklistResponse(data: unknown): {
+  dispenseOrders: unknown[];
+  chartAdminLifecycleAlerts: PharmacyChartAdminLifecycleAlert[];
+} {
+  if (Array.isArray(data)) {
+    return { dispenseOrders: data, chartAdminLifecycleAlerts: [] };
+  }
+  if (data && typeof data === "object") {
+    const payload = data as {
+      dispenseOrders?: unknown[];
+      chartAdminLifecycleAlerts?: PharmacyChartAdminLifecycleAlert[];
+    };
+    return {
+      dispenseOrders: Array.isArray(payload.dispenseOrders) ? payload.dispenseOrders : [],
+      chartAdminLifecycleAlerts: Array.isArray(payload.chartAdminLifecycleAlerts)
+        ? payload.chartAdminLifecycleAlerts
+        : [],
+    };
+  }
+  return { dispenseOrders: [], chartAdminLifecycleAlerts: [] };
+}
+
 export default function PharmacyWorklistPage() {
   const { language, t } = useI18n();
   const { facilityId: facilityIdFromHook, ready } = useFacilityAndRoles();
   const [facilityId, setFacilityId] = useState<string | null>(null);
   const [queue, setQueue] = useState<any[]>([]);
+  const [chartAdminLifecycleAlerts, setChartAdminLifecycleAlerts] = useState<
+    PharmacyChartAdminLifecycleAlert[]
+  >([]);
   const [pendingLocal, setPendingLocal] = useState<PendingFacilityQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [layoutMode, setLayoutMode] = useState<AncillaryLayoutMode>("desktopDense");
@@ -211,10 +251,13 @@ export default function PharmacyWorklistPage() {
     const pendingP = getPendingPharmacyMedicationOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/pharmacy", { facilityId });
-      setQueue(Array.isArray(data) ? data : []);
+      const normalized = normalizePharmacyWorklistResponse(data);
+      setQueue(normalized.dispenseOrders);
+      setChartAdminLifecycleAlerts(normalized.chartAdminLifecycleAlerts);
     } catch (error) {
       console.error("Failed to load pharmacy worklist:", error);
       setQueue([]);
+      setChartAdminLifecycleAlerts([]);
     }
     const pendingRows = await pendingP;
     setPendingLocal(pendingRows);
@@ -551,6 +594,97 @@ export default function PharmacyWorklistPage() {
           >
             {queuedActionNotice}
           </div>
+        ) : null}
+
+        {chartAdminLifecycleAlerts.length > 0 ? (
+          <section
+            data-testid="pharmacy-chart-admin-lifecycle-alerts"
+            style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}
+          >
+            <div>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+                {t("pharmacyWorklistPage.chartAdminLifecycleTitle")}
+              </h2>
+              <p style={{ margin: "6px 0 0 0", fontSize: 13, color: "#64748b", lineHeight: 1.45 }}>
+                {t("pharmacyWorklistPage.chartAdminLifecycleSubline")}
+              </p>
+            </div>
+            <ul style={{ ...ancillaryWorklistQueueListStyle(layoutMode), margin: 0 }}>
+              {chartAdminLifecycleAlerts.map((alert) => {
+                const patient = alert.patient;
+                const statusLabel = t(
+                  medicationOrderLifecycleStatusLabelKey(alert.lifecycleStatus)
+                );
+                const effectiveAt = alert.lifecycleAt
+                  ? formatEncounterChromeDateTime(alert.lifecycleAt, language)
+                  : t("common.dash");
+                return (
+                  <li key={alert.orderItemId} style={{ minWidth: 0 }}>
+                    <MedoraCard leftAccentColor="#f59e0b" variant="default">
+                      <MedoraCardInner>
+                        <MedoraCardIdentity initials={patientInitials(patient)}>
+                          <MedoraCardTitle
+                            title={fullPatientName(patient)}
+                            subline={
+                              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+                                {alert.medicationLabel}
+                              </p>
+                            }
+                          />
+                          <MedoraCardBadgeRow>
+                            <MedoraCardBadge preset="neutral">{statusLabel}</MedoraCardBadge>
+                            <MedoraCardBadge preset="neutral">
+                              {t("pharmacyWorklistPage.chartAdminLifecycleReadOnly")}
+                            </MedoraCardBadge>
+                          </MedoraCardBadgeRow>
+                          <MedoraCardMetaLines>
+                            {alert.lifecycleReason ? (
+                              <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                                <span style={{ fontWeight: 600, color: "#475569" }}>
+                                  {t("pharmacyWorklistPage.chartAdminLifecycleReason")}
+                                </span>{" "}
+                                {alert.lifecycleReason}
+                              </p>
+                            ) : null}
+                            <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                              <span style={{ fontWeight: 600, color: "#475569" }}>
+                                {t("pharmacyWorklistPage.chartAdminLifecycleAt")}
+                              </span>{" "}
+                              {effectiveAt}
+                            </p>
+                            {alert.lifecycleByDisplay ? (
+                              <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                                <span style={{ fontWeight: 600, color: "#475569" }}>
+                                  {t("pharmacyWorklistPage.chartAdminLifecycleProvider")}
+                                </span>{" "}
+                                {alert.lifecycleByDisplay}
+                              </p>
+                            ) : null}
+                            {alert.replacementOrderItemId || alert.replacesOrderItemId ? (
+                              <p style={{ margin: "4px 0 0 0", fontSize: 12, color: "#64748b" }}>
+                                <span style={{ fontWeight: 600, color: "#475569" }}>
+                                  {t("pharmacyWorklistPage.chartAdminLifecycleReplacement")}
+                                </span>{" "}
+                                {alert.replacementOrderItemId ?? alert.replacesOrderItemId}
+                              </p>
+                            ) : null}
+                          </MedoraCardMetaLines>
+                        </MedoraCardIdentity>
+                        <MedoraCardActions railBorderTopColor="#f1f5f9">
+                          <Link
+                            href={`/app/emergency/${alert.encounterId}?section=orders`}
+                            style={btnPrimary(layoutMode)}
+                          >
+                            {t("pharmacyWorklistPage.viewDetail")}
+                          </Link>
+                        </MedoraCardActions>
+                      </MedoraCardInner>
+                    </MedoraCard>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
         ) : null}
 
         {loading && queue.length === 0 && pendingLocal.length === 0 ? (

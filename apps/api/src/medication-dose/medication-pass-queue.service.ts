@@ -1,4 +1,6 @@
 import {
+  isMedicationDoseMarActionableForLifecycle,
+  resolveMedicationOrderLifecycleStatus,
   isIvpbSessionDoseKind,
   isTerminalMedicationDoseStatus,
   mapDoseInstanceToPassQueueBucket,
@@ -220,9 +222,42 @@ export class MedicationPassQueueService {
         ? await loadMedicationSafetyGovernanceByCatalogIdSafe(this.prisma, catalogIds)
         : new Map<string, MedicationSafetyGovernanceSnapshot>();
 
+    const orderItemIds = [...new Set(doses.map((d) => d.orderItemId))];
+    const lifecycleRows =
+      orderItemIds.length > 0
+        ? await this.prisma.orderItem.findMany({
+            where: { id: { in: orderItemIds } },
+            select: {
+              id: true,
+              medicationLifecycleStatus: true,
+              medicationLifecycleAt: true,
+            },
+          })
+        : [];
+    const lifecycleByOrderItemId = new Map(
+      lifecycleRows.map((row) => [row.id, row])
+    );
+
     const items: MedicationPassQueueItem[] = [];
 
     for (const dose of doses) {
+      const lifecycleRow = lifecycleByOrderItemId.get(dose.orderItemId);
+      const lifecycleStatus = resolveMedicationOrderLifecycleStatus(
+        lifecycleRow?.medicationLifecycleStatus ?? null
+      );
+      const hasActiveInfusion =
+        dose.doseStatus === "IN_PROGRESS" && dose.infusionSessionId != null;
+      if (
+        !isMedicationDoseMarActionableForLifecycle({
+          lifecycleStatus,
+          doseStatus: dose.doseStatus,
+          scheduledAt: dose.scheduledAt,
+          effectiveAt: lifecycleRow?.medicationLifecycleAt ?? null,
+          hasActiveInfusion,
+        })
+      ) {
+        continue;
+      }
       const parsedStatus = parseMedicationDoseStatus(dose.doseStatus);
       if (!parsedStatus || isTerminalMedicationDoseStatus(parsedStatus)) {
         continue;

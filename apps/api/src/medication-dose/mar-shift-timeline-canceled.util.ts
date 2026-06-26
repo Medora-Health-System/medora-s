@@ -35,6 +35,9 @@ const CANCELED_ORDER_ITEM_SELECT = {
   route: true,
   frequencyCode: true,
   intendedAdministrationAt: true,
+  medicationLifecycleStatus: true,
+  medicationLifecycleAt: true,
+  medicationLifecycleReason: true,
   order: {
     select: {
       id: true,
@@ -85,6 +88,9 @@ type CanceledOrderItemRow = {
   route: string | null;
   frequencyCode: string | null;
   intendedAdministrationAt: Date | null;
+  medicationLifecycleStatus: string | null;
+  medicationLifecycleAt: Date | null;
+  medicationLifecycleReason: string | null;
   order: {
     id: string;
     encounterId: string;
@@ -133,7 +139,10 @@ function isCanceledMedicationOrderItem(row: CanceledOrderItemRow): boolean {
   return (
     row.lifecycleState === OrderItemLifecycleState.CANCELLED ||
     row.status === OrderStatus.CANCELLED ||
-    row.order.status === OrderStatus.CANCELLED
+    row.order.status === OrderStatus.CANCELLED ||
+    row.medicationLifecycleStatus === "DISCONTINUED" ||
+    row.medicationLifecycleStatus === "SUPERSEDED" ||
+    row.medicationLifecycleStatus === "CANCELED_ENTERED_IN_ERROR"
   );
 }
 
@@ -168,6 +177,9 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
         { lifecycleState: OrderItemLifecycleState.CANCELLED },
         { status: OrderStatus.CANCELLED },
         { order: { status: OrderStatus.CANCELLED } },
+        { medicationLifecycleStatus: "DISCONTINUED" },
+        { medicationLifecycleStatus: "SUPERSEDED" },
+        { medicationLifecycleStatus: "CANCELED_ENTERED_IN_ERROR" },
       ],
     },
     select: CANCELED_ORDER_ITEM_SELECT,
@@ -182,7 +194,7 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
   const cancelEvents = await input.prisma.orderEvent.findMany({
     where: {
       orderId: { in: orderIds },
-      eventType: "CANCELLED",
+      eventType: { in: ["CANCELLED", "DISCONTINUED", "SUPERSEDED"] },
     },
     orderBy: { performedAt: "desc" },
     select: {

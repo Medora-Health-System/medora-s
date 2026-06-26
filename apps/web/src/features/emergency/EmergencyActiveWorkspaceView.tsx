@@ -1392,6 +1392,9 @@ export function EmergencyActiveWorkspaceView() {
               encounterId={encounterId}
               facilityId={fid}
               canPrescribe={canPrescribe}
+              encounterSigned={
+                encounter?.providerDocumentationStatus === "SIGNED" || isLocked
+              }
               encounterForOrderModal={encounter ? { patient: encounter.patient } : null}
               onRefetchEncounter={load}
               onOrdersCreated={async () => {

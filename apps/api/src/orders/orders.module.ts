@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { OrdersController } from "./orders.controller";
+import { MedicationOrderLifecycleService } from "./medication-order-lifecycle.service";
 import { OrdersService } from "./orders.service";
 import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
 import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.service";
@@ -15,6 +16,7 @@ import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
   controllers: [OrdersController],
   providers: [
     OrdersService,
+    MedicationOrderLifecycleService,
     OrdersContinuousFluidService,
     OrdersFluidBolusService,
     OrdersLabRadiologyEffectiveTimeService,

@@ -292,7 +292,99 @@ export class WorklistsService {
     });
     const enriched = await this.ordersService.enrichOrderItemsForDisplaySafe(orders as unknown as OrderWithItems[]);
     const withAuthority = await this.ordersService.attachAuthorityToOrders(enriched);
-    return this.ordersService.attachAttributionToOrders(withAuthority);
+    const withAttribution = await this.ordersService.attachAttributionToOrders(withAuthority);
+    const withLifecycleDisplay = await this.ordersService.attachMedicationLifecycleDisplayOnOrders(withAttribution);
+    const chartAdminLifecycleAlerts = await this.getPharmacyChartAdminLifecycleAlerts(facilityId);
+    return {
+      dispenseOrders: withLifecycleDisplay,
+      chartAdminLifecycleAlerts,
+    };
+  }
+
+  async getPharmacyChartAdminLifecycleAlerts(facilityId: string) {
+    const items = await this.prisma.orderItem.findMany({
+      where: {
+        catalogItemType: "MEDICATION",
+        medicationFulfillmentIntent: MedicationFulfillmentIntent.ADMINISTER_CHART,
+        OR: [
+          {
+            medicationLifecycleStatus: {
+              not: null,
+              notIn: ["ACTIVE"],
+            },
+          },
+          { replacesOrderItemId: { not: null } },
+        ],
+        order: {
+          facilityId,
+          type: "MEDICATION",
+          status: { in: WORKLIST_ORDER_STATUSES },
+        },
+      },
+      include: {
+        order: {
+          include: {
+            encounter: {
+              include: {
+                patient: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    mrn: true,
+                    dob: true,
+                    sexAtBirth: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ medicationLifecycleAt: "desc" }, { updatedAt: "desc" }],
+      take: 100,
+    });
+
+    const replacementByPriorId = new Map<string, string>();
+    for (const item of items) {
+      if (item.replacesOrderItemId) {
+        replacementByPriorId.set(item.replacesOrderItemId, item.id);
+      }
+    }
+
+    const userIds = [
+      ...new Set(items.map((item) => item.medicationLifecycleByUserId).filter((id): id is string => Boolean(id))),
+    ];
+    const users =
+      userIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : [];
+    const userDisplayById = new Map(
+      users.map((user) => [user.id, `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()])
+    );
+
+    return items.map((item) => ({
+      orderId: item.orderId,
+      orderItemId: item.id,
+      encounterId: item.order.encounterId,
+      patient: item.order.encounter?.patient ?? null,
+      medicationLabel: item.manualLabel ?? item.strength ?? "—",
+      lifecycleStatus: item.medicationLifecycleStatus ?? "ACTIVE",
+      lifecycleAt: item.medicationLifecycleAt?.toISOString() ?? null,
+      lifecycleReason: item.medicationLifecycleReason ?? null,
+      lifecycleNote: item.medicationLifecycleNote ?? null,
+      lifecycleByDisplay: item.medicationLifecycleByUserId
+        ? userDisplayById.get(item.medicationLifecycleByUserId) ?? null
+        : null,
+      replacesOrderItemId: item.replacesOrderItemId ?? null,
+      replacementOrderItemId: replacementByPriorId.get(item.id) ?? null,
+      route: item.route ?? null,
+      strength: item.strength ?? null,
+      frequencyCode: item.frequencyCode ?? null,
+    }));
   }
 
   async getBillingWorklist(facilityId: string) {

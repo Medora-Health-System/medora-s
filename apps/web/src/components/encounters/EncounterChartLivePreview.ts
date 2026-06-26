@@ -20,6 +20,11 @@ import { formatVitalsHeaderLineForLocale } from "@/lib/patientVitals";
 import { fetchEncounterAuditTimeline, type ChartAuditTimelineItem } from "@/lib/chartApi";
 import { fetchPatientFollowUps, type FollowUpRow } from "@/lib/followUpsApi";
 import { chartSummaryOrderItemLineLabel } from "@/lib/chartSummaryOrderLabel";
+import {
+  buildErEdSummaryContinuousInfusionRows,
+  renderErEdSummaryContinuousInfusionHtml,
+} from "@/features/emergency/erEdSummaryMedicationMar";
+import { formatMedicationOrderLifecycleSummaryText } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 import { formatOrderAuthorityLines } from "@/lib/orderAuthority";
 import { formatOrderAttributionLines } from "@/lib/orderAttribution";
 import {
@@ -160,6 +165,7 @@ type FetchedSections = {
   auditTimeline: ChartAuditTimelineItem[] | null;
   encounterDiagnoses: AnyRecord[] | null;
   medicationAdministrations: AnyRecord[] | null;
+  orderEvents: AnyRecord[] | null;
   followUps: FollowUpRow[] | null;
 };
 
@@ -193,6 +199,7 @@ async function fetchEncounterChartPreviewData(
     apiFetch(`/encounters/${encounterId}/medication-administrations`, {
       facilityId,
     }) as Promise<unknown>,
+    apiFetch(`/encounters/${encounterId}/order-events`, { facilityId }).catch(() => []) as Promise<unknown>,
     fetchPatientFollowUps(facilityId, patientId, { limit: 100 }) as Promise<{
       items: FollowUpRow[];
       total: number;
@@ -233,7 +240,8 @@ async function fetchEncounterChartPreviewData(
       return asArray(o?.items);
     }),
     medicationAdministrations: pick<AnyRecord[]>(8, (v) => asArray(v)),
-    followUps: pick<FollowUpRow[]>(9, (v) => {
+    orderEvents: pick<AnyRecord[]>(9, (v) => asArray(v)),
+    followUps: pick<FollowUpRow[]>(10, (v) => {
       const o = asObject(v);
       const items = asArray(o?.items);
       return items as unknown as FollowUpRow[];
@@ -920,7 +928,19 @@ function renderOrders(lang: SupportedLanguage, orders: AnyRecord[]): string {
                   tprev(lang, "orderItemCompletedAt")
                 )} ${esc(fmtDt(completedAt, lang))}${completedBy ? ` — ${esc(completedBy)}` : ""}</div>`
               : "";
-          return `<li>${esc(lineLabel || "—")} <span style="color:#334155;">(${esc(statusLbl)})</span>${completionLine}</li>`;
+          const lifecycleLine =
+            pickString(it, "catalogItemType") === "MEDICATION"
+              ? formatMedicationOrderLifecycleSummaryText({
+                  item: it,
+                  orders,
+                  language: lang,
+                  t: tt,
+                })
+              : null;
+          const lifecycleHtml = lifecycleLine
+            ? `<div data-testid="chart-preview-medication-lifecycle" style="font-size:11px;color:#92400e;margin-top:2px;">${esc(lifecycleLine)}</div>`
+            : "";
+          return `<li>${esc(lineLabel || "—")} <span style="color:#334155;">(${esc(statusLbl)})</span>${completionLine}${lifecycleHtml}</li>`;
         })
         .join("");
 
@@ -1157,6 +1177,26 @@ function renderMedicationResponses(lang: SupportedLanguage, rows: AnyRecord[] | 
   if (responseRows.length === 0) return "";
   const title = lang === "fr" ? "Réponses médicamenteuses" : "Medication responses";
   return `<h3 style="font-size:12px;margin:14px 0 6px 0;font-weight:700;">${esc(title)}</h3><ul style="margin:6px 0;padding-left:18px;">${responseRows.join("")}</ul>`;
+}
+
+function renderContinuousInfusions(
+  lang: SupportedLanguage,
+  orders: AnyRecord[],
+  orderEvents: AnyRecord[] | null
+): string {
+  if (orderEvents == null) return sectionUnavailable(lang);
+  const rows = buildErEdSummaryContinuousInfusionRows({
+    orders,
+    orderEvents,
+    language: lang,
+    t: (key) => printT(lang, key),
+  });
+  if (rows.length === 0) return "";
+  return renderErEdSummaryContinuousInfusionHtml({
+    rows,
+    language: lang,
+    t: (key) => printT(lang, key),
+  });
 }
 
 function renderPharmacyDispense(lang: SupportedLanguage, orders: AnyRecord[]): string {
@@ -1447,6 +1487,7 @@ function getEncounterChartLivePreviewHtml(
   ${h2(lang, "sectionMar")}
   ${renderMar(lang, fetched.medicationAdministrations)}
   ${renderMedicationResponses(lang, fetched.medicationAdministrations)}
+  ${renderContinuousInfusions(lang, orders, fetched.orderEvents)}
 
   ${h2(lang, "sectionPharmacyDispense")}
   ${renderPharmacyDispense(lang, orders)}

@@ -8,6 +8,8 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
+import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
+import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
@@ -487,10 +489,62 @@ function careProcedureCompletedSubLabel(
   return tr("orderEvent.careProcedureCompleted");
 }
 
+function renderErMedicationOrderLifecycleSection(input: {
+  orderType: string;
+  item: Record<string, unknown>;
+  canPrescribe: boolean;
+  encounterSigned: boolean;
+  facilityId: string;
+  ordersRaw: unknown[] | null;
+  onUpdated: () => void;
+}): React.ReactNode {
+  if (input.orderType !== "MEDICATION") return null;
+  if (String(input.item.catalogItemType ?? "") !== "MEDICATION") return null;
+  return (
+    <div data-testid="er-medication-order-lifecycle-section" style={{ marginTop: 6 }}>
+      <MedicationOrderLifecycleReadOnlyBadge item={input.item} orders={input.ordersRaw ?? []} />
+      {input.canPrescribe ? (
+        <MedicationOrderLifecyclePanel
+          orderItem={{
+            id: String(input.item.id ?? ""),
+            medicationLifecycleStatus:
+              typeof input.item.medicationLifecycleStatus === "string"
+                ? input.item.medicationLifecycleStatus
+                : null,
+            frequencyCode:
+              typeof input.item.frequencyCode === "string" ? input.item.frequencyCode : null,
+            strength: typeof input.item.strength === "string" ? input.item.strength : null,
+            route: typeof input.item.route === "string" ? input.item.route : null,
+            notes: typeof input.item.notes === "string" ? input.item.notes : null,
+            quantity:
+              typeof input.item.quantity === "number"
+                ? input.item.quantity
+                : input.item.quantity != null
+                  ? Number(input.item.quantity)
+                  : null,
+            catalogItemId:
+              typeof input.item.catalogItemId === "string" ? input.item.catalogItemId : null,
+            manualLabel: typeof input.item.manualLabel === "string" ? input.item.manualLabel : null,
+            medicationFulfillmentIntent:
+              typeof input.item.medicationFulfillmentIntent === "string"
+                ? input.item.medicationFulfillmentIntent
+                : null,
+          }}
+          facilityId={input.facilityId}
+          encounterSigned={input.encounterSigned}
+          canPrescribe={input.canPrescribe}
+          onUpdated={input.onUpdated}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function EmergencyErOrdersPanel({
   encounterId,
   facilityId,
   canPrescribe,
+  encounterSigned = false,
   encounterForOrderModal,
   onRefetchEncounter,
   onOrdersCreated,
@@ -503,6 +557,8 @@ export function EmergencyErOrdersPanel({
   encounterId: string;
   facilityId: string;
   canPrescribe: boolean;
+  /** Blocks lifecycle mutations when provider documentation is signed or encounter locked. */
+  encounterSigned?: boolean;
   encounterForOrderModal: EncounterPatientForOrder | null | undefined;
   onRefetchEncounter: () => Promise<void>;
   onOrdersCreated?: () => void | Promise<void>;
@@ -1604,6 +1660,18 @@ export function EmergencyErOrdersPanel({
                                         {o.type === "CARE"
                                           ? renderCareProcedureBillingReadiness(item, st)
                                           : null}
+                                        {renderErMedicationOrderLifecycleSection({
+                                          orderType: o.type,
+                                          item,
+                                          canPrescribe,
+                                          encounterSigned,
+                                          facilityId,
+                                          ordersRaw,
+                                          onUpdated: () => {
+                                            setOrdersRefresh((r) => r + 1);
+                                            void onRefetchEncounter();
+                                          },
+                                        })}
                                       </>
                                     }
                                     statusSection={activeStatusSection}
@@ -1889,6 +1957,18 @@ export function EmergencyErOrdersPanel({
                                     {directionsLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
+                                    {renderErMedicationOrderLifecycleSection({
+                                      orderType: o.type,
+                                      item,
+                                      canPrescribe,
+                                      encounterSigned,
+                                      facilityId,
+                                      ordersRaw,
+                                      onUpdated: () => {
+                                        setOrdersRefresh((r) => r + 1);
+                                        void onRefetchEncounter();
+                                      },
+                                    })}
                                   </td>
                                   <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                                     <div style={{ marginBottom: lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>

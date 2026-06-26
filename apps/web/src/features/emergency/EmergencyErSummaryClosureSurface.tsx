@@ -33,6 +33,8 @@ import {
 import {
   buildErEdSummaryMarEventRows,
   buildErEdSummaryMedicationOrderRows,
+  buildErEdSummaryContinuousInfusionRows,
+  renderErEdSummaryContinuousInfusionHtml,
 } from "@/features/emergency/erEdSummaryMedicationMar";
 import { formatDocumentedProcedureClinicalSummary } from "@medora/shared";
 import {
@@ -300,20 +302,34 @@ export function EmergencyErSummaryClosureSurface({
     }
     let medicationOrderRows = null;
     let marEventRows = null;
+    let continuousInfusionSectionHtml: string | null = null;
     let procedureSummaries: string[] | null = null;
     let ordersRaw: unknown[] = [];
     let adminsRaw: unknown[] = [];
     let procedureEntriesRaw: unknown[] = [];
     try {
-      const [ordersFetched, adminsFetched, proceduresRaw] = await Promise.all([
+      const [ordersFetched, adminsFetched, orderEventsFetched, proceduresRaw] = await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}/order-events`, { facilityId }).catch(() => []),
         apiFetch(`/encounters/${encounterId}/procedures`, { facilityId }),
       ]);
       ordersRaw = Array.isArray(ordersFetched) ? ordersFetched : [];
       adminsRaw = Array.isArray(adminsFetched) ? adminsFetched : [];
+      const orderEventsRaw = Array.isArray(orderEventsFetched) ? orderEventsFetched : [];
       medicationOrderRows = buildErEdSummaryMedicationOrderRows({ orders: ordersRaw, language, t });
       marEventRows = buildErEdSummaryMarEventRows({ admins: adminsRaw, language, t });
+      const continuousInfusionRows = buildErEdSummaryContinuousInfusionRows({
+        orders: ordersRaw,
+        orderEvents: orderEventsRaw,
+        language,
+        t,
+      });
+      continuousInfusionSectionHtml = renderErEdSummaryContinuousInfusionHtml({
+        rows: continuousInfusionRows,
+        language,
+        t,
+      });
       const procedureEntries =
         proceduresRaw && typeof proceduresRaw === "object" && !Array.isArray(proceduresRaw)
           ? (proceduresRaw as { entries?: unknown }).entries
@@ -397,6 +413,7 @@ export function EmergencyErSummaryClosureSurface({
       triageAssessmentEntries,
       medicationOrderRows,
       marEventRows,
+      continuousInfusionSectionHtml,
       procedureSummaries,
       providerDocumentationSection: providerDocBlock
         ? buildProviderDocumentationPrintSection(providerDocBlock, language)

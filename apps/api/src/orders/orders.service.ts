@@ -405,6 +405,49 @@ export class OrdersService {
     };
   }
 
+  async attachMedicationLifecycleDisplayOnOrders<T extends OrderWithItems>(
+    orders: T[]
+  ): Promise<
+    Array<
+      T & {
+        items: Array<
+          (T["items"] extends Array<infer I> ? I : never) & {
+            medicationLifecycleByDisplay?: string | null;
+          }
+        >;
+      }
+    >
+  > {
+    if (orders.length === 0) return orders as never;
+    const userIds = new Set<string>();
+    for (const order of orders) {
+      for (const item of order.items ?? []) {
+        const byUserId = (item as { medicationLifecycleByUserId?: string | null }).medicationLifecycleByUserId;
+        if (byUserId) userIds.add(byUserId);
+      }
+    }
+    const users =
+      userIds.size > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: [...userIds] } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : [];
+    const displayByUserId = new Map(
+      users.map((user) => [user.id, `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()])
+    );
+    return orders.map((order) => ({
+      ...order,
+      items: (order.items ?? []).map((item) => {
+        const byUserId = (item as { medicationLifecycleByUserId?: string | null }).medicationLifecycleByUserId;
+        return {
+          ...item,
+          medicationLifecycleByDisplay: byUserId ? displayByUserId.get(byUserId) ?? null : null,
+        };
+      }),
+    })) as never;
+  }
+
   async attachAuthorityAndAttributionToOrders<
     T extends OrderAuthorityOrder & OrderAttributionOrder,
   >(
@@ -1400,7 +1443,8 @@ export class OrdersService {
     const withResultLabels = await this.attachEnteredByDisplayOnOrdersSafe(withResults, { facilityId, encounterId });
     const withCancellation = await this.attachCancellationDisplayOnOrdersSafe(withResultLabels, { facilityId, encounterId });
     const withOrderedBy = await this.attachOrderedByDisplayOnOrdersSafe(withCancellation, { facilityId, encounterId });
-    return this.attachAuthorityAndAttributionToOrders(withOrderedBy);
+    const withLifecycleDisplay = await this.attachMedicationLifecycleDisplayOnOrders(withOrderedBy);
+    return this.attachAuthorityAndAttributionToOrders(withLifecycleDisplay);
   }
 
   async findOrderEventsByEncounter(

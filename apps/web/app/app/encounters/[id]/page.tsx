@@ -27,6 +27,7 @@ import {
   COMMON_VISIT_REASONS,
 } from "@/constants/clinicalTemplates";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
+import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
 import { CareProcedureClinicalTimeModal } from "@/components/orders/CareProcedureClinicalTimeModal";
 import {
   canAdjustCareProcedureClinicalTime,
@@ -6161,6 +6162,7 @@ function OrdersTab({
   const canCancelWholeOrder =
     roles.includes("PROVIDER") || roles.includes("RN") || roles.includes("ADMIN");
   const encounterOpen = encounter?.status === "OPEN";
+  const encounterSigned = encounter?.providerDocumentationStatus === "SIGNED";
   const displayOrders = useMemo(() => ordersExcludingObservationTemplate(orders), [orders]);
   const [cancelConfirmOrderId, setCancelConfirmOrderId] = useState<string | null>(null);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
@@ -6611,6 +6613,18 @@ function OrdersTab({
                               {t("encounterChrome.chartTabs.onDate")}{" "}
                               {formatEncounterChromeDateTime(it.pharmacyDispenseRecord.dispensedAt, language)}
                             </div>
+                          ) : null}
+                          {order.type === "MEDICATION" && canPrescribe ? (
+                            <MedicationOrderLifecyclePanel
+                              orderItem={it}
+                              facilityId={facilityId}
+                              encounterSigned={encounterSigned}
+                              canPrescribe={canPrescribe}
+                              onUpdated={() => {
+                                void onOrdersUpdated?.();
+                                void onRefetchEncounter?.();
+                              }}
+                            />
                           ) : null}
                           {order.type === "CARE" ? (
                             <CareOrderItemClinicalTimeBlock

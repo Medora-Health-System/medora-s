@@ -7,6 +7,7 @@ import {
   buildErEdSummaryMarEventRows,
   buildErEdSummaryMedicationOrderRows,
   buildErEdSummaryMedicationResponseRows,
+  buildErEdSummaryContinuousInfusionRows,
 } from "@/features/emergency/erEdSummaryMedicationMar";
 import { MedicationResponseSummaryCard } from "@/components/mar/MedicationResponseSummaryCard";
 import { RespiratoryMedicationResponseSummaryCard } from "@/components/mar/RespiratoryMedicationResponseSummaryCard";
@@ -33,20 +34,22 @@ export function ErMedicationMarSummaryCard({
     error: boolean;
     orders: unknown[];
     admins: unknown[];
-  }>({ loading: false, error: false, orders: [], admins: [] });
+    orderEvents: unknown[];
+  }>({ loading: false, error: false, orders: [], admins: [], orderEvents: [] });
 
   useEffect(() => {
     if (!enabled || !encounterId || !facilityId) {
-      setState({ loading: false, error: false, orders: [], admins: [] });
+      setState({ loading: false, error: false, orders: [], admins: [], orderEvents: [] });
       return;
     }
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: false }));
     void (async () => {
       try {
-        const [ordersRaw, adminsRaw] = await Promise.all([
+        const [ordersRaw, adminsRaw, orderEventsRaw] = await Promise.all([
           apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
           apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
+          apiFetch(`/encounters/${encounterId}/order-events`, { facilityId }).catch(() => []),
         ]);
         if (cancelled) return;
         setState({
@@ -54,10 +57,11 @@ export function ErMedicationMarSummaryCard({
           error: false,
           orders: Array.isArray(ordersRaw) ? ordersRaw : [],
           admins: Array.isArray(adminsRaw) ? adminsRaw : [],
+          orderEvents: Array.isArray(orderEventsRaw) ? orderEventsRaw : [],
         });
       } catch {
         if (!cancelled) {
-          setState({ loading: false, error: true, orders: [], admins: [] });
+          setState({ loading: false, error: true, orders: [], admins: [], orderEvents: [] });
         }
       }
     })();
@@ -77,6 +81,16 @@ export function ErMedicationMarSummaryCard({
   const medicationResponses = useMemo(
     () => buildErEdSummaryMedicationResponseRows({ admins: state.admins, language }),
     [state.admins, language]
+  );
+  const continuousInfusions = useMemo(
+    () =>
+      buildErEdSummaryContinuousInfusionRows({
+        orders: state.orders,
+        orderEvents: state.orderEvents,
+        language,
+        t,
+      }),
+    [state.orders, state.orderEvents, language, t]
   );
   const formatInstant = useMemo(
     () => (iso: string | null | undefined) => {
@@ -137,7 +151,7 @@ export function ErMedicationMarSummaryCard({
     );
   }
 
-  if (medicationOrders.length === 0 && marEvents.length === 0 && medicationResponses.length === 0) {
+  if (medicationOrders.length === 0 && marEvents.length === 0 && medicationResponses.length === 0 && continuousInfusions.length === 0) {
     return (
       <div style={shell}>
         <p style={titleStyle}>{t("emergencyVisitSummaryPanel.medicationMarTitle")}</p>
@@ -169,6 +183,11 @@ export function ErMedicationMarSummaryCard({
               <div>
                 {t("emergencyVisitSummaryPanel.medOrderStatus")}: {row.status}
               </div>
+              {row.lifecycleSummaryLine ? (
+                <div data-testid="medication-order-lifecycle-summary-line" style={{ color: "#92400e" }}>
+                  {row.lifecycleSummaryLine}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -195,6 +214,61 @@ export function ErMedicationMarSummaryCard({
                 <div>
                   {t("emergencyVisitSummaryPanel.marNotes")}: {row.notes}
                 </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {continuousInfusions.length > 0 ? (
+        <div style={{ marginTop: 12 }} data-testid="encounter-summary-continuous-infusions">
+          <p style={{ ...titleStyle, fontSize: 13 }}>
+            {t("emergencyVisitSummaryPanel.continuousInfusionsTitle")}
+          </p>
+          {continuousInfusions.map((row) => (
+            <div key={row.id} style={rowStyle} data-testid="encounter-summary-continuous-infusion-row">
+              <strong>{row.medicationName}</strong> — {row.statusLabel}
+              <div>
+                {t("emergencyVisitSummaryPanel.infusionStartedAt")}: {row.startedAt}
+                {row.stoppedAt !== "—" ? ` · ${t("emergencyVisitSummaryPanel.infusionStoppedAt")}: ${row.stoppedAt}` : ""}
+              </div>
+              <div>
+                {t("emergencyVisitSummaryPanel.infusionDuration")}: {row.duration}
+                {row.finalRate !== "—" ? ` · ${t("emergencyVisitSummaryPanel.infusionFinalRate")}: ${row.finalRate}` : ""}
+                {row.highestRate !== "—" ? ` · ${t("emergencyVisitSummaryPanel.infusionHighestRate")}: ${row.highestRate}` : ""}
+              </div>
+              <div>
+                {t("emergencyVisitSummaryPanel.infusionBagChanges")}: {row.bagChanges}
+                {" · "}
+                {t("emergencyVisitSummaryPanel.infusionPumpChanges")}: {row.pumpChanges}
+                {" · "}
+                {t("emergencyVisitSummaryPanel.infusionLineChanges")}: {row.lineChanges}
+                {" · "}
+                {t("emergencyVisitSummaryPanel.infusionPauseRestart")}: {row.pauseRestart}
+              </div>
+              {row.stopReason !== "—" ? (
+                <div>
+                  {t("emergencyVisitSummaryPanel.infusionStopReason")}: {row.stopReason}
+                </div>
+              ) : null}
+              {row.documentedBy !== "—" ? (
+                <div>
+                  {t("emergencyVisitSummaryPanel.infusionDocumentedBy")}: {row.documentedBy}
+                </div>
+              ) : null}
+              {row.timeline.length > 0 ? (
+                <ul style={{ margin: "6px 0 0", paddingLeft: 18 }}>
+                  {row.timeline.map((event, index) => (
+                    <li key={`${row.id}:timeline:${index}`}>
+                      <strong>{event.label}</strong>
+                      {event.detail !== "—" ? ` · ${event.detail}` : ""}
+                      <div style={{ color: "#64748b" }}>
+                        {event.at}
+                        {event.by !== "—" ? ` · ${event.by}` : ""}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </div>
           ))}
