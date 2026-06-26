@@ -97,6 +97,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (frs.length > 0 && d) {
         setUser(userPayload);
         setSessionPhase("authenticated");
+        setAuthRecoveryMessage(null);
         const nameById = new Map<string, string>();
         for (const fr of frs as { facilityId?: unknown; facilityName?: unknown }[]) {
           const fid = String(fr.facilityId ?? "");
@@ -128,6 +129,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         // MSPP-only session (no facility roles): optional path, does not affect facility hydration above.
         setUser(userPayload);
         setSessionPhase("authenticated");
+        setAuthRecoveryMessage(null);
         setFacilities([]);
         setActiveFacility("");
       } else {
@@ -374,6 +376,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         routeRedirecting={routeRedirecting}
         bootstrapping={sessionPhase === "loading"}
         redirectingToLogin={sessionPhase === "unauthenticated"}
+        authRecoveryActive={sessionPhase === "recoverable_error"}
         authRecoveryMessage={sessionPhase === "recoverable_error" ? authRecoveryMessage : null}
         onAuthRecoveryRetry={() => {
           void loadSession({ force: true });

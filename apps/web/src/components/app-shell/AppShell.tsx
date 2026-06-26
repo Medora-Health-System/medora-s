@@ -19,6 +19,7 @@ import {
   resolveActiveNavLabel,
   resolveAppShellNavLayout,
 } from "./appShellNavHelpers";
+import { resolveAppShellShowAuthRecovery } from "@/lib/authShellRecovery";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "medora_sidebar_collapsed";
 const SIDEBAR_WIDTH_EXPANDED = 244;
@@ -36,6 +37,7 @@ export type AppShellProps = {
   /** Session en cours de résolution : même cadre visuel, sans menu ni contenu (évite barre latérale vide = impression d’ancienne UI). */
   bootstrapping?: boolean;
   /** Auth could not be verified (502/503/network) — show recoverable panel instead of infinite loading. */
+  authRecoveryActive?: boolean;
   authRecoveryMessage?: string | null;
   onAuthRecoveryRetry?: () => void;
   onAuthRecoveryLogin?: () => void;
@@ -88,6 +90,7 @@ export function AppShell({
   pathname,
   routeRedirecting,
   bootstrapping = false,
+  authRecoveryActive = false,
   authRecoveryMessage = null,
   onAuthRecoveryRetry,
   onAuthRecoveryLogin,
@@ -182,11 +185,12 @@ export function AppShell({
 
   const closeMobileNav = () => setMobileNavOpen(false);
 
-  const showAuthRecovery =
-    Boolean(authRecoveryMessage != null || onAuthRecoveryRetry) &&
-    typeof onAuthRecoveryRetry === "function" &&
-    typeof onAuthRecoveryLogin === "function" &&
-    typeof onAuthRecoveryReload === "function";
+  const showAuthRecovery = resolveAppShellShowAuthRecovery({
+    authRecoveryActive,
+    onAuthRecoveryRetry,
+    onAuthRecoveryLogin,
+    onAuthRecoveryReload,
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>

@@ -80,4 +80,19 @@ describe("authSessionMe bootstrap recovery", () => {
     expect(classifyAuthMeHttpStatus(502)).toBe("unavailable");
     expect(classifyAuthMeHttpStatus(503)).toBe("unavailable");
   });
+
+  it("force refresh bypasses cached unavailable result after login retry", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ error: "Service indisponible." }, 503)
+    );
+    const failed = await fetchAuthMeSession({ force: true });
+    expect(failed.ok).toBe(false);
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ id: "u1", facilityRoles: [{ facilityId: "f1" }] }, 200)
+    );
+    const recovered = await fetchAuthMeSession({ force: true });
+    expect(recovered.ok).toBe(true);
+    expect(recovered.data?.id).toBe("u1");
+  });
 });

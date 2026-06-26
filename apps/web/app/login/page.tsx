@@ -6,6 +6,8 @@ import Link from "next/link";
 import { getPostLoginDestinationForAuthUser } from "@/lib/landingRoute";
 import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { parseApiResponse } from "@/lib/apiClient";
+import { invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
+import { notifyAuthSessionRestored } from "@/lib/authShellRecovery";
 import { useI18n } from "@/lib/i18n";
 import { messageForAuthErrorCode, pickAuthErrorCodeOrLegacyMessage } from "@/lib/authApiErrorCode";
 import { MfaChallengePanel } from "./MfaChallengePanel";
@@ -53,6 +55,8 @@ function LoginForm() {
   };
 
   const navigateAfterAuth = (user?: AuthUserShape) => {
+    invalidateAuthMeSessionCache();
+    notifyAuthSessionRestored();
     const facilityRoles = (user?.facilityRoles ?? []) as { facilityId: string; role?: string }[];
     const msppRolesRaw = user?.msppRoles;
     const msppRoles = Array.isArray(msppRolesRaw)

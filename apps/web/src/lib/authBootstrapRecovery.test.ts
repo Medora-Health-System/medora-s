@@ -35,10 +35,11 @@ describe("auth refresh blank screen recovery", () => {
     expect(authMe).toContain("failureKind");
   });
 
-  it("layout does not bootstrap forever when user is null after auth failure", () => {
+  it("layout gates recovery panel on sessionPhase only", () => {
     const layout = readWebSource("app/app/layout.tsx");
     expect(layout).toContain('bootstrapping={sessionPhase === "loading"}');
     expect(layout).not.toContain("bootstrapping={!sessionReady || !user}");
+    expect(layout).toContain('authRecoveryActive={sessionPhase === "recoverable_error"}');
     expect(layout).toContain('sessionPhase === "recoverable_error"');
   });
 });
