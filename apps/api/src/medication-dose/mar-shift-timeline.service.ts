@@ -46,7 +46,13 @@ import {
   type MarMedicationResponseSeverity,
   buildMarMedicationResponseFollowUpSummary,
   buildMarPainResponseTimelineProjection,
+  buildMedicationFollowUpProjection,
+  buildMedicationInfusionRuntimeProjection,
+  resolveMedicationInfusionCellSecondaryText,
+  isIvpbSessionDoseKind,
   type MarMedicationResponseFollowUpStatus,
+  type MedicationFollowUpType,
+  type MedicationAdministrationLifecycleState,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -72,6 +78,7 @@ import {
   buildMarShiftTimelinePrnCellTexts,
   resolveMarShiftTimelinePrnColumnKey,
   resolveMarShiftTimelinePrnTiming,
+  prnTerminalMarOverlapsShift,
   upsertMarShiftTimelinePrnCellItem,
   type MarShiftTimelineRowWithKind,
 } from "./mar-shift-timeline-prn.util";
@@ -209,6 +216,39 @@ export type MarShiftTimelineCellItem = {
     recommendationLevel: string;
     dismissedAt?: string | null;
   }>;
+  medicationFollowUpType?: MedicationFollowUpType;
+  medicationAdministrationLifecycleState?: MedicationAdministrationLifecycleState;
+  medicationInfusionRuntime?: {
+    status: string;
+    currentRate: string | null;
+    concentration: string | null;
+    route: string | null;
+    pumpChannel: string | null;
+    currentBag: string | null;
+    remainingVolume: string | null;
+    startedAt: string | null;
+    stoppedAt: string | null;
+    startedByDisplay: string | null;
+    verifiedByDisplay: string | null;
+    paused: boolean;
+    highestRate: string | null;
+    finalRate: string | null;
+    bagChangeCount: number;
+    pumpChangeCount: number;
+    totalRuntimeMinutes: number | null;
+    stopReason: string | null;
+    timelineRows: Array<{
+      id: string;
+      eventType: string;
+      label: string;
+      eventAt: string;
+      detail: string | null;
+      previousValue: string | null;
+      newValue: string | null;
+      reason: string | null;
+      documentedBy: string | null;
+    }>;
+  };
 };
 
 export type MarShiftTimelineRowCell = {
@@ -680,6 +720,19 @@ export class MarShiftTimelineService {
           })
         : { prnLastGivenAt: null, prnNextEligibleAt: null };
 
+      if (
+        isPrnBand &&
+        parsedStatus === "DUE" &&
+        prnTiming.prnLastGivenAt &&
+        prnTerminalMarOverlapsShift({
+          administeredAt: new Date(prnTiming.prnLastGivenAt),
+          shiftStart: shiftWindow.startAt,
+          shiftEnd: shiftWindow.endAt,
+        })
+      ) {
+        continue;
+      }
+
       const columnKey = isPrnBand
         ? resolveMarShiftTimelinePrnColumnKey({
             doseStatus: parsedStatus,
@@ -765,7 +818,7 @@ export class MarShiftTimelineService {
         secondaryText = scheduleAdjustment.badgeLabel ?? "RESCHEDULED";
       }
 
-      const painResponseProjection = buildMarPainResponseTimelineProjection({
+      const followUpProjection = buildMedicationFollowUpProjection({
         catalogCode: catalogSnapshot?.catalogItemCode ?? null,
         medicationLabel,
         genericName: catalogSnapshot?.genericName ?? orderedSnapshot?.medicationLabel ?? null,
@@ -777,18 +830,70 @@ export class MarShiftTimelineService {
         directionsSig,
         prnIndication: prnDisplay.orderPrnIndication,
         defaultSecondaryText: secondaryText,
+        route,
+        doseKind: parsedDoseKind ?? dose.doseKind,
+        clinicalAction,
+        referenceAt,
       });
-      secondaryText = painResponseProjection.secondaryText;
+      secondaryText = followUpProjection.secondaryText;
 
-      const medicationResponses = painResponseProjection.medicationResponses ?? [];
-      const medicationResponseBadge = painResponseProjection.medicationResponseBadge;
-      const medicationResponseFollowUp = painResponseProjection.medicationResponseFollowUp;
+      const medicationResponses = followUpProjection.medicationResponses ?? [];
+      const respiratoryMedicationResponses =
+        followUpProjection.respiratoryMedicationResponses ?? [];
+      const medicationResponseBadge = followUpProjection.medicationResponseBadge;
+      const medicationResponseFollowUp = followUpProjection.medicationResponseFollowUp;
       const medicationResponseAdverseEscalation = medicationResponses.some(
         (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
       );
       const allergyReviewCandidates = filterActiveMarAllergyReviewCandidates(
         parseMarAllergyReviewCandidatesFromNotes(administrationNotes)
       );
+
+      let medicationInfusionRuntime: MarShiftTimelineCellItem["medicationInfusionRuntime"];
+      if (
+        isIvpbSessionDoseKind(parsedDoseKind ?? dose.doseKind) &&
+        (parsedStatus === "IN_PROGRESS" || parsedStatus === "COMPLETED")
+      ) {
+        const orderEvents = orderEventsByOrderId.get(dose.orderId) ?? [];
+        const infusionProjection = buildMedicationInfusionRuntimeProjection({
+          orderItemId: dose.orderItemId,
+          events: orderEvents,
+          locale: displayLocale,
+          startedByDisplay: enrichment?.startedByDisplay ?? null,
+          stopReason: enrichment?.infusionStopReasonCode ?? null,
+        });
+        if (infusionProjection) {
+          medicationInfusionRuntime = {
+            status: infusionProjection.status,
+            currentRate: infusionProjection.currentRate,
+            concentration: infusionProjection.concentration,
+            route: infusionProjection.route ?? route,
+            pumpChannel: infusionProjection.pumpChannel,
+            currentBag: infusionProjection.currentBag,
+            remainingVolume: infusionProjection.remainingVolume,
+            startedAt: infusionProjection.startedAt,
+            stoppedAt: infusionProjection.stoppedAt,
+            startedByDisplay: infusionProjection.startedByDisplay,
+            verifiedByDisplay: infusionProjection.verifiedByDisplay,
+            paused: infusionProjection.paused,
+            highestRate: infusionProjection.highestRate,
+            finalRate: infusionProjection.finalRate,
+            bagChangeCount: infusionProjection.bagChangeCount,
+            pumpChangeCount: infusionProjection.pumpChangeCount,
+            totalRuntimeMinutes: infusionProjection.totalRuntimeMinutes,
+            stopReason: infusionProjection.stopReason,
+            timelineRows: infusionProjection.timelineRows,
+          };
+          if (parsedStatus === "IN_PROGRESS") {
+            secondaryText = resolveMedicationInfusionCellSecondaryText({
+              doseStatus: parsedStatus,
+              infusionRuntime: infusionProjection,
+              locale: displayLocale,
+              rateLabel: prnDisplay.orderPrnIndication ?? null,
+            });
+          }
+        }
+      }
 
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
@@ -884,9 +989,37 @@ export class MarShiftTimelineService {
             : null,
         medicationAdministrationId: enrichment?.medicationAdministrationId ?? null,
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
+        respiratoryMedicationResponses:
+          respiratoryMedicationResponses.length > 0
+            ? respiratoryMedicationResponses.map((response) => ({
+                responseCode: response.responseCode,
+                responseDetail: response.responseDetail ?? null,
+                responseTime: response.responseTime ?? null,
+                documentedAt: response.documentedAt,
+                respiratoryRateBefore: response.respiratoryRateBefore ?? null,
+                respiratoryRateAfter: response.respiratoryRateAfter ?? null,
+                oxygenSaturationBefore: response.oxygenSaturationBefore ?? null,
+                oxygenSaturationAfter: response.oxygenSaturationAfter ?? null,
+                wheezingBefore: response.wheezingBefore ?? null,
+                wheezingAfter: response.wheezingAfter ?? null,
+                workOfBreathing: response.workOfBreathing ?? null,
+                nebulizerCompletion: response.nebulizerCompletion ?? null,
+                mdiSpacerUsed: response.mdiSpacerUsed ?? null,
+                treatmentRefused: response.treatmentRefused ?? null,
+                treatmentInterrupted: response.treatmentInterrupted ?? null,
+                noAdverseReaction: response.noAdverseReaction ?? null,
+                patientTolerated: response.patientTolerated ?? null,
+                documentedBy: response.documentedBy ?? null,
+                documentedByInitials: response.documentedByInitials ?? null,
+                documentedByDisplayName: response.documentedByDisplayName ?? null,
+              }))
+            : undefined,
         medicationResponseBadge,
         medicationResponseFollowUp,
         medicationResponseAdverseEscalation,
+        medicationFollowUpType: followUpProjection.followUpType,
+        medicationAdministrationLifecycleState: followUpProjection.lifecycleState,
+        medicationInfusionRuntime,
         allergyReviewCandidates:
           allergyReviewCandidates.length > 0 ? allergyReviewCandidates : undefined,
       };

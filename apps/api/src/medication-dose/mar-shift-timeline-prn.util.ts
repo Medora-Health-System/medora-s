@@ -127,6 +127,84 @@ export function upsertMarShiftTimelinePrnCellItem(
 
 export { shouldRetainPrnTimelineItem };
 
+export async function loadPrnAdministrationsInShiftByOrderItemId(
+  prisma: PrismaService,
+  orderItemIds: string[],
+  shiftStart: Date,
+  shiftEnd: Date
+): Promise<
+  Map<
+    string,
+    Array<{
+      id: string;
+      administeredAt: Date;
+      marAction: string | null;
+      notes: string | null;
+      infusionPhase: string | null;
+    }>
+  >
+> {
+  if (orderItemIds.length === 0) return new Map();
+  const rows = await prisma.medicationAdministration.findMany({
+    where: {
+      orderItemId: { in: orderItemIds },
+      marAction: "administered",
+      administeredAt: { gte: shiftStart, lt: shiftEnd },
+    },
+    select: {
+      id: true,
+      orderItemId: true,
+      administeredAt: true,
+      marAction: true,
+      notes: true,
+      infusionPhase: true,
+    },
+    orderBy: { administeredAt: "asc" },
+  });
+  const map = new Map<
+    string,
+    Array<{
+      id: string;
+      administeredAt: Date;
+      marAction: string | null;
+      notes: string | null;
+      infusionPhase: string | null;
+    }>
+  >();
+  for (const row of rows) {
+    if (!row.orderItemId || !row.administeredAt) continue;
+    const list = map.get(row.orderItemId) ?? [];
+    list.push({
+      id: row.id,
+      administeredAt: row.administeredAt,
+      marAction: row.marAction,
+      notes: row.notes,
+      infusionPhase: row.infusionPhase,
+    });
+    map.set(row.orderItemId, list);
+  }
+  return map;
+}
+
+export function marShiftTimelinePrnRowHasTerminalCell(
+  row: MarShiftTimelineRowWithKind,
+  orderItemId: string,
+  administeredAtIso: string
+): boolean {
+  const terminalKey = `terminal:${orderItemId}:${administeredAtIso}`;
+  return row.cells.some((cell) =>
+    cell.items.some(
+      (item) =>
+        item.isPrnBand === true &&
+        item.orderItemId === orderItemId &&
+        (item.prnProjectionKey === terminalKey ||
+          (item.doseStatus === "COMPLETED" &&
+            item.administeredAt === administeredAtIso &&
+            item.readOnly === true))
+    )
+  );
+}
+
 export async function loadLastPrnAdministrationByOrderItemId(
   prisma: PrismaService,
   orderItemIds: string[]
@@ -428,13 +506,15 @@ export function appendMarShiftTimelinePrnAvailabilityProjections(input: {
     if (!built) continue;
 
     const existingCell = input.row.cells.find((cell) => cell.columnKey === built.columnKey);
-    const hasNonProjectionCell = existingCell?.items.some(
+    const hasBlockingNonTerminalCell = existingCell?.items.some(
       (existing) =>
         existing.orderItemId === input.context.orderItemId &&
         existing.isPrnBand === true &&
-        !existing.prnProjectionKey?.trim()
+        !existing.prnProjectionKey?.trim() &&
+        existing.doseStatus === "DUE" &&
+        existing.clinicalAction === "ADMINISTER"
     );
-    if (hasNonProjectionCell) continue;
+    if (hasBlockingNonTerminalCell) continue;
 
     upsertMarShiftTimelinePrnCellItem(input.row, built.columnKey, built.item);
   }

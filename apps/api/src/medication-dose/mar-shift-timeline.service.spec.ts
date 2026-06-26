@@ -2350,6 +2350,99 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
       ).toBe(true);
       expect(result.rows.some((row) => row.rowKind === "PRN")).toBe(true);
     });
+
+    it("PRN with dose instances shows completed terminal at administration hour", async () => {
+      const encounter = await createEncounterWithNurse();
+      const administeredAt = new Date("2026-06-11T14:00:00.000Z");
+      const { orderItem, doses } = await createPrnOrder(encounter.id);
+      expect(doses.length).toBeGreaterThan(0);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      await prisma.medicationAdministration.create({
+        data: {
+          facilityId,
+          patientId: encounterRow.patientId,
+          encounterId: encounter.id,
+          orderItemId: orderItem.id,
+          administeredByUserId: nurseUserId,
+          administeredAt,
+          marAction: "administered",
+          notes: "Administered for fever",
+        },
+      });
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      const items = prnTimelineItems(result).filter((i) => i.orderItemId === orderItem.id);
+      const terminal = items.find(
+        (i) =>
+          i.doseStatus === "COMPLETED" &&
+          i.readOnly === true &&
+          i.administeredAt === administeredAt.toISOString()
+      );
+      expect(terminal).toBeTruthy();
+      expect(terminal?.clinicalAction).toBe("VIEW_ADMINISTRATION");
+      expect(
+        items.some(
+          (i) =>
+            i.doseStatus === "DUE" &&
+            i.clinicalAction === "ADMINISTER" &&
+            Boolean(i.medicationDoseInstanceId?.trim()) &&
+            i.administeredAt === administeredAt.toISOString()
+        )
+      ).toBe(false);
+    });
+
+    it("multiple PRN administrations in shift produce separate completed terminals", async () => {
+      const encounter = await createEncounterWithNurse();
+      const firstAt = new Date("2026-06-11T09:00:00.000Z");
+      const secondAt = new Date("2026-06-11T15:00:00.000Z");
+      const { orderItem } = await createPrnOrder(encounter.id);
+      const encounterRow = await prisma.encounter.findUniqueOrThrow({
+        where: { id: encounter.id },
+        select: { patientId: true },
+      });
+      for (const administeredAt of [firstAt, secondAt]) {
+        await prisma.medicationAdministration.create({
+          data: {
+            facilityId,
+            patientId: encounterRow.patientId,
+            encounterId: encounter.id,
+            orderItemId: orderItem.id,
+            administeredByUserId: nurseUserId,
+            administeredAt,
+            marAction: "administered",
+            notes: "Administered",
+          },
+        });
+      }
+
+      const result = await timelineService.getMarShiftTimeline(facilityId, viewer, {
+        shiftCode: "7A_7P",
+        shiftStart: new Date("2026-06-11T07:00:00.000Z"),
+        shiftEnd: new Date("2026-06-11T20:00:00.000Z"),
+        encounterId: encounter.id,
+        includeCompleted: true,
+      });
+
+      const terminals = prnTimelineItems(result).filter(
+        (i) =>
+          i.orderItemId === orderItem.id &&
+          i.doseStatus === "COMPLETED" &&
+          i.readOnly === true &&
+          i.administeredAt
+      );
+      expect(terminals.length).toBeGreaterThanOrEqual(2);
+      expect(new Set(terminals.map((i) => i.administeredAt)).size).toBeGreaterThanOrEqual(2);
+    });
   });
 
   describe("PRN interval projection (K.10B.11A)", () => {

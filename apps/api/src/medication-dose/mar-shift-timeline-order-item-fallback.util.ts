@@ -20,6 +20,7 @@ import {
   resolveMarShiftTimelineTerminalOutcome,
   resolvePrnTimelineTerminalDisplay,
   buildMarPainResponseTimelineProjection,
+  buildMedicationFollowUpProjection,
   parseMarMedicationResponseNotes,
   filterActiveMarAllergyReviewCandidates,
   parseMarAllergyReviewCandidatesFromNotes,
@@ -31,6 +32,7 @@ import {
   buildMarShiftTimelinePrnCellTexts,
   isPrnMedicationOrderClassification,
   loadLastPrnAdministrationByOrderItemId,
+  loadPrnAdministrationsInShiftByOrderItemId,
   prnTerminalMarOverlapsShift,
   resolveMarShiftTimelinePrnColumnKey,
   resolveMarShiftTimelinePrnTiming,
@@ -170,10 +172,11 @@ function buildPseudoDoseRow(input: {
   placementInstant: Date;
   infusionSessionId: string | null;
   terminalMedicationAdministrationId: string | null;
+  pseudoDoseId?: string;
 }): MedicationPassQueueDoseRow {
   const windowEnd = new Date(input.placementInstant.getTime() + 60 * 60 * 1000);
   return {
-    id: `order-item-fallback:${input.orderItem.id}`,
+    id: input.pseudoDoseId ?? `order-item-fallback:${input.orderItem.id}`,
     orderItemId: input.orderItem.id,
     orderId: input.orderItem.orderId,
     encounterId: input.orderItem.order.encounterId,
@@ -314,7 +317,6 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       directionsSig: row.notes,
     });
     if (isPrn) {
-      if (input.visiblePrnOrderItemIds?.has(row.id)) return false;
       return true;
     }
 
@@ -344,6 +346,12 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
   const fallbackLastPrnAdmin = await loadLastPrnAdministrationByOrderItemId(
     input.prisma,
     fallbackPrnOrderItemIds
+  );
+  const prnShiftAdminsByOrderItemId = await loadPrnAdministrationsInShiftByOrderItemId(
+    input.prisma,
+    fallbackPrnOrderItemIds,
+    input.shiftStart,
+    input.shiftEnd
   );
   const lastPrnAdminByOrderItemId = new Map(input.lastPrnAdminByOrderItemId ?? []);
   for (const [orderItemId, slice] of fallbackLastPrnAdmin) {
@@ -424,7 +432,9 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     infusionPhase: string | null;
   };
   const terminalMarByOrderItemId = new Map<string, TerminalMarSlice>();
+  const terminalMarById = new Map<string, TerminalMarSlice>();
   for (const mar of terminalMarRows) {
+    terminalMarById.set(mar.id, mar);
     if (mar.orderItemId && !terminalMarByOrderItemId.has(mar.orderItemId)) {
       terminalMarByOrderItemId.set(mar.orderItemId, mar);
     }
@@ -440,6 +450,53 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     const route = resolveRoute(orderItem, catalog);
     const isIvpb = isStructuredMedicationOrderRouteIvpb(route);
     const activeSession = activeSessionByOrderItemId.get(orderItem.id);
+    const isPrnCandidate = isPrnMedicationOrderClassification({
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig: orderItem.notes,
+    });
+    const shiftAdmins = isPrnCandidate ? prnShiftAdminsByOrderItemId.get(orderItem.id) ?? [] : [];
+
+    if (shiftAdmins.length > 0) {
+      const doseKind = resolveMarShiftTimelineOrderItemFallbackDoseKind(route);
+      for (const adminMar of shiftAdmins) {
+        if (!adminMar.administeredAt) continue;
+        const doseStatus = "COMPLETED";
+        if (
+          !input.includeCompleted &&
+          !shouldRetainPrnTimelineItem({
+            isPrnBand: true,
+            doseStatus,
+            includeCompleted: input.includeCompleted,
+            secondaryText: null,
+          })
+        ) {
+          continue;
+        }
+        const placementInstant = adminMar.administeredAt;
+        if (
+          !marShiftTimelineOrderItemFallbackOverlapsShift({
+            placementInstant,
+            shiftStart: input.shiftStart,
+            shiftEnd: input.shiftEnd,
+          })
+        ) {
+          continue;
+        }
+        const pseudo = buildPseudoDoseRow({
+          orderItem,
+          doseKind,
+          doseStatus,
+          placementInstant,
+          infusionSessionId: activeSession?.id ?? null,
+          terminalMedicationAdministrationId: adminMar.id,
+          pseudoDoseId: `order-item-fallback:${orderItem.id}:${adminMar.id}`,
+        });
+        pseudoDoses.push(pseudo);
+        pseudoMeta.set(pseudo.id, orderItem);
+      }
+      continue;
+    }
+
     const terminalMar = terminalMarByOrderItemId.get(orderItem.id) ?? null;
 
     const doseStatus = resolveMarShiftTimelineOrderItemFallbackDoseStatus({
@@ -479,10 +536,6 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       continue;
     }
 
-    const isPrnCandidate = isPrnMedicationOrderClassification({
-      frequencyCode: orderItem.frequencyCode,
-      directionsSig: orderItem.notes,
-    });
     const terminalInShift = prnTerminalMarOverlapsShift({
       administeredAt: terminalMar?.administeredAt,
       shiftStart: input.shiftStart,
@@ -570,7 +623,12 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
 
     const medicationLabel = resolveMedicationLabel(orderItem, catalog, input.displayLocale);
     const enrichment = enrichmentByPseudoId.get(pseudo.id) ?? null;
-    const terminalMar = terminalMarByOrderItemId.get(orderItem.id) ?? null;
+    const terminalMar =
+      (pseudo.terminalMedicationAdministrationId
+        ? terminalMarById.get(pseudo.terminalMedicationAdministrationId)
+        : null) ??
+      terminalMarByOrderItemId.get(orderItem.id) ??
+      null;
     const terminalOutcome = resolveMarShiftTimelineTerminalOutcome({
       marAction: terminalMar?.marAction,
       notes: terminalMar?.notes,
@@ -735,7 +793,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       enrichment?.marAction ??
       terminalMar?.marAction ??
       (enrichment?.administeredAt || terminalMar?.administeredAt ? "administered" : null);
-    const painResponseProjection = buildMarPainResponseTimelineProjection({
+    const followUpProjection = buildMedicationFollowUpProjection({
       catalogCode: catalog?.code ?? null,
       medicationLabel,
       genericName: catalog?.genericName ?? null,
@@ -748,14 +806,17 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
       directionsSig,
       prnIndication: prnDisplay.orderPrnIndication,
       defaultSecondaryText: secondaryText,
+      route,
+      doseKind: pseudo.doseKind,
+      clinicalAction,
     });
-    secondaryText = painResponseProjection.secondaryText;
+    secondaryText = followUpProjection.secondaryText;
 
-    const medicationResponses = painResponseProjection.medicationResponses ?? [];
+    const medicationResponses = followUpProjection.medicationResponses ?? [];
     const respiratoryMedicationResponses =
-      painResponseProjection.respiratoryMedicationResponses ?? [];
-    const medicationResponseBadge = painResponseProjection.medicationResponseBadge;
-    const medicationResponseFollowUp = painResponseProjection.medicationResponseFollowUp;
+      followUpProjection.respiratoryMedicationResponses ?? [];
+    const medicationResponseBadge = followUpProjection.medicationResponseBadge;
+    const medicationResponseFollowUp = followUpProjection.medicationResponseFollowUp;
     const medicationResponseAdverseEscalation = medicationResponses.some(
       (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
     );
@@ -876,6 +937,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         medicationResponseBadge,
         medicationResponseFollowUp,
         medicationResponseAdverseEscalation,
+        medicationFollowUpType: followUpProjection.followUpType,
+        medicationAdministrationLifecycleState: followUpProjection.lifecycleState,
         allergyReviewCandidates:
           allergyReviewCandidates.length > 0 ? allergyReviewCandidates : undefined,
       },
