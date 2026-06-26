@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useI18n } from "@/i18n/provider";
 import { type GroupedSidebarSection } from "./sidebarNavConfig";
 import { AppShellSidebarNav } from "./AppShellSidebarNav";
+import { AppShellAuthFailurePanel } from "./AppShellAuthFailurePanel";
 import type { ClinicalViewportMode } from "@/lib/clinicalViewport";
 import {
   appShellForceSidebarCollapsed,
@@ -34,6 +35,13 @@ export type AppShellProps = {
   routeRedirecting: boolean;
   /** Session en cours de résolution : même cadre visuel, sans menu ni contenu (évite barre latérale vide = impression d’ancienne UI). */
   bootstrapping?: boolean;
+  /** Auth could not be verified (502/503/network) — show recoverable panel instead of infinite loading. */
+  authRecoveryMessage?: string | null;
+  onAuthRecoveryRetry?: () => void;
+  onAuthRecoveryLogin?: () => void;
+  onAuthRecoveryReload?: () => void;
+  /** Redirecting to login after session expiry. */
+  redirectingToLogin?: boolean;
   facilities: AppShellFacilityOption[];
   activeFacility: string;
   onFacilityChange: (facilityId: string) => void;
@@ -80,6 +88,11 @@ export function AppShell({
   pathname,
   routeRedirecting,
   bootstrapping = false,
+  authRecoveryMessage = null,
+  onAuthRecoveryRetry,
+  onAuthRecoveryLogin,
+  onAuthRecoveryReload,
+  redirectingToLogin = false,
   facilities,
   activeFacility,
   onFacilityChange,
@@ -168,6 +181,12 @@ export function AppShell({
   );
 
   const closeMobileNav = () => setMobileNavOpen(false);
+
+  const showAuthRecovery =
+    Boolean(authRecoveryMessage != null || onAuthRecoveryRetry) &&
+    typeof onAuthRecoveryRetry === "function" &&
+    typeof onAuthRecoveryLogin === "function" &&
+    typeof onAuthRecoveryReload === "function";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -407,12 +426,21 @@ export function AppShell({
             <div className="p-3 md:p-4 lg:p-6">
               <p style={{ margin: 0 }}>{t("common.loading")}</p>
             </div>
-          ) : routeRedirecting ? (
+          ) : showAuthRecovery ? (
+            <div className="p-3 md:p-4 lg:p-6">
+              <AppShellAuthFailurePanel
+                message={authRecoveryMessage}
+                onRetry={onAuthRecoveryRetry!}
+                onLogin={onAuthRecoveryLogin!}
+                onReload={onAuthRecoveryReload!}
+              />
+            </div>
+          ) : redirectingToLogin || routeRedirecting ? (
             <div className="p-3 md:p-4 lg:p-6">
               <p style={{ margin: 0 }}>{t("common.redirecting")}</p>
-              {pathname !== "/app" && (
+              {pathname !== "/app" && routeRedirecting ? (
                 <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>{t("common.unauthorizedRedirect")}</p>
-              )}
+              ) : null}
             </div>
           ) : (
             children

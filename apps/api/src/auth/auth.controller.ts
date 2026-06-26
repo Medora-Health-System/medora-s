@@ -8,6 +8,7 @@ import {
   UseGuards,
   BadRequestException,
   UnauthorizedException,
+  ServiceUnavailableException,
   HttpException,
   HttpStatus,
 } from "@nestjs/common";
@@ -134,8 +135,22 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(AuthGuard("jwt"))
-  async me(@Req() req: any) {
-    return this.auth.me(req.user.userId);
+  async me(@Req() req: Request & { user: { userId: string } }) {
+    const requestId = (req as { requestId?: string }).requestId;
+    try {
+      return await this.auth.me(req.user.userId);
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      authLog.error("auth_me_failed", {
+        requestId,
+        reason: error instanceof Error ? error.name : typeof error,
+      });
+      throw new ServiceUnavailableException(
+        "Service d'authentification temporairement indisponible."
+      );
+    }
   }
 
   @Post("change-password")

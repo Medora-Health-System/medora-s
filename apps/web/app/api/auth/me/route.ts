@@ -6,6 +6,49 @@ import { jwtAccessTtlSeconds } from "@/lib/server/sessionCookieOptions";
 
 import { resolveApiUrl } from "@/lib/server/resolveApiUrl";
 
+const BACKEND_ME_TIMEOUT_MS = 12_000;
+const BACKEND_ME_RETRY_DELAY_MS = 350;
+
+function isRetryableBackendStatus(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
+async function fetchBackendMe(input: {
+  apiUrl: string;
+  accessToken: string;
+  requestId: string;
+  signal: AbortSignal;
+}): Promise<Response> {
+  return fetch(`${input.apiUrl}/auth/me`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${input.accessToken}`,
+      ...(input.requestId ? { "x-request-id": input.requestId } : {}),
+    },
+    signal: input.signal,
+  });
+}
+
+async function fetchBackendMeWithRetry(input: {
+  apiUrl: string;
+  accessToken: string;
+  requestId: string;
+}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), BACKEND_ME_TIMEOUT_MS);
+  try {
+    let response = await fetchBackendMe({ ...input, signal: controller.signal });
+    if (isRetryableBackendStatus(response.status)) {
+      await new Promise((resolve) => setTimeout(resolve, BACKEND_ME_RETRY_DELAY_MS));
+      response = await fetchBackendMe({ ...input, signal: controller.signal });
+    }
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function GET(request: NextRequest) {
   const requestId = request.headers.get("x-request-id")?.trim() ?? "";
   const withRequestId = (res: NextResponse) => {
@@ -23,43 +66,61 @@ export async function GET(request: NextRequest) {
       return withRequestId(NextResponse.json({ error: "Non authentifié." }, { status: 401 }));
     }
 
-    const fetchMe = (token: string) =>
-      fetch(`${apiUrl}/auth/me`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          ...(requestId ? { "x-request-id": requestId } : {}),
-        },
-      });
-
-    let backendResponse = await fetchMe(accessToken);
+    let backendResponse = await fetchBackendMeWithRetry({
+      apiUrl,
+      accessToken,
+      requestId,
+    });
     let refreshedTokens: Awaited<ReturnType<typeof refreshAccessTokenFromCookies>> = null;
 
     if (backendResponse.status === 401) {
       refreshedTokens = await refreshAccessTokenFromCookies(requestId || undefined, request);
       if (refreshedTokens) {
         accessToken = refreshedTokens.accessToken;
-        backendResponse = await fetchMe(accessToken);
+        backendResponse = await fetchBackendMeWithRetry({
+          apiUrl,
+          accessToken,
+          requestId,
+        });
       }
     }
 
     if (!backendResponse.ok) {
       if (backendResponse.status === 401) {
-        return withRequestId(NextResponse.json({ error: "Session expirée. Reconnectez-vous." }, { status: 401 }));
+        return withRequestId(
+          NextResponse.json({ error: "Session expirée. Reconnectez-vous." }, { status: 401 })
+        );
+      }
+      if (isRetryableBackendStatus(backendResponse.status)) {
+        console.error("[auth/me] backend unavailable", {
+          requestId: requestId || undefined,
+          status: backendResponse.status,
+        });
+        return withRequestId(
+          NextResponse.json(
+            {
+              error:
+                "Service d'authentification temporairement indisponible. Réessayez dans un instant.",
+              code: "AUTH_SERVICE_UNAVAILABLE",
+            },
+            { status: 503 }
+          )
+        );
       }
       const errorData = await backendResponse.json().catch(() => ({ error: "Échec de la requête" }));
-      return withRequestId(NextResponse.json(
-        {
-          error:
-            typeof errorData.error === "string"
-              ? errorData.error
-              : typeof errorData.message === "string"
-                ? errorData.message
-                : "Échec de la requête",
-        },
-        { status: backendResponse.status }
-      ));
+      return withRequestId(
+        NextResponse.json(
+          {
+            error:
+              typeof errorData.error === "string"
+                ? errorData.error
+                : typeof errorData.message === "string"
+                  ? errorData.message
+                  : "Échec de la requête",
+          },
+          { status: backendResponse.status }
+        )
+      );
     }
 
     const userData = await backendResponse.json();
@@ -78,7 +139,21 @@ export async function GET(request: NextRequest) {
 
     return withRequestId(res);
   } catch (error) {
-    console.error("Me endpoint error:", error);
-    return withRequestId(NextResponse.json({ error: "Erreur interne du serveur." }, { status: 500 }));
+    const isAbort = error instanceof Error && error.name === "AbortError";
+    console.error("[auth/me] proxy failure", {
+      requestId: requestId || undefined,
+      reason: isAbort ? "timeout" : error instanceof Error ? error.name : "unknown",
+    });
+    return withRequestId(
+      NextResponse.json(
+        {
+          error: isAbort
+            ? "Délai dépassé lors de la vérification de session."
+            : "Service d'authentification temporairement indisponible.",
+          code: "AUTH_SERVICE_UNAVAILABLE",
+        },
+        { status: 503 }
+      )
+    );
   }
 }
