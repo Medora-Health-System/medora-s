@@ -12,8 +12,7 @@ import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/Medic
 import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
 import {
   auditMedicationOrderGovernancePermissions,
-  isMedicationOrderLineItem,
-  isStandingMedicationOrderLineActiveInOrders,
+  resolveMedicationGovernanceRenderState,
 } from "@/lib/medicationOrderGovernancePermissions";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
@@ -499,23 +498,28 @@ function renderErMedicationOrderLineActions(input: {
   orderId: string;
   item: Record<string, unknown>;
   canPrescribe: boolean;
+  roles?: string[];
   encounterSigned: boolean;
   facilityId: string;
   ordersRaw: unknown[] | null;
   orderEventsRaw: unknown[] | null;
-  marManagedInMar: boolean;
   itemStatus: string;
   infusionTimeline: ReturnType<typeof findMedicationInfusionTimelineFromOrderEvents>;
   lineBtns: React.ReactNode[];
   onUpdated: () => void;
   placement?: "actions" | "inline";
 }): React.ReactNode {
-  if (!isMedicationOrderLineItem(input.orderType, input.item)) {
-    return input.lineBtns.length > 0 ? (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
-    ) : null;
-  }
-  if (!isStandingMedicationOrderLineActiveInOrders(input.item) && !input.canPrescribe) {
+  const renderState = resolveMedicationGovernanceRenderState({
+    orderType: input.orderType,
+    orderItem: input.item,
+    permissions: {
+      canPrescribeProp: input.canPrescribe,
+      roles: input.roles,
+      encounterSigned: input.encounterSigned,
+    },
+  });
+
+  if (!renderState.shouldRender) {
     return input.lineBtns.length > 0 ? (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
     ) : null;
@@ -523,14 +527,17 @@ function renderErMedicationOrderLineActions(input: {
 
   const governance = (
     <ProviderMedicationOrderGovernanceSection
+      orderType={input.orderType}
       orderId={input.orderId}
       orderItem={input.item}
       facilityId={input.facilityId}
-      canPrescribe={input.canPrescribe}
-      encounterSigned={input.encounterSigned}
+      permissions={{
+        canPrescribeProp: input.canPrescribe,
+        roles: input.roles,
+        encounterSigned: input.encounterSigned,
+      }}
       ordersRaw={input.ordersRaw ?? []}
       orderEventsRaw={input.orderEventsRaw ?? []}
-      marManagedInMar={input.marManagedInMar}
       itemStatus={input.itemStatus}
       infusionTimeline={input.infusionTimeline}
       onUpdated={input.onUpdated}
@@ -541,7 +548,7 @@ function renderErMedicationOrderLineActions(input: {
     return governance;
   }
 
-  if (input.canPrescribe) {
+  if (renderState.effectiveCanPrescribe) {
     return governance;
   }
 
@@ -1689,11 +1696,11 @@ export function EmergencyErOrdersPanel({
                                       orderId: o.id,
                                       item,
                                       canPrescribe: effectiveCanPrescribe,
+                                      roles,
                                       encounterSigned,
                                       facilityId,
                                       ordersRaw,
                                       orderEventsRaw: orderEventsRaw,
-                                      marManagedInMar,
                                       itemStatus: st,
                                       infusionTimeline: infusionTl,
                                       lineBtns: effectiveCanPrescribe ? [] : lineBtns,
@@ -1978,27 +1985,25 @@ export function EmergencyErOrdersPanel({
                                     {directionsLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
-                                    {isMedicationOrderLineItem(o.type, item)
-                                      ? renderErMedicationOrderLineActions({
-                                          orderType: o.type,
-                                          orderId: o.id,
-                                          item,
-                                          canPrescribe: effectiveCanPrescribe,
-                                          encounterSigned,
-                                          facilityId,
-                                          ordersRaw,
-                                          orderEventsRaw: orderEventsRaw,
-                                          marManagedInMar,
-                                          itemStatus: st,
-                                          infusionTimeline: infusionTl,
-                                          lineBtns: [],
-                                          placement: "inline",
-                                          onUpdated: () => {
-                                            setOrdersRefresh((r) => r + 1);
-                                            void onRefetchEncounter();
-                                          },
-                                        })
-                                      : null}
+                                    {renderErMedicationOrderLineActions({
+                                      orderType: o.type,
+                                      orderId: o.id,
+                                      item,
+                                      canPrescribe: effectiveCanPrescribe,
+                                      roles,
+                                      encounterSigned,
+                                      facilityId,
+                                      ordersRaw,
+                                      orderEventsRaw: orderEventsRaw,
+                                      itemStatus: st,
+                                      infusionTimeline: infusionTl,
+                                      lineBtns: [],
+                                      placement: "inline",
+                                      onUpdated: () => {
+                                        setOrdersRefresh((r) => r + 1);
+                                        void onRefetchEncounter();
+                                      },
+                                    })}
                                   </td>
                                   <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                                     <div style={{ marginBottom: !effectiveCanPrescribe && lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>

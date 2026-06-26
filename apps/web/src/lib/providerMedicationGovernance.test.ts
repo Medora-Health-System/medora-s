@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveProviderMedicationOrderMarExecutionSummary } from "@/features/orders/providerMedicationOrderMarStatus";
+import { resolveMedicationGovernanceRenderState } from "@/lib/medicationOrderGovernancePermissions";
 
 const webRoot = join(import.meta.dirname, "../..");
 
@@ -10,21 +11,22 @@ function readSource(relativePath: string): string {
 }
 
 describe("providerMedicationGovernance (MEDUI.ORDERS.PROVIDER_MEDICATION_GOVERNANCE_FINAL.1)", () => {
-  it("ER orders panel exposes provider governance in actions rail for prescribers", () => {
+  it("ER orders panel uses centralized governance render helper", () => {
     const source = readSource("src/features/emergency/EmergencyErOrdersPanel.tsx");
     expect(source).toContain("ProviderMedicationOrderGovernanceSection");
     expect(source).toContain("renderErMedicationOrderLineActions");
+    expect(source).toContain("resolveMedicationGovernanceRenderState");
     expect(source).toContain("effectiveCanPrescribe ? [] : lineBtns");
     expect(source).toContain('placement: "inline"');
-    expect(source).toContain("isMedicationOrderLineItem");
     const governance = readSource("src/components/orders/ProviderMedicationOrderGovernanceSection.tsx");
     expect(governance).toContain('data-testid="provider-medication-order-governance"');
-    expect(governance).toContain("data-can-prescribe");
+    expect(governance).toContain("resolveMedicationGovernanceRenderState");
   });
 
-  it("encounter Orders tab uses provider governance section for medication rows", () => {
+  it("encounter Orders tab uses provider governance section via shared helper", () => {
     const page = readFileSync(join(webRoot, "app/app/encounters/[id]/page.tsx"), "utf8");
     expect(page).toContain("ProviderMedicationOrderGovernanceSection");
+    expect(page).toContain("shouldRenderMedicationGovernance");
     expect(page).toContain("orderEventsRaw={clinicalData?.orderEvents ?? []}");
   });
 
@@ -67,6 +69,7 @@ describe("providerMedicationGovernance (MEDUI.ORDERS.PROVIDER_MEDICATION_GOVERNA
     const panel = readSource("src/components/orders/MedicationOrderLifecyclePanel.tsx");
     expect(panel).toContain("medicationOrderLifecycle.actions.discontinue");
     expect(panel).not.toContain("marTab.");
+    expect(panel).toContain("normalizeMedicationOrderLifecycleStatus");
   });
 
   it("signed encounter blocks provider lifecycle panel mutations", () => {
@@ -77,36 +80,29 @@ describe("providerMedicationGovernance (MEDUI.ORDERS.PROVIDER_MEDICATION_GOVERNA
 
   it("Vancomycin IVPB Q12H scenario uses MAR-managed chart admin path", () => {
     const policy = readSource("src/features/emergency/medicationOrderMarExecutionPolicy.ts");
-    expect(policy).toContain("ADMINISTER_CHART");
+    expect(policy).toContain("isMarManagedMedicationOrderItem");
     expect(policy).toContain("MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY");
   });
 });
 
-describe("providerMedicationGovernance visibility (MEDUI.ORDERS.PROVIDER_GOVERNANCE_VISIBILITY_AUDIT_AND_FIX.1)", () => {
-  it("Vancomycin Q12H active order shows governance after MAR dose via standing-order helper", () => {
-    const permissions = readSource("src/lib/medicationOrderGovernancePermissions.ts");
-    expect(permissions).toContain("isStandingMedicationOrderLineActiveInOrders");
-    expect(permissions).toContain("normalizeMedicationOrderLifecycleStatus");
+describe("providerMedicationGovernance rendering helper (MEDUI.ORDERS.MEDICATION_GOVERNANCE_RENDERING_HELPER.1)", () => {
+  it("Vancomycin Q12H active after MAR completion renders governance via shared helper", () => {
+    const state = resolveMedicationGovernanceRenderState({
+      orderType: "MEDICATION",
+      orderItem: {
+        id: "vanco",
+        status: "ACKNOWLEDGED",
+        frequencyCode: "Q12H",
+        medicationFulfillmentIntent: "ADMINISTER_CHART",
+        medicationLifecycleStatus: null,
+      },
+      permissions: { roles: ["PROVIDER"] },
+    });
+    expect(state.shouldRender).toBe(true);
+    expect(state.canMutate).toBe(true);
   });
 
-  it("completed-on-MAR status does not hide provider governance for standing orders", () => {
-    const panel = readSource("src/features/emergency/EmergencyErOrdersPanel.tsx");
-    expect(panel).toContain("isStandingMedicationOrderLineActiveInOrders");
-    expect(panel).not.toContain('catalogItemType !== "MEDICATION"');
-  });
-
-  it("lifecycle panel normalizes null medicationLifecycleStatus to ACTIVE", () => {
-    const panel = readSource("src/components/orders/MedicationOrderLifecyclePanel.tsx");
-    expect(panel).toContain("normalizeMedicationOrderLifecycleStatus");
-  });
-
-  it("encounter Orders tab resolves effectiveCanPrescribe from roles", () => {
-    const page = readFileSync(join(webRoot, "app/app/encounters/[id]/page.tsx"), "utf8");
-    expect(page).toContain("auditMedicationOrderGovernancePermissions");
-    expect(page).toContain("effectiveCanPrescribe");
-  });
-
-  it("provider lifecycle actions remain absent from MAR drawer components", () => {
+  it("MAR surface does not render provider lifecycle actions", () => {
     const marComponents = [
       "src/components/mar/MedicationAdministrationCorrectionChainViewer.tsx",
       "src/components/mar/MarAdministrationRowCorrectionControls.tsx",
@@ -116,6 +112,13 @@ describe("providerMedicationGovernance visibility (MEDUI.ORDERS.PROVIDER_GOVERNA
       const source = readSource(path);
       expect(source).not.toContain("ProviderMedicationOrderGovernanceSection");
       expect(source).not.toContain("MedicationOrderLifecyclePanel");
+      expect(source).not.toContain("resolveMedicationGovernanceRenderState");
     }
+  });
+
+  it("MedicationOrderLifecyclePanel uses governance helper for lifecycle normalization", () => {
+    const panel = readSource("src/components/orders/MedicationOrderLifecyclePanel.tsx");
+    expect(panel).toContain("normalizeMedicationOrderLifecycleStatus");
+    expect(panel).toContain("canMutateLifecycle");
   });
 });

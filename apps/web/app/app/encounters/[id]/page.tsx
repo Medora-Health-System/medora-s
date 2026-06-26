@@ -30,7 +30,7 @@ import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } fr
 import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
 import {
   auditMedicationOrderGovernancePermissions,
-  isChartAdminMedicationOrderItem,
+  shouldRenderMedicationGovernance,
 } from "@/lib/medicationOrderGovernancePermissions";
 import { CareProcedureClinicalTimeModal } from "@/components/orders/CareProcedureClinicalTimeModal";
 import {
@@ -6623,16 +6623,23 @@ function OrdersTab({
                               {formatEncounterChromeDateTime(it.pharmacyDispenseRecord.dispensedAt, language)}
                             </div>
                           ) : null}
-                          {order.type === "MEDICATION" ? (
+                          {shouldRenderMedicationGovernance(String(order.type), it, {
+                            canPrescribeProp: effectiveCanPrescribe,
+                            roles,
+                            encounterSigned,
+                          }) ? (
                             <ProviderMedicationOrderGovernanceSection
+                              orderType={String(order.type)}
                               orderId={String(order.id)}
                               orderItem={it}
                               facilityId={facilityId}
-                              encounterSigned={encounterSigned}
-                              canPrescribe={effectiveCanPrescribe}
+                              permissions={{
+                                canPrescribeProp: effectiveCanPrescribe,
+                                roles,
+                                encounterSigned,
+                              }}
                               ordersRaw={displayOrders}
                               orderEventsRaw={clinicalData?.orderEvents ?? []}
-                              marManagedInMar={isChartAdminMedicationOrderItem(it)}
                               itemStatus={String(it.status ?? "")}
                               onUpdated={() => {
                                 void onOrdersUpdated?.();

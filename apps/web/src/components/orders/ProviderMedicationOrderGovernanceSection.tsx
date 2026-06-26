@@ -4,31 +4,37 @@ import React, { useMemo, useState } from "react";
 import type { MedicationInfusionTimelineResult } from "@/features/emergency/erOrderLifecycleUi";
 import { resolveProviderMedicationOrderMarExecutionSummary } from "@/features/orders/providerMedicationOrderMarStatus";
 import { useI18n } from "@/lib/i18n";
-import { normalizeMedicationOrderLifecycleStatus } from "@/lib/medicationOrderGovernancePermissions";
+import {
+  type MedicationGovernancePermissionsInput,
+  resolveMedicationGovernanceRenderState,
+} from "@/lib/medicationOrderGovernancePermissions";
 import { MedicationOrderLifecycleHistoryModal } from "@/components/orders/MedicationOrderLifecycleHistoryModal";
 import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
 import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 
 export type ProviderMedicationOrderGovernanceSectionProps = {
+  orderType: string;
   orderId: string;
   orderItem: Record<string, unknown>;
   facilityId: string;
-  canPrescribe: boolean;
-  encounterSigned: boolean;
+  permissions: MedicationGovernancePermissionsInput;
   ordersRaw?: unknown[];
   orderEventsRaw?: unknown[];
-  marManagedInMar?: boolean;
   itemStatus?: string;
   infusionTimeline?: Pick<MedicationInfusionTimelineResult, "active" | "lastCompleted">;
   medicationLabel?: string;
   onUpdated?: () => void;
 };
 
-function toLifecyclePanelItem(item: Record<string, unknown>) {
-  const lifecycle = normalizeMedicationOrderLifecycleStatus(item.medicationLifecycleStatus);
+function toLifecyclePanelItem(
+  item: Record<string, unknown>,
+  normalizedLifecycleStatus: ReturnType<
+    typeof resolveMedicationGovernanceRenderState
+  >["normalizedLifecycleStatus"]
+) {
   return {
     id: String(item.id ?? ""),
-    medicationLifecycleStatus: lifecycle,
+    medicationLifecycleStatus: normalizedLifecycleStatus,
     frequencyCode: typeof item.frequencyCode === "string" ? item.frequencyCode : null,
     strength: typeof item.strength === "string" ? item.strength : null,
     route: typeof item.route === "string" ? item.route : null,
@@ -47,14 +53,13 @@ function toLifecyclePanelItem(item: Record<string, unknown>) {
 }
 
 export function ProviderMedicationOrderGovernanceSection({
+  orderType,
   orderId,
   orderItem,
   facilityId,
-  canPrescribe,
-  encounterSigned,
+  permissions,
   ordersRaw = [],
   orderEventsRaw = [],
-  marManagedInMar = false,
   itemStatus = "",
   infusionTimeline = { active: null, lastCompleted: null },
   medicationLabel,
@@ -67,16 +72,30 @@ export function ProviderMedicationOrderGovernanceSection({
     medicationLabel ??
     (typeof orderItem.manualLabel === "string" ? orderItem.manualLabel : orderItemId);
 
+  const renderState = useMemo(
+    () =>
+      resolveMedicationGovernanceRenderState({
+        orderType,
+        orderItem,
+        permissions,
+      }),
+    [orderType, orderItem, permissions]
+  );
+
   const marExecutionSummary = useMemo(
     () =>
       resolveProviderMedicationOrderMarExecutionSummary({
         itemStatus,
-        marManagedInMar,
+        marManagedInMar: renderState.isMarManagedOrder,
         infusionTimeline,
         t,
       }),
-    [itemStatus, marManagedInMar, infusionTimeline, t]
+    [itemStatus, renderState.isMarManagedOrder, infusionTimeline, t]
   );
+
+  if (!renderState.shouldRender) {
+    return null;
+  }
 
   const shellStyle: React.CSSProperties = {
     marginTop: 6,
@@ -89,7 +108,9 @@ export function ProviderMedicationOrderGovernanceSection({
   return (
     <div
       data-testid="provider-medication-order-governance"
-      data-can-prescribe={canPrescribe ? "true" : "false"}
+      data-can-prescribe={renderState.effectiveCanPrescribe ? "true" : "false"}
+      data-can-mutate={renderState.canMutate ? "true" : "false"}
+      data-hidden-reason={renderState.hiddenReasonCode}
       data-order-item-id={orderItemId}
       style={shellStyle}
     >
@@ -123,17 +144,17 @@ export function ProviderMedicationOrderGovernanceSection({
 
       <MedicationOrderLifecycleReadOnlyBadge item={orderItem} orders={ordersRaw} compact={false} />
 
-      {canPrescribe ? (
+      {renderState.canMutate ? (
         <MedicationOrderLifecyclePanel
-          orderItem={toLifecyclePanelItem(orderItem)}
+          orderItem={toLifecyclePanelItem(orderItem, renderState.normalizedLifecycleStatus)}
           facilityId={facilityId}
-          encounterSigned={encounterSigned}
-          canPrescribe={canPrescribe}
+          encounterSigned={permissions.encounterSigned ?? false}
+          canMutateLifecycle={renderState.canMutate}
           onUpdated={onUpdated}
         />
       ) : null}
 
-      {canPrescribe ? (
+      {renderState.effectiveCanPrescribe ? (
         <button
           type="button"
           data-testid="medication-lifecycle-view-history"

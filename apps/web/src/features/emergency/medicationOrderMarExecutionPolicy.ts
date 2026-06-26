@@ -3,20 +3,15 @@ import {
   resolveMedicationMarActionFromStorage,
 } from "@medora/shared";
 import type { MedicationInfusionTimelineResult } from "@/features/emergency/erOrderLifecycleUi";
+import { isMarManagedMedicationOrderItem } from "@/lib/medicationOrderGovernancePermissions";
 
-/** Medication START/STOP/Administer execution lives in unified MAR only (M1.8B.7K.5). */
-export const MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY = true;
+export { MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY } from "@/lib/medicationOrderGovernancePermissions";
 
 export function isMedicationAdministrationManagedInMar(
   orderType: string,
   item: Record<string, unknown>
 ): boolean {
-  if (!MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY) return false;
-  if (String(orderType ?? "").trim().toUpperCase() !== "MEDICATION") return false;
-  const catalogType = String(item.catalogItemType ?? "").trim().toUpperCase();
-  if (catalogType && catalogType !== "MEDICATION") return false;
-  const intent = String(item.medicationFulfillmentIntent ?? "").trim().toUpperCase();
-  return !intent || intent === "ADMINISTER_CHART";
+  return isMarManagedMedicationOrderItem(orderType, item);
 }
 
 export type MedicationOrderMarTerminalMarSlice = {

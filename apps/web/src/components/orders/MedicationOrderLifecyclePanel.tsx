@@ -35,7 +35,7 @@ export type MedicationOrderLifecyclePanelProps = {
   };
   facilityId: string;
   encounterSigned: boolean;
-  canPrescribe: boolean;
+  canMutateLifecycle: boolean;
   onUpdated?: () => void;
 };
 
@@ -43,7 +43,7 @@ export function MedicationOrderLifecyclePanel({
   orderItem,
   facilityId,
   encounterSigned,
-  canPrescribe,
+  canMutateLifecycle,
   onUpdated,
 }: MedicationOrderLifecyclePanelProps) {
   const { t } = useI18n();
@@ -59,7 +59,7 @@ export function MedicationOrderLifecyclePanel({
   const [editNotes, setEditNotes] = useState(orderItem.notes ?? "");
 
   const lifecycleStatus = normalizeMedicationOrderLifecycleStatus(orderItem.medicationLifecycleStatus);
-  const disabled = encounterSigned || !canPrescribe;
+  const disabled = encounterSigned || !canMutateLifecycle;
   const governanceDeferred = isMedicationOrderLifecycleGovernanceDeferred(lifecycleStatus);
   const canHold = lifecycleStatus === "ACTIVE";
   const canResume = lifecycleStatus === "ON_HOLD";
