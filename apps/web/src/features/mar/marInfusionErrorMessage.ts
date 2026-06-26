@@ -19,6 +19,7 @@ const MEDICATION_INFUSION_ERROR_MESSAGES_EN: Record<MedicationInfusionErrorCode,
   ORDER_LINE_TERMINAL: "Order line is already completed or cancelled.",
   INFUSION_STOP_REASON_REQUIRED: "A structured infusion stop reason is required.",
   INVALID_INFUSION_STOP_REASON: "Invalid infusion stop reason.",
+  INVALID_DEVICE_CHANGE: "Invalid infusion equipment change.",
 };
 
 export function extractApiErrorCode(body: unknown): string | null {

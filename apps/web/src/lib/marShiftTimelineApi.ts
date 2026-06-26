@@ -173,6 +173,55 @@ export type MarShiftTimelineCellItem = {
     documentedByInitials?: string | null;
     documentedByDisplayName?: string | null;
   }>;
+  medicationFollowUpType?:
+    | "NONE"
+    | "PAIN"
+    | "RESPIRATORY"
+    | "LAB"
+    | "NEURO"
+    | "SEDATION"
+    | "GLUCOSE"
+    | "COAGULATION"
+    | "CUSTOM";
+  medicationAdministrationLifecycleState?:
+    | "ORDERED"
+    | "VERIFIED"
+    | "DUE"
+    | "PREPARING"
+    | "ADMINISTERED"
+    | "FOLLOW_UP_REQUIRED"
+    | "COMPLETED";
+  medicationInfusionRuntime?: {
+    status: string;
+    currentRate: string | null;
+    concentration: string | null;
+    route: string | null;
+    pumpChannel: string | null;
+    currentBag: string | null;
+    remainingVolume: string | null;
+    startedAt: string | null;
+    stoppedAt: string | null;
+    startedByDisplay: string | null;
+    verifiedByDisplay: string | null;
+    paused: boolean;
+    highestRate: string | null;
+    finalRate: string | null;
+    bagChangeCount: number;
+    pumpChangeCount: number;
+    totalRuntimeMinutes: number | null;
+    stopReason: string | null;
+    timelineRows: Array<{
+      id: string;
+      eventType: string;
+      label: string;
+      eventAt: string;
+      detail: string | null;
+      previousValue: string | null;
+      newValue: string | null;
+      reason: string | null;
+      documentedBy: string | null;
+    }>;
+  };
   administrationVariance?: {
     hasVariance: boolean;
     classification: string | null;

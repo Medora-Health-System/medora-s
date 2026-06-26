@@ -128,3 +128,44 @@ export function restartMedicationInfusion(
     body: JSON.stringify(payload ?? {}),
   });
 }
+
+function postInfusionDeviceChange(
+  orderItemId: string,
+  facilityId: string,
+  path: "bag-change" | "pump-change" | "line-change",
+  payload: { previousValue?: string; newValue: string; reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return apiFetch(`/orders/items/${orderItemId}/infusion/${path}`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+/** POST /orders/items/:id/infusion/bag-change */
+export function changeMedicationInfusionBag(
+  orderItemId: string,
+  facilityId: string,
+  payload: { previousValue?: string; newValue: string; reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return postInfusionDeviceChange(orderItemId, facilityId, "bag-change", payload);
+}
+
+/** POST /orders/items/:id/infusion/pump-change */
+export function changeMedicationInfusionPump(
+  orderItemId: string,
+  facilityId: string,
+  payload: { previousValue?: string; newValue: string; reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return postInfusionDeviceChange(orderItemId, facilityId, "pump-change", payload);
+}
+
+/** POST /orders/items/:id/infusion/line-change */
+export function changeMedicationInfusionLine(
+  orderItemId: string,
+  facilityId: string,
+  payload: { previousValue?: string; newValue: string; reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return postInfusionDeviceChange(orderItemId, facilityId, "line-change", payload);
+}

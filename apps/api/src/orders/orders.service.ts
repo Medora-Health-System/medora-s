@@ -3545,6 +3545,13 @@ export class OrdersService {
         if (active !== null && active.sessionKey === m.infusionSessionKey) {
           active.paused = false;
         }
+      } else if (
+        (m.infusionAction === "BAG_CHANGE" ||
+          m.infusionAction === "PUMP_CHANGE" ||
+          m.infusionAction === "LINE_CHANGE") &&
+        m.infusionSessionKey
+      ) {
+        // Mid-infusion device events — session remains active.
       } else if (m.infusionAction === "STOP" && m.infusionSessionKey && active?.sessionKey === m.infusionSessionKey) {
         active = null;
       }
@@ -4198,7 +4205,7 @@ export class OrdersService {
     };
     userId: string;
     requestorRoleCodes: RoleCode[];
-    infusionAction: "RATE_CHANGE" | "PAUSE" | "RESTART";
+    infusionAction: "RATE_CHANGE" | "PAUSE" | "RESTART" | "BAG_CHANGE" | "PUMP_CHANGE" | "LINE_CHANGE";
     active: { sessionKey: string; startedAt: Date; route: string; currentRate?: string };
     actionAt: Date;
     metadataExtras?: Record<string, unknown>;
@@ -4397,6 +4404,136 @@ export class OrdersService {
       userAgent,
     });
     return { orderItemId, infusionSessionKey: active.sessionKey, paused: false };
+  }
+
+  private async writeMedicationInfusionDeviceChangeEvent(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionDeviceChangeDto,
+    requestorRoleCodes: RoleCode[],
+    userId: string | undefined,
+    ip: string | undefined,
+    userAgent: string | undefined,
+    infusionAction: "BAG_CHANGE" | "PUMP_CHANGE" | "LINE_CHANGE"
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: { include: { encounter: true } } },
+    });
+    if (!orderItem) throw new NotFoundException("Order item not found");
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) throw new ForbiddenException("Authentification requise.");
+    if (orderItem.status === OrderStatus.COMPLETED || orderItem.status === OrderStatus.CANCELLED) {
+      throw medicationInfusionBadRequest("ORDER_LINE_TERMINAL");
+    }
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    if (!active) throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
+    if (active.paused) {
+      throw new BadRequestException("La perfusion est en pause. Reprenez-la avant de modifier l'équipement.");
+    }
+    const actionAt = dto.actionAt ?? new Date();
+    const previousValue = dto.previousValue?.trim() || null;
+    const newValue = dto.newValue?.trim() || null;
+    if (!newValue) throw medicationInfusionBadRequest("INVALID_DEVICE_CHANGE");
+    const metadataExtras: Record<string, unknown> = {
+      ...(dto.reason?.trim() ? { changeReason: dto.reason.trim() } : {}),
+      ...(dto.notes?.trim() ? { note: dto.notes.trim() } : {}),
+    };
+    if (infusionAction === "BAG_CHANGE") {
+      metadataExtras.previousBag = previousValue;
+      metadataExtras.newBag = newValue;
+      metadataExtras.bagLabel = newValue;
+    } else if (infusionAction === "PUMP_CHANGE") {
+      metadataExtras.previousPump = previousValue;
+      metadataExtras.newPump = newValue;
+      metadataExtras.pumpChannel = newValue;
+    } else {
+      metadataExtras.previousLine = previousValue;
+      metadataExtras.newLine = newValue;
+      metadataExtras.lineLabel = newValue;
+    }
+    await this.writeMedicationInfusionLifecycleEvent({
+      facilityId,
+      orderItem,
+      userId,
+      requestorRoleCodes,
+      infusionAction,
+      active,
+      actionAt,
+      metadataExtras,
+      ip,
+      userAgent,
+    });
+    return { orderItemId, infusionSessionKey: active.sessionKey, infusionAction, newValue };
+  }
+
+  async changeMedicationInfusionBag(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionDeviceChangeDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.writeMedicationInfusionDeviceChangeEvent(
+      facilityId,
+      orderItemId,
+      dto,
+      requestorRoleCodes,
+      userId,
+      ip,
+      userAgent,
+      "BAG_CHANGE"
+    );
+  }
+
+  async changeMedicationInfusionPump(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionDeviceChangeDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.writeMedicationInfusionDeviceChangeEvent(
+      facilityId,
+      orderItemId,
+      dto,
+      requestorRoleCodes,
+      userId,
+      ip,
+      userAgent,
+      "PUMP_CHANGE"
+    );
+  }
+
+  async changeMedicationInfusionLine(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionDeviceChangeDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    return this.writeMedicationInfusionDeviceChangeEvent(
+      facilityId,
+      orderItemId,
+      dto,
+      requestorRoleCodes,
+      userId,
+      ip,
+      userAgent,
+      "LINE_CHANGE"
+    );
   }
 
   /**

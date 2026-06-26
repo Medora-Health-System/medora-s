@@ -34,6 +34,7 @@ import {
   medicationInfusionStopDtoSchema,
   medicationInfusionRateChangeDtoSchema,
   medicationInfusionPauseRestartDtoSchema,
+  medicationInfusionDeviceChangeDtoSchema,
   continuousFluidStartDtoSchema,
   continuousFluidPauseResumeDtoSchema,
   continuousFluidStopDtoSchema,
@@ -557,6 +558,60 @@ export class OrdersController {
     const dto = assertZodBody(medicationInfusionPauseRestartDtoSchema.safeParse(body ?? {}));
     const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
     return this.ordersService.restartMedicationInfusion(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/infusion/bag-change")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async changeMedicationInfusionBag(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(medicationInfusionDeviceChangeDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.ordersService.changeMedicationInfusionBag(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/infusion/pump-change")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async changeMedicationInfusionPump(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(medicationInfusionDeviceChangeDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.ordersService.changeMedicationInfusionPump(
+      facilityId,
+      orderItemId,
+      dto,
+      codes,
+      req.user?.userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("orders/items/:id/infusion/line-change")
+  @RequireRoles(RoleCode.LAB, RoleCode.RADIOLOGY, RoleCode.PHARMACY, RoleCode.RN, RoleCode.ADMIN)
+  async changeMedicationInfusionLine(@Param("id") orderItemId: string, @Body() body: unknown, @Req() req: any) {
+    const facilityId = req.facilityId;
+    if (!facilityId) throw new BadRequestException("Établissement requis");
+    const dto = assertZodBody(medicationInfusionDeviceChangeDtoSchema.safeParse(body ?? {}));
+    const codes = await this.roleCodesForFacility(req.user?.userId, facilityId);
+    return this.ordersService.changeMedicationInfusionLine(
       facilityId,
       orderItemId,
       dto,

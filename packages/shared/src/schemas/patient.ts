@@ -875,6 +875,17 @@ export const medicationInfusionPauseRestartDtoSchema = z.object({
 
 export type MedicationInfusionPauseRestartDto = z.infer<typeof medicationInfusionPauseRestartDtoSchema>;
 
+/** POST /orders/items/:id/infusion/bag-change|pump-change|line-change — device changes (MEDUI infusion runtime). */
+export const medicationInfusionDeviceChangeDtoSchema = z.object({
+  actionAt: z.coerce.date().optional(),
+  reason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  previousValue: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  newValue: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+});
+
+export type MedicationInfusionDeviceChangeDto = z.infer<typeof medicationInfusionDeviceChangeDtoSchema>;
+
 /** POST /orders/items/:id/fluid/start — continuous IV fluid start (K.10B.8). */
 export const continuousFluidStartDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
