@@ -41,5 +41,7 @@ describe("auth refresh blank screen recovery", () => {
     expect(layout).not.toContain("bootstrapping={!sessionReady || !user}");
     expect(layout).toContain('authRecoveryActive={sessionPhase === "recoverable_error"}');
     expect(layout).toContain('sessionPhase === "recoverable_error"');
+    expect(layout).toContain("sessionContentReady");
+    expect(layout).toContain('sessionPhase === "unauthenticated" && !user');
   });
 });

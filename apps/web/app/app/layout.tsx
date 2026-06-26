@@ -6,6 +6,12 @@ import { getRouteGuardRedirect } from "@/lib/landingRoute";
 import { fetchAuthMeSession, invalidateAuthMeSessionCache } from "@/lib/authSessionMe";
 import type { AuthMeFailureKind } from "@/lib/authSessionMe";
 import {
+  beginLoadSessionRequest,
+  clearedAuthenticatedSessionState,
+  isLatestLoadSessionRequest,
+  shouldIgnoreStaleAuthMeResult,
+} from "@/lib/authSessionBootstrap";
+import {
   getEffectiveAccessTtlSecondsForProactiveRefresh,
   getProactiveRefreshIntervalMs,
 } from "@/lib/jwtAccessTtl";
@@ -35,6 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sessionAccessTtlSec, setSessionAccessTtlSec] = useState<number | null>(null);
 
   const isMountedRef = useRef(true);
+  const loadSessionSeqRef = useRef(0);
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -42,7 +49,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const clearAuthenticatedSession = useCallback(() => {
+    const cleared = clearedAuthenticatedSessionState();
+    setUser(cleared.user);
+    setFacilities(cleared.facilities);
+    setActiveFacility(cleared.activeFacility);
+    setAuthRecoveryMessage(cleared.authRecoveryMessage);
+    setSessionAccessTtlSec(cleared.sessionAccessTtlSec);
+  }, []);
+
+  const redirectToLogin = useCallback(() => {
+    invalidateAuthMeSessionCache();
+    clearAuthenticatedSession();
+    setSessionPhase("unauthenticated");
+    router.replace("/login");
+  }, [clearAuthenticatedSession, router]);
+
   const loadSession = useCallback(async (opts?: { force?: boolean }) => {
+    const requestSeq = beginLoadSessionRequest(loadSessionSeqRef);
     if (opts?.force) {
       setSessionPhase("loading");
       setAuthRecoveryMessage(null);
@@ -50,11 +74,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     try {
       const result = await fetchAuthMeSession({ force: opts?.force });
       if (!isMountedRef.current) return;
+      if (shouldIgnoreStaleAuthMeResult({
+        requestSeq,
+        latestSeq: loadSessionSeqRef.current,
+        result,
+      })) {
+        return;
+      }
 
       if (!result.ok) {
         if (result.failureKind === "unauthenticated") {
-          setSessionPhase("unauthenticated");
-          router.replace("/login");
+          redirectToLogin();
           return;
         }
         const unavailableKinds: AuthMeFailureKind[] = ["unavailable", "network", "timeout"];
@@ -63,15 +93,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setAuthRecoveryMessage(result.message);
           return;
         }
-        setSessionPhase("unauthenticated");
-        router.replace("/login");
+        redirectToLogin();
         return;
       }
 
       const data = result.data;
       if (!data) {
-        setSessionPhase("unauthenticated");
-        router.replace("/login");
+        redirectToLogin();
         return;
       }
       const d =
@@ -133,20 +161,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         setFacilities([]);
         setActiveFacility("");
       } else {
-        setSessionPhase("unauthenticated");
+        redirectToLogin();
       }
     } catch (err) {
       console.error("Failed to fetch user:", err);
-      if (isMountedRef.current) {
-        setSessionPhase("recoverable_error");
-        setAuthRecoveryMessage(null);
-      }
+      if (!isMountedRef.current) return;
+      if (!isLatestLoadSessionRequest(requestSeq, loadSessionSeqRef.current)) return;
+      setSessionPhase("recoverable_error");
+      setAuthRecoveryMessage(null);
     } finally {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && isLatestLoadSessionRequest(requestSeq, loadSessionSeqRef.current)) {
         setSessionReady(true);
       }
     }
-  }, [router]);
+  }, [redirectToLogin]);
 
   useEffect(() => {
     void loadSession();
@@ -160,13 +188,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("medora:session-refresh", onSessionRefresh);
   }, [loadSession]);
 
-  /** Session résolue sans accès app (ni établissement ni MSPP). */
+  /** Session résolue sans accès app (ni établissement ni MSPP) — redirect only after user cleared. */
   useEffect(() => {
     if (!sessionReady || user || sessionPhase === "recoverable_error") return;
     if (sessionPhase === "unauthenticated") {
       router.replace("/login");
     }
   }, [sessionReady, user, sessionPhase, router]);
+
+  const sessionContentReady = sessionPhase === "authenticated" && Boolean(user);
+  const redirectingToLogin = sessionPhase === "unauthenticated" && !user;
 
   /**
    * Renouvellement proactif : intervalle dérivé du TTL réel (réponse /api/auth/me = même base que les cookies JWT_ACCESS_TTL).
@@ -215,6 +246,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       console.error("Logout error:", error);
     }
     invalidateAuthMeSessionCache();
+    clearAuthenticatedSession();
+    setSessionPhase("unauthenticated");
     router.push("/login");
   };
 
@@ -375,7 +408,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         pathname={pathname}
         routeRedirecting={routeRedirecting}
         bootstrapping={sessionPhase === "loading"}
-        redirectingToLogin={sessionPhase === "unauthenticated"}
+        sessionContentReady={sessionContentReady}
+        redirectingToLogin={redirectingToLogin}
         authRecoveryActive={sessionPhase === "recoverable_error"}
         authRecoveryMessage={sessionPhase === "recoverable_error" ? authRecoveryMessage : null}
         onAuthRecoveryRetry={() => {

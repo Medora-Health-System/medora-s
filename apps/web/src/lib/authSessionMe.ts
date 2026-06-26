@@ -10,7 +10,8 @@ export type AuthMeFailureKind =
   | "unauthenticated"
   | "unavailable"
   | "network"
-  | "timeout";
+  | "timeout"
+  | "superseded";
 
 export type AuthMeSessionResult = {
   ok: boolean;
@@ -18,13 +19,21 @@ export type AuthMeSessionResult = {
   data: Record<string, unknown> | null;
   failureKind: AuthMeFailureKind;
   message: string | null;
+  superseded?: boolean;
 };
 
 let cached: (AuthMeSessionResult & { at: number }) | null = null;
 let inFlight: Promise<AuthMeSessionResult> | null = null;
+let inFlightEpoch = 0;
+let fetchEpoch = 0;
+let activeFetchController: AbortController | null = null;
 
 export function invalidateAuthMeSessionCache(): void {
   cached = null;
+  fetchEpoch += 1;
+  activeFetchController?.abort();
+  activeFetchController = null;
+  inFlight = null;
 }
 
 export function classifyAuthMeHttpStatus(status: number): AuthMeFailureKind {
@@ -38,7 +47,19 @@ function buildAuthMeSessionResult(input: {
   ok: boolean;
   status: number | null;
   data: Record<string, unknown> | null;
+  failureKind?: AuthMeFailureKind;
+  superseded?: boolean;
 }): AuthMeSessionResult {
+  if (input.superseded) {
+    return {
+      ok: false,
+      status: input.status,
+      data: input.data,
+      failureKind: "superseded",
+      message: null,
+      superseded: true,
+    };
+  }
   if (input.ok) {
     return {
       ok: true,
@@ -55,7 +76,8 @@ function buildAuthMeSessionResult(input: {
         ? input.data.message
         : null;
   const failureKind =
-    input.status != null ? classifyAuthMeHttpStatus(input.status) : "network";
+    input.failureKind ??
+    (input.status != null ? classifyAuthMeHttpStatus(input.status) : "network");
   return {
     ok: false,
     status: input.status,
@@ -69,6 +91,14 @@ function isRetryableAuthMeStatus(status: number): boolean {
   return status === 502 || status === 503 || status === 504;
 }
 
+function isSupersededAbort(error: unknown, epoch: number): boolean {
+  return (
+    epoch !== fetchEpoch &&
+    error instanceof DOMException &&
+    error.name === "AbortError"
+  );
+}
+
 async function fetchAuthMeOnce(signal: AbortSignal): Promise<AuthMeSessionResult> {
   const res = await fetch("/api/auth/me", { credentials: "include", signal });
   const data = await parseApiResponse(res);
@@ -79,30 +109,47 @@ async function fetchAuthMeOnce(signal: AbortSignal): Promise<AuthMeSessionResult
   return buildAuthMeSessionResult({ ok: res.ok, status: res.status, data: d });
 }
 
-async function fetchAuthMeWithRetry(): Promise<AuthMeSessionResult> {
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), AUTH_ME_FETCH_TIMEOUT_MS);
+async function fetchAuthMeWithRetry(
+  signal: AbortSignal,
+  epoch: number
+): Promise<AuthMeSessionResult> {
+  const timeoutController = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => timeoutController.abort(), AUTH_ME_FETCH_TIMEOUT_MS);
+  const onParentAbort = () => timeoutController.abort();
+  if (signal.aborted) {
+    timeoutController.abort();
+  } else {
+    signal.addEventListener("abort", onParentAbort, { once: true });
+  }
   try {
-    let result = await fetchAuthMeOnce(controller.signal);
+    let result = await fetchAuthMeOnce(timeoutController.signal);
     if (
       !result.ok &&
       result.status != null &&
       isRetryableAuthMeStatus(result.status)
     ) {
       await new Promise((resolve) => globalThis.setTimeout(resolve, AUTH_ME_RETRY_DELAY_MS));
-      result = await fetchAuthMeOnce(controller.signal);
+      result = await fetchAuthMeOnce(timeoutController.signal);
     }
     return result;
   } catch (error) {
+    if (isSupersededAbort(error, epoch)) {
+      return buildAuthMeSessionResult({
+        ok: false,
+        status: null,
+        data: null,
+        superseded: true,
+      });
+    }
     const isTimeout = error instanceof DOMException && error.name === "AbortError";
-    return {
+    return buildAuthMeSessionResult({
       ok: false,
       status: null,
       data: null,
       failureKind: isTimeout ? "timeout" : "network",
-      message: null,
-    };
+    });
   } finally {
+    signal.removeEventListener("abort", onParentAbort);
     globalThis.clearTimeout(timeoutId);
   }
 }
@@ -117,20 +164,40 @@ export async function fetchAuthMeSession(options?: { force?: boolean }): Promise
     return result;
   }
 
-  if (!options?.force && inFlight) {
+  if (options?.force) {
+    cached = null;
+    activeFetchController?.abort();
+    activeFetchController = null;
+    inFlight = null;
+  } else if (inFlight) {
     if (process.env.NODE_ENV !== "production") {
       console.debug("[perf] auth/me in-flight reused");
     }
     return inFlight;
   }
 
+  const epoch = ++fetchEpoch;
+  const controller = new AbortController();
+  activeFetchController = controller;
+  inFlightEpoch = epoch;
+
   inFlight = (async () => {
     try {
-      const result = await fetchAuthMeWithRetry();
-      cached = { ...result, at: Date.now() };
+      const result = await fetchAuthMeWithRetry(controller.signal, epoch);
+      if (result.superseded) {
+        return result;
+      }
+      if (epoch === fetchEpoch) {
+        cached = { ...result, at: Date.now() };
+      }
       return result;
     } finally {
-      inFlight = null;
+      if (inFlightEpoch === epoch) {
+        inFlight = null;
+      }
+      if (activeFetchController === controller) {
+        activeFetchController = null;
+      }
     }
   })();
 

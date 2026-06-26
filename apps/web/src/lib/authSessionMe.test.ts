@@ -95,4 +95,40 @@ describe("authSessionMe bootstrap recovery", () => {
     expect(recovered.ok).toBe(true);
     expect(recovered.data?.id).toBe("u1");
   });
+
+  it("supersedes stale in-flight fetch when a newer force fetch starts", async () => {
+    let resolveFirst!: (value: Response) => void;
+    let rejectFirst!: (reason?: unknown) => void;
+    const firstHang = new Promise<Response>((resolve, reject) => {
+      resolveFirst = resolve;
+      rejectFirst = reject;
+    });
+
+    vi.mocked(fetch).mockImplementation((_url, init) => {
+      const signal = init?.signal as AbortSignal | undefined;
+      if (signal) {
+        if (signal.aborted) {
+          return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
+        }
+        signal.addEventListener(
+          "abort",
+          () => rejectFirst(new DOMException("The operation was aborted.", "AbortError")),
+          { once: true }
+        );
+      }
+      return firstHang;
+    });
+
+    const stale = fetchAuthMeSession({ force: true });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ id: "u-new", facilityRoles: [{ facilityId: "f1" }] }, 200)
+    );
+    const latest = await fetchAuthMeSession({ force: true });
+    resolveFirst(jsonResponse({ error: "Session expirée." }, 401));
+
+    const staleResult = await stale;
+    expect(latest.ok).toBe(true);
+    expect(latest.data?.id).toBe("u-new");
+    expect(staleResult.superseded || staleResult.failureKind === "superseded").toBe(true);
+  });
 });

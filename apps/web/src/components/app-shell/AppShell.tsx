@@ -42,8 +42,10 @@ export type AppShellProps = {
   onAuthRecoveryRetry?: () => void;
   onAuthRecoveryLogin?: () => void;
   onAuthRecoveryReload?: () => void;
-  /** Redirecting to login after session expiry. */
+  /** Redirecting to login after session expiry (user must be cleared first). */
   redirectingToLogin?: boolean;
+  /** Render route children only when session is fully authenticated. */
+  sessionContentReady?: boolean;
   facilities: AppShellFacilityOption[];
   activeFacility: string;
   onFacilityChange: (facilityId: string) => void;
@@ -96,6 +98,7 @@ export function AppShell({
   onAuthRecoveryLogin,
   onAuthRecoveryReload,
   redirectingToLogin = false,
+  sessionContentReady = false,
   facilities,
   activeFacility,
   onFacilityChange,
@@ -446,8 +449,12 @@ export function AppShell({
                 <p style={{ margin: "12px 0 0 0", fontSize: 14, color: "#666" }}>{t("common.unauthorizedRedirect")}</p>
               ) : null}
             </div>
-          ) : (
+          ) : sessionContentReady ? (
             children
+          ) : (
+            <div className="p-3 md:p-4 lg:p-6">
+              <p style={{ margin: 0 }}>{t("common.loading")}</p>
+            </div>
           )}
         </main>
       </div>
