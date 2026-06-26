@@ -28,6 +28,10 @@ import {
 } from "@/constants/clinicalTemplates";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
+import {
+  auditMedicationOrderGovernancePermissions,
+  isChartAdminMedicationOrderItem,
+} from "@/lib/medicationOrderGovernancePermissions";
 import { CareProcedureClinicalTimeModal } from "@/components/orders/CareProcedureClinicalTimeModal";
 import {
   canAdjustCareProcedureClinicalTime,
@@ -6154,8 +6158,13 @@ function OrdersTab({
   /** Libellé CARE à injecter uniquement à l’ouverture via action rapide (évite de réutiliser un ancien preset avec une ordonnance). */
   const [carePresetForOpenModal, setCarePresetForOpenModal] = useState<string | null>(null);
   const isRn = roles.includes("RN") || roles.includes("ADMIN");
+  const governancePermission = useMemo(
+    () => auditMedicationOrderGovernancePermissions({ canPrescribeProp: canPrescribe, roles }),
+    [canPrescribe, roles]
+  );
+  const effectiveCanPrescribe = governancePermission.effectiveCanPrescribe;
   const canAdjustCareClinicalTime = canAdjustCareProcedureClinicalTime(roles);
-  const canUseRnOrderAuthority = roles.includes("RN") && !canPrescribe;
+  const canUseRnOrderAuthority = roles.includes("RN") && !effectiveCanPrescribe;
   const canCreateOrders = canPrescribe || canUseRnOrderAuthority;
   const canOpenProcedureDocumentation =
     canPrescribe || roles.includes("RN") || roles.includes("ADMIN");
@@ -6620,13 +6629,10 @@ function OrdersTab({
                               orderItem={it}
                               facilityId={facilityId}
                               encounterSigned={encounterSigned}
-                              canPrescribe={canPrescribe}
+                              canPrescribe={effectiveCanPrescribe}
                               ordersRaw={displayOrders}
                               orderEventsRaw={clinicalData?.orderEvents ?? []}
-                              marManagedInMar={
-                                String(it.catalogItemType ?? "") === "MEDICATION" &&
-                                String(it.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART"
-                              }
+                              marManagedInMar={isChartAdminMedicationOrderItem(it)}
                               itemStatus={String(it.status ?? "")}
                               onUpdated={() => {
                                 void onOrdersUpdated?.();

@@ -8,6 +8,7 @@ import {
   type MedicationOrderEditDto,
 } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
+import { normalizeMedicationOrderLifecycleStatus } from "@/lib/medicationOrderGovernancePermissions";
 import {
   discontinueAndReorderMedicationOrderItem,
   discontinueMedicationOrderItem,
@@ -57,11 +58,9 @@ export function MedicationOrderLifecyclePanel({
   const [editRoute, setEditRoute] = useState(orderItem.route ?? "");
   const [editNotes, setEditNotes] = useState(orderItem.notes ?? "");
 
-  const lifecycleStatus = (orderItem.medicationLifecycleStatus ?? "ACTIVE").toUpperCase();
+  const lifecycleStatus = normalizeMedicationOrderLifecycleStatus(orderItem.medicationLifecycleStatus);
   const disabled = encounterSigned || !canPrescribe;
-  const governanceDeferred = isMedicationOrderLifecycleGovernanceDeferred(
-    lifecycleStatus as Parameters<typeof isMedicationOrderLifecycleGovernanceDeferred>[0]
-  );
+  const governanceDeferred = isMedicationOrderLifecycleGovernanceDeferred(lifecycleStatus);
   const canHold = lifecycleStatus === "ACTIVE";
   const canResume = lifecycleStatus === "ON_HOLD";
   const canMutate =

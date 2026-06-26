@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import type { MedicationInfusionTimelineResult } from "@/features/emergency/erOrderLifecycleUi";
 import { resolveProviderMedicationOrderMarExecutionSummary } from "@/features/orders/providerMedicationOrderMarStatus";
 import { useI18n } from "@/lib/i18n";
+import { normalizeMedicationOrderLifecycleStatus } from "@/lib/medicationOrderGovernancePermissions";
 import { MedicationOrderLifecycleHistoryModal } from "@/components/orders/MedicationOrderLifecycleHistoryModal";
 import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
 import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
@@ -24,10 +25,10 @@ export type ProviderMedicationOrderGovernanceSectionProps = {
 };
 
 function toLifecyclePanelItem(item: Record<string, unknown>) {
+  const lifecycle = normalizeMedicationOrderLifecycleStatus(item.medicationLifecycleStatus);
   return {
     id: String(item.id ?? ""),
-    medicationLifecycleStatus:
-      typeof item.medicationLifecycleStatus === "string" ? item.medicationLifecycleStatus : null,
+    medicationLifecycleStatus: lifecycle,
     frequencyCode: typeof item.frequencyCode === "string" ? item.frequencyCode : null,
     strength: typeof item.strength === "string" ? item.strength : null,
     route: typeof item.route === "string" ? item.route : null,
@@ -86,7 +87,12 @@ export function ProviderMedicationOrderGovernanceSection({
   };
 
   return (
-    <div data-testid="provider-medication-order-governance" style={shellStyle}>
+    <div
+      data-testid="provider-medication-order-governance"
+      data-can-prescribe={canPrescribe ? "true" : "false"}
+      data-order-item-id={orderItemId}
+      style={shellStyle}
+    >
       <div
         style={{
           fontSize: 11,
@@ -127,22 +133,24 @@ export function ProviderMedicationOrderGovernanceSection({
         />
       ) : null}
 
-      <button
-        type="button"
-        data-testid="medication-lifecycle-view-history"
-        onClick={() => setHistoryOpen(true)}
-        style={{
-          marginTop: 8,
-          padding: "6px 10px",
-          borderRadius: 8,
-          border: "1px solid #cbd5e1",
-          background: "#fff",
-          fontSize: 12,
-          cursor: "pointer",
-        }}
-      >
-        {t("medicationOrderLifecycle.viewHistory")}
-      </button>
+      {canPrescribe ? (
+        <button
+          type="button"
+          data-testid="medication-lifecycle-view-history"
+          onClick={() => setHistoryOpen(true)}
+          style={{
+            marginTop: 8,
+            padding: "6px 10px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#fff",
+            fontSize: 12,
+            cursor: "pointer",
+          }}
+        >
+          {t("medicationOrderLifecycle.viewHistory")}
+        </button>
+      ) : null}
 
       <MedicationOrderLifecycleHistoryModal
         open={historyOpen}

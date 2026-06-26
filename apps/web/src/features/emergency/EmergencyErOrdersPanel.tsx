@@ -10,6 +10,11 @@ import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
 import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
+import {
+  auditMedicationOrderGovernancePermissions,
+  isMedicationOrderLineItem,
+  isStandingMedicationOrderLineActiveInOrders,
+} from "@/lib/medicationOrderGovernancePermissions";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
@@ -503,34 +508,41 @@ function renderErMedicationOrderLineActions(input: {
   infusionTimeline: ReturnType<typeof findMedicationInfusionTimelineFromOrderEvents>;
   lineBtns: React.ReactNode[];
   onUpdated: () => void;
+  placement?: "actions" | "inline";
 }): React.ReactNode {
-  if (input.orderType !== "MEDICATION") {
+  if (!isMedicationOrderLineItem(input.orderType, input.item)) {
     return input.lineBtns.length > 0 ? (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
     ) : null;
   }
-  if (String(input.item.catalogItemType ?? "") !== "MEDICATION") {
+  if (!isStandingMedicationOrderLineActiveInOrders(input.item) && !input.canPrescribe) {
     return input.lineBtns.length > 0 ? (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
     ) : null;
   }
 
+  const governance = (
+    <ProviderMedicationOrderGovernanceSection
+      orderId={input.orderId}
+      orderItem={input.item}
+      facilityId={input.facilityId}
+      canPrescribe={input.canPrescribe}
+      encounterSigned={input.encounterSigned}
+      ordersRaw={input.ordersRaw ?? []}
+      orderEventsRaw={input.orderEventsRaw ?? []}
+      marManagedInMar={input.marManagedInMar}
+      itemStatus={input.itemStatus}
+      infusionTimeline={input.infusionTimeline}
+      onUpdated={input.onUpdated}
+    />
+  );
+
+  if (input.placement === "inline") {
+    return governance;
+  }
+
   if (input.canPrescribe) {
-    return (
-      <ProviderMedicationOrderGovernanceSection
-        orderId={input.orderId}
-        orderItem={input.item}
-        facilityId={input.facilityId}
-        canPrescribe={input.canPrescribe}
-        encounterSigned={input.encounterSigned}
-        ordersRaw={input.ordersRaw ?? []}
-        orderEventsRaw={input.orderEventsRaw ?? []}
-        marManagedInMar={input.marManagedInMar}
-        itemStatus={input.itemStatus}
-        infusionTimeline={input.infusionTimeline}
-        onUpdated={input.onUpdated}
-      />
-    );
+    return governance;
   }
 
   return (
@@ -575,8 +587,13 @@ export function EmergencyErOrdersPanel({
 }) {
   const { t, language } = useI18n();
   const { userId: currentUserId, facilityTimeZone, facilityType } = useFacilityAndRoles();
+  const governancePermission = useMemo(
+    () => auditMedicationOrderGovernancePermissions({ canPrescribeProp: canPrescribe, roles }),
+    [canPrescribe, roles]
+  );
+  const effectiveCanPrescribe = governancePermission.effectiveCanPrescribe;
   const [layoutMode, setLayoutMode] = useState<DiagnosisOrdersLayoutMode>("desktopDense");
-  const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !canPrescribe;
+  const canUseRnOrderAuthority = hasAnyRole(roles, "RN") && !effectiveCanPrescribe;
   const [ordersRaw, setOrdersRaw] = useState<unknown[] | null>(null);
   const [orderEventsRaw, setOrderEventsRaw] = useState<unknown[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1083,7 +1100,7 @@ export function EmergencyErOrdersPanel({
   };
 
   /** Quels rôles peuvent ouvrir une commande depuis ce panneau : prescripteurs (PROVIDER/ADMIN) + RN (ordres infirmiers / verbaux). LAB/RADIOLOGY/PHARMACY/FRONT_DESK/BILLING : non. */
-  const canOpenOrderQuickActions = canPrescribe || hasAnyRole(roles, "RN");
+  const canOpenOrderQuickActions = effectiveCanPrescribe || hasAnyRole(roles, "RN");
   const canOpenProcedureDocumentation = canPrescribe || hasAnyRole(roles, "RN", "ADMIN");
 
   const openProcedureDocumentation = (step: ErProcedureLauncherStep) => {
@@ -1671,7 +1688,7 @@ export function EmergencyErOrdersPanel({
                                       orderType: o.type,
                                       orderId: o.id,
                                       item,
-                                      canPrescribe,
+                                      canPrescribe: effectiveCanPrescribe,
                                       encounterSigned,
                                       facilityId,
                                       ordersRaw,
@@ -1679,7 +1696,7 @@ export function EmergencyErOrdersPanel({
                                       marManagedInMar,
                                       itemStatus: st,
                                       infusionTimeline: infusionTl,
-                                      lineBtns: canPrescribe ? [] : lineBtns,
+                                      lineBtns: effectiveCanPrescribe ? [] : lineBtns,
                                       onUpdated: () => {
                                         setOrdersRefresh((r) => r + 1);
                                         void onRefetchEncounter();
@@ -1961,9 +1978,30 @@ export function EmergencyErOrdersPanel({
                                     {directionsLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
+                                    {isMedicationOrderLineItem(o.type, item)
+                                      ? renderErMedicationOrderLineActions({
+                                          orderType: o.type,
+                                          orderId: o.id,
+                                          item,
+                                          canPrescribe: effectiveCanPrescribe,
+                                          encounterSigned,
+                                          facilityId,
+                                          ordersRaw,
+                                          orderEventsRaw: orderEventsRaw,
+                                          marManagedInMar,
+                                          itemStatus: st,
+                                          infusionTimeline: infusionTl,
+                                          lineBtns: [],
+                                          placement: "inline",
+                                          onUpdated: () => {
+                                            setOrdersRefresh((r) => r + 1);
+                                            void onRefetchEncounter();
+                                          },
+                                        })
+                                      : null}
                                   </td>
                                   <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                                    <div style={{ marginBottom: !canPrescribe && lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>
+                                    <div style={{ marginBottom: !effectiveCanPrescribe && lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>
                                       {marManagedInMar ? (
                                         renderMedicationMarOrdersStatusSection(st, infusionTl, t)
                                       ) : isInfusionLifecycleMed && activeInfusion ? (
@@ -1986,24 +2024,9 @@ export function EmergencyErOrdersPanel({
                                         orderLineItemStatusLabel(st, t)
                                       )}
                                     </div>
-                                    {renderErMedicationOrderLineActions({
-                                      orderType: o.type,
-                                      orderId: o.id,
-                                      item,
-                                      canPrescribe,
-                                      encounterSigned,
-                                      facilityId,
-                                      ordersRaw,
-                                      orderEventsRaw: orderEventsRaw,
-                                      marManagedInMar,
-                                      itemStatus: st,
-                                      infusionTimeline: infusionTl,
-                                      lineBtns: canPrescribe ? [] : lineBtns,
-                                      onUpdated: () => {
-                                        setOrdersRefresh((r) => r + 1);
-                                        void onRefetchEncounter();
-                                      },
-                                    })}
+                                    {!effectiveCanPrescribe && lineBtns.length > 0 ? (
+                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
+                                    ) : null}
                                     {linePendingCancel ? (
                                       <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                                         <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 600, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d" }}>

@@ -11,12 +11,12 @@ export function isMedicationAdministrationManagedInMar(
   orderType: string,
   item: Record<string, unknown>
 ): boolean {
-  return (
-    MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY &&
-    orderType === "MEDICATION" &&
-    String(item.catalogItemType ?? "") === "MEDICATION" &&
-    String(item.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART"
-  );
+  if (!MEDICATION_ADMINISTRATION_EXECUTION_IN_MAR_ONLY) return false;
+  if (String(orderType ?? "").trim().toUpperCase() !== "MEDICATION") return false;
+  const catalogType = String(item.catalogItemType ?? "").trim().toUpperCase();
+  if (catalogType && catalogType !== "MEDICATION") return false;
+  const intent = String(item.medicationFulfillmentIntent ?? "").trim().toUpperCase();
+  return !intent || intent === "ADMINISTER_CHART";
 }
 
 export type MedicationOrderMarTerminalMarSlice = {

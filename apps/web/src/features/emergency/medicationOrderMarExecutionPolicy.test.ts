@@ -87,6 +87,11 @@ describe("Orders dashboard medication MAR execution policy (M1.8B.7K.5)", () => 
       })
     ).toBe(true);
     expect(
+      isMedicationAdministrationManagedInMar("MEDICATION", {
+        medicationFulfillmentIntent: "ADMINISTER_CHART",
+      })
+    ).toBe(true);
+    expect(
       isMedicationAdministrationManagedInMar("LAB", {
         catalogItemType: "LAB",
         medicationFulfillmentIntent: "ADMINISTER_CHART",
