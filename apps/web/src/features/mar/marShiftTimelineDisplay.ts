@@ -478,12 +478,15 @@ export function resolveMarShiftTimelineClinicalActionLabelKey(
 export function localizeMarShiftTimelineSecondaryText(
   item: Pick<
     MarShiftTimelineCellItem,
-    "secondaryText" | "medicationResponseFollowUp" | "medicationResponses"
+    "secondaryText" | "medicationResponseFollowUp" | "medicationResponses" | "respiratoryMedicationResponses"
   >,
   t: (key: string) => string,
   options?: { responseRequired?: boolean; locale?: "en" | "fr" }
 ): string | null {
-  const responseCount = item.medicationResponses?.length ?? 0;
+  const responseCount = Math.max(
+    item.medicationResponses?.length ?? 0,
+    item.respiratoryMedicationResponses?.length ?? 0
+  );
   const labelKey = resolveMarMedicationResponseTimelineLabelKey({
     secondaryText: item.secondaryText,
     medicationResponseFollowUp: item.medicationResponseFollowUp,

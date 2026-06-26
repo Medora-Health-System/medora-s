@@ -580,7 +580,7 @@ export function FacilityMarShiftTimeline({
                                     </div>
                                   </>
                                 ) : null}
-                                {responseBadge ? (
+                                {responseBadge && !(internalResponseSecondary && localizedSecondary) ? (
                                   <div
                                     data-testid="mar-shift-timeline-response-badge"
                                     title={
@@ -658,7 +658,8 @@ export function FacilityMarShiftTimeline({
                                   >
                                     {localizedSecondary}
                                   </div>
-                                ) : item.secondaryText?.trim() ? (
+                                ) : item.secondaryText?.trim() &&
+                                  !isMarMedicationResponseInternalSecondaryText(item.secondaryText) ? (
                                   <div
                                     data-testid="mar-shift-timeline-secondary-text"
                                     style={{ fontSize: 10, opacity: 0.9, marginTop: 2 }}

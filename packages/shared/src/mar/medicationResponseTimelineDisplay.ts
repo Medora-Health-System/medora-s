@@ -3,6 +3,10 @@
 export const MAR_MEDICATION_RESPONSE_INTERNAL_SECONDARY_TEXT = new Set([
   "AWAITING_REASSESSMENT",
   "REASSESSMENT_COMPLETED",
+  "RESPONSE_COMPLETED",
+  "RESPONSE_RECOMMENDED",
+  "RESPONSE_REQUIRED",
+  "RESPONSE_OVERDUE",
 ]);
 
 export type MarMedicationResponseTimelineLabelInput = {
@@ -32,7 +36,26 @@ export function resolveMarMedicationResponseTimelineLabelKey(
     input.medicationResponseFollowUp?.responseCount ?? 0
   );
 
-  if (secondary === "REASSESSMENT_COMPLETED" || (count > 0 && secondary !== "AWAITING_REASSESSMENT")) {
+  if (secondary === "RESPONSE_COMPLETED" || secondary === "REASSESSMENT_COMPLETED") {
+    const effectiveCount = Math.max(count, 1);
+    return effectiveCount > 1
+      ? "marMedicationResponse.timeline.completedCount"
+      : "marMedicationResponse.timeline.completed";
+  }
+
+  if (secondary === "RESPONSE_OVERDUE") {
+    return "marMedicationResponse.timeline.overdue";
+  }
+
+  if (secondary === "RESPONSE_REQUIRED") {
+    return "marMedicationResponse.timeline.required";
+  }
+
+  if (secondary === "RESPONSE_RECOMMENDED") {
+    return "marMedicationResponse.timeline.recommended";
+  }
+
+  if (count > 0 && secondary !== "AWAITING_REASSESSMENT") {
     return count > 1
       ? "marMedicationResponse.timeline.completedCount"
       : "marMedicationResponse.timeline.completed";

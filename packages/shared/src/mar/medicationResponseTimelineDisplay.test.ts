@@ -10,7 +10,38 @@ describe("medicationResponseTimelineDisplay", () => {
   it("detects internal secondary text tokens", () => {
     expect(isMarMedicationResponseInternalSecondaryText("AWAITING_REASSESSMENT")).toBe(true);
     expect(isMarMedicationResponseInternalSecondaryText("REASSESSMENT_COMPLETED")).toBe(true);
+    expect(isMarMedicationResponseInternalSecondaryText("RESPONSE_COMPLETED")).toBe(true);
+    expect(isMarMedicationResponseInternalSecondaryText("RESPONSE_RECOMMENDED")).toBe(true);
+    expect(isMarMedicationResponseInternalSecondaryText("RESPONSE_REQUIRED")).toBe(true);
+    expect(isMarMedicationResponseInternalSecondaryText("RESPONSE_OVERDUE")).toBe(true);
     expect(isMarMedicationResponseInternalSecondaryText("650 mg PO")).toBe(false);
+  });
+
+  it("maps respiratory RESPONSE_COMPLETED to completed label key without pain response count", () => {
+    expect(
+      resolveMarMedicationResponseTimelineLabelKey({
+        secondaryText: "RESPONSE_COMPLETED",
+        responseCount: 0,
+      })
+    ).toBe("marMedicationResponse.timeline.completed");
+  });
+
+  it("maps RESPONSE_RECOMMENDED and RESPONSE_OVERDUE to nurse-friendly keys", () => {
+    expect(
+      resolveMarMedicationResponseTimelineLabelKey({
+        secondaryText: "RESPONSE_RECOMMENDED",
+      })
+    ).toBe("marMedicationResponse.timeline.recommended");
+    expect(
+      resolveMarMedicationResponseTimelineLabelKey({
+        secondaryText: "RESPONSE_OVERDUE",
+      })
+    ).toBe("marMedicationResponse.timeline.overdue");
+    expect(
+      resolveMarMedicationResponseTimelineLabelKey({
+        secondaryText: "RESPONSE_REQUIRED",
+      })
+    ).toBe("marMedicationResponse.timeline.required");
   });
 
   it("maps awaiting reassessment to recommended label key", () => {
