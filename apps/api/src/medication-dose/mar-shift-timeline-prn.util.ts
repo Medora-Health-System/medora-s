@@ -2,9 +2,12 @@ import {
   buildMarPrnTimelineCellDisplay,
   buildPrnTimelineAvailabilityProjections,
   dedupeMarPrnTimelineRowCells,
+  finalizeMarShiftTimelinePrnRowCells,
   formatGovernedRoomDisplay,
   formatMarPrnFrequencyLabel,
+  isPrnAdminProjectionKey,
   isPrnMedicationOrderClassification,
+  isPrnNextProjectionKey,
   prnTimelineCellPriority,
   resolveMarPrnTimelineColumnKey,
   resolveMarShiftTimelineColumnKey,
@@ -70,7 +73,7 @@ export function appendMarShiftTimelineCellItem(
   cell.items.push(item);
 }
 
-/** Stable dedupe key for PRN row cells (K.10B.11A). */
+/** Stable dedupe key for PRN row cells — prn-admin / prn-next source-of-truth contract. */
 export function resolveMarShiftTimelinePrnCellDedupeKey(
   item: MarShiftTimelineCellItem
 ): string {
@@ -82,12 +85,21 @@ export function resolveMarShiftTimelinePrnCellDedupeKey(
       secondaryText: item.secondaryText,
     })
   ) {
-    return `terminal:${item.orderItemId}:${item.administeredAt ?? item.medicationDoseInstanceId ?? "unknown"}`;
+    const adminId = item.medicationAdministrationId?.trim();
+    if (adminId) {
+      return `prn-admin:${item.orderItemId}:${adminId}`;
+    }
+    return `prn-admin:${item.orderItemId}:${item.administeredAt ?? item.medicationDoseInstanceId ?? "unknown"}`;
   }
   if (item.medicationDoseInstanceId?.trim()) {
     return `dose:${item.orderItemId}:${item.medicationDoseInstanceId}`;
   }
   return `fallback:${item.orderItemId}:${item.scheduledAt}`;
+}
+
+/** Enforce PRN source-of-truth: historical administrations + one next-eligible slot. */
+export function finalizeMarShiftTimelinePrnRow(row: MarShiftTimelineRowWithKind): void {
+  row.cells = finalizeMarShiftTimelinePrnRowCells(row.cells);
 }
 
 /** Replace PRN cell with the same dedupe key; keep terminal and other projections (K.10B.11A). */
@@ -191,13 +203,12 @@ export function marShiftTimelinePrnRowHasTerminalCell(
   orderItemId: string,
   administeredAtIso: string
 ): boolean {
-  const terminalKey = `terminal:${orderItemId}:${administeredAtIso}`;
   return row.cells.some((cell) =>
     cell.items.some(
       (item) =>
         item.isPrnBand === true &&
         item.orderItemId === orderItemId &&
-        (item.prnProjectionKey === terminalKey ||
+        (isPrnAdminProjectionKey(item.prnProjectionKey) ||
           (item.doseStatus === "COMPLETED" &&
             item.administeredAt === administeredAtIso &&
             item.readOnly === true))
@@ -519,7 +530,7 @@ export function appendMarShiftTimelinePrnAvailabilityProjections(input: {
     upsertMarShiftTimelinePrnCellItem(input.row, built.columnKey, built.item);
   }
 
-  input.row.cells = dedupeMarPrnTimelineRowCells(input.row.cells);
+  input.row.cells = finalizeMarShiftTimelinePrnRowCells(input.row.cells);
 }
 
 export { isPrnMedicationOrderClassification };

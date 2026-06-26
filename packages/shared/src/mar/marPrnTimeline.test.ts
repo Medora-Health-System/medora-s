@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMarPrnTimelineCellDisplay,
+  buildPrnAdminProjectionKey,
+  buildPrnNextProjectionKey,
   buildPrnTimelineAvailabilityProjections,
   dedupeMarPrnTimelineCells,
+  dedupeMarPrnTimelineRowCells,
   formatMarPrnFrequencyLabel,
   isMarPrnCurrentlyEligible,
   isPrnAdministrationBeforeNextEligible,
@@ -71,19 +74,19 @@ describe("marPrnTimeline (K.10B.8A PRN row)", () => {
     ).toBe(true);
   });
 
-  it("dedupeMarPrnTimelineCells keeps one projection per orderItemId", () => {
+  it("dedupeMarPrnTimelineCells keeps one prn-next per orderItemId", () => {
     const deduped = dedupeMarPrnTimelineCells([
       {
         orderItemId: "oi-1",
         isPrnBand: true,
-        prnProjectionKey: "oi-1:a",
+        prnProjectionKey: "prn-next:oi-1:2026-06-12T21:54:00.000Z",
         doseStatus: "DUE",
         scheduledAt: "2026-06-12T21:54:00.000Z",
       },
       {
         orderItemId: "oi-1",
         isPrnBand: true,
-        prnProjectionKey: "oi-1:b",
+        prnProjectionKey: "prn-next:oi-1:2026-06-12T15:54:00.000Z",
         doseStatus: "DUE",
         scheduledAt: "2026-06-12T15:54:00.000Z",
       },
@@ -216,7 +219,7 @@ describe("marPrnTimeline availability projections (K.10B.11A / H9J)", () => {
     });
     expect(projections).toHaveLength(1);
     expect(projections[0]?.eligibleAt).toBe("2026-06-11T21:00:00.000Z");
-    expect(projections[0]?.projectionKey).toBe("oi-1:2026-06-11T21:00:00.000Z");
+    expect(projections[0]?.projectionKey).toBe("prn-next:oi-1:2026-06-11T21:00:00.000Z");
   });
 
   it("Q6H PRN last given 09:54 shows next eligible 15:54 only", () => {
@@ -354,5 +357,74 @@ describe("marShiftTimelineStatusColors (K.10B.8B)", () => {
         isPrnBand: true,
       })
     ).toBe("held");
+  });
+});
+
+describe("PRN timeline source of truth", () => {
+  it("dedupe keeps prn-admin historical alongside prn-next availability", () => {
+    const adminKey = buildPrnAdminProjectionKey("oi-tylenol", "mar-1");
+    const nextKey = buildPrnNextProjectionKey("oi-tylenol", "2026-06-12T16:29:00.000Z");
+    const deduped = dedupeMarPrnTimelineCells([
+      {
+        orderItemId: "oi-tylenol",
+        isPrnBand: true,
+        prnProjectionKey: adminKey,
+        doseStatus: "COMPLETED",
+        readOnly: true,
+        scheduledAt: "2026-06-12T10:29:00.000Z",
+      },
+      {
+        orderItemId: "oi-tylenol",
+        isPrnBand: true,
+        prnProjectionKey: nextKey,
+        doseStatus: "DUE",
+        scheduledAt: "2026-06-12T16:29:00.000Z",
+      },
+      {
+        orderItemId: "oi-tylenol",
+        isPrnBand: true,
+        medicationDoseInstanceId: "dose-orphan",
+        doseStatus: "DUE",
+        scheduledAt: "2026-06-12T16:00:00.000Z",
+      },
+    ]);
+    expect(deduped).toHaveLength(2);
+    expect(deduped.some((i) => i.prnProjectionKey === adminKey)).toBe(true);
+    expect(deduped.some((i) => i.prnProjectionKey === nextKey)).toBe(true);
+  });
+
+  it("dedupeMarPrnTimelineRowCells keeps one prn-next across columns", () => {
+    const nextKey = buildPrnNextProjectionKey("oi-zofran", "2026-06-12T17:32:00.000Z");
+    const rows = dedupeMarPrnTimelineRowCells([
+      {
+        columnKey: "04P",
+        items: [
+          {
+            orderItemId: "oi-zofran",
+            isPrnBand: true,
+            prnProjectionKey: buildPrnNextProjectionKey("oi-zofran", "2026-06-12T16:32:00.000Z"),
+            doseStatus: "DUE",
+            scheduledAt: "2026-06-12T16:32:00.000Z",
+          },
+        ],
+      },
+      {
+        columnKey: "05P",
+        items: [
+          {
+            orderItemId: "oi-zofran",
+            isPrnBand: true,
+            prnProjectionKey: nextKey,
+            doseStatus: "DUE",
+            scheduledAt: "2026-06-12T17:32:00.000Z",
+          },
+        ],
+      },
+    ]);
+    const zofranItems = rows.flatMap((r) => r.items).filter((i) => i.orderItemId === "oi-zofran");
+    expect(zofranItems).toHaveLength(1);
+    expect(zofranItems[0]?.prnProjectionKey).toBe(
+      buildPrnNextProjectionKey("oi-zofran", "2026-06-12T16:32:00.000Z")
+    );
   });
 });

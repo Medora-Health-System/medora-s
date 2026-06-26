@@ -450,6 +450,63 @@ export function shouldRetainPrnTimelineItem(input: {
 /** Alias for placement helper used by K.10B.11 specs. */
 export const resolvePrnTimelinePlacementInstant = resolveMarPrnTimelinePlacementInstant;
 
+export type MarPrnTimelineDedupeItem = {
+  orderItemId: string;
+  isPrnBand?: boolean;
+  prnProjectionKey?: string | null;
+  medicationDoseInstanceId?: string | null;
+  doseStatus: string;
+  readOnly?: boolean;
+  secondaryText?: string | null;
+  scheduledAt?: string | null;
+};
+
+/** PRN timeline projection key — completed administration (MedicationAdministration row). */
+export function buildPrnAdminProjectionKey(
+  orderItemId: string,
+  medicationAdministrationId: string
+): string {
+  return `prn-admin:${orderItemId}:${medicationAdministrationId}`;
+}
+
+/** PRN timeline projection key — next eligible availability slot. */
+export function buildPrnNextProjectionKey(orderItemId: string, nextEligibleAt: string): string {
+  return `prn-next:${orderItemId}:${nextEligibleAt}`;
+}
+
+export function isPrnAdminProjectionKey(key: string | null | undefined): boolean {
+  const trimmed = key?.trim();
+  return trimmed?.startsWith("prn-admin:") === true || trimmed?.startsWith("terminal:") === true;
+}
+
+export function isPrnNextProjectionKey(key: string | null | undefined): boolean {
+  return key?.trim().startsWith("prn-next:") === true;
+}
+
+export function isPrnHistoricalTimelineCell(item: MarPrnTimelineDedupeItem): boolean {
+  if (isPrnAdminProjectionKey(item.prnProjectionKey)) return true;
+  if (
+    resolvePrnTimelineTerminalDisplay({
+      doseStatus: item.doseStatus,
+      readOnly: item.readOnly,
+      secondaryText: item.secondaryText,
+    })
+  ) {
+    return true;
+  }
+  const status = item.doseStatus.trim().toUpperCase();
+  return status === "COMPLETED" && item.readOnly === true;
+}
+
+export function isPrnOrphanDueTimelineCell(item: MarPrnTimelineDedupeItem): boolean {
+  if (item.isPrnBand !== true) return false;
+  if (isPrnHistoricalTimelineCell(item) || isPrnNextProjectionKey(item.prnProjectionKey)) {
+    return false;
+  }
+  const status = item.doseStatus.trim().toUpperCase();
+  return status === "DUE" || status === "PLANNED" || status === "IN_PROGRESS";
+}
+
 export function prnTimelineCellPriority(input: {
   doseStatus: string;
   readOnly?: boolean;
@@ -459,7 +516,8 @@ export function prnTimelineCellPriority(input: {
 }): number {
   const terminal = resolvePrnTimelineTerminalDisplay(input);
   if (terminal) return 300;
-  if (input.prnProjectionKey?.startsWith("terminal:")) return 300;
+  if (isPrnAdminProjectionKey(input.prnProjectionKey)) return 300;
+  if (isPrnNextProjectionKey(input.prnProjectionKey)) return 175;
   if (input.prnProjectionKey?.trim()) return 175;
   const status = input.doseStatus.trim().toUpperCase();
   if (status === "DUE" || status === "IN_PROGRESS" || status === "PLANNED") return 200;
@@ -594,7 +652,7 @@ export function buildPrnTimelineAvailabilityProjections(input: {
 
   return [
     {
-      projectionKey: `${input.orderItemId}:${eligibleAt}`,
+      projectionKey: buildPrnNextProjectionKey(input.orderItemId, eligibleAt),
       orderItemId: input.orderItemId,
       eligibleAt,
       doseStatus: "DUE" as const,
@@ -603,18 +661,7 @@ export function buildPrnTimelineAvailabilityProjections(input: {
   ].slice(0, max);
 }
 
-export type MarPrnTimelineDedupeItem = {
-  orderItemId: string;
-  isPrnBand?: boolean;
-  prnProjectionKey?: string | null;
-  medicationDoseInstanceId?: string | null;
-  doseStatus: string;
-  readOnly?: boolean;
-  secondaryText?: string | null;
-  scheduledAt?: string | null;
-};
-
-/** H9J — keep at most one PRN projection per orderItemId (earliest next eligible). */
+/** H9J — keep historical administrations; one next-eligible projection per order item. */
 export function dedupeMarPrnTimelineCells<T extends MarPrnTimelineDedupeItem>(
   items: readonly T[]
 ): T[] {
@@ -632,39 +679,43 @@ export function dedupeMarPrnTimelineCells<T extends MarPrnTimelineDedupeItem>(
   }
 
   for (const [, group] of prnByOrder) {
-    const nonProjections = group.filter((g) => !g.prnProjectionKey?.trim());
-    const projections = group.filter((g) => g.prnProjectionKey?.trim());
+    const historical = group.filter((g) => isPrnHistoricalTimelineCell(g));
+    const nextAvailability = group.filter((g) => isPrnNextProjectionKey(g.prnProjectionKey));
+    const orphans = group.filter((g) => isPrnOrphanDueTimelineCell(g));
 
-    result.push(...nonProjections);
+    result.push(...historical);
 
-    if (projections.length <= 1) {
-      result.push(...projections);
+    if (nextAvailability.length > 0) {
+      const sorted = [...nextAvailability].sort((a, b) => {
+        const aMs = parseInstant(a.scheduledAt) ?? Number.POSITIVE_INFINITY;
+        const bMs = parseInstant(b.scheduledAt) ?? Number.POSITIVE_INFINITY;
+        return aMs - bMs;
+      });
+      result.push(sorted[0]!);
       continue;
     }
 
-    const sorted = [...projections].sort((a, b) => {
-      const aMs = parseInstant(a.scheduledAt) ?? Number.POSITIVE_INFINITY;
-      const bMs = parseInstant(b.scheduledAt) ?? Number.POSITIVE_INFINITY;
-      return aMs - bMs;
-    });
-    result.push(sorted[0]!);
+    // Legacy path: no structured next slot — keep at most one orphan DUE row.
+    if (orphans.length > 0) {
+      result.push(orphans[0]!);
+    }
   }
 
   return result;
 }
 
-/** H9J — cross-column dedupe: one PRN projection per orderItemId on a timeline row. */
+/** H9J — cross-column dedupe: one prn-next per order item; all prn-admin historical kept. */
 export function dedupeMarPrnTimelineRowCells<
   T extends MarPrnTimelineDedupeItem & { columnKey?: string },
 >(cells: { columnKey: string; items: T[] }[]): { columnKey: string; items: T[] }[] {
-  const seenProjectionOrderItems = new Set<string>();
+  const seenNextByOrderItem = new Set<string>();
   const nextCells: { columnKey: string; items: T[] }[] = [];
 
   for (const cell of cells) {
     const dedupedItems = dedupeMarPrnTimelineCells(cell.items).filter((item) => {
-      if (item.isPrnBand !== true || !item.prnProjectionKey?.trim()) return true;
-      if (seenProjectionOrderItems.has(item.orderItemId)) return false;
-      seenProjectionOrderItems.add(item.orderItemId);
+      if (item.isPrnBand !== true || !isPrnNextProjectionKey(item.prnProjectionKey)) return true;
+      if (seenNextByOrderItem.has(item.orderItemId)) return false;
+      seenNextByOrderItem.add(item.orderItemId);
       return true;
     });
     if (dedupedItems.length > 0) {
@@ -673,4 +724,11 @@ export function dedupeMarPrnTimelineRowCells<
   }
 
   return nextCells;
+}
+
+/** Final PRN row normalization — source-of-truth contract enforcement. */
+export function finalizeMarShiftTimelinePrnRowCells<
+  T extends MarPrnTimelineDedupeItem,
+>(cells: { columnKey: string; items: T[] }[]): { columnKey: string; items: T[] }[] {
+  return dedupeMarPrnTimelineRowCells(cells);
 }

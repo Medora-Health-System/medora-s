@@ -19,6 +19,7 @@ import {
   resolveMarShiftTimelineMedicationLabel,
   resolveMarShiftTimelineTerminalOutcome,
   resolvePrnTimelineTerminalDisplay,
+  buildPrnAdminProjectionKey,
   buildMarPainResponseTimelineProjection,
   buildMedicationFollowUpProjection,
   parseMarMedicationResponseNotes,
@@ -869,9 +870,10 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         prnFrequencyLabel,
         prnLastGivenAt: prnTiming.prnLastGivenAt,
         prnNextEligibleAt: prnTiming.prnNextEligibleAt,
-        prnProjectionKey: isPrnTerminal
-          ? `terminal:${orderItem.id}:${enrichment?.administeredAt ?? terminalMar?.administeredAt?.toISOString() ?? pseudo.scheduledAt.toISOString()}`
-          : null,
+        prnProjectionKey:
+          isPrnTerminal && medicationAdministrationId
+            ? buildPrnAdminProjectionKey(orderItem.id, medicationAdministrationId)
+            : null,
         continuousFluidStatus: fluidEnrichment?.continuousFluidStatus ?? null,
         fluidRateLabel: fluidEnrichment?.fluidRateLabel ?? null,
         fluidVolumeInfusedMl: fluidEnrichment?.fluidVolumeInfusedMl ?? null,

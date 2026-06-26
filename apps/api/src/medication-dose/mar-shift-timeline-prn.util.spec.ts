@@ -1,10 +1,12 @@
 import {
   collectVisiblePrnOrderItemIds,
   createEmptyMarShiftTimelineRow,
+  finalizeMarShiftTimelinePrnRow,
   marShiftTimelinePrnRowHasOrderItem,
   resolveMarShiftTimelinePrnCellDedupeKey,
   upsertMarShiftTimelinePrnCellItem,
 } from "./mar-shift-timeline-prn.util";
+import { buildPrnAdminProjectionKey, buildPrnNextProjectionKey } from "@medora/shared";
 import type { MarShiftTimelineCellItem } from "./mar-shift-timeline.service";
 
 function prnItem(orderItemId: string, doseInstanceId: string): MarShiftTimelineCellItem {
@@ -111,14 +113,14 @@ describe("mar-shift-timeline-prn.util (K.10B.8B deduplication)", () => {
     upsertMarShiftTimelinePrnCellItem(prnRow, "09A", {
       ...prnItem("oi-tylenol", "dose-due"),
       doseStatus: "DUE",
-      prnProjectionKey: "oi-tylenol:2026-06-12T09:00:00.000Z",
+      prnProjectionKey: buildPrnNextProjectionKey("oi-tylenol", "2026-06-12T09:00:00.000Z"),
     });
     upsertMarShiftTimelinePrnCellItem(prnRow, "09A", {
       ...prnItem("oi-tylenol", "dose-done"),
       doseStatus: "COMPLETED",
       readOnly: true,
       administeredAt: "2026-06-12T09:16:00.000Z",
-      prnProjectionKey: "terminal:oi-tylenol:2026-06-12T09:16:00.000Z",
+      prnProjectionKey: buildPrnAdminProjectionKey("oi-tylenol", "mar-1"),
       tertiaryText: "GIVEN 09:16 EP",
     });
     const items = prnRow.cells.flatMap((cell) => cell.items);
@@ -136,7 +138,7 @@ describe("mar-shift-timeline-prn.util (K.10B.8B deduplication)", () => {
       assignedNurseUserId: null,
       rowKind: "PRN",
     });
-    const projectionKey = "oi-tylenol:2026-06-12T03:00:00.000Z";
+    const projectionKey = buildPrnNextProjectionKey("oi-tylenol", "2026-06-12T03:00:00.000Z");
     upsertMarShiftTimelinePrnCellItem(prnRow, "03A", {
       ...prnItem("oi-tylenol", ""),
       doseStatus: "DUE",
@@ -169,14 +171,15 @@ describe("mar-shift-timeline-prn.util (K.10B.8B deduplication)", () => {
       doseStatus: "COMPLETED",
       readOnly: true,
       administeredAt: "2026-06-11T22:00:00.000Z",
-      prnProjectionKey: "terminal:oi-tylenol:2026-06-11T22:00:00.000Z",
+      prnProjectionKey: buildPrnAdminProjectionKey("oi-tylenol", "mar-hist"),
     });
     upsertMarShiftTimelinePrnCellItem(prnRow, "04A", {
       ...prnItem("oi-tylenol", ""),
       doseStatus: "DUE",
-      prnProjectionKey: "oi-tylenol:2026-06-12T04:00:00.000Z",
+      prnProjectionKey: buildPrnNextProjectionKey("oi-tylenol", "2026-06-12T04:00:00.000Z"),
       prnNextEligibleAt: "2026-06-12T04:00:00.000Z",
     });
+    finalizeMarShiftTimelinePrnRow(prnRow);
     expect(prnRow.cells.flatMap((cell) => cell.items)).toHaveLength(2);
     expect(marShiftTimelinePrnRowHasOrderItem(prnRow, "oi-tylenol")).toBe(true);
   });
