@@ -8,8 +8,8 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
-import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
 import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
+import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
 import { EmergencyProcedureLauncherModal } from "@/features/emergency/EmergencyProcedureLauncherModal";
 import type { OrderModalTab } from "@/components/orders/createOrderModal/types";
 import { MedoraCard, MedoraCardInner } from "@/components/medora-card";
@@ -489,54 +489,57 @@ function careProcedureCompletedSubLabel(
   return tr("orderEvent.careProcedureCompleted");
 }
 
-function renderErMedicationOrderLifecycleSection(input: {
+function renderErMedicationOrderLineActions(input: {
   orderType: string;
+  orderId: string;
   item: Record<string, unknown>;
   canPrescribe: boolean;
   encounterSigned: boolean;
   facilityId: string;
   ordersRaw: unknown[] | null;
+  orderEventsRaw: unknown[] | null;
+  marManagedInMar: boolean;
+  itemStatus: string;
+  infusionTimeline: ReturnType<typeof findMedicationInfusionTimelineFromOrderEvents>;
+  lineBtns: React.ReactNode[];
   onUpdated: () => void;
 }): React.ReactNode {
-  if (input.orderType !== "MEDICATION") return null;
-  if (String(input.item.catalogItemType ?? "") !== "MEDICATION") return null;
+  if (input.orderType !== "MEDICATION") {
+    return input.lineBtns.length > 0 ? (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
+    ) : null;
+  }
+  if (String(input.item.catalogItemType ?? "") !== "MEDICATION") {
+    return input.lineBtns.length > 0 ? (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{input.lineBtns}</div>
+    ) : null;
+  }
+
+  if (input.canPrescribe) {
+    return (
+      <ProviderMedicationOrderGovernanceSection
+        orderId={input.orderId}
+        orderItem={input.item}
+        facilityId={input.facilityId}
+        canPrescribe={input.canPrescribe}
+        encounterSigned={input.encounterSigned}
+        ordersRaw={input.ordersRaw ?? []}
+        orderEventsRaw={input.orderEventsRaw ?? []}
+        marManagedInMar={input.marManagedInMar}
+        itemStatus={input.itemStatus}
+        infusionTimeline={input.infusionTimeline}
+        onUpdated={input.onUpdated}
+      />
+    );
+  }
+
   return (
-    <div data-testid="er-medication-order-lifecycle-section" style={{ marginTop: 6 }}>
+    <>
       <MedicationOrderLifecycleReadOnlyBadge item={input.item} orders={input.ordersRaw ?? []} />
-      {input.canPrescribe ? (
-        <MedicationOrderLifecyclePanel
-          orderItem={{
-            id: String(input.item.id ?? ""),
-            medicationLifecycleStatus:
-              typeof input.item.medicationLifecycleStatus === "string"
-                ? input.item.medicationLifecycleStatus
-                : null,
-            frequencyCode:
-              typeof input.item.frequencyCode === "string" ? input.item.frequencyCode : null,
-            strength: typeof input.item.strength === "string" ? input.item.strength : null,
-            route: typeof input.item.route === "string" ? input.item.route : null,
-            notes: typeof input.item.notes === "string" ? input.item.notes : null,
-            quantity:
-              typeof input.item.quantity === "number"
-                ? input.item.quantity
-                : input.item.quantity != null
-                  ? Number(input.item.quantity)
-                  : null,
-            catalogItemId:
-              typeof input.item.catalogItemId === "string" ? input.item.catalogItemId : null,
-            manualLabel: typeof input.item.manualLabel === "string" ? input.item.manualLabel : null,
-            medicationFulfillmentIntent:
-              typeof input.item.medicationFulfillmentIntent === "string"
-                ? input.item.medicationFulfillmentIntent
-                : null,
-          }}
-          facilityId={input.facilityId}
-          encounterSigned={input.encounterSigned}
-          canPrescribe={input.canPrescribe}
-          onUpdated={input.onUpdated}
-        />
+      {input.lineBtns.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{input.lineBtns}</div>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -1660,27 +1663,28 @@ export function EmergencyErOrdersPanel({
                                         {o.type === "CARE"
                                           ? renderCareProcedureBillingReadiness(item, st)
                                           : null}
-                                        {renderErMedicationOrderLifecycleSection({
-                                          orderType: o.type,
-                                          item,
-                                          canPrescribe,
-                                          encounterSigned,
-                                          facilityId,
-                                          ordersRaw,
-                                          onUpdated: () => {
-                                            setOrdersRefresh((r) => r + 1);
-                                            void onRefetchEncounter();
-                                          },
-                                        })}
                                       </>
                                     }
                                     statusSection={activeStatusSection}
                                     titleSection={authorityLine}
-                                    actions={
-                                      lineBtns.length > 0 ? (
-                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
-                                      ) : null
-                                    }
+                                    actions={renderErMedicationOrderLineActions({
+                                      orderType: o.type,
+                                      orderId: o.id,
+                                      item,
+                                      canPrescribe,
+                                      encounterSigned,
+                                      facilityId,
+                                      ordersRaw,
+                                      orderEventsRaw: orderEventsRaw,
+                                      marManagedInMar,
+                                      itemStatus: st,
+                                      infusionTimeline: infusionTl,
+                                      lineBtns: canPrescribe ? [] : lineBtns,
+                                      onUpdated: () => {
+                                        setOrdersRefresh((r) => r + 1);
+                                        void onRefetchEncounter();
+                                      },
+                                    })}
                                     cancelControl={activeCancelControl}
                                     pendingCancelSection={activePendingCancelSection}
                                     highlightPending={linePendingCancel}
@@ -1957,21 +1961,9 @@ export function EmergencyErOrdersPanel({
                                     {directionsLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
-                                    {renderErMedicationOrderLifecycleSection({
-                                      orderType: o.type,
-                                      item,
-                                      canPrescribe,
-                                      encounterSigned,
-                                      facilityId,
-                                      ordersRaw,
-                                      onUpdated: () => {
-                                        setOrdersRefresh((r) => r + 1);
-                                        void onRefetchEncounter();
-                                      },
-                                    })}
                                   </td>
                                   <td style={{ ...ordersTableTdBorder, padding: "8px 8px", color: "#334155", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                                    <div style={{ marginBottom: lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>
+                                    <div style={{ marginBottom: !canPrescribe && lineBtns.length > 0 || marManagedInMar ? 6 : 0 }}>
                                       {marManagedInMar ? (
                                         renderMedicationMarOrdersStatusSection(st, infusionTl, t)
                                       ) : isInfusionLifecycleMed && activeInfusion ? (
@@ -1994,9 +1986,24 @@ export function EmergencyErOrdersPanel({
                                         orderLineItemStatusLabel(st, t)
                                       )}
                                     </div>
-                                    {lineBtns.length > 0 ? (
-                                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{lineBtns}</div>
-                                    ) : null}
+                                    {renderErMedicationOrderLineActions({
+                                      orderType: o.type,
+                                      orderId: o.id,
+                                      item,
+                                      canPrescribe,
+                                      encounterSigned,
+                                      facilityId,
+                                      ordersRaw,
+                                      orderEventsRaw: orderEventsRaw,
+                                      marManagedInMar,
+                                      itemStatus: st,
+                                      infusionTimeline: infusionTl,
+                                      lineBtns: canPrescribe ? [] : lineBtns,
+                                      onUpdated: () => {
+                                        setOrdersRefresh((r) => r + 1);
+                                        void onRefetchEncounter();
+                                      },
+                                    })}
                                     {linePendingCancel ? (
                                       <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
                                         <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9999, fontSize: 11, fontWeight: 600, color: "#92400e", background: "#fef3c7", border: "1px solid #fcd34d" }}>

@@ -10,12 +10,11 @@ function readSource(relativePath: string): string {
 }
 
 describe("medicationOrderLifecycleCompletion (MEDUI.ORDERS.MEDICATION_ORDER_LIFECYCLE_COMPLETION.1)", () => {
-  it("wires lifecycle panel into ER orders panel for medication lines", () => {
+  it("wires provider governance into ER orders panel for medication lines", () => {
     const source = readSource("src/features/emergency/EmergencyErOrdersPanel.tsx");
-    expect(source).toContain("MedicationOrderLifecyclePanel");
-    expect(source).toContain("renderErMedicationOrderLifecycleSection");
+    expect(source).toContain("ProviderMedicationOrderGovernanceSection");
+    expect(source).toContain("renderErMedicationOrderLineActions");
     expect(source).toContain("encounterSigned");
-    expect(source).toContain('data-testid="er-medication-order-lifecycle-section"');
   });
 
   it("passes encounterSigned from ED chart and workspace views", () => {

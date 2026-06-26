@@ -27,7 +27,7 @@ import {
   COMMON_VISIT_REASONS,
 } from "@/constants/clinicalTemplates";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
-import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
+import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
 import { CareProcedureClinicalTimeModal } from "@/components/orders/CareProcedureClinicalTimeModal";
 import {
   canAdjustCareProcedureClinicalTime,
@@ -6614,15 +6614,27 @@ function OrdersTab({
                               {formatEncounterChromeDateTime(it.pharmacyDispenseRecord.dispensedAt, language)}
                             </div>
                           ) : null}
-                          {order.type === "MEDICATION" && canPrescribe ? (
-                            <MedicationOrderLifecyclePanel
+                          {order.type === "MEDICATION" ? (
+                            <ProviderMedicationOrderGovernanceSection
+                              orderId={String(order.id)}
                               orderItem={it}
                               facilityId={facilityId}
                               encounterSigned={encounterSigned}
                               canPrescribe={canPrescribe}
+                              ordersRaw={displayOrders}
+                              orderEventsRaw={clinicalData?.orderEvents ?? []}
+                              marManagedInMar={
+                                String(it.catalogItemType ?? "") === "MEDICATION" &&
+                                String(it.medicationFulfillmentIntent ?? "") === "ADMINISTER_CHART"
+                              }
+                              itemStatus={String(it.status ?? "")}
                               onUpdated={() => {
                                 void onOrdersUpdated?.();
                                 void onRefetchEncounter?.();
+                                void clinicalData?.refresh("ordersAndEvents", {
+                                  reason: "mutation",
+                                  force: true,
+                                });
                               }}
                             />
                           ) : null}

@@ -9915,6 +9915,11 @@ export default {
     medicationOutcomeRefused: "Refusé — ligne clôturée",
     medicationOutcomeNotAvailable: "Non disponible — ligne clôturée",
     medicationOutcomeMdChanged: "Ordonnance modifiée par le médecin — ligne clôturée",
+    discontinued: "Ordonnance arrêtée",
+    onHold: "Ordonnance suspendue",
+    resumed: "Ordonnance reprise",
+    modified: "Ordonnance modifiée",
+    superseded: "Ordonnance remplacée",
   },
   erTriageComplaintTemplates: {
     helper: "Modèles de motifs fréquents — cliquez pour préremplir le motif (et le récit triage si vide).",
@@ -11780,6 +11785,16 @@ export default {
     resumeConfirm: "Reprendre cette ordonnance suspendue ?",
     errorGeneric: "Impossible de modifier l'ordonnance.",
     signedEncounterBlocked: "Consultation signée — modification impossible.",
+    providerGovernanceTitle: "Gouvernance prescripteur",
+    marExecutionStatus: "Exécution MAR",
+    viewHistory: "Voir l'historique du cycle de vie",
+    historyTitle: "Historique du cycle de vie",
+    historyEmpty: "Aucun événement de cycle de vie enregistré.",
+    historyPerformedAt: "Date",
+    historyPerformedBy: "Par",
+    activeInfusionStopFirst:
+      "Perfusion en cours — arrêt au MAR requis avant l'arrêt de l'ordonnance.",
+    close: "Fermer",
     actions: {
       edit: "Modifier l'ordre",
       discontinue: "Arrêter l'ordre",

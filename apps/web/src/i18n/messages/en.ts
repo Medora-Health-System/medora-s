@@ -9928,6 +9928,11 @@ export default {
     medicationOutcomeRefused: "Refused — order line closed",
     medicationOutcomeNotAvailable: "Not available — order line closed",
     medicationOutcomeMdChanged: "Order changed by physician — order line closed",
+    discontinued: "Order discontinued",
+    onHold: "Order on hold",
+    resumed: "Order resumed",
+    modified: "Order modified",
+    superseded: "Order superseded",
   },
   erTriageComplaintTemplates: {
     helper: "",
@@ -11771,6 +11776,16 @@ export default {
     resumeConfirm: "Resume this held order?",
     errorGeneric: "Unable to update the order.",
     signedEncounterBlocked: "Signed encounter — changes are blocked.",
+    providerGovernanceTitle: "Provider order governance",
+    marExecutionStatus: "MAR execution",
+    viewHistory: "View lifecycle history",
+    historyTitle: "Lifecycle history",
+    historyEmpty: "No lifecycle events recorded.",
+    historyPerformedAt: "Date",
+    historyPerformedBy: "By",
+    activeInfusionStopFirst:
+      "Infusion in progress — stop in MAR before discontinuing the order.",
+    close: "Close",
     actions: {
       edit: "Edit order",
       discontinue: "Discontinue order",
