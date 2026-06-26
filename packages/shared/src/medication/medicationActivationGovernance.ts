@@ -20,6 +20,7 @@ import { ENTERPRISE_GASTROENTEROLOGY_FORMULARY_BY_CODE } from "./enterpriseGastr
 import { ENTERPRISE_PEDIATRICS_FORMULARY_BY_CODE } from "./enterprisePediatricsFormularyManifest.js";
 import { ENTERPRISE_SURGERY_PERIOPERATIVE_FORMULARY_BY_CODE } from "./enterpriseSurgeryPerioperativeFormularyManifest.js";
 import { ENTERPRISE_CONTROLLED_SUBSTANCE_FORMULARY_BY_CODE } from "./enterpriseControlledSubstanceFormularyManifest.js";
+import { isPulmonaryMarEligibleCatalogCode } from "./pulmonaryMarWorkflowGovernance.js";
 
 /** Universal activation governance status (enterprise framework). */
 export type MedicationActivationGovernanceStatus =
@@ -126,6 +127,7 @@ export function buildActivationGovernanceRecord(
   const marPathwayExists =
     record.marEnabled ||
     Boolean(enterprise?.administrationType && SAFE_MAR_ADMIN_TYPES.has(enterprise.administrationType)) ||
+    isPulmonaryMarEligibleCatalogCode(record.catalogCode) ||
     record.source === "haiti";
 
   const status = mapLegacyOrderabilityToActivationStatus(record, enterprise);

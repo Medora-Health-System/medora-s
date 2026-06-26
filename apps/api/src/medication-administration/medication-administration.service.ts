@@ -22,6 +22,7 @@ import type {
   MedicationAdministrationClinicalCorrectionDto,
   MarMedicationResponseDocumentDto,
   MarAllergyReviewDismissDto,
+  RespiratoryMedicationResponseDocumentDto,
 } from "@medora/shared";
 import {
   buildMedicationAdministrationCandidate,
@@ -76,6 +77,10 @@ import {
   parseMarMedicationResponseNotes,
   collectMedicationResponseAuthorUserIds,
   enrichParsedMarMedicationResponsesAuthor,
+  enrichParsedRespiratoryMedicationResponsesAuthor,
+  buildRespiratoryMedicationResponseNotes,
+  parseRespiratoryMedicationResponseNotes,
+  shouldUseRespiratoryMedicationResponsePathway,
 } from "@medora/shared";
 import { assertMedicationAdminEffectiveTimeActor } from "../common/workflow/order-item-action-guards.util";
 import {
@@ -430,7 +435,19 @@ export class MedicationAdministrationService {
     });
 
     const allResponses = rows.flatMap((row) => parseMarMedicationResponseNotes(row.notes));
-    const authorUserIds = collectMedicationResponseAuthorUserIds(allResponses);
+    const allRespiratoryResponses = rows.flatMap((row) =>
+      parseRespiratoryMedicationResponseNotes(row.notes)
+    );
+    const authorUserIds = [
+      ...new Set([
+        ...collectMedicationResponseAuthorUserIds(allResponses),
+        ...collectMedicationResponseAuthorUserIds(
+          allRespiratoryResponses.map((r) => ({
+            documentedByUserId: r.documentedByUserId ?? null,
+          }))
+        ),
+      ]),
+    ];
     const authorUsers =
       authorUserIds.length > 0
         ? await this.prisma.user.findMany({
@@ -445,6 +462,10 @@ export class MedicationAdministrationService {
         parseMarMedicationResponseNotes(r.notes),
         authorUsersById
       );
+      const respiratoryMedicationResponses = enrichParsedRespiratoryMedicationResponsesAuthor(
+        parseRespiratoryMedicationResponseNotes(r.notes),
+        authorUsersById
+      );
       return {
         ...r,
         marAction: resolveMedicationMarActionFromStorage({
@@ -452,6 +473,7 @@ export class MedicationAdministrationService {
           notes: r.notes,
         }),
         medicationResponses,
+        respiratoryMedicationResponses,
       };
     });
   }
@@ -2243,6 +2265,19 @@ export class MedicationAdministrationService {
       throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
     }
 
+    if (
+      shouldUseRespiratoryMedicationResponsePathway({
+        medicationLabel: row.medicationLabelSnapshot,
+        genericName: row.orderItem?.manualSecondaryText,
+        manualLabel: row.orderItem?.manualLabel,
+        manualSecondaryText: row.orderItem?.manualSecondaryText,
+      })
+    ) {
+      throw new BadRequestException(
+        "Cette administration requiert la documentation de réponse respiratoire."
+      );
+    }
+
     const actor = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, firstName: true, lastName: true, email: true },
@@ -2336,6 +2371,147 @@ export class MedicationAdministrationService {
       notes: updated.notes,
       responseCode: dto.responseCode,
       allergyReview,
+    };
+  }
+
+  /**
+   * Append-only respiratory medication response documentation (MEDUI.MEDICATION.PULMONARY_RUNTIME_UI_AND_INFUSION_COMPLETION.1).
+   */
+  async documentRespiratoryMedicationResponse(
+    encounterId: string,
+    facilityId: string,
+    medicationAdministrationId: string,
+    dto: RespiratoryMedicationResponseDocumentDto,
+    userId: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const roleCodes = await this.roleCodesForFacility(userId, facilityId);
+    if (!roleCodes.includes(RoleCode.RN) && !roleCodes.includes(RoleCode.PROVIDER) && !roleCodes.includes(RoleCode.ADMIN)) {
+      throw new BadRequestException("Rôle non autorisé pour documenter une réponse respiratoire.");
+    }
+
+    const row = await this.prisma.medicationAdministration.findFirst({
+      where: { id: medicationAdministrationId, encounterId, facilityId },
+      include: {
+        encounter: true,
+        orderItem: {
+          select: {
+            manualLabel: true,
+            manualSecondaryText: true,
+            frequencyCode: true,
+            notes: true,
+          },
+        },
+      },
+    });
+    if (!row) {
+      throw new NotFoundException("Administration introuvable.");
+    }
+
+    assertEncounterNotSigned(row.encounter);
+    if (row.encounter.status !== "OPEN") {
+      throw new BadRequestException("La consultation doit être ouverte pour documenter une réponse.");
+    }
+
+    const marAction = resolveMedicationMarActionFromStorage({
+      marAction: row.marAction ?? null,
+      notes: row.notes,
+    });
+    if (marAction !== "administered") {
+      throw new BadRequestException("Seules les administrations complétées peuvent recevoir une réponse.");
+    }
+    if (isMarShiftTimelineHoldNotes(row.notes) || isMarMissedDoseNotes(row.notes)) {
+      throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
+    }
+
+    if (
+      !shouldUseRespiratoryMedicationResponsePathway({
+        medicationLabel: row.medicationLabelSnapshot,
+        genericName: row.orderItem?.manualSecondaryText,
+        manualLabel: row.orderItem?.manualLabel,
+        manualSecondaryText: row.orderItem?.manualSecondaryText,
+      })
+    ) {
+      throw new BadRequestException(
+        "Cette administration n'est pas admissible à la documentation de réponse respiratoire."
+      );
+    }
+
+    const administeredAtIso = row.effectiveAdministeredAt?.toISOString() ?? row.administeredAt.toISOString();
+    if (
+      !isMarMedicationResponseDocumentationEligible({
+        marAction,
+        administeredAt: administeredAtIso,
+        doseStatus: "COMPLETED",
+      })
+    ) {
+      throw new BadRequestException("Cette administration n'est pas admissible à la documentation de réponse.");
+    }
+
+    const actor = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+    });
+    if (!actor) {
+      throw new BadRequestException("Utilisateur introuvable.");
+    }
+    const authorIdentity = resolveMedicationResponseAuthorIdentity(actor);
+
+    const notesResult = buildRespiratoryMedicationResponseNotes(row.notes, {
+      responseCode: dto.responseCode,
+      responseDetail: dto.responseDetail ?? null,
+      responseTime: dto.responseTime?.toISOString() ?? null,
+      documentedAt: new Date().toISOString(),
+      respiratoryRateBefore: dto.respiratoryRateBefore ?? null,
+      respiratoryRateAfter: dto.respiratoryRateAfter ?? null,
+      oxygenSaturationBefore: dto.oxygenSaturationBefore ?? null,
+      oxygenSaturationAfter: dto.oxygenSaturationAfter ?? null,
+      wheezingBefore: dto.wheezingBefore ?? null,
+      wheezingAfter: dto.wheezingAfter ?? null,
+      workOfBreathing: dto.workOfBreathing ?? null,
+      nebulizerCompletion: dto.nebulizerCompletion ?? null,
+      mdiSpacerUsed: dto.mdiSpacerUsed ?? null,
+      treatmentRefused: dto.treatmentRefused ?? null,
+      treatmentInterrupted: dto.treatmentInterrupted ?? null,
+      noAdverseReaction: dto.noAdverseReaction ?? null,
+      patientTolerated: dto.patientTolerated ?? null,
+      documentedBy: authorIdentity.documentedByDisplayName,
+      documentedByDisplayName: authorIdentity.documentedByDisplayName,
+      documentedByInitials: authorIdentity.documentedByInitials,
+      documentedByUserId: authorIdentity.documentedByUserId,
+      documentedByName: authorIdentity.documentedByName,
+    });
+    if (!notesResult.ok) {
+      throw new BadRequestException(notesResult.message);
+    }
+
+    const updated = await this.prisma.medicationAdministration.update({
+      where: { id: medicationAdministrationId },
+      data: { notes: notesResult.notes },
+    });
+
+    await this.audit.log(AuditAction.UPDATE, "MEDICATION_ADMINISTRATION", {
+      userId,
+      facilityId,
+      patientId: row.patientId,
+      encounterId: row.encounterId,
+      entityId: medicationAdministrationId,
+      ip,
+      userAgent,
+      critical: false,
+      metadata: {
+        medicationAdministrationId,
+        encounterId: row.encounterId,
+        responseCode: dto.responseCode,
+        source: "MAR_RESPIRATORY_MEDICATION_RESPONSE",
+      },
+    });
+
+    return {
+      id: updated.id,
+      notes: updated.notes,
+      responseCode: dto.responseCode,
     };
   }
 

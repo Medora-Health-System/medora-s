@@ -162,6 +162,28 @@ export type MarShiftTimelineCellItem = {
     painBefore: number | null;
     painAfter: number | null;
   }>;
+  respiratoryMedicationResponses?: Array<{
+    responseCode: string;
+    responseDetail: string | null;
+    responseTime: string | null;
+    documentedAt: string;
+    respiratoryRateBefore?: number | null;
+    respiratoryRateAfter?: number | null;
+    oxygenSaturationBefore?: number | null;
+    oxygenSaturationAfter?: number | null;
+    wheezingBefore?: boolean | null;
+    wheezingAfter?: boolean | null;
+    workOfBreathing?: string | null;
+    nebulizerCompletion?: boolean | null;
+    mdiSpacerUsed?: boolean | null;
+    treatmentRefused?: boolean | null;
+    treatmentInterrupted?: boolean | null;
+    noAdverseReaction?: boolean | null;
+    patientTolerated?: boolean | null;
+    documentedBy?: string | null;
+    documentedByInitials?: string | null;
+    documentedByDisplayName?: string | null;
+  }>;
   medicationResponseBadge?: {
     label: "RESPONSE";
     displayLabel: string;

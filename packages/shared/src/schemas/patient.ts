@@ -851,6 +851,30 @@ export const medicationInfusionStopDtoSchema = z.object({
 
 export type MedicationInfusionStopDto = z.infer<typeof medicationInfusionStopDtoSchema>;
 
+/** POST /orders/items/:id/infusion/rate-change — continuous infusion rate change (MEDUI pulmonary/infusion completion). */
+export const medicationInfusionRateChangeDtoSchema = z.object({
+  actionAt: z.coerce.date().optional(),
+  currentRate: z.preprocess(emptyStrToUndefined, z.string().trim().max(120)),
+  previousRate: z.preprocess(emptyStrToUndefined, z.string().trim().max(120).optional()),
+  rateChangeReason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+  titrationGoalType: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+  titrationGoalValueBefore: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+  titrationGoalValueAfter: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+  titrationGoalTarget: z.preprocess(emptyStrToUndefined, z.string().trim().max(64).optional()),
+});
+
+export type MedicationInfusionRateChangeDto = z.infer<typeof medicationInfusionRateChangeDtoSchema>;
+
+/** POST /orders/items/:id/infusion/pause|restart — continuous infusion pause/restart. */
+export const medicationInfusionPauseRestartDtoSchema = z.object({
+  actionAt: z.coerce.date().optional(),
+  reason: z.preprocess(emptyStrToUndefined, z.string().trim().max(500).optional()),
+  notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),
+});
+
+export type MedicationInfusionPauseRestartDto = z.infer<typeof medicationInfusionPauseRestartDtoSchema>;
+
 /** POST /orders/items/:id/fluid/start — continuous IV fluid start (K.10B.8). */
 export const continuousFluidStartDtoSchema = z.object({
   notes: z.preprocess(emptyStrToUndefined, z.string().max(8000).optional()),

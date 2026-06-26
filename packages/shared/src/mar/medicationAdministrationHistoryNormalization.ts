@@ -39,6 +39,10 @@ import {
   parseMarMedicationResponseNotes,
   sortMarMedicationResponsesNewestFirst,
 } from "./marMedicationResponseGovernance.js";
+import {
+  parseRespiratoryMedicationResponseNotes,
+  sortRespiratoryMedicationResponsesNewestFirst,
+} from "./respiratoryMedicationResponseNotes.js";
 import { resolveMedicationResponseDocumentedByLabel } from "./medicationResponseDocumentedByDisplay.js";
 import { listMedicationResponseSideEffectKeys } from "./medicationResponseSummaryFormat.js";
 import {
@@ -457,6 +461,51 @@ export function normalizeMedicationAdministrationHistoryResponseRows(input: {
     medicationResponsePainTrend: response.painResponseTrend,
     medicationResponseDocumentedBy: resolveMedicationResponseDocumentedByLabel(response),
     medicationResponseSideEffectKeys: listMedicationResponseSideEffectKeys(response).join(","),
+    originalAdministrationIdForResponse: input.administrationId,
+    readOnly: true,
+  }));
+}
+
+/** Expand MAR row into RESPIRATORY_MEDICATION_RESPONSE_DOCUMENTED history entries (newest first). */
+export function normalizeMedicationAdministrationHistoryRespiratoryResponseRows(input: {
+  marEntry: MedicationAdministrationHistoryEntry;
+  administrationId: string;
+  notes?: string | null;
+}): MedicationAdministrationHistoryEntry[] {
+  const responses = sortRespiratoryMedicationResponsesNewestFirst(
+    parseRespiratoryMedicationResponseNotes(input.notes)
+  );
+  if (responses.length === 0) return [];
+
+  return responses.map((response, index) => ({
+    id: `${input.administrationId}:respiratory-response:${index}:${response.documentedAt}`,
+    source: "MAR" as const,
+    encounterId: input.marEntry.encounterId,
+    orderItemId: input.marEntry.orderItemId,
+    medicationLabel: input.marEntry.medicationLabel,
+    doseDisplay: input.marEntry.doseDisplay,
+    route: input.marEntry.route,
+    eventType: "MEDICATION_RESPONSE_DOCUMENTED" as const,
+    eventAt: response.responseTime ?? response.documentedAt,
+    documentedAt: response.documentedAt,
+    performedByDisplay: input.marEntry.performedByDisplay,
+    performedByRole: input.marEntry.performedByRole,
+    reasonCode: response.responseCode,
+    reasonDetail: response.responseDetail ?? null,
+    isPrn: input.marEntry.isPrn,
+    prnIndication: input.marEntry.prnIndication,
+    infusionPhase: null,
+    medicationDoseInstanceId: input.marEntry.medicationDoseInstanceId,
+    medicationResponseCode: response.responseCode,
+    medicationResponseDetail: response.responseDetail ?? null,
+    medicationResponseTime: response.responseTime ?? null,
+    medicationResponseDocumentedBy: resolveMedicationResponseDocumentedByLabel({
+      documentedBy: response.documentedBy ?? null,
+      documentedByDisplayName: response.documentedByDisplayName ?? null,
+      documentedByInitials: response.documentedByInitials ?? null,
+      documentedByName: response.documentedByName ?? null,
+      documentedByUserId: response.documentedByUserId ?? null,
+    }),
     originalAdministrationIdForResponse: input.administrationId,
     readOnly: true,
   }));

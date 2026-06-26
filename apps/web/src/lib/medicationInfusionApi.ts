@@ -76,3 +76,55 @@ export function stopMedicationInfusion(
     body: JSON.stringify(body),
   });
 }
+
+/** POST /orders/items/:id/infusion/rate-change */
+export function changeMedicationInfusionRate(
+  orderItemId: string,
+  facilityId: string,
+  payload: {
+    currentRate: string;
+    previousRate?: string;
+    rateChangeReason?: string;
+    notes?: string;
+    actionAt?: string;
+    titrationGoalType?: string;
+    titrationGoalValueBefore?: string;
+    titrationGoalValueAfter?: string;
+    titrationGoalTarget?: string;
+  }
+): Promise<unknown> {
+  return apiFetch(`/orders/items/${orderItemId}/infusion/rate-change`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+/** POST /orders/items/:id/infusion/pause */
+export function pauseMedicationInfusion(
+  orderItemId: string,
+  facilityId: string,
+  payload?: { reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return apiFetch(`/orders/items/${orderItemId}/infusion/pause`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload ?? {}),
+  });
+}
+
+/** POST /orders/items/:id/infusion/restart */
+export function restartMedicationInfusion(
+  orderItemId: string,
+  facilityId: string,
+  payload?: { reason?: string; notes?: string; actionAt?: string }
+): Promise<unknown> {
+  return apiFetch(`/orders/items/${orderItemId}/infusion/restart`, {
+    method: "POST",
+    facilityId,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload ?? {}),
+  });
+}

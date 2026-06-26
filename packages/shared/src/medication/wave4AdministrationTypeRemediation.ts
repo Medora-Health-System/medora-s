@@ -2,6 +2,8 @@
  * M1.7C.6 — Wave 4 administration-type remediation (generator, validation, seed guard).
  */
 
+import { isPulmonaryMarEligibleCatalogCode } from "./pulmonaryMarWorkflowGovernance.js";
+
 export const WAVE4_SAFE_MAR_ADMIN_TYPES = new Set([
   "ORAL",
   "IM",
@@ -191,6 +193,7 @@ export function isWave4ClinicalReviewRequired(catalogCode: string): boolean {
 }
 
 export function isWave4KeepBlockedRespiratory(catalogCode: string): boolean {
+  if (isPulmonaryMarEligibleCatalogCode(catalogCode)) return false;
   return WAVE4_KEEP_BLOCKED_RESPIRATORY_CATALOG_CODES.has(catalogCode);
 }
 

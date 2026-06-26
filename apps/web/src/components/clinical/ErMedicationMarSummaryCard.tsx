@@ -9,6 +9,11 @@ import {
   buildErEdSummaryMedicationResponseRows,
 } from "@/features/emergency/erEdSummaryMedicationMar";
 import { MedicationResponseSummaryCard } from "@/components/mar/MedicationResponseSummaryCard";
+import { RespiratoryMedicationResponseSummaryCard } from "@/components/mar/RespiratoryMedicationResponseSummaryCard";
+import type {
+  ParsedMarMedicationResponse,
+  ParsedRespiratoryMedicationResponse,
+} from "@medora/shared";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 
 export function ErMedicationMarSummaryCard({
@@ -211,12 +216,21 @@ export function ErMedicationMarSummaryCard({
               <div>
                 {t("emergencyVisitSummaryPanel.medResponseAdministered")}: {row.administeredAt}
               </div>
-              <MedicationResponseSummaryCard
-                response={row.response}
-                formatInstant={formatInstant}
-                t={t}
-                compact
-              />
+              {row.responseKind === "respiratory" ? (
+                <RespiratoryMedicationResponseSummaryCard
+                  response={row.response as ParsedRespiratoryMedicationResponse}
+                  formatInstant={formatInstant}
+                  t={t}
+                  compact
+                />
+              ) : (
+                <MedicationResponseSummaryCard
+                  response={row.response as ParsedMarMedicationResponse}
+                  formatInstant={formatInstant}
+                  t={t}
+                  compact
+                />
+              )}
             </div>
           ))}
         </div>

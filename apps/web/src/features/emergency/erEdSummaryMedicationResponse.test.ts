@@ -70,7 +70,12 @@ describe("erEdSummaryMedicationResponse", () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.medicationName).toContain("Ketorolac");
-    expect(resolveMedicationResponseDocumentedByLabel(rows[0]!.response)).toBe("EP");
+    expect(rows[0]?.responseKind).toBe("pain");
+    expect(
+      resolveMedicationResponseDocumentedByLabel(
+        rows[0]!.response as import("@medora/shared").ParsedMarMedicationResponse
+      )
+    ).toBe("EP");
   });
 
   it("includes opioid response row", () => {

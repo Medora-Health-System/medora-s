@@ -51,6 +51,7 @@ import { listActivePediatricsProviderOrderingCatalogCodes } from "./pediatricsPr
 import { listActiveSurgeryPerioperativeProviderOrderingCatalogCodes } from "./surgeryPerioperativeProviderOrderingActivation.js";
 import { listActivePainManagementProviderOrderingCatalogCodes } from "./painManagementProviderOrderingActivation.js";
 import { listActiveControlledSubstanceProviderOrderingCatalogCodes } from "./controlledSubstanceProviderOrderingActivation.js";
+import { listActivePulmonaryProviderOrderingCatalogCodes } from "./pulmonaryProviderOrderingActivation.js";
 
 export type ProductionOrderabilityFinalDecision =
   | "PRODUCTION_ORDERABILITY_CERTIFIED"
@@ -193,6 +194,7 @@ const DOMAIN_LISTS: Array<{ domain: string; list: () => readonly string[] }> = [
   { domain: "surgery", list: listActiveSurgeryPerioperativeProviderOrderingCatalogCodes },
   { domain: "painManagement", list: listActivePainManagementProviderOrderingCatalogCodes },
   { domain: "controlledSubstance", list: listActiveControlledSubstanceProviderOrderingCatalogCodes },
+  { domain: "pulmonary", list: listActivePulmonaryProviderOrderingCatalogCodes },
   { domain: "tranche1Pilot", list: listActiveTranche1PilotCatalogCodes },
 ];
 

@@ -18,6 +18,7 @@ import {
   medicationAdministrationEffectiveTimeDtoSchema,
   medicationAdministrationClinicalCorrectionDtoSchema,
   marMedicationResponseDocumentDtoSchema,
+  respiratoryMedicationResponseDocumentDtoSchema,
   marAllergyReviewDismissDtoSchema,
 } from "@medora/shared";
 import { assertZodBody } from "../common/http/zod-parse";
@@ -177,6 +178,34 @@ export class MedicationAdministrationController {
     }
     const dto = assertZodBody(marMedicationResponseDocumentDtoSchema.safeParse(body));
     return this.medicationAdministrationService.documentMedicationResponse(
+      encounterId,
+      facilityId,
+      administrationId,
+      dto,
+      userId,
+      req.ip,
+      req.headers["user-agent"]
+    );
+  }
+
+  @Post("encounters/:encounterId/medication-administrations/:administrationId/respiratory-response")
+  @RequireRoles(RoleCode.RN, RoleCode.PROVIDER, RoleCode.ADMIN)
+  async documentRespiratoryMedicationResponse(
+    @Param("encounterId") encounterId: string,
+    @Param("administrationId") administrationId: string,
+    @Body() body: unknown,
+    @Req() req: any
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    if (!facilityId) {
+      throw new BadRequestException("Facility ID required");
+    }
+    const userId = req.user?.userId;
+    if (!userId) {
+      throw new ForbiddenException("Authentification requise");
+    }
+    const dto = assertZodBody(respiratoryMedicationResponseDocumentDtoSchema.safeParse(body));
+    return this.medicationAdministrationService.documentRespiratoryMedicationResponse(
       encounterId,
       facilityId,
       administrationId,

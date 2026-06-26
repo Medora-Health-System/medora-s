@@ -752,6 +752,8 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     secondaryText = painResponseProjection.secondaryText;
 
     const medicationResponses = painResponseProjection.medicationResponses ?? [];
+    const respiratoryMedicationResponses =
+      painResponseProjection.respiratoryMedicationResponses ?? [];
     const medicationResponseBadge = painResponseProjection.medicationResponseBadge;
     const medicationResponseFollowUp = painResponseProjection.medicationResponseFollowUp;
     const medicationResponseAdverseEscalation = medicationResponses.some(
@@ -846,6 +848,31 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
           }),
         medicationAdministrationId,
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
+        respiratoryMedicationResponses:
+          respiratoryMedicationResponses.length > 0
+            ? respiratoryMedicationResponses.map((response) => ({
+                responseCode: response.responseCode,
+                responseDetail: response.responseDetail ?? null,
+                responseTime: response.responseTime ?? null,
+                documentedAt: response.documentedAt,
+                respiratoryRateBefore: response.respiratoryRateBefore ?? null,
+                respiratoryRateAfter: response.respiratoryRateAfter ?? null,
+                oxygenSaturationBefore: response.oxygenSaturationBefore ?? null,
+                oxygenSaturationAfter: response.oxygenSaturationAfter ?? null,
+                wheezingBefore: response.wheezingBefore ?? null,
+                wheezingAfter: response.wheezingAfter ?? null,
+                workOfBreathing: response.workOfBreathing ?? null,
+                nebulizerCompletion: response.nebulizerCompletion ?? null,
+                mdiSpacerUsed: response.mdiSpacerUsed ?? null,
+                treatmentRefused: response.treatmentRefused ?? null,
+                treatmentInterrupted: response.treatmentInterrupted ?? null,
+                noAdverseReaction: response.noAdverseReaction ?? null,
+                patientTolerated: response.patientTolerated ?? null,
+                documentedBy: response.documentedBy ?? null,
+                documentedByInitials: response.documentedByInitials ?? null,
+                documentedByDisplayName: response.documentedByDisplayName ?? null,
+              }))
+            : undefined,
         medicationResponseBadge,
         medicationResponseFollowUp,
         medicationResponseAdverseEscalation,

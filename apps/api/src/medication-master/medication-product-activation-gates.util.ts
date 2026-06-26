@@ -12,6 +12,7 @@ import {
   deriveRuntimeActivationState,
   type ProductRuntimeActivationMeta,
 } from "./medication-product-runtime-activation.util";
+import { isPulmonaryMarEligibleCatalogCode } from "@medora/shared";
 
 export type ActivationGateBlockerCode =
   | "DUPLICATE_GOVERNANCE_UNRESOLVED"
@@ -131,6 +132,7 @@ export function evaluateEnableOrderSearchGate(params: {
 export function evaluateEnableMarGate(params: {
   runtime: ProductRuntimeActivationMeta;
   administrationType: string;
+  catalogCode?: string | null;
   confirmExactSourcePreserved: boolean;
   confirmDuplicateGovernanceResolved: boolean;
   note: string;
@@ -143,7 +145,13 @@ export function evaluateEnableMarGate(params: {
   if (!params.runtime.orderSearchEnabled) blockers.push("ORDER_SEARCH_NOT_ENABLED");
   if (params.runtime.marEnabled) blockers.push("ALREADY_MAR_ENABLED");
   const admin = params.administrationType.trim().toUpperCase();
-  if (!SAFE_MAR_ADMIN_TYPES.has(admin)) blockers.push("ADMINISTRATION_ROUTE_UNSAFE");
+  const pulmonaryInhalationEligible =
+    admin === "INHALATION" &&
+    Boolean(params.catalogCode?.trim()) &&
+    isPulmonaryMarEligibleCatalogCode(params.catalogCode);
+  if (!SAFE_MAR_ADMIN_TYPES.has(admin) && !pulmonaryInhalationEligible) {
+    blockers.push("ADMINISTRATION_ROUTE_UNSAFE");
+  }
   return { allowed: blockers.length === 0, blockers: [...new Set(blockers)] };
 }
 

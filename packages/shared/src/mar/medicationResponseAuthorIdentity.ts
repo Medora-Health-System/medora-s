@@ -2,6 +2,7 @@
 
 import { derivePersonInitials } from "./medicationResponseDocumentedByDisplay.js";
 import type { ParsedMarMedicationResponse } from "./marMedicationResponseGovernance.js";
+import type { ParsedRespiratoryMedicationResponse } from "./respiratoryMedicationResponseGovernance.js";
 
 export type MedicationResponseAuthorUserRecord = {
   id: string;
@@ -103,6 +104,25 @@ export function enrichParsedMarMedicationResponsesAuthor(
 ): ParsedMarMedicationResponse[] {
   if (responses.length === 0 || usersById.size === 0) return responses;
   return responses.map((response) => enrichParsedMarMedicationResponseAuthor(response, usersById));
+}
+
+export function enrichParsedRespiratoryMedicationResponseAuthor(
+  response: ParsedRespiratoryMedicationResponse,
+  usersById: ReadonlyMap<string, MedicationResponseAuthorUserRecord>
+): ParsedRespiratoryMedicationResponse {
+  const enriched = enrichParsedMarMedicationResponseAuthor(
+    response as ParsedMarMedicationResponse,
+    usersById
+  );
+  return enriched as ParsedRespiratoryMedicationResponse;
+}
+
+export function enrichParsedRespiratoryMedicationResponsesAuthor(
+  responses: ParsedRespiratoryMedicationResponse[],
+  usersById: ReadonlyMap<string, MedicationResponseAuthorUserRecord>
+): ParsedRespiratoryMedicationResponse[] {
+  if (responses.length === 0 || usersById.size === 0) return responses;
+  return responses.map((response) => enrichParsedRespiratoryMedicationResponseAuthor(response, usersById));
 }
 
 export function collectMedicationResponseAuthorUserIds(

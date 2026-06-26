@@ -20,6 +20,7 @@ import {
   shouldShowAddAdditionalResponseButton,
   shouldDefaultExpandMedicationResponsePanel,
   resolveMarMedicationResponseBadgeLabelKey,
+  shouldUseRespiratoryMedicationResponsePathway,
   type MarMedicationResponseCode,
   type ParsedMarMedicationResponse,
 } from "@medora/shared";
@@ -52,7 +53,15 @@ export function MedicationResponseDocumentationPanel({
   const submitLockRef = useRef(false);
 
   const editabilityInput = useMemo(() => toMedicationResponseEditabilityInput(item), [item]);
-  const showPanel = canShowMedicationResponsePanel(editabilityInput);
+
+  const isRespiratoryPathway = shouldUseRespiratoryMedicationResponsePathway({
+    medicationLabel: item.medicationLabel ?? item.primaryText,
+    genericName: item.medicationLabel ?? item.primaryText,
+    manualLabel: item.primaryText,
+    manualSecondaryText: item.secondaryText,
+  });
+
+  const showPanel = !isRespiratoryPathway && canShowMedicationResponsePanel(editabilityInput);
   const responseEditable = canDocumentMedicationResponse(editabilityInput);
 
   const visibilityTier = resolveMedicationResponseVisibilityTier({

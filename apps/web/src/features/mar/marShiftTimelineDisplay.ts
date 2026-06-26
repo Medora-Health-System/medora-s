@@ -11,6 +11,8 @@ import {
   isMarShiftTimelineItemActionable,
   isMarMedicationResponseInternalSecondaryText,
   resolveMarMedicationResponseTimelineLabelKey,
+  localizeIcuMarTimelineSecondaryText,
+  isMarShiftTimelineInternalEnumText,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -479,7 +481,7 @@ export function localizeMarShiftTimelineSecondaryText(
     "secondaryText" | "medicationResponseFollowUp" | "medicationResponses"
   >,
   t: (key: string) => string,
-  options?: { responseRequired?: boolean }
+  options?: { responseRequired?: boolean; locale?: "en" | "fr" }
 ): string | null {
   const responseCount = item.medicationResponses?.length ?? 0;
   const labelKey = resolveMarMedicationResponseTimelineLabelKey({
@@ -491,6 +493,13 @@ export function localizeMarShiftTimelineSecondaryText(
   if (labelKey) {
     const count = Math.max(responseCount, item.medicationResponseFollowUp?.responseCount ?? 0, 1);
     return t(labelKey).replace("{count}", String(count));
+  }
+  if (isMarShiftTimelineInternalEnumText(item.secondaryText)) {
+    const localized = localizeIcuMarTimelineSecondaryText(
+      item.secondaryText,
+      options?.locale ?? "fr"
+    );
+    if (localized) return localized;
   }
   if (isMarMedicationResponseInternalSecondaryText(item.secondaryText)) {
     return null;

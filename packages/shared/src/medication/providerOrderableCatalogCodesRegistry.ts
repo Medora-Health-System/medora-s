@@ -82,6 +82,11 @@ import {
   validateControlledSubstanceProviderOrderPlacement,
 } from "./controlledSubstanceProviderOrderingActivation.js";
 import {
+  isActivePulmonaryProviderOrderingMedication,
+  validatePulmonaryProviderOrderPlacement,
+  listActivePulmonaryProviderOrderingCatalogCodes,
+} from "./pulmonaryProviderOrderingActivation.js";
+import {
   bindProviderOrderablePrewarm,
   getActiveCodesForDomain,
   getPriorProviderOrderableCatalogCodesForDomain,
@@ -221,6 +226,24 @@ const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrd
     "surgery",
     "painManagement",
   ],
+  pulmonary: [
+    "tranche2",
+    "anticoagulation",
+    "insulinDiabetes",
+    "vaccine",
+    "criticalCare",
+    "neurology",
+    "infectiousDisease",
+    "cardiology",
+    "ivFluids",
+    "obgyn",
+    "psychiatry",
+    "gastroenterology",
+    "pediatrics",
+    "surgery",
+    "painManagement",
+    "controlledSubstance",
+  ],
 };
 
 const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
@@ -240,6 +263,7 @@ const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
   "surgery",
   "painManagement",
   "controlledSubstance",
+  "pulmonary",
 ];
 
 const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly string[]> = {
@@ -259,6 +283,7 @@ const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly str
   surgery: listActiveSurgeryPerioperativeProviderOrderingCatalogCodes,
   painManagement: listActivePainManagementProviderOrderingCatalogCodes,
   controlledSubstance: listActiveControlledSubstanceProviderOrderingCatalogCodes,
+  pulmonary: listActivePulmonaryProviderOrderingCatalogCodes,
 };
 
 let activeProviderOrderableCodes: ReadonlySet<string> | null = null;
@@ -389,6 +414,13 @@ const DOMAIN_ORDER_VALIDATORS: Array<{
     errorCode: "CONTROLLED_SUBSTANCE_MEDICATION_ORDER_BLOCKED",
     message: "Ce médicament contrôlé n'est pas disponible pour cette commande.",
     logEvent: "controlled_substance_medication_order_blocked",
+  },
+  {
+    isActive: isActivePulmonaryProviderOrderingMedication,
+    validate: validatePulmonaryProviderOrderPlacement,
+    errorCode: "PULMONARY_MEDICATION_ORDER_BLOCKED",
+    message: "Ce médicament respiratoire n'est pas disponible pour cette commande.",
+    logEvent: "pulmonary_medication_order_blocked",
   },
 ];
 

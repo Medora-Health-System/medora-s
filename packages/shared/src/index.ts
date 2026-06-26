@@ -361,6 +361,20 @@ export * from "./medication/gastroenterologyProviderOrderingActivation.js";
 export * from "./medication/pediatricsProviderOrderingActivation.js";
 export * from "./medication/surgeryPerioperativeProviderOrderingActivation.js";
 export * from "./medication/painManagementProviderOrderingActivation.js";
+export * from "./medication/pulmonaryMedicationCatalogRegistry.js";
+export * from "./medication/enterprisePulmonaryFormularySupplement.js";
+export * from "./medication/pulmonaryMarWorkflowGovernance.js";
+export * from "./medication/pulmonaryProviderOrderingActivation.js";
+export * from "./medication/continuousInfusionLifecycleGovernance.js";
+export * from "./medication/infusionTitrationGovernance.js";
+export * from "./medication/enterprisePulmonaryContinuousInfusionSeedIntegration.js";
+export * from "./medication/pulmonaryContinuousInfusionCertification.js";
+export * from "./mar/respiratoryMedicationResponseGovernance.js";
+export * from "./mar/respiratoryMedicationResponseNotes.js";
+export * from "./mar/respiratoryMedicationResponseDto.js";
+export * from "./mar/respiratoryMedicationResponseSummaryFormat.js";
+export * from "./mar/marRespiratoryResponseTimelineProjection.js";
+export * from "./mar/icuMarTimelineDisplay.js";
 export {
   assertControlledSubstanceMedicationOrderAllowed,
   buildControlledSubstanceBillingCodingInventoryReport,

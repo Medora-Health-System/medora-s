@@ -3324,6 +3324,12 @@ export class OrdersService {
     route?: string;
     source?: string;
     medicationAdministrationId?: string;
+    currentRate?: string;
+    previousRate?: string;
+    rateChangeReason?: string;
+    pauseReason?: string;
+    restartReason?: string;
+    titrationGoalType?: string;
   } | null {
     if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
     const m = metadata as Record<string, unknown>;
@@ -3342,6 +3348,12 @@ export class OrdersService {
       source: typeof m.source === "string" ? m.source : undefined,
       medicationAdministrationId:
         typeof m.medicationAdministrationId === "string" ? m.medicationAdministrationId : undefined,
+      currentRate: typeof m.currentRate === "string" ? m.currentRate : undefined,
+      previousRate: typeof m.previousRate === "string" ? m.previousRate : undefined,
+      rateChangeReason: typeof m.rateChangeReason === "string" ? m.rateChangeReason : undefined,
+      pauseReason: typeof m.pauseReason === "string" ? m.pauseReason : undefined,
+      restartReason: typeof m.restartReason === "string" ? m.restartReason : undefined,
+      titrationGoalType: typeof m.titrationGoalType === "string" ? m.titrationGoalType : undefined,
     };
   }
 
@@ -3493,8 +3505,21 @@ export class OrdersService {
   private findActiveMedicationInfusionSession(
     orderItemId: string,
     events: Array<{ eventType: OrderEventType; metadata: Prisma.JsonValue | null }>
-  ): { sessionKey: string; startedAt: Date; route: string } | null {
-    let active: { sessionKey: string; startedAt: Date; route: string } | null = null;
+  ): {
+    sessionKey: string;
+    startedAt: Date;
+    route: string;
+    paused: boolean;
+    currentRate?: string;
+  } | null {
+    type ActiveInfusionSession = {
+      sessionKey: string;
+      startedAt: Date;
+      route: string;
+      paused: boolean;
+      currentRate?: string;
+    };
+    let active: ActiveInfusionSession | null = null;
     for (const ev of events) {
       const m = this.parseMedicationInfusionOrderEventMeta(ev.metadata);
       if (!m || m.orderItemId !== orderItemId) continue;
@@ -3505,7 +3530,20 @@ export class OrdersService {
             sessionKey: m.infusionSessionKey,
             startedAt,
             route: m.route?.trim() ?? "",
+            paused: false,
           };
+        }
+      } else if (m.infusionAction === "RATE_CHANGE" && m.infusionSessionKey && m.currentRate?.trim()) {
+        if (active !== null && active.sessionKey === m.infusionSessionKey) {
+          active.currentRate = m.currentRate.trim();
+        }
+      } else if (m.infusionAction === "PAUSE" && m.infusionSessionKey) {
+        if (active !== null && active.sessionKey === m.infusionSessionKey) {
+          active.paused = true;
+        }
+      } else if (m.infusionAction === "RESTART" && m.infusionSessionKey) {
+        if (active !== null && active.sessionKey === m.infusionSessionKey) {
+          active.paused = false;
         }
       } else if (m.infusionAction === "STOP" && m.infusionSessionKey && active?.sessionKey === m.infusionSessionKey) {
         active = null;
@@ -4149,6 +4187,216 @@ export class OrdersService {
       include: { order: true },
     });
     return { orderItem: refreshed, medicationAdministration: marRow, durationMinutes };
+  }
+
+  private async writeMedicationInfusionLifecycleEvent(input: {
+    facilityId: string;
+    orderItem: {
+      id: string;
+      orderId: string;
+      order: { encounterId: string; type: string };
+    };
+    userId: string;
+    requestorRoleCodes: RoleCode[];
+    infusionAction: "RATE_CHANGE" | "PAUSE" | "RESTART";
+    active: { sessionKey: string; startedAt: Date; route: string; currentRate?: string };
+    actionAt: Date;
+    metadataExtras?: Record<string, unknown>;
+    ip?: string;
+    userAgent?: string;
+  }) {
+    const identitySnapshot = await this.loadInfusionPerformerIdentitySnapshot(
+      input.facilityId,
+      input.userId,
+      input.requestorRoleCodes
+    );
+    const metaRaw: Record<string, unknown> = {
+      infusionScope: "MEDICATION_INFUSION",
+      infusionAction: input.infusionAction,
+      orderItemId: input.orderItem.id,
+      infusionSessionKey: input.active.sessionKey,
+      infusionStartedAt: input.active.startedAt.toISOString(),
+      route: input.active.route,
+      source: "IV_INFUSION",
+      eventAt: input.actionAt.toISOString(),
+      ...input.metadataExtras,
+      ...identitySnapshot,
+    };
+    const metadata = stripUndefinedDeep(metaRaw) as Prisma.InputJsonValue;
+    await this.writeOrderEvent({
+      facilityId: input.facilityId,
+      encounterId: input.orderItem.order.encounterId,
+      orderId: input.orderItem.orderId,
+      orderType: input.orderItem.order.type as OrderEventOrderType,
+      eventType: OrderEventType.STARTED,
+      performedByUserId: input.userId,
+      metadata,
+      roleSnapshotOverride: identitySnapshot.performedByRoleSnapshot,
+    });
+    await this.audit.log(AuditAction.UPDATE, "ORDER_ITEM", {
+      userId: input.userId,
+      facilityId: input.facilityId,
+      encounterId: input.orderItem.order.encounterId,
+      orderId: input.orderItem.orderId,
+      entityId: input.orderItem.id,
+      ip: input.ip,
+      userAgent: input.userAgent,
+      critical: false,
+      metadata: metaRaw,
+    });
+    return metadata;
+  }
+
+  async changeMedicationInfusionRate(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionRateChangeDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: { include: { encounter: true } } },
+    });
+    if (!orderItem) throw new NotFoundException("Order item not found");
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) throw new ForbiddenException("Authentification requise.");
+    if (orderItem.status === OrderStatus.COMPLETED || orderItem.status === OrderStatus.CANCELLED) {
+      throw medicationInfusionBadRequest("ORDER_LINE_TERMINAL");
+    }
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    if (!active) throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
+    if (active.paused) {
+      throw new BadRequestException("La perfusion est en pause. Reprenez-la avant de modifier le débit.");
+    }
+    const actionAt = dto.actionAt ?? new Date();
+    if (Number.isNaN(actionAt.getTime())) throw medicationInfusionBadRequest("INVALID_START_TIME");
+    await this.writeMedicationInfusionLifecycleEvent({
+      facilityId,
+      orderItem,
+      userId,
+      requestorRoleCodes,
+      infusionAction: "RATE_CHANGE",
+      active,
+      actionAt,
+      metadataExtras: {
+        currentRate: dto.currentRate.trim(),
+        previousRate: dto.previousRate?.trim() || active.currentRate || null,
+        rateChangeReason: dto.rateChangeReason?.trim() || null,
+        ...(dto.notes?.trim() ? { note: dto.notes.trim() } : {}),
+        ...(dto.titrationGoalType?.trim() ? { titrationGoalType: dto.titrationGoalType.trim() } : {}),
+        ...(dto.titrationGoalValueBefore?.trim()
+          ? { titrationGoalValueBefore: dto.titrationGoalValueBefore.trim() }
+          : {}),
+        ...(dto.titrationGoalValueAfter?.trim()
+          ? { titrationGoalValueAfter: dto.titrationGoalValueAfter.trim() }
+          : {}),
+        ...(dto.titrationGoalTarget?.trim() ? { titrationGoalTarget: dto.titrationGoalTarget.trim() } : {}),
+      },
+      ip,
+      userAgent,
+    });
+    return { orderItemId, infusionSessionKey: active.sessionKey, currentRate: dto.currentRate.trim() };
+  }
+
+  async pauseMedicationInfusion(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionPauseRestartDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: { include: { encounter: true } } },
+    });
+    if (!orderItem) throw new NotFoundException("Order item not found");
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) throw new ForbiddenException("Authentification requise.");
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    if (!active) throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
+    if (active.paused) {
+      throw new BadRequestException("La perfusion est déjà en pause.");
+    }
+    const actionAt = dto.actionAt ?? new Date();
+    await this.writeMedicationInfusionLifecycleEvent({
+      facilityId,
+      orderItem,
+      userId,
+      requestorRoleCodes,
+      infusionAction: "PAUSE",
+      active,
+      actionAt,
+      metadataExtras: {
+        pauseReason: dto.reason?.trim() || null,
+        ...(dto.notes?.trim() ? { note: dto.notes.trim() } : {}),
+      },
+      ip,
+      userAgent,
+    });
+    return { orderItemId, infusionSessionKey: active.sessionKey, paused: true };
+  }
+
+  async restartMedicationInfusion(
+    facilityId: string,
+    orderItemId: string,
+    dto: import("@medora/shared").MedicationInfusionPauseRestartDto,
+    requestorRoleCodes: RoleCode[],
+    userId?: string,
+    ip?: string,
+    userAgent?: string
+  ) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, order: { facilityId } },
+      include: { order: { include: { encounter: true } } },
+    });
+    if (!orderItem) throw new NotFoundException("Order item not found");
+    assertEncounterOpenForClinicalMutation(orderItem.order.encounter);
+    assertAckOrStartActor(orderItem, requestorRoleCodes);
+    if (!userId) throw new ForbiddenException("Authentification requise.");
+    const infusionEvents = await this.prisma.orderEvent.findMany({
+      where: { orderId: orderItem.orderId },
+      orderBy: { performedAt: "asc" },
+      select: { eventType: true, metadata: true },
+    });
+    const active = this.findActiveMedicationInfusionSession(orderItemId, infusionEvents);
+    if (!active) throw medicationInfusionBadRequest("NO_ACTIVE_INFUSION");
+    if (!active.paused) {
+      throw new BadRequestException("La perfusion n'est pas en pause.");
+    }
+    const actionAt = dto.actionAt ?? new Date();
+    await this.writeMedicationInfusionLifecycleEvent({
+      facilityId,
+      orderItem,
+      userId,
+      requestorRoleCodes,
+      infusionAction: "RESTART",
+      active,
+      actionAt,
+      metadataExtras: {
+        restartReason: dto.reason?.trim() || null,
+        ...(dto.notes?.trim() ? { note: dto.notes.trim() } : {}),
+      },
+      ip,
+      userAgent,
+    });
+    return { orderItemId, infusionSessionKey: active.sessionKey, paused: false };
   }
 
   /**

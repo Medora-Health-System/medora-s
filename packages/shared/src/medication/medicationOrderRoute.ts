@@ -3,7 +3,7 @@
  * Catalog/MAR may use free-text routes; orders persist structured values from this set.
  */
 
-export const MEDICATION_ORDER_ROUTES = ["PO", "IM", "IVP", "IVPB", "SQ"] as const;
+export const MEDICATION_ORDER_ROUTES = ["PO", "IM", "IVP", "IVPB", "SQ", "INH", "NEB", "MDI", "DPI"] as const;
 
 export type MedicationOrderRoute = (typeof MEDICATION_ORDER_ROUTES)[number];
 
@@ -113,6 +113,22 @@ export function normalizeMedicationRoute(
     if (admin === "INFUSION") return "IVPB";
   }
 
+  if (
+    normalized === "INH" ||
+    normalized === "INHALED" ||
+    normalized === "INHALATION" ||
+    normalized === "INHALEE"
+  ) {
+    return "INH";
+  }
+  if (normalized === "NEB" || normalized.includes("NEBUL")) return "NEB";
+  if (normalized === "MDI" || normalized.includes("METERED DOSE") || normalized.includes("AEROSOL DOSEUR") || normalized.includes("INHALATEUR")) {
+    return "MDI";
+  }
+  if (normalized === "DPI" || normalized.includes("DRY POWDER") || normalized.includes("POUDRE SECHE")) {
+    return "DPI";
+  }
+
   return undefined;
 }
 
@@ -161,5 +177,9 @@ export function compactMedicationRoute(input: CompactMedicationRouteInput | stri
     return "IM";
   }
   if (normalized === "orale" || normalized === "oral" || normalized === "po") return "PO";
+  if (normalized === "inh" || normalized === "inhaled" || normalized === "inhalation") return "INH";
+  if (normalized === "neb" || normalized.includes("nebul")) return "NEB";
+  if (normalized === "mdi" || normalized.includes("inhalateur") || normalized.includes("aerosol")) return "MDI";
+  if (normalized === "dpi" || normalized.includes("dry powder")) return "DPI";
   return trimmed;
 }

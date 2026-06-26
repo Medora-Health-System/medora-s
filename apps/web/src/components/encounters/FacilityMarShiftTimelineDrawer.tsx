@@ -40,6 +40,7 @@ import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/Medicati
 import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
 import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
 import { MedicationResponseDocumentationPanel } from "@/components/mar/MedicationResponseDocumentationPanel";
+import { RespiratoryMedicationResponseDocumentationPanel } from "@/components/mar/RespiratoryMedicationResponseDocumentationPanel";
 import { MedicationAllergyReviewPanel } from "@/components/mar/MedicationAllergyReviewPanel";
 import type { MarAllergyCandidate } from "@medora/shared";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
@@ -940,13 +941,22 @@ export function FacilityMarShiftTimelineDrawer({
           />
 
           {encounterId?.trim() ? (
-            <MedicationResponseDocumentationPanel
-              item={item}
-              encounterId={encounterId}
-              facilityTimeZone={facilityTimeZone}
-              readOnly={readOnly}
-              onSaved={onActionSuccess}
-            />
+            <>
+              <RespiratoryMedicationResponseDocumentationPanel
+                item={item}
+                encounterId={encounterId}
+                facilityTimeZone={facilityTimeZone}
+                readOnly={readOnly}
+                onSaved={onActionSuccess}
+              />
+              <MedicationResponseDocumentationPanel
+                item={item}
+                encounterId={encounterId}
+                facilityTimeZone={facilityTimeZone}
+                readOnly={readOnly}
+                onSaved={onActionSuccess}
+              />
+            </>
           ) : null}
 
           {encounterId?.trim() &&

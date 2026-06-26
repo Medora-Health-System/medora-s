@@ -19,7 +19,8 @@ export type ProviderOrderingDomainId =
   | "pediatrics"
   | "surgery"
   | "painManagement"
-  | "controlledSubstance";
+  | "controlledSubstance"
+  | "pulmonary";
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
 

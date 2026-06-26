@@ -14,6 +14,8 @@ import {
   resolveEnterprisePainReassessmentMarStatus,
   resolveEnterprisePainReassessmentTimelineSecondaryText,
 } from "./enterprisePainReassessmentWorkflow.js";
+import { shouldUseRespiratoryMedicationResponsePathway } from "./respiratoryMedicationResponseGovernance.js";
+import { buildMarRespiratoryResponseTimelineProjection } from "./marRespiratoryResponseTimelineProjection.js";
 
 export type MarPainResponseTimelineProjectionInput = {
   catalogCode?: string | null;
@@ -32,6 +34,7 @@ export type MarPainResponseTimelineProjectionInput = {
 export type MarPainResponseTimelineProjection = {
   secondaryText: string;
   medicationResponses?: ParsedMarMedicationResponse[];
+  respiratoryMedicationResponses?: import("./respiratoryMedicationResponseGovernance.js").ParsedRespiratoryMedicationResponse[];
   medicationResponseBadge?: ReturnType<typeof buildMarMedicationResponseTimelineBadge>;
   medicationResponseFollowUp?: {
     status: "RECOMMENDED" | "OVERDUE";
@@ -48,6 +51,26 @@ export type MarPainResponseTimelineProjection = {
 export function buildMarPainResponseTimelineProjection(
   input: MarPainResponseTimelineProjectionInput
 ): MarPainResponseTimelineProjection {
+  if (
+    shouldUseRespiratoryMedicationResponsePathway({
+      catalogCode: input.catalogCode,
+      medicationLabel: input.medicationLabel,
+      genericName: input.genericName,
+    })
+  ) {
+    const respiratory = buildMarRespiratoryResponseTimelineProjection(input);
+    return {
+      secondaryText: respiratory.secondaryText,
+      medicationResponses: undefined,
+      respiratoryMedicationResponses: respiratory.respiratoryMedicationResponses,
+      medicationResponseBadge: respiratory.medicationResponseBadge,
+      medicationResponseFollowUp: respiratory.medicationResponseFollowUp,
+      responseRequired: respiratory.responseRequired,
+      responseCompleted: respiratory.responseCompleted,
+      responseDocumentationAvailable: respiratory.responseDocumentationAvailable,
+    };
+  }
+
   const administrationNotes = input.administrationNotes?.trim() || null;
   const painStatusInput = {
     catalogCode: input.catalogCode,

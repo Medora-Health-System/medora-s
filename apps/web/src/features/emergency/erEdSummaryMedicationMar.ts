@@ -2,8 +2,11 @@ import {
   parseInjectionSiteFromMarNotes,
   sanitizeMarAdministrationVisibleNote,
   parseMarMedicationResponseNotes,
+  parseRespiratoryMedicationResponseNotes,
   sortMarMedicationResponsesNewestFirst,
+  sortRespiratoryMedicationResponsesNewestFirst,
   type ParsedMarMedicationResponse,
+  type ParsedRespiratoryMedicationResponse,
 } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
@@ -38,7 +41,8 @@ export type ErEdSummaryMedicationResponseRow = {
   dose: string;
   route: string;
   administeredAt: string;
-  response: ParsedMarMedicationResponse;
+  responseKind: "pain" | "respiratory";
+  response: ParsedMarMedicationResponse | ParsedRespiratoryMedicationResponse;
 };
 
 function readStr(value: unknown): string {
@@ -174,6 +178,16 @@ function readMedicationResponsesFromAdmin(admin: Record<string, unknown>): Parse
   return parseMarMedicationResponseNotes(readStr(admin.notes));
 }
 
+function readRespiratoryMedicationResponsesFromAdmin(
+  admin: Record<string, unknown>
+): ParsedRespiratoryMedicationResponse[] {
+  const embedded = admin.respiratoryMedicationResponses;
+  if (Array.isArray(embedded) && embedded.length > 0) {
+    return embedded as ParsedRespiratoryMedicationResponse[];
+  }
+  return parseRespiratoryMedicationResponseNotes(readStr(admin.notes));
+}
+
 export function buildErEdSummaryMedicationResponseRows(input: {
   admins: unknown[];
   language: SupportedLanguage;
@@ -197,9 +211,9 @@ export function buildErEdSummaryMedicationResponseRows(input: {
     const route = readStr(admin.route) || "—";
     const administeredAt = formatWhen(readStr(admin.administeredAt), input.language);
 
-    const responses = sortMarMedicationResponsesNewestFirst(readMedicationResponsesFromAdmin(admin));
-    for (const response of responses) {
-      const dedupeKey = `${adminId}:${response.documentedAt}:${response.responseCode}`;
+    const painResponses = sortMarMedicationResponsesNewestFirst(readMedicationResponsesFromAdmin(admin));
+    for (const response of painResponses) {
+      const dedupeKey = `${adminId}:pain:${response.documentedAt}:${response.responseCode}`;
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       rows.push({
@@ -208,6 +222,25 @@ export function buildErEdSummaryMedicationResponseRows(input: {
         dose,
         route,
         administeredAt,
+        responseKind: "pain",
+        response,
+      });
+    }
+
+    const respiratoryResponses = sortRespiratoryMedicationResponsesNewestFirst(
+      readRespiratoryMedicationResponsesFromAdmin(admin)
+    );
+    for (const response of respiratoryResponses) {
+      const dedupeKey = `${adminId}:respiratory:${response.documentedAt}:${response.responseCode}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      rows.push({
+        id: `${adminId}:respiratory-response:${response.documentedAt}`,
+        medicationName,
+        dose,
+        route,
+        administeredAt,
+        responseKind: "respiratory",
         response,
       });
     }
