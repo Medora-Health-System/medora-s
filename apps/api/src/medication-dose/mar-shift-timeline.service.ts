@@ -53,6 +53,8 @@ import {
   type MarMedicationResponseFollowUpStatus,
   type MedicationFollowUpType,
   type MedicationAdministrationLifecycleState,
+  type ParsedMarMedicationResponse,
+  type ParsedRespiratoryMedicationResponse,
 } from "@medora/shared";
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { getMedicationSchedulingFeatureFlagsFromEnv } from "../medication-scheduling/medication-scheduling-feature-flags.util";
@@ -843,7 +845,7 @@ export class MarShiftTimelineService {
       const medicationResponseBadge = followUpProjection.medicationResponseBadge;
       const medicationResponseFollowUp = followUpProjection.medicationResponseFollowUp;
       const medicationResponseAdverseEscalation = medicationResponses.some(
-        (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
+        (r: ParsedMarMedicationResponse) => r.responseCode === "ADVERSE_REACTION_REPORTED"
       );
       const allergyReviewCandidates = filterActiveMarAllergyReviewCandidates(
         parseMarAllergyReviewCandidatesFromNotes(administrationNotes)
@@ -991,7 +993,7 @@ export class MarShiftTimelineService {
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
         respiratoryMedicationResponses:
           respiratoryMedicationResponses.length > 0
-            ? respiratoryMedicationResponses.map((response) => ({
+            ? respiratoryMedicationResponses.map((response: ParsedRespiratoryMedicationResponse) => ({
                 responseCode: response.responseCode,
                 responseDetail: response.responseDetail ?? null,
                 responseTime: response.responseTime ?? null,

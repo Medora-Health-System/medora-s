@@ -26,6 +26,8 @@ import {
   parseMarAllergyReviewCandidatesFromNotes,
   type MarShiftTimelineColumn,
   type MedicationSafetyGovernanceSnapshot,
+  type ParsedMarMedicationResponse,
+  type ParsedRespiratoryMedicationResponse,
 } from "@medora/shared";
 import { resolveMarTimelineFluidEnrichment } from "./mar-shift-timeline-fluid-enrichment.util";
 import {
@@ -818,7 +820,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     const medicationResponseBadge = followUpProjection.medicationResponseBadge;
     const medicationResponseFollowUp = followUpProjection.medicationResponseFollowUp;
     const medicationResponseAdverseEscalation = medicationResponses.some(
-      (r) => r.responseCode === "ADVERSE_REACTION_REPORTED"
+      (r: ParsedMarMedicationResponse) => r.responseCode === "ADVERSE_REACTION_REPORTED"
     );
     const allergyReviewCandidates = filterActiveMarAllergyReviewCandidates(
       parseMarAllergyReviewCandidatesFromNotes(administrationNotes)
@@ -911,7 +913,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
         respiratoryMedicationResponses:
           respiratoryMedicationResponses.length > 0
-            ? respiratoryMedicationResponses.map((response) => ({
+            ? respiratoryMedicationResponses.map((response: ParsedRespiratoryMedicationResponse) => ({
                 responseCode: response.responseCode,
                 responseDetail: response.responseDetail ?? null,
                 responseTime: response.responseTime ?? null,
