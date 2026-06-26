@@ -1,3 +1,8 @@
+import {
+  isMarShiftTimelineItemRequiresInfusionStopClosure,
+  type MarShiftTimelineInfusionStopItem,
+} from "./marShiftTimelineInfusionStop.js";
+
 /** Terminal MAR dose statuses — cells are read-only (M1.8B.7K.10B.11B). */
 export const MAR_SHIFT_TIMELINE_TERMINAL_STATUSES = [
   "COMPLETED",
@@ -18,7 +23,7 @@ export const MAR_SHIFT_TIMELINE_TERMINAL_CLINICAL_ACTIONS = [
   "VIEW_CANCELED",
 ] as const;
 
-export type MarShiftTimelineActionabilityItem = {
+export type MarShiftTimelineActionabilityItem = MarShiftTimelineInfusionStopItem & {
   doseStatus: string;
   readOnly?: boolean;
   clinicalAction?: string | null;
@@ -54,6 +59,9 @@ export function isMarShiftTimelineTerminalClinicalAction(
 export function isMarShiftTimelineItemActionable(
   item: MarShiftTimelineActionabilityItem
 ): boolean {
+  if (isMarShiftTimelineItemRequiresInfusionStopClosure(item)) {
+    return true;
+  }
   if (isMarShiftTimelineTerminalStatus(item.doseStatus, item.secondaryText)) {
     return false;
   }

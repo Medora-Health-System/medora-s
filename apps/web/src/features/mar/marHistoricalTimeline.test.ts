@@ -211,8 +211,9 @@ describe("marHistoricalTimeline (MEDUI.ED.MAR.H3)", () => {
     expect(railSrc).toContain("filterMedicationAdministrationHistoryByInstantWindow");
   });
 
-  it("17 — no timeline mutations in historical review", () => {
-    expect(timelineSrc).toContain("historicalReadOnly ? null : actionHandlers");
+  it("17 — no timeline mutations in historical review except active infusion stop", () => {
+    expect(timelineSrc).toContain("historicalReviewMode: true");
+    expect(timelineSrc).not.toContain("historicalReadOnly ? null : actionHandlers");
     expect(tabSrc).toContain("historicalReadOnly={!marHistoricalTimeline.isToday}");
   });
 

@@ -48,6 +48,7 @@ import {
   buildMedicationFollowUpProjection,
   buildMedicationInfusionRuntimeProjection,
   resolveMedicationInfusionCellSecondaryText,
+  isMarShiftTimelineActiveInfusionRuntimeStatus,
   isIvpbSessionDoseKind,
   type MarMedicationResponseFollowUpStatus,
   type MedicationFollowUpType,
@@ -801,10 +802,7 @@ export class MarShiftTimelineService {
       );
 
       let medicationInfusionRuntime: MarShiftTimelineCellItem["medicationInfusionRuntime"];
-      if (
-        isIvpbSessionDoseKind(parsedDoseKind ?? dose.doseKind) &&
-        (parsedStatus === "IN_PROGRESS" || parsedStatus === "COMPLETED")
-      ) {
+      if (isIvpbSessionDoseKind(parsedDoseKind ?? dose.doseKind)) {
         const orderEvents = orderEventsByOrderId.get(dose.orderId) ?? [];
         const infusionProjection = buildMedicationInfusionRuntimeProjection({
           orderItemId: dose.orderItemId,
@@ -835,7 +833,17 @@ export class MarShiftTimelineService {
             stopReason: infusionProjection.stopReason,
             timelineRows: infusionProjection.timelineRows,
           };
-          if (parsedStatus === "IN_PROGRESS") {
+          if (
+            isMarShiftTimelineActiveInfusionRuntimeStatus(infusionProjection.status) &&
+            parsedStatus !== "COMPLETED"
+          ) {
+            secondaryText = resolveMedicationInfusionCellSecondaryText({
+              doseStatus: "IN_PROGRESS",
+              infusionRuntime: infusionProjection,
+              locale: displayLocale,
+              rateLabel: prnDisplay.orderPrnIndication ?? null,
+            });
+          } else if (parsedStatus === "IN_PROGRESS") {
             secondaryText = resolveMedicationInfusionCellSecondaryText({
               doseStatus: parsedStatus,
               infusionRuntime: infusionProjection,
@@ -846,6 +854,17 @@ export class MarShiftTimelineService {
         }
       }
 
+      let timelineDoseStatus = parsedStatus;
+      let timelineClinicalAction = clinicalAction;
+      if (
+        medicationInfusionRuntime &&
+        isMarShiftTimelineActiveInfusionRuntimeStatus(medicationInfusionRuntime.status) &&
+        !medicationInfusionRuntime.stoppedAt
+      ) {
+        timelineDoseStatus = "IN_PROGRESS";
+        timelineClinicalAction = "STOP_INFUSION";
+      }
+
       const item: MarShiftTimelineCellItem = {
         type: "MEDICATION",
         medicationDoseInstanceId: dose.id,
@@ -854,8 +873,12 @@ export class MarShiftTimelineService {
         primaryText,
         secondaryText,
         tertiaryText: resolvedTertiaryText,
-        doseStatus: parsedStatus,
-        readOnly: isMarShiftTimelineItemReadOnly(clinicalAction, parsedStatus, secondaryText),
+        doseStatus: timelineDoseStatus,
+        readOnly: isMarShiftTimelineItemReadOnly(
+          timelineClinicalAction,
+          timelineDoseStatus,
+          secondaryText
+        ),
         startedAt: enrichment?.startedAt ?? null,
         startedByDisplay: enrichment?.startedByDisplay ?? null,
         startedByInitials: enrichment?.startedByInitials ?? null,
@@ -896,20 +919,20 @@ export class MarShiftTimelineService {
         dueWindowStartAt: dose.dueWindowStartAt.toISOString(),
         dueWindowEndAt: dose.dueWindowEndAt.toISOString(),
         requiresWitness,
-        clinicalAction,
+        clinicalAction: timelineClinicalAction,
         hover: buildMarShiftTimelineHover({
           medicationLabel,
           scheduledAt: dose.scheduledAt,
           doseAmount,
           route,
           requiresWitness,
-          doseStatus: parsedStatus,
+          doseStatus: timelineDoseStatus,
           facilityTimeZone: shiftWindow.facilityTimeZone,
           directionsSig,
         }),
         actions:
           fluidEnrichment?.drawerActions ??
-          resolveMarShiftTimelineDrawerActions(clinicalAction, {
+          resolveMarShiftTimelineDrawerActions(timelineClinicalAction, {
             continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
             fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
           }),

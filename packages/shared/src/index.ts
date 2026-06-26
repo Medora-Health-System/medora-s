@@ -215,6 +215,7 @@ export * from "./medication/marShiftTimeline.js";
 export * from "./medication/marInfusionTimingOverrideGovernance.js";
 export * from "./medication/marClinicalTimelinePlacement.js";
 export * from "./medication/marShiftTimelineActionability.js";
+export * from "./medication/marShiftTimelineInfusionStop.js";
 export * from "./medication/marShiftTimelineOrderItemFallback.js";
 export * from "./medication/marShiftTimelineTerminalActions.js";
 export * from "./medication/medicationOrderCancelMar.js";

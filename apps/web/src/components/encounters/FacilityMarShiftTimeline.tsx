@@ -108,6 +108,12 @@ export function FacilityMarShiftTimeline({
   const [drawerSelection, setDrawerSelection] = useState<DrawerSelection | null>(null);
   const [headerNow, setHeaderNow] = useState(() => new Date());
 
+  const drawerActionHandlers = React.useMemo((): MarShiftTimelineActionHandlers | null => {
+    if (!actionHandlers) return null;
+    if (!historicalReadOnly) return actionHandlers;
+    return { ...actionHandlers, historicalReviewMode: true };
+  }, [actionHandlers, historicalReadOnly]);
+
   useEffect(() => {
     const id = window.setInterval(() => setHeaderNow(new Date()), HEADER_CLOCK_REFRESH_MS);
     return () => window.clearInterval(id);
@@ -716,7 +722,8 @@ export function FacilityMarShiftTimeline({
             : null
         }
         facilityTimeZone={data?.shift.timeZone ?? data?.facility.timeZone ?? null}
-        actionHandlers={historicalReadOnly ? null : actionHandlers}
+        facilityId={facilityId}
+        actionHandlers={drawerActionHandlers}
         onClose={() => setDrawerSelection(null)}
         onActionSuccess={async () => {
           await loadTimeline();

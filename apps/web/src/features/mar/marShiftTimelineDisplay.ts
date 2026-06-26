@@ -9,6 +9,7 @@ import {
   clinicalDatetimeLocalToUtcIso,
   resolveFacilityTimezone,
   isMarShiftTimelineItemActionable,
+  isMarShiftTimelineItemRequiresInfusionStopClosure,
   isMarMedicationResponseInternalSecondaryText,
   resolveMarMedicationResponseTimelineLabelKey,
   localizeIcuMarTimelineSecondaryText,
@@ -34,6 +35,9 @@ export function isMarShiftTimelineMutationAction(action: MarShiftTimelineDrawerA
 }
 
 export function isMarShiftTimelineDrawerReadOnly(item: MarShiftTimelineCellItem): boolean {
+  if (isMarShiftTimelineItemRequiresInfusionStopClosure(item)) {
+    return false;
+  }
   if (
     item.secondaryText === "AWAITING_REASSESSMENT" &&
     item.medicationAdministrationId?.trim()

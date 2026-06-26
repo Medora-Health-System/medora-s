@@ -5,6 +5,7 @@ import type { MedicationSafetyGovernanceDisplayInput } from "@medora/shared";
 import {
   buildMarInfusionTimingDocumentation,
   isMarShiftTimelineItemActionable,
+  isMarShiftTimelineStopInfusionActionEligible,
 } from "@medora/shared";
 import { marInfusionStartWitnessRequired, type MarHighAlertRouteOptions } from "@/components/medication/MarHighAlertFields";
 import { marShiftTimelineDateTimeLocalToUtcIso } from "@/features/mar/marShiftTimelineDisplay";
@@ -32,6 +33,8 @@ export type MarShiftTimelineRefuseHoldInput = {
 export type MarShiftTimelineActionHandlers = {
   disabled: boolean;
   busy: boolean;
+  /** Historical MAR date review — only active-infusion stop actions remain enabled. */
+  historicalReviewMode?: boolean;
   onRequestAdminister: (item: MarShiftTimelineCellItem) => Promise<void>;
   /** Resolves true when infusion start completed; false when witness modal opened. */
   onRequestStartInfusion: (
@@ -259,7 +262,12 @@ export function isMarShiftTimelineActionEnabled(
   item: MarShiftTimelineCellItem,
   handlers: MarShiftTimelineActionHandlers | null | undefined
 ): boolean {
-  if (!handlers || handlers.disabled || handlers.busy) return false;
+  if (!handlers || handlers.busy) return false;
+  if (handlers.historicalReviewMode) {
+    if (action !== "STOP_INFUSION" && action !== "STOP_FLUID") return false;
+  } else if (handlers.disabled) {
+    return false;
+  }
   if (!isMarShiftTimelineItemActionable(item)) return false;
   if (action === "ADMINISTER") {
     return item.clinicalAction === "ADMINISTER" || isMarShiftTimelineUpcomingActionable(item);
@@ -267,7 +275,9 @@ export function isMarShiftTimelineActionEnabled(
   if (action === "START_INFUSION") {
     return item.clinicalAction === "START_INFUSION" || isMarShiftTimelineUpcomingActionable(item);
   }
-  if (action === "STOP_INFUSION") return item.clinicalAction === "STOP_INFUSION";
+  if (action === "STOP_INFUSION") {
+    return isMarShiftTimelineStopInfusionActionEligible(item);
+  }
   if (action === "START_FLUID") return item.clinicalAction === "START_FLUID";
   if (action === "PAUSE_FLUID") {
     return item.clinicalAction === "STOP_FLUID" && item.continuousFluidStatus === "RUNNING";

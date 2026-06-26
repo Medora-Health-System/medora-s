@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel, formatMarPrnReasonForLocale } from "@medora/shared";
+import { formatMarShiftTimelineClinicalDateTime, formatMarPrnFrequencyLabel, formatMarPrnReasonForLocale, isMarShiftTimelineStopInfusionActionEligible } from "@medora/shared";
 import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "@medora/shared";
 import { useI18n } from "@/lib/i18n";
 import type { MarShiftTimelineCellItem, MarShiftTimelineDrawerAction } from "@/lib/marShiftTimelineApi";
@@ -39,8 +39,8 @@ import { extractMarSaveErrorMessage } from "@/features/mar/marSaveErrorMessage";
 import { MedicationDoseScheduleAdjustmentModal } from "@/components/mar/MedicationDoseScheduleAdjustmentModal";
 import { MedicationScheduleAdjustmentChainViewer } from "@/components/mar/MedicationScheduleAdjustmentChainViewer";
 import { MedicationTimingOverrideJustificationPanel } from "@/components/mar/MedicationTimingOverrideJustificationPanel";
-import { MedicationResponseDocumentationPanel } from "@/components/mar/MedicationResponseDocumentationPanel";
-import { RespiratoryMedicationResponseDocumentationPanel } from "@/components/mar/RespiratoryMedicationResponseDocumentationPanel";
+import { MedicationFollowUpPanel } from "@/components/mar/MedicationFollowUpPanel";
+import { ContinuousInfusionRuntimePanel } from "@/components/mar/ContinuousInfusionRuntimePanel";
 import { MedicationAllergyReviewPanel } from "@/components/mar/MedicationAllergyReviewPanel";
 import type { MarAllergyCandidate } from "@medora/shared";
 import { MedicationClinicalDateTimeField } from "@/components/mar/MedicationClinicalDateTimeField";
@@ -60,6 +60,7 @@ export type FacilityMarShiftTimelineDrawerProps = {
   item: MarShiftTimelineCellItem | null;
   context: FacilityMarShiftTimelineDrawerContext | null;
   encounterId?: string | null;
+  facilityId?: string | null;
   facilityTimeZone?: string | null;
   actionHandlers?: MarShiftTimelineActionHandlers | null;
   onClose: () => void;
@@ -74,6 +75,7 @@ export function FacilityMarShiftTimelineDrawer({
   item,
   context,
   encounterId = null,
+  facilityId = null,
   facilityTimeZone = null,
   actionHandlers = null,
   onClose,
@@ -114,11 +116,14 @@ export function FacilityMarShiftTimelineDrawer({
       (item.doseKind === "IVPB_SESSION" || item.route?.trim().toUpperCase() === "IVPB"));
   const showStopTimeField =
     item?.clinicalAction === "STOP_INFUSION" ||
+    (item ? isMarShiftTimelineStopInfusionActionEligible(item) : false) ||
     item?.clinicalAction === "COMPLETE_BOLUS" ||
     item?.clinicalAction === "STOP_FLUID" ||
     item?.clinicalAction === "RESUME_FLUID";
   const showStopNotesField =
-    item?.clinicalAction === "STOP_INFUSION" || item?.clinicalAction === "STOP_FLUID";
+    item?.clinicalAction === "STOP_INFUSION" ||
+    (item ? isMarShiftTimelineStopInfusionActionEligible(item) : false) ||
+    item?.clinicalAction === "STOP_FLUID";
 
   useEffect(() => {
     if (item) closeRef.current?.focus();
@@ -941,22 +946,23 @@ export function FacilityMarShiftTimelineDrawer({
           />
 
           {encounterId?.trim() ? (
-            <>
-              <RespiratoryMedicationResponseDocumentationPanel
-                item={item}
-                encounterId={encounterId}
-                facilityTimeZone={facilityTimeZone}
-                readOnly={readOnly}
-                onSaved={onActionSuccess}
-              />
-              <MedicationResponseDocumentationPanel
-                item={item}
-                encounterId={encounterId}
-                facilityTimeZone={facilityTimeZone}
-                readOnly={readOnly}
-                onSaved={onActionSuccess}
-              />
-            </>
+            <MedicationFollowUpPanel
+              item={item}
+              encounterId={encounterId}
+              facilityTimeZone={facilityTimeZone}
+              readOnly={readOnly}
+              onSaved={onActionSuccess}
+            />
+          ) : null}
+
+          {facilityId?.trim() ? (
+            <ContinuousInfusionRuntimePanel
+              item={item}
+              facilityId={facilityId}
+              facilityTimeZone={facilityTimeZone}
+              readOnly={readOnly}
+              onSaved={onActionSuccess}
+            />
           ) : null}
 
           {encounterId?.trim() &&
@@ -1029,7 +1035,8 @@ export function FacilityMarShiftTimelineDrawer({
 
           {showStopNotesField ? (
             <div style={{ marginTop: 12 }}>
-              {item?.clinicalAction === "STOP_INFUSION" ? (
+              {item?.clinicalAction === "STOP_INFUSION" ||
+              (item ? isMarShiftTimelineStopInfusionActionEligible(item) : false) ? (
                 <>
                   <label
                     htmlFor="mar-shift-timeline-stop-reason"

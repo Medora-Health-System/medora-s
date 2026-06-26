@@ -421,7 +421,7 @@ describe("MarShiftTimelineService (M1.8B.7K.1)", () => {
     expect(item?.secondaryText).toBe("START");
   });
 
-  it("IVPB_SESSION IN_PROGRESS appears with STOP_INFUSION action", async () => {
+  it("IN_PROGRESS IVPB with active runtime forces STOP_INFUSION even when dose was OVERDUE", async () => {
     const encounter = await createEncounterWithNurse();
     const payload: OrderCreateDto = {
       type: "MEDICATION",
