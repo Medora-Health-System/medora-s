@@ -508,15 +508,12 @@ export function marShiftTimelineHasScheduleAdjustmentDoseContext(
   return Boolean(medicationDoseInstanceId?.trim());
 }
 
-/** Schedule adjustment requires a persisted dose instance id — never call PATCH without one. */
+/** Preserves drawer actions; schedule adjustment resolves dose or order-item target at submit time. */
 export function filterMarShiftTimelineDrawerActionsForDoseContext(
   actions: readonly MarShiftTimelineDrawerAction[],
-  medicationDoseInstanceId?: string | null
+  _medicationDoseInstanceId?: string | null
 ): MarShiftTimelineDrawerAction[] {
-  if (marShiftTimelineHasScheduleAdjustmentDoseContext(medicationDoseInstanceId)) {
-    return [...actions];
-  }
-  return actions.filter((action) => action !== "CHANGE_SCHEDULED_TIME");
+  return [...actions];
 }
 
 export function resolveMarShiftTimelineDrawerActions(

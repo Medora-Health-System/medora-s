@@ -156,9 +156,9 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
   { genericName: "Clindamycin", displayNameFr: "Clindamycine", strength: "600 mg/4 mL", dosageForm: "injectable", route: "injectable", therapeuticClass: "Antibiotique", commonAliases: A(["Dalacin injectable"]), ...essential(58) },
   { genericName: "Doxycycline", displayNameFr: "Doxycycline", strength: "100 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Vibramycine"]), ...essential(59) },
   { genericName: "Tetracycline", displayNameFr: "Tétracycline", strength: "250 mg", dosageForm: "gélule", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Tetracyn"]), ...essential(60) },
-  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", strength: "400/80 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim"]), ...essential(61) },
-  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", strength: "800/160 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim forte"]), ...essential(62) },
-  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", strength: "240 mg/5 mL", dosageForm: "suspension buvable", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim sirop"]), ...essential(63) },
+  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", displayNameEn: "Trimethoprim-sulfamethoxazole", strength: "400/80 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim", "Septra", "trimethoprim", "sulfamethoxazole", "tmp-smx"]), ...essential(61) },
+  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", displayNameEn: "Trimethoprim-sulfamethoxazole", strength: "800/160 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim forte", "Septra DS", "trimethoprim", "sulfamethoxazole", "tmp-smx"]), ...essential(62) },
+  { genericName: "Cotrimoxazole", displayNameFr: "Cotrimoxazole", displayNameEn: "Trimethoprim-sulfamethoxazole", strength: "240 mg/5 mL", dosageForm: "suspension buvable", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Bactrim sirop", "Septra", "trimethoprim", "sulfamethoxazole", "tmp-smx"]), ...essential(63) },
   { genericName: "Chloramphenicol", displayNameFr: "Chloramphénicol", strength: "250 mg", dosageForm: "gélule", route: "orale", therapeuticClass: "Antibiotique", commonAliases: A(["Chloromycetin"]), ...essential(64) },
   // 5) Antiparasitaires / antipaludiques
   { code: "ALBENDAZOLE_400", genericName: "Albendazole", displayNameFr: "Albendazole", strength: "400 mg", dosageForm: "comprimé", route: "orale", therapeuticClass: "Antiparasitaire", commonAliases: A(["Zentel"]), ...essential(65) },
@@ -546,7 +546,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "orale",
     therapeuticClass: "Électrolyte",
     administrationType: "ORAL",
-    commonAliases: A(["KCl PO", "potassium 20 mEq oral", "supplément potassium"]),
+    commonAliases: A(["KCl PO", "KCl", "pot", "potassium", "chlorure potassium", "potassium 20 mEq oral", "supplément potassium"]),
     ...nonEssential(2191),
   },
   {
@@ -559,7 +559,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     route: "orale",
     therapeuticClass: "Électrolyte",
     administrationType: "ORAL",
-    commonAliases: A(["KCl PO", "potassium 40 mEq oral", "supplément potassium"]),
+    commonAliases: A(["KCl PO", "KCl", "pot", "potassium", "chlorure potassium", "potassium 40 mEq oral", "supplément potassium"]),
     ...nonEssential(2192),
   },
   {

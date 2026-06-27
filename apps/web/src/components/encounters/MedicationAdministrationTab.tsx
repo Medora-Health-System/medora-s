@@ -129,7 +129,7 @@ import {
   type MedicationPassQueueResponse,
 } from "@/lib/medicationPassQueueApi";
 import { appendMedicationDoseInstanceIdToMarCreateBody } from "@/features/mar/medicationPassQueueMarIntegration";
-import { adjustMedicationDoseSchedule } from "@/lib/medicationDoseScheduleAdjustmentApi";
+import { adjustMarMedicationSchedule } from "@/lib/medicationDoseScheduleAdjustmentApi";
 import { MAR_TAB_SHOW_LEGACY_SECTIONS } from "@/features/mar/marTabUnifiedTimeline";
 import { MedicationPassQueuePanel } from "@/components/encounters/MedicationPassQueuePanel";
 import { FacilityMarShiftTimeline } from "@/components/encounters/FacilityMarShiftTimeline";
@@ -1788,13 +1788,14 @@ export function MedicationAdministrationTab({
       },
       onRequestScheduleAdjustment: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
-        if (!item.medicationDoseInstanceId?.trim()) {
-          throw new Error(t("marShiftTimeline.actionError"));
-        }
-        await adjustMedicationDoseSchedule(
+        await adjustMarMedicationSchedule(
           facilityId,
           encounterId,
-          item.medicationDoseInstanceId,
+          {
+            orderItemId: item.orderItemId,
+            scheduledAt: item.scheduledAt,
+            medicationDoseInstanceId: item.medicationDoseInstanceId,
+          },
           {
             newScheduledAt: input.newScheduledAtIso,
             reasonCode: input.reasonCode,

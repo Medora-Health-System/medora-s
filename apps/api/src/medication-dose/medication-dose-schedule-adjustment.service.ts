@@ -4,13 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { RoleCode, Prisma } from "@prisma/client";
+import { OrderStatus, RoleCode, Prisma } from "@prisma/client";
 import {
   appendMarDoseScheduleAdjustmentHistory,
   buildMarDoseScheduleAdjustmentAuditEntry,
   computeMedicationDoseDueWindowsForScheduledAt,
+  findMedicationDoseInstanceIdForScheduleAdjustment,
   resolveOriginalScheduledAtFromDose,
   validateMarDoseScheduleAdjustment,
+  validateMarOrderItemScheduleAdjustment,
 } from "@medora/shared";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -123,6 +125,124 @@ export class MedicationDoseScheduleAdjustmentService {
       dueWindowEndAt: updated.dueWindowEndAt.toISOString(),
       doseStatus: updated.doseStatus,
       auditEntry,
+    };
+  }
+
+  async resolveDoseInstanceForScheduleAdjustment(input: {
+    facilityId: string;
+    encounterId: string;
+    orderItemId: string;
+    scheduledAt?: string | null;
+    medicationDoseInstanceId?: string | null;
+  }): Promise<{ doseInstanceId: string | null; adjustTarget: "dose" | "order_item" }> {
+    const explicitId = input.medicationDoseInstanceId?.trim();
+    if (explicitId) {
+      const dose = await this.prisma.medicationDoseInstance.findFirst({
+        where: {
+          id: explicitId,
+          facilityId: input.facilityId,
+          encounterId: input.encounterId,
+          orderItemId: input.orderItemId,
+        },
+        select: { id: true },
+      });
+      if (dose) return { doseInstanceId: dose.id, adjustTarget: "dose" };
+    }
+
+    const doses = await this.prisma.medicationDoseInstance.findMany({
+      where: {
+        facilityId: input.facilityId,
+        encounterId: input.encounterId,
+        orderItemId: input.orderItemId,
+      },
+      select: { id: true, scheduledAt: true, doseStatus: true },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    if (doses.length > 0) {
+      const resolved = findMedicationDoseInstanceIdForScheduleAdjustment({
+        doses,
+        scheduledAt: input.scheduledAt ?? doses[0]!.scheduledAt.toISOString(),
+      });
+      if (resolved) return { doseInstanceId: resolved, adjustTarget: "dose" };
+    }
+
+    return { doseInstanceId: null, adjustTarget: "order_item" };
+  }
+
+  async adjustOrderItemScheduledAt(input: {
+    facilityId: string;
+    encounterId: string;
+    orderItemId: string;
+    userId: string;
+    currentScheduledAtIso: string;
+    newScheduledAtIso: string;
+    reasonCode: string;
+    reasonDetail?: string | null;
+  }) {
+    const orderItem = await this.prisma.orderItem.findFirst({
+      where: {
+        id: input.orderItemId,
+        order: { encounterId: input.encounterId, encounter: { facilityId: input.facilityId } },
+      },
+      select: {
+        id: true,
+        status: true,
+        frequencyCode: true,
+        intendedAdministrationAt: true,
+        createdAt: true,
+      },
+    });
+    if (!orderItem) {
+      throw new NotFoundException("Order item not found");
+    }
+
+    const doseCount = await this.prisma.medicationDoseInstance.count({
+      where: {
+        orderItemId: input.orderItemId,
+        encounterId: input.encounterId,
+        facilityId: input.facilityId,
+      },
+    });
+
+    const originalScheduledAt =
+      orderItem.intendedAdministrationAt ?? orderItem.createdAt ?? new Date(input.currentScheduledAtIso);
+
+    const validation = validateMarOrderItemScheduleAdjustment({
+      orderItemStatus: orderItem.status,
+      frequencyCode: orderItem.frequencyCode,
+      hasMedicationDoseInstances: doseCount > 0,
+      originalScheduledAt,
+      newScheduledAt: input.newScheduledAtIso,
+      reasonCode: input.reasonCode,
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(validation.code);
+    }
+
+    if (
+      orderItem.status === OrderStatus.COMPLETED ||
+      orderItem.status === OrderStatus.CANCELLED
+    ) {
+      throw new BadRequestException("ORDER_ITEM_NOT_ADJUSTABLE");
+    }
+
+    const updated = await this.prisma.orderItem.update({
+      where: { id: orderItem.id },
+      data: { intendedAdministrationAt: validation.newScheduledAt },
+      select: {
+        id: true,
+        intendedAdministrationAt: true,
+        frequencyCode: true,
+        status: true,
+      },
+    });
+
+    return {
+      orderItemId: updated.id,
+      scheduledAt: updated.intendedAdministrationAt?.toISOString() ?? validation.newScheduledAt.toISOString(),
+      adjustTarget: "order_item" as const,
+      reasonCode: input.reasonCode.trim().toUpperCase(),
     };
   }
 }

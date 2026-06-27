@@ -66,6 +66,12 @@ describe("expandMedicationSearchQuery", () => {
     const terms = expandMedicationSearchQuery("lr");
     expect(terms).toContain("lactated ringer");
   });
+
+  it("electrolytes — expands pot to potassium and kcl", () => {
+    const terms = expandMedicationSearchQuery("pot");
+    expect(terms).toContain("potassium");
+    expect(terms).toContain("kcl");
+  });
 });
 
 describe("buildCatalogMedicationSearchWhere", () => {

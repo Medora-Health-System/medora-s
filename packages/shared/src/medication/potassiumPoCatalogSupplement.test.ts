@@ -38,4 +38,12 @@ describe("Potassium chloride PO catalog supplement", () => {
       expect(active).toContain(code);
     }
   });
+
+  it("PO potassium seed aliases include pot, potassium, and KCl", () => {
+    for (const code of PO_POTASSIUM_CODES) {
+      const row = HAITI_MEDICATION_FORMULARY_CATALOG.find((entry) => entry.code === code);
+      const aliases = (row?.commonAliases ?? []).map((alias) => alias.toLowerCase());
+      expect(aliases).toEqual(expect.arrayContaining(["pot", "potassium", "kcl"]));
+    }
+  });
 });

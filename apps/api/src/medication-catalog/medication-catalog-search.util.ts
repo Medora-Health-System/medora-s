@@ -10,6 +10,15 @@ import {
 
 /** Legacy prefix hints (kept for backward compatibility). */
 export const MEDICATION_SEARCH_QUERY_ALIASES: Record<string, readonly string[]> = {
+  pot: ["potassium", "kcl", "chlorure potassium"],
+  kcl: ["potassium", "potassium chloride", "chlorure potassium"],
+  potassium: ["kcl", "chlorure potassium"],
+  bactrim: ["cotrimoxazole", "trimethoprim", "sulfamethoxazole", "tmp-smx", "septra"],
+  septra: ["cotrimoxazole", "trimethoprim", "sulfamethoxazole", "tmp-smx", "bactrim"],
+  trimethoprim: ["cotrimoxazole", "sulfamethoxazole", "tmp-smx", "bactrim", "septra"],
+  sulfamethoxazole: ["cotrimoxazole", "trimethoprim", "tmp-smx", "bactrim", "septra"],
+  "tmp-smx": ["cotrimoxazole", "trimethoprim", "sulfamethoxazole", "bactrim", "septra"],
+  "tmp smx": ["cotrimoxazole", "trimethoprim", "sulfamethoxazole", "bactrim", "septra"],
   jard: ["empagliflozin", "jardiance"],
   jardiance: ["empagliflozin"],
   lipitor: ["atorvastatin"],
