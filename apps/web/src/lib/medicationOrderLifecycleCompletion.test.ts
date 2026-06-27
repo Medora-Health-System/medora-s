@@ -91,15 +91,15 @@ describe("medicationOrderLifecycleCompletion (MEDUI.ORDERS.MEDICATION_ORDER_LIFE
   });
 
   it("governance-deferred statuses have safe display without actions", () => {
-    const panel = readSource("src/components/orders/MedicationOrderLifecyclePanel.tsx");
-    expect(panel).toContain("isMedicationOrderLifecycleGovernanceDeferred");
-    expect(panel).toContain("governanceDeferred");
+    const modal = readSource("src/components/orders/MedicationGovernanceManageModal.tsx");
+    expect(modal).toContain("isMedicationOrderLifecycleGovernanceDeferred");
+    expect(modal).toContain("governanceDeferred");
   });
 
   it("signed encounter blocks lifecycle panel mutations", () => {
-    const panel = readSource("src/components/orders/MedicationOrderLifecyclePanel.tsx");
-    expect(panel).toContain("encounterSigned");
-    expect(panel).toContain("signedEncounterBlocked");
+    const modal = readSource("src/components/orders/MedicationGovernanceManageModal.tsx");
+    expect(modal).toContain("encounterSigned");
+    expect(modal).toContain("signedEncounterBlocked");
   });
 
   it("migration leaves legacy rows compatible (nullable lifecycle status)", () => {

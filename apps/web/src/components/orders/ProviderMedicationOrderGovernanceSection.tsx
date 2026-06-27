@@ -8,8 +8,12 @@ import {
   type MedicationGovernancePermissionsInput,
   resolveMedicationGovernanceRenderState,
 } from "@/lib/medicationOrderGovernancePermissions";
-import { MedicationOrderLifecycleHistoryModal } from "@/components/orders/MedicationOrderLifecycleHistoryModal";
-import { MedicationOrderLifecyclePanel } from "@/components/orders/MedicationOrderLifecyclePanel";
+import { medicationOrderLifecycleStatusLabelKey } from "@/lib/medicationOrderLifecycleApi";
+import {
+  MedicationGovernanceManageButton,
+  MedicationGovernanceManageModal,
+} from "@/components/orders/MedicationGovernanceManageModal";
+import { MedicationOrderGovernanceCompactStatus } from "@/components/orders/MedicationOrderGovernanceCompactStatus";
 import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 
 export type ProviderMedicationOrderGovernanceSectionProps = {
@@ -66,7 +70,7 @@ export function ProviderMedicationOrderGovernanceSection({
   onUpdated,
 }: ProviderMedicationOrderGovernanceSectionProps) {
   const { t } = useI18n();
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
   const orderItemId = String(orderItem.id ?? "");
   const label =
     medicationLabel ??
@@ -97,89 +101,79 @@ export function ProviderMedicationOrderGovernanceSection({
     return null;
   }
 
-  const shellStyle: React.CSSProperties = {
-    marginTop: 6,
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "1px solid #bfdbfe",
-    background: "#eff6ff",
-  };
+  if (!renderState.effectiveCanPrescribe) {
+    return (
+      <MedicationOrderGovernanceCompactStatus
+        orderItem={orderItem}
+        ordersRaw={ordersRaw}
+        marExecutionSummary={marExecutionSummary}
+      />
+    );
+  }
+
+  const lifecyclePanelItem = toLifecyclePanelItem(orderItem, renderState.normalizedLifecycleStatus);
+  const statusLabel = t(medicationOrderLifecycleStatusLabelKey(renderState.normalizedLifecycleStatus));
+  const marLabel = marExecutionSummary ? t(marExecutionSummary) : null;
 
   return (
     <div
       data-testid="provider-medication-order-governance"
-      data-can-prescribe={renderState.effectiveCanPrescribe ? "true" : "false"}
+      data-can-prescribe="true"
       data-can-mutate={renderState.canMutate ? "true" : "false"}
       data-hidden-reason={renderState.hiddenReasonCode}
       data-order-item-id={orderItemId}
-      style={shellStyle}
+      style={{
+        marginTop: 6,
+        display: "flex",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 8,
+      }}
     >
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: "0.04em",
-          textTransform: "uppercase",
-          color: "#1d4ed8",
-          marginBottom: 6,
-        }}
-      >
-        {t("medicationOrderLifecycle.providerGovernanceTitle")}
-      </div>
-
-      {marExecutionSummary ? (
-        <p
+      {renderState.normalizedLifecycleStatus !== "ACTIVE" ? (
+        <MedicationOrderLifecycleReadOnlyBadge item={orderItem} orders={ordersRaw} compact />
+      ) : null}
+      {marLabel ? (
+        <span
           data-testid="provider-medication-mar-execution-status"
-          style={{ margin: "0 0 8px 0", fontSize: 12, color: "#334155", lineHeight: 1.45 }}
-        >
-          <strong>{t("medicationOrderLifecycle.marExecutionStatus")}:</strong> {marExecutionSummary}
-        </p>
-      ) : null}
-
-      {infusionTimeline.active ? (
-        <p style={{ margin: "0 0 8px 0", fontSize: 12, color: "#92400e", lineHeight: 1.45 }}>
-          {t("medicationOrderLifecycle.activeInfusionStopFirst")}
-        </p>
-      ) : null}
-
-      <MedicationOrderLifecycleReadOnlyBadge item={orderItem} orders={ordersRaw} compact={false} />
-
-      {renderState.canMutate ? (
-        <MedicationOrderLifecyclePanel
-          orderItem={toLifecyclePanelItem(orderItem, renderState.normalizedLifecycleStatus)}
-          facilityId={facilityId}
-          encounterSigned={permissions.encounterSigned ?? false}
-          canMutateLifecycle={renderState.canMutate}
-          onUpdated={onUpdated}
-        />
-      ) : null}
-
-      {renderState.effectiveCanPrescribe ? (
-        <button
-          type="button"
-          data-testid="medication-lifecycle-view-history"
-          onClick={() => setHistoryOpen(true)}
           style={{
-            marginTop: 8,
-            padding: "6px 10px",
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-            background: "#fff",
-            fontSize: 12,
-            cursor: "pointer",
+            display: "inline-flex",
+            padding: "2px 8px",
+            borderRadius: 9999,
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#475569",
+            background: "#f1f5f9",
+            border: "1px solid #e2e8f0",
           }}
         >
-          {t("medicationOrderLifecycle.viewHistory")}
-        </button>
+          {marLabel}
+        </span>
       ) : null}
-
-      <MedicationOrderLifecycleHistoryModal
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        orderItemId={orderItemId}
+      {infusionTimeline.active ? (
+        <span style={{ fontSize: 11, color: "#92400e", fontWeight: 600 }}>
+          {t("medicationOrderLifecycle.activeInfusionStopFirst")}
+        </span>
+      ) : null}
+      <span style={{ fontSize: 11, color: "#64748b" }}>
+        {t("medicationOrderLifecycle.statusLabel")}: {statusLabel}
+      </span>
+      <MedicationGovernanceManageButton
+        disabled={permissions.encounterSigned && !renderState.effectiveCanPrescribe}
+        onClick={() => setManageOpen(true)}
+      />
+      <MedicationGovernanceManageModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        orderItem={lifecyclePanelItem}
         orderId={orderId}
         orderEvents={orderEventsRaw}
         medicationLabel={label}
+        facilityId={facilityId}
+        encounterSigned={permissions.encounterSigned ?? false}
+        canMutateLifecycle={renderState.canMutate}
+        lifecycleStatus={renderState.normalizedLifecycleStatus}
+        onUpdated={onUpdated}
       />
     </div>
   );

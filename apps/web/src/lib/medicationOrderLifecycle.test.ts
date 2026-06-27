@@ -64,8 +64,8 @@ describe("medication order lifecycle enterprise model", () => {
   });
 
   it("provider UI exposes lifecycle actions with French i18n", () => {
-    const panel = readSource("apps/web/src/components/orders/MedicationOrderLifecyclePanel.tsx");
-    expect(panel).toContain("medicationOrderLifecycle.actions.discontinue");
+    const modal = readSource("apps/web/src/components/orders/MedicationGovernanceManageModal.tsx");
+    expect(modal).toContain("medicationOrderLifecycle.actions.discontinue");
     const fr = readSource("apps/web/src/i18n/messages/fr.ts");
     expect(fr).toContain("Arrêter l'ordre");
     expect(fr).toContain("Modifier l'ordre");

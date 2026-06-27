@@ -8,7 +8,6 @@ import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { formatClinicalInstantForFacility } from "@/lib/clinicalTimeDisplay";
 import { CancelOrderModal, CreateOrderModal, type CancelOrderConfirmPayload } from "@/components/orders";
-import { MedicationOrderLifecycleReadOnlyBadge } from "@/components/orders/MedicationOrderLifecycleReadOnlyBadge";
 import { ProviderMedicationOrderGovernanceSection } from "@/components/orders/ProviderMedicationOrderGovernanceSection";
 import {
   auditMedicationOrderGovernancePermissions,
@@ -548,18 +547,16 @@ function renderErMedicationOrderLineActions(input: {
     return governance;
   }
 
-  if (renderState.effectiveCanPrescribe) {
-    return governance;
+  if (!renderState.effectiveCanPrescribe && input.lineBtns.length > 0) {
+    return (
+      <>
+        {governance}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{input.lineBtns}</div>
+      </>
+    );
   }
 
-  return (
-    <>
-      <MedicationOrderLifecycleReadOnlyBadge item={input.item} orders={input.ordersRaw ?? []} />
-      {input.lineBtns.length > 0 ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>{input.lineBtns}</div>
-      ) : null}
-    </>
-  );
+  return governance;
 }
 
 export function EmergencyErOrdersPanel({
