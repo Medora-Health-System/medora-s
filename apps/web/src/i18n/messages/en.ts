@@ -13699,6 +13699,10 @@ export default {
     patientRoomColumn: "Patient / Room",
     prnRowLabel: "PRN",
     prnRowSubtitle: "Available PRN meds",
+    doseDisplay: {
+      total: "Total",
+      directions: "Directions",
+    },
     disabled: "Scheduled MAR timeline is not enabled for this facility.",
     empty: "No scheduled MAR items for this shift.",
     error: "Unable to load MAR shift timeline.",

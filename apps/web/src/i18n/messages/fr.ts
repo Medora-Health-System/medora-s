@@ -13730,6 +13730,10 @@ export default {
     patientRoomColumn: "Patient / Chambre",
     prnRowLabel: "PRN",
     prnRowSubtitle: "Médicaments PRN disponibles",
+    doseDisplay: {
+      total: "Total",
+      directions: "Instructions",
+    },
     disabled: "Le quart MAR planifié n'est pas activé pour cet établissement.",
     empty: "Aucun élément MAR planifié pour ce quart.",
     error: "Impossible de charger le quart MAR.",

@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/apiClient";
+import type { MarMedicationDoseDisplayFields } from "@medora/shared";
 
 export type MarShiftTimelineHover = {
   title: string;
@@ -77,6 +78,7 @@ export type MarShiftTimelineCellItem = {
   fluidTotalDurationLabel?: string | null;
   fluidPausedAt?: string | null;
   isFluidBolus?: boolean;
+  doseDisplay?: MarMedicationDoseDisplayFields | null;
   cancellationReason?: string | null;
   cancellationDetails?: string | null;
   cancelledAt?: string | null;

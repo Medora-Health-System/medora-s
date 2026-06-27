@@ -1,4 +1,5 @@
 import {
+  buildMarMedicationDoseDisplayFields,
   buildMarShiftTimelineCellDisplay,
   buildMarShiftTimelineHover,
   buildMarShiftTimelineTertiaryText,
@@ -723,6 +724,13 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     const doseValue = orderItem.strength?.trim() || null;
     const doseAmount =
       doseValue || (orderItem.quantity != null ? String(orderItem.quantity) : null);
+    const doseDisplay = buildMarMedicationDoseDisplayFields({
+      quantity: orderItem.quantity != null ? String(orderItem.quantity) : null,
+      route,
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig,
+      fallbackDoseLabel: doseAmount,
+    });
 
     if (isPrnBand) {
       const prnSecondaryOverride =
@@ -896,10 +904,11 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         dueWindowEndAt: pseudo.dueWindowEndAt.toISOString(),
         requiresWitness,
         clinicalAction,
+        doseDisplay,
         hover: buildMarShiftTimelineHover({
           medicationLabel,
           scheduledAt: pseudo.scheduledAt,
-          doseAmount,
+          doseAmount: doseDisplay.doseLabel ?? doseAmount,
           route,
           requiresWitness,
           doseStatus: parsedStatus,

@@ -212,6 +212,7 @@ export * from "./medication/ivpbDoseSessionEligibility.js";
 export * from "./medication/ivpbDoseStatusTransition.js";
 export * from "./medication/recurringIvpbCompletionPolicy.js";
 export * from "./medication/medicationIvpbDoseFeatureFlags.js";
+export * from "./medication/marMedicationDoseDisplay.js";
 export * from "./medication/marShiftTimeline.js";
 export * from "./medication/marInfusionTimingOverrideGovernance.js";
 export * from "./medication/marClinicalTimelinePlacement.js";

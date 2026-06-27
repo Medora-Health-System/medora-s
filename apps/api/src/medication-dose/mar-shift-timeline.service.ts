@@ -1,4 +1,6 @@
 import {
+  buildMarMedicationDoseDisplayFields,
+  type MarMedicationDoseDisplayFields,
   buildMarShiftTimelineCellDisplay,
   buildMarShiftTimelineColumns,
   buildMarShiftTimelineHover,
@@ -158,6 +160,7 @@ export type MarShiftTimelineCellItem = {
   dueWindowEndAt: string;
   requiresWitness: boolean;
   clinicalAction: MarShiftTimelineClinicalAction | null;
+  doseDisplay?: MarMedicationDoseDisplayFields | null;
   hover: MarShiftTimelineHover;
   actions: MarShiftTimelineDrawerAction[];
   scheduleAdjustment?: MarScheduleAdjustmentTimelineProjection | null;
@@ -746,6 +749,17 @@ export class MarShiftTimelineService {
           ? `${doseValue} ${doseUnit}`
           : doseValue || doseUnit || orderedSnapshot?.quantity?.trim() || null;
 
+      const doseDisplay = buildMarMedicationDoseDisplayFields({
+        doseValue: orderedSnapshot?.doseValue,
+        doseUnit: orderedSnapshot?.doseUnit,
+        quantity: orderedSnapshot?.quantity,
+        quantityUnit: orderedSnapshot?.quantityUnit,
+        route,
+        frequencyCode,
+        directionsSig,
+        fallbackDoseLabel: doseAmount,
+      });
+
       const columnKey = resolveMarShiftTimelineColumnKey({
         scheduledAt: placementInstant,
         dueWindowStartAt: dose.dueWindowStartAt,
@@ -950,10 +964,11 @@ export class MarShiftTimelineService {
         dueWindowEndAt: dose.dueWindowEndAt.toISOString(),
         requiresWitness,
         clinicalAction: timelineClinicalAction,
+        doseDisplay,
         hover: buildMarShiftTimelineHover({
           medicationLabel,
           scheduledAt: dose.scheduledAt,
-          doseAmount,
+          doseAmount: doseDisplay.doseLabel ?? doseAmount,
           route,
           requiresWitness,
           doseStatus: timelineDoseStatus,

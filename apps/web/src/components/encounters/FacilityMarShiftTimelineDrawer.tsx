@@ -276,8 +276,18 @@ export function FacilityMarShiftTimelineDrawer({
           },
         ]
       : []),
-    { label: t("marShiftTimeline.drawer.dose"), value: item.hover.dose },
-    { label: t("marShiftTimeline.drawer.route"), value: item.hover.route },
+    { label: t("marShiftTimeline.drawer.dose"), value: item.doseDisplay?.doseLabel ?? item.hover.dose },
+    { label: t("marShiftTimeline.drawer.route"), value: item.doseDisplay?.routeLabel ?? item.hover.route },
+    {
+      label: t("marShiftTimeline.doseDisplay.total"),
+      value: item.doseDisplay?.totalDoseLabel,
+      testId: "mar-shift-timeline-drawer-total-dose-row",
+    },
+    {
+      label: t("marShiftTimeline.doseDisplay.directions"),
+      value: item.doseDisplay?.directionsLabel,
+      testId: "mar-shift-timeline-drawer-directions-row",
+    },
     { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
     {
       label: t("marShiftTimeline.drawer.frequency"),
@@ -871,6 +881,83 @@ export function FacilityMarShiftTimelineDrawer({
             {t("marShiftTimeline.drawer.close")}
           </button>
         </div>
+
+        {item.doseDisplay?.doseLabel ||
+        item.doseDisplay?.routeLabel ||
+        item.doseDisplay?.frequencyLabel ||
+        item.doseDisplay?.totalDoseLabel ||
+        item.doseDisplay?.directionsLabel ? (
+          <div
+            data-testid="mar-shift-timeline-drawer-dose-emphasis"
+            style={{
+              marginTop: 12,
+              padding: "10px 12px",
+              borderRadius: 8,
+              backgroundColor: "#f0fdfa",
+              border: "1px solid #99f6e4",
+            }}
+          >
+            {item.doseDisplay?.doseLabel ? (
+              <div
+                data-testid="mar-shift-timeline-drawer-dose-emphasis-amount"
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#0f766e",
+                  lineHeight: 1.3,
+                }}
+              >
+                {item.doseDisplay.doseLabel}
+              </div>
+            ) : null}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "6px 12px",
+                marginTop: item.doseDisplay?.doseLabel ? 6 : 0,
+                fontSize: 13,
+                lineHeight: 1.4,
+              }}
+            >
+              {item.doseDisplay?.routeLabel ? (
+                <span data-testid="mar-shift-timeline-drawer-dose-emphasis-route">
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>
+                    {t("marShiftTimeline.drawer.route")}:{" "}
+                  </span>
+                  {item.doseDisplay.routeLabel}
+                </span>
+              ) : null}
+              {(isPrnItem ? prnFrequencyDisplay : item.doseDisplay?.frequencyLabel) ? (
+                <span data-testid="mar-shift-timeline-drawer-dose-emphasis-frequency">
+                  <span style={{ color: "#64748b", fontWeight: 600 }}>
+                    {t("marShiftTimeline.drawer.frequency")}:{" "}
+                  </span>
+                  {isPrnItem ? prnFrequencyDisplay : item.doseDisplay?.frequencyLabel}
+                </span>
+              ) : null}
+            </div>
+            {item.doseDisplay?.totalDoseLabel ? (
+              <div
+                data-testid="mar-shift-timeline-drawer-total-dose"
+                style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: "#0f766e" }}
+              >
+                {t("marShiftTimeline.doseDisplay.total")}: {item.doseDisplay.totalDoseLabel}
+              </div>
+            ) : null}
+            {item.doseDisplay?.directionsLabel ? (
+              <div
+                data-testid="mar-shift-timeline-drawer-directions"
+                style={{ marginTop: 6, fontSize: 13, lineHeight: 1.4 }}
+              >
+                <span style={{ color: "#64748b", fontWeight: 600 }}>
+                  {t("marShiftTimeline.doseDisplay.directions")}:{" "}
+                </span>
+                {item.doseDisplay.directionsLabel}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {readOnly ? (
           <p

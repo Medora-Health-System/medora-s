@@ -548,6 +548,53 @@ export function FacilityMarShiftTimeline({
                                 }}
                               >
                                 <div data-testid="mar-shift-timeline-primary-text">{item.primaryText}</div>
+                                {item.doseDisplay?.doseLabel ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-dose-label"
+                                    style={{
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      marginTop: 2,
+                                      color: "#0f766e",
+                                      lineHeight: 1.25,
+                                    }}
+                                  >
+                                    {item.doseDisplay.doseLabel}
+                                    {item.doseDisplay.routeLabel
+                                      ? ` · ${item.doseDisplay.routeLabel}`
+                                      : null}
+                                    {item.doseDisplay.frequencyLabel
+                                      ? ` · ${item.doseDisplay.frequencyLabel}`
+                                      : null}
+                                  </div>
+                                ) : null}
+                                {item.doseDisplay?.totalDoseLabel ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-total-dose-label"
+                                    style={{
+                                      fontSize: 10,
+                                      fontWeight: 600,
+                                      marginTop: 1,
+                                      color: "#0f766e",
+                                      lineHeight: 1.25,
+                                    }}
+                                  >
+                                    {t("marShiftTimeline.doseDisplay.total")}:{" "}
+                                    {item.doseDisplay.totalDoseLabel}
+                                  </div>
+                                ) : null}
+                                {item.doseDisplay?.directionsLabel ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-directions-label"
+                                    style={{
+                                      fontSize: 10,
+                                      marginTop: 1,
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {item.doseDisplay.directionsLabel}
+                                  </div>
+                                ) : null}
                                 {hasVariance && variance?.badgeLabel ? (
                                   <>
                                     <div

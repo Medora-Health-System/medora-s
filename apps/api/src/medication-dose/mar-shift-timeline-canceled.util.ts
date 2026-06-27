@@ -1,4 +1,5 @@
 import {
+  buildMarMedicationDoseDisplayFields,
   buildMarCanceledOrderMarkerDoseInstanceId,
   buildMarCanceledTimelineCellDisplay,
   buildMarShiftTimelineHover,
@@ -338,6 +339,13 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
     const clinicalAction = resolveMarShiftTimelineClinicalAction("STANDING", doseStatus);
     const cancelledAtIso = cancelMeta.cancelledAt.toISOString();
     const placementIso = placementInstant.toISOString();
+    const doseDisplay = buildMarMedicationDoseDisplayFields({
+      quantity: orderItem.quantity != null ? String(orderItem.quantity) : null,
+      route,
+      frequencyCode: orderItem.frequencyCode,
+      directionsSig,
+      fallbackDoseLabel: orderItem.strength?.trim() || null,
+    });
 
     const item: MarShiftTimelineCellItem = {
       type: "MEDICATION",
@@ -374,10 +382,11 @@ export async function loadMarShiftTimelineCanceledPlacements(input: {
       cancellationDetails: cancelMeta.cancellationDetails,
       cancelledAt: cancelledAtIso,
       cancelledByDisplay: cancelMeta.cancelledByDisplay,
+      doseDisplay,
       hover: buildMarShiftTimelineHover({
         medicationLabel,
         scheduledAt: placementInstant,
-        doseAmount: orderItem.strength?.trim() || null,
+        doseAmount: doseDisplay.doseLabel ?? (orderItem.strength?.trim() || null),
         route,
         requiresWitness,
         doseStatus,
