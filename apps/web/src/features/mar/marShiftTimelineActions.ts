@@ -294,6 +294,7 @@ export function isMarShiftTimelineActionEnabled(
     return isMarShiftTimelineRefuseHoldEligible(item);
   }
   if (action === "CHANGE_SCHEDULED_TIME") {
+    if (!item.medicationDoseInstanceId?.trim()) return false;
     return (
       item.clinicalAction === "ADMINISTER" ||
       item.clinicalAction === "START_INFUSION" ||

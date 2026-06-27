@@ -272,8 +272,41 @@ function activeRowsFromCertification(): Tranche2ActivationInventoryRow[] {
   });
 }
 
+/** Oral electrolyte replacement — catalog supplement (billing deferred until mapped). */
+const ELECTROLYTE_REPLACEMENT_PO_SUPPLEMENT_CODES = [
+  "POTASSIUM_CHLORIDE_20_MEQ_COMPRIME_ORALE",
+  "POTASSIUM_CHLORIDE_40_MEQ_COMPRIME_ORALE",
+] as const;
+
+function electrolyteReplacementPoSupplementRows(): Tranche2ActivationInventoryRow[] {
+  const certifiedCodes = new Set(activeRowsFromCertification().map((row) => row.catalogCode));
+  return ELECTROLYTE_REPLACEMENT_PO_SUPPLEMENT_CODES.flatMap((catalogCode): Tranche2ActivationInventoryRow[] => {
+    if (certifiedCodes.has(catalogCode)) return [];
+    const legacy = legacyOrderabilityRow(catalogCode);
+    if (!legacy) return [];
+    return [
+      {
+        catalogCode,
+        displayNameEn: legacy.displayNameEn,
+        displayNameFr: legacy.displayNameFr,
+        canonicalFamily: canonicalFamilyFromCode(catalogCode),
+        diseaseDomains: ["UNCLASSIFIED_CHRONIC"],
+        route: legacy.route,
+        doseForm: legacy.dosageForm,
+        billingReady: false,
+        inventoryReady: legacy.inventoryNdcLinked,
+        marReady: true,
+        i18nReady: Boolean(legacy.displayNameEn.trim() && legacy.displayNameFr.trim()),
+        duplicateStatus: duplicateStatusByCode().get(catalogCode) ?? "NOT_AUDITED",
+        pharmacyReviewVisible: true,
+        state: "ACTIVE",
+      },
+    ];
+  });
+}
+
 export function buildTranche2ProviderOrderingActivationRegistry(): Tranche2ProviderOrderingActivationRegistry {
-  const entries = activeRowsFromCertification();
+  const entries = [...activeRowsFromCertification(), ...electrolyteReplacementPoSupplementRows()];
   return {
     activatedAt: ACTIVATED_AT,
     activatingAuthority: ACTIVATING_AUTHORITY,

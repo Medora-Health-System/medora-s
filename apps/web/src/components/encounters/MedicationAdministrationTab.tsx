@@ -1788,6 +1788,9 @@ export function MedicationAdministrationTab({
       },
       onRequestScheduleAdjustment: async (item, input) => {
         if (!facilityId) throw new Error(t("marShiftTimeline.actionError"));
+        if (!item.medicationDoseInstanceId?.trim()) {
+          throw new Error(t("marShiftTimeline.actionError"));
+        }
         await adjustMedicationDoseSchedule(
           facilityId,
           encounterId,

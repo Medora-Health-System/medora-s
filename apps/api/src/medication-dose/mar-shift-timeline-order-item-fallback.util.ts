@@ -9,6 +9,7 @@ import {
   resolveMarShiftTimelineClinicalAction,
   resolveMarShiftTimelineColumnKey,
   resolveMarShiftTimelineDrawerActions,
+  filterMarShiftTimelineDrawerActionsForDoseContext,
   resolveMarShiftTimelineOrderItemFallbackDoseKind,
   resolveMarShiftTimelineOrderItemFallbackDoseStatus,
   resolveMarShiftTimelineOrderItemPlacementInstant,
@@ -905,12 +906,14 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
           facilityTimeZone: input.facilityTimeZone,
           directionsSig,
         }),
-        actions:
+        actions: filterMarShiftTimelineDrawerActionsForDoseContext(
           fluidEnrichment?.drawerActions ??
-          resolveMarShiftTimelineDrawerActions(clinicalAction, {
-            continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
-            fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
-          }),
+            resolveMarShiftTimelineDrawerActions(clinicalAction, {
+              continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
+              fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
+            }),
+          ""
+        ),
         medicationAdministrationId,
         medicationResponses: medicationResponses.length > 0 ? medicationResponses : undefined,
         respiratoryMedicationResponses:

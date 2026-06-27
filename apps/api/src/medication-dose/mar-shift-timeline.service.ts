@@ -10,6 +10,7 @@ import {
   resolveMarShiftTimelineColumnKey,
   resolveMarUniversalShiftTimelineDosePlacementInstant,
   resolveMarShiftTimelineDrawerActions,
+  filterMarShiftTimelineDrawerActionsForDoseContext,
   resolveMarShiftTimelineWindow,
   shouldIncludeMarShiftTimelineDose,
   isMarShiftTimelineItemReadOnly,
@@ -959,12 +960,14 @@ export class MarShiftTimelineService {
           facilityTimeZone: shiftWindow.facilityTimeZone,
           directionsSig,
         }),
-        actions:
+        actions: filterMarShiftTimelineDrawerActionsForDoseContext(
           fluidEnrichment?.drawerActions ??
-          resolveMarShiftTimelineDrawerActions(timelineClinicalAction, {
-            continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
-            fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
-          }),
+            resolveMarShiftTimelineDrawerActions(timelineClinicalAction, {
+              continuousFluidStatus: fluidEnrichment?.continuousFluidStatus as never,
+              fluidBolusStatus: fluidEnrichment?.fluidBolusStatus as never,
+            }),
+          dose.id
+        ),
         scheduleAdjustment,
         scheduleAdjustmentChain: scheduleAdjustment?.isRescheduled
           ? buildMarScheduleAdjustmentChain({

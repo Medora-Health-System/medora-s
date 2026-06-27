@@ -502,6 +502,23 @@ export function resolveMarShiftTimelineClinicalAction(
   }
 }
 
+export function marShiftTimelineHasScheduleAdjustmentDoseContext(
+  medicationDoseInstanceId?: string | null
+): boolean {
+  return Boolean(medicationDoseInstanceId?.trim());
+}
+
+/** Schedule adjustment requires a persisted dose instance id — never call PATCH without one. */
+export function filterMarShiftTimelineDrawerActionsForDoseContext(
+  actions: readonly MarShiftTimelineDrawerAction[],
+  medicationDoseInstanceId?: string | null
+): MarShiftTimelineDrawerAction[] {
+  if (marShiftTimelineHasScheduleAdjustmentDoseContext(medicationDoseInstanceId)) {
+    return [...actions];
+  }
+  return actions.filter((action) => action !== "CHANGE_SCHEDULED_TIME");
+}
+
 export function resolveMarShiftTimelineDrawerActions(
   clinicalAction: MarShiftTimelineClinicalAction | null,
   options?: {
