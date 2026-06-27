@@ -33,6 +33,13 @@ import {
   shouldIncludeCompletedOrderEventInErMerge,
 } from "@/features/emergency/erOrderLifecycleUi";
 import {
+  isMedicationOrderClosedForErCompleted,
+  medicationOrderLifecycleClosedPerformedAt,
+  resolveMedicationOrderDisplayBucket,
+} from "@/lib/medicationOrderDisplayBucket";
+import { normalizeMedicationOrderLifecycleStatus } from "@/lib/medicationOrderGovernancePermissions";
+import { medicationOrderLifecycleStatusLabelKey } from "@/lib/medicationOrderLifecycleApi";
+import {
   isMedicationAdministrationManagedInMar,
   MEDICATION_ORDER_MAR_HELPER_I18N_KEY,
   resolveMedicationOrderMarStatusLabel,
@@ -245,7 +252,7 @@ function extractActiveLineLabelsForDomain(
     const items = Array.isArray(o.items) ? o.items : [];
     for (const it of items) {
       const row = it as Record<string, unknown>;
-      if (!isOrderItemActiveForErDashboard(row)) continue;
+      if (!isOrderItemActiveForErDashboard(row, typeStr)) continue;
       const label = getOrderItemDisplayLabelForLanguage(
         it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
         language,
@@ -481,6 +488,23 @@ function isBedsideAdministerMedicationRow(row: Record<string, unknown>): boolean
 }
 
 /** CARE / procedure lines (order.type CARE) — distinct from lab/imaging result lifecycle subtitles. */
+function medicationLifecycleClosedErStatusLabel(
+  item: Record<string, unknown> | undefined,
+  tr: (key: string) => string
+): string | null {
+  if (!item) return null;
+  const bucket = resolveMedicationOrderDisplayBucket({
+    orderType: "MEDICATION",
+    orderItem: item,
+  });
+  if (!bucket || bucket === "OPEN") return null;
+  const lifecycle = normalizeMedicationOrderLifecycleStatus(item.medicationLifecycleStatus);
+  if (lifecycle === "DISCONTINUED" && bucket === "CANCELED_OR_DISCONTINUED") {
+    return tr("erEmergencyOrders.lifecycleDiscontinuedBeforeAdministration");
+  }
+  return tr(medicationOrderLifecycleStatusLabelKey(lifecycle));
+}
+
 function careProcedureCompletedSubLabel(
   e: OrderEventRow,
   metadata: unknown,
@@ -745,7 +769,7 @@ export function EmergencyErOrdersPanel({
       .map((o) => ({
         order: o,
         lines: (Array.isArray(o.items) ? o.items : []).filter((it) =>
-          isOrderItemActiveForErDashboard(it as Record<string, unknown>)
+          isOrderItemActiveForErDashboard(it as Record<string, unknown>, o.type)
         ),
       }));
   }, [parsedOrders]);
@@ -814,7 +838,7 @@ export function EmergencyErOrdersPanel({
       const items = Array.isArray(o.items) ? o.items : [];
       for (const it of items) {
         const row = it as Record<string, unknown>;
-        if (!isOrderItemCompletedForErDashboard(row)) continue;
+        if (!isOrderItemCompletedForErDashboard(row, o.type)) continue;
         const itemId = String(row.id ?? "");
         if (!itemId || coveredItemIds.has(itemId)) continue;
         coveredItemIds.add(itemId);
@@ -844,6 +868,42 @@ export function EmergencyErOrdersPanel({
           roleSnapshot: null,
           note: null,
           metadata: { orderItemId: itemId },
+          order: {
+            displayName: getOrderItemDisplayLabelForLanguage(
+              it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
+              language,
+              t
+            ),
+            cancellationReason: null,
+            type: o.type,
+          },
+        });
+      }
+    }
+
+    for (const o of parsedOrders) {
+      if (o.type !== "MEDICATION" || o.status === "CANCELLED") continue;
+      const items = Array.isArray(o.items) ? o.items : [];
+      for (const it of items) {
+        const row = it as Record<string, unknown>;
+        if (!isMedicationOrderClosedForErCompleted(row, "MEDICATION")) continue;
+        const itemId = String(row.id ?? "");
+        if (!itemId || coveredItemIds.has(itemId)) continue;
+        const performedAt = medicationOrderLifecycleClosedPerformedAt(row);
+        if (!performedAt) continue;
+        coveredItemIds.add(itemId);
+        fallback.push({
+          id: `er-lifecycle-closed-${itemId}`,
+          orderId: o.id,
+          eventType: "COMPLETED",
+          performedByDisplayName:
+            typeof row.medicationLifecycleByDisplay === "string"
+              ? row.medicationLifecycleByDisplay
+              : null,
+          performedAt,
+          roleSnapshot: null,
+          note: typeof row.medicationLifecycleReason === "string" ? row.medicationLifecycleReason : null,
+          metadata: { orderItemId: itemId, medicationLifecycleClosed: true },
           order: {
             displayName: getOrderItemDisplayLabelForLanguage(
               it as Parameters<typeof getOrderItemDisplayLabelForLanguage>[0],
@@ -2090,7 +2150,6 @@ export function EmergencyErOrdersPanel({
                     const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
                     const marLine = marActionOutcomeSubLabel(e.metadata, t);
                     const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
-                    const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
                     const itemIdEv = orderItemIdFromEventMetadata(e.metadata);
                     const metaRec =
                       e.metadata && typeof e.metadata === "object" && !Array.isArray(e.metadata)
@@ -2109,6 +2168,15 @@ export function EmergencyErOrdersPanel({
                     }
                     const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
                     const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
+                    const completedItemRow =
+                      itemIdEv && completedOrder
+                        ? (completedOrder.items.find(
+                            (it) => String((it as Record<string, unknown>).id ?? "") === itemIdEv
+                          ) as Record<string, unknown> | undefined)
+                        : undefined;
+                    const lifecycleClosedLine = medicationLifecycleClosedErStatusLabel(completedItemRow, t);
+                    const secondaryLine =
+                      lifecycleClosedLine ?? outcomeLine ?? marLine ?? careProcLine;
                     const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
                     const attributionLines = completedOrder
                       ? formatOrderAttributionLines(completedOrder, t, language)
@@ -2174,12 +2242,10 @@ export function EmergencyErOrdersPanel({
                         ))}
                       </>
                     );
-                    const completedItemRow =
+                    const completedInfusionTl =
                       itemIdEv && completedOrder
-                        ? (completedOrder.items.find(
-                            (it) => String((it as Record<string, unknown>).id ?? "") === itemIdEv
-                          ) as Record<string, unknown> | undefined)
-                        : undefined;
+                        ? findMedicationInfusionTimelineFromOrderEvents(parsedEvents, completedOrder.id, itemIdEv)
+                        : { active: null, lastCompleted: null };
                     return (
                       <li key={e.id} style={{ minWidth: 0, listStyle: "none" }}>
                         <ErOrderEventCard
@@ -2205,6 +2271,27 @@ export function EmergencyErOrdersPanel({
                                     completedItemRow,
                                     String(completedItemRow?.status ?? "COMPLETED")
                                   )
+                                : null}
+                              {typeKey === "MEDICATION" && completedItemRow && completedOrder
+                                ? renderErMedicationOrderLineActions({
+                                    orderType: completedOrder.type,
+                                    orderId: completedOrder.id,
+                                    item: completedItemRow,
+                                    canPrescribe: effectiveCanPrescribe,
+                                    roles,
+                                    encounterSigned,
+                                    facilityId,
+                                    ordersRaw,
+                                    orderEventsRaw: orderEventsRaw,
+                                    itemStatus: String(completedItemRow.status ?? ""),
+                                    infusionTimeline: completedInfusionTl,
+                                    lineBtns: [],
+                                    placement: "inline",
+                                    onUpdated: () => {
+                                      setOrdersRefresh((r) => r + 1);
+                                      void onRefetchEncounter();
+                                    },
+                                  })
                                 : null}
                             </>
                           }
@@ -2246,7 +2333,6 @@ export function EmergencyErOrdersPanel({
                         const outcomeLine = lifecycleOutcomeSubLabel(e.metadata, t);
                         const marLine = marActionOutcomeSubLabel(e.metadata, t);
                         const careProcLine = careProcedureCompletedSubLabel(e, e.metadata, t);
-                        const secondaryLine = outcomeLine ?? marLine ?? careProcLine;
                         const itemIdEv = orderItemIdFromEventMetadata(e.metadata);
                         const metaRec =
                           e.metadata && typeof e.metadata === "object" && !Array.isArray(e.metadata)
@@ -2271,6 +2357,23 @@ export function EmergencyErOrdersPanel({
                         }
                         const directionsLine = medicationDirectionsForEvent(e, parsedOrders, t);
                         const completedOrder = parsedOrders.find((order) => order.id === e.orderId);
+                        const completedItemRow =
+                          itemIdEv && completedOrder
+                            ? (completedOrder.items.find(
+                                (it) => String((it as Record<string, unknown>).id ?? "") === itemIdEv
+                              ) as Record<string, unknown> | undefined)
+                            : undefined;
+                        const lifecycleClosedLine = medicationLifecycleClosedErStatusLabel(completedItemRow, t);
+                        const secondaryLine =
+                          lifecycleClosedLine ?? outcomeLine ?? marLine ?? careProcLine;
+                        const completedInfusionTl =
+                          itemIdEv && completedOrder
+                            ? findMedicationInfusionTimelineFromOrderEvents(
+                                parsedEvents,
+                                completedOrder.id,
+                                itemIdEv
+                              )
+                            : { active: null, lastCompleted: null };
                         const authorityLine = completedOrder ? formatOrderAuthority(completedOrder, t) : null;
                         const attributionLines = completedOrder ? formatOrderAttributionLines(completedOrder, t, language) : [];
                         const issuedPrimary = attributionLines[0] ?? authorityLine ?? "—";
@@ -2328,6 +2431,27 @@ export function EmergencyErOrdersPanel({
                               {directionsLine ? (
                                 <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                               ) : null}
+                              {typeKey === "MEDICATION" && completedItemRow && completedOrder
+                                ? renderErMedicationOrderLineActions({
+                                    orderType: completedOrder.type,
+                                    orderId: completedOrder.id,
+                                    item: completedItemRow,
+                                    canPrescribe: effectiveCanPrescribe,
+                                    roles,
+                                    encounterSigned,
+                                    facilityId,
+                                    ordersRaw,
+                                    orderEventsRaw: orderEventsRaw,
+                                    itemStatus: String(completedItemRow.status ?? ""),
+                                    infusionTimeline: completedInfusionTl,
+                                    lineBtns: [],
+                                    placement: "inline",
+                                    onUpdated: () => {
+                                      setOrdersRefresh((r) => r + 1);
+                                      void onRefetchEncounter();
+                                    },
+                                  })
+                                : null}
                             </td>
                             <td
                               style={{

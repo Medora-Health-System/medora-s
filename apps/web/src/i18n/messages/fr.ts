@@ -9814,6 +9814,7 @@ export default {
     moreItems: "+{count} autre(s)…",
     openOrdersTitle: "Ordres ouverts",
     openOrdersEmpty: "Aucun ordre actif.",
+    lifecycleDiscontinuedBeforeAdministration: "Arrêtée avant administration",
     tableCategory: "Catégorie",
     tableIssued: "Émis pour",
     tableTime: "Heure",

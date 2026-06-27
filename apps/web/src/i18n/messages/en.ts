@@ -9828,6 +9828,7 @@ export default {
     moreItems: "+{count} more…",
     openOrdersTitle: "Open orders",
     openOrdersEmpty: "No active orders.",
+    lifecycleDiscontinuedBeforeAdministration: "Discontinued before administration",
     tableCategory: "Category",
     tableIssued: "Issued",
     tableTime: "Time",

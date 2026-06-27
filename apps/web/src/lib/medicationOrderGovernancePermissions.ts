@@ -110,6 +110,9 @@ export function isStandingMedicationOrderLineActiveInOrders(
   if (lifecycle === "DISCONTINUED" || lifecycle === "SUPERSEDED" || lifecycle === "CANCELED_ENTERED_IN_ERROR") {
     return false;
   }
+  if (lifecycle === "COMPLETED" || lifecycle === "EXPIRED") {
+    return false;
+  }
   return true;
 }
 
