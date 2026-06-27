@@ -67,7 +67,15 @@ describe("MAR response timeline duplicate label prevention", () => {
   });
 
   it("timeline source suppresses duplicate badge when localized response secondary is shown", () => {
-    expect(timelineSrc).toContain("!(internalResponseSecondary && localizedSecondary)");
+    expect(timelineSrc).toContain("!responseTimelineLabelKey");
     expect(timelineSrc).toContain("!isMarMedicationResponseInternalSecondaryText(item.secondaryText)");
+  });
+
+  it("ondansetron-style DONE secondary with response count suppresses badge via label key", () => {
+    const labelKey = resolveMarMedicationResponseTimelineLabelKey({
+      secondaryText: "DONE",
+      responseCount: 1,
+    });
+    expect(labelKey).toBe("marMedicationResponse.timeline.completed");
   });
 });

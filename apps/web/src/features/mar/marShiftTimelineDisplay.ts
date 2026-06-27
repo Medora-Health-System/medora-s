@@ -14,6 +14,7 @@ import {
   resolveMarMedicationResponseTimelineLabelKey,
   localizeIcuMarTimelineSecondaryText,
   isMarShiftTimelineInternalEnumText,
+  type MarMedicationDoseDisplayFields,
 } from "@medora/shared";
 import type {
   MarShiftTimelineCellItem,
@@ -512,4 +513,113 @@ export function localizeMarShiftTimelineSecondaryText(
     return null;
   }
   return item.secondaryText?.trim() || null;
+}
+
+function normalizeMarDrawerComparableText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Consolidates hover + fluid rate for drawer display (continuous fluid / IV). */
+export function resolveMarShiftTimelineDrawerConsolidatedRate(
+  item: Pick<MarShiftTimelineCellItem, "fluidRateLabel" | "hover">
+): string | null {
+  return item.fluidRateLabel?.trim() || item.hover.rate?.trim() || null;
+}
+
+export function isMarShiftTimelineDrawerRateRedundantWithDirections(input: {
+  rate: string | null | undefined;
+  directionsLabel: string | null | undefined;
+}): boolean {
+  const rate = input.rate?.trim();
+  const directions = input.directionsLabel?.trim();
+  if (!rate || !directions) return false;
+  const rateNorm = normalizeMarDrawerComparableText(rate);
+  const directionsNorm = normalizeMarDrawerComparableText(directions);
+  return directionsNorm.includes(rateNorm);
+}
+
+export function dedupeMarShiftTimelineDrawerDetailRows<
+  T extends { label: string; value: string | null | undefined; testId?: string },
+>(rows: T[]): T[] {
+  const seenLabelValue = new Set<string>();
+  const seenRateValues = new Set<string>();
+
+  return rows.filter((row) => {
+    const value = row.value?.trim();
+    if (!value) return false;
+
+    const labelNorm = normalizeMarDrawerComparableText(row.label);
+    const valueNorm = normalizeMarDrawerComparableText(value);
+    const labelValueKey = `${labelNorm}::${valueNorm}`;
+    if (seenLabelValue.has(labelValueKey)) return false;
+
+    const looksLikeRate = /ml\/h|ml\/hr|mL\/h|mL\/hr/i.test(value);
+    if (looksLikeRate) {
+      if (seenRateValues.has(valueNorm)) return false;
+      seenRateValues.add(valueNorm);
+    }
+
+    seenLabelValue.add(labelValueKey);
+    return true;
+  });
+}
+
+/** PRN cells may lack API doseDisplay — derive emphasis fields from hover + order metadata. */
+export function resolveMarShiftTimelineDrawerDoseEmphasis(
+  item: Pick<
+    MarShiftTimelineCellItem,
+    "doseDisplay" | "isPrnBand" | "hover" | "route" | "orderPrnIndication"
+  >
+): MarMedicationDoseDisplayFields | null {
+  const projected = item.doseDisplay;
+  if (
+    projected &&
+    (projected.doseLabel ||
+      projected.routeLabel ||
+      projected.frequencyLabel ||
+      projected.totalDoseLabel ||
+      projected.directionsLabel ||
+      projected.quantityLabel)
+  ) {
+    return projected;
+  }
+
+  if (item.isPrnBand !== true) {
+    return projected ?? null;
+  }
+
+  const doseLabel = item.hover.dose?.trim() || null;
+  const routeLabel = item.route?.trim()?.toUpperCase() || item.hover.route?.trim()?.toUpperCase() || null;
+  const directionsLabel = item.orderPrnIndication?.trim() || null;
+  if (!doseLabel && !routeLabel && !directionsLabel) {
+    return null;
+  }
+
+  return {
+    doseLabel,
+    routeLabel,
+    frequencyLabel: null,
+    directionsLabel,
+    quantityLabel: null,
+    totalDoseLabel: null,
+  };
+}
+
+export function resolveMarShiftTimelineResponseTimelineLabelKey(
+  item: Pick<
+    MarShiftTimelineCellItem,
+    "secondaryText" | "medicationResponseFollowUp" | "medicationResponses" | "respiratoryMedicationResponses"
+  >,
+  options?: { responseRequired?: boolean }
+): string | null {
+  const responseCount = Math.max(
+    item.medicationResponses?.length ?? 0,
+    item.respiratoryMedicationResponses?.length ?? 0
+  );
+  return resolveMarMedicationResponseTimelineLabelKey({
+    secondaryText: item.secondaryText,
+    medicationResponseFollowUp: item.medicationResponseFollowUp,
+    responseCount,
+    responseRequired: options?.responseRequired,
+  });
 }

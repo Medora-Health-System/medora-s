@@ -33,6 +33,7 @@ import {
   localizeMarTimelinePrnCellText,
   localizeMarShiftTimelineSecondaryText,
   reconcileMarShiftTimelineDrawerSelection,
+  resolveMarShiftTimelineResponseTimelineLabelKey,
   type MarShiftTimelineDrawerSelection,
 } from "@/features/mar/marShiftTimelineDisplay";
 import type { MarShiftTimelineActionHandlers } from "@/features/mar/marShiftTimelineActions";
@@ -476,14 +477,19 @@ export function FacilityMarShiftTimeline({
                             const hasVariance = variance?.hasVariance === true;
                             const responseBadge = item.medicationResponseBadge;
                             const responseFollowUp = item.medicationResponseFollowUp;
-                            const internalResponseSecondary = isMarMedicationResponseInternalSecondaryText(
-                              item.secondaryText
-                            );
                             const localizedSecondary = localizeMarShiftTimelineSecondaryText(item, t, {
                               responseRequired: isMedicationResponseRequired(
                                 toMedicationResponseEditabilityInput(item)
                               ),
                             });
+                            const responseTimelineLabelKey = resolveMarShiftTimelineResponseTimelineLabelKey(
+                              item,
+                              {
+                                responseRequired: isMedicationResponseRequired(
+                                  toMedicationResponseEditabilityInput(item)
+                                ),
+                              }
+                            );
                             const responsePainScores = resolveMarShiftTimelineLatestResponsePainScores(
                               item.medicationResponses
                             );
@@ -646,7 +652,7 @@ export function FacilityMarShiftTimeline({
                                     </div>
                                   </>
                                 ) : null}
-                                {responseBadge && !(internalResponseSecondary && localizedSecondary) ? (
+                                {responseBadge && !responseTimelineLabelKey ? (
                                   <div
                                     data-testid="mar-shift-timeline-response-badge"
                                     title={
@@ -666,7 +672,7 @@ export function FacilityMarShiftTimeline({
                                     ).replace("{count}", String(responseBadge.count))}
                                   </div>
                                 ) : null}
-                                {responseFollowUp && !internalResponseSecondary ? (
+                                {responseFollowUp && !responseTimelineLabelKey ? (
                                   <div
                                     data-testid="mar-shift-timeline-response-follow-up"
                                     data-follow-up-status={responseFollowUp.status}

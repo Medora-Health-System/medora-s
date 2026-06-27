@@ -15,6 +15,10 @@ import {
   marShiftTimelineItemStatusStyle,
   marShiftTimelinePrimaryDrawerAction,
   resolveMarShiftTimelineClinicalActionLabelKey,
+  dedupeMarShiftTimelineDrawerDetailRows,
+  resolveMarShiftTimelineDrawerDoseEmphasis,
+  resolveMarShiftTimelineDrawerConsolidatedRate,
+  isMarShiftTimelineDrawerRateRedundantWithDirections,
 } from "@/features/mar/marShiftTimelineDisplay";
 import {
   MAR_SHIFT_TIMELINE_HOLD_REASON_CODES,
@@ -216,6 +220,15 @@ export function FacilityMarShiftTimelineDrawer({
     item.secondaryText
   );
 
+  const doseEmphasis = resolveMarShiftTimelineDrawerDoseEmphasis(item);
+  const consolidatedRate = resolveMarShiftTimelineDrawerConsolidatedRate(item);
+  const showConsolidatedRateRow =
+    consolidatedRate != null &&
+    !isMarShiftTimelineDrawerRateRedundantWithDirections({
+      rate: consolidatedRate,
+      directionsLabel: doseEmphasis?.directionsLabel,
+    });
+
   const detailRows: {
     label: string;
     value: string | null | undefined;
@@ -276,24 +289,32 @@ export function FacilityMarShiftTimelineDrawer({
           },
         ]
       : []),
-    { label: t("marShiftTimeline.drawer.dose"), value: item.doseDisplay?.doseLabel ?? item.hover.dose },
-    { label: t("marShiftTimeline.drawer.route"), value: item.doseDisplay?.routeLabel ?? item.hover.route },
+    { label: t("marShiftTimeline.drawer.dose"), value: doseEmphasis?.doseLabel ?? item.hover.dose },
+    { label: t("marShiftTimeline.drawer.route"), value: doseEmphasis?.routeLabel ?? item.hover.route },
     {
       label: t("marShiftTimeline.doseDisplay.total"),
-      value: item.doseDisplay?.totalDoseLabel,
+      value: doseEmphasis?.totalDoseLabel,
       testId: "mar-shift-timeline-drawer-total-dose-row",
     },
     {
       label: t("marShiftTimeline.doseDisplay.directions"),
-      value: item.doseDisplay?.directionsLabel,
+      value: doseEmphasis?.directionsLabel,
       testId: "mar-shift-timeline-drawer-directions-row",
     },
     {
       label: t("marShiftTimeline.doseDisplay.quantity"),
-      value: item.doseDisplay?.quantityLabel,
+      value: doseEmphasis?.quantityLabel,
       testId: "mar-shift-timeline-drawer-quantity-row",
     },
-    { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
+    ...(showConsolidatedRateRow
+      ? [
+          {
+            label: t("marShiftTimeline.drawer.rate"),
+            value: consolidatedRate,
+            testId: "mar-shift-timeline-drawer-rate",
+          },
+        ]
+      : []),
     {
       label: t("marShiftTimeline.drawer.frequency"),
       value: isPrnItem ? prnFrequencyDisplay : item.frequencyCode,
@@ -402,11 +423,6 @@ export function FacilityMarShiftTimelineDrawer({
       testId: "mar-shift-timeline-drawer-prn-pain-location",
     },
     {
-      label: t("marShiftTimeline.drawer.fluidRate"),
-      value: item.fluidRateLabel,
-      testId: "mar-shift-timeline-drawer-fluid-rate",
-    },
-    {
       label: t("marShiftTimeline.drawer.fluidStartedAt"),
       value: item.fluidStartedAt
         ? formatMarShiftTimelineClinicalDateTime(item.fluidStartedAt, dateLocale, facilityTimeZone ?? undefined)
@@ -462,6 +478,8 @@ export function FacilityMarShiftTimelineDrawer({
       testId: "mar-shift-timeline-drawer-fluid-volume-final",
     },
   ];
+
+  const visibleDetailRows = dedupeMarShiftTimelineDrawerDetailRows(detailRows);
 
   const reasonCodes =
     reasonModal?.action === "HOLD"
@@ -887,12 +905,13 @@ export function FacilityMarShiftTimelineDrawer({
           </button>
         </div>
 
-        {item.doseDisplay?.doseLabel ||
-        item.doseDisplay?.routeLabel ||
-        item.doseDisplay?.frequencyLabel ||
-        item.doseDisplay?.totalDoseLabel ||
-        item.doseDisplay?.directionsLabel ||
-        item.doseDisplay?.quantityLabel ? (
+        {doseEmphasis?.doseLabel ||
+        doseEmphasis?.routeLabel ||
+        doseEmphasis?.frequencyLabel ||
+        doseEmphasis?.totalDoseLabel ||
+        doseEmphasis?.directionsLabel ||
+        doseEmphasis?.quantityLabel ||
+        (isPrnItem && prnFrequencyDisplay) ? (
           <div
             data-testid="mar-shift-timeline-drawer-dose-emphasis"
             style={{
@@ -903,7 +922,7 @@ export function FacilityMarShiftTimelineDrawer({
               border: "1px solid #99f6e4",
             }}
           >
-            {item.doseDisplay?.doseLabel ? (
+            {doseEmphasis?.doseLabel ? (
               <div
                 data-testid="mar-shift-timeline-drawer-dose-emphasis-amount"
                 style={{
@@ -913,7 +932,7 @@ export function FacilityMarShiftTimelineDrawer({
                   lineHeight: 1.3,
                 }}
               >
-                {item.doseDisplay.doseLabel}
+                {doseEmphasis.doseLabel}
               </div>
             ) : null}
             <div
@@ -921,37 +940,37 @@ export function FacilityMarShiftTimelineDrawer({
                 display: "flex",
                 flexWrap: "wrap",
                 gap: "6px 12px",
-                marginTop: item.doseDisplay?.doseLabel ? 6 : 0,
+                marginTop: doseEmphasis?.doseLabel ? 6 : 0,
                 fontSize: 13,
                 lineHeight: 1.4,
               }}
             >
-              {item.doseDisplay?.routeLabel ? (
+              {doseEmphasis?.routeLabel ? (
                 <span data-testid="mar-shift-timeline-drawer-dose-emphasis-route">
                   <span style={{ color: "#64748b", fontWeight: 600 }}>
                     {t("marShiftTimeline.drawer.route")}:{" "}
                   </span>
-                  {item.doseDisplay.routeLabel}
+                  {doseEmphasis.routeLabel}
                 </span>
               ) : null}
-              {(isPrnItem ? prnFrequencyDisplay : item.doseDisplay?.frequencyLabel) ? (
+              {(isPrnItem ? prnFrequencyDisplay : doseEmphasis?.frequencyLabel) ? (
                 <span data-testid="mar-shift-timeline-drawer-dose-emphasis-frequency">
                   <span style={{ color: "#64748b", fontWeight: 600 }}>
                     {t("marShiftTimeline.drawer.frequency")}:{" "}
                   </span>
-                  {isPrnItem ? prnFrequencyDisplay : item.doseDisplay?.frequencyLabel}
+                  {isPrnItem ? prnFrequencyDisplay : doseEmphasis?.frequencyLabel}
                 </span>
               ) : null}
             </div>
-            {item.doseDisplay?.totalDoseLabel ? (
+            {doseEmphasis?.totalDoseLabel ? (
               <div
                 data-testid="mar-shift-timeline-drawer-total-dose"
                 style={{ marginTop: 6, fontSize: 13, fontWeight: 600, color: "#0f766e" }}
               >
-                {t("marShiftTimeline.doseDisplay.total")}: {item.doseDisplay.totalDoseLabel}
+                {t("marShiftTimeline.doseDisplay.total")}: {doseEmphasis.totalDoseLabel}
               </div>
             ) : null}
-            {item.doseDisplay?.directionsLabel ? (
+            {doseEmphasis?.directionsLabel ? (
               <div
                 data-testid="mar-shift-timeline-drawer-directions"
                 style={{ marginTop: 6, fontSize: 13, lineHeight: 1.4 }}
@@ -959,10 +978,10 @@ export function FacilityMarShiftTimelineDrawer({
                 <span style={{ color: "#64748b", fontWeight: 600 }}>
                   {t("marShiftTimeline.doseDisplay.directions")}:{" "}
                 </span>
-                {item.doseDisplay.directionsLabel}
+                {doseEmphasis.directionsLabel}
               </div>
             ) : null}
-            {item.doseDisplay?.quantityLabel ? (
+            {doseEmphasis?.quantityLabel ? (
               <div
                 data-testid="mar-shift-timeline-drawer-quantity"
                 style={{ marginTop: 6, fontSize: 13, lineHeight: 1.4 }}
@@ -970,7 +989,7 @@ export function FacilityMarShiftTimelineDrawer({
                 <span style={{ color: "#64748b", fontWeight: 600 }}>
                   {t("marShiftTimeline.doseDisplay.quantity")}:{" "}
                 </span>
-                {item.doseDisplay.quantityLabel}
+                {doseEmphasis.quantityLabel}
               </div>
             ) : null}
           </div>
@@ -1004,10 +1023,10 @@ export function FacilityMarShiftTimelineDrawer({
         ) : null}
 
         <dl style={{ margin: "16px 0", fontSize: 13, lineHeight: 1.5, flex: 1, overflowY: "auto" }}>
-          {detailRows.map((row) =>
+          {visibleDetailRows.map((row) =>
             row.value?.trim() ? (
               <div
-                key={row.label}
+                key={row.testId ?? `${row.label}-${row.value}`}
                 data-testid={row.testId}
                 style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 8, marginBottom: 8 }}
               >
