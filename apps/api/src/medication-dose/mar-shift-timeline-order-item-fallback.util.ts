@@ -721,23 +721,22 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
     let tertiaryText: string;
     let prnFrequencyLabel: string | null = null;
 
-    const doseValue = orderItem.strength?.trim() || null;
-    const doseAmount =
-      doseValue || (orderItem.quantity != null ? String(orderItem.quantity) : null);
+    const orderStrength = orderItem.strength?.trim() || null;
     const doseDisplay = buildMarMedicationDoseDisplayFields({
       quantity: orderItem.quantity != null ? String(orderItem.quantity) : null,
       route,
       frequencyCode: orderItem.frequencyCode,
       directionsSig,
-      fallbackDoseLabel: doseAmount,
+      fallbackDoseLabel: orderStrength,
     });
+    const clinicalDoseAmount = doseDisplay.doseLabel;
 
     if (isPrnBand) {
       const prnSecondaryOverride =
         terminalOutcome === "REFUSED" ? "REFUSED" : parsedStatus === "HELD" ? "HELD" : null;
       const prnCell = buildMarShiftTimelinePrnCellTexts({
         medicationLabel,
-        doseAmount,
+        doseAmount: clinicalDoseAmount,
         route,
         frequencyCode: orderItem.frequencyCode,
         directionsSig,
@@ -908,7 +907,7 @@ export async function loadMarShiftTimelineOrderItemFallbackPlacements(input: {
         hover: buildMarShiftTimelineHover({
           medicationLabel,
           scheduledAt: pseudo.scheduledAt,
-          doseAmount: doseDisplay.doseLabel ?? doseAmount,
+          doseAmount: clinicalDoseAmount,
           route,
           requiresWitness,
           doseStatus: parsedStatus,

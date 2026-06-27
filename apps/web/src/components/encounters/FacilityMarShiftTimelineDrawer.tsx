@@ -288,6 +288,11 @@ export function FacilityMarShiftTimelineDrawer({
       value: item.doseDisplay?.directionsLabel,
       testId: "mar-shift-timeline-drawer-directions-row",
     },
+    {
+      label: t("marShiftTimeline.doseDisplay.quantity"),
+      value: item.doseDisplay?.quantityLabel,
+      testId: "mar-shift-timeline-drawer-quantity-row",
+    },
     { label: t("marShiftTimeline.drawer.rate"), value: item.hover.rate },
     {
       label: t("marShiftTimeline.drawer.frequency"),
@@ -886,7 +891,8 @@ export function FacilityMarShiftTimelineDrawer({
         item.doseDisplay?.routeLabel ||
         item.doseDisplay?.frequencyLabel ||
         item.doseDisplay?.totalDoseLabel ||
-        item.doseDisplay?.directionsLabel ? (
+        item.doseDisplay?.directionsLabel ||
+        item.doseDisplay?.quantityLabel ? (
           <div
             data-testid="mar-shift-timeline-drawer-dose-emphasis"
             style={{
@@ -954,6 +960,17 @@ export function FacilityMarShiftTimelineDrawer({
                   {t("marShiftTimeline.doseDisplay.directions")}:{" "}
                 </span>
                 {item.doseDisplay.directionsLabel}
+              </div>
+            ) : null}
+            {item.doseDisplay?.quantityLabel ? (
+              <div
+                data-testid="mar-shift-timeline-drawer-quantity"
+                style={{ marginTop: 6, fontSize: 13, lineHeight: 1.4 }}
+              >
+                <span style={{ color: "#64748b", fontWeight: 600 }}>
+                  {t("marShiftTimeline.doseDisplay.quantity")}:{" "}
+                </span>
+                {item.doseDisplay.quantityLabel}
               </div>
             ) : null}
           </div>

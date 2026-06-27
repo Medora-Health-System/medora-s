@@ -13702,6 +13702,7 @@ export default {
     doseDisplay: {
       total: "Total",
       directions: "Directions",
+      quantity: "Quantity",
     },
     disabled: "Scheduled MAR timeline is not enabled for this facility.",
     empty: "No scheduled MAR items for this shift.",

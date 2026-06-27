@@ -595,6 +595,19 @@ export function FacilityMarShiftTimeline({
                                     {item.doseDisplay.directionsLabel}
                                   </div>
                                 ) : null}
+                                {item.doseDisplay?.quantityLabel ? (
+                                  <div
+                                    data-testid="mar-shift-timeline-quantity-label"
+                                    style={{
+                                      fontSize: 10,
+                                      marginTop: 1,
+                                      lineHeight: 1.3,
+                                    }}
+                                  >
+                                    {t("marShiftTimeline.doseDisplay.quantity")}:{" "}
+                                    {item.doseDisplay.quantityLabel}
+                                  </div>
+                                ) : null}
                                 {hasVariance && variance?.badgeLabel ? (
                                   <>
                                     <div

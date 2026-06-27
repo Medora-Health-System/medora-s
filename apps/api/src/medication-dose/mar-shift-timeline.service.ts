@@ -484,6 +484,8 @@ export class MarShiftTimelineService {
               id: true,
               notes: true,
               frequencyCode: true,
+              strength: true,
+              quantity: true,
               medicationLifecycleStatus: true,
               medicationLifecycleAt: true,
             },
@@ -492,6 +494,10 @@ export class MarShiftTimelineService {
     const lifecycleByOrderItemId = new Map(
       orderItemNotesRows.map((row) => [row.id, row])
     );
+    const strengthByOrderItemId = new Map<string, string | null>();
+    for (const row of [...encounterOrderItemNotesRows, ...orderItemNotesRows]) {
+      strengthByOrderItemId.set(row.id, row.strength?.trim() || null);
+    }
     const directionsSigByOrderItemId = new Map<string, string | null>();
     for (const row of [...encounterOrderItemNotesRows, ...orderItemNotesRows]) {
       directionsSigByOrderItemId.set(row.id, row.notes?.trim() || null);
@@ -742,12 +748,7 @@ export class MarShiftTimelineService {
         continue;
       }
 
-      const doseValue = orderedSnapshot?.doseValue?.trim();
-      const doseUnit = orderedSnapshot?.doseUnit?.trim();
-      const doseAmount =
-        doseValue && doseUnit
-          ? `${doseValue} ${doseUnit}`
-          : doseValue || doseUnit || orderedSnapshot?.quantity?.trim() || null;
+      const orderStrength = strengthByOrderItemId.get(dose.orderItemId) ?? null;
 
       const doseDisplay = buildMarMedicationDoseDisplayFields({
         doseValue: orderedSnapshot?.doseValue,
@@ -757,8 +758,9 @@ export class MarShiftTimelineService {
         route,
         frequencyCode,
         directionsSig,
-        fallbackDoseLabel: doseAmount,
+        fallbackDoseLabel: orderStrength,
       });
+      const clinicalDoseAmount = doseDisplay.doseLabel;
 
       const columnKey = resolveMarShiftTimelineColumnKey({
         scheduledAt: placementInstant,
@@ -968,7 +970,7 @@ export class MarShiftTimelineService {
         hover: buildMarShiftTimelineHover({
           medicationLabel,
           scheduledAt: dose.scheduledAt,
-          doseAmount: doseDisplay.doseLabel ?? doseAmount,
+          doseAmount: clinicalDoseAmount,
           route,
           requiresWitness,
           doseStatus: timelineDoseStatus,
@@ -1241,9 +1243,7 @@ export class MarShiftTimelineService {
               }
             : null,
         });
-        const doseAmount =
-          orderItem.strength?.trim() ||
-          (orderItem.quantity != null ? String(orderItem.quantity) : null);
+        const doseAmount = orderItem.strength?.trim() || null;
         const lastAdmin = lastPrnAdminByOrderItemId.get(orderItem.id);
         const prnTiming = resolveMarShiftTimelinePrnTiming({
           orderItemId: orderItem.id,

@@ -13733,6 +13733,7 @@ export default {
     doseDisplay: {
       total: "Total",
       directions: "Instructions",
+      quantity: "Quantité",
     },
     disabled: "Le quart MAR planifié n'est pas activé pour cet établissement.",
     empty: "Aucun élément MAR planifié pour ce quart.",

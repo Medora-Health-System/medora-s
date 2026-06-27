@@ -6,12 +6,15 @@ export type MarMedicationDoseDisplayInput = {
   route?: string | null;
   frequencyCode?: string | null;
   directionsSig?: string | null;
-  /** Preformatted dose when structured snapshot fields are incomplete. */
+  /** Order-line strength / formulation when structured snapshot dose fields are incomplete. */
   fallbackDoseLabel?: string | null;
+  /** Administered count — never used as clinical dose; may surface as quantityLabel. */
+  administeredQuantity?: string | number | null;
 };
 
 export type MarMedicationDoseDisplayFields = {
   doseLabel: string | null;
+  quantityLabel: string | null;
   totalDoseLabel: string | null;
   directionsLabel: string | null;
   routeLabel: string | null;
@@ -49,22 +52,28 @@ function parseNumericDoseValue(value: string | null): number | null {
   return parsed;
 }
 
-function formatStructuredDoseLabel(input: {
+function formatClinicalDoseLabel(input: {
   doseValue: string | null;
   doseUnit: string | null;
-  quantity: string | null;
-  quantityUnit: string | null;
+  fallbackDoseLabel: string | null;
 }): string | null {
   if (input.doseValue && input.doseUnit) {
     return `${input.doseValue} ${input.doseUnit}`;
   }
   if (input.doseValue) return input.doseValue;
   if (input.doseUnit) return input.doseUnit;
-  if (input.quantity && input.quantityUnit) {
-    return `${input.quantity} ${input.quantityUnit}`;
+  return input.fallbackDoseLabel;
+}
+
+function formatQuantityLabel(input: {
+  quantity: string | null;
+  quantityUnit: string | null;
+  administeredQuantity: string | null;
+}): string | null {
+  if (input.quantity) {
+    return input.quantityUnit ? `${input.quantity} ${input.quantityUnit}` : input.quantity;
   }
-  if (input.quantity) return input.quantity;
-  return null;
+  return input.administeredQuantity;
 }
 
 function normalizeComparableText(value: string): string {
@@ -75,6 +84,30 @@ function shouldShowDirectionsLabel(directionsSig: string, doseLabel: string | nu
   if (!directionsSig.trim()) return false;
   if (!doseLabel) return true;
   return normalizeComparableText(directionsSig) !== normalizeComparableText(doseLabel);
+}
+
+function shouldShowQuantityLabel(input: {
+  quantityLabel: string | null;
+  quantity: string | null;
+  quantityUnit: string | null;
+  doseLabel: string | null;
+  directionsLabel: string | null;
+}): boolean {
+  const { quantityLabel, quantity, quantityUnit, doseLabel, directionsLabel } = input;
+  if (!quantityLabel) return false;
+  if (doseLabel && normalizeComparableText(quantityLabel) === normalizeComparableText(doseLabel)) {
+    return false;
+  }
+  if (
+    directionsLabel &&
+    normalizeComparableText(directionsLabel).includes(normalizeComparableText(quantityLabel))
+  ) {
+    return false;
+  }
+  if (doseLabel && quantity === "1" && !quantityUnit) {
+    return false;
+  }
+  return true;
 }
 
 function formatTotalDoseLabel(input: {
@@ -93,7 +126,7 @@ function formatTotalDoseLabel(input: {
   return `${totalValue} ${doseUnit}`;
 }
 
-/** Builds MAR-safe dose, route, frequency, and directions display fields from structured order data. */
+/** Builds MAR-safe clinical dose, quantity, route, frequency, and directions display fields. */
 export function buildMarMedicationDoseDisplayFields(
   input: MarMedicationDoseDisplayInput
 ): MarMedicationDoseDisplayFields {
@@ -101,26 +134,41 @@ export function buildMarMedicationDoseDisplayFields(
   const doseUnit = normalizeTrimmed(input.doseUnit);
   const quantity = normalizeQuantity(input.quantity);
   const quantityUnit = normalizeTrimmed(input.quantityUnit);
+  const administeredQuantity = normalizeQuantity(input.administeredQuantity);
   const routeLabel = normalizeTrimmed(input.route)?.toUpperCase() ?? null;
   const frequencyRaw = normalizeTrimmed(input.frequencyCode)?.toUpperCase() ?? null;
   const frequencyLabel =
     frequencyRaw && frequencyRaw !== "PRN" && frequencyRaw !== "STAT" ? frequencyRaw : null;
   const directionsSig = normalizeTrimmed(input.directionsSig);
+  const fallbackDoseLabel = normalizeTrimmed(input.fallbackDoseLabel);
 
-  const structuredDoseLabel = formatStructuredDoseLabel({
+  const doseLabel = formatClinicalDoseLabel({
     doseValue,
     doseUnit,
+    fallbackDoseLabel,
+  });
+
+  const rawQuantityLabel = formatQuantityLabel({
     quantity,
     quantityUnit,
+    administeredQuantity,
   });
-  const doseLabel = structuredDoseLabel ?? normalizeTrimmed(input.fallbackDoseLabel);
-
   const totalDoseLabel = formatTotalDoseLabel({ quantity, doseValue, doseUnit });
   const directionsLabel =
     directionsSig && shouldShowDirectionsLabel(directionsSig, doseLabel) ? directionsSig : null;
+  const quantityLabel = shouldShowQuantityLabel({
+    quantityLabel: rawQuantityLabel,
+    quantity,
+    quantityUnit,
+    doseLabel,
+    directionsLabel,
+  })
+    ? rawQuantityLabel
+    : null;
 
   return {
     doseLabel,
+    quantityLabel,
     totalDoseLabel,
     directionsLabel,
     routeLabel,
