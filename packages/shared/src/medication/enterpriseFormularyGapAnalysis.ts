@@ -15,11 +15,12 @@ import { resolveMedicationBillingReadiness } from "./medicationActivationBilling
 import { buildUnifiedOrderabilityMap } from "./medicationOrderabilityCertification.js";
 import type { MedicationOrderabilityRecord } from "./medicationOrderabilityGovernance.js";
 import { runGovernedTranche1PilotActivationReport } from "./tranche1PilotActivation.js";
-import { listActiveTranche2ProviderOrderingCatalogCodes } from "./tranche2ProviderOrderingActivation.js";
-import { listActiveAnticoagulationProviderOrderingCatalogCodes } from "./anticoagulationProviderOrderingActivation.js";
-import { listActiveInsulinDiabetesProviderOrderingCatalogCodes } from "./insulinDiabetesProviderOrderingActivation.js";
-import { listActiveVaccineProviderOrderingCatalogCodes } from "./vaccineProviderOrderingActivation.js";
-import { listActiveCriticalCareProviderOrderingCatalogCodes } from "./criticalCareProviderOrderingActivation.js";
+import {
+  getActiveCodesForDomain,
+  prewarmProviderOrderableCatalogCodesRegistry,
+  resetProviderOrderableCatalogCodesRegistryForTests,
+  type ProviderOrderingDomainId,
+} from "./providerOrderableCatalogCodesRegistry.js";
 
 export type EnterpriseFormularyGapDecision =
   | "ENTERPRISE_FORMULARY_READY"
@@ -497,17 +498,71 @@ function uniqueExpectations(): EnterpriseMedicationExpectation[] {
   return [...map.values()];
 }
 
+const ACTIVATION_SOURCE_BY_DOMAIN: Record<ProviderOrderingDomainId, string> = {
+  tranche2: "tranche_2_provider_ordering",
+  anticoagulation: "anticoagulation_provider_ordering",
+  insulinDiabetes: "insulin_diabetes_provider_ordering",
+  vaccine: "vaccine_provider_ordering",
+  criticalCare: "critical_care_provider_ordering",
+  neurology: "neurology_provider_ordering",
+  infectiousDisease: "infectious_disease_provider_ordering",
+  cardiology: "cardiology_provider_ordering",
+  ivFluids: "iv_fluids_provider_ordering",
+  obgyn: "obgyn_provider_ordering",
+  psychiatry: "psychiatry_provider_ordering",
+  gastroenterology: "gastroenterology_provider_ordering",
+  pediatrics: "pediatrics_provider_ordering",
+  surgery: "surgery_perioperative_provider_ordering",
+  painManagement: "pain_management_provider_ordering",
+  controlledSubstance: "controlled_substance_provider_ordering",
+  pulmonary: "pulmonary_provider_ordering",
+  essentialFormularyWave: "essential_formulary_activation_wave",
+};
+
+/** Most specific domain wins when classifying activation source for audit rows. */
+const ACTIVATION_DOMAIN_CHECK_ORDER: readonly ProviderOrderingDomainId[] = [
+  "essentialFormularyWave",
+  "pulmonary",
+  "controlledSubstance",
+  "painManagement",
+  "surgery",
+  "pediatrics",
+  "gastroenterology",
+  "psychiatry",
+  "obgyn",
+  "ivFluids",
+  "cardiology",
+  "infectiousDisease",
+  "neurology",
+  "criticalCare",
+  "vaccine",
+  "insulinDiabetes",
+  "anticoagulation",
+  "tranche2",
+];
+
+function ensureProviderOrderableRegistryPrewarmed(): void {
+  prewarmProviderOrderableCatalogCodesRegistry();
+}
+
 function activationSourceFor(catalogCode: string, providerOrderable: boolean): string {
-  if (listActiveCriticalCareProviderOrderingCatalogCodes().includes(catalogCode)) return "critical_care_provider_ordering";
-  if (listActiveVaccineProviderOrderingCatalogCodes().includes(catalogCode)) return "vaccine_provider_ordering";
-  if (listActiveInsulinDiabetesProviderOrderingCatalogCodes().includes(catalogCode)) return "insulin_diabetes_provider_ordering";
-  if (listActiveAnticoagulationProviderOrderingCatalogCodes().includes(catalogCode)) return "anticoagulation_provider_ordering";
-  if (listActiveTranche2ProviderOrderingCatalogCodes().includes(catalogCode)) return "tranche_2_provider_ordering";
+  for (const domain of ACTIVATION_DOMAIN_CHECK_ORDER) {
+    if (getActiveCodesForDomain(domain).has(catalogCode)) {
+      return ACTIVATION_SOURCE_BY_DOMAIN[domain];
+    }
+  }
   return providerOrderable ? "base_orderability_or_tranche_1" : "not_activated";
+}
+
+export function resetEnterpriseFormularyGapAnalysisCaches(): void {
+  inventoryCache = null;
+  finalReportCache = null;
+  resetProviderOrderableCatalogCodesRegistryForTests();
 }
 
 export function buildEnterpriseMedicationInventoryReport(): EnterpriseMedicationInventoryReport {
   if (inventoryCache) return inventoryCache;
+  ensureProviderOrderableRegistryPrewarmed();
   const rows = records().map((record) => {
     const activation = buildActivationGovernanceRecord(record);
     const billing = resolveMedicationBillingReadiness(record.catalogCode);
@@ -544,11 +599,11 @@ export function buildEnterpriseFormularyBaselineReport(): EnterpriseFormularyBas
   const readinessScore = Math.round(((inventory.totalProviderOrderableRows / 600) * 60 + (coverage.averageCoveragePercent / 100) * 40) * 10) / 10;
   return {
     tranche1Active: runGovernedTranche1PilotActivationReport().finalDecision === "READY_FOR_TRANCHE_1_PILOT_ACTIVATION",
-    tranche2Active: listActiveTranche2ProviderOrderingCatalogCodes().length > 0,
-    anticoagulationActive: listActiveAnticoagulationProviderOrderingCatalogCodes().length > 0,
-    insulinDiabetesActive: listActiveInsulinDiabetesProviderOrderingCatalogCodes().length > 0,
-    vaccineProviderOrderingActive: listActiveVaccineProviderOrderingCatalogCodes().length > 0,
-    criticalCareProviderOrderingActive: listActiveCriticalCareProviderOrderingCatalogCodes().length > 0,
+    tranche2Active: getActiveCodesForDomain("tranche2").size > 0,
+    anticoagulationActive: getActiveCodesForDomain("anticoagulation").size > 0,
+    insulinDiabetesActive: getActiveCodesForDomain("insulinDiabetes").size > 0,
+    vaccineProviderOrderingActive: getActiveCodesForDomain("vaccine").size > 0,
+    criticalCareProviderOrderingActive: getActiveCodesForDomain("criticalCare").size > 0,
     enterpriseMedicationMaturityScore: Math.min(100, readinessScore),
     currentActivatedMedicationCount: inventory.totalActivatedRows,
     currentCatalogCount: inventory.totalCatalogRows,

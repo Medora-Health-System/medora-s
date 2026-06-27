@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   buildEnterpriseDomainCoverageReport,
   buildEnterpriseFormularyBaselineReport,
@@ -8,10 +8,16 @@ import {
   buildHospitalWorkflowCoverageReport,
   buildSpecialtyMedicationGapReport,
   buildTopMissingMedicationReport,
+  resetEnterpriseFormularyGapAnalysisCaches,
   runEnterpriseFormularyGapAnalysisReport,
 } from "./enterpriseFormularyGapAnalysis.js";
+import { prewarmProviderOrderableCatalogCodesRegistry } from "./providerOrderableCatalogCodesRegistry.js";
 
 describe("MEDUI.MEDICATION.ENTERPRISE_FORMULARY_GAP_ANALYSIS.1", () => {
+  beforeAll(() => {
+    resetEnterpriseFormularyGapAnalysisCaches();
+    prewarmProviderOrderableCatalogCodesRegistry();
+  });
   it("01 — catalog inventory includes full audit fields and totals", () => {
     const report = buildEnterpriseMedicationInventoryReport();
     expect(report.totalCatalogRows).toBeGreaterThanOrEqual(600);

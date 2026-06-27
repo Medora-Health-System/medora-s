@@ -87,10 +87,18 @@ import {
   listActivePulmonaryProviderOrderingCatalogCodes,
 } from "./pulmonaryProviderOrderingActivation.js";
 import {
+  isActiveEnterpriseEssentialFormularyWaveMedication,
+  validateEnterpriseEssentialFormularyWaveOrderPlacement,
+  listActiveEnterpriseEssentialFormularyWaveCatalogCodes,
+  resetEnterpriseEssentialFormularyActivationWaveRegistryForTests,
+} from "./enterpriseEssentialFormularyActivationWaveRegistry.js";
+import {
   bindProviderOrderablePrewarm,
   getActiveCodesForDomain,
   getPriorProviderOrderableCatalogCodesForDomain,
   markProviderOrderablePrewarmComplete,
+  markProviderOrderablePrewarmFinished,
+  markProviderOrderablePrewarmStarted,
   resetProviderOrderablePriorCodesStateForTests,
   setActiveCodesForDomain,
   setPriorCodesForDomain,
@@ -98,7 +106,7 @@ import {
 } from "./providerOrderablePriorCodesState.js";
 
 export type { ProviderOrderingDomainId } from "./providerOrderablePriorCodesState.js";
-export { getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
+export { getActiveCodesForDomain, getPriorProviderOrderableCatalogCodesForDomain } from "./providerOrderablePriorCodesState.js";
 
 /** Domains whose active codes must be treated as already covered when building a later domain registry. */
 const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrderingDomainId[]> = {
@@ -244,6 +252,25 @@ const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrd
     "painManagement",
     "controlledSubstance",
   ],
+  essentialFormularyWave: [
+    "tranche2",
+    "anticoagulation",
+    "insulinDiabetes",
+    "vaccine",
+    "criticalCare",
+    "neurology",
+    "infectiousDisease",
+    "cardiology",
+    "ivFluids",
+    "obgyn",
+    "psychiatry",
+    "gastroenterology",
+    "pediatrics",
+    "surgery",
+    "painManagement",
+    "controlledSubstance",
+    "pulmonary",
+  ],
 };
 
 const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
@@ -264,6 +291,7 @@ const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
   "painManagement",
   "controlledSubstance",
   "pulmonary",
+  "essentialFormularyWave",
 ];
 
 const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly string[]> = {
@@ -284,6 +312,7 @@ const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly str
   painManagement: listActivePainManagementProviderOrderingCatalogCodes,
   controlledSubstance: listActiveControlledSubstanceProviderOrderingCatalogCodes,
   pulmonary: listActivePulmonaryProviderOrderingCatalogCodes,
+  essentialFormularyWave: listActiveEnterpriseEssentialFormularyWaveCatalogCodes,
 };
 
 let activeProviderOrderableCodes: ReadonlySet<string> | null = null;
@@ -422,6 +451,13 @@ const DOMAIN_ORDER_VALIDATORS: Array<{
     message: "Ce médicament respiratoire n'est pas disponible pour cette commande.",
     logEvent: "pulmonary_medication_order_blocked",
   },
+  {
+    isActive: isActiveEnterpriseEssentialFormularyWaveMedication,
+    validate: validateEnterpriseEssentialFormularyWaveOrderPlacement,
+    errorCode: "ESSENTIAL_FORMULARY_WAVE_MEDICATION_ORDER_BLOCKED",
+    message: "Ce médicament essentiel n'est pas disponible pour cette commande.",
+    logEvent: "essential_formulary_wave_medication_order_blocked",
+  },
 ];
 
 function buildPriorSet(domain: ProviderOrderingDomainId): ReadonlySet<string> {
@@ -467,18 +503,27 @@ export function isActiveProviderOrderableCatalogCode(catalogCode: string): boole
 export function prewarmProviderOrderableCatalogCodesRegistry(): ReadonlySet<string> {
   if (activeProviderOrderableCodes) return activeProviderOrderableCodes;
 
-  const merged = new Set<string>();
-  for (const domain of BUILD_ORDER) {
-    setPriorCodesForDomain(domain, buildPriorSet(domain));
-    const codes = LIST_ACTIVE_BY_DOMAIN[domain]();
-    const domainSet = new Set<string>(codes);
-    setActiveCodesForDomain(domain, domainSet);
-    for (const code of codes) merged.add(code);
-  }
+  markProviderOrderablePrewarmStarted();
+  try {
+    const merged = new Set<string>();
+    for (const domain of BUILD_ORDER) {
+      setPriorCodesForDomain(domain, buildPriorSet(domain));
+      const listActive = LIST_ACTIVE_BY_DOMAIN[domain];
+      if (typeof listActive !== "function") {
+        throw new TypeError(`Provider-orderable registry missing listActive for domain "${domain}"`);
+      }
+      const codes = listActive();
+      const domainSet = new Set<string>(codes);
+      setActiveCodesForDomain(domain, domainSet);
+      for (const code of codes) merged.add(code);
+    }
 
-  activeProviderOrderableCodes = merged;
-  markProviderOrderablePrewarmComplete();
-  return merged;
+    activeProviderOrderableCodes = merged;
+    markProviderOrderablePrewarmComplete();
+    return merged;
+  } finally {
+    markProviderOrderablePrewarmFinished();
+  }
 }
 
 bindProviderOrderablePrewarm(prewarmProviderOrderableCatalogCodesRegistry);
@@ -487,6 +532,7 @@ bindProviderOrderablePrewarm(prewarmProviderOrderableCatalogCodesRegistry);
 export function resetProviderOrderableCatalogCodesRegistryForTests(): void {
   activeProviderOrderableCodes = null;
   resetProviderOrderablePriorCodesStateForTests();
+  resetEnterpriseEssentialFormularyActivationWaveRegistryForTests();
 }
 
 /**

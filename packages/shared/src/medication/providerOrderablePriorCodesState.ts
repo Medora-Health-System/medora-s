@@ -20,7 +20,8 @@ export type ProviderOrderingDomainId =
   | "surgery"
   | "painManagement"
   | "controlledSubstance"
-  | "pulmonary";
+  | "pulmonary"
+  | "essentialFormularyWave";
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
 
@@ -30,6 +31,7 @@ const priorCodesByDomain = new Map<ProviderOrderingDomainId, ReadonlySet<string>
 type PrewarmFn = () => ReadonlySet<string>;
 let prewarmFn: PrewarmFn | null = null;
 let prewarmComplete = false;
+let prewarmInProgress = false;
 
 export function bindProviderOrderablePrewarm(fn: PrewarmFn): void {
   prewarmFn = fn;
@@ -41,6 +43,18 @@ export function markProviderOrderablePrewarmComplete(): void {
 
 export function isProviderOrderablePrewarmComplete(): boolean {
   return prewarmComplete;
+}
+
+export function isProviderOrderablePrewarmInProgress(): boolean {
+  return prewarmInProgress;
+}
+
+export function markProviderOrderablePrewarmStarted(): void {
+  prewarmInProgress = true;
+}
+
+export function markProviderOrderablePrewarmFinished(): void {
+  prewarmInProgress = false;
 }
 
 export function setActiveCodesForDomain(domain: ProviderOrderingDomainId, codes: ReadonlySet<string>): void {
@@ -58,7 +72,13 @@ export function getActiveCodesForDomain(domain: ProviderOrderingDomainId): Reado
 export function getPriorProviderOrderableCatalogCodesForDomain(
   domain: ProviderOrderingDomainId
 ): ReadonlySet<string> {
-  if (!priorCodesByDomain.has(domain) && prewarmFn && !prewarmComplete) {
+  if (priorCodesByDomain.has(domain)) {
+    return priorCodesByDomain.get(domain)!;
+  }
+  if (prewarmInProgress) {
+    return EMPTY_SET;
+  }
+  if (prewarmFn && !prewarmComplete) {
     prewarmFn();
   }
   return priorCodesByDomain.get(domain) ?? EMPTY_SET;
@@ -68,4 +88,5 @@ export function resetProviderOrderablePriorCodesStateForTests(): void {
   activeCodesByDomain.clear();
   priorCodesByDomain.clear();
   prewarmComplete = false;
+  prewarmInProgress = false;
 }
