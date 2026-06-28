@@ -59,6 +59,23 @@ describe("resolveMedicationOrderDisplayBucket", () => {
     expect(isMedicationOrderOpenForErDashboard(held, "MEDICATION")).toBe(true);
   });
 
+  it("PRN Q6H with COMPLETED workflow and ACTIVE lifecycle remains Open Orders", () => {
+    const prnAfterMar = {
+      id: "item-apap-prn",
+      status: "COMPLETED",
+      frequencyCode: "Q6H",
+      route: "PO",
+      notes: "500 mg PO q6h PRN pain",
+      medicationFulfillmentIntent: "ADMINISTER_CHART",
+      medicationLifecycleStatus: null,
+      medicationAdministrations: [{ administeredAt: "2026-06-23T10:00:00.000Z" }],
+    };
+    expect(resolveMedicationOrderDisplayBucket({ orderType: "MEDICATION", orderItem: prnAfterMar })).toBe(
+      "OPEN"
+    );
+    expect(isMedicationOrderOpenForErDashboard(prnAfterMar, "MEDICATION")).toBe(true);
+  });
+
   it("SUPERSEDED does not remain Open", () => {
     const superseded = {
       ...vancomycinQ12H,

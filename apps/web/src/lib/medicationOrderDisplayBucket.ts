@@ -4,6 +4,7 @@
  */
 
 import {
+  isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow,
   normalizeMedicationOrderLifecycleStatus,
   isMedicationOrderLineItem,
 } from "@/lib/medicationOrderGovernancePermissions";
@@ -53,7 +54,9 @@ export function resolveMedicationOrderDisplayBucket(input: {
     input.hasMarAdministration ?? medicationOrderItemHasMarAdministration(item);
 
   if (TERMINAL_WORKFLOW_STATUSES.has(workflowStatus) && workflowStatus !== "CANCELLED") {
-    return "COMPLETED";
+    if (!isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow(item)) {
+      return "COMPLETED";
+    }
   }
 
   switch (lifecycle) {

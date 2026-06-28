@@ -6,6 +6,7 @@
 import {
   isMedicationOrderLifecycleGovernanceDeferred,
   resolveMedicationOrderLifecycleStatus,
+  shouldSkipOrderLineCompletionForMar,
   type MedicationOrderLifecycleStatus,
 } from "@medora/shared";
 
@@ -95,8 +96,32 @@ export function normalizeMedicationOrderLifecycleStatus(
 }
 
 /**
- * Standing/recurring medication orders (e.g. Q12H IVPB) remain provider-governable after
- * a MAR dose is completed. Only terminal order-line workflow statuses suppress open-list actions.
+ * PRN / ON_DEMAND lines may retain COMPLETED workflow status after MAR while lifecycle
+ * stays ACTIVE (MEDUI.ED.MAR.H2). Provider governance must mirror nurse pending semantics.
+ */
+export function isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow(
+  item: Record<string, unknown>
+): boolean {
+  const workflowStatus = String(item.status ?? "").trim().toUpperCase();
+  if (
+    workflowStatus !== "COMPLETED" &&
+    workflowStatus !== "RESULTED" &&
+    workflowStatus !== "VERIFIED"
+  ) {
+    return false;
+  }
+  return shouldSkipOrderLineCompletionForMar({
+    frequencyCode: typeof item.frequencyCode === "string" ? item.frequencyCode : null,
+    directionsSig: typeof item.notes === "string" ? item.notes : null,
+    orderRoute: typeof item.route === "string" ? item.route : null,
+    doseGatedMarPathUsed: false,
+  });
+}
+
+/**
+ * Standing/recurring medication orders (e.g. Q12H IVPB, PRN) remain provider-governable after
+ * a MAR dose is completed. Only terminal order-line workflow statuses suppress open-list actions,
+ * except repeating PRN / ON_DEMAND continuity rows.
  */
 export function isStandingMedicationOrderLineActiveInOrders(
   item: Record<string, unknown>
@@ -104,7 +129,9 @@ export function isStandingMedicationOrderLineActiveInOrders(
   const workflowStatus = String(item.status ?? "").trim().toUpperCase();
   if (workflowStatus === "CANCELLED") return false;
   if (workflowStatus === "COMPLETED" || workflowStatus === "RESULTED" || workflowStatus === "VERIFIED") {
-    return false;
+    if (!isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow(item)) {
+      return false;
+    }
   }
   const lifecycle = normalizeMedicationOrderLifecycleStatus(item.medicationLifecycleStatus);
   if (lifecycle === "DISCONTINUED" || lifecycle === "SUPERSEDED" || lifecycle === "CANCELED_ENTERED_IN_ERROR") {

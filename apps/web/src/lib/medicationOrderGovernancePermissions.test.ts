@@ -4,6 +4,7 @@ import {
   isChartAdminMedicationOrderItem,
   isMarManagedMedicationOrderItem,
   isMedicationOrderLineItem,
+  isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow,
   isStandingMedicationOrderLineActiveInOrders,
   normalizeMedicationOrderLifecycleStatus,
   resolveMedicationGovernanceRenderState,
@@ -18,6 +19,18 @@ const vancomycinQ12H = {
   manualLabel: "Vancomycin 750 mg IVPB Q12H",
   medicationFulfillmentIntent: "ADMINISTER_CHART",
   medicationLifecycleStatus: null,
+};
+
+const acetaminophenQ6HPrn = {
+  id: "item-apap-prn",
+  status: "ACKNOWLEDGED",
+  frequencyCode: "Q6H",
+  route: "PO",
+  notes: "500 mg PO q6h PRN pain",
+  manualLabel: "Acetaminophen 500 mg PO q6h PRN",
+  medicationFulfillmentIntent: "ADMINISTER_CHART",
+  catalogItemType: "MEDICATION",
+  medicationLifecycleStatus: null as string | null,
 };
 
 describe("resolveMedicationGovernanceRenderState", () => {
@@ -165,8 +178,38 @@ describe("medicationOrderGovernancePermissions primitives", () => {
       isStandingMedicationOrderLineActiveInOrders({
         status: "COMPLETED",
         medicationLifecycleStatus: null,
+        frequencyCode: "ONCE",
+        notes: "once now",
       })
     ).toBe(false);
+  });
+
+  it("PRN Q6H with COMPLETED workflow remains standing active for provider governance", () => {
+    const afterMar = {
+      ...acetaminophenQ6HPrn,
+      status: "COMPLETED",
+      medicationAdministrations: [{ administeredAt: "2026-06-23T10:00:00.000Z" }],
+    };
+    expect(isMedicationOrderLineStandingContinuityDespiteTerminalWorkflow(afterMar)).toBe(true);
+    expect(isStandingMedicationOrderLineActiveInOrders(afterMar)).toBe(true);
+    const state = resolveMedicationGovernanceRenderState({
+      orderType: "MEDICATION",
+      orderItem: afterMar,
+      permissions: { roles: ["PROVIDER"] },
+    });
+    expect(state.shouldRender).toBe(true);
+    expect(state.canMutate).toBe(true);
+    expect(state.isStandingActiveOrder).toBe(true);
+  });
+
+  it("active PRN without prior administration is provider-governable", () => {
+    const state = resolveMedicationGovernanceRenderState({
+      orderType: "MEDICATION",
+      orderItem: acetaminophenQ6HPrn,
+      permissions: { roles: ["PROVIDER"] },
+    });
+    expect(state.canMutate).toBe(true);
+    expect(state.normalizedLifecycleStatus).toBe("ACTIVE");
   });
 
   it("discontinued lifecycle suppresses standing active open-order classification", () => {
