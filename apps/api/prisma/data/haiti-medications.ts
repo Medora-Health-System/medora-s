@@ -986,6 +986,21 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     commonAliases: A(["Adenocard", "SVT", "tachycardie supraventriculaire"]),
     ...essential(260),
   },
+  // HCPCS candidate reviewed: J3490 (wave4 billing manifest).
+  {
+    code: "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE",
+    genericName: "Piperacillin-tazobactam",
+    displayNameFr: "Pipéracilline-tazobactam",
+    displayNameEn: "Piperacillin-tazobactam",
+    strength: "3.375 g",
+    dosageForm: "injectable",
+    route: "intraveineuse",
+    therapeuticClass: "Antibiotique",
+    administrationType: "INFUSION",
+    billingClass: "THERAPEUTIC",
+    commonAliases: A(["Zosyn", "piperacillin tazobactam", "piperacillin and tazobactam", "pip-tazo 3.375", "sepsis", "antibiotique urgence"]),
+    ...essential(261),
+  },
   // HCPCS candidate reviewed: J2543.
   {
     code: "PIPERACILLIN_TAZOBACTAM_4_5G_IV",
@@ -999,7 +1014,7 @@ export const HAITI_MEDICATION_CATALOG: HaitiMedicationSeed[] = [
     administrationType: "INFUSION",
     billingClass: "THERAPEUTIC",
     commonAliases: A(["Zosyn", "piperacillin tazobactam", "piperacillin and tazobactam", "sepsis", "antibiotique urgence"]),
-    ...essential(261),
+    ...essential(262),
   },
   // Billing/NDC pending: no local HCPCS/NDC evidence found in processed candidate files.
   {

@@ -263,9 +263,18 @@ const ID_REMEDIATION = [
   { medication: "Vancomycin IV", catalogCode: "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE", tokens: ["vancomycin"] },
   { medication: "Cefepime", catalogCode: "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE", tokens: ["cefepime"] },
   { medication: "Piperacillin-Tazobactam", catalogCode: "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE", tokens: ["piperacillin"] },
+  { medication: "Piperacillin-Tazobactam 3.375g", catalogCode: "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE", tokens: ["piperacillin", "3.375"] },
   { medication: "Meropenem", catalogCode: "MEROPENEM_1_G_POUDRE_INTRAVEINEUSE", tokens: ["meropenem"] },
   { medication: "Daptomycin", catalogCode: "DAPTOMYCIN_500_MG_POUDRE_INTRAVEINEUSE", tokens: ["daptomycin"] },
   { medication: "Linezolid", catalogCode: "LINEZOLID_600_MG_COMPRIME_ORALE", tokens: ["linezolid"] },
+] as const;
+
+/** Enterprise strength variants approved for ID ordering without duplicate-collision inventory rows. */
+const INFECTIOUS_DISEASE_GOVERNED_STRENGTH_VARIANT_ACTIVATIONS = [
+  {
+    medication: "Zosyn 3.375g IV",
+    catalogCode: "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE",
+  },
 ] as const;
 
 const NEUROLOGY_WORKFLOWS = [
@@ -511,11 +520,47 @@ export function buildInfectiousDiseaseProviderOrderingEligibilityReport(): Speci
   return eligibilityReport("INFECTIOUS_DISEASE");
 }
 
+function buildGovernedInfectiousDiseaseStrengthVariantActivationEntries(): SpecialtyActivationEntry[] {
+  return INFECTIOUS_DISEASE_GOVERNED_STRENGTH_VARIANT_ACTIVATIONS.flatMap((spec) => {
+    const record = orderabilityRows().find((row) => row.catalogCode === spec.catalogCode);
+    if (!record) return [];
+    const activation = buildActivationGovernanceRecord(record);
+    const billing = resolveMedicationBillingReadiness(spec.catalogCode);
+    if (!activation.marReady || !billing.billingReady) return [];
+    return [
+      {
+        domain: "INFECTIOUS_DISEASE",
+        medication: spec.medication,
+        catalogCode: spec.catalogCode,
+        displayNameEn: record.displayNameEn,
+        displayNameFr: record.displayNameFr,
+        route: record.route,
+        form: record.dosageForm,
+        canonicalFamily: canonicalMedicationFamilyKey(record),
+        marReady: activation.marReady,
+        billingReady: billing.billingReady,
+        inventoryReady: billing.ndcReady || activation.inventoryReady,
+        providerOrderable: activation.orderSearchReady && activation.status === "ORDERABLE",
+        classification: "READY_FOR_PROVIDER_ORDERING",
+        blockers: [],
+        pharmacyReviewVisible: true,
+        state: "ACTIVE",
+      },
+    ];
+  });
+}
+
 export function buildNeurologyInfectiousDiseaseProviderOrderingActivationRegistry(): NeurologyInfectiousDiseaseProviderOrderingActivationRegistry {
   if (registryCache) return registryCache;
-  const entries = inventoryRows()
+  const inventoryEntries = inventoryRows()
     .filter((row) => row.classification === "READY_FOR_PROVIDER_ORDERING")
     .map((row): SpecialtyActivationEntry => ({ ...row, pharmacyReviewVisible: true, state: "ACTIVE" }));
+  const governedStrengthVariants = buildGovernedInfectiousDiseaseStrengthVariantActivationEntries();
+  const existingCodes = new Set(inventoryEntries.map((entry) => entry.catalogCode));
+  const entries = [
+    ...inventoryEntries,
+    ...governedStrengthVariants.filter((entry) => !existingCodes.has(entry.catalogCode)),
+  ];
   registryCache = {
     activatedAt: ACTIVATED_AT,
     activatingAuthority: "Medication Governance Board",

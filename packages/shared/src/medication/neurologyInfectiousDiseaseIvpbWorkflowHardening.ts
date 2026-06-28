@@ -225,6 +225,7 @@ const IVPB_FOCUS_MEDICATIONS: readonly IvpbFocusMedicationSpec[] = [
     medication: "Piperacillin-Tazobactam IVPB",
     domain: "INFECTIOUS_DISEASE",
     catalogCodes: [
+      "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE",
       "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE",
       "PIPERACILLIN_TAZOBACTAM_4_5G_IV",
     ],

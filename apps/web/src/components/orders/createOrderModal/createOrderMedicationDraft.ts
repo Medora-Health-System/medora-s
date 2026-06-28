@@ -35,20 +35,12 @@ export const MEDICATION_DIRECTION_QUICK_PICKS_PO = [
 ] as const;
 
 export const MEDICATION_DIRECTION_QUICK_PICKS_IVPB = [
-  "now",
-  "once",
-  "give IVPB now",
+  "IVPB now",
   "IVPB once",
-  "1 g IVPB q24h",
-  "1 g IVPB q12h",
-  "1 g IVPB q8h",
-  "1 g IVPB q6h",
-  "500 mg IVPB q12h",
-  "500 mg IVPB q8h",
-  "Vancomycin 1 g IVPB q12h",
-  "Cefepime 2 g IVPB q8h",
-  "Ceftriaxone 1 g IVPB q24h",
-  "Piperacillin-tazobactam 4.5 g IVPB q6h",
+  "IVPB q24h",
+  "IVPB q12h",
+  "IVPB q8h",
+  "IVPB q6h",
   "take as directed",
 ] as const;
 
