@@ -327,7 +327,12 @@ export function MedicationGovernanceManageModal({
               ? t("medicationOrderLifecycle.manageModalTitle")
               : t(`medicationOrderLifecycle.modalTitle.${step}`)}
           </h3>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>{medicationLabel}</p>
+          <p
+            data-testid="medication-governance-clinical-header"
+            style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}
+          >
+            {medicationLabel}
+          </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>
             {t("medicationOrderLifecycle.statusLabel")}: {statusLabel}
           </p>

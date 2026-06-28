@@ -11781,6 +11781,7 @@ export default {
     providerGovernanceTitle: "Provider order governance",
     manage: "Manage",
     manageModalTitle: "Medication order governance",
+    clinicalHeaderFallback: "Medication order",
     reasonRequired: "Reason is required.",
     marExecutionStatus: "MAR execution",
     viewHistory: "View lifecycle history",

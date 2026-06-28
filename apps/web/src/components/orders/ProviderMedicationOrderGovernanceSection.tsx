@@ -8,6 +8,10 @@ import {
   type MedicationGovernancePermissionsInput,
   resolveMedicationGovernanceRenderState,
 } from "@/lib/medicationOrderGovernancePermissions";
+import {
+  resolveMedicationOrderGovernanceClinicalHeader,
+  type MedicationOrderGovernanceHeaderItem,
+} from "@/lib/medicationOrderGovernanceClinicalHeader";
 import { medicationOrderLifecycleStatusLabelKey } from "@/lib/medicationOrderLifecycleApi";
 import {
   MedicationGovernanceManageButton,
@@ -69,12 +73,19 @@ export function ProviderMedicationOrderGovernanceSection({
   medicationLabel,
   onUpdated,
 }: ProviderMedicationOrderGovernanceSectionProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [manageOpen, setManageOpen] = useState(false);
   const orderItemId = String(orderItem.id ?? "");
-  const label =
-    medicationLabel ??
-    (typeof orderItem.manualLabel === "string" ? orderItem.manualLabel : orderItemId);
+  const label = useMemo(
+    () =>
+      resolveMedicationOrderGovernanceClinicalHeader({
+        orderItem: orderItem as MedicationOrderGovernanceHeaderItem,
+        language,
+        t,
+        medicationLabel,
+      }),
+    [orderItem, language, t, medicationLabel]
+  );
 
   const renderState = useMemo(
     () =>

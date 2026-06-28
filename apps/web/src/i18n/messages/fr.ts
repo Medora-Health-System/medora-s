@@ -11790,6 +11790,7 @@ export default {
     providerGovernanceTitle: "Gouvernance prescripteur",
     manage: "Gérer",
     manageModalTitle: "Gouvernance de l'ordonnance médicamenteuse",
+    clinicalHeaderFallback: "Ordonnance médicamenteuse",
     reasonRequired: "Le motif est requis.",
     marExecutionStatus: "Exécution MAR",
     viewHistory: "Voir l'historique du cycle de vie",

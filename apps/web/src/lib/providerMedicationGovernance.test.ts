@@ -32,7 +32,9 @@ describe("providerMedicationGovernance (MEDUI.ORDERS.PROVIDER_MEDICATION_GOVERNA
     const source = readSource("src/components/orders/ProviderMedicationOrderGovernanceSection.tsx");
     const modal = readSource("src/components/orders/MedicationGovernanceManageModal.tsx");
     expect(source).toContain("MedicationGovernanceManageModal");
+    expect(source).toContain("resolveMedicationOrderGovernanceClinicalHeader");
     expect(source).toContain("provider-medication-mar-execution-status");
+    expect(modal).toContain('data-testid="medication-governance-clinical-header"');
     expect(modal).toContain("medicationOrderLifecycle.actions.discontinue");
   });
 
