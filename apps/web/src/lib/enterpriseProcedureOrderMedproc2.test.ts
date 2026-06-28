@@ -27,8 +27,8 @@ describe("MEDPROC.2 CreateOrderModal enterprise procedure wiring", () => {
   });
 
   it("maps canonical ids for core procedures", () => {
-    expect(modalSource).toContain('procedure.id === "ekg_ecg"');
-    expect(modalSource).toContain('procedure.id === "laceration_repair"');
+    expect(modalSource).toContain('procedure.code === "ekg_ecg"');
+    expect(modalSource).toContain('procedure.code === "laceration_repair"');
     expect(modalSource).toContain("addCareCatalogProcedure");
   });
 });

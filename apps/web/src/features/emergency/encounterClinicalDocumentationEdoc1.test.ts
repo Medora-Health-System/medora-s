@@ -37,7 +37,8 @@ describe("EDOC.1 clinical documentation hub", () => {
 
   it("hub uses compact scrollable category chips for tablet layout", () => {
     expect(hubSource).toContain("overflowX: \"auto\"");
-    expect(hubSource).toContain("repeat(auto-fill, minmax(220px, 1fr))");
+    expect(hubSource).toContain('data-testid="clinical-documentation-catalog-scroll"');
+    expect(hubSource).toContain("flexWrap: \"nowrap\"");
   });
 
   it("dashboard nav unchanged (no new tile)", () => {

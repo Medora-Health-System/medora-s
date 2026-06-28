@@ -48,8 +48,8 @@ describe("MedicationResponseDocumentationPanel post-submit UX", () => {
 
   it("delegates response summary rendering to shared card", () => {
     expect(panelSrc).toContain("MedicationResponseSummaryCard");
-    expect(summarySrc).toContain("buildMedicationResponseSummaryFields");
-    expect(summarySrc).toContain("resolveMedicationResponseDocumentedByLabel");
+    expect(summarySrc).toContain("buildMedicationResponseSummaryFieldsFromParsed");
+    expect(summarySrc).toContain("documentedByUnknown");
   });
 
   it("shows nurse-friendly response count badge", () => {

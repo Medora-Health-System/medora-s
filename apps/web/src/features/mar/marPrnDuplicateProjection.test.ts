@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  buildPrnNextProjectionKey,
   buildPrnTimelineAvailabilityProjections,
   dedupeMarPrnTimelineCells,
   dedupeMarPrnTimelineRowCells,
@@ -32,6 +33,8 @@ describe("marPrnDuplicateProjection (H9J.1)", () => {
   });
 
   it("Q6H PRN does not duplicate across future columns after row dedupe", () => {
+    const earlyKey = buildPrnNextProjectionKey("oi-dup", "2026-06-12T15:54:00.000Z");
+    const lateKey = buildPrnNextProjectionKey("oi-dup", "2026-06-12T21:54:00.000Z");
     const cells = dedupeMarPrnTimelineRowCells([
       {
         columnKey: "15:00",
@@ -39,7 +42,7 @@ describe("marPrnDuplicateProjection (H9J.1)", () => {
           {
             orderItemId: "oi-dup",
             isPrnBand: true,
-            prnProjectionKey: "oi-dup:15:54",
+            prnProjectionKey: earlyKey,
             doseStatus: "DUE",
             scheduledAt: "2026-06-12T15:54:00.000Z",
           },
@@ -51,7 +54,7 @@ describe("marPrnDuplicateProjection (H9J.1)", () => {
           {
             orderItemId: "oi-dup",
             isPrnBand: true,
-            prnProjectionKey: "oi-dup:21:54",
+            prnProjectionKey: lateKey,
             doseStatus: "DUE",
             scheduledAt: "2026-06-12T21:54:00.000Z",
           },
@@ -66,18 +69,20 @@ describe("marPrnDuplicateProjection (H9J.1)", () => {
   });
 
   it("dedupeMarPrnTimelineCells keeps earliest projection per orderItemId", () => {
+    const earlyKey = buildPrnNextProjectionKey("oi-1", "2026-06-12T15:54:00.000Z");
+    const lateKey = buildPrnNextProjectionKey("oi-1", "2026-06-12T21:54:00.000Z");
     const items = dedupeMarPrnTimelineCells([
       {
         orderItemId: "oi-1",
         isPrnBand: true,
-        prnProjectionKey: "a",
+        prnProjectionKey: lateKey,
         doseStatus: "DUE",
         scheduledAt: "2026-06-12T21:54:00.000Z",
       },
       {
         orderItemId: "oi-1",
         isPrnBand: true,
-        prnProjectionKey: "b",
+        prnProjectionKey: earlyKey,
         doseStatus: "DUE",
         scheduledAt: "2026-06-12T15:54:00.000Z",
       },

@@ -24,7 +24,7 @@ const enSrc = readFileSync(join(process.cwd(), "src/i18n/messages/en.ts"), "utf8
 describe("medication response UI standardization", () => {
   it("uses unified MedicationResponseSummaryCard in panel", () => {
     expect(panelSrc).toContain("MedicationResponseSummaryCard");
-    expect(summarySrc).toContain("buildMedicationResponseSummaryFields");
+    expect(summarySrc).toContain("buildMedicationResponseSummaryFieldsFromParsed");
     expect(summarySrc).toContain("documentedByUnknown");
   });
 
@@ -41,8 +41,10 @@ describe("medication response UI standardization", () => {
   });
 
   it("does not render AWAITING_REASSESSMENT or REASSESSMENT_COMPLETED to nurses in timeline source", () => {
-    expect(timelineSrc).toContain("internalResponseSecondary");
+    expect(timelineSrc).toContain("localizeMarShiftTimelineSecondaryText");
     expect(timelineSrc).toContain("localizedSecondary");
+    expect(timelineSrc).not.toContain("AWAITING_REASSESSMENT");
+    expect(timelineSrc).not.toContain("REASSESSMENT_COMPLETED");
   });
 
   it("includes EN/FR nurse-friendly timeline labels", () => {

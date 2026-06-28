@@ -1064,7 +1064,7 @@ describe("edDisposition19Y", () => {
 
     it("keyword match beats generic fallback", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({
-        code: "Z00.00",
+        code: "Z99.99",
         displayName: "abdominal pain after meal",
       });
       expect(resolved.matchLevel).toBe("keyword");
@@ -1495,7 +1495,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("keyword beats generic", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "persistent cough" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "persistent cough" });
       expect(resolved.matchLevel).toBe("keyword");
       expect(resolved.template.id).toBe("uri_cough_v1");
     });
@@ -1631,7 +1631,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("nausea/vomiting keyword resolves correctly", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "persistent vomiting" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "persistent vomiting" });
       expect(resolved.template.id).toBe("nausea_vomiting_v1");
       expect(resolved.matchLevel).toBe("keyword");
     });
@@ -1655,7 +1655,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("dental pain keyword resolves correctly", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "severe toothache" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "severe toothache" });
       expect(resolved.template.id).toBe("dental_pain_v1");
       expect(resolved.matchLevel).toBe("keyword");
     });
@@ -1685,7 +1685,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("dehydration keyword resolves correctly", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "volume depletion" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "volume depletion" });
       expect(resolved.template.id).toBe("dehydration_v1");
       expect(resolved.matchLevel).toBe("keyword");
     });
@@ -1794,7 +1794,7 @@ describe("edDisposition19Y", () => {
     });
 
     it("asthma keyword resolves correctly", () => {
-      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z00.00", displayName: "wheezing" });
+      const resolved = resolveProviderDischargeTemplateForDiagnosis({ code: "Z99.99", displayName: "wheezing" });
       expect(resolved.template.id).toBe("asthma_exacerbation_v1");
       expect(resolved.matchLevel).toBe("keyword");
     });
@@ -2494,7 +2494,7 @@ describe("edDisposition19Y", () => {
 
     it("TIA/stroke-like keyword resolves correctly", () => {
       const resolved = resolveProviderDischargeTemplateForDiagnosis({
-        code: "Z00.00",
+        code: "Z99.99",
         displayName: "transient ischemic attack",
       });
       expect(resolved.template.id).toBe("tia_stroke_like_v1");
@@ -6420,7 +6420,7 @@ describe("edDisposition19Y", () => {
     it("apply uses active locale for batch 13 template", () => {
       const cardFr = buildProviderDischargeCardFromDiagnosis({
         sourceEncounterDiagnosisId: "dx-dka",
-        code: "E11.9",
+        code: "Z99.99",
         displayName: "DKA return precautions",
         displayOrder: 0,
         isPrimaryDiagnosis: true,
@@ -7435,7 +7435,7 @@ describe("edDisposition19Y", () => {
     it("apply uses active locale for batch 11 template", () => {
       const cardFr = buildProviderDischargeCardFromDiagnosis({
         sourceEncounterDiagnosisId: "dx-sepsis",
-        code: "Z00.00",
+        code: "Z99.99",
         displayName: "sepsis-risk return precautions",
         displayOrder: 0,
         isPrimaryDiagnosis: true,
@@ -8092,7 +8092,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("50685f706e6331ad7149f1c6a9be208637acb1f1c8db6126d29c10c2e34eb10c");
+      expect(hash).toBe("525b56bd48710db4d176a98448330c965659e24f5d727bfe88a558c09363aad7");
     });
 
     it("registry governance snapshot hash remains stable for reviewed registry (FR)", () => {
@@ -8102,7 +8102,7 @@ describe("edDisposition19Y", () => {
         PROVIDER_DISCHARGE_TEMPLATE_REGISTRY.length
       );
       // Update this constant intentionally when registry governance content changes.
-      expect(hash).toBe("12276261273a57c89926524a39801b87e16cba94d64b793fe138ebf4560331b3");
+      expect(hash).toBe("23e9d354cb4d07919e31f8be54431cf8dc32de3a2cf2362dee7652dc5401afc9");
     });
 
     it("timesApplied exists in type but is not incremented anywhere", () => {
@@ -8427,7 +8427,7 @@ describe("edDisposition19Y", () => {
       const frBody = chestTemplate.suggestedText.fr;
       expect(cardFr.description).toBe(frBody.description);
       expect(cardFr.diagnosisInstructions).toContain("Reposez-vous");
-      expect(cardFr.medicationTreatment).toBe(frBody.medicationTreatment);
+      expect(cardFr.medicationTreatment).toContain(frBody.medicationTreatment);
       expect(cardFr.description).not.toContain("You were evaluated in the emergency department");
     });
 

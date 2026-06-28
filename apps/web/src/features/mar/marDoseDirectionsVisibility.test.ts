@@ -58,7 +58,7 @@ describe("MAR clinical dose display (MEDUI.MAR.CLINICAL_DOSE_DISPLAY_FINAL_FIX.1
   it("drawer shows clinical dose and quantity separately", () => {
     const drawer = readSrc("components/encounters/FacilityMarShiftTimelineDrawer.tsx");
     expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-quantity"');
-    expect(drawer).toContain("item.doseDisplay?.quantityLabel");
+    expect(drawer).toContain("doseEmphasis?.quantityLabel");
     expect(drawer).toContain('data-testid="mar-shift-timeline-drawer-dose-emphasis-amount"');
   });
 

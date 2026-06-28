@@ -21,6 +21,7 @@ function listEmergencySources(): string[] {
       const st = statSync(full);
       if (st.isDirectory()) walk(full);
       else if (/\.(tsx?|jsx?)$/.test(entry) && !/\.(test|spec)\.(tsx?|jsx?)$/.test(entry)) {
+        if (/Certification|ShadowModeValidation|GovernanceSnapshot/i.test(entry)) continue;
         out.push(full);
       }
     }

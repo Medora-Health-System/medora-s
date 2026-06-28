@@ -9,9 +9,9 @@ import {
 
 /*
  * UX sketch (MEDUI.ED.ROLE.1):
- * Current:  T | ME | O | M | R | Dx | NA | N | D | S
- * Admin:     T | ME | O | M | R | Dx | NA | N | D | S
- * Provider:     ME | O | R | Dx | N | D | S
+ * Current:  T | ME | O | M | R | Dx | CD | NA | N | D | S
+ * Admin:     T | ME | O | M | R | Dx | CD | NA | N | D | S
+ * Provider:     ME | O | R | Dx | CD | N | D | S
  * RN:        T | O | M | R | NA | N | D | S
  * Tech:      T | O | R | N | D | S
  */
@@ -24,6 +24,7 @@ function tileLetters(ids: ReturnType<typeof getVisibleEdWorkspaceTiles>): string
     MEDICATIONS: "M",
     RESULTS: "R",
     DIAGNOSTICS: "Dx",
+    CLINICAL_DATA: "CD",
     NURSING_ASSESSMENT: "NA",
     NOTES: "N",
     DISPOSITION: "D",
@@ -36,8 +37,8 @@ describe("edWorkspaceTileVisibility (MEDUI.ED.ROLE.1)", () => {
   describe("Admin", () => {
     it("sees all tiles", () => {
       const tiles = getVisibleEdWorkspaceTiles({ roleCodes: ["ADMIN"] });
-      expect(tiles).toHaveLength(10);
-      expect(tileLetters(tiles)).toBe("T|ME|O|M|R|Dx|NA|N|D|S");
+      expect(tiles).toHaveLength(11);
+      expect(tileLetters(tiles)).toBe("T|ME|O|M|R|Dx|CD|NA|N|D|S");
     });
 
     it("admin role priority overrides provider and RN role codes", () => {
@@ -51,9 +52,9 @@ describe("edWorkspaceTileVisibility (MEDUI.ED.ROLE.1)", () => {
   });
 
   describe("Provider", () => {
-    it("sees ME/O/R/Dx/N/D/S", () => {
+    it("sees ME/O/R/Dx/CD/N/D/S", () => {
       const tiles = getVisibleEdWorkspaceTiles({ roleCodes: ["PROVIDER"] });
-      expect(tileLetters(tiles)).toBe("ME|O|R|Dx|N|D|S");
+      expect(tileLetters(tiles)).toBe("ME|O|R|Dx|CD|N|D|S");
     });
 
     it("does not see T/M/NA", () => {

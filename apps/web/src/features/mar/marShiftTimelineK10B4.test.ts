@@ -94,8 +94,8 @@ describe("marShiftTimeline K10B4", () => {
       join(import.meta.dirname, "../../components/encounters/FacilityMarShiftTimelineDrawer.tsx"),
       "utf8"
     );
-    expect(source).toContain('t("marShiftTimeline.drawer.rate")');
-    expect(source).toContain("item.hover.rate");
+    expect(source).toContain("consolidatedRate");
+    expect(source).toContain('testId: "mar-shift-timeline-drawer-rate"');
   });
 
   it("CreateOrderModal defers planned admin until facilityClinicalTimeZoneReady", () => {

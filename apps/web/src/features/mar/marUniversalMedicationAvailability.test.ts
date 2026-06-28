@@ -155,7 +155,7 @@ describe("marUniversalMedicationAvailability (MEDUI.ED.MAR.H9)", () => {
   });
 
   it("8 — adjusted scheduled time displayed via API wiring", () => {
-    expect(tabSrc).toContain("adjustMedicationDoseSchedule");
+    expect(tabSrc).toContain("adjustMarMedicationSchedule");
     expect(readSrc("components/mar/MedicationDoseScheduleAdjustmentModal.tsx")).toContain(
       "mar-dose-schedule-adjustment-new-time"
     );

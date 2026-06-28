@@ -590,6 +590,18 @@ export const PROVIDER_DISCHARGE_TEMPLATE_CONTENT_INTEGRITY: Record<
     mustIncludeAny: { en: ["sick day", "do not skip insulin"], fr: ["jour de maladie", "ne sautez pas l'insuline"] },
     forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
   },
+  type_2_diabetes_v1: {
+    mustIncludeAny: { en: ["type 2 diabetes", "blood sugar"], fr: ["diabète de type 2", "glycémie"] },
+    forbiddenCrossTemplateMarkers: { en: ENDOCRINE_BATCH_FORBIDDEN_EN, fr: ENDOCRINE_BATCH_FORBIDDEN_FR },
+  },
+  vaccination_visit_v1: {
+    mustIncludeAny: { en: ["vaccination", "immunization"], fr: ["vaccination", "immunisation"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
+  wellness_visit_v1: {
+    mustIncludeAny: { en: ["wellness", "routine"], fr: ["santé", "routine"] },
+    forbiddenCrossTemplateMarkers: { en: WOUND_FORBIDDEN_EN, fr: WOUND_FORBIDDEN_FR },
+  },
 };
 
 function suggestedTextBlob(body: {

@@ -4,18 +4,22 @@ import { join } from "node:path";
 import { resolveMarMedicationResponseAdverseEscalationHint } from "@medora/shared";
 
 describe("marMedicationResponseAdverseEscalation", () => {
-  it("ADVERSE_REACTION_REPORTED shows tiered allergy review recommendation in panel source", () => {
+  it("ADVERSE_REACTION_REPORTED shows tiered allergy review recommendation wiring", () => {
     const panelSrc = readFileSync(
-      join(process.cwd(), "src/components/mar/MedicationResponseDocumentationPanel.tsx"),
+      join(process.cwd(), "src/components/mar/MedicationAllergyReviewPanel.tsx"),
       "utf8"
     );
-    expect(panelSrc).toContain("mar-medication-response-allergy-review-recommendation");
-    expect(panelSrc).toContain("resolveMedicationResponseAllergyReviewRecommendation");
+    const serviceSrc = readFileSync(
+      join(process.cwd(), "../api/src/medication-administration/medication-administration.service.ts"),
+      "utf8"
+    );
+    expect(panelSrc).toContain("marAllergyReview.panel.recommendationLabel");
+    expect(serviceSrc).toContain("resolveMedicationResponseAllergyReviewRecommendation");
   });
 
   it("adverse reaction does not modify allergy list", () => {
     const panelSrc = readFileSync(
-      join(process.cwd(), "src/components/mar/MedicationResponseDocumentationPanel.tsx"),
+      join(process.cwd(), "src/components/mar/MedicationAllergyReviewPanel.tsx"),
       "utf8"
     );
     const historySrc = readFileSync(

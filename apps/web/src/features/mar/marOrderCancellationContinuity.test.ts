@@ -234,7 +234,7 @@ describe("marOrderCancellationContinuity (MEDUI.ED.MAR.H1B)", () => {
   it("9 — canceled util resolves metadata from OrderEvent without schema migration", () => {
     const canceledUtil = readApiSrc("medication-dose/mar-shift-timeline-canceled.util.ts");
     expect(canceledUtil).toContain("resolveMedicationOrderCancelMetadata");
-    expect(canceledUtil).toContain('eventType: "CANCELLED"');
+    expect(canceledUtil).toContain('eventType: { in: ["CANCELLED", "DISCONTINUED", "SUPERSEDED"] }');
   });
 
   it("10 — canceled medication drawer has no administer button", () => {
