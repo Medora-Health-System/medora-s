@@ -818,6 +818,8 @@ export class OrdersService {
       manualLabel: string | null;
       manualSecondaryText: string | null;
       strength: string | null;
+      enterpriseProcedureId?: string | null;
+      notes?: string | null;
     },
     labMap: Map<string, CatalogLabTestEnrichment>,
     imgMap: Map<string, CatalogImagingStudyEnrichment>,
@@ -828,6 +830,8 @@ export class OrdersService {
       manualLabel: row.manualLabel,
       manualSecondaryText: row.manualSecondaryText,
       strength: row.strength,
+      enterpriseProcedureId: row.enterpriseProcedureId,
+      notes: row.notes,
     };
     const catalogLabTest =
       row.catalogItemType === "LAB_TEST" && row.catalogItemId
@@ -864,6 +868,7 @@ export class OrdersService {
         manualLabel: string | null;
         manualSecondaryText: string | null;
         strength: string | null;
+        enterpriseProcedureId?: string | null;
         notes: string | null;
       }>;
     },
@@ -1510,6 +1515,7 @@ export class OrdersService {
               manualLabel: true,
               manualSecondaryText: true,
               strength: true,
+              enterpriseProcedureId: true,
               notes: true,
             },
           })
@@ -1907,6 +1913,7 @@ export class OrdersService {
           manualSecondaryText: it.manualSecondaryText,
           strength: it.strength,
           enterpriseProcedureId: it.enterpriseProcedureId,
+          notes: it.notes,
         };
         return {
           ...it,
@@ -2025,6 +2032,7 @@ export class OrdersService {
           manualSecondaryText: it.manualSecondaryText,
           strength: it.strength,
           enterpriseProcedureId: it.enterpriseProcedureId,
+          notes: it.notes,
         };
         const enriched = {
           ...it,

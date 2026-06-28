@@ -5,6 +5,8 @@ import {
   defaultOxygenTherapyDraft,
   deviceUsesFio2,
   deviceUsesFlow,
+  formatOxygenTherapyDisplay,
+  stripOxygenTherapyMetadataFromNotes,
   validateOxygenTherapyDraft,
 } from "./oxygenTherapyOrderParameters.js";
 
@@ -17,8 +19,10 @@ describe("MEDUI.CARE_PROCEDURES.OXYGEN_ORDER_PARAMETERS.1", () => {
       frequencyMode: "continuous" as const,
       targetSelection: "spo2_ge_92" as const,
     };
-    expect(buildOxygenTherapyManualLabel(draft, "en")).toContain("Nasal cannula 2 L/min continuous");
-    expect(buildOxygenTherapyManualLabel(draft, "en")).toContain("maintain SpO₂ ≥ 92%");
+    expect(buildOxygenTherapyManualLabel(draft, "en")).toBe(
+      "Oxygen Therapy — Nasal cannula 2 L/min continuous"
+    );
+    expect(formatOxygenTherapyDisplay(draft, "en").detailLines[0]).toBe("Maintain SpO₂ ≥ 92%");
   });
 
   it("non-rebreather 15 L/min STAT generates correct label", () => {
@@ -29,8 +33,8 @@ describe("MEDUI.CARE_PROCEDURES.OXYGEN_ORDER_PARAMETERS.1", () => {
       frequencyMode: "stat" as const,
     };
     const label = buildOxygenTherapyManualLabel(draft, "en");
-    expect(label).toContain("Non-rebreather mask 15 L/min STAT");
-    expect(label).toContain("maintain SpO₂ ≥ 92%");
+    expect(label).toBe("Oxygen Therapy — Non-rebreather mask 15 L/min STAT");
+    expect(formatOxygenTherapyDisplay(draft, "en").detailLines[0]).toContain("Maintain SpO₂ ≥ 92%");
   });
 
   it("Venturi FiO2 40% continuous generates correct label", () => {
@@ -41,9 +45,8 @@ describe("MEDUI.CARE_PROCEDURES.OXYGEN_ORDER_PARAMETERS.1", () => {
       frequencyMode: "continuous" as const,
     };
     const label = buildOxygenTherapyManualLabel(draft, "en");
-    expect(label).toContain("Venturi mask");
-    expect(label).toContain("FiO₂ 40%");
-    expect(label).toContain("continuous");
+    expect(label).toBe("Oxygen Therapy — Venturi mask FiO₂ 40% continuous");
+    expect(formatOxygenTherapyDisplay(draft, "en").detailLines[0]).toContain("Maintain SpO₂ ≥ 92%");
   });
 
   it("PRN oxygen order generates correct label", () => {
@@ -53,7 +56,7 @@ describe("MEDUI.CARE_PROCEDURES.OXYGEN_ORDER_PARAMETERS.1", () => {
       flowSelection: "3" as const,
       frequencyMode: "prn" as const,
     };
-    expect(buildOxygenTherapyManualLabel(draft, "en")).toContain("Nasal cannula 3 L/min PRN");
+    expect(buildOxygenTherapyManualLabel(draft, "en")).toBe("Oxygen Therapy — Nasal cannula 3 L/min PRN");
   });
 
   it("requires custom flow when custom flow selected", () => {
@@ -78,7 +81,7 @@ describe("MEDUI.CARE_PROCEDURES.OXYGEN_ORDER_PARAMETERS.1", () => {
     const draft = defaultOxygenTherapyDraft();
     const notes = buildOxygenTherapyOrderNotes(draft, "en");
     expect(notes.startsWith("[O2_PARAMS:")).toBe(true);
-    expect(notes).toContain("Oxygen therapy:");
+    expect(stripOxygenTherapyMetadataFromNotes(notes)).toContain("Maintain SpO₂ ≥ 92%");
   });
 
   it("device field visibility helpers", () => {

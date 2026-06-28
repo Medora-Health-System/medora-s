@@ -8,6 +8,8 @@ import { normalizeUserFacingError } from "@/lib/userFacingError";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { getOrderItemDisplayLabelFromLocale } from "@/lib/orderItemDisplayFr";
+import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
+import { sanitizeOrderItemNotesForDisplay } from "@medora/shared";
 import { MEDORA_CHART_RESULT_UPDATED } from "@/lib/chartEvents";
 import { ClinicalResultViewer } from "@/components/clinical/ClinicalResultViewer";
 import { attachmentsFromResultDataAll, clinicalResultFromOrderItemLike } from "@/lib/clinicalResultNormalize";
@@ -1159,11 +1161,46 @@ function LineCard({
           ) : null}
         </div>
       ) : null}
-      {item.notes && kind !== "pharmacy" ? (
-        <div style={{ fontSize: 13, marginBottom: 8 }}>
-          <strong>{t("orderDetail.lineNoteLabel")}</strong> {item.notes}
-        </div>
-      ) : null}
+      {(() => {
+        if (!item.notes || kind === "pharmacy") return null;
+        const careDetails =
+          String(item.catalogItemType ?? "") === "CARE"
+            ? careOrderClinicalDetailLines(
+                {
+                  catalogItemType: "CARE",
+                  enterpriseProcedureId:
+                    typeof item.enterpriseProcedureId === "string" ? item.enterpriseProcedureId : null,
+                  manualLabel: typeof item.manualLabel === "string" ? item.manualLabel : null,
+                  notes: typeof item.notes === "string" ? item.notes : null,
+                },
+                language
+              )
+            : [];
+        const cleanedNote =
+          careDetails.length > 0
+            ? null
+            : sanitizeOrderItemNotesForDisplay({
+                catalogItemType: String(item.catalogItemType ?? "CARE"),
+                enterpriseProcedureId:
+                  typeof item.enterpriseProcedureId === "string" ? item.enterpriseProcedureId : null,
+                notes: typeof item.notes === "string" ? item.notes : null,
+              });
+        if (!careDetails.length && !cleanedNote) return null;
+        return (
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            <strong>{t("orderDetail.lineNoteLabel")}</strong>
+            {careDetails.length > 0 ? (
+              careDetails.map((line) => (
+                <div key={line} style={{ marginTop: 4 }}>
+                  {line}
+                </div>
+              ))
+            ) : (
+              <> {cleanedNote}</>
+            )}
+          </div>
+        );
+      })()}
 
       {showReadOnlyWorkflowNotice ? (
         <DeptWorklistReadOnlyNotice message={t(deptWorklistReadOnlyNoticeKey(kind))} />

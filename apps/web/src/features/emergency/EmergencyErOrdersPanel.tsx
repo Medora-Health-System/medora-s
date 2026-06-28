@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchOrderEventsForEncounter, fetchOrdersForEncounter } from "@/lib/clinicalWorklistApi";
 import { getOrderItemDisplayLabelForLanguage } from "@/lib/orderItemDisplayFr";
+import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
 import type { SupportedLanguage } from "@/i18n/config";
 import { useI18n } from "@/lib/i18n";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
@@ -304,6 +305,22 @@ function medicationDirectionsLine(notes: unknown, tr: (key: string) => string): 
   const directions = typeof notes === "string" ? notes.trim() : "";
   if (!directions) return null;
   return tr("erEmergencyOrders.medicationDirections").replace("{directions}", directions);
+}
+
+function careOrderDetailLines(
+  item: Record<string, unknown>,
+  language: SupportedLanguage
+): string[] {
+  return careOrderClinicalDetailLines(
+    {
+      catalogItemType: "CARE",
+      enterpriseProcedureId:
+        typeof item.enterpriseProcedureId === "string" ? item.enterpriseProcedureId : null,
+      manualLabel: typeof item.manualLabel === "string" ? item.manualLabel : null,
+      notes: typeof item.notes === "string" ? item.notes : null,
+    },
+    language
+  );
 }
 
 function medicationRouteLine(item: Record<string, unknown>, tr: (key: string) => string): string | null {
@@ -1448,6 +1465,8 @@ export function EmergencyErOrdersPanel({
                               );
                               const directionsLine =
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
+                              const careDetailLines =
+                                o.type === "CARE" ? careOrderDetailLines(item, language) : [];
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel = shouldShowErOrderLineCancelAction(roles, item);
@@ -1735,6 +1754,11 @@ export function EmergencyErOrdersPanel({
                                         {directionsLine ? (
                                           <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                         ) : null}
+                                        {careDetailLines.map((line) => (
+                                          <div key={line} style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                                            {line}
+                                          </div>
+                                        ))}
                                         {o.type === "CARE"
                                           ? renderCareExecutionCategoryBadge(item)
                                           : null}
@@ -1855,6 +1879,8 @@ export function EmergencyErOrdersPanel({
                               );
                               const directionsLine =
                                 o.type === "MEDICATION" ? medicationDirectionsLine(item.notes, t) : null;
+                              const careDetailLines =
+                                o.type === "CARE" ? careOrderDetailLines(item, language) : [];
                               const routeLine = o.type === "MEDICATION" ? medicationRouteLine(item, t) : null;
                               const linePendingCancel = pendingCancel?.orderItemId === itemId;
                               const showLineCancel = shouldShowErOrderLineCancelAction(roles, item);
@@ -2042,6 +2068,11 @@ export function EmergencyErOrdersPanel({
                                     {directionsLine ? (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>{directionsLine}</div>
                                     ) : null}
+                                    {careDetailLines.map((line) => (
+                                      <div key={line} style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>
+                                        {line}
+                                      </div>
+                                    ))}
                                     {renderErMedicationOrderLineActions({
                                       orderType: o.type,
                                       orderId: o.id,

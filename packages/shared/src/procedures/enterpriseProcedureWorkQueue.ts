@@ -4,6 +4,10 @@ import {
   type EnterpriseProcedureExecutionRoleCategory,
 } from "./enterpriseProcedureCatalog.js";
 import { resolveProcedureExecutionProfile } from "./enterpriseProcedureExecutionProfile.js";
+import {
+  OXYGEN_THERAPY_PROCEDURE_CODE,
+  resolveOxygenTherapyOrderDisplay,
+} from "./oxygenTherapyOrderParameters.js";
 
 const TERMINAL_ORDER_ITEM_STATUSES = new Set(["COMPLETED", "RESULTED", "VERIFIED", "CANCELLED"]);
 
@@ -58,17 +62,25 @@ export function collectProcedureWorkQueueItems(
         continue;
       }
       const entry = enterpriseProcedureById(enterpriseProcedureId);
+      const manualLabel = typeof item.manualLabel === "string" ? item.manualLabel : null;
+      const notes = typeof item.notes === "string" ? item.notes : null;
+      const oxygenEn =
+        enterpriseProcedureId === OXYGEN_THERAPY_PROCEDURE_CODE
+          ? resolveOxygenTherapyOrderDisplay({ manualLabel, notes, locale: "en" })
+          : null;
+      const oxygenFr =
+        enterpriseProcedureId === OXYGEN_THERAPY_PROCEDURE_CODE
+          ? resolveOxygenTherapyOrderDisplay({ manualLabel, notes, locale: "fr" })
+          : null;
       out.push({
         orderItemId,
         orderId,
         encounterId,
         enterpriseProcedureId,
-        displayLabelEn: entry
-          ? resolveEnterpriseProcedureDisplayName(entry, "en")
-          : enterpriseProcedureId,
-        displayLabelFr: entry
-          ? resolveEnterpriseProcedureDisplayName(entry, "fr")
-          : enterpriseProcedureId,
+        displayLabelEn: oxygenEn?.title
+          ?? (entry ? resolveEnterpriseProcedureDisplayName(entry, "en") : enterpriseProcedureId),
+        displayLabelFr: oxygenFr?.title
+          ?? (entry ? resolveEnterpriseProcedureDisplayName(entry, "fr") : enterpriseProcedureId),
         orderItemStatus,
         executionRoleCategory: profile.executionRoleCategory,
       });

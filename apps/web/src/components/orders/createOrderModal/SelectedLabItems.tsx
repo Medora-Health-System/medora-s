@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useI18n } from "@/lib/i18n";
+import { careOrderClinicalDetailLines } from "@/lib/careOrderDisplayUi";
 import type { CreateOrderLineItem } from "./types";
 
 const rowStyle: React.CSSProperties = {
@@ -24,7 +25,7 @@ export function SelectedLabItems({
   /** Override list title (e.g. care tab). */
   listHeading?: string;
 }) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const heading = listHeading ?? t("createOrderModal.selectedLabDefaultHeading");
 
   if (items.length === 0) return null;
@@ -35,7 +36,22 @@ export function SelectedLabItems({
         {heading}
       </div>
       <ul style={{ listStyle: "none", margin: "6px 0 0", padding: 0 }}>
-        {items.map((item, idx) => (
+        {items.map((item, idx) => {
+          const detailLines =
+            item.catalogItemType === "CARE"
+              ? careOrderClinicalDetailLines(
+                  {
+                    catalogItemType: "CARE",
+                    enterpriseProcedureId: item._enterpriseProcedureId,
+                    manualLabel: item.manualLabel ?? item._label,
+                    notes: item.notes,
+                  },
+                  language
+                )
+              : item.notes?.trim()
+                ? [item.notes.trim()]
+                : [];
+          return (
           <li key={item._lineId} style={rowStyle}>
             <span style={{ flex: 1, lineHeight: 1.35 }}>
               {item._label}
@@ -52,11 +68,14 @@ export function SelectedLabItems({
                   {t("createOrderModal.selectedManualBadge")}
                 </span>
               )}
-              {item.notes?.trim() ? (
-                <span style={{ display: "block", fontSize: 12, color: "#666", marginTop: 4, fontWeight: 400 }}>
-                  {item.notes}
+              {detailLines.map((line) => (
+                <span
+                  key={line}
+                  style={{ display: "block", fontSize: 12, color: "#666", marginTop: 4, fontWeight: 400 }}
+                >
+                  {line}
                 </span>
-              ) : null}
+              ))}
             </span>
             <button
               type="button"
@@ -74,7 +93,8 @@ export function SelectedLabItems({
               {t("createOrderModal.selectedRowRemove")}
             </button>
           </li>
-        ))}
+          );
+        })}
       </ul>
     </div>
   );

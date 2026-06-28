@@ -8,9 +8,11 @@ import {
   looksEnglishFormText,
   medicationEnglishDisplayContainsFrenchLeak,
   medicationOrderStrengthCandidates,
+  OXYGEN_THERAPY_PROCEDURE_CODE,
   pickStrictEnCatalogPrimaryLabel,
   resolveMedicationClinicalDisplayValue,
   resolveMedicationOrderIdentity,
+  resolveOxygenTherapyOrderDisplay,
 } from "@medora/shared";
 
 /**
@@ -46,6 +48,7 @@ function orderItemDisplayLabelFr(item: {
   manualLabel?: string | null;
   manualSecondaryText?: string | null;
   catalogItemType?: string | null;
+  enterpriseProcedureId?: string | null;
   catalogLabTest?: {
     code?: string | null;
     displayNameEn?: string | null;
@@ -73,6 +76,14 @@ function orderItemDisplayLabelFr(item: {
 }): string {
   const resolvedTypeFr = resolveCatalogItemType(item);
   const catGuardFr = String(item.catalogItemType ?? resolvedTypeFr ?? "CARE");
+  if (resolvedTypeFr === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
+    const oxygen = resolveOxygenTherapyOrderDisplay({
+      manualLabel: item.manualLabel,
+      notes: item.notes,
+      locale: "fr",
+    });
+    if (oxygen?.title) return oxygen.title;
+  }
   if (resolvedTypeFr === "MEDICATION") {
     const strengthCandidates = medicationOrderStrengthCandidates(medicationIdentityInput(item));
     const dlf = item.displayLabelFr?.trim();
@@ -118,6 +129,7 @@ export function getOrderItemDisplayLabelForLanguage(
     manualLabel?: string | null;
     manualSecondaryText?: string | null;
     catalogItemType?: string | null;
+    enterpriseProcedureId?: string | null;
     catalogLabTest?: {
       code?: string | null;
       displayNameEn?: string | null;
@@ -150,6 +162,14 @@ export function getOrderItemDisplayLabelForLanguage(
   if (language === "fr") return orderItemDisplayLabelFr(item);
   const resolvedType = resolveCatalogItemType(item);
   const catType = String(item.catalogItemType ?? resolvedType ?? "CARE");
+  if (resolvedType === "CARE" && item.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE) {
+    const oxygen = resolveOxygenTherapyOrderDisplay({
+      manualLabel: item.manualLabel,
+      notes: item.notes,
+      locale: "en",
+    });
+    if (oxygen?.title) return oxygen.title;
+  }
   if (resolvedType === "MEDICATION") {
     const strengthCandidates = medicationOrderStrengthCandidates(medicationIdentityInput(item));
     const enApi = item.displayLabelEn?.trim();

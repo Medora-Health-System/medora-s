@@ -16,6 +16,11 @@ import {
   enterpriseProcedureById,
   resolveEnterpriseProcedureDisplayName,
 } from "../procedures/enterpriseProcedureCatalog.js";
+import {
+  OXYGEN_THERAPY_PROCEDURE_CODE,
+  resolveOxygenTherapyOrderDisplay,
+  stripOxygenTherapyMetadataFromNotes,
+} from "../procedures/oxygenTherapyOrderParameters.js";
 
 export type OrderItemLabelInput = {
   catalogItemType: string;
@@ -24,6 +29,8 @@ export type OrderItemLabelInput = {
   strength?: string | null;
   /** MEDPROC.2: canonical enterprise procedure id for CARE lines (display resolved from shared catalog). */
   enterpriseProcedureId?: string | null;
+  /** Structured oxygen / care instructions — never render raw metadata prefixes in UI. */
+  notes?: string | null;
 };
 
 export type CatalogLabLabel = {
@@ -207,11 +214,48 @@ function enterpriseProcedureOrderDisplayLabel(
   return resolveEnterpriseProcedureDisplayName(definition, lang);
 }
 
+function isOxygenTherapyCareLine(it: OrderItemLabelInput): boolean {
+  return it.enterpriseProcedureId?.trim() === OXYGEN_THERAPY_PROCEDURE_CODE;
+}
+
+export function resolveCareOrderItemClinicalDisplay(
+  it: OrderItemLabelInput,
+  lang: "fr" | "en"
+): { title: string; detailLines: string[] } | null {
+  if (it.catalogItemType !== "CARE") return null;
+  if (!isOxygenTherapyCareLine(it)) return null;
+  return resolveOxygenTherapyOrderDisplay({
+    manualLabel: it.manualLabel,
+    notes: it.notes,
+    locale: lang,
+  });
+}
+
+/** Strips internal oxygen metadata; safe for all order item notes in clinician UI. */
+export function sanitizeOrderItemNotesForDisplay(it: OrderItemLabelInput): string | null {
+  const notes = it.notes?.trim();
+  if (!notes) return null;
+  if (isOxygenTherapyCareLine(it) || notes.startsWith("[O2_PARAMS:")) {
+    const cleaned = stripOxygenTherapyMetadataFromNotes(notes);
+    return cleaned || null;
+  }
+  return notes;
+}
+
 function careOrderDisplayLabel(it: OrderItemLabelInput, lang: "fr" | "en"): string {
+  if (isOxygenTherapyCareLine(it)) {
+    const oxygen = resolveOxygenTherapyOrderDisplay({
+      manualLabel: it.manualLabel,
+      notes: it.notes,
+      locale: lang,
+    });
+    if (oxygen?.title) return oxygen.title;
+  }
   const fromEnterprise = enterpriseProcedureOrderDisplayLabel(it.enterpriseProcedureId, lang);
-  if (fromEnterprise) return fromEnterprise;
+  if (fromEnterprise && !isOxygenTherapyCareLine(it)) return fromEnterprise;
   const man = firstAcceptableLineLabel(it.catalogItemType, acceptableManualOrderLine(it));
   if (man) return man;
+  if (fromEnterprise) return fromEnterprise;
   return typeFallback(it.catalogItemType, lang);
 }
 

@@ -27,6 +27,23 @@ describe("orderItemDisplayLabels (Phase G — English-primary)", () => {
     expect(label).toBe("Central line placement");
   });
 
+  it("CARE oxygen_therapy prefers structured display over generic catalog label", () => {
+    const label = buildOrderItemDisplayLabelEn(
+      {
+        catalogItemType: "CARE",
+        enterpriseProcedureId: "oxygen_therapy",
+        manualLabel: "Oxygen Therapy — Nasal cannula 2 L/min STAT",
+        notes:
+          '[O2_PARAMS:{"v":1,"device":"nasal_cannula","flowSelection":"2","fio2Selection":null,"frequencyMode":"stat","targetSelection":"spo2_ge_92","rtInvolvement":"nursing_protocol_initiate","flowCustomLpm":null,"fio2CustomPercent":null,"targetCustom":null,"deviceCustom":null}]\nMaintain SpO₂ ≥ 92%\nnursing may initiate per protocol',
+      },
+      null,
+      null,
+      null
+    );
+    expect(label).toBe("Oxygen Therapy — Nasal cannula 2 L/min STAT");
+    expect(label).not.toBe("Oxygen therapy");
+  });
+
   it("CARE without enterpriseProcedureId falls back to manualLabel", () => {
     const label = buildOrderItemDisplayLabelFr({
       catalogItemType: "CARE",

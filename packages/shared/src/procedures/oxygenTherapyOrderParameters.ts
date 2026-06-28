@@ -157,6 +157,21 @@ function targetLabel(target: OxygenTherapyTargetOption, locale: OxygenTherapyLoc
     : "maintain SpO₂ 88–92% if CO₂ retention risk";
 }
 
+function targetDisplayLine(
+  target: OxygenTherapyTargetOption,
+  locale: OxygenTherapyLocale,
+  custom?: string
+): string {
+  const raw = targetLabel(target, locale, custom);
+  if (!raw) return "";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function frequencyTitleToken(mode: OxygenTherapyFrequencyMode, locale: OxygenTherapyLocale): string {
+  if (mode === "stat" || mode === "prn") return mode.toUpperCase();
+  return frequencyLabel(mode, locale);
+}
+
 function rtLabel(rt: OxygenTherapyRtOption, locale: OxygenTherapyLocale): string {
   const en: Record<OxygenTherapyRtOption, string> = {
     rt_notify: "RT notify",
@@ -212,7 +227,52 @@ export function validateOxygenTherapyDraft(
 }
 
 export function buildOxygenTherapyManualLabel(draft: OxygenTherapyDraft, locale: OxygenTherapyLocale): string {
-  const prefix = locale === "fr" ? "Oxygénothérapie" : "Oxygen therapy";
+  return formatOxygenTherapyDisplay(draft, locale).title;
+}
+
+export type OxygenTherapyStoredParams = {
+  v: number;
+  device: OxygenTherapyDevice;
+  flowSelection: OxygenTherapyFlowOption;
+  fio2Selection?: OxygenTherapyFio2Option | null;
+  frequencyMode: OxygenTherapyFrequencyMode;
+  targetSelection: OxygenTherapyTargetOption;
+  rtInvolvement: OxygenTherapyRtOption;
+  deviceCustom?: string;
+  flowCustomLpm?: string;
+  fio2CustomPercent?: string;
+  targetCustom?: string;
+};
+
+export type OxygenTherapyDisplay = {
+  title: string;
+  detailLines: string[];
+};
+
+export const O2_PARAMS_METADATA_PREFIX = "[O2_PARAMS:";
+
+const O2_PARAMS_LINE_RE = /^\[O2_PARAMS:(\{.*\})\]\s*(?:\r?\n|$)/;
+
+export function storedParamsToDraft(params: OxygenTherapyStoredParams): OxygenTherapyDraft {
+  return {
+    device: params.device,
+    deviceCustom: params.deviceCustom,
+    flowSelection: params.flowSelection,
+    flowCustomLpm: params.flowCustomLpm,
+    fio2Selection: params.fio2Selection ?? undefined,
+    fio2CustomPercent: params.fio2CustomPercent,
+    frequencyMode: params.frequencyMode,
+    targetSelection: params.targetSelection,
+    targetCustom: params.targetCustom,
+    rtInvolvement: params.rtInvolvement,
+  };
+}
+
+export function formatOxygenTherapyDisplay(
+  draft: OxygenTherapyDraft,
+  locale: OxygenTherapyLocale
+): OxygenTherapyDisplay {
+  const prefix = locale === "fr" ? "Oxygénothérapie" : "Oxygen Therapy";
   const device = deviceLabel(draft.device, locale, draft.deviceCustom);
   const parts: string[] = [device];
 
@@ -225,26 +285,90 @@ export function buildOxygenTherapyManualLabel(draft: OxygenTherapyDraft, locale:
     parts.push(locale === "fr" ? `FiO₂ ${fio2} %` : `FiO₂ ${fio2}%`);
   }
 
-  const freq = frequencyLabel(draft.frequencyMode, locale);
-  const target = targetLabel(draft.targetSelection, locale, draft.targetCustom);
+  const freq = frequencyTitleToken(draft.frequencyMode, locale);
+  const delivery = parts.join(" ");
+  const title = `${prefix} — ${delivery}${freq ? ` ${freq}` : ""}`;
+  const targetLine = targetDisplayLine(draft.targetSelection, locale, draft.targetCustom);
+  const rtLine = rtLabel(draft.rtInvolvement, locale);
+  const detailLines = [targetLine, rtLine].filter(Boolean);
 
-  return `${prefix}: ${parts.join(" ")} ${freq}, ${target}`;
+  return { title, detailLines };
+}
+
+export function parseOxygenTherapyOrderNotes(notes: string | null | undefined): {
+  params: OxygenTherapyStoredParams | null;
+  clinicalText: string;
+  hadMetadataPrefix: boolean;
+} {
+  const raw = (notes ?? "").trim();
+  if (!raw) {
+    return { params: null, clinicalText: "", hadMetadataPrefix: false };
+  }
+  const match = raw.match(O2_PARAMS_LINE_RE);
+  if (!match) {
+    return { params: null, clinicalText: raw, hadMetadataPrefix: false };
+  }
+  let params: OxygenTherapyStoredParams | null = null;
+  try {
+    params = JSON.parse(match[1]!) as OxygenTherapyStoredParams;
+  } catch {
+    params = null;
+  }
+  const clinicalText = raw.slice(match[0].length).trim();
+  return { params, clinicalText, hadMetadataPrefix: true };
+}
+
+export function stripOxygenTherapyMetadataFromNotes(notes: string | null | undefined): string {
+  const { clinicalText } = parseOxygenTherapyOrderNotes(notes);
+  return clinicalText;
+}
+
+export function containsOxygenTherapyMetadata(notes: string | null | undefined): boolean {
+  return parseOxygenTherapyOrderNotes(notes).hadMetadataPrefix;
+}
+
+export function resolveOxygenTherapyOrderDisplay(input: {
+  manualLabel?: string | null;
+  notes?: string | null;
+  locale: OxygenTherapyLocale;
+}): OxygenTherapyDisplay | null {
+  const parsed = parseOxygenTherapyOrderNotes(input.notes);
+  if (parsed.params) {
+    const draft = storedParamsToDraft(parsed.params);
+    if (validateOxygenTherapyDraft(draft).ok) {
+      return formatOxygenTherapyDisplay(draft, input.locale);
+    }
+  }
+  const manual = input.manualLabel?.trim();
+  if (manual && manual.includes("—") && /oxygen|oxygénothérapie/i.test(manual)) {
+    const detailLines = parsed.clinicalText
+      ? parsed.clinicalText
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+      : [];
+    return { title: manual, detailLines };
+  }
+  return null;
 }
 
 export function buildOxygenTherapyOrderNotes(draft: OxygenTherapyDraft, locale: OxygenTherapyLocale): string {
-  const instruction = buildOxygenTherapyManualLabel(draft, locale);
-  const rt = rtLabel(draft.rtInvolvement, locale);
-  const fullInstruction = `${instruction}; ${rt}`;
+  const display = formatOxygenTherapyDisplay(draft, locale);
   const payload = JSON.stringify({
     v: 1,
     device: draft.device,
     flowSelection: draft.flowSelection,
+    flowCustomLpm: draft.flowCustomLpm ?? null,
     fio2Selection: draft.fio2Selection ?? null,
+    fio2CustomPercent: draft.fio2CustomPercent ?? null,
     frequencyMode: draft.frequencyMode,
     targetSelection: draft.targetSelection,
+    targetCustom: draft.targetCustom ?? null,
     rtInvolvement: draft.rtInvolvement,
+    deviceCustom: draft.deviceCustom ?? null,
   });
-  return `[O2_PARAMS:${payload}]\n${fullInstruction}`;
+  const humanLines = display.detailLines.join("\n");
+  return `${O2_PARAMS_METADATA_PREFIX}${payload}]\n${humanLines}`;
 }
 
 export function oxygenTherapyOrderPriority(
