@@ -14,6 +14,11 @@ import {
   CANONICAL_CARE_PROCEDURE_CATEGORIES,
   type CanonicalCareProcedureCategory,
 } from "./canonicalCareProcedureCategories.js";
+import {
+  WAVE1_STAFF_ORDER_ALIAS_MERGES,
+  WAVE1_STAFF_ORDER_DEDUP_REPORT,
+  WAVE1_STAFF_ORDER_NEW_ROWS,
+} from "./canonicalCareProcedureStaffOrdersWave1Manifest.js";
 
 export type CanonicalCareProcedureRow = {
   code: string;
@@ -59,6 +64,15 @@ const PROVIDER_ONLY_CODES = new Set([
   "social_work_consult",
   "stroke_alert_activation",
   "trauma_team_activation",
+  "picc_line_placement",
+  "midline_catheter_placement",
+  "transvenous_pacer",
+  "massive_transfusion_protocol",
+  "debride_wound",
+  "cerumen_disimpaction",
+  "transfuse_prbcs",
+  "transfuse_ffp",
+  "transfuse_platelets",
 ]);
 
 function mapEnterpriseCategory(category: EnterpriseProcedureCategory): CanonicalCareProcedureCategory {
@@ -364,6 +378,29 @@ function buildCanonicalCareProcedureCatalog(): CanonicalCareProcedureRow[] {
     byCode.set(row.code, row);
   }
 
+  WAVE1_STAFF_ORDER_NEW_ROWS.forEach((row, index) => {
+    if (byCode.has(row.code)) return;
+    const requiresProvider =
+      PROVIDER_ONLY_CODES.has(row.code) || row.requiresProviderOrder || row.executionRoleCategory === "PROVIDER";
+    byCode.set(row.code, {
+      ...row,
+      requiresProviderOrder: requiresProvider,
+      nursingProtocolAllowed: !requiresProvider,
+      sortPriority: 300 + index,
+    });
+  });
+
+  for (const merge of WAVE1_STAFF_ORDER_ALIAS_MERGES) {
+    const canonical = byCode.get(merge.canonicalCode);
+    if (!canonical) continue;
+    canonical.aliases = [
+      ...new Set([
+        ...canonical.aliases,
+        ...merge.aliases.map((alias) => alias.trim()).filter(Boolean),
+      ]),
+    ];
+  }
+
   return [...byCode.values()].sort((a, b) => a.sortPriority - b.sortPriority || a.code.localeCompare(b.code));
 }
 
@@ -383,11 +420,18 @@ export function buildCanonicalCareProcedureDuplicateReport(): {
   mergedPairs: Array<{ canonicalCode: string; mergedFrom: string; reason: string }>;
 } {
   return {
-    mergedPairs: Object.entries(CANONICAL_CARE_PROCEDURE_DEPRECATED_BY_CODE).map(([legacy, canonical]) => ({
-      canonicalCode: canonical,
-      mergedFrom: legacy,
-      reason: "DEPRECATED_BY_CANONICAL_CODE",
-    })),
+    mergedPairs: [
+      ...Object.entries(CANONICAL_CARE_PROCEDURE_DEPRECATED_BY_CODE).map(([legacy, canonical]) => ({
+        canonicalCode: canonical,
+        mergedFrom: legacy,
+        reason: "DEPRECATED_BY_CANONICAL_CODE",
+      })),
+      ...WAVE1_STAFF_ORDER_DEDUP_REPORT.map((entry) => ({
+        canonicalCode: entry.canonicalCode,
+        mergedFrom: entry.mergedFrom,
+        reason: entry.reason,
+      })),
+    ],
   };
 }
 

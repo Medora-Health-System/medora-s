@@ -7,15 +7,11 @@ import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/
 import type { OrderCreateDto, OrderSource } from "@medora/shared";
 import {
   computeAdvancedMedicationSafetyWarnings,
-  filterEnterpriseProcedures,
   getEncounterAllergyDocumentationSummary,
   normalizeMedicationRoute,
   resolveEnterpriseProcedureDisplayName,
   resolveMedicationOrderItemFrequencyCode,
-  enterpriseProcedureCategoryLabel,
-  mapEnterpriseCategoryToCanonicalCareCategory,
-  type EnterpriseProcedureDefinition,
-  type EnterpriseProcedureCategory,
+  searchCanonicalCareProcedures,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -720,21 +716,20 @@ export function CreateOrderModal({
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
   const careOfflineMatches = useMemo(() => {
     const q = carePickerQuery.trim();
-    if (q.length < 2) return [];
+    if (q.length < 2 && !careCategoryFilter) return [];
     const locale = language === "fr" ? "fr" : "en";
-    return filterEnterpriseProcedures(q, locale)
-      .filter((procedure) => {
-        if (!careCategoryFilter) return true;
-        const canonicalCategory = mapEnterpriseCategoryToCanonicalCareCategory(procedure.category);
-        return canonicalCategory === careCategoryFilter;
-      })
-      .map((procedure) => ({
-        code: procedure.id,
-        displayNameEn: procedure.displayNameEn,
-        displayNameFr: procedure.displayNameFr,
-        categoryLabelEn: enterpriseProcedureCategoryLabel(procedure.category, "en"),
-        categoryLabelFr: enterpriseProcedureCategoryLabel(procedure.category, "fr"),
-      }));
+    return searchCanonicalCareProcedures({
+      q: q.length >= 2 ? q : "",
+      locale,
+      limit: 25,
+      ...(careCategoryFilter ? { category: careCategoryFilter } : {}),
+    }).map((row) => ({
+      code: row.code,
+      displayNameEn: row.displayNameEn,
+      displayNameFr: row.displayNameFr,
+      categoryLabelEn: canonicalCareProcedureCategoryLabel(row.category, "en"),
+      categoryLabelFr: canonicalCareProcedureCategoryLabel(row.category, "fr"),
+    }));
   }, [carePickerQuery, language, careCategoryFilter]);
   const careCatalogMatches = useMemo(() => {
     if (careApiMatches.length > 0) return careApiMatches;
