@@ -12,9 +12,11 @@ export function normalizeEnterpriseProcedureId(value: string | undefined | null)
 
 export function isKnownEnterpriseProcedureId(value: string): boolean {
   const code = value.trim();
-  if (enterpriseProcedureById(code) != null) return true;
   const canonical = canonicalCareProcedureByCode(code);
-  return Boolean(canonical?.isActive && canonical.orderable);
+  if (canonical) {
+    return canonical.isActive && canonical.orderable;
+  }
+  return enterpriseProcedureById(code) != null;
 }
 
 /**

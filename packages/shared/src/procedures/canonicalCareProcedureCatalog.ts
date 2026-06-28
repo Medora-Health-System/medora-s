@@ -139,7 +139,7 @@ function rowFromEnterprise(entry: EnterpriseProcedureDefinition, sortPriority: n
     category: mapEnterpriseCategory(entry.category),
     aliases: [...entry.aliases],
     executionRoleCategory: entry.executionRoleCategory,
-    orderable: entry.orderable,
+    orderable: !deprecatedBy && entry.orderable,
     isActive: !deprecatedBy,
     ...(deprecatedBy ? { deprecatedBy } : {}),
     ...(entry.documentationTemplateId ? { documentationTemplateId: entry.documentationTemplateId } : {}),

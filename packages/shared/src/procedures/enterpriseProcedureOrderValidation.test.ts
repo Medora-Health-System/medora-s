@@ -98,6 +98,18 @@ describe("enterpriseProcedureOrderValidation (MEDPROC.2)", () => {
     expect(parsed.success).toBe(false);
   });
 
+  it("rejects deprecated legacy enterpriseProcedureId on CARE orders", () => {
+    for (const legacy of ["cardiac_monitoring", "urinary_catheter_insertion"] as const) {
+      expect(isKnownEnterpriseProcedureId(legacy)).toBe(false);
+      const result = validateEnterpriseProcedureIdForOrderItem({
+        orderType: "CARE",
+        catalogItemType: "CARE",
+        enterpriseProcedureId: legacy,
+      });
+      expect(result.ok).toBe(false);
+    }
+  });
+
   it("manualLabel remains independent display snapshot", () => {
     const parsed = orderCreateDtoSchema.safeParse({
       type: "CARE",

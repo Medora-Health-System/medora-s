@@ -19,6 +19,34 @@ describe("ProcedureCatalogService", () => {
     service = module.get(ProcedureCatalogService);
   });
 
+  it("returns ranked CARE_PROCEDURE search items capped at limit", async () => {
+    prisma.catalogProcedure.findMany.mockResolvedValue(
+      Array.from({ length: 40 }, (_, index) => ({
+        id: `uuid-${index}`,
+        code: `code_${index}`,
+        name: `Procedure ${index}`,
+        displayNameEn: `Procedure ${index}`,
+        displayNameFr: `Procédure ${index}`,
+        category: "NURSING_PATIENT_CARE",
+        executionRoleCategory: "NURSING",
+        searchText: "procedure",
+        isActive: true,
+        orderable: true,
+        sortPriority: index,
+        requiresProviderOrder: false,
+        nursingProtocolAllowed: true,
+        requiresClinicalNote: false,
+        aliases: [],
+      }))
+    );
+
+    const result = await service.search({ q: "procedure", limit: 25 });
+    expect(result.items.length).toBeLessThanOrEqual(25);
+    expect(prisma.catalogProcedure.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 75 })
+    );
+  });
+
   it("returns ranked CARE_PROCEDURE search items", async () => {
     prisma.catalogProcedure.findMany.mockResolvedValue([
       {

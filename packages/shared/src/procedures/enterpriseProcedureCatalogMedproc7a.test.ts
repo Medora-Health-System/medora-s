@@ -111,8 +111,8 @@ describe("MEDPROC.7A create order and billing guards", () => {
   const migrationsDir = join(import.meta.dirname, "../../../../apps/api/prisma/migrations");
 
   it("CreateOrderModal still keys ekg workflow to ekg_ecg id", () => {
-    expect(modalSource).toContain('procedure.id === "ekg_ecg"');
-    expect(modalSource).toContain("filterEnterpriseProcedures");
+    expect(modalSource).toContain('procedure.code === "ekg_ecg"');
+    expect(modalSource).toContain("searchCanonicalCareProcedures");
   });
 
   it("catalog exposes 12-lead label for modal display", () => {
