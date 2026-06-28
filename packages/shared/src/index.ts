@@ -486,6 +486,7 @@ export * from "./procedures/enterpriseProcedureCatalog.js";
 export * from "./procedures/canonicalCareProcedureCategories.js";
 export * from "./procedures/canonicalCareProcedureCatalog.js";
 export * from "./procedures/canonicalCareProcedureSearch.js";
+export * from "./procedures/oxygenTherapyOrderParameters.js";
 export * from "./procedures/enterpriseProcedureSearch.js";
 export * from "./procedures/enterpriseProcedureOrderValidation.js";
 export * from "./procedures/enterpriseProcedureDocumentationLinkage.js";

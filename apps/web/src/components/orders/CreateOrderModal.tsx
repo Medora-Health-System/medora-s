@@ -12,6 +12,14 @@ import {
   resolveEnterpriseProcedureDisplayName,
   resolveMedicationOrderItemFrequencyCode,
   searchCanonicalCareProcedures,
+  OXYGEN_THERAPY_PROCEDURE_CODE,
+  buildOxygenTherapyManualLabel,
+  buildOxygenTherapyOrderNotes,
+  defaultOxygenTherapyDraft,
+  enterpriseProcedureById,
+  oxygenTherapyOrderPriority,
+  validateOxygenTherapyDraft,
+  type OxygenTherapyDraft,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
@@ -29,6 +37,7 @@ import { SelectedLabItems } from "./createOrderModal/SelectedLabItems";
 import { SelectedImagingItems } from "./createOrderModal/SelectedImagingItems";
 import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationItems";
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
+import { OxygenTherapyOrderForm } from "./createOrderModal/OxygenTherapyOrderForm";
 import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
 import { newOrderLineId } from "./createOrderModal/types";
 import {
@@ -604,7 +613,9 @@ function buildPayload(
               ? "ekg_ecg"
               : it._careQuickKey === "laceration_kit"
                 ? "laceration_repair"
-                : null;
+                : it._careQuickKey === "oxygen_therapy"
+                  ? OXYGEN_THERAPY_PROCEDURE_CODE
+                  : null;
           return fromQuickKey ? { enterpriseProcedureId: fromQuickKey } : {};
         })(),
         notes: it.notes?.trim() || undefined,
@@ -825,6 +836,8 @@ export function CreateOrderModal({
   const [encounterOrdersSnapshot, setEncounterOrdersSnapshot] = useState<unknown[]>([]);
   const [customCareTaskDraft, setCustomCareTaskDraft] = useState("");
   const [careDuplicateHint, setCareDuplicateHint] = useState<string | null>(null);
+  const [oxygenTherapyCompose, setOxygenTherapyCompose] = useState<OxygenTherapyDraft | null>(null);
+  const [oxygenTherapyError, setOxygenTherapyError] = useState<string | null>(null);
   const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const prescriberPrefilled = useRef(false);
@@ -1326,6 +1339,16 @@ export function CreateOrderModal({
     if (type === "CARE") {
       const missingLabel = items.some((it) => !(it.manualLabel ?? it._label)?.trim());
       if (missingLabel) return t("createOrderModal.errSelectOne");
+      if (oxygenTherapyCompose) return t("createOrderModal.oxygen.errInvalid");
+      const incompleteOxygen = items.some((it) => {
+        if (it._careQuickKey !== "oxygen_therapy" && it._enterpriseProcedureId !== OXYGEN_THERAPY_PROCEDURE_CODE) {
+          return false;
+        }
+        if (!it.notes?.trim()) return true;
+        if (it._oxygenTherapyDraft) return !validateOxygenTherapyDraft(it._oxygenTherapyDraft).ok;
+        return false;
+      });
+      if (incompleteOxygen) return t("createOrderModal.oxygen.errInvalid");
     }
 
     return null;
@@ -1540,7 +1563,12 @@ export function CreateOrderModal({
 
   const addCareLine = (
     label: string,
-    options?: { quickKey?: "ekg_workflow" | "laceration_kit"; enterpriseProcedureId?: string }
+    options?: {
+      quickKey?: "ekg_workflow" | "laceration_kit" | "oxygen_therapy";
+      enterpriseProcedureId?: string;
+      notes?: string;
+      oxygenTherapyDraft?: OxygenTherapyDraft;
+    }
   ) => {
     const trimmed = label.trim();
     if (!trimmed) return;
@@ -1560,8 +1588,9 @@ export function CreateOrderModal({
             catalogItemType: "CARE",
             manualLabel: trimmed,
             _label: trimmed,
+            ...(options?.notes ? { notes: options.notes } : {}),
             ...(options?.quickKey ? { _careQuickKey: options.quickKey } : {}),
-            // MEDPROC.2: persist enterpriseProcedureId on OrderItem; manualLabel stays display-only.
+            ...(options?.oxygenTherapyDraft ? { _oxygenTherapyDraft: options.oxygenTherapyDraft } : {}),
             ...(options?.enterpriseProcedureId ? { _enterpriseProcedureId: options.enterpriseProcedureId } : {}),
           },
         ],
@@ -1569,7 +1598,64 @@ export function CreateOrderModal({
     });
   };
 
+  const openOxygenTherapyCompose = () => {
+    setOxygenTherapyCompose(defaultOxygenTherapyDraft());
+    setOxygenTherapyError(null);
+    setCareDuplicateHint(null);
+  };
+
+  const cancelOxygenTherapyCompose = () => {
+    setOxygenTherapyCompose(null);
+    setOxygenTherapyError(null);
+  };
+
+  const confirmOxygenTherapyOrder = () => {
+    if (!oxygenTherapyCompose) return;
+    const locale = language === "fr" ? "fr" : "en";
+    const validation = validateOxygenTherapyDraft(oxygenTherapyCompose);
+    if (!validation.ok) {
+      setOxygenTherapyError(t("createOrderModal.oxygen.errInvalid"));
+      return;
+    }
+    const manualLabel = buildOxygenTherapyManualLabel(oxygenTherapyCompose, locale);
+    const notes = buildOxygenTherapyOrderNotes(oxygenTherapyCompose, locale);
+    const priorityBump = oxygenTherapyOrderPriority(oxygenTherapyCompose);
+    setFormData((fd) => {
+      if (careLabelExistsInItems(fd.items, manualLabel)) {
+        queueMicrotask(() => setCareDuplicateHint(t("createOrderModal.careDuplicateAlreadySelected")));
+        return fd;
+      }
+      queueMicrotask(() => setCareDuplicateHint(null));
+      return {
+        ...fd,
+        ...(priorityBump === "STAT" ? { priority: "STAT" as const } : {}),
+        items: [
+          ...fd.items,
+          {
+            _lineId: newOrderLineId(),
+            isManual: true,
+            catalogItemType: "CARE",
+            manualLabel,
+            _label: manualLabel,
+            notes,
+            _careQuickKey: "oxygen_therapy" as const,
+            _enterpriseProcedureId: OXYGEN_THERAPY_PROCEDURE_CODE,
+            _oxygenTherapyDraft: oxygenTherapyCompose,
+          },
+        ],
+      };
+    });
+    setOxygenTherapyCompose(null);
+    setOxygenTherapyError(null);
+    setCarePickerQuery("");
+  };
+
   const addCareCatalogProcedure = (procedure: CareProcedurePickerRow) => {
+    if (procedure.code === OXYGEN_THERAPY_PROCEDURE_CODE) {
+      openOxygenTherapyCompose();
+      setCarePickerQuery("");
+      return;
+    }
     const locale = language === "fr" ? "fr" : "en";
     const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
     const quickKey =
@@ -1580,6 +1666,19 @@ export function CreateOrderModal({
           : undefined;
     addCareLine(label, { enterpriseProcedureId: procedure.code, quickKey });
     setCarePickerQuery("");
+  };
+
+  const addCarePresetLine = (label: string) => {
+    const locale = language === "fr" ? "fr" : "en";
+    const oxygenDef = enterpriseProcedureById(OXYGEN_THERAPY_PROCEDURE_CODE);
+    if (oxygenDef) {
+      const oxygenLabel = resolveEnterpriseProcedureDisplayName(oxygenDef, locale);
+      if (careLabelNorm(label) === careLabelNorm(oxygenLabel)) {
+        openOxygenTherapyCompose();
+        return;
+      }
+    }
+    addCareLine(label);
   };
 
   const addCustomCareTaskLine = () => {
@@ -2624,7 +2723,7 @@ export function CreateOrderModal({
                         <button
                           key={label}
                           type="button"
-                          onClick={() => addCareLine(label)}
+                          onClick={() => addCarePresetLine(label)}
                           style={{
                             padding: "8px 12px",
                             fontSize: 13,
@@ -2846,6 +2945,65 @@ export function CreateOrderModal({
                         )
                       ) : null}
                     </div>
+                    {oxygenTherapyCompose ? (
+                      <div data-testid="oxygen-therapy-compose-panel">
+                        <OxygenTherapyOrderForm
+                          draft={oxygenTherapyCompose}
+                          onChange={(draft) => {
+                            setOxygenTherapyCompose(draft);
+                            setOxygenTherapyError(null);
+                          }}
+                          previewLocale={language === "fr" ? "fr" : "en"}
+                        />
+                        {oxygenTherapyError ? (
+                          <div
+                            role="alert"
+                            style={{
+                              marginBottom: 8,
+                              fontSize: 12,
+                              color: "#991b1b",
+                            }}
+                          >
+                            {oxygenTherapyError}
+                          </div>
+                        ) : null}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                          <button
+                            type="button"
+                            onClick={confirmOxygenTherapyOrder}
+                            data-testid="oxygen-therapy-add-button"
+                            style={{
+                              padding: "8px 14px",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              border: "1px solid #1d4ed8",
+                              borderRadius: 6,
+                              background: "#1d4ed8",
+                              color: "#fff",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {t("createOrderModal.oxygen.addButton")}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelOxygenTherapyCompose}
+                            style={{
+                              padding: "8px 14px",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              border: "1px solid #cbd5e1",
+                              borderRadius: 6,
+                              background: "#fff",
+                              color: "#334155",
+                              cursor: "pointer",
+                            }}
+                          >
+                            {t("createOrderModal.oxygen.cancelButton")}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                     {careDuplicateHint ? (
                       <div
                         role="alert"

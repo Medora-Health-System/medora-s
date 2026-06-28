@@ -22,8 +22,8 @@ import {
 import { orderCreateDtoSchema } from "../schemas/patient.js";
 
 const EXPECTED_TOTAL = 290;
-const EXPECTED_ACTIVE = 288;
-const EXPECTED_ALIASES = 286;
+const EXPECTED_ACTIVE = 286;
+const EXPECTED_ALIASES = 306;
 
 const TARGETED_SEARCH_CASES: Array<{ query: string; expectedCode: string }> = [
   { query: "warm blanket", expectedCode: "warm_blanket" },

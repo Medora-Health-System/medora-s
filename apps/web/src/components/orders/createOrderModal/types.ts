@@ -48,7 +48,9 @@ export type CreateOrderLineItem = {
   _modality?: string;
   _bodyRegion?: string;
   /** CARE UI only: quick-pick semantics for in-modal helpers (not sent to API). */
-  _careQuickKey?: "ekg_workflow" | "laceration_kit";
+  _careQuickKey?: "ekg_workflow" | "laceration_kit" | "oxygen_therapy";
+  /** CARE UI: structured oxygen therapy draft (oxygen_therapy only). */
+  _oxygenTherapyDraft?: import("@medora/shared").OxygenTherapyDraft;
   /**
    * CARE UI (MEDPROC.2): mirrored to API/order item as enterpriseProcedureId.
    * MEDPROC.2 must persist enterpriseProcedureId as the canonical procedure identity on OrderItem;

@@ -18,7 +18,7 @@ describe("MEDUI.CARE_PROCEDURES.EXPANSION_WAVE_1_STAFF_ORDERS.2", () => {
     expect(WAVE1_STAFF_ORDER_NEW_ROW_COUNT).toBe(205);
     expect(WAVE1_STAFF_ORDER_ALIAS_MERGE_COUNT).toBe(73);
     expect(CANONICAL_CARE_PROCEDURE_CATALOG.length).toBe(290);
-    expect(activeCanonicalCareProcedureCatalog().length).toBe(288);
+    expect(activeCanonicalCareProcedureCatalog().length).toBe(286);
   });
 
   it("has no duplicate canonical codes after wave 1", () => {

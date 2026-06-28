@@ -43,6 +43,8 @@ export type CanonicalCareProcedureRow = {
 export const CANONICAL_CARE_PROCEDURE_DEPRECATED_BY_CODE: Readonly<Record<string, string>> = {
   urinary_catheter_insertion: "foley_catheter",
   cardiac_monitoring: "continuous_cardiac_monitoring",
+  high_flow_nasal_cannula: "oxygen_therapy",
+  oxygen_titrate_to_92_percent: "oxygen_therapy",
 };
 
 const PROVIDER_ONLY_CODES = new Set([
@@ -397,6 +399,23 @@ function buildCanonicalCareProcedureCatalog(): CanonicalCareProcedureRow[] {
       ...new Set([
         ...canonical.aliases,
         ...merge.aliases.map((alias) => alias.trim()).filter(Boolean),
+      ]),
+    ];
+  }
+
+  for (const [legacyCode, canonicalCode] of Object.entries(CANONICAL_CARE_PROCEDURE_DEPRECATED_BY_CODE)) {
+    const legacy = byCode.get(legacyCode);
+    const canonical = byCode.get(canonicalCode);
+    if (!legacy || !canonical) continue;
+    legacy.isActive = false;
+    legacy.orderable = false;
+    legacy.deprecatedBy = canonicalCode;
+    canonical.aliases = [
+      ...new Set([
+        ...canonical.aliases,
+        ...legacy.aliases,
+        legacy.displayNameEn.toLowerCase(),
+        legacy.displayNameFr.toLowerCase(),
       ]),
     ];
   }
