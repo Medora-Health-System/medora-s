@@ -29,7 +29,8 @@ import { seedUsErLabCatalog } from "./helpers/seed-us-er-lab-catalog";
 import { seedBillingCatalogCommonMappings } from "./helpers/seed-billing-catalog";
 import { seedMedicationBillingMappingRemediation } from "./helpers/seed-medication-billing-mapping-remediation";
 import { seedUsInsurancePayers } from "./helpers/seed-us-insurance-payers";
-import { HAITI_MEDICATION_CATALOG, HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
+import { HAITI_MEDICATION_CATALOG_FULL } from "./data/haiti-medication-catalog-full";
+import { HAITI_DEFAULT_FAVORITE_CODES } from "./data/haiti-medications";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
 import { HAITI_IMAGING_CATALOG } from "./data/haiti-imaging-studies";
 import { US_ER_LAB_CATALOG } from "./data/er-us-lab-tests";
@@ -409,7 +410,7 @@ async function main() {
   await seedUsInsurancePayers(prisma);
 
   // Haiti medication catalog (offline-first: full catalog + aliases + searchText)
-  const medCatalogIds = await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);
+  const medCatalogIds = await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG_FULL);
 
   const medBillingRemediation = await seedMedicationBillingMappingRemediation(prisma);
   console.log(

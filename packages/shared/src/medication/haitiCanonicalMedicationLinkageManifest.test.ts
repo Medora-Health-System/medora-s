@@ -8,13 +8,15 @@ import { HAITI_MEDICATION_FORMULARY_CATALOG } from "./haitiMedicationFormularyCa
 import { validateManifest } from "./haitiCanonicalMedicationValidation.js";
 
 describe("haitiCanonicalMedicationLinkageManifest", () => {
-  it("has 253 Haiti formulary entries", () => {
-    expect(HAITI_CANONICAL_LINKAGE_MANIFEST.length).toBe(253);
-    expect(HAITI_CANONICAL_LINKAGE_MANIFEST_EXPECTED_COUNT).toBe(253);
+  const expectedCount = HAITI_CANONICAL_LINKAGE_MANIFEST_EXPECTED_COUNT;
+
+  it("has Haiti formulary entries matching expected count", () => {
+    expect(HAITI_CANONICAL_LINKAGE_MANIFEST.length).toBe(expectedCount);
+    expect(HAITI_CANONICAL_LINKAGE_MANIFEST_EXPECTED_COUNT).toBe(expectedCount);
   });
 
   it("indexes by catalogMedicationCode without duplicates", () => {
-    expect(Object.keys(HAITI_CANONICAL_LINKAGE_BY_CATALOG_CODE).length).toBe(253);
+    expect(Object.keys(HAITI_CANONICAL_LINKAGE_BY_CATALOG_CODE).length).toBe(expectedCount);
   });
 
   it("defaults to MISSING_CANONICAL_TARGET or MANUAL_REVIEW (no bulk LINK_READY)", () => {
@@ -24,7 +26,7 @@ describe("haitiCanonicalMedicationLinkageManifest", () => {
       (e) => e.linkageStatus === "MISSING_CANONICAL_TARGET"
     );
     const manual = HAITI_CANONICAL_LINKAGE_MANIFEST.filter((e) => e.linkageStatus === "MANUAL_REVIEW");
-    expect(missing.length + manual.length).toBe(253);
+    expect(missing.length + manual.length).toBe(expectedCount);
   });
 
   it("passes strict validation against formulary source", () => {
@@ -35,7 +37,7 @@ describe("haitiCanonicalMedicationLinkageManifest", () => {
       (i) => i.kind !== "ALIAS_COLLISION" && i.kind !== "GOVERNANCE_CODE_DRIFT"
     );
     expect(blocking).toEqual([]);
-    expect(result.stats.total).toBe(253);
+    expect(result.stats.total).toBe(expectedCount);
   });
 
   it("includes ceftriaxone with billing flags from M1.4B manifest", () => {

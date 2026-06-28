@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { HAITI_MEDICATION_CATALOG } from "./data/haiti-medications";
+import { HAITI_MEDICATION_CATALOG_FULL } from "./data/haiti-medication-catalog-full";
 import { HAITI_LAB_CATALOG } from "./data/haiti-lab-tests";
 import { HAITI_IMAGING_CATALOG } from "./data/haiti-imaging-studies";
 import { US_ER_LAB_CATALOG } from "./data/er-us-lab-tests";
@@ -52,7 +52,7 @@ async function main() {
   );
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
-  await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG);
+  await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG_FULL);
 
   await seedBillingCatalogCommonMappings(prisma);
   const medBillingRemediation = await seedMedicationBillingMappingRemediation(prisma);
