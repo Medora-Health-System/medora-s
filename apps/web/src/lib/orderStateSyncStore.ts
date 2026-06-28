@@ -1,7 +1,11 @@
 /**
  * MEDUI.ORDERS.UNIFIED_ORDER_STATE_SYNCHRONIZATION_CERTIFICATION.1
  * MEDUI.ORDERS.CLIENT_STATE_ENGINE_PRODUCTION_AUDIT_AND_CERTIFICATION.1
- * Lightweight unified order-item lifecycle state synchronization.
+ * MEDUI.ORDERS.ORDER_LIFECYCLE_ENGINE_FREEZE_CERTIFICATION.1
+ *
+ * ORDER_LIFECYCLE_ENGINE_FROZEN — Certified non-MAR unified order-item lifecycle state store.
+ * Future modules MUST reuse orderStateSyncStore.ts with orderItemLifecycleUiSync.ts.
+ * Do NOT create parallel lifecycle stores or duplicate acknowledge/start/complete handlers.
  *
  * CRITICAL: mergeOrderPayload / mergeWorklistPayload are read-only projections.
  * Never write to the store during merge — that caused recursive listener loops.

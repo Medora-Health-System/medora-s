@@ -39,6 +39,7 @@ describe("orderItemLifecycleUiSync", () => {
     });
     expect(normalized.status).toBe("COMPLETED");
     expect(normalized.idempotent).toBe(true);
+    expect(normalized.itemPatch.idempotent).toBeUndefined();
   });
 
   it("merges item patch without mutating unrelated orders or oxygen metadata", () => {

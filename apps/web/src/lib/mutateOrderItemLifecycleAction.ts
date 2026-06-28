@@ -56,7 +56,6 @@ function buildItemPatch(body: unknown, nextStatus: string): Record<string, unkno
       patch.lifecycleState = row.lifecycleState.trim().toUpperCase();
     }
     if (row.updatedAt) patch.updatedAt = row.updatedAt;
-    if (row.idempotent === true) patch.idempotent = true;
   }
   return patch;
 }
@@ -77,6 +76,10 @@ function resolveNextStatus(action: OrderItemLifecycleAction, body: unknown, idem
 /**
  * MEDUI.ORDERS.UNIFIED_ORDER_ACTION_LIFECYCLE_FIX.1 — shared POST for acknowledge / start / complete.
  * MEDUI.ORDERS.INSTANT_LIFECYCLE_UI_SYNC_CERTIFICATION.1 — invalidates mutable GET caches on success.
+ * MEDUI.ORDERS.ORDER_LIFECYCLE_ENGINE_FREEZE_CERTIFICATION.1
+ *
+ * ORDER_LIFECYCLE_ENGINE_FROZEN — Certified non-MAR lifecycle POST entry point.
+ * Future modules MUST call mutateOrderItemLifecycleAction; do NOT add parallel POST wrappers.
  */
 export async function mutateOrderItemLifecycleAction(
   action: OrderItemLifecycleAction,

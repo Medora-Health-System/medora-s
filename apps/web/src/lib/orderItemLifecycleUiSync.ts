@@ -1,7 +1,11 @@
 /**
  * MEDUI.ORDERS.INSTANT_LIFECYCLE_UI_SYNC_CERTIFICATION.1
  * MEDUI.ORDERS.UNIFIED_ORDER_STATE_SYNCHRONIZATION_CERTIFICATION.1
- * Shared optimistic lifecycle UI patch + unified order state store integration.
+ * MEDUI.ORDERS.ORDER_LIFECYCLE_ENGINE_FREEZE_CERTIFICATION.1
+ *
+ * ORDER_LIFECYCLE_ENGINE_FROZEN — Certified non-MAR optimistic lifecycle UI orchestration.
+ * Future modules MUST reuse createOrderLifecycleMutationHandlers / runOrderItemLifecycleUiMutation.
+ * Do NOT create parallel lifecycle handlers or duplicate acknowledge/start/complete UI paths.
  */
 
 import {

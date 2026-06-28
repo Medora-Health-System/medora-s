@@ -1,6 +1,10 @@
 /**
  * MEDUI.ORDERS.UNIFIED_ORDER_ACTION_LIFECYCLE_FIX.1
- * Shared order line acknowledge / start / complete workflow rules.
+ * MEDUI.ORDERS.ORDER_LIFECYCLE_ENGINE_FREEZE_CERTIFICATION.1
+ *
+ * ORDER_LIFECYCLE_ENGINE_FROZEN — Certified non-MAR order lifecycle rules (acknowledge / start / complete).
+ * Future modules (including Order Sets) MUST reuse this module and MUST NOT duplicate lifecycle rules
+ * or create parallel state stores.
  */
 
 export type OrderItemLifecycleAction = "acknowledge" | "start" | "complete";
