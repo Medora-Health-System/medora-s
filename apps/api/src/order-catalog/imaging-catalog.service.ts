@@ -153,4 +153,55 @@ export class ImagingCatalogService {
 
     return { items };
   }
+
+  /** Phase 2 — exact reference code resolution for enterprise order set apply (no full catalog preload). */
+  async resolveByReferenceCodes(input: {
+    referenceCodes: readonly string[];
+    fallbackSearchQuery?: string;
+  }): Promise<CatalogSearchItemDto[]> {
+    const codes = [...new Set(input.referenceCodes.map((code) => code.trim().toUpperCase()).filter(Boolean))];
+    if (codes.length === 0) return [];
+
+    const includeClassifiers = isTerminologyReadClassifierEnabled();
+
+    const byCode = await this.prisma.catalogImagingStudy.findMany({
+      where: { isActive: true, code: { in: codes } },
+      include: includeClassifiers ? imagingClassifierInclude : undefined,
+    });
+
+    if (byCode.length > 0) {
+      return byCode.map((row) =>
+        mapImagingRowToCatalogSearchItem(
+          {
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            displayNameEn: row.displayNameEn,
+            displayNameFr: row.displayNameFr,
+            modality: row.modality,
+            bodyRegion: row.bodyRegion,
+            searchText: row.searchText,
+            modalityClassifier:
+              includeClassifiers && "modalityClassifier" in row
+                ? (row as { modalityClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                    .modalityClassifier
+                : null,
+            bodyRegionClassifier:
+              includeClassifiers && "bodyRegionClassifier" in row
+                ? (row as { bodyRegionClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                    .bodyRegionClassifier
+                : null,
+          },
+          truncateSearchText(row.searchText)
+        )
+      );
+    }
+
+    if (input.fallbackSearchQuery?.trim()) {
+      const search = await this.search({ q: input.fallbackSearchQuery.trim(), limit: 5 });
+      return search.items;
+    }
+
+    return [];
+  }
 }

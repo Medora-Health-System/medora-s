@@ -1,7 +1,9 @@
 import {
   Controller,
   Get,
+  Post,
   Query,
+  Body,
   Req,
   UseGuards,
   BadRequestException,
@@ -13,7 +15,9 @@ import { LabCatalogService } from "./lab-catalog.service";
 import { ImagingCatalogService } from "./imaging-catalog.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
 import { ProcedureCatalogService } from "./procedure-catalog.service";
+import { OrderSetCatalogResolveService } from "./order-set-catalog-resolve.service";
 import { catalogSearchQuerySchema, procedureCatalogSearchQuerySchema } from "./dto/catalog-search-item.dto";
+import { orderSetCatalogResolveRequestSchema } from "./dto/order-set-catalog-resolve.dto";
 import { CANONICAL_CARE_PROCEDURE_CATEGORIES } from "@medora/shared";
 
 /** Prescription / ordres cliniques + travail laboratoire / imagerie */
@@ -52,7 +56,8 @@ export class OrderCatalogController {
     private readonly labCatalog: LabCatalogService,
     private readonly imagingCatalog: ImagingCatalogService,
     private readonly medicationCatalog: MedicationCatalogService,
-    private readonly procedureCatalog: ProcedureCatalogService
+    private readonly procedureCatalog: ProcedureCatalogService,
+    private readonly orderSetCatalogResolve: OrderSetCatalogResolveService
   ) {}
 
   private facilityId(req: any): string {
@@ -133,5 +138,19 @@ export class OrderCatalogController {
       limit: parsed.data.limit,
       ...(validCategory ? { category: validCategory } : {}),
     });
+  }
+
+  /** Enterprise order set apply — batch exact catalog reference resolution (LAB/IMAGING only). */
+  @Post("order-set/resolve")
+  @RequireRoles(...ORDER_CATALOG_ROLES)
+  async resolveOrderSetCatalogReferences(@Body() body: unknown, @Req() req: any) {
+    this.facilityId(req);
+    const parsed = orderSetCatalogResolveRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide", {
+        cause: parsed.error,
+      });
+    }
+    return this.orderSetCatalogResolve.resolveBatch(parsed.data);
   }
 }

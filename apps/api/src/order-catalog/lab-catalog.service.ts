@@ -142,4 +142,50 @@ export class LabCatalogService {
 
     return { items };
   }
+
+  /** Phase 2 — exact reference code resolution for enterprise order set apply (no full catalog preload). */
+  async resolveByReferenceCodes(input: {
+    referenceCodes: readonly string[];
+    fallbackSearchQuery?: string;
+  }): Promise<CatalogSearchItemDto[]> {
+    const codes = [...new Set(input.referenceCodes.map((code) => code.trim().toUpperCase()).filter(Boolean))];
+    if (codes.length === 0) return [];
+
+    const includeClassifiers = isTerminologyReadClassifierEnabled();
+
+    const byCode = await this.prisma.catalogLabTest.findMany({
+      where: { isActive: true, code: { in: codes } },
+      include: includeClassifiers ? labClassifierInclude : undefined,
+    });
+
+    if (byCode.length > 0) {
+      return byCode.map((row) =>
+        mapLabRowToCatalogSearchItem(
+          {
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            displayNameEn: row.displayNameEn,
+            displayNameFr: row.displayNameFr,
+            description: row.description,
+            searchText: row.searchText,
+            billingCodeDefault: row.billingCodeDefault,
+            labCategoryClassifier:
+              includeClassifiers && "labCategoryClassifier" in row
+                ? (row as { labCategoryClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                    .labCategoryClassifier
+                : null,
+          },
+          truncateSearchText(row.searchText)
+        )
+      );
+    }
+
+    if (input.fallbackSearchQuery?.trim()) {
+      const search = await this.search({ q: input.fallbackSearchQuery.trim(), limit: 5 });
+      return search.items;
+    }
+
+    return [];
+  }
 }

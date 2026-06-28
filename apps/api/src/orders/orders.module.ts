@@ -1,7 +1,9 @@
 import { Module } from "@nestjs/common";
 import { OrdersController } from "./orders.controller";
+import { EnterpriseOrderSetAnalyticsController } from "./enterprise-order-set-analytics.controller";
 import { MedicationOrderLifecycleService } from "./medication-order-lifecycle.service";
 import { OrdersService } from "./orders.service";
+import { EnterpriseOrderSetAnalyticsService } from "./enterprise-order-set-analytics.service";
 import { OrdersLabRadiologyEffectiveTimeService } from "./orders-lab-radiology-effective-time.service";
 import { ProcedureBillingReadinessService } from "./procedure-billing-readiness.service";
 import { PrismaModule } from "../prisma/prisma.module";
@@ -13,9 +15,10 @@ import { OrdersFluidBolusService } from "./orders-fluid-bolus.service";
 
 @Module({
   imports: [PrismaModule, MedicationAdministrationModule],
-  controllers: [OrdersController],
+  controllers: [OrdersController, EnterpriseOrderSetAnalyticsController],
   providers: [
     OrdersService,
+    EnterpriseOrderSetAnalyticsService,
     MedicationOrderLifecycleService,
     OrdersContinuousFluidService,
     OrdersFluidBolusService,

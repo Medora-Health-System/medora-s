@@ -461,6 +461,7 @@ export function normalizeMedicationAdministrationHistoryResponseRows(input: {
     medicationResponsePainTrend: response.painResponseTrend,
     medicationResponseDocumentedBy: resolveMedicationResponseDocumentedByLabel(response),
     medicationResponseSideEffectKeys: listMedicationResponseSideEffectKeys(response).join(","),
+    medicationFollowUpType: "PAIN",
     originalAdministrationIdForResponse: input.administrationId,
     readOnly: true,
   }));
@@ -506,6 +507,7 @@ export function normalizeMedicationAdministrationHistoryRespiratoryResponseRows(
       documentedByName: response.documentedByName ?? null,
       documentedByUserId: response.documentedByUserId ?? null,
     }),
+    medicationFollowUpType: "RESPIRATORY",
     originalAdministrationIdForResponse: input.administrationId,
     readOnly: true,
   }));

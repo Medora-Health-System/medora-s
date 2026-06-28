@@ -19,11 +19,20 @@ import {
   enterpriseProcedureById,
   oxygenTherapyOrderPriority,
   validateOxygenTherapyDraft,
+  canonicalCareProcedureByCode,
+  resolveCanonicalCareProcedureDisplayName,
+  canRolePlaceEnterpriseOrderSet,
+  enterpriseOrderSetByCode,
+  buildEnterpriseOrderSetApplyContext,
+  buildEnterpriseOrderSetProvenance,
+  type EnterpriseOrderSetApplyContext,
+  type EnterpriseOrderSetCategory,
   type OxygenTherapyDraft,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog, searchProcedureCatalog } from "@/lib/catalogSearchApi";
+import { resolveOrderSetCatalogBatch } from "@/lib/orderSetCatalogResolveApi";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
 import {
   CANONICAL_CARE_PROCEDURE_CATEGORIES,
@@ -39,7 +48,17 @@ import { SelectedMedicationItems } from "./createOrderModal/SelectedMedicationIt
 import { ManualOrderEntry } from "./createOrderModal/ManualOrderEntry";
 import { OxygenTherapyOrderForm } from "./createOrderModal/OxygenTherapyOrderForm";
 import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
-import { newOrderLineId } from "./createOrderModal/types";
+import {
+  checkedOrderSetItemKeys,
+  filterEnterpriseOrderSets,
+  getDefaultOrderSetKey,
+  isRequiredOrderSetItem,
+  orderSetWarningsForLocale,
+  resolveOrderSetTitle,
+  toOrderSetUiItems,
+  type OrderSetKey,
+  type OrderSetUiItem,
+} from "./createOrderModal/enterpriseOrderSetAdapter";
 import {
   applyDefaultPlannedAdministrationIfNeeded,
   prepareMedicationOrderLinePlannedAdmin,
@@ -49,6 +68,7 @@ import {
   resolveMedicationOrderItemIntendedUtcForSubmit,
   stripMedicationFromOrderDraftPayload,
 } from "./createOrderModal/createOrderMedicationDraft";
+import { newOrderLineId } from "./createOrderModal/types";
 import { resolveClinicalTimeZone } from "@/lib/clinicalTimeDisplay";
 import { useFacilityAndRoles } from "@/hooks/useFacilityAndRoles";
 import { useI18n } from "@/lib/i18n";
@@ -73,19 +93,9 @@ import {
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
-type OrderSetKey = "chestPain" | "abdominalPain" | "sepsis" | "trauma" | "respiratoryDistress";
-type OrderSetItemType = "LAB" | "IMAGING" | "MEDICATION" | "CARE";
+type OrderSetItemType = OrderSetUiItem["type"];
 type OrderTypeKey = OrderModalTab;
-type OrderSetItem = {
-  key: string;
-  type: OrderSetItemType;
-  catalogType?: CatalogType;
-  catalogCode?: string;
-  catalogCodes?: string[];
-  fallbackSearchQuery?: string;
-  comingSoon?: boolean;
-};
-type OrderSetSkippedReason = "noMatch" | "ambiguous" | "nonPrescriber";
+type OrderSetSkippedReason = "noMatch" | "ambiguous" | "nonPrescriber" | "structuredParametersRequired";
 type OrderSetSkippedItem = { key: string; reason: OrderSetSkippedReason };
 type ResolvedOrderSetItems = Record<OrderTypeKey, CreateOrderLineItem[]> & {
   skipped: OrderSetSkippedItem[];
@@ -145,14 +155,6 @@ function createOrderDraftHasContent(payload: unknown): boolean {
 
 const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
 
-const ORDER_SET_KEYS: OrderSetKey[] = [
-  "chestPain",
-  "abdominalPain",
-  "sepsis",
-  "trauma",
-  "respiratoryDistress",
-];
-
 const ORDER_TYPE_REVIEW_ICON: Record<OrderTypeKey, string> = {
   LAB: "🧪",
   IMAGING: "🖼",
@@ -160,56 +162,12 @@ const ORDER_TYPE_REVIEW_ICON: Record<OrderTypeKey, string> = {
   CARE: "🏥",
 };
 
-const ORDER_SET_ITEMS: Record<OrderSetKey, OrderSetItem[]> = {
-  chestPain: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
-    { key: "troponin", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TROPONIN", catalogCodes: ["TROP", "ER_TROP"] },
-    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-  ],
-  abdominalPain: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
-    { key: "lipase", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LIPASE", catalogCodes: ["ER_LIP"] },
-    { key: "urinalysis", type: "LAB", catalogType: "LAB_TEST", catalogCode: "UA", catalogCodes: ["ER_UA"] },
-    {
-      key: "ctAbdomenPelvis",
-      type: "IMAGING",
-      catalogType: "IMAGING_STUDY",
-      catalogCode: "CT_ABDOMEN_PELVIS",
-      catalogCodes: ["CT_ABD"],
-    },
-  ],
-  sepsis: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
-    { key: "cmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CMP", catalogCodes: ["ER_CMP"] },
-    { key: "lactate", type: "LAB", catalogType: "LAB_TEST", catalogCode: "LACTATE", catalogCodes: ["ER_LAC"] },
-    { key: "bloodCulture", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BLOOD_CULTURE", catalogCodes: ["ER_BC"] },
-    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-  ],
-  trauma: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
-    { key: "typeScreen", type: "LAB", catalogType: "LAB_TEST", catalogCode: "TYPE_SCREEN", catalogCodes: ["ER_BLOOD_TYPE"] },
-    {
-      key: "ctHead",
-      type: "IMAGING",
-      catalogType: "IMAGING_STUDY",
-      catalogCode: "CT_HEAD_WO_CONTRAST",
-      catalogCodes: ["CT_HEAD"],
-    },
-    { key: "ctCervicalSpine", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "CT_CERVICAL_SPINE" },
-    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-  ],
-  respiratoryDistress: [
-    { key: "cbc", type: "LAB", catalogType: "LAB_TEST", catalogCode: "CBC", catalogCodes: ["ER_CBC"] },
-    { key: "bmp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BMP", catalogCodes: ["ER_BMP"] },
-    { key: "bnp", type: "LAB", catalogType: "LAB_TEST", catalogCode: "BNP", catalogCodes: ["ER_BNP"] },
-    { key: "chestXray", type: "IMAGING", catalogType: "IMAGING_STUDY", catalogCode: "XR_CHEST" },
-    { key: "covid", type: "LAB", catalogType: "LAB_TEST", catalogCode: "COVID", catalogCodes: ["ER_COVID"] },
-    { key: "influenzaAb", type: "LAB", catalogType: "LAB_TEST", catalogCode: "INFLUENZA_AB", catalogCodes: ["ER_FLU"] },
-    { key: "rsv", type: "LAB", catalogType: "LAB_TEST", catalogCode: "RSV", catalogCodes: ["ER_RSV"] },
-  ],
-};
+function normalizeRestoredOrderSetKey(value: unknown): OrderSetKey {
+  if (typeof value === "string" && enterpriseOrderSetByCode(value)) {
+    return value as OrderSetKey;
+  }
+  return getDefaultOrderSetKey();
+}
 
 function careLabelNorm(label: string): string {
   return label.trim().toLowerCase();
@@ -227,10 +185,6 @@ type CareProcedurePickerRow = {
   categoryLabelEn: string;
   categoryLabelFr: string;
 };
-
-function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
-  return ORDER_SET_ITEMS[orderSet].map((item) => item.key);
-}
 
 function isOrderTypeKey(tab: CreateOrderModalTab): tab is OrderTypeKey {
   return tab !== "ORDER_SET";
@@ -342,6 +296,11 @@ function OrderSetPreview({
   canApply,
   applying,
   onOpenEkgDocumentation,
+  locale,
+  categoryFilter,
+  onCategoryFilterChange,
+  searchQuery,
+  onSearchQueryChange,
   t,
 }: {
   selected: OrderSetKey;
@@ -352,9 +311,22 @@ function OrderSetPreview({
   canApply: boolean;
   applying: boolean;
   onOpenEkgDocumentation?: () => void;
+  locale: SupportedLanguage;
+  categoryFilter: EnterpriseOrderSetCategory | "ALL";
+  onCategoryFilterChange: (value: EnterpriseOrderSetCategory | "ALL") => void;
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
   t: (key: string) => string;
 }) {
-  const items = ORDER_SET_ITEMS[selected];
+  const selectedSet = enterpriseOrderSetByCode(selected);
+  const visibleSets = useMemo(
+    () => filterEnterpriseOrderSets({ category: categoryFilter, query: searchQuery, locale }),
+    [categoryFilter, searchQuery, locale]
+  );
+  const items = useMemo(
+    () => (selectedSet ? toOrderSetUiItems(selectedSet, locale) : []),
+    [selectedSet, locale]
+  );
   const checkedCount = checkedItemKeys.length;
   const totalCount = items.length;
   const checkedSet = new Set(checkedItemKeys);
@@ -363,26 +335,65 @@ function OrderSetPreview({
     .replace("{total}", String(totalCount));
   const applyingBundleLabel = t("createOrderModal.orderSetsApplyingBundle").replace(
     "{bundle}",
-    t(`createOrderModal.orderSets.${selected}.name`)
+    selectedSet ? resolveOrderSetTitle(selectedSet, locale) : selected
   );
+  const warnings = selectedSet ? orderSetWarningsForLocale(selectedSet, locale) : [];
 
   return (
-    <div>
+    <div data-testid="enterprise-order-set-preview">
       <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
         {t("createOrderModal.orderSetsSectionTitle")}
       </div>
       <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64", lineHeight: 1.4 }}>
         {t("createOrderModal.orderSetsIntro")}
       </p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchQueryChange(event.target.value)}
+          placeholder={t("createOrderModal.orderSetsSearchPlaceholder")}
+          data-testid="enterprise-order-set-search"
+          style={{
+            flex: "1 1 180px",
+            minWidth: 160,
+            padding: "7px 10px",
+            borderRadius: 6,
+            border: "1px solid #cbd5e1",
+            fontSize: 13,
+          }}
+        />
+        <select
+          value={categoryFilter}
+          onChange={(event) => onCategoryFilterChange(event.target.value as EnterpriseOrderSetCategory | "ALL")}
+          data-testid="enterprise-order-set-category-filter"
+          style={{
+            padding: "7px 10px",
+            borderRadius: 6,
+            border: "1px solid #cbd5e1",
+            fontSize: 13,
+            background: "#fff",
+          }}
+        >
+          <option value="ALL">{t("createOrderModal.orderSetsCategoryAll")}</option>
+          {(["CARDIAC", "NEURO", "INFECTION", "TRAUMA", "RESPIRATORY", "SEDATION", "BEHAVIORAL"] as const).map(
+            (category) => (
+              <option key={category} value={category}>
+                {t(`createOrderModal.orderSetsCategory.${category}`)}
+              </option>
+            )
+          )}
+        </select>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 0.8fr) minmax(220px, 1fr)", gap: 12 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {ORDER_SET_KEYS.map((key) => {
-            const active = key === selected;
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
+          {visibleSets.map((set) => {
+            const active = set.code === selected;
             return (
               <button
-                key={key}
+                key={set.code}
                 type="button"
-                onClick={() => onSelect(key)}
+                onClick={() => onSelect(set.code)}
                 style={{
                   padding: "9px 10px",
                   border: active ? "1px solid #1a1a1a" : "1px solid #d6d6d6",
@@ -395,7 +406,7 @@ function OrderSetPreview({
                   fontWeight: active ? 700 : 600,
                 }}
               >
-                {t(`createOrderModal.orderSets.${key}.name`)}
+                {resolveOrderSetTitle(set, locale)}
               </button>
             );
           })}
@@ -410,11 +421,31 @@ function OrderSetPreview({
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", marginBottom: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700 }}>
-              {t(`createOrderModal.orderSets.${selected}.name`)}
+              {selectedSet ? resolveOrderSetTitle(selectedSet, locale) : ""}
             </div>
             <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{selectedCountLabel}</div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          {warnings.length > 0 ? (
+            <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+              {warnings.map((warning) => (
+                <div
+                  key={warning}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #fde68a",
+                    background: "#fffbeb",
+                    color: "#92400e",
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {warning}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, maxHeight: 260, overflowY: "auto" }}>
             {items.map((item) => (
               <label
                 key={item.key}
@@ -427,14 +458,16 @@ function OrderSetPreview({
                   border: "1px solid #e2e8f0",
                   borderRadius: 6,
                   background: checkedSet.has(item.key) ? "#f8fafc" : "#fff",
-                  cursor: "pointer",
+                  cursor: item.required ? "default" : "pointer",
                   fontSize: 13,
                   color: "#334155",
+                  opacity: item.required ? 0.95 : 1,
                 }}
               >
                 <input
                   type="checkbox"
                   checked={checkedSet.has(item.key)}
+                  disabled={item.required}
                   onChange={() => onToggleItem(item.key)}
                   style={{ width: 14, height: 14, margin: 0 }}
                 />
@@ -452,17 +485,22 @@ function OrderSetPreview({
                   {t(`createOrderModal.orderSetType.${item.type}`)}
                 </span>
                 <span>
-                  {t(`createOrderModal.orderSetItems.${item.key}`)}
-                  {item.comingSoon ? (
-                    <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 12, fontWeight: 700 }}>
-                      {t("createOrderModal.orderSetComingSoonBadge")}
+                  {item.displayLabel}
+                  {item.required ? (
+                    <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 700 }}>
+                      {t("createOrderModal.orderSetRequiredBadge")}
+                    </span>
+                  ) : null}
+                  {item.requiresStructuredParameters ? (
+                    <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11, fontWeight: 700 }}>
+                      {t("createOrderModal.orderSetStructuredParametersBadge")}
                     </span>
                   ) : null}
                 </span>
               </label>
             ))}
           </div>
-          {selected === "chestPain" && onOpenEkgDocumentation ? (
+          {selected === "ed_chest_pain_v1" && onOpenEkgDocumentation ? (
             <div
               style={{
                 marginBottom: 12,
@@ -538,9 +576,13 @@ function buildPayload(
   items: CreateOrderLineItem[],
   authority?: OrderAuthorityPayloadFields,
   safetyAcknowledgedMedicationAllergies?: boolean,
-  facilityTimeZone?: string | null
+  facilityTimeZone?: string | null,
+  enterpriseOrderSetProvenance?: OrderCreateDto["enterpriseOrderSetProvenance"]
 ): OrderCreateDto {
   const rootNotes = notes.trim() || undefined;
+  const provenanceField = enterpriseOrderSetProvenance
+    ? { enterpriseOrderSetProvenance }
+    : {};
   const authorityFields = {
     ...(authority?.orderSource ? { orderSource: authority.orderSource } : {}),
     ...(authority?.readbackConfirmed != null ? { readbackConfirmed: authority.readbackConfirmed } : {}),
@@ -552,6 +594,7 @@ function buildPayload(
       type: "LAB",
       priority,
       notes: rootNotes,
+      ...provenanceField,
       items: items.map((it) =>
         it.isManual || !it.catalogItemId
           ? {
@@ -574,6 +617,7 @@ function buildPayload(
       type: "IMAGING",
       priority,
       notes: rootNotes,
+      ...provenanceField,
       items: items.map((it) =>
         it.isManual || !it.catalogItemId
           ? {
@@ -597,6 +641,7 @@ function buildPayload(
       type: "CARE",
       priority,
       notes: rootNotes,
+      ...provenanceField,
       ...(prescriberName.trim() ? { prescriberName: prescriberName.trim() } : {}),
       ...(prescriberLicense.trim() ? { prescriberLicense: prescriberLicense.trim() } : {}),
       ...(prescriberContact.trim() ? { prescriberContact: prescriberContact.trim() } : {}),
@@ -627,6 +672,7 @@ function buildPayload(
     type: "MEDICATION",
     priority,
     notes: rootNotes,
+    ...provenanceField,
     prescriberName: prescriberName.trim(),
     prescriberLicense: prescriberLicense.trim() || undefined,
     prescriberContact: prescriberContact.trim() || undefined,
@@ -718,7 +764,7 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
-  const { facilityTimeZone, facilityClinicalTimeZoneReady } = useFacilityAndRoles();
+  const { facilityTimeZone, facilityClinicalTimeZoneReady, roles } = useFacilityAndRoles();
   const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const [careCategoryFilter, setCareCategoryFilter] = useState<"" | CanonicalCareProcedureCategory>("");
@@ -773,13 +819,17 @@ export function CreateOrderModal({
   const [activeTab, setActiveTab] = useState<CreateOrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const [selectedOrderSet, setSelectedOrderSet] = useState<OrderSetKey>("chestPain");
+  const defaultOrderSetKey = getDefaultOrderSetKey();
+  const [selectedOrderSet, setSelectedOrderSet] = useState<OrderSetKey>(defaultOrderSetKey);
   const [selectedOrderSetItemKeys, setSelectedOrderSetItemKeys] = useState<string[]>(() =>
-    checkedOrderSetItemKeys("chestPain")
+    checkedOrderSetItemKeys(defaultOrderSetKey)
   );
+  const [orderSetCategoryFilter, setOrderSetCategoryFilter] = useState<EnterpriseOrderSetCategory | "ALL">("ALL");
+  const [orderSetSearchQuery, setOrderSetSearchQuery] = useState("");
   const [orderSetApplying, setOrderSetApplying] = useState(false);
   const [orderSetWarning, setOrderSetWarning] = useState<{ count: number } | null>(null);
   const [orderSetReviewActive, setOrderSetReviewActive] = useState(false);
+  const [orderSetApplyContext, setOrderSetApplyContext] = useState<EnterpriseOrderSetApplyContext | null>(null);
   const [nextStagedTabAfterSuccess, setNextStagedTabAfterSuccess] = useState<OrderTypeKey | null>(null);
   const [submittedOrderType, setSubmittedOrderType] = useState<OrderTypeKey | null>(null);
   const [createdOrder, setCreatedOrder] = useState<{
@@ -922,8 +972,8 @@ export function CreateOrderModal({
   const initialDraftPayload = useMemo<CreateOrderDraftPayload>(
     () => ({
       activeTab: firstTab,
-      selectedOrderSet: "chestPain",
-      selectedOrderSetItemKeys: checkedOrderSetItemKeys("chestPain"),
+      selectedOrderSet: defaultOrderSetKey,
+      selectedOrderSetItemKeys: checkedOrderSetItemKeys(defaultOrderSetKey),
       orderSetReviewActive: false,
       stagedItems: {
         LAB: [],
@@ -1030,7 +1080,7 @@ export function CreateOrderModal({
     if (canRestore && draft) {
       const restored = stripMedicationFromOrderDraftPayload(draft.payload);
       setActiveTab(restored.activeTab);
-      setSelectedOrderSet(restored.selectedOrderSet);
+      setSelectedOrderSet(normalizeRestoredOrderSetKey(restored.selectedOrderSet));
       setSelectedOrderSetItemKeys(restored.selectedOrderSetItemKeys);
       setOrderSetReviewActive(restored.orderSetReviewActive);
       setStagedItems(restored.stagedItems);
@@ -1131,15 +1181,29 @@ export function CreateOrderModal({
   };
 
   const toggleOrderSetItem = (itemKey: string) => {
+    if (isRequiredOrderSetItem(selectedOrderSet, itemKey)) return;
     setSelectedOrderSetItemKeys((current) =>
       current.includes(itemKey) ? current.filter((key) => key !== itemKey) : [...current, itemKey]
     );
   };
 
-  const selectedOrderSetItems = ORDER_SET_ITEMS[selectedOrderSet].filter((item) =>
-    selectedOrderSetItemKeys.includes(item.key)
+  const selectedOrderSetDefinition = enterpriseOrderSetByCode(selectedOrderSet);
+  const selectedOrderSetUiItems = useMemo(
+    () =>
+      selectedOrderSetDefinition
+        ? toOrderSetUiItems(selectedOrderSetDefinition, language).filter((item) =>
+            selectedOrderSetItemKeys.includes(item.key)
+          )
+        : [],
+    [language, selectedOrderSetDefinition, selectedOrderSetItemKeys]
   );
-  const canApplyOrderSet = selectedOrderSetItems.some((item) => !item.comingSoon);
+  const canApplyOrderSet =
+    selectedOrderSetUiItems.length > 0 &&
+    canRolePlaceEnterpriseOrderSet({
+      rolesAllowed: selectedOrderSetDefinition?.rolesAllowed ?? ["PROVIDER", "ADMIN"],
+      canPrescribe,
+      roleCodes: roles,
+    });
   const isRnAuthorityTab =
     canUseRnOrderAuthority && (activeTab === "MEDICATION" || activeTab === "CARE");
   const rnAuthorityModeValid =
@@ -1372,6 +1436,20 @@ export function CreateOrderModal({
     summaryAtSubmit: string | null
   ): Promise<OrderCreateResponse> => {
     const allergyAckForApi = type === "MEDICATION" && Boolean(summaryAtSubmit) && medicationAllergySafetyAck;
+    const placedItemKeys = items
+      .map((item) => item._enterpriseOrderSetItemKey?.trim())
+      .filter((key): key is string => Boolean(key));
+    const enterpriseOrderSetProvenance =
+      orderSetApplyContext &&
+      orderSetReviewActive &&
+      placedItemKeys.length > 0 &&
+      placedItemKeys.length === items.length
+        ? buildEnterpriseOrderSetProvenance({
+            applyContext: orderSetApplyContext,
+            orderType: type,
+            placedItemKeys,
+          })
+        : undefined;
     const payload = buildPayload(
       type,
       formData.priority,
@@ -1384,7 +1462,8 @@ export function CreateOrderModal({
         : items,
       authorityPayloadFieldsForType(type),
       allergyAckForApi ? true : undefined,
-      facilityTimeZone
+      facilityTimeZone,
+      enterpriseOrderSetProvenance
     );
     return (await apiFetch(`/encounters/${encounterId}/orders`, {
       method: "POST",
@@ -1394,11 +1473,20 @@ export function CreateOrderModal({
     })) as OrderCreateResponse;
   };
 
-  const resolveOrderSetItems = async (items: OrderSetItem[]): Promise<ResolvedOrderSetItems> => {
+  const resolveOrderSetItems = async (items: OrderSetUiItem[]): Promise<ResolvedOrderSetItems> => {
     const resolved = emptyResolvedOrderSetItems();
+    const catalogBatchRows: Array<{
+      orderSetItem: OrderSetUiItem;
+      acceptableCodes: Set<string>;
+    }> = [];
 
     for (const orderSetItem of items) {
       if (orderSetItem.comingSoon) continue;
+
+      if (orderSetItem.requiresStructuredParameters) {
+        resolved.skipped.push({ key: orderSetItem.key, reason: "structuredParametersRequired" });
+        continue;
+      }
 
       if (
         (orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE") &&
@@ -1410,75 +1498,109 @@ export function CreateOrderModal({
       }
 
       if (orderSetItem.type === "CARE") {
-        const label = t(`createOrderModal.orderSetItems.${orderSetItem.key}`);
+        const procedureCode = orderSetItem.enterpriseProcedureCode?.trim();
+        const label =
+          (procedureCode
+            ? resolveCanonicalCareProcedureDisplayName(procedureCode, language) ??
+              canonicalCareProcedureByCode(procedureCode)?.displayNameEn
+            : null) ?? orderSetItem.displayLabel;
+        if (procedureCode && !canonicalCareProcedureByCode(procedureCode)) {
+          if (orderSetItem.deferIfMissing) continue;
+          resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+          continue;
+        }
         resolved.CARE.push({
           _lineId: newOrderLineId(),
           isManual: true,
           catalogItemType: "CARE",
           manualLabel: label,
           _label: label,
+          _enterpriseOrderSetItemKey: orderSetItem.key,
+          ...(procedureCode ? { _enterpriseProcedureId: procedureCode } : {}),
+          ...(procedureCode === OXYGEN_THERAPY_PROCEDURE_CODE
+            ? { _careQuickKey: "oxygen_therapy" as const }
+            : {}),
+          ...(procedureCode === "ekg_ecg" ? { _careQuickKey: "ekg_workflow" as const } : {}),
         });
         continue;
       }
 
       if (!orderSetItem.catalogType || !orderSetItem.catalogCode) {
+        if (orderSetItem.deferIfMissing) continue;
         resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
         continue;
       }
 
-      const acceptableCodes = new Set(
-        [orderSetItem.catalogCode, ...(orderSetItem.catalogCodes ?? [])].map((code) => code.toUpperCase())
-      );
-      let catalogItem: CatalogSearchItem | null = null;
+      catalogBatchRows.push({
+        orderSetItem,
+        acceptableCodes: new Set(
+          [orderSetItem.catalogCode, ...(orderSetItem.catalogCodes ?? [])].map((code) => code.toUpperCase())
+        ),
+      });
+    }
+
+    if (catalogBatchRows.length > 0) {
       try {
-        const exactResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
-          q: orderSetItem.catalogCode,
-          limit: 5,
-        });
-        catalogItem =
-          exactResults.find((item) => isApprovedCatalogMatch(item, orderSetItem.catalogType!, acceptableCodes)) ?? null;
+        const batchResults = await resolveOrderSetCatalogBatch(
+          facilityId,
+          catalogBatchRows.map(({ orderSetItem }) => ({
+            requestId: orderSetItem.key,
+            catalogType: orderSetItem.catalogType as "LAB_TEST" | "IMAGING_STUDY",
+            referenceCodes: [orderSetItem.catalogCode!, ...(orderSetItem.catalogCodes ?? [])],
+            fallbackSearchQuery: orderSetItem.fallbackSearchQuery,
+          }))
+        );
 
-        if (!catalogItem && orderSetItem.fallbackSearchQuery) {
-          const fallbackResults = await searchCatalog(facilityId, orderSetItem.catalogType, {
-            q: orderSetItem.fallbackSearchQuery,
-            limit: 5,
-          });
-          const exactFallbackResults = fallbackResults.filter((item) =>
-            isApprovedCatalogMatch(item, orderSetItem.catalogType!, acceptableCodes)
-          );
-
-          if (exactFallbackResults.length === 1) {
-            catalogItem = exactFallbackResults[0];
-          } else if (exactFallbackResults.length > 1 || fallbackResults.length > 1) {
+        for (const { orderSetItem, acceptableCodes } of catalogBatchRows) {
+          const batchResult = batchResults.get(orderSetItem.key);
+          if (!batchResult) {
+            if (orderSetItem.deferIfMissing) continue;
+            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+            continue;
+          }
+          if (batchResult.ambiguous) {
             resolved.skipped.push({ key: orderSetItem.key, reason: "ambiguous" });
             continue;
           }
+          const catalogItem =
+            batchResult.item &&
+            isApprovedCatalogMatch(batchResult.item, orderSetItem.catalogType!, acceptableCodes)
+              ? batchResult.item
+              : null;
+
+          if (!catalogItem) {
+            if (orderSetItem.deferIfMissing) continue;
+            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+            continue;
+          }
+
+          const line = catalogItemToOrderLine(
+            catalogItem,
+            language,
+            t,
+            medicationOrderMode,
+            plannedAdminFacilityTimeZone
+          );
+          if (!line) {
+            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+            continue;
+          }
+
+          const taggedLine = { ...line, _enterpriseOrderSetItemKey: orderSetItem.key };
+          if (orderSetItem.type === "LAB" && taggedLine.catalogItemType === "LAB_TEST") resolved.LAB.push(taggedLine);
+          if (orderSetItem.type === "IMAGING" && taggedLine.catalogItemType === "IMAGING_STUDY") {
+            resolved.IMAGING.push(taggedLine);
+          }
+          if (orderSetItem.type === "MEDICATION" && taggedLine.catalogItemType === "MEDICATION") {
+            resolved.MEDICATION.push(taggedLine);
+          }
         }
       } catch {
-        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-        continue;
+        for (const { orderSetItem } of catalogBatchRows) {
+          if (orderSetItem.deferIfMissing) continue;
+          resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
+        }
       }
-
-      if (!catalogItem) {
-        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-        continue;
-      }
-
-        const line = catalogItemToOrderLine(
-          catalogItem,
-          language,
-          t,
-          medicationOrderMode,
-          plannedAdminFacilityTimeZone
-        );
-      if (!line) {
-        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-        continue;
-      }
-
-      if (orderSetItem.type === "LAB" && line.catalogItemType === "LAB_TEST") resolved.LAB.push(line);
-      if (orderSetItem.type === "IMAGING" && line.catalogItemType === "IMAGING_STUDY") resolved.IMAGING.push(line);
-      if (orderSetItem.type === "MEDICATION" && line.catalogItemType === "MEDICATION") resolved.MEDICATION.push(line);
     }
 
     return resolved;
@@ -1491,7 +1613,17 @@ export function CreateOrderModal({
     setError(null);
 
     try {
-      const resolved = await resolveOrderSetItems(selectedOrderSetItems);
+      const resolved = await resolveOrderSetItems(selectedOrderSetUiItems);
+      if (selectedOrderSetDefinition) {
+        setOrderSetApplyContext(
+          buildEnterpriseOrderSetApplyContext({
+            set: selectedOrderSetDefinition,
+            selectedItemKeys: selectedOrderSetItemKeys,
+            skippedItems: resolved.skipped,
+            appliedAt: new Date().toISOString(),
+          })
+        );
+      }
       const nextStagedItems: Record<OrderTypeKey, CreateOrderLineItem[]> = {
         LAB: resolved.LAB,
         IMAGING: resolved.IMAGING,
@@ -1521,17 +1653,20 @@ export function CreateOrderModal({
 
       if (resolved.skipped.length > 0) {
         const skippedLabels = resolved.skipped
-          .map((item) => t(`createOrderModal.orderSetItems.${item.key}`))
+          .map((item) => selectedOrderSetUiItems.find((ui) => ui.key === item.key)?.displayLabel ?? item.key)
           .join(", ");
         const hasNonPrescriber = resolved.skipped.some((item) => item.reason === "nonPrescriber");
+        const hasStructured = resolved.skipped.some((item) => item.reason === "structuredParametersRequired");
         const hasAmbiguous = resolved.skipped.some((item) => item.reason === "ambiguous");
         const messageKey = hasNonPrescriber
           ? canUseRnOrderAuthority
             ? "ordersets.apply.rnAuthorityRequired"
             : "ordersets.apply.nonPrescriber"
-          : hasAmbiguous
-            ? "ordersets.apply.ambiguous"
-            : "ordersets.apply.skipped";
+          : hasStructured
+            ? "ordersets.apply.structuredParametersRequired"
+            : hasAmbiguous
+              ? "ordersets.apply.ambiguous"
+              : "ordersets.apply.skipped";
         setError(t(messageKey).replace("{items}", skippedLabels));
       }
     } catch {
@@ -1806,6 +1941,7 @@ export function CreateOrderModal({
 
   const handleClose = () => {
     clearMedicationOrderLocalState();
+    setOrderSetApplyContext(null);
     onClose();
   };
 
@@ -1898,6 +2034,7 @@ export function CreateOrderModal({
       }
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
+        setOrderSetApplyContext(null);
         if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
@@ -2067,6 +2204,7 @@ export function CreateOrderModal({
       setNextStagedTabAfterSuccess(nextReviewTab);
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
+        setOrderSetApplyContext(null);
         if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
@@ -2427,7 +2565,9 @@ export function CreateOrderModal({
                   <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 8 }}>
                     {t("createOrderModal.orderSetsApplyingBundle").replace(
                       "{bundle}",
-                      t(`createOrderModal.orderSets.${selectedOrderSet}.name`)
+                      selectedOrderSetDefinition
+                        ? resolveOrderSetTitle(selectedOrderSetDefinition, language)
+                        : selectedOrderSet
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2703,6 +2843,11 @@ export function CreateOrderModal({
                     canApply={canApplyOrderSet}
                     applying={orderSetApplying}
                     onOpenEkgDocumentation={onOpenEkgProcedureDocumentation}
+                    locale={language}
+                    categoryFilter={orderSetCategoryFilter}
+                    onCategoryFilterChange={setOrderSetCategoryFilter}
+                    searchQuery={orderSetSearchQuery}
+                    onSearchQueryChange={setOrderSetSearchQuery}
                     t={t}
                   />
                 ) : activeTab === "CARE" ? (

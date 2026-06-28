@@ -16,6 +16,7 @@ import {
 import { MEDICATION_INFUSION_NURSE_STOP_REASON_CODES } from "../medication/medicationInfusionStopReasonGovernance.js";
 import { medicationFrequencyCodeSchema } from "../medication/medicationFrequencyCatalog.js";
 import { validateEnterpriseProcedureIdForOrderItem } from "../procedures/enterpriseProcedureOrderValidation.js";
+import { enterpriseOrderSetProvenanceSchema } from "../orders/enterpriseOrderSetProvenance.js";
 
 /** Corps JSON : `""` sur champs optionnels doit être traité comme absent. */
 const emptyStrToUndefined = (v: unknown) => (v === "" ? undefined : v);
@@ -554,6 +555,8 @@ export const orderCreateDtoSchema = z
     observationTemplateGroupId: z.string().max(128).optional(),
     /** Explicit clinician acknowledgment when allergy-related documentation exists (server-enforced for MEDICATION orders). */
     safetyAcknowledgedMedicationAllergies: z.boolean().optional(),
+    /** Enterprise order set provenance (Create Order modal apply → per-domain submit). */
+    enterpriseOrderSetProvenance: enterpriseOrderSetProvenanceSchema.optional(),
     items: z.array(orderItemCreateDtoSchema).min(1),
   })
   .superRefine((data, ctx) => {

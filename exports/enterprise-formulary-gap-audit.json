@@ -1,0 +1,2156 @@
+{
+  "EnterpriseFormularyGapAuditReport": {
+    "ticket": "MEDUI.MEDS.ENTERPRISE_FORMULARY_GAP_REPORT.1",
+    "generatedAt": "2026-06-27T14:37:28.515Z",
+    "totalUnifiedCatalogMedications": 710,
+    "providerOrderableMedications": 198,
+    "marReadyMedications": 683,
+    "presentButNotProviderOrderable": 512,
+    "providerOrderableButNotMarReady": 0,
+    "missingEssentialMedications": 1
+  },
+  "DepartmentReadinessMatrix": {
+    "departments": [
+      "Electrolytes / fluids",
+      "Emergency Department",
+      "ICU / Critical Care",
+      "Pediatrics",
+      "Medical-Surgical",
+      "Orthopedics",
+      "OBGYN",
+      "Anesthesia / procedural sedation",
+      "Cardiology / ACLS",
+      "Infectious disease / antibiotics"
+    ],
+    "rows": [
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Potassium chloride PO 20 mEq",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_20_MEQ_COMPRIME_ORALE"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Potassium chloride PO 40 mEq",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_40_MEQ_COMPRIME_ORALE"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Potassium chloride IV replacement",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS",
+          "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+          "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Magnesium sulfate IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "MAGNESIUM_SULFATE_2_G_PER_50_ML_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Calcium gluconate IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "CALCIUM_GLUCONATE_10_INJECTABLE_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Sodium bicarbonate IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "SODIUM_BICARBONATE_8_4PCT_IV"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Sodium chloride 0.9%",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "NORMAL_SALINE_0.9_1_L_PERFUSION_INTRAVENOUS",
+          "NORMAL_SALINE_0.9_500_ML_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Lactated Ringers",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "RINGER_LACTATE_1_L_PERFUSION_INTRAVENOUS",
+          "RINGER_LACTATE_500_ML_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Dextrose fluids",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DEXTROSE_5_500_ML_PERFUSION_INTRAVENOUS",
+          "DEXTROSE_50_INJECTABLE_INTRAVENOUS",
+          "DEXTROSE_SALINE_5_PER_0.9_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Hypertonic saline",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "SODIUM_CHLORIDE_3_SOLUTION_DE_NEBULISATION_INHALEE",
+          "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+          "HYPERTONIC_SALINE_23_4_30_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYPERTONIC_SALINE_3_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Epinephrine",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Atropine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ATROPINE_0_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_1_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_0_05_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Adenosine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ADENOSINE_6MG_2ML_IV"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Amiodarone",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "AMIODARONE_150MG_3ML_IV",
+          "AMIODARONE_200_MG_COMPRIME_ORALE",
+          "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Naloxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NALOXONE_0.4MG_ML",
+          "NALOXONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NALOXONE_4_MG_0_4_ML_INJECTABLE_INTRANASALE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Dextrose 50",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DEXTROSE_50_INJECTABLE_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Glucagon",
+        "expectedRoute": "IM/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "GLUCAGON_1_MG_POUDRE_INJECTABLE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Aspirin",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ASPIRIN_100_MG_COMPRIME_ORAL",
+          "ASPIRIN_325_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Nitroglycerin",
+        "expectedRoute": "SL/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Tranexamic acid",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "TRANEXAMIC_ACID_500_MG_PER_5_ML_INJECTABLE_INJECTION",
+          "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Norepinephrine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "NOREPINEPHRINE_4MG_4ML_IV"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Epinephrine infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Vasopressin",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "VASOPRESSIN_20UI_ML_IV"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Phenylephrine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "PHENYLEPHRINE_10MG_ML_IV"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Dobutamine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DOBUTAMINE_250MG_20ML_IV"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Dopamine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DOPAMINE_400MG_250ML_IV"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Propofol",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "PROPOFOL_10MG_ML_IV",
+          "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Dexmedetomidine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "DEXMEDETOMIDINE_100_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Midazolam infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MIDAZOLAM_5MG_ML_INJECTABLE",
+          "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Fentanyl infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "FENTANYL_50MCG_ML_INJECTABLE",
+          "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Heparin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HEPARIN_5000UI_ML_INJECTABLE",
+          "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Insulin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_7030_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "NPH_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_200_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Nicardipine infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Nitroglycerin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Acetaminophen liquid",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ACETAMINOPHEN_500",
+          "PARACETAMOL_1_G_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Ibuprofen liquid",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "IBUPROFEN_200",
+          "IBUPROFEN_400_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Ondansetron ODT/liquid",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Albuterol neb",
+        "expectedRoute": "Inhaled",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "SALBUTAMOL_100_MCG_PER_DOSE_AROSOL_DOSEUR_INHALATION",
+          "SALBUTAMOL_2.5_MG_PER_2.5_ML_NBULISATION_INHALATION"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Epinephrine IM",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Ceftriaxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Amoxicillin",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "AMOXICILLIN_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_250_MG_CAPSULE_ORAL",
+          "AMOXICILLIN_500",
+          "AMOXICILLIN_500_MG_COMPRIME_DISPERSIBLE_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_400_PER_57_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_500_PER_125_MG_COMPRIME_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_875_PER_125_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Dexamethasone",
+        "expectedRoute": "PO/IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DEXAMETHASONE_0.5_MG_COMPRIME_ORAL",
+          "DEXAMETHASONE_4_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Normal saline bolus",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "NORMAL_SALINE_0.9_1_L_PERFUSION_INTRAVENOUS",
+          "NORMAL_SALINE_0.9_500_ML_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Enoxaparin",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Heparin SQ",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HEPARIN_5000UI_ML_INJECTABLE",
+          "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Insulin lispro",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_200_UI_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Insulin glargine",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Metformin",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "METFORMIN_1000_MG_COMPRIME_ORAL",
+          "METFORMIN_500",
+          "METFORMIN_850_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Pantoprazole",
+        "expectedRoute": "PO/IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "PANTOPRAZOLE_40_MG_COMPRIME_ORAL",
+          "PANTOPRAZOLE_40MG_IV"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Ondansetron",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Acetaminophen",
+        "expectedRoute": "PO/IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ACETAMINOPHEN_500",
+          "PARACETAMOL_1_G_COMPRIME_ORAL",
+          "PARACETAMOL_1G_100ML_IV"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Hydrocodone/APAP",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Oxycodone",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "OXYCODONE_5_MG_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Bowel regimen meds",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "LACTULOSE_10_G_PER_15_ML_SIROP_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Ketorolac",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "KETOROLAC_30MG_IM"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Acetaminophen",
+        "expectedRoute": "PO/IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ACETAMINOPHEN_500",
+          "PARACETAMOL_1_G_COMPRIME_ORAL",
+          "PARACETAMOL_1G_100ML_IV"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Oxycodone",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "OXYCODONE_5_MG_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Hydromorphone",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HYDROMORPHONE_2MG_ML_INJECTABLE",
+          "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Morphine",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+          "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MORPHINE_1_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Cyclobenzaprine",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL",
+          "CYCLOBENZAPRINE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Methocarbamol",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "METHOCARBAMOL_500_MG_COMPRIME_ORAL",
+          "METHOCARBAMOL_750_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Enoxaparin",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Cefazolin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFAZOLIN_1G_INJECTABLE",
+          "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Oxytocin",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "OXYTOCIN_10_UI_PER_ML_INJECTABLE_INJECTION",
+          "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "OXYTOCIN_30_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Magnesium sulfate",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "MAGNESIUM_SULFATE_2_G_PER_50_ML_PERFUSION_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Misoprostol",
+        "expectedRoute": "PO/PR",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "MISOPROSTOL_200_MCG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Methylergonovine",
+        "expectedRoute": "IM/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "METHYLERGONOVINE_0_2_MG_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Carboprost",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CARBOPROST_250_MCG_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Tranexamic acid",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "TRANEXAMIC_ACID_500_MG_PER_5_ML_INJECTABLE_INJECTION",
+          "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Rh immune globulin",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "DIGOXIN_IMMUNE_FAB_40_MG_POUDRE_INTRAVEINEUSE",
+          "RH_IMMUNE_GLOBULIN_300_MCG_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Betamethasone",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "BETAMETHASONE_0.1_CREME_TOPICAL",
+          "BETAMETHASONE_VALERATE_0_1_CREME_TOPIQUE",
+          "BETAMETHASONE_12_MG_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Terbutaline",
+        "expectedRoute": "SQ/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "TERBUTALINE_1_MG_ML_INJECTABLE_SOUS_CUTANEE",
+          "TERBUTALINE_0_25_MG_ML_SOLUTION_DE_NEBULISATION_INHALEE",
+          "TERBUTALINE_0_25_MG_SC_OB_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Cefazolin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFAZOLIN_1G_INJECTABLE",
+          "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Ampicillin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "AMPICILLIN_1_G_INJECTABLE_INJECTION",
+          "AMPICILLIN_500_MG_CAPSULE_ORAL",
+          "AMPICILLIN_SULBACTAM_3_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_SULBACTAM_1_5_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Gentamicin",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "GENTAMICIN_80_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "GENTAMICIN_EYE_DROPS_0.3_COLLYRE_OPHTHALMIC",
+          "GENTAMICIN_40_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Propofol",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "PROPOFOL_10MG_ML_IV",
+          "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Midazolam",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MIDAZOLAM_5MG_ML_INJECTABLE",
+          "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Fentanyl",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "FENTANYL_50MCG_ML_INJECTABLE",
+          "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Ketamine",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "KETAMINE_50MG_ML_INJECTABLE",
+          "KETAMINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "KETAMINE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Rocuronium",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ROCURONIUM_10MG_ML_IV"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Succinylcholine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "SUCCINYLCHOLINE_20MG_ML_IV"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Etomidate",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ETOMIDATE_2MG_ML_IV"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Ondansetron",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Epinephrine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Atropine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ATROPINE_0_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_1_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_0_05_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Adenosine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ADENOSINE_6MG_2ML_IV"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Amiodarone",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "AMIODARONE_150MG_3ML_IV",
+          "AMIODARONE_200_MG_COMPRIME_ORALE",
+          "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Labetalol IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "LABETALOL_5MG_ML_IV"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Nicardipine IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Nitroglycerin",
+        "expectedRoute": "SL/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Dobutamine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "DOBUTAMINE_250MG_20ML_IV"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Aspirin",
+        "expectedRoute": "PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "ASPIRIN_100_MG_COMPRIME_ORAL",
+          "ASPIRIN_325_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Vancomycin IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS",
+          "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_125_MG_COMPRIME_ORALE"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Ceftriaxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Piperacillin-tazobactam",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "PIPERACILLIN_TAZOBACTAM_4_5G_IV"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Meropenem",
+        "expectedRoute": "IV",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "MEROPENEM_1_G_INJECTABLE_INTRAVENOUS"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Cefepime",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFEPIME_1G_INJECTABLE",
+          "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Metronidazole",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "METRONIDAZOLE_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "METRONIDAZOLE_250_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Azithromycin",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "AZITHROMYCIN_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AZITHROMYCIN_250",
+          "AZITHROMYCIN_500MG_IV"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Clindamycin",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "CLINDAMYCIN_300_MG_CAPSULE_ORAL"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Trimethoprim-sulfamethoxazole",
+        "expectedRoute": "IV/PO",
+        "status": "MISSING_FROM_CATALOG",
+        "matchedCatalogCodes": []
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Ampicillin-sulbactam",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "AMPICILLIN_1_G_INJECTABLE_INJECTION",
+          "AMPICILLIN_500_MG_CAPSULE_ORAL",
+          "AMPICILLIN_SULBACTAM_3_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_SULBACTAM_1_5_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE"
+        ]
+      }
+    ],
+    "summaryByDepartment": {
+      "Electrolytes / fluids": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 8,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 2,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 0
+      },
+      "Emergency Department": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 3,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 6,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 2
+      },
+      "ICU / Critical Care": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 5,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 9,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 0
+      },
+      "Pediatrics": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 6,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 2,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 1
+      },
+      "Medical-Surgical": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 5,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 6,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 0
+      },
+      "Orthopedics": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 2,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 7,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 0
+      },
+      "OBGYN": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 2,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 5,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 5
+      },
+      "Anesthesia / procedural sedation": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 3,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 4,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 2
+      },
+      "Cardiology / ACLS": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 4,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 5,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 0,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 1
+      },
+      "Infectious disease / antibiotics": {
+        "PRESENT_AND_ORDERABLE_AND_MAR_READY": 5,
+        "PRESENT_BUT_NOT_PROVIDER_ORDERABLE": 3,
+        "PROVIDER_ORDERABLE_BUT_NOT_MAR_READY": 0,
+        "MISSING_FROM_CATALOG": 1,
+        "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE": 1
+      }
+    }
+  },
+  "MissingEssentialMedicationList": {
+    "kind": "MissingEssentialMedicationList",
+    "rows": [
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Trimethoprim-sulfamethoxazole",
+        "expectedRoute": "IV/PO",
+        "status": "MISSING_FROM_CATALOG",
+        "matchedCatalogCodes": []
+      }
+    ]
+  },
+  "PresentButNotOrderableList": {
+    "kind": "PresentButNotOrderableList",
+    "rows": [
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Potassium chloride IV replacement",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS",
+          "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+          "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Electrolytes / fluids",
+        "medication": "Hypertonic saline",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "SODIUM_CHLORIDE_3_SOLUTION_DE_NEBULISATION_INHALEE",
+          "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+          "HYPERTONIC_SALINE_23_4_30_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYPERTONIC_SALINE_3_1000_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Epinephrine",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Atropine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ATROPINE_0_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_1_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_0_05_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Amiodarone",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "AMIODARONE_150MG_3ML_IV",
+          "AMIODARONE_200_MG_COMPRIME_ORALE",
+          "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Naloxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NALOXONE_0.4MG_ML",
+          "NALOXONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NALOXONE_4_MG_0_4_ML_INJECTABLE_INTRANASALE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Glucagon",
+        "expectedRoute": "IM/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "GLUCAGON_1_MG_POUDRE_INJECTABLE"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Nitroglycerin",
+        "expectedRoute": "SL/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Epinephrine infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Propofol",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "PROPOFOL_10MG_ML_IV",
+          "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Dexmedetomidine",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "DEXMEDETOMIDINE_100_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Midazolam infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MIDAZOLAM_5MG_ML_INJECTABLE",
+          "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Fentanyl infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "FENTANYL_50MCG_ML_INJECTABLE",
+          "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Heparin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HEPARIN_5000UI_ML_INJECTABLE",
+          "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Insulin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_7030_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "NPH_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "REGULAR_INSULIN_100_UI_PER_ML_INJECTABLE_SUBCUTANEOUS",
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_200_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Nicardipine infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "ICU / Critical Care",
+        "medication": "Nitroglycerin infusion",
+        "expectedRoute": "IV infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Epinephrine IM",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Ceftriaxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Enoxaparin",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Heparin SQ",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HEPARIN_5000UI_ML_INJECTABLE",
+          "HEPARIN_5000_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Insulin lispro",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_LISPRO_200_UI_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Insulin glargine",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Hydrocodone/APAP",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Medical-Surgical",
+        "medication": "Oxycodone",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "OXYCODONE_5_MG_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Oxycodone",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "OXYCODONE_5_MG_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Hydromorphone",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "HYDROMORPHONE_2MG_ML_INJECTABLE",
+          "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Morphine",
+        "expectedRoute": "IV/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+          "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MORPHINE_1_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Cyclobenzaprine",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CYCLOBENZAPRINE_5_MG_COMPRIME_ORAL",
+          "CYCLOBENZAPRINE_10_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Methocarbamol",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "METHOCARBAMOL_500_MG_COMPRIME_ORAL",
+          "METHOCARBAMOL_750_MG_COMPRIME_ORAL"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Enoxaparin",
+        "expectedRoute": "SQ",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "Orthopedics",
+        "medication": "Cefazolin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFAZOLIN_1G_INJECTABLE",
+          "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Methylergonovine",
+        "expectedRoute": "IM/PO",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "METHYLERGONOVINE_0_2_MG_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Carboprost",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CARBOPROST_250_MCG_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Rh immune globulin",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "DIGOXIN_IMMUNE_FAB_40_MG_POUDRE_INTRAVEINEUSE",
+          "RH_IMMUNE_GLOBULIN_300_MCG_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Terbutaline",
+        "expectedRoute": "SQ/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "TERBUTALINE_1_MG_ML_INJECTABLE_SOUS_CUTANEE",
+          "TERBUTALINE_0_25_MG_ML_SOLUTION_DE_NEBULISATION_INHALEE",
+          "TERBUTALINE_0_25_MG_SC_OB_INJECTABLE_SOUS_CUTANEE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Cefazolin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFAZOLIN_1G_INJECTABLE",
+          "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Propofol",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "PROPOFOL_10MG_ML_IV",
+          "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Midazolam",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "MIDAZOLAM_5MG_ML_INJECTABLE",
+          "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Fentanyl",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "FENTANYL_50MCG_ML_INJECTABLE",
+          "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+          "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Ketamine",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "KETAMINE_50MG_ML_INJECTABLE",
+          "KETAMINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "KETAMINE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Epinephrine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Atropine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "ATROPINE_0_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_1_MG_10_ML_INJECTABLE_INTRAVEINEUSE",
+          "ATROPINE_0_05_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Amiodarone",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "AMIODARONE_150MG_3ML_IV",
+          "AMIODARONE_200_MG_COMPRIME_ORALE",
+          "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Nicardipine IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NICARDIPINE_2_5_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Nitroglycerin",
+        "expectedRoute": "SL/IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+          "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_CARDIOLOGY"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Vancomycin IV",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS",
+          "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_125_MG_COMPRIME_ORALE"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Ceftriaxone",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Cefepime",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "matchedCatalogCodes": [
+          "CEFEPIME_1G_INJECTABLE",
+          "CEFEPIME_2_G_POUDRE_INTRAVEINEUSE"
+        ]
+      }
+    ]
+  },
+  "OrderableButNotMarReadyList": {
+    "kind": "OrderableButNotMarReadyList",
+    "rows": []
+  },
+  "RouteOrDoseIncompleteList": {
+    "kind": "RouteOrDoseIncompleteList",
+    "rows": [
+      {
+        "department": "Emergency Department",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Emergency Department",
+        "medication": "Tranexamic acid",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "TRANEXAMIC_ACID_500_MG_PER_5_ML_INJECTABLE_INJECTION",
+          "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Pediatrics",
+        "medication": "Ondansetron ODT/liquid",
+        "expectedRoute": "PO",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Oxytocin",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "OXYTOCIN_10_UI_PER_ML_INJECTABLE_INJECTION",
+          "OXYTOCIN_10_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+          "OXYTOCIN_30_UNITS_500_ML_PERFUSION_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Tranexamic acid",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "TRANEXAMIC_ACID_500_MG_PER_5_ML_INJECTABLE_INJECTION",
+          "TRANEXAMIC_ACID_1000_MG_10_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Betamethasone",
+        "expectedRoute": "IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "BETAMETHASONE_0.1_CREME_TOPICAL",
+          "BETAMETHASONE_VALERATE_0_1_CREME_TOPIQUE",
+          "BETAMETHASONE_12_MG_INJECTABLE_INTRAMUSCULAIRE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Ampicillin",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "AMPICILLIN_1_G_INJECTABLE_INJECTION",
+          "AMPICILLIN_500_MG_CAPSULE_ORAL",
+          "AMPICILLIN_SULBACTAM_3_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_SULBACTAM_1_5_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "OBGYN",
+        "medication": "Gentamicin",
+        "expectedRoute": "IV/IM",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "GENTAMICIN_80_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "GENTAMICIN_EYE_DROPS_0.3_COLLYRE_OPHTHALMIC",
+          "GENTAMICIN_40_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Ondansetron",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE"
+        ]
+      },
+      {
+        "department": "Cardiology / ACLS",
+        "medication": "Lidocaine",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "LIDOCAINE_2PCT_INJECTABLE",
+          "LIDOCAINE_1_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_2_INJECTABLE_INJECTABLE",
+          "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "LIDOCAINE_5_PATCH_TRANSDERMAL"
+        ]
+      },
+      {
+        "department": "Infectious disease / antibiotics",
+        "medication": "Ampicillin-sulbactam",
+        "expectedRoute": "IV",
+        "status": "PRESENT_BUT_ROUTE_OR_DOSE_INCOMPLETE",
+        "matchedCatalogCodes": [
+          "AMPICILLIN_1_G_INJECTABLE_INJECTION",
+          "AMPICILLIN_500_MG_CAPSULE_ORAL",
+          "AMPICILLIN_SULBACTAM_3_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_SULBACTAM_1_5_G_POUDRE_INTRAVEINEUSE",
+          "AMPICILLIN_500_MG_POUDRE_INTRAVEINEUSE"
+        ]
+      }
+    ]
+  },
+  "HighPrioritySupplementRecommendation": {
+    "rows": [
+      {
+        "rank": 1,
+        "department": "Infectious disease / antibiotics",
+        "medication": "Trimethoprim-sulfamethoxazole",
+        "status": "MISSING_FROM_CATALOG",
+        "rationale": "Essential medication absent from unified catalog."
+      },
+      {
+        "rank": 2,
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Propofol",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 3,
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Midazolam",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 4,
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Fentanyl",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 5,
+        "department": "Anesthesia / procedural sedation",
+        "medication": "Ketamine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 6,
+        "department": "Cardiology / ACLS",
+        "medication": "Epinephrine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 7,
+        "department": "Cardiology / ACLS",
+        "medication": "Atropine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 8,
+        "department": "Cardiology / ACLS",
+        "medication": "Amiodarone",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 9,
+        "department": "Cardiology / ACLS",
+        "medication": "Nicardipine IV",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 10,
+        "department": "Cardiology / ACLS",
+        "medication": "Nitroglycerin",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 11,
+        "department": "Electrolytes / fluids",
+        "medication": "Potassium chloride IV replacement",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 12,
+        "department": "Electrolytes / fluids",
+        "medication": "Hypertonic saline",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 13,
+        "department": "Emergency Department",
+        "medication": "Epinephrine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 14,
+        "department": "Emergency Department",
+        "medication": "Atropine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 15,
+        "department": "Emergency Department",
+        "medication": "Amiodarone",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 16,
+        "department": "Emergency Department",
+        "medication": "Naloxone",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 17,
+        "department": "Emergency Department",
+        "medication": "Glucagon",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 18,
+        "department": "Emergency Department",
+        "medication": "Nitroglycerin",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 19,
+        "department": "ICU / Critical Care",
+        "medication": "Epinephrine infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 20,
+        "department": "ICU / Critical Care",
+        "medication": "Propofol",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 21,
+        "department": "ICU / Critical Care",
+        "medication": "Dexmedetomidine",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 22,
+        "department": "ICU / Critical Care",
+        "medication": "Midazolam infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 23,
+        "department": "ICU / Critical Care",
+        "medication": "Fentanyl infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 24,
+        "department": "ICU / Critical Care",
+        "medication": "Heparin infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      },
+      {
+        "rank": 25,
+        "department": "ICU / Critical Care",
+        "medication": "Insulin infusion",
+        "status": "PRESENT_BUT_NOT_PROVIDER_ORDERABLE",
+        "rationale": "Catalog row exists but provider ordering activation is missing."
+      }
+    ]
+  },
+  "PotassiumPoVerificationReport": {
+    "rows": [
+      {
+        "medication": "Potassium chloride PO 20 mEq",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_20_MEQ_COMPRIME_ORALE"
+        ]
+      },
+      {
+        "medication": "Potassium chloride PO 40 mEq",
+        "status": "PRESENT_AND_ORDERABLE_AND_MAR_READY",
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_40_MEQ_COMPRIME_ORALE"
+        ]
+      }
+    ],
+    "po20MeqReady": true,
+    "po40MeqReady": true
+  },
+  "TestResultsReport": {
+    "enterpriseFormularyGapAnalysisTests": "PASS",
+    "enterpriseFormularyDepartmentGapTests": "PASS",
+    "notes": [
+      "enterpriseFormularyGapAnalysis.test.ts: 10/10 passed",
+      "enterpriseFormularyDepartmentGapReport.test.ts: 3/3 passed"
+    ]
+  },
+  "FinalDecision": "FORMULARY_GAP_REPORT_COMPLETE"
+}

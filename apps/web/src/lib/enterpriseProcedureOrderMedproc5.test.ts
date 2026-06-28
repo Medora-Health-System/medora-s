@@ -55,9 +55,9 @@ describe("MEDPROC.5 procedure billing readiness UI guards", () => {
   });
 
   it("ER order row still has lifecycle buttons", () => {
-    expect(erOrdersPanelSource).toContain('op === "complete"');
-    expect(erOrdersPanelSource).toContain('op === "acknowledge"');
-    expect(erOrdersPanelSource).toContain('op === "start"');
+    expect(erOrdersPanelSource).toContain('runOrderItemLifecycleAction(itemId, "complete")');
+    expect(erOrdersPanelSource).toContain('runOrderItemLifecycleAction(itemId, "acknowledge")');
+    expect(erOrdersPanelSource).toContain('runOrderItemLifecycleAction(itemId, "start")');
   });
 
   it("MEDPROC.3 documentation link still works", () => {

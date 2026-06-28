@@ -57,6 +57,8 @@ export type CreateOrderLineItem = {
    * manualLabel is localized display snapshot only and must not become billing/reporting identity.
    */
   _enterpriseProcedureId?: string;
+  /** Enterprise order set item key when line originated from ORDER_SET apply (UI-only). */
+  _enterpriseOrderSetItemKey?: string;
   /** UI-only structured IV fluid order draft (K.10B.8A). */
   _fluidOrderDraft?: FluidOrderDraft | null;
   /** Snapshot from catalog search at pick time (soft safety rules). */

@@ -113,6 +113,10 @@ import {
 } from "./order-medication-catalog-resolve.util";
 import { assertOrderCreateClinicalSafety } from "./order-safety.guard";
 import {
+  assertEnterpriseOrderSetProvenanceForCreate,
+  enterpriseOrderSetAuditMetadataFromDto,
+} from "./enterprise-order-set-provenance.guard";
+import {
   logMedicationOrderCreateValidationFailure,
   medicationOrderCreateBadRequest,
 } from "./order-create-validation.util";
@@ -1150,6 +1154,11 @@ export class OrdersService {
       triageVitalsJson: encounter.triage?.vitalsJson ?? null,
     });
 
+    assertEnterpriseOrderSetProvenanceForCreate({
+      data,
+      roleCodes: pilotScope?.roleCodes ?? [],
+    });
+
     if (data.type === "LAB") {
       data.items.forEach((item, i) => {
         if (item.catalogItemType !== "LAB_TEST") return;
@@ -1183,6 +1192,7 @@ export class OrdersService {
       ...(data.type === "MEDICATION" && data.safetyAcknowledgedMedicationAllergies === true
         ? { safetyAcknowledgedMedicationAllergies: true as const }
         : {}),
+      ...enterpriseOrderSetAuditMetadataFromDto(data.enterpriseOrderSetProvenance),
     });
 
     const orderCreateDataRaw = {

@@ -1,24 +1,20 @@
 /**
- * Phase 2C.4B — trauma order set CT head successor migration (static guard).
+ * Phase 2C.4B — trauma order set CT head successor migration (enterprise registry guard).
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { enterpriseOrderSetByCode } from "@medora/shared";
 
-const modalSource = readFileSync(join(import.meta.dirname, "CreateOrderModal.tsx"), "utf8");
-
-describe("CreateOrderModal trauma CT head order set (2C.4B)", () => {
+describe("enterprise trauma CT head order set (2C.4B)", () => {
   it("uses CT_HEAD_WO_CONTRAST as primary trauma ctHead catalogCode", () => {
-    expect(modalSource).toContain('key: "ctHead"');
-    expect(modalSource).toContain('catalogCode: "CT_HEAD_WO_CONTRAST"');
-    expect(modalSource).not.toMatch(
-      /key:\s*"ctHead"[\s\S]*?catalogCode:\s*"CT_HEAD"/
-    );
+    const trauma = enterpriseOrderSetByCode("ed_trauma_activation_v1");
+    const ctHead = trauma?.optionalItems.find((item) => item.key === "ctHead");
+    expect(ctHead?.catalogCode).toBe("CT_HEAD_WO_CONTRAST");
+    expect(ctHead?.catalogCode).not.toBe("CT_HEAD");
   });
 
   it("keeps CT_HEAD as transition fallback in trauma ctHead catalogCodes", () => {
-    expect(modalSource).toMatch(
-      /key:\s*"ctHead"[\s\S]*?catalogCodes:\s*\["CT_HEAD"\]/
-    );
+    const trauma = enterpriseOrderSetByCode("ed_trauma_activation_v1");
+    const ctHead = trauma?.optionalItems.find((item) => item.key === "ctHead");
+    expect(ctHead?.catalogCodes).toContain("CT_HEAD");
   });
 });

@@ -1,0 +1,1667 @@
+{
+  "ticket": "MEDUI.MEDS.ENTERPRISE_FORMULARY_EXPANSION_WAVES_AUDIT.1",
+  "generatedAt": "2026-06-28T05:42:28.986Z",
+  "currentMedicationReadinessCounts": {
+    "totalCatalogMedications": 710,
+    "providerOrderableMedications": 198,
+    "marReadyMedications": 683,
+    "presentButNotProviderOrderable": 512,
+    "providerOrderableButNotMarReady": 0,
+    "missingRoute": 0,
+    "missingStrength": 0,
+    "missingSearchAliases": 229,
+    "duplicateNearDuplicateFamilies": 15,
+    "controlledSubstancesNotGoverned": 17,
+    "highAlertNotGoverned": 175,
+    "ivpbMissingInfusionMetadata": 67,
+    "prnMissingSupport": 0,
+    "pediatricMissingLiquidWeightVariants": 1
+  },
+  "therapeuticAreaCoverageMatrix": [
+    {
+      "therapeuticArea": "Emergency / ACLS",
+      "catalogRows": 24,
+      "providerOrderable": 2,
+      "marReady": 23,
+      "activationCandidates": 21,
+      "safeToActivateNow": 5,
+      "blocked": 16
+    },
+    {
+      "therapeuticArea": "Critical Care / ICU",
+      "catalogRows": 14,
+      "providerOrderable": 2,
+      "marReady": 14,
+      "activationCandidates": 12,
+      "safeToActivateNow": 0,
+      "blocked": 12
+    },
+    {
+      "therapeuticArea": "Infectious Disease / Antibiotics",
+      "catalogRows": 33,
+      "providerOrderable": 12,
+      "marReady": 33,
+      "activationCandidates": 21,
+      "safeToActivateNow": 18,
+      "blocked": 3
+    },
+    {
+      "therapeuticArea": "Cardiology",
+      "catalogRows": 26,
+      "providerOrderable": 5,
+      "marReady": 26,
+      "activationCandidates": 21,
+      "safeToActivateNow": 15,
+      "blocked": 6
+    },
+    {
+      "therapeuticArea": "Neurology",
+      "catalogRows": 18,
+      "providerOrderable": 0,
+      "marReady": 17,
+      "activationCandidates": 17,
+      "safeToActivateNow": 5,
+      "blocked": 12
+    },
+    {
+      "therapeuticArea": "Endocrine / Diabetes",
+      "catalogRows": 30,
+      "providerOrderable": 9,
+      "marReady": 27,
+      "activationCandidates": 18,
+      "safeToActivateNow": 11,
+      "blocked": 7
+    },
+    {
+      "therapeuticArea": "Pulmonary",
+      "catalogRows": 27,
+      "providerOrderable": 4,
+      "marReady": 19,
+      "activationCandidates": 15,
+      "safeToActivateNow": 15,
+      "blocked": 0
+    },
+    {
+      "therapeuticArea": "Gastrointestinal",
+      "catalogRows": 365,
+      "providerOrderable": 121,
+      "marReady": 357,
+      "activationCandidates": 236,
+      "safeToActivateNow": 150,
+      "blocked": 86
+    },
+    {
+      "therapeuticArea": "Renal / Electrolytes",
+      "catalogRows": 25,
+      "providerOrderable": 6,
+      "marReady": 25,
+      "activationCandidates": 19,
+      "safeToActivateNow": 8,
+      "blocked": 11
+    },
+    {
+      "therapeuticArea": "Hematology / Anticoagulation",
+      "catalogRows": 14,
+      "providerOrderable": 1,
+      "marReady": 9,
+      "activationCandidates": 8,
+      "safeToActivateNow": 0,
+      "blocked": 8
+    },
+    {
+      "therapeuticArea": "Psychiatry",
+      "catalogRows": 16,
+      "providerOrderable": 0,
+      "marReady": 16,
+      "activationCandidates": 16,
+      "safeToActivateNow": 13,
+      "blocked": 3
+    },
+    {
+      "therapeuticArea": "Pain / Analgesia",
+      "catalogRows": 40,
+      "providerOrderable": 8,
+      "marReady": 40,
+      "activationCandidates": 32,
+      "safeToActivateNow": 7,
+      "blocked": 25
+    },
+    {
+      "therapeuticArea": "Pediatrics",
+      "catalogRows": 12,
+      "providerOrderable": 9,
+      "marReady": 12,
+      "activationCandidates": 3,
+      "safeToActivateNow": 2,
+      "blocked": 1
+    },
+    {
+      "therapeuticArea": "OB/GYN",
+      "catalogRows": 15,
+      "providerOrderable": 4,
+      "marReady": 15,
+      "activationCandidates": 11,
+      "safeToActivateNow": 7,
+      "blocked": 4
+    },
+    {
+      "therapeuticArea": "Orthopedics",
+      "catalogRows": 6,
+      "providerOrderable": 0,
+      "marReady": 6,
+      "activationCandidates": 6,
+      "safeToActivateNow": 6,
+      "blocked": 0
+    },
+    {
+      "therapeuticArea": "Dermatology",
+      "catalogRows": 19,
+      "providerOrderable": 8,
+      "marReady": 19,
+      "activationCandidates": 11,
+      "safeToActivateNow": 11,
+      "blocked": 0
+    },
+    {
+      "therapeuticArea": "ENT / Ophthalmology",
+      "catalogRows": 12,
+      "providerOrderable": 5,
+      "marReady": 12,
+      "activationCandidates": 7,
+      "safeToActivateNow": 2,
+      "blocked": 5
+    },
+    {
+      "therapeuticArea": "Urology",
+      "catalogRows": 2,
+      "providerOrderable": 2,
+      "marReady": 2,
+      "activationCandidates": 0,
+      "safeToActivateNow": 0,
+      "blocked": 0
+    },
+    {
+      "therapeuticArea": "Oncology supportive care",
+      "catalogRows": 10,
+      "providerOrderable": 0,
+      "marReady": 10,
+      "activationCandidates": 10,
+      "safeToActivateNow": 2,
+      "blocked": 8
+    },
+    {
+      "therapeuticArea": "Rheumatology / Immunology",
+      "catalogRows": 2,
+      "providerOrderable": 0,
+      "marReady": 1,
+      "activationCandidates": 1,
+      "safeToActivateNow": 1,
+      "blocked": 0
+    }
+  ],
+  "wave1EmergencyInpatientCorePlan": {
+    "wave": "WAVE_1",
+    "title": "Emergency / Inpatient Core Stabilization",
+    "goalProviderOrderableMarReady": "600+ provider-orderable and MAR-ready medications",
+    "focusAreas": [
+      "Emergency / ACLS",
+      "Critical Care / ICU",
+      "Infectious Disease / Antibiotics",
+      "Renal / Electrolytes",
+      "Pain / Analgesia",
+      "Hematology / Anticoagulation"
+    ],
+    "currentProviderOrderableInFocus": 31,
+    "currentMarReadyInFocus": 144,
+    "safeActivationCandidates": 5,
+    "metadataFixCandidates": 0,
+    "governanceReviewCandidates": 5,
+    "catalogAdditionCandidates": 0,
+    "deferredControlledSubstances": 0,
+    "candidates": [
+      {
+        "candidateKey": "WAVE_1:epinephrine",
+        "label": "Epinephrine",
+        "therapeuticArea": "Emergency / ACLS",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+          "NOREPINEPHRINE_4MG_4ML_IV",
+          "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+          "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+          "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "RACEMIC_EPINEPHRINE_2_25_SOLUTION_DE_NEBULISATION_INHALEE",
+          "EPINEPHRINE_1_MG_1_ML_IM_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_15_MG_0_15_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "EPINEPHRINE_0_3_MG_0_3_ML_INJECTABLE_INTRAMUSCULAIRE",
+          "RACEMIC_EPINEPHRINE_0_25_ML_PEDS_NEB_SOLUTION_DE_NEBULISATION_INHALEE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": true,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Emergency / ACLS",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:norepinephrine infusion",
+        "label": "Norepinephrine infusion",
+        "therapeuticArea": "Critical Care / ICU",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "NOREPINEPHRINE_4MG_4ML_IV",
+          "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+          "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+          "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Critical Care / ICU",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:vancomycin iv",
+        "label": "Vancomycin IV",
+        "therapeuticArea": "Infectious Disease / Antibiotics",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS",
+          "VANCOMYCIN_500_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_750_MG_POUDRE_INTRAVEINEUSE",
+          "VANCOMYCIN_125_MG_COMPRIME_ORALE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Infectious Disease / Antibiotics",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:piperacillin tazobactam ivpb",
+        "label": "Piperacillin-tazobactam IVPB",
+        "therapeuticArea": "Infectious Disease / Antibiotics",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "PIPERACILLIN_TAZOBACTAM_4_5G_IV",
+          "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE",
+          "PIPERACILLIN_TAZOBACTAM_4_5_G_POUDRE_INTRAVEINEUSE",
+          "PIPERACILLIN_TAZOBACTAM_2_25_G_POUDRE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Infectious Disease / Antibiotics",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:potassium chloride iv",
+        "label": "Potassium chloride IV",
+        "therapeuticArea": "Renal / Electrolytes",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS",
+          "POTASSIUM_CHLORIDE_20_MEQ_COMPRIME_ORALE",
+          "POTASSIUM_CHLORIDE_40_MEQ_COMPRIME_ORALE",
+          "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+          "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE",
+          "POTASSIUM_PHOSPHATE_30_MMOL_500_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Renal / Electrolytes",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:enoxaparin",
+        "label": "Enoxaparin",
+        "therapeuticArea": "Hematology / Anticoagulation",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+          "ENOXAPARIN_120_MG_0_8_ML_INJECTABLE_SOUS_CUTANEE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Hematology / Anticoagulation",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:acetaminophen",
+        "label": "Acetaminophen",
+        "therapeuticArea": "Pain / Analgesia",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ACETAMINOPHEN_500",
+          "PARACETAMOL_1_G_COMPRIME_ORAL",
+          "PARACETAMOL_120_MG_PER_5_ML_SIROP_ORAL",
+          "PARACETAMOL_1G_100ML_IV",
+          "PARACETAMOL_250_MG_SUPPOSITOIRE_SUPPOSITOIRE_RECTAL",
+          "ACETAMINOPHEN_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+          "ACETAMINOPHEN_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+          "ACETAMINOPHEN_CODEINE_300_15_COMPRIME_ORAL",
+          "ACETAMINOPHEN_CODEINE_300_30_COMPRIME_ORAL",
+          "ACETAMINOPHEN_CODEINE_300_60_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+          "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": true
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Pain / Analgesia",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:ondansetron",
+        "label": "Ondansetron",
+        "therapeuticArea": "Gastrointestinal",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ONDANSETRON_4_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_PER_2_ML_INJECTABLE_INJECTION",
+          "ONDANSETRON_8_MG_COMPRIME_ORAL",
+          "ONDANSETRON_4_MG_ODT_COMPRIME_ORODISPERSIBLE_ORALE",
+          "ONDANSETRON_4_MG_5_ML_SOLUTION_BUVABLE_ORALE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": true
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Gastrointestinal",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:propofol infusion",
+        "label": "Propofol infusion",
+        "therapeuticArea": "Critical Care / ICU",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "PROPOFOL_10MG_ML_IV",
+          "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Critical Care / ICU",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_1:ceftriaxone",
+        "label": "Ceftriaxone",
+        "therapeuticArea": "Infectious Disease / Antibiotics",
+        "wave": "WAVE_1",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "CEFTRIAXONE_1_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_2_G_INJECTABLE_INJECTION",
+          "CEFTRIAXONE_100_MG_ML_PEDS_POUDRE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Infectious Disease / Antibiotics",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      }
+    ],
+    "seedRequired": false,
+    "migrationRequired": false,
+    "testsRequired": [
+      "enterpriseFormularyExpansionWaveAudit.test.ts",
+      "enterpriseFormularyGapAnalysis.test.ts",
+      "providerOrderableMarReadiness invariant",
+      "criticalCareProviderOrderingActivation.test.ts"
+    ]
+  },
+  "wave2HospitalCorePlan": {
+    "wave": "WAVE_2",
+    "title": "Full Inpatient Hospital Core",
+    "goalProviderOrderableMarReady": "850–950 provider-orderable and MAR-ready medications",
+    "focusAreas": [
+      "Endocrine / Diabetes",
+      "Gastrointestinal",
+      "Pulmonary",
+      "Neurology",
+      "Cardiology",
+      "Psychiatry",
+      "OB/GYN",
+      "Pediatrics",
+      "Orthopedics"
+    ],
+    "currentProviderOrderableInFocus": 152,
+    "currentMarReadyInFocus": 495,
+    "safeActivationCandidates": 9,
+    "metadataFixCandidates": 0,
+    "governanceReviewCandidates": 1,
+    "catalogAdditionCandidates": 0,
+    "deferredControlledSubstances": 0,
+    "candidates": [
+      {
+        "candidateKey": "WAVE_2:insulin glargine",
+        "label": "Insulin glargine",
+        "therapeuticArea": "Endocrine / Diabetes",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+          "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Endocrine / Diabetes",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:metformin",
+        "label": "Metformin",
+        "therapeuticArea": "Endocrine / Diabetes",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "METFORMIN_1000_MG_COMPRIME_ORAL",
+          "METFORMIN_500",
+          "METFORMIN_850_MG_COMPRIME_ORAL",
+          "METFORMIN_500_MG_COMPRIME_ORALE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Endocrine / Diabetes",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:pantoprazole",
+        "label": "Pantoprazole",
+        "therapeuticArea": "Gastrointestinal",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "PANTOPRAZOLE_40_MG_COMPRIME_ORAL",
+          "PANTOPRAZOLE_40MG_IV"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Gastrointestinal",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:albuterol",
+        "label": "Albuterol",
+        "therapeuticArea": "Pulmonary",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "SALBUTAMOL_100_MCG_PER_DOSE_AROSOL_DOSEUR_INHALATION",
+          "SALBUTAMOL_100_MCG_PER_DOSE_INHALATEUR_INHALATION",
+          "SALBUTAMOL_2_MG_PER_5_ML_SIROP_ORAL",
+          "SALBUTAMOL_2.5_MG_PER_2.5_ML_NBULISATION_INHALATION",
+          "SALBUTAMOL_2.5_MG_PER_2.5_ML_SOLUTION_NEBULISATION_INHALATION",
+          "IPRATROPIUM_ALBUTEROL_0_5_3_MG_SOLUTION_DE_NEBULISATION_INHALEE",
+          "ALBUTEROL_0_5_SOLUTION_DE_NEBULISATION_INHALEE",
+          "ALBUTEROL_0_083_PEDS_NEB_SOLUTION_DE_NEBULISATION_INHALEE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Pulmonary",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:levetiracetam iv",
+        "label": "Levetiracetam IV",
+        "therapeuticArea": "Neurology",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "LEVETIRACETAM_500_MG_COMPRIME_ORALE",
+          "LEVETIRACETAM_750_MG_COMPRIME_ORALE",
+          "LEVETIRACETAM_500_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+          "LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Neurology",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:metoprolol",
+        "label": "Metoprolol",
+        "therapeuticArea": "Cardiology",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "METOPROLOL_5MG_5ML_IV",
+          "METOPROLOL_25_MG_COMPRIME_ORAL",
+          "METOPROLOL_SUCCINATE_50_MG_COMPRIME_ORALE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": true,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Cardiology",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:haloperidol",
+        "label": "Haloperidol",
+        "therapeuticArea": "Psychiatry",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "HALOPERIDOL_5MG_ML_INJECTABLE",
+          "HALOPERIDOL_2_MG_COMPRIME_ORALE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Psychiatry",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:magnesium sulfate ob",
+        "label": "Magnesium sulfate OB",
+        "therapeuticArea": "OB/GYN",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "MAGNESIUM_SULFATE_2_G_PER_50_ML_PERFUSION_INTRAVENOUS",
+          "MAGNESIUM_SULFATE_500_MG_PER_ML_INJECTABLE_INJECTION",
+          "MAGNESIUM_SULFATE_2_G_50_ML_INJECTABLE_INTRAVEINEUSE",
+          "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+          "MAGNESIUM_SULFATE_1_G_50_ML_NEB_SOLUTION_DE_NEBULISATION_INHALEE",
+          "MAGNESIUM_SULFATE_4_G_100_ML_OB_PERFUSION_INTRAVEINEUSE",
+          "MAGNESIUM_SULFATE_40_G_1000_ML_OB_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": true,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: OB/GYN",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:amoxicillin suspension pediatric",
+        "label": "Amoxicillin suspension pediatric",
+        "therapeuticArea": "Pediatrics",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ALBENDAZOLE_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_250_MG_CAPSULE_ORAL",
+          "AMOXICILLIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_500",
+          "AMOXICILLIN_500_MG_COMPRIME_DISPERSIBLE_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_400_PER_57_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_500_PER_125_MG_COMPRIME_ORAL",
+          "AMOXICILLIN_CLAVULANIC_ACID_875_PER_125_MG_COMPRIME_ORAL",
+          "ANTACID_MIX_SUSPENSION_SUSPENSION_BUVABLE_ORAL",
+          "AZITHROMYCIN_200_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "CEFIXIME_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "CEPHALEXIN_250_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "COTRIMOXAZOLE_240_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "IBUPROFEN_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "MEBENDAZOLE_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "METRONIDAZOLE_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "NITAZOXANIDE_100_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL",
+          "NYSTATIN_100000_UI_PER_ML_SUSPENSION_BUVABLE_ORAL",
+          "BUDESONIDE_0_5_MG_2_ML_SUSPENSION_POUR_NEBULISATION_INHALEE",
+          "BUDESONIDE_0.5_MG_PER_2_ML_SUSPENSION_POUR_NEBULISATION_INHALEE",
+          "CEFDINIR_125_MG_PER_5_ML_SUSPENSION_BUVABLE_ORAL"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": true,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Pediatrics",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_2:cefazolin",
+        "label": "Cefazolin",
+        "therapeuticArea": "Orthopedics",
+        "wave": "WAVE_2",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "CEFAZOLIN_1G_INJECTABLE",
+          "CEFAZOLIN_2_G_POUDRE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Orthopedics",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      }
+    ],
+    "seedRequired": false,
+    "migrationRequired": false,
+    "testsRequired": [
+      "enterpriseFormularyExpansionWaveAudit.test.ts",
+      "enterpriseFormularyGapAnalysis.test.ts",
+      "providerOrderableMarReadiness invariant",
+      "domain-specific activation tests"
+    ]
+  },
+  "wave3SpecialtyExpansionPlan": {
+    "wave": "WAVE_3",
+    "title": "Specialty Expansion",
+    "goalProviderOrderableMarReady": "1,100–1,300 provider-orderable and MAR-ready medications",
+    "focusAreas": [
+      "Dermatology",
+      "ENT / Ophthalmology",
+      "Urology",
+      "Rheumatology / Immunology",
+      "Oncology supportive care"
+    ],
+    "currentProviderOrderableInFocus": 15,
+    "currentMarReadyInFocus": 44,
+    "safeActivationCandidates": 4,
+    "metadataFixCandidates": 0,
+    "governanceReviewCandidates": 2,
+    "catalogAdditionCandidates": 0,
+    "deferredControlledSubstances": 0,
+    "candidates": [
+      {
+        "candidateKey": "WAVE_3:betamethasone topical",
+        "label": "Betamethasone topical",
+        "therapeuticArea": "Dermatology",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "ACYCLOVIR_5_CREME_TOPICAL",
+          "BENZYL_BENZOATE_25_LOTION_TOPICAL",
+          "BETAMETHASONE_0.1_CREME_TOPICAL",
+          "CLOTRIMAZOLE_1_CREME_TOPICAL",
+          "FUSIDIC_ACID_2_CREME_TOPICAL",
+          "HYDROCORTISONE_1_CREME_TOPICAL",
+          "KETOCONAZOLE_2_SHAMPOOING_TOPICAL",
+          "MICONAZOLE_2_CREME_TOPICAL",
+          "MUPIROCIN_2_POMMADE_TOPICAL",
+          "NYSTATIN_100000_UI_PER_G_CREME_TOPICAL",
+          "PERMETHRIN_5_LOTION_TOPICAL",
+          "POVIDONE_IODINE_10_SOLUTION_TOPICAL",
+          "CLOBETASOL_PROPIONATE_0_05_CREME_TOPIQUE",
+          "BETAMETHASONE_VALERATE_0_1_CREME_TOPIQUE",
+          "TRIAMCINOLONE_ACETONIDE_0_1_CREME_TOPIQUE",
+          "HYDROCORTISONE_2_5_CREME_TOPIQUE",
+          "PIMECROLIMUS_1_CREME_TOPIQUE",
+          "KETOCONAZOLE_2_CREME_TOPIQUE",
+          "TRETINOIN_0_025_CREME_TOPIQUE",
+          "PERMETHRIN_5_CREME_TOPIQUE",
+          "SILVER_SULFADIAZINE_1_CREME_TOPIQUE",
+          "CLOTRIMAZOLE_1_CREME_TOPIQUE",
+          "HYDROCORTISONE_1_CREME_TOPIQUE",
+          "BETAMETHASONE_12_MG_INJECTABLE_INTRAMUSCULAIRE",
+          "DICLOFENAC_1_GEL_TOPICAL"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Dermatology",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_3:prednisolone ophthalmic",
+        "label": "Prednisolone ophthalmic",
+        "therapeuticArea": "ENT / Ophthalmology",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "CHLORAMPHENICOL_EYE_DROPS_0.5_COLLYRE_OPHTHALMIC",
+          "CIPROFLOXACIN_EAREYE_DROPS_0.3_COLLYRE_OPHTHALMIC",
+          "GENTAMICIN_EYE_DROPS_0.3_COLLYRE_OPHTHALMIC",
+          "METHYLPREDNISOLONE_125MG",
+          "PREDNISOLONE_15_MG_PER_5_ML_SIROP_ORAL",
+          "PREDNISOLONE_5_MG_COMPRIME_ORAL",
+          "TETRACYCLINE_EYE_OINTMENT_1_POMMADE_OPHTALMIQUE_OPHTHALMIC",
+          "METHYLPREDNISOLONE_4_MG_COMPRIME_ORALE",
+          "METHYLPREDNISOLONE_40_MG_POUDRE_INTRAVEINEUSE",
+          "ERYTHROMYCIN_0_5_OPHTHALMIQUE_OPHTHALMIQUE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: ENT / Ophthalmology",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_3:tamsulosin",
+        "label": "Tamsulosin",
+        "therapeuticArea": "Urology",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "TAMSULOSIN_0.4_MG_COMPRIME_ORAL"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Urology",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_3:methotrexate",
+        "label": "Methotrexate",
+        "therapeuticArea": "Rheumatology / Immunology",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "METHOTREXATE_2_5_MG_COMPRIME_ORALE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Rheumatology / Immunology",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_3:filgrastim",
+        "label": "Filgrastim",
+        "therapeuticArea": "Oncology supportive care",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "FILGRASTIM_480_MCG_1_6_ML_INJECTABLE_SOUS_CUTANEE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Oncology supportive care",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_3:linezolid",
+        "label": "Linezolid",
+        "therapeuticArea": "Infectious Disease / Antibiotics",
+        "wave": "WAVE_3",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "LINEZOLID_600_MG_COMPRIME_ORALE",
+          "LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Infectious Disease / Antibiotics",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      }
+    ],
+    "seedRequired": false,
+    "migrationRequired": false,
+    "testsRequired": [
+      "enterpriseFormularyExpansionWaveAudit.test.ts",
+      "enterpriseFormularyGapAnalysis.test.ts",
+      "providerOrderableMarReadiness invariant",
+      "domain-specific activation tests"
+    ]
+  },
+  "wave4AdvancedEnterprisePlan": {
+    "wave": "WAVE_4",
+    "title": "Academic / Advanced Enterprise Coverage",
+    "goalProviderOrderableMarReady": "1,500+ governed medications",
+    "focusAreas": [
+      "Oncology supportive care",
+      "Rheumatology / Immunology",
+      "Pediatrics",
+      "Critical Care / ICU"
+    ],
+    "currentProviderOrderableInFocus": 11,
+    "currentMarReadyInFocus": 37,
+    "safeActivationCandidates": 1,
+    "metadataFixCandidates": 0,
+    "governanceReviewCandidates": 2,
+    "catalogAdditionCandidates": 2,
+    "deferredControlledSubstances": 0,
+    "candidates": [
+      {
+        "candidateKey": "WAVE_4:rasburicase",
+        "label": "Rasburicase",
+        "therapeuticArea": "Oncology supportive care",
+        "wave": "WAVE_4",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "RASBURICASE_1_5_MG_POUDRE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Oncology supportive care",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_4:infliximab",
+        "label": "Infliximab",
+        "therapeuticArea": "Rheumatology / Immunology",
+        "wave": "WAVE_4",
+        "catalogExists": false,
+        "matchedCatalogCodes": [],
+        "providerOrderable": false,
+        "marReady": false,
+        "missingFormsStrengthsRoutes": [
+          "catalog row missing"
+        ],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_CATALOG_ADDITION",
+        "seedRequired": true,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Rheumatology / Immunology",
+          "haiti-medications seed row",
+          "formulary manifest validation"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_4:dobutamine infusion",
+        "label": "Dobutamine infusion",
+        "therapeuticArea": "Critical Care / ICU",
+        "wave": "WAVE_4",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "DOBUTAMINE_250MG_20ML_IV",
+          "DOBUTAMINE_250_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+          "DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE"
+        ],
+        "providerOrderable": true,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "SAFE_TO_ACTIVATE_NOW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Critical Care / ICU",
+          "providerOrderableMarReadiness invariant",
+          "activation registry collision check"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_4:neonatal caffeine citrate",
+        "label": "Neonatal caffeine citrate",
+        "therapeuticArea": "Pediatrics",
+        "wave": "WAVE_4",
+        "catalogExists": false,
+        "matchedCatalogCodes": [],
+        "providerOrderable": false,
+        "marReady": false,
+        "missingFormsStrengthsRoutes": [
+          "catalog row missing"
+        ],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": false,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_CATALOG_ADDITION",
+        "seedRequired": true,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Pediatrics",
+          "haiti-medications seed row",
+          "formulary manifest validation"
+        ]
+      },
+      {
+        "candidateKey": "WAVE_4:cyclophosphamide",
+        "label": "Cyclophosphamide",
+        "therapeuticArea": "Oncology supportive care",
+        "wave": "WAVE_4",
+        "catalogExists": true,
+        "matchedCatalogCodes": [
+          "CYCLOPHOSPHAMIDE_1000_MG_POUDRE_INTRAVEINEUSE"
+        ],
+        "providerOrderable": false,
+        "marReady": true,
+        "missingFormsStrengthsRoutes": [],
+        "governance": {
+          "controlledSubstance": false,
+          "highAlert": true,
+          "lasa": false,
+          "pediatricCaution": false,
+          "renalAdjustment": false,
+          "obCaution": false,
+          "infusionRequired": false,
+          "prnGovernance": false
+        },
+        "activationSafety": "NEEDS_GOVERNANCE_REVIEW",
+        "seedRequired": false,
+        "migrationRequired": false,
+        "testsRequired": [
+          "enterpriseFormularyExpansionWaveAudit: Oncology supportive care",
+          "high-alert/controlled governance review",
+          "witness/double-sign policy"
+        ]
+      }
+    ],
+    "seedRequired": true,
+    "migrationRequired": false,
+    "testsRequired": [
+      "enterpriseFormularyExpansionWaveAudit.test.ts",
+      "enterpriseFormularyGapAnalysis.test.ts",
+      "providerOrderableMarReadiness invariant",
+      "domain-specific activation tests"
+    ]
+  },
+  "controlledSubstanceGovernanceHoldReport": {
+    "heldCatalogCodes": [
+      "FENTANYL_50MCG_ML_INJECTABLE",
+      "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+      "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "FENTANYL_25_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MIDAZOLAM_5MG_ML_INJECTABLE",
+      "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MIDAZOLAM_5_MG_0_5_ML_NASAL_SOLUTION_NASALE_NASALE",
+      "KETAMINE_50MG_ML_INJECTABLE",
+      "KETAMINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "KETAMINE_100_MG_ML_PEDS_INJECTABLE_INTRAVEINEUSE",
+      "HYDROCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+      "HYDROCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+      "HYDROCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+      "OXYCODONE_5_MG_COMPRIME_ORAL",
+      "OXYCODONE_10_MG_COMPRIME_ORAL",
+      "OXYCODONE_ACETAMINOPHEN_5_325_COMPRIME_ORAL",
+      "OXYCODONE_ACETAMINOPHEN_7_5_325_COMPRIME_ORAL",
+      "OXYCODONE_ACETAMINOPHEN_10_325_COMPRIME_ORAL",
+      "HYDROMORPHONE_2MG_ML_INJECTABLE",
+      "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_0_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_10_MG_PER_ML_INJECTABLE_INJECTION",
+      "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_1_MG_ML_INJECTABLE_INTRAVEINEUSE"
+    ],
+    "heldCount": 28,
+    "activatedControlledSubstances": [],
+    "notGovernedControlledInCatalog": [
+      "DIAZEPAM_10_MG_PER_2_ML_INJECTABLE_INJECTION",
+      "LORAZEPAM_2_MG_COMPRIME_ORAL",
+      "LORAZEPAM_2MG_ML_INJECTABLE",
+      "PREGABALIN_75_MG_GELULE_ORALE",
+      "CLONAZEPAM_0_5_MG_COMPRIME_ORALE",
+      "LORAZEPAM_0_5_MG_COMPRIME_ORALE",
+      "METHYLPHENIDATE_10_MG_COMPRIME_ORALE",
+      "LORAZEPAM_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "LORAZEPAM_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NALBUPHINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "REMIFENTANIL_1_MG_POUDRE_INTRAVEINEUSE",
+      "ALFENTANIL_500_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "PHENOBARBITAL_130_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "LORAZEPAM_2_MG_ML_PEDS_IV_INJECTABLE_INTRAVEINEUSE",
+      "ACETAMINOPHEN_CODEINE_300_15_COMPRIME_ORAL",
+      "ACETAMINOPHEN_CODEINE_300_30_COMPRIME_ORAL",
+      "ACETAMINOPHEN_CODEINE_300_60_COMPRIME_ORAL"
+    ]
+  },
+  "highAlertAndLasaGovernanceReport": {
+    "highAlertNotOrderable": [
+      "ADRENALINE_1_MG_PER_ML_INJECTABLE_INJECTION",
+      "HEPARIN_5000UI_ML_INJECTABLE",
+      "LEVOTHYROXINE_50_MCG_COMPRIME_ORAL",
+      "POTASSIUM_CHLORIDE_20_MEQ_PER_10_ML_INJECTABLE_INTRAVENOUS",
+      "PROPOFOL_10MG_ML_IV",
+      "VANCOMYCIN_1_G_INJECTABLE_INTRAVENOUS",
+      "WARFARIN_5_MG_COMPRIME_ORAL",
+      "ENOXAPARIN_40_MG_PER_0.4_ML_INJECTABLE_INJECTION",
+      "APIXABAN_5_MG_COMPRIME_ORAL",
+      "RIVAROXABAN_20_MG_COMPRIME_ORAL",
+      "DABIGATRAN_150_MG_COMPRIME_ORAL",
+      "EDOXABAN_60_MG_COMPRIME_ORAL",
+      "SEMAGLUTIDE_0.25_MG_INJECTABLE_SUBCUTANEOUS",
+      "TIRZEPATIDE_2.5_MG_INJECTABLE_SUBCUTANEOUS",
+      "FONDAPARINUX_2_5_MG_INJECTABLE_SOUS_CUTANEE",
+      "ENOXAPARIN_60_MG_PER_0.6_ML_INJECTABLE_INJECTION",
+      "NITROGLYCERIN_0_4_MG_COMPRIME_SUBLINGUAL_ORALE",
+      "DIGOXIN_0_25_MG_COMPRIME_ORALE",
+      "AMIODARONE_200_MG_COMPRIME_ORALE",
+      "INSULIN_GLARGINE_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "INSULIN_LISPRO_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "LITHIUM_CARBONATE_300_MG_COMPRIME_ORALE",
+      "VALPROIC_ACID_250_MG_COMPRIME_ORALE",
+      "PHENYTOIN_100_MG_COMPRIME_ORALE",
+      "EPOETIN_ALFA_4000_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "DARBEPOETIN_ALFA_40_MCG_0_4_ML_INJECTABLE_SOUS_CUTANEE",
+      "ISOTRETINOIN_20_MG_GELULE_ORALE",
+      "METHOTREXATE_2_5_MG_COMPRIME_ORALE",
+      "LEFLUNOMIDE_20_MG_COMPRIME_ORALE",
+      "AZATHIOPRINE_50_MG_COMPRIME_ORALE",
+      "CARBAMAZEPINE_200_MG_COMPRIME_ORALE",
+      "VALPROIC_ACID_500_MG_COMPRIME_ORALE",
+      "CLONAZEPAM_0_5_MG_COMPRIME_ORALE",
+      "CLOZAPINE_25_MG_COMPRIME_ORALE",
+      "LORAZEPAM_0_5_MG_COMPRIME_ORALE",
+      "METHYLPHENIDATE_10_MG_COMPRIME_ORALE",
+      "LITHIUM_CARBONATE_450_MG_COMPRIME_ORALE",
+      "THEOPHYLLINE_300_MG_COMPRIME_ORALE",
+      "INSULIN_DETEMIR_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "INSULIN_ASPART_100_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "SEMAGLUTIDE_0_25_MG_INJECTABLE_SOUS_CUTANEE",
+      "TIRZEPATIDE_2_5_MG_INJECTABLE_SOUS_CUTANEE",
+      "REPAGLINIDE_1_MG_COMPRIME_ORALE",
+      "GLIPIZIDE_5_MG_COMPRIME_ORALE",
+      "INSULIN_GLARGINE_300_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "INSULIN_LISPRO_200_UI_ML_INJECTABLE_SOUS_CUTANEE",
+      "GLIMEPIRIDE_4_MG_COMPRIME_ORALE",
+      "GLYBURIDE_2_5_MG_COMPRIME_ORALE",
+      "KETAMINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MIDAZOLAM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "LORAZEPAM_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "LORAZEPAM_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "SUCCINYLCHOLINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "SUCCINYLCHOLINE_100_MG_POUDRE_INTRAVEINEUSE",
+      "ROCURONIUM_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "ROCURONIUM_50_MG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "VECURONIUM_10_MG_POUDRE_INTRAVEINEUSE",
+      "VECURONIUM_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "CISATRACURIUM_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "ATRACURIUM_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "THIOPENTAL_25_MG_ML_POUDRE_INTRAVEINEUSE",
+      "FENTANYL_50_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "FENTANYL_100_MCG_2_ML_INJECTABLE_INTRAVEINEUSE",
+      "FENTANYL_250_MCG_5_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MORPHINE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "HYDROMORPHONE_4_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NALBUPHINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "DEXMEDETOMIDINE_100_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "REMIFENTANIL_1_MG_POUDRE_INTRAVEINEUSE",
+      "ALFENTANIL_500_MCG_ML_INJECTABLE_INTRAVEINEUSE",
+      "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+      "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "LIDOCAINE_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "CALCIUM_CHLORIDE_10_INJECTABLE_INTRAVEINEUSE",
+      "CALCIUM_GLUCONATE_10_INJECTABLE_INTRAVEINEUSE",
+      "ADENOSINE_3_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MAGNESIUM_SULFATE_2_G_50_ML_INJECTABLE_INTRAVEINEUSE",
+      "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+      "DILTIAZEM_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NITROGLYCERIN_5_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "ISOPROTERENOL_0_2_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOPAMINE_400_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOPAMINE_800_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOBUTAMINE_250_MG_20_ML_INJECTABLE_INTRAVEINEUSE",
+      "DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "PHENYLEPHRINE_10_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "PHENYLEPHRINE_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "VASOPRESSIN_20_UNITS_ML_INJECTABLE_INTRAVEINEUSE",
+      "VASOPRESSIN_40_UNITS_100_ML_PERFUSION_INTRAVEINEUSE",
+      "MILRINONE_1_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE"
+    ],
+    "highAlertOrderableWithoutWitness": [],
+    "lasaGroupedFamilies": []
+  },
+  "pediatricMedicationReadinessReport": {
+    "pediatricCatalogRows": 16,
+    "missingLiquidOrWeightBasedVariants": [
+      "DEXTROSE_25_25_ML_NEONATAL_INJECTABLE_INTRAVEINEUSE"
+    ],
+    "providerOrderablePediatric": 12
+  },
+  "ivpbAndContinuousInfusionReadinessReport": {
+    "ivpbCatalogRows": 74,
+    "ivpbMissingInfusionMetadata": [
+      "DOBUTAMINE_250MG_20ML_IV",
+      "DOPAMINE_400MG_250ML_IV",
+      "FLUCONAZOLE_2_MG_PER_ML_PERFUSION_INTRAVENOUS",
+      "MAGNESIUM_SULFATE_2_G_PER_50_ML_PERFUSION_INTRAVENOUS",
+      "METRONIDAZOLE_500_MG_PER_100_ML_PERFUSION_INTRAVENOUS",
+      "PARACETAMOL_1G_100ML_IV",
+      "PIPERACILLIN_TAZOBACTAM_3_375_G_INJECTABLE_INJECTABLE",
+      "ACETAMINOPHEN_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "EPINEPHRINE_0_1_MG_ML_PERFUSION_INTRAVEINEUSE",
+      "AMIODARONE_900_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "MAGNESIUM_SULFATE_4_G_100_ML_PERFUSION_INTRAVEINEUSE",
+      "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "EPINEPHRINE_4_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOPAMINE_400_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOPAMINE_800_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "DOBUTAMINE_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "PHENYLEPHRINE_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "VASOPRESSIN_40_UNITS_100_ML_PERFUSION_INTRAVEINEUSE",
+      "MILRINONE_40_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+      "ANGIOTENSIN_II_2_5_MG_500_ML_PERFUSION_INTRAVEINEUSE",
+      "EPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "AZITHROMYCIN_500_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "LEVOFLOXACIN_750_MG_150_ML_PERFUSION_INTRAVEINEUSE",
+      "CIPROFLOXACIN_400_MG_200_ML_PERFUSION_INTRAVEINEUSE",
+      "CLINDAMYCIN_900_MG_50_ML_PERFUSION_INTRAVEINEUSE",
+      "LINEZOLID_600_MG_300_ML_PERFUSION_INTRAVEINEUSE",
+      "LEVETIRACETAM_1000_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "MANNITOL_20_PERFUSION_INTRAVEINEUSE",
+      "MANNITOL_15_PERFUSION_INTRAVEINEUSE",
+      "HYPERTONIC_SALINE_3_500_ML_PERFUSION_INTRAVEINEUSE",
+      "NITROGLYCERIN_50_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "HEPARIN_25000_UNITS_500_ML_PERFUSION_INTRAVEINEUSE",
+      "EPTIFIBATIDE_75_MG_100_ML_PERFUSION_INTRAVEINEUSE",
+      "ETHANOL_10_PERFUSION_INTRAVEINEUSE",
+      "POTASSIUM_CHLORIDE_10_MEQ_100_ML_PERFUSION_INTRAVEINEUSE",
+      "POTASSIUM_CHLORIDE_40_MEQ_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "CALCIUM_GLUCONATE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "CALCIUM_CHLORIDE_10_100_ML_PERFUSION_INTRAVEINEUSE",
+      "SODIUM_PHOSPHATE_15_MMOL_250_ML_PERFUSION_INTRAVEINEUSE",
+      "POTASSIUM_PHOSPHATE_30_MMOL_500_ML_PERFUSION_INTRAVEINEUSE",
+      "ALBUMIN_5_250_ML_PERFUSION_INTRAVEINEUSE",
+      "ALBUMIN_25_50_ML_PERFUSION_INTRAVEINEUSE",
+      "DEXTROSE_10_250_ML_PERFUSION_INTRAVEINEUSE",
+      "REGULAR_INSULIN_100_UI_ML_DRIP_KIT_PERFUSION_INTRAVEINEUSE",
+      "HYPERTONIC_SALINE_3_1000_ML_PERFUSION_INTRAVEINEUSE",
+      "PACKED_RED_BLOOD_CELLS_250_ML_PERFUSION_INTRAVEINEUSE",
+      "FRESH_FROZEN_PLASMA_250_ML_PERFUSION_INTRAVEINEUSE",
+      "PLATELETS_APHERESIS_UNIT_PERFUSION_INTRAVEINEUSE",
+      "CRYOPRECIPITATE_10_UNITS_PERFUSION_INTRAVEINEUSE"
+    ],
+    "continuousInfusionCandidates": [
+      "NOREPINEPHRINE_4MG_4ML_IV",
+      "PROPOFOL_10MG_ML_IV",
+      "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE"
+    ],
+    "missingLifecycleGovernance": [
+      "PROPOFOL_10MG_ML_IV",
+      "PROPOFOL_20_MG_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_4_MG_4_ML_INJECTABLE_INTRAVEINEUSE",
+      "NOREPINEPHRINE_8_MG_250_ML_PERFUSION_INTRAVEINEUSE",
+      "NOREPINEPHRINE_16_MG_250_ML_PERFUSION_INTRAVEINEUSE"
+    ]
+  },
+  "providerOrderableMarReadinessInvariantReport": {
+    "providerOrderableButNotMarReadyCount": 0,
+    "providerOrderableButNotMarReadyCatalogCodes": [],
+    "invariantPass": true
+  },
+  "seedAndMigrationForecast": {
+    "migrationRequired": false,
+    "seedRequiredForWaveActivation": true,
+    "localSeedCommand": "pnpm --filter @medora/api run prisma:seed-catalogs",
+    "localMigrationCommand": "pnpm --filter @medora/api exec prisma migrate dev --name enterprise_formulary_expansion_wave",
+    "productionSeedCommand": "railway run --service medora-s --environment production -- sh -c 'export DATABASE_URL=\"$DATABASE_PUBLIC_URL\" && pnpm --filter @medora/api run prisma:seed-catalogs'",
+    "productionMigrationCommand": "railway run --service medora-s --environment production -- sh -c 'export DATABASE_URL=\"$DATABASE_PUBLIC_URL\" && pnpm --filter @medora/api exec prisma migrate deploy'"
+  },
+  "finalDecision": "ENTERPRISE_FORMULARY_EXPANSION_AUDIT_COMPLETE",
+  "blockers": [],
+  "recommendedNextImplementationPrompt": "MEDUI.MEDS.ENTERPRISE_FORMULARY_EXPANSION_WAVE_1_ACTIVATION.1 — activate SAFE_TO_ACTIVATE_NOW catalog rows in Wave 1 focus areas only; no controlled substances; preserve provider-orderable-not-MAR-ready invariant at 0."
+}

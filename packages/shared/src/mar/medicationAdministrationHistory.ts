@@ -1,5 +1,7 @@
 /** MEDUI.ED.MAR.H2B — append-only medication administration history read model. */
 
+import type { MedicationFollowUpType } from "./medicationFollowUpTypes.js";
+
 export const MEDICATION_ADMINISTRATION_HISTORY_EVENT_TYPES = [
   "ADMINISTERED",
   "EARLY_ADMINISTRATION",
@@ -83,6 +85,7 @@ export type MedicationAdministrationHistoryEntry = {
   varianceSeverity?: string | null;
   varianceReviewRecommended?: boolean;
   /** Present for MEDICATION_RESPONSE_DOCUMENTED rows (MEDUI.ED.MAR.H9L). */
+  medicationFollowUpType?: MedicationFollowUpType | null;
   medicationResponseCode?: string | null;
   medicationResponseDetail?: string | null;
   medicationResponseTime?: string | null;

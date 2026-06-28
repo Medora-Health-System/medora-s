@@ -37,7 +37,8 @@ describe("MEDPROC.3 procedure documentation linkage UI guards", () => {
 
   it("does not block order completion when documentation is missing", () => {
     expect(erOrdersPanelSource).toContain('op === "complete"');
-    expect(erOrdersPanelSource).toContain("await apiFetch(path, { method: \"POST\", facilityId })");
+    expect(erOrdersPanelSource).toContain("runOrderItemLifecycleUiMutation");
+    expect(erOrdersPanelSource).toContain("mutateOrderItemLifecycleAction");
     expect(erOrdersPanelSource).not.toMatch(/documentation.*missing[\s\S]{0,120}return;/i);
     expect(erOrdersPanelSource).toContain("procedureDocumentationCompletionReminderKey");
   });
