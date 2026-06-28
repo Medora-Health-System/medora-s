@@ -93,6 +93,12 @@ import {
   resetEnterpriseEssentialFormularyActivationWaveRegistryForTests,
 } from "./enterpriseEssentialFormularyActivationWaveRegistry.js";
 import {
+  isActiveWave1ExpansionProviderOrderingMedication,
+  validateWave1ExpansionProviderOrderPlacement,
+  listActiveWave1ExpansionProviderOrderingCatalogCodes,
+  resetWave1ExpansionActivationRegistryForTests,
+} from "./enterpriseFormularyExpansionWave1ActivationRegistry.js";
+import {
   bindProviderOrderablePrewarm,
   getActiveCodesForDomain,
   getPriorProviderOrderableCatalogCodesForDomain,
@@ -271,6 +277,26 @@ const PRIOR_DOMAINS_BY_ID: Record<ProviderOrderingDomainId, readonly ProviderOrd
     "controlledSubstance",
     "pulmonary",
   ],
+  wave1Expansion: [
+    "tranche2",
+    "anticoagulation",
+    "insulinDiabetes",
+    "vaccine",
+    "criticalCare",
+    "neurology",
+    "infectiousDisease",
+    "cardiology",
+    "ivFluids",
+    "obgyn",
+    "psychiatry",
+    "gastroenterology",
+    "pediatrics",
+    "surgery",
+    "painManagement",
+    "controlledSubstance",
+    "pulmonary",
+    "essentialFormularyWave",
+  ],
 };
 
 const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
@@ -292,6 +318,7 @@ const BUILD_ORDER: readonly ProviderOrderingDomainId[] = [
   "controlledSubstance",
   "pulmonary",
   "essentialFormularyWave",
+  "wave1Expansion",
 ];
 
 const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly string[]> = {
@@ -313,6 +340,7 @@ const LIST_ACTIVE_BY_DOMAIN: Record<ProviderOrderingDomainId, () => readonly str
   controlledSubstance: listActiveControlledSubstanceProviderOrderingCatalogCodes,
   pulmonary: listActivePulmonaryProviderOrderingCatalogCodes,
   essentialFormularyWave: listActiveEnterpriseEssentialFormularyWaveCatalogCodes,
+  wave1Expansion: listActiveWave1ExpansionProviderOrderingCatalogCodes,
 };
 
 let activeProviderOrderableCodes: ReadonlySet<string> | null = null;
@@ -458,6 +486,13 @@ const DOMAIN_ORDER_VALIDATORS: Array<{
     message: "Ce médicament essentiel n'est pas disponible pour cette commande.",
     logEvent: "essential_formulary_wave_medication_order_blocked",
   },
+  {
+    isActive: isActiveWave1ExpansionProviderOrderingMedication,
+    validate: validateWave1ExpansionProviderOrderPlacement,
+    errorCode: "WAVE1_EXPANSION_MEDICATION_ORDER_BLOCKED",
+    message: "Ce médicament de la vague 1 n'est pas disponible pour cette commande.",
+    logEvent: "wave1_expansion_medication_order_blocked",
+  },
 ];
 
 function buildPriorSet(domain: ProviderOrderingDomainId): ReadonlySet<string> {
@@ -533,6 +568,7 @@ export function resetProviderOrderableCatalogCodesRegistryForTests(): void {
   activeProviderOrderableCodes = null;
   resetProviderOrderablePriorCodesStateForTests();
   resetEnterpriseEssentialFormularyActivationWaveRegistryForTests();
+  resetWave1ExpansionActivationRegistryForTests();
 }
 
 /**

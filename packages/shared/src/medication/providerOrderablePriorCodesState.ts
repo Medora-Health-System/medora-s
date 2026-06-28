@@ -21,7 +21,8 @@ export type ProviderOrderingDomainId =
   | "painManagement"
   | "controlledSubstance"
   | "pulmonary"
-  | "essentialFormularyWave";
+  | "essentialFormularyWave"
+  | "wave1Expansion";
 
 const EMPTY_SET: ReadonlySet<string> = new Set();
 

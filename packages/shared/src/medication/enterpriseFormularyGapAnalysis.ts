@@ -517,10 +517,12 @@ const ACTIVATION_SOURCE_BY_DOMAIN: Record<ProviderOrderingDomainId, string> = {
   controlledSubstance: "controlled_substance_provider_ordering",
   pulmonary: "pulmonary_provider_ordering",
   essentialFormularyWave: "essential_formulary_activation_wave",
+  wave1Expansion: "enterprise_formulary_wave_1_expansion",
 };
 
 /** Most specific domain wins when classifying activation source for audit rows. */
 const ACTIVATION_DOMAIN_CHECK_ORDER: readonly ProviderOrderingDomainId[] = [
+  "wave1Expansion",
   "essentialFormularyWave",
   "pulmonary",
   "controlledSubstance",
