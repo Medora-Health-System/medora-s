@@ -19,9 +19,13 @@ import {
 } from "@/lib/worklistLabRadUi";
 import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
 import {
+  orderItemLifecycleIdempotentToastKey,
+  orderItemLifecycleStaleStateMessageKey,
+  shouldTreatLifecycleErrorAsStaleState,
+} from "@/lib/mutateOrderItemLifecycleAction";
+import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
-  nextOrderItemStatusAfterWorkflowAction,
   orderItemWorkflowPendingKey,
   patchOrderItemStatusInWorklistQueue,
   WORKLIST_WORKFLOW_BUSY_LABEL_KEY,
@@ -405,13 +409,22 @@ export default function LabWorklistPage() {
     setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     setQueuedActionNotice(null);
     try {
-      const { queued } = await postWorklistItemWorkflowAction(action, itemId, facilityId, itemStatus);
-      setQueuedActionNotice(queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
+      const result = await postWorklistItemWorkflowAction(action, itemId, facilityId, itemStatus);
+      setQueuedActionNotice(result.queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
+      if (result.idempotent) {
+        setQueuedActionNotice(t(orderItemLifecycleIdempotentToastKey(action)));
+      }
       setQueue((prev) =>
-        patchOrderItemStatusInWorklistQueue(prev, itemId, nextOrderItemStatusAfterWorkflowAction(action))
+        patchOrderItemStatusInWorklistQueue(prev, itemId, result.nextStatus)
       );
       void loadQueue({ silent: true });
     } catch (error) {
+      const httpStatus = (error as { status?: number }).status;
+      if (shouldTreatLifecycleErrorAsStaleState(action, itemStatus, httpStatus)) {
+        alert(t(orderItemLifecycleStaleStateMessageKey()));
+        void loadQueue({ silent: true });
+        return;
+      }
       console.error("Lab worklist workflow action failed:", error);
       alert(t(workflowActionFailureMessageKey(action, "worklist")));
     } finally {

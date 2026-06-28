@@ -1,6 +1,11 @@
+import {
+  nextOrderItemStatusAfterLifecycleAction,
+  type OrderItemLifecycleAction,
+} from "@medora/shared";
+
 /** Shared UI helpers for order line acknowledge / start / complete actions. */
 
-export type OrderItemLifecycleWorkflowAction = "acknowledge" | "start" | "complete";
+export type OrderItemLifecycleWorkflowAction = OrderItemLifecycleAction;
 
 export function orderItemWorkflowPendingKey(
   itemId: string,
@@ -12,9 +17,7 @@ export function orderItemWorkflowPendingKey(
 export function nextOrderItemStatusAfterWorkflowAction(
   action: OrderItemLifecycleWorkflowAction
 ): string {
-  if (action === "acknowledge") return "ACKNOWLEDGED";
-  if (action === "start") return "IN_PROGRESS";
-  return "COMPLETED";
+  return nextOrderItemStatusAfterLifecycleAction(action);
 }
 
 export function isOrderItemWorkflowPending(

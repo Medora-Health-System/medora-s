@@ -9800,6 +9800,12 @@ export default {
     errNoOrdersCreated: "Aucun ordre créé.",
     successProtocolApplied: "Protocole appliqué — ordres créés.",
   },
+  orderLifecycle: {
+    alreadyAcknowledged: "Cet ordre a déjà été accusé réception.",
+    alreadyStarted: "Cet ordre a déjà été démarré.",
+    alreadyCompleted: "Cet ordre est déjà terminé.",
+    staleState: "Actualisation requise. Cet ordre a changé depuis son ouverture.",
+  },
   erEmergencyOrders: {
     loadOrdersError: "Impossible de charger les ordres pour cette consultation.",
     quickLab: "Analyses",

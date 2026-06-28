@@ -80,11 +80,21 @@ import {
   ER_ORDER_ITEM_WORKFLOW_BUSY_LABEL_KEY,
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
-  nextOrderItemStatusAfterWorkflowAction,
   orderItemWorkflowPendingKey,
   patchOrderItemStatusInOrdersRaw,
   type OrderItemLifecycleWorkflowAction,
 } from "@/lib/orderItemWorkflowUi";
+import {
+  mutateOrderItemLifecycleAction,
+  orderItemLifecycleIdempotentToastKey,
+  orderItemLifecycleStaleStateMessageKey,
+  shouldTreatLifecycleErrorAsStaleState,
+} from "@/lib/mutateOrderItemLifecycleAction";
+import {
+  orderItemAllowsComplete,
+  orderItemAllowsStart,
+  orderItemNeedsAcknowledge,
+} from "@medora/shared";
 import {
   diagnosisOrdersDomainGridStyle,
   diagnosisOrdersDomainSummaryListStyle,
@@ -462,15 +472,15 @@ function hasAnyRole(roles: string[] | undefined, ...codes: string[]): boolean {
 }
 
 function itemStatusAllowsAcknowledge(st: string): boolean {
-  return st === "PLACED" || st === "PENDING";
+  return orderItemNeedsAcknowledge(st);
 }
 
 function itemStatusAllowsStart(st: string): boolean {
-  return st === "ACKNOWLEDGED";
+  return orderItemAllowsStart(st);
 }
 
 function itemStatusAllowsComplete(st: string): boolean {
-  return st === "IN_PROGRESS";
+  return orderItemAllowsComplete(st);
 }
 
 function renderMedicationMarOrdersStatusSection(
@@ -1071,15 +1081,15 @@ export function EmergencyErOrdersPanel({
       }
     }
     try {
-      const path =
-        op === "nurse"
-          ? `/orders/items/${itemId}/nurse-complete`
-          : `/orders/items/${itemId}/${op === "acknowledge" ? "acknowledge" : op}`;
-      await apiFetch(path, { method: "POST", facilityId });
-      if (op !== "nurse") {
-        setOrdersRaw((prev) =>
-          patchOrderItemStatusInOrdersRaw(prev, itemId, nextOrderItemStatusAfterWorkflowAction(op))
-        );
+      if (op === "nurse") {
+        await apiFetch(`/orders/items/${itemId}/nurse-complete`, { method: "POST", facilityId });
+      } else {
+        const result = await mutateOrderItemLifecycleAction(op, itemId, facilityId);
+        setOrdersRaw((prev) => patchOrderItemStatusInOrdersRaw(prev, itemId, result.nextStatus));
+        if (result.idempotent) {
+          setScheduledSubmitFlash(t(orderItemLifecycleIdempotentToastKey(op)));
+          window.setTimeout(() => setScheduledSubmitFlash(null), 5000);
+        }
       }
       setOrdersRefresh((x) => x + 1);
       if (postCompleteDocReminderKey) {
@@ -1087,6 +1097,18 @@ export function EmergencyErOrdersPanel({
         window.setTimeout(() => setScheduledSubmitFlash(null), 8000);
       }
     } catch (err) {
+      const httpStatus = (err as { status?: number }).status;
+      const itemStatus = parsedOrders
+        .flatMap((o) => o.items)
+        .find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
+        | Record<string, unknown>
+        | undefined;
+      const st = String(itemStatus?.status ?? "");
+      if (op !== "nurse" && shouldTreatLifecycleErrorAsStaleState(op, st, httpStatus)) {
+        setOrderInfusionError(t(orderItemLifecycleStaleStateMessageKey()));
+        setOrdersRefresh((x) => x + 1);
+        return;
+      }
       const raw = err instanceof Error ? err.message : String(err);
       setOrderInfusionError(
         normalizeUserFacingError(raw.trim() || null, language) || t("erEmergencyOrders.lineActionFailed")

@@ -1,25 +1,31 @@
-import { roleCodesIncludeLabImagingClinicalWorkflow } from "@medora/shared";
+import {
+  orderItemAllowsComplete,
+  orderItemAllowsStart,
+  orderItemIsTerminalStatus,
+  orderItemNeedsAcknowledge,
+  resolveOrderItemWorkflowAction,
+  type OrderItemLifecycleAction,
+  roleCodesIncludeLabImagingClinicalWorkflow,
+} from "@medora/shared";
 
 /** Statuts pour lesquels la file labo / imagerie propose « Accuser réception ». */
 export function worklistItemNeedsAcknowledge(status: string | null | undefined): boolean {
-  const st = String(status ?? "").trim().toUpperCase();
-  return st === "PLACED" || st === "PENDING" || st === "SIGNED";
+  return orderItemNeedsAcknowledge(status);
 }
 
 export function worklistItemAllowsStart(status: string | null | undefined): boolean {
-  return String(status ?? "").trim().toUpperCase() === "ACKNOWLEDGED";
+  return orderItemAllowsStart(status);
 }
 
 export function worklistItemAllowsComplete(status: string | null | undefined): boolean {
-  return String(status ?? "").trim().toUpperCase() === "IN_PROGRESS";
+  return orderItemAllowsComplete(status);
 }
 
 export function worklistItemIsTerminal(status: string | null | undefined): boolean {
-  const st = String(status ?? "").trim().toUpperCase();
-  return st === "COMPLETED" || st === "RESULTED" || st === "VERIFIED";
+  return orderItemIsTerminalStatus(status);
 }
 
-export type WorklistItemWorkflowAction = "acknowledge" | "start" | "complete";
+export type WorklistItemWorkflowAction = OrderItemLifecycleAction;
 
 export type WorklistDeptKind = "lab" | "radiology" | "pharmacy";
 
@@ -27,10 +33,7 @@ export type WorklistDeptKind = "lab" | "radiology" | "pharmacy";
 export function resolveWorklistItemWorkflowAction(
   status: string | null | undefined
 ): WorklistItemWorkflowAction | null {
-  if (worklistItemNeedsAcknowledge(status)) return "acknowledge";
-  if (worklistItemAllowsStart(status)) return "start";
-  if (worklistItemAllowsComplete(status)) return "complete";
-  return null;
+  return resolveOrderItemWorkflowAction(status);
 }
 
 /**

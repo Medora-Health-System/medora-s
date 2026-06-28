@@ -5,39 +5,41 @@ import {
 } from "./worklistLabRadWorkflowApi";
 import { worklistItemWorkflowActionPath } from "./worklistLabRadUi";
 
-vi.mock("@/lib/apiClient", () => ({
-  apiFetch: vi.fn(),
+vi.mock("@/lib/mutateOrderItemLifecycleAction", () => ({
+  mutateOrderItemLifecycleAction: vi.fn(),
 }));
 
-import { apiFetch } from "@/lib/apiClient";
+import { mutateOrderItemLifecycleAction } from "@/lib/mutateOrderItemLifecycleAction";
 
 describe("postWorklistItemWorkflowAction", () => {
-  it("calls POST /orders/items/:id/acknowledge for acknowledge", async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({});
-    await postWorklistItemWorkflowAction("acknowledge", "line-abc", "fac-1", "PLACED");
-    expect(apiFetch).toHaveBeenCalledWith("/orders/items/line-abc/acknowledge", {
-      method: "POST",
-      facilityId: "fac-1",
+  it("delegates to shared mutateOrderItemLifecycleAction", async () => {
+    vi.mocked(mutateOrderItemLifecycleAction).mockResolvedValueOnce({
+      queued: false,
+      idempotent: false,
+      nextStatus: "ACKNOWLEDGED",
+      responseBody: { status: "ACKNOWLEDGED" },
     });
+    const result = await postWorklistItemWorkflowAction("acknowledge", "line-abc", "fac-1", "PLACED");
+    expect(mutateOrderItemLifecycleAction).toHaveBeenCalledWith("acknowledge", "line-abc", "fac-1");
+    expect(result.nextStatus).toBe("ACKNOWLEDGED");
   });
 
-  it("returns queued=true when API responds with queued flag", async () => {
-    vi.mocked(apiFetch).mockResolvedValueOnce({ queued: true });
-    const result = await postWorklistItemWorkflowAction("start", "line-abc", "fac-1", "ACKNOWLEDGED");
-    expect(result.queued).toBe(true);
-  });
-
-  it("blocks acknowledge when status is not eligible", async () => {
+  it("does not block stale acknowledge clicks client-side", async () => {
+    vi.mocked(mutateOrderItemLifecycleAction).mockResolvedValueOnce({
+      queued: false,
+      idempotent: true,
+      nextStatus: "ACKNOWLEDGED",
+      responseBody: { status: "ACKNOWLEDGED", idempotent: true },
+    });
     await expect(
       postWorklistItemWorkflowAction("acknowledge", "line-abc", "fac-1", "ACKNOWLEDGED")
-    ).rejects.toThrow(/blocked/i);
+    ).resolves.toMatchObject({ idempotent: true });
   });
 });
 
 describe("assertWorklistItemAllowsWorkflowAction", () => {
-  it("allows complete only for IN_PROGRESS", () => {
-    expect(() => assertWorklistItemAllowsWorkflowAction("complete", "IN_PROGRESS")).not.toThrow();
-    expect(() => assertWorklistItemAllowsWorkflowAction("complete", "PLACED")).toThrow();
+  it("is a no-op (backend governs lifecycle)", () => {
+    expect(() => assertWorklistItemAllowsWorkflowAction("complete", "PLACED")).not.toThrow();
   });
 });
 

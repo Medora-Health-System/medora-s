@@ -53,9 +53,13 @@ import {
 } from "@/lib/worklistLabRadUi";
 import { postWorklistItemWorkflowAction } from "@/lib/worklistLabRadWorkflowApi";
 import {
+  orderItemLifecycleIdempotentToastKey,
+  orderItemLifecycleStaleStateMessageKey,
+  shouldTreatLifecycleErrorAsStaleState,
+} from "@/lib/mutateOrderItemLifecycleAction";
+import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
-  nextOrderItemStatusAfterWorkflowAction,
   orderItemWorkflowPendingKey,
   patchOrderItemStatusInSingleOrder,
   ORDER_DETAIL_WORKFLOW_BUSY_LABEL_KEY,
@@ -281,12 +285,21 @@ export default function DepartmentOrderDetail({
     if (!item) return;
     setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     try {
-      await postWorklistItemWorkflowAction(action, itemId, facilityId, item.status);
+      const result = await postWorklistItemWorkflowAction(action, itemId, facilityId, item.status);
       setOrder((prev: unknown) =>
-        patchOrderItemStatusInSingleOrder(prev, itemId, nextOrderItemStatusAfterWorkflowAction(action))
+        patchOrderItemStatusInSingleOrder(prev, itemId, result.nextStatus)
       );
+      if (result.idempotent) {
+        alert(t(orderItemLifecycleIdempotentToastKey(action)));
+      }
       void load({ silent: true });
-    } catch {
+    } catch (err) {
+      const httpStatus = (err as { status?: number }).status;
+      if (shouldTreatLifecycleErrorAsStaleState(action, item.status, httpStatus)) {
+        alert(t(orderItemLifecycleStaleStateMessageKey()));
+        void load({ silent: true });
+        return;
+      }
       alert(t(workflowActionFailureMessageKey(action, "orderDetail")));
     } finally {
       setPendingWorkflowAction(null);

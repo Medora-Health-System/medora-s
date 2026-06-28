@@ -1,42 +1,29 @@
-import { apiFetch } from "@/lib/apiClient";
 import {
-  resolveWorklistItemWorkflowAction,
-  worklistItemNeedsAcknowledge,
-  worklistItemWorkflowActionPath,
-  type WorklistItemWorkflowAction,
-} from "@/lib/worklistLabRadUi";
+  mutateOrderItemLifecycleAction,
+  type MutateOrderItemLifecycleResult,
+} from "@/lib/mutateOrderItemLifecycleAction";
+import type { WorklistItemWorkflowAction } from "@/lib/worklistLabRadUi";
+import { worklistItemWorkflowActionPath } from "@/lib/worklistLabRadUi";
 
-export type WorklistWorkflowActionResult = {
-  queued: boolean;
-};
+export type WorklistWorkflowActionResult = MutateOrderItemLifecycleResult;
 
+export { worklistItemWorkflowActionPath };
+
+/**
+ * @deprecated Client-side pre-check removed — backend idempotent lifecycle handles stale clicks.
+ */
 export function assertWorklistItemAllowsWorkflowAction(
-  action: WorklistItemWorkflowAction,
-  itemStatus: string | null | undefined
+  _action: WorklistItemWorkflowAction,
+  _itemStatus: string | null | undefined
 ): void {
-  const expected = resolveWorklistItemWorkflowAction(itemStatus);
-  if (expected !== action) {
-    throw new Error(`Workflow action ${action} blocked for status ${String(itemStatus ?? "")}`);
-  }
-  if (action === "acknowledge" && !worklistItemNeedsAcknowledge(itemStatus)) {
-    throw new Error(`Acknowledge blocked for status ${String(itemStatus ?? "")}`);
-  }
+  /* Intentionally no-op: MEDUI.ORDERS.UNIFIED_ORDER_ACTION_LIFECYCLE_FIX.1 */
 }
 
 export async function postWorklistItemWorkflowAction(
   action: WorklistItemWorkflowAction,
   itemId: string,
   facilityId: string,
-  itemStatus?: string | null
+  _itemStatus?: string | null
 ): Promise<WorklistWorkflowActionResult> {
-  if (itemStatus != null) {
-    assertWorklistItemAllowsWorkflowAction(action, itemStatus);
-  }
-  const res = await apiFetch(worklistItemWorkflowActionPath(action, itemId), {
-    method: "POST",
-    facilityId,
-  });
-  const queued =
-    res && typeof res === "object" && !Array.isArray(res) && (res as { queued?: boolean }).queued === true;
-  return { queued };
+  return mutateOrderItemLifecycleAction(action, itemId, facilityId);
 }

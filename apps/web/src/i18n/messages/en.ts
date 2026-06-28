@@ -9814,6 +9814,12 @@ export default {
     errNoOrdersCreated: "No orders created.",
     successProtocolApplied: "Protocol applied — orders created.",
   },
+  orderLifecycle: {
+    alreadyAcknowledged: "This order has already been acknowledged.",
+    alreadyStarted: "This order has already been started.",
+    alreadyCompleted: "This order is already completed.",
+    staleState: "Refresh required. This order changed since it was opened.",
+  },
   erEmergencyOrders: {
     loadOrdersError: "Could not load orders for this encounter.",
     quickLab: "Labs",

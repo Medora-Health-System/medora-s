@@ -146,6 +146,7 @@ export * from "./mar/medicationAdministrationHistoryNormalization.js";
 export * from "./mar/marHiddenBillingPayload.js";
 export * from "./mar/marAdministeredQuantity.js";
 export * from "./orders/orderItemDisplayLabels.js";
+export * from "./orders/orderItemLifecycle.js";
 export * from "./orders/trackboardOpenOrderCount.js";
 export * from "./orders/labResultReferenceFlag.js";
 export * from "./orders/careProcedureEffectiveClinicalTime.js";

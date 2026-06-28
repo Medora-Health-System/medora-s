@@ -76,6 +76,8 @@ import {
   type PilotScopeInput,
   validateCareProcedureEffectiveClinicalTime,
   type CareProcedureEffectiveTimeValidationCode,
+  isIdempotentLifecycleAction,
+  type OrderItemLifecycleAction,
 } from "@medora/shared";
 import { appendBillingCaptureCandidate } from "../billing/billing-capture.append.util";
 import { tryEnterpriseProcedureBillableReviewEvent } from "../billing/enterprise-procedure-billable-review.util";
@@ -2642,6 +2644,17 @@ export class OrdersService {
   }
 
   /**
+   * MEDUI.ORDERS.UNIFIED_ORDER_ACTION_LIFECYCLE_FIX.1 — safe repeat when line already at/beyond target.
+   */
+  private idempotentLifecycleOrderItem<T extends OrderItem>(
+    orderItem: T,
+    action: OrderItemLifecycleAction
+  ): (T & { idempotent: true }) | null {
+    if (!isIdempotentLifecycleAction(action, orderItem.status)) return null;
+    return { ...orderItem, idempotent: true };
+  }
+
+  /**
    * RN/provider acknowledgment only — does not complete the line, bill, or set performedBy.
    * `acknowledgedBy` (event actor) must not be treated as clinical performer for billing.
    */
@@ -2687,9 +2700,8 @@ export class OrdersService {
       orderItemProcedureGuardContext(orderItem)
     );
 
-    if (orderItem.status === OrderStatus.ACKNOWLEDGED) {
-      return orderItem;
-    }
+    const idempotent = this.idempotentLifecycleOrderItem(orderItem, "acknowledge");
+    if (idempotent) return idempotent;
 
     if (
       orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
@@ -2822,6 +2834,9 @@ export class OrdersService {
       requestorRoleCodes,
       orderItemProcedureGuardContext(orderItem)
     );
+
+    const idempotent = this.idempotentLifecycleOrderItem(orderItem, "start");
+    if (idempotent) return idempotent;
 
     if (
       orderItem.lifecycleState === OrderItemLifecycleState.CANCELLED ||
@@ -3000,6 +3015,10 @@ export class OrdersService {
       requestorRoleCodes,
       orderItemProcedureGuardContext(orderItem)
     );
+
+    const idempotent = this.idempotentLifecycleOrderItem(orderItem, "complete");
+    if (idempotent) return idempotent;
+
     assertCanTransition(orderItem.status, OrderStatus.COMPLETED);
 
     const lifecycleState = applyLifecycleWithStatus(
@@ -3074,6 +3093,19 @@ export class OrdersService {
     };
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      const completeDedupeKey = `order-item-complete:${orderItemId}`;
+      const existingComplete = await tx.orderEvent.findFirst({
+        where: {
+          orderId: orderItem.orderId,
+          eventType: OrderEventType.COMPLETED,
+          metadata: { path: ["dedupeKey"], equals: completeDedupeKey } as Prisma.JsonFilter,
+        },
+      });
+      if (existingComplete) {
+        const row = await tx.orderItem.findFirst({ where: { id: orderItemId } });
+        return row ?? orderItem;
+      }
+
       const row = await tx.orderItem.update({
         where: { id: orderItemId },
         data: itemUpdateData,
@@ -3085,7 +3117,12 @@ export class OrdersService {
         orderType: orderItem.order.type,
         eventType: OrderEventType.COMPLETED,
         performedByUserId: userId,
-        metadata: eventMetadata,
+        metadata: {
+          ...(typeof eventMetadata === "object" && eventMetadata !== null && !Array.isArray(eventMetadata)
+            ? eventMetadata
+            : { orderItemId }),
+          dedupeKey: completeDedupeKey,
+        },
         tx,
       });
       return row;
