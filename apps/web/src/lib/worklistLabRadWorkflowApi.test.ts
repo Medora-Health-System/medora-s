@@ -25,6 +25,19 @@ describe("postWorklistItemWorkflowAction", () => {
     expect(result.nextStatus).toBe("ACKNOWLEDGED");
   });
 
+  it("forwards cacheScope options to mutateOrderItemLifecycleAction", async () => {
+    vi.mocked(mutateOrderItemLifecycleAction).mockResolvedValueOnce({
+      queued: false,
+      idempotent: false,
+      nextStatus: "IN_PROGRESS",
+      responseBody: { status: "IN_PROGRESS" },
+      itemPatch: { status: "IN_PROGRESS" },
+    });
+    const options = { cacheScope: { worklists: ["lab"] as Array<"lab" | "radiology"> } };
+    await postWorklistItemWorkflowAction("start", "line-abc", "fac-1", "ACKNOWLEDGED", options);
+    expect(mutateOrderItemLifecycleAction).toHaveBeenCalledWith("start", "line-abc", "fac-1", options);
+  });
+
   it("does not block stale acknowledge clicks client-side", async () => {
     vi.mocked(mutateOrderItemLifecycleAction).mockResolvedValueOnce({
       queued: false,

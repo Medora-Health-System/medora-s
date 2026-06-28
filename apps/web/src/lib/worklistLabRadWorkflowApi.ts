@@ -1,5 +1,6 @@
 import {
   mutateOrderItemLifecycleAction,
+  type MutateOrderItemLifecycleOptions,
   type MutateOrderItemLifecycleResult,
 } from "@/lib/mutateOrderItemLifecycleAction";
 import type { WorklistItemWorkflowAction } from "@/lib/worklistLabRadUi";
@@ -23,7 +24,8 @@ export async function postWorklistItemWorkflowAction(
   action: WorklistItemWorkflowAction,
   itemId: string,
   facilityId: string,
-  _itemStatus?: string | null
+  _itemStatus?: string | null,
+  options?: MutateOrderItemLifecycleOptions
 ): Promise<WorklistWorkflowActionResult> {
-  return mutateOrderItemLifecycleAction(action, itemId, facilityId);
+  return mutateOrderItemLifecycleAction(action, itemId, facilityId, options);
 }
