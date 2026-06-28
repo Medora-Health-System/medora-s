@@ -18,9 +18,10 @@ describe("postWorklistItemWorkflowAction", () => {
       idempotent: false,
       nextStatus: "ACKNOWLEDGED",
       responseBody: { status: "ACKNOWLEDGED" },
+      itemPatch: { status: "ACKNOWLEDGED" },
     });
     const result = await postWorklistItemWorkflowAction("acknowledge", "line-abc", "fac-1", "PLACED");
-    expect(mutateOrderItemLifecycleAction).toHaveBeenCalledWith("acknowledge", "line-abc", "fac-1");
+    expect(mutateOrderItemLifecycleAction).toHaveBeenCalledWith("acknowledge", "line-abc", "fac-1", undefined);
     expect(result.nextStatus).toBe("ACKNOWLEDGED");
   });
 
@@ -30,6 +31,7 @@ describe("postWorklistItemWorkflowAction", () => {
       idempotent: true,
       nextStatus: "ACKNOWLEDGED",
       responseBody: { status: "ACKNOWLEDGED", idempotent: true },
+      itemPatch: { status: "ACKNOWLEDGED", idempotent: true },
     });
     await expect(
       postWorklistItemWorkflowAction("acknowledge", "line-abc", "fac-1", "ACKNOWLEDGED")

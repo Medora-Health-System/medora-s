@@ -58,10 +58,15 @@ import {
   shouldTreatLifecycleErrorAsStaleState,
 } from "@/lib/mutateOrderItemLifecycleAction";
 import {
+  createOrderLifecycleMutationHandlers,
+  mergeOrderPayload,
+  runOrderItemLifecycleUiMutation,
+} from "@/lib/orderItemLifecycleUiSync";
+import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
   orderItemWorkflowPendingKey,
-  patchOrderItemStatusInSingleOrder,
   ORDER_DETAIL_WORKFLOW_BUSY_LABEL_KEY,
   workflowActionFailureMessageKey,
   type OrderItemLifecycleWorkflowAction,
@@ -231,7 +236,7 @@ export default function DepartmentOrderDetail({
     setError(null);
     try {
       const data = await apiFetch(`/orders/${orderId}`, { facilityId });
-      setOrder(asApiObject(data));
+      setOrder(asApiObject(mergeOrderPayload(data)));
     } catch (e: unknown) {
       setOrder(null);
       setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("orderDetail.loadError"));
@@ -245,6 +250,12 @@ export default function DepartmentOrderDetail({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    return subscribeToOrderItem(() => {
+      setOrder((prev: unknown) => mergeOrderPayload(prev));
+    });
+  }, []);
 
   const filterItems = (items: any[]) => {
     if (!items) return [];
@@ -285,10 +296,27 @@ export default function DepartmentOrderDetail({
     if (!item) return;
     setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     try {
-      const result = await postWorklistItemWorkflowAction(action, itemId, facilityId, item.status);
-      setOrder((prev: unknown) =>
-        patchOrderItemStatusInSingleOrder(prev, itemId, result.nextStatus)
-      );
+      const result = await runOrderItemLifecycleUiMutation({
+        action,
+        itemId,
+        facilityId,
+        currentStatus: item.status,
+        mutate: (workflowAction, lineId, facId) =>
+          postWorklistItemWorkflowAction(workflowAction, lineId, facId, item.status, {
+            cacheScope: {
+              orderId,
+              worklists: kind === "lab" ? ["lab"] : kind === "radiology" ? ["radiology"] : [],
+            },
+          }),
+        handlers: createOrderLifecycleMutationHandlers({
+          itemId,
+          action,
+          collectionKind: "orders",
+          applyCollection: (transform) => {
+            setOrder((prev: unknown) => transform(prev));
+          },
+        }),
+      });
       if (result.idempotent) {
         alert(t(orderItemLifecycleIdempotentToastKey(action)));
       }

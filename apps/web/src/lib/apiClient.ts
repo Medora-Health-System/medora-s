@@ -145,6 +145,13 @@ function queueTypeForRequest(path: string, method: string): OfflineQueueItemType
   return null;
 }
 
+const MUTABLE_ORDER_GET_PATH =
+  /^\/(encounters\/[^/]+\/(orders|order-events)|orders\/[^/]+|worklists\/(lab|radiology))(?:\/|$)/;
+
+function shouldUseNoStoreGet(path: string, method: string): boolean {
+  return method === "GET" && MUTABLE_ORDER_GET_PATH.test(path);
+}
+
 /**
  * Authenticated fetch to the backend proxy; returns the raw `Response` after refresh retry and `ok` checks.
  * Intended for file downloads (GET). Does not implement the offline mutation queue used by `apiFetch`.
@@ -173,6 +180,7 @@ export async function apiFetchResponse(
       method,
       headers,
       credentials: "include",
+      ...(shouldUseNoStoreGet(path, method) ? { cache: "no-store" as RequestCache } : {}),
       ...(fetchOptions.body !== undefined && { body: fetchOptions.body }),
     });
 
@@ -316,6 +324,7 @@ async function apiFetchOnce(
       method,
       headers,
       credentials: "include",
+      ...(shouldUseNoStoreGet(path, method) ? { cache: "no-store" as RequestCache } : {}),
       ...(fetchOptions.body !== undefined && { body: fetchOptions.body }),
     });
 

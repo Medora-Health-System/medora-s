@@ -81,7 +81,6 @@ import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
   orderItemWorkflowPendingKey,
-  patchOrderItemStatusInOrdersRaw,
   type OrderItemLifecycleWorkflowAction,
 } from "@/lib/orderItemWorkflowUi";
 import {
@@ -90,6 +89,12 @@ import {
   orderItemLifecycleStaleStateMessageKey,
   shouldTreatLifecycleErrorAsStaleState,
 } from "@/lib/mutateOrderItemLifecycleAction";
+import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import {
+  createOrderLifecycleMutationHandlers,
+  mergeOrderPayload,
+  runOrderItemLifecycleUiMutation,
+} from "@/lib/orderItemLifecycleUiSync";
 import {
   orderItemAllowsComplete,
   orderItemAllowsStart,
@@ -657,6 +662,7 @@ export function EmergencyErOrdersPanel({
   const [cancelLineModalItemId, setCancelLineModalItemId] = useState<string | null>(null);
   const [lineActionBusy, setLineActionBusy] = useState<string | null>(null);
   const [ordersRefresh, setOrdersRefresh] = useState(0);
+  const ordersBackgroundRefreshRef = useRef(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showProcedureLauncher, setShowProcedureLauncher] = useState(false);
   const [procedureLauncherInitialStep, setProcedureLauncherInitialStep] =
@@ -694,28 +700,40 @@ export function EmergencyErOrdersPanel({
 
   useEffect(() => {
     let cancelled = false;
+    const backgroundOnly = ordersBackgroundRefreshRef.current;
+    ordersBackgroundRefreshRef.current = false;
     (async () => {
-      setLoading(true);
-      setEventLoading(true);
+      if (!backgroundOnly) {
+        setLoading(true);
+        setEventLoading(true);
+      }
       try {
         const [orders, events] = await Promise.all([
           fetchOrdersForEncounter(facilityId, encounterId),
           fetchOrderEventsForEncounter(facilityId, encounterId),
         ]);
-        if (!cancelled) setOrdersRaw(Array.isArray(orders) ? orders : []);
+        if (!cancelled) setOrdersRaw(mergeOrderPayload(Array.isArray(orders) ? orders : []));
         if (!cancelled) setOrderEventsRaw(Array.isArray(events) ? events : []);
       } catch {
-        if (!cancelled) setOrdersRaw(null);
-        if (!cancelled) setOrderEventsRaw(null);
+        if (!cancelled && !backgroundOnly) setOrdersRaw(null);
+        if (!cancelled && !backgroundOnly) setOrderEventsRaw(null);
       } finally {
-        if (!cancelled) setLoading(false);
-        if (!cancelled) setEventLoading(false);
+        if (!cancelled && !backgroundOnly) {
+          setLoading(false);
+          setEventLoading(false);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
   }, [encounterId, facilityId, ordersRefresh]);
+
+  useEffect(() => {
+    return subscribeToOrderItem(() => {
+      setOrdersRaw((prev) => mergeOrderPayload(prev) as unknown[] | null);
+    });
+  }, []);
 
   const labelsByDomain = useMemo(() => {
     if (!ordersRaw) return null;
@@ -1061,6 +1079,12 @@ export function EmergencyErOrdersPanel({
     setLineActionBusy(busyKey);
     setOrderInfusionError(null);
     let postCompleteDocReminderKey: string | null = null;
+    const currentItem = parsedOrders
+      .flatMap((o) => o.items)
+      .find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
+      | Record<string, unknown>
+      | undefined;
+    const currentStatus = String(currentItem?.status ?? "");
     if (op === "complete") {
       for (const order of parsedOrders) {
         if (order.type !== "CARE") continue;
@@ -1084,13 +1108,30 @@ export function EmergencyErOrdersPanel({
       if (op === "nurse") {
         await apiFetch(`/orders/items/${itemId}/nurse-complete`, { method: "POST", facilityId });
       } else {
-        const result = await mutateOrderItemLifecycleAction(op, itemId, facilityId);
-        setOrdersRaw((prev) => patchOrderItemStatusInOrdersRaw(prev, itemId, result.nextStatus));
+        const result = await runOrderItemLifecycleUiMutation({
+          action: op,
+          itemId,
+          facilityId,
+          currentStatus,
+          mutate: (action, lineId, facId) =>
+            mutateOrderItemLifecycleAction(action, lineId, facId, {
+              cacheScope: { encounterId },
+            }),
+          handlers: createOrderLifecycleMutationHandlers({
+            itemId,
+            action: op,
+            collectionKind: "orders",
+            applyCollection: (transform) => {
+              setOrdersRaw((prev) => transform(prev) as unknown[] | null);
+            },
+          }),
+        });
         if (result.idempotent) {
           setScheduledSubmitFlash(t(orderItemLifecycleIdempotentToastKey(op)));
           window.setTimeout(() => setScheduledSubmitFlash(null), 5000);
         }
       }
+      ordersBackgroundRefreshRef.current = true;
       setOrdersRefresh((x) => x + 1);
       if (postCompleteDocReminderKey) {
         setScheduledSubmitFlash(t(postCompleteDocReminderKey));
@@ -1098,14 +1139,9 @@ export function EmergencyErOrdersPanel({
       }
     } catch (err) {
       const httpStatus = (err as { status?: number }).status;
-      const itemStatus = parsedOrders
-        .flatMap((o) => o.items)
-        .find((it) => String((it as Record<string, unknown>).id ?? "") === itemId) as
-        | Record<string, unknown>
-        | undefined;
-      const st = String(itemStatus?.status ?? "");
-      if (op !== "nurse" && shouldTreatLifecycleErrorAsStaleState(op, st, httpStatus)) {
+      if (op !== "nurse" && shouldTreatLifecycleErrorAsStaleState(op, currentStatus, httpStatus)) {
         setOrderInfusionError(t(orderItemLifecycleStaleStateMessageKey()));
+        ordersBackgroundRefreshRef.current = true;
         setOrdersRefresh((x) => x + 1);
         return;
       }

@@ -24,10 +24,15 @@ import {
   shouldTreatLifecycleErrorAsStaleState,
 } from "@/lib/mutateOrderItemLifecycleAction";
 import {
+  createOrderLifecycleMutationHandlers,
+  mergeWorklistPayload,
+  runOrderItemLifecycleUiMutation,
+} from "@/lib/orderItemLifecycleUiSync";
+import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
   orderItemWorkflowPendingKey,
-  patchOrderItemStatusInWorklistQueue,
   WORKLIST_WORKFLOW_BUSY_LABEL_KEY,
   workflowActionFailureMessageKey,
 } from "@/lib/orderItemWorkflowUi";
@@ -278,6 +283,12 @@ export default function RadWorklistPage() {
     return () => clearInterval(interval);
   }, [ready, facilityId]);
 
+  useEffect(() => {
+    return subscribeToOrderItem(() => {
+      setQueue((prev) => mergeWorklistPayload(prev));
+    });
+  }, []);
+
   const loadQueue = async (options?: { silent?: boolean }) => {
     if (!facilityId) return;
     const silent = Boolean(options?.silent) || hasLoadedOnceRef.current;
@@ -289,7 +300,7 @@ export default function RadWorklistPage() {
     const pendingP = getPendingImagingOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/radiology", { facilityId });
-      setQueue(Array.isArray(data) ? data : []);
+      setQueue(mergeWorklistPayload(Array.isArray(data) ? data : []));
       hasLoadedOnceRef.current = true;
     } catch (error) {
       console.error("Failed to load radiology worklist:", error);
@@ -405,14 +416,28 @@ export default function RadWorklistPage() {
     setPendingWorkflowAction(orderItemWorkflowPendingKey(itemId, action));
     setQueuedActionNotice(null);
     try {
-      const result = await postWorklistItemWorkflowAction(action, itemId, facilityId, itemStatus);
+      const result = await runOrderItemLifecycleUiMutation({
+        action,
+        itemId,
+        facilityId,
+        currentStatus: itemStatus,
+        mutate: (workflowAction, lineId, facId) =>
+          postWorklistItemWorkflowAction(workflowAction, lineId, facId, itemStatus, {
+            cacheScope: { worklists: ["radiology"] },
+          }),
+        handlers: createOrderLifecycleMutationHandlers({
+          itemId,
+          action,
+          collectionKind: "worklist",
+          applyCollection: (transform) => {
+            setQueue((prev) => transform(prev) as typeof prev);
+          },
+        }),
+      });
       setQueuedActionNotice(result.queued ? t("worklistDepartments.shared.actionQueuedNotice") : null);
       if (result.idempotent) {
         setQueuedActionNotice(t(orderItemLifecycleIdempotentToastKey(action)));
       }
-      setQueue((prev) =>
-        patchOrderItemStatusInWorklistQueue(prev, itemId, result.nextStatus)
-      );
       void loadQueue({ silent: true });
     } catch (error) {
       const httpStatus = (error as { status?: number }).status;

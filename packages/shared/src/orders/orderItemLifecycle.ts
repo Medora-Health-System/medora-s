@@ -93,3 +93,25 @@ export function orderItemLifecycleIdempotentMessageKey(
   if (action === "start") return "orderLifecycle.alreadyStarted";
   return "orderLifecycle.alreadyCompleted";
 }
+
+/** Monotonic lifecycle rank — higher means further along workflow. */
+export function orderItemStatusProgressRank(status: string | null | undefined): number {
+  const st = normalizeOrderItemStatus(status);
+  if (st === "VERIFIED") return 60;
+  if (st === "RESULTED") return 50;
+  if (st === "COMPLETED") return 40;
+  if (st === "IN_PROGRESS") return 30;
+  if (st === "ACKNOWLEDGED") return 20;
+  if (st === "CANCELLED") return 100;
+  if (st === "DRAFT") return 0;
+  if (st === "PLACED" || st === "PENDING" || st === "SIGNED" || st === "ORDERED") return 10;
+  return 0;
+}
+
+/** True when incoming status would regress workflow vs current authoritative status. */
+export function orderItemStatusWouldRegress(
+  currentStatus: string | null | undefined,
+  incomingStatus: string | null | undefined
+): boolean {
+  return orderItemStatusProgressRank(incomingStatus) < orderItemStatusProgressRank(currentStatus);
+}

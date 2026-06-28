@@ -4,6 +4,8 @@ import {
   orderItemAllowsComplete,
   orderItemAllowsStart,
   orderItemNeedsAcknowledge,
+  orderItemStatusProgressRank,
+  orderItemStatusWouldRegress,
   resolveOrderItemWorkflowAction,
 } from "./orderItemLifecycle.js";
 
@@ -28,5 +30,13 @@ describe("MEDUI.ORDERS.UNIFIED_ORDER_ACTION_LIFECYCLE_FIX.1 — orderItemLifecyc
     expect(orderItemNeedsAcknowledge("PENDING")).toBe(true);
     expect(orderItemAllowsStart("ACKNOWLEDGED")).toBe(true);
     expect(orderItemAllowsComplete("IN_PROGRESS")).toBe(true);
+  });
+
+  it("ranks lifecycle status monotonically for reconciliation", () => {
+    expect(orderItemStatusProgressRank("PLACED")).toBeLessThan(orderItemStatusProgressRank("ACKNOWLEDGED"));
+    expect(orderItemStatusProgressRank("ACKNOWLEDGED")).toBeLessThan(orderItemStatusProgressRank("IN_PROGRESS"));
+    expect(orderItemStatusProgressRank("IN_PROGRESS")).toBeLessThan(orderItemStatusProgressRank("COMPLETED"));
+    expect(orderItemStatusWouldRegress("COMPLETED", "ACKNOWLEDGED")).toBe(true);
+    expect(orderItemStatusWouldRegress("ACKNOWLEDGED", "COMPLETED")).toBe(false);
   });
 });
