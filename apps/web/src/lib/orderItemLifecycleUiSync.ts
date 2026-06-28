@@ -65,7 +65,6 @@ export function normalizeOrderLifecycleMutationResponse(
   const itemPatch: Record<string, unknown> = { status };
   if (lifecycleState) itemPatch.lifecycleState = lifecycleState;
   if (row?.updatedAt) itemPatch.updatedAt = row.updatedAt;
-  if (idempotent) itemPatch.idempotent = true;
   return { itemId, status, idempotent, queued, itemPatch };
 }
 
@@ -164,10 +163,7 @@ export function createOrderLifecycleMutationHandlers(input: {
     },
     forceRevert: (previousStatus) => {
       rollbackOrderItemPatch(input.itemId, previousStatus);
-      upsertOrderItemPatch(input.itemId, { status: previousStatus }, "post");
-      input.applyCollection((prev) =>
-        mergeUpdatedOrderItemIntoOrderCollections(prev, input.itemId, { status: previousStatus })
-      );
+      input.applyCollection((prev) => mergeCollection(prev));
     },
   };
 }

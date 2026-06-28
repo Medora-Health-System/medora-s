@@ -62,7 +62,8 @@ import {
   mergeOrderPayload,
   runOrderItemLifecycleUiMutation,
 } from "@/lib/orderItemLifecycleUiSync";
-import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import { ingestServerOrderPayload, subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import { OrderLifecycleErrorBoundary } from "@/components/orders/OrderLifecycleErrorBoundary";
 import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
@@ -236,7 +237,7 @@ export default function DepartmentOrderDetail({
     setError(null);
     try {
       const data = await apiFetch(`/orders/${orderId}`, { facilityId });
-      setOrder(asApiObject(mergeOrderPayload(data)));
+      setOrder(asApiObject(ingestServerOrderPayload(data)));
     } catch (e: unknown) {
       setOrder(null);
       setError(normalizeUserFacingError(e instanceof Error ? e.message : null, language) || t("orderDetail.loadError"));
@@ -515,8 +516,8 @@ export default function DepartmentOrderDetail({
         <p>{t("orderDetail.emptyLines")}</p>
       ) : (
         items.map((item: any) => (
+          <OrderLifecycleErrorBoundary key={item.id}>
           <LineCard
-            key={item.id}
             item={item}
             kind={kind}
             expanded={effectiveSelectedLineId === item.id}
@@ -537,6 +538,7 @@ export default function DepartmentOrderDetail({
             pendingWorkflowAction={pendingWorkflowAction}
             onOpenDispense={kind === "pharmacy" ? openDispense : undefined}
           />
+          </OrderLifecycleErrorBoundary>
         ))
       )}
 

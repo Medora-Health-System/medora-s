@@ -28,7 +28,8 @@ import {
   mergeWorklistPayload,
   runOrderItemLifecycleUiMutation,
 } from "@/lib/orderItemLifecycleUiSync";
-import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import { ingestServerOrderPayload, subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import { OrderLifecycleErrorBoundary } from "@/components/orders/OrderLifecycleErrorBoundary";
 import {
   isOrderItemAnyWorkflowPending,
   isOrderItemWorkflowPending,
@@ -300,7 +301,7 @@ export default function RadWorklistPage() {
     const pendingP = getPendingImagingOrderRowsForFacility(facilityId, language);
     try {
       const data = await apiFetch("/worklists/radiology", { facilityId });
-      setQueue(mergeWorklistPayload(Array.isArray(data) ? data : []));
+      setQueue(ingestServerOrderPayload(Array.isArray(data) ? data : []));
       hasLoadedOnceRef.current = true;
     } catch (error) {
       console.error("Failed to load radiology worklist:", error);
@@ -543,6 +544,7 @@ export default function RadWorklistPage() {
         const operational = operationalByItemId.get(item.id);
         return (
           <li key={item.id} style={{ minWidth: 0 }}>
+            <OrderLifecycleErrorBoundary>
             <MedoraCard
               className="transition-shadow duration-150 ease-out hover:shadow-[0_4px_14px_rgba(15,23,42,0.08)]"
               leftAccentColor={borderLeft}
@@ -599,6 +601,7 @@ export default function RadWorklistPage() {
                 </MedoraCardActions>
               </MedoraCardInner>
             </MedoraCard>
+            </OrderLifecycleErrorBoundary>
           </li>
         );
       })}

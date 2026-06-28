@@ -89,12 +89,13 @@ import {
   orderItemLifecycleStaleStateMessageKey,
   shouldTreatLifecycleErrorAsStaleState,
 } from "@/lib/mutateOrderItemLifecycleAction";
-import { subscribeToOrderItem } from "@/lib/orderStateSyncStore";
+import { ingestServerOrderPayload, subscribeToOrderItem } from "@/lib/orderStateSyncStore";
 import {
   createOrderLifecycleMutationHandlers,
   mergeOrderPayload,
   runOrderItemLifecycleUiMutation,
 } from "@/lib/orderItemLifecycleUiSync";
+import { OrderLifecycleErrorBoundary } from "@/components/orders/OrderLifecycleErrorBoundary";
 import {
   orderItemAllowsComplete,
   orderItemAllowsStart,
@@ -712,7 +713,9 @@ export function EmergencyErOrdersPanel({
           fetchOrdersForEncounter(facilityId, encounterId),
           fetchOrderEventsForEncounter(facilityId, encounterId),
         ]);
-        if (!cancelled) setOrdersRaw(mergeOrderPayload(Array.isArray(orders) ? orders : []));
+        if (!cancelled) {
+          setOrdersRaw(ingestServerOrderPayload(Array.isArray(orders) ? orders : []));
+        }
         if (!cancelled) setOrderEventsRaw(Array.isArray(events) ? events : []);
       } catch {
         if (!cancelled && !backgroundOnly) setOrdersRaw(null);
@@ -1798,6 +1801,7 @@ export function EmergencyErOrdersPanel({
                               ) : null;
                               return (
                                 <li key={itemId} style={{ minWidth: 0, listStyle: "none" }}>
+                                  <OrderLifecycleErrorBoundary>
                                   <ErOrderLineCard
                                     layoutMode={layoutMode}
                                     categoryLabel={categoryLabel}
@@ -1853,6 +1857,7 @@ export function EmergencyErOrdersPanel({
                                     highlightPending={linePendingCancel}
                                     fieldLabels={orderCardFieldLabels}
                                   />
+                                  </OrderLifecycleErrorBoundary>
                                 </li>
                               );
                             })}

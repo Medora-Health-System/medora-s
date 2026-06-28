@@ -2,11 +2,13 @@ import { describe, expect, it, beforeEach } from "vitest";
 import {
   clearOrderItemPending,
   getOrderItemSnapshot,
+  ingestServerOrderPayload,
   markOrderItemPending,
   mergeOrderPayload,
   mergeWorklistPayload,
   preventStaleOverwrite,
   resetOrderStateSyncStoreForTests,
+  subscribeToOrderItem,
   upsertOrderItemPatch,
 } from "./orderStateSyncStore";
 
@@ -92,5 +94,58 @@ describe("MEDUI.ORDERS.UNIFIED_ORDER_STATE_SYNCHRONIZATION_CERTIFICATION.1 — o
     upsertOrderItemPatch("line-perf", { status: "ACKNOWLEDGED" }, "optimistic");
     mergeOrderPayload([{ id: "o1", items: [{ id: "line-perf", status: "PLACED" }] }]);
     expect(performance.now() - start).toBeLessThan(100);
+  });
+
+  it("mergeOrderPayload is side-effect free and does not notify subscribers", () => {
+    upsertOrderItemPatch("line-loop", { status: "IN_PROGRESS" }, "post");
+    let notifyCount = 0;
+    subscribeToOrderItem(() => {
+      notifyCount += 1;
+    });
+    const orders = [{ id: "o1", items: [{ id: "line-loop", status: "PLACED" }] }];
+    for (let i = 0; i < 100; i += 1) {
+      mergeOrderPayload(orders);
+    }
+    expect(notifyCount).toBe(0);
+    expect(getOrderItemSnapshot("line-loop")?.status).toBe("IN_PROGRESS");
+  });
+
+  it("ingestServerOrderPayload reconciles store silently then merges", () => {
+    upsertOrderItemPatch("line-bg", { status: "COMPLETED" }, "post");
+    let notifyCount = 0;
+    subscribeToOrderItem(() => {
+      notifyCount += 1;
+    });
+    const payload = [
+      {
+        id: "order-1",
+        items: [{ id: "line-bg", status: "ACKNOWLEDGED", updatedAt: "2026-06-01T10:00:00.000Z" }],
+      },
+    ];
+    const merged = ingestServerOrderPayload(payload) as typeof payload;
+    expect(merged[0]?.items[0]?.status).toBe("COMPLETED");
+    expect(getOrderItemSnapshot("line-bg")?.status).toBe("COMPLETED");
+    expect(notifyCount).toBe(0);
+  });
+
+  it("strips store-only metadata from item patches", () => {
+    upsertOrderItemPatch("line-meta", { status: "ACKNOWLEDGED", idempotent: true as unknown as never }, "post");
+    const merged = mergeOrderPayload([
+      { id: "o1", items: [{ id: "line-meta", status: "PLACED" }] },
+    ]) as Array<{ items: Array<Record<string, unknown>> }>;
+    expect(merged[0]?.items[0]?.status).toBe("ACKNOWLEDGED");
+    expect(merged[0]?.items[0]?.idempotent).toBeUndefined();
+  });
+
+  it("rapid optimistic upserts for same item coalesce listener notifications", async () => {
+    let notifyCount = 0;
+    subscribeToOrderItem(() => {
+      notifyCount += 1;
+    });
+    for (let i = 0; i < 100; i += 1) {
+      upsertOrderItemPatch("line-same", { status: "ACKNOWLEDGED" }, "optimistic");
+    }
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(notifyCount).toBe(1);
   });
 });
