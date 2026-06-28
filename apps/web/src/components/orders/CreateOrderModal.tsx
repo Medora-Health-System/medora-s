@@ -52,7 +52,9 @@ import {
   checkedOrderSetItemKeys,
   filterEnterpriseOrderSets,
   getDefaultOrderSetKey,
+  groupEnterpriseOrderSetsByCategory,
   isRequiredOrderSetItem,
+  ORDER_SET_CATEGORY_OPTIONS,
   orderSetWarningsForLocale,
   resolveOrderSetTitle,
   toOrderSetUiItems,
@@ -323,6 +325,13 @@ function OrderSetPreview({
     () => filterEnterpriseOrderSets({ category: categoryFilter, query: searchQuery, locale }),
     [categoryFilter, searchQuery, locale]
   );
+  const groupedSets = useMemo(
+    () =>
+      categoryFilter === "ALL" && !searchQuery.trim()
+        ? groupEnterpriseOrderSetsByCategory(visibleSets, locale)
+        : null,
+    [categoryFilter, searchQuery, visibleSets, locale]
+  );
   const items = useMemo(
     () => (selectedSet ? toOrderSetUiItems(selectedSet, locale) : []),
     [selectedSet, locale]
@@ -376,18 +385,56 @@ function OrderSetPreview({
           }}
         >
           <option value="ALL">{t("createOrderModal.orderSetsCategoryAll")}</option>
-          {(["CARDIAC", "NEURO", "INFECTION", "TRAUMA", "RESPIRATORY", "SEDATION", "BEHAVIORAL"] as const).map(
-            (category) => (
-              <option key={category} value={category}>
-                {t(`createOrderModal.orderSetsCategory.${category}`)}
-              </option>
-            )
-          )}
+          {ORDER_SET_CATEGORY_OPTIONS.map((category) => (
+            <option key={category} value={category}>
+              {t(`createOrderModal.orderSetsCategory.${category}`)}
+            </option>
+          ))}
         </select>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 0.8fr) minmax(220px, 1fr)", gap: 12 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
-          {visibleSets.map((set) => {
+          {groupedSets
+            ? groupedSets.map((group) => (
+                <div key={group.category} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: "#64748b",
+                      textTransform: "uppercase",
+                      letterSpacing: 0.4,
+                      padding: "2px 2px 0",
+                    }}
+                  >
+                    {t(`createOrderModal.orderSetsCategory.${group.category}`)}
+                  </div>
+                  {group.sets.map((set) => {
+                    const active = set.code === selected;
+                    return (
+                      <button
+                        key={set.code}
+                        type="button"
+                        onClick={() => onSelect(set.code)}
+                        style={{
+                          padding: "8px 10px",
+                          border: active ? "1px solid #1a1a1a" : "1px solid #d6d6d6",
+                          borderRadius: 6,
+                          background: active ? "#fff" : "#f8fafc",
+                          color: "#1f2937",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontSize: 13,
+                          fontWeight: active ? 700 : 600,
+                        }}
+                      >
+                        {resolveOrderSetTitle(set, locale)}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))
+            : visibleSets.map((set) => {
             const active = set.code === selected;
             return (
               <button

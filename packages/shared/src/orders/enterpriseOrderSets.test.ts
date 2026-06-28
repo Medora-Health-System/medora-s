@@ -3,16 +3,20 @@ import {
   activeEnterpriseOrderSets,
   enterpriseOrderSetByCode,
   ENTERPRISE_ORDER_SET_REGISTRY,
-} from "./enterpriseOrderSets.js";
+  ENTERPRISE_ORDER_SET_CATEGORIES,
+} from "./orderSets/index.js";
 import {
   validateEnterpriseOrderSetRegistry,
   validateEnterpriseOrderSetDefinition,
 } from "./enterpriseOrderSetValidation.js";
 
-describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_FOUNDATION_PHASE_1)", () => {
-  it("registry has seven active Phase 1 ED order sets", () => {
-    expect(activeEnterpriseOrderSets()).toHaveLength(7);
-    expect(ENTERPRISE_ORDER_SET_REGISTRY.every((set) => set.governanceLevel === "PHASE_1_ED")).toBe(true);
+describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_PHASE_4)", () => {
+  it("registry has 54 active ED order sets (Phase 1 + Phase 4 expansion)", () => {
+    expect(activeEnterpriseOrderSets()).toHaveLength(54);
+    const phase1 = activeEnterpriseOrderSets().filter((set) => set.governanceLevel === "PHASE_1_ED");
+    const phase4 = activeEnterpriseOrderSets().filter((set) => set.governanceLevel === "PHASE_4_ED");
+    expect(phase1).toHaveLength(7);
+    expect(phase4).toHaveLength(47);
   });
 
   it("active codes are unique", () => {
@@ -42,6 +46,20 @@ describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_FOUNDATION_PHASE_1)", 
     }
   });
 
+  it("Phase 4 sample order sets validate individually", () => {
+    for (const code of [
+      "ed_asthma_v1",
+      "ed_abdominal_pain_v1",
+      "ed_syncope_v1",
+      "ed_laceration_v1",
+      "ed_overdose_v1",
+    ] as const) {
+      const set = enterpriseOrderSetByCode(code);
+      expect(set, code).toBeTruthy();
+      expect(validateEnterpriseOrderSetDefinition(set!)).toEqual([]);
+    }
+  });
+
   it("oxygen therapy items require structured parameters", () => {
     for (const set of activeEnterpriseOrderSets()) {
       for (const item of [...set.requiredItems, ...set.optionalItems]) {
@@ -52,7 +70,7 @@ describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_FOUNDATION_PHASE_1)", 
     }
   });
 
-  it("Phase 1 order sets exclude medication items", () => {
+  it("enterprise order sets exclude medication items", () => {
     for (const set of activeEnterpriseOrderSets()) {
       const meds = [...set.requiredItems, ...set.optionalItems].filter((item) => item.kind === "MEDICATION");
       expect(meds).toEqual([]);
@@ -66,10 +84,22 @@ describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_FOUNDATION_PHASE_1)", 
     expect(ctHead?.catalogCodes).toContain("CT_HEAD");
   });
 
-  it("provider/admin role governance on all Phase 1 sets", () => {
+  it("provider/admin role governance on all sets", () => {
     for (const set of activeEnterpriseOrderSets()) {
       expect(set.rolesAllowed).toContain("PROVIDER");
       expect(set.rolesAllowed).not.toContain("RN");
     }
+  });
+
+  it("expanded enterprise categories are defined", () => {
+    expect(ENTERPRISE_ORDER_SET_CATEGORIES.length).toBeGreaterThanOrEqual(15);
+    const used = new Set(activeEnterpriseOrderSets().map((set) => set.category));
+    for (const category of used) {
+      expect(ENTERPRISE_ORDER_SET_CATEGORIES).toContain(category);
+    }
+  });
+
+  it("registry remains modular — composed from Emergency modules", () => {
+    expect(ENTERPRISE_ORDER_SET_REGISTRY.length).toBe(54);
   });
 });

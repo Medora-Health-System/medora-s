@@ -7,6 +7,7 @@ import {
   defaultCheckedEnterpriseOrderSetItemKeys,
   enterpriseOrderSetByCode,
   enterpriseOrderSetItemByKey,
+  ENTERPRISE_ORDER_SET_CATEGORIES,
   resolveEnterpriseOrderSetDisplayName,
   resolveEnterpriseOrderSetItemDisplayName,
   type EnterpriseOrderSetCategory,
@@ -72,13 +73,28 @@ export function toOrderSetUiItems(
   ];
 }
 
+export const ORDER_SET_CATEGORY_OPTIONS = ENTERPRISE_ORDER_SET_CATEGORIES;
+
+export function sortEnterpriseOrderSetsByDisplayName(
+  sets: readonly EnterpriseOrderSetDefinition[],
+  locale: SupportedLanguage
+): EnterpriseOrderSetDefinition[] {
+  return [...sets].sort((a, b) =>
+    resolveEnterpriseOrderSetDisplayName(a, locale).localeCompare(
+      resolveEnterpriseOrderSetDisplayName(b, locale),
+      locale === "fr" ? "fr" : "en",
+      { sensitivity: "base" }
+    )
+  );
+}
+
 export function filterEnterpriseOrderSets(input: {
   category: EnterpriseOrderSetCategory | "ALL";
   query: string;
   locale: SupportedLanguage;
 }): EnterpriseOrderSetDefinition[] {
   const q = input.query.trim().toLowerCase();
-  return activeEnterpriseOrderSets().filter((set) => {
+  const filtered = activeEnterpriseOrderSets().filter((set) => {
     if (input.category !== "ALL" && set.category !== input.category) return false;
     if (!q) return true;
     const haystack = [
@@ -86,12 +102,36 @@ export function filterEnterpriseOrderSets(input: {
       set.displayNameEn,
       set.displayNameFr,
       set.clinicalDomain,
+      set.category,
       ...set.indicationKeywords,
     ]
       .join(" ")
       .toLowerCase();
     return haystack.includes(q);
   });
+  return sortEnterpriseOrderSetsByDisplayName(filtered, input.locale);
+}
+
+export type EnterpriseOrderSetCategoryGroup = {
+  category: EnterpriseOrderSetCategory;
+  sets: EnterpriseOrderSetDefinition[];
+};
+
+/** Group filtered sets by category for compact browsing when showing all categories. */
+export function groupEnterpriseOrderSetsByCategory(
+  sets: readonly EnterpriseOrderSetDefinition[],
+  locale: SupportedLanguage
+): EnterpriseOrderSetCategoryGroup[] {
+  const byCategory = new Map<EnterpriseOrderSetCategory, EnterpriseOrderSetDefinition[]>();
+  for (const set of sets) {
+    const list = byCategory.get(set.category) ?? [];
+    list.push(set);
+    byCategory.set(set.category, list);
+  }
+  return ORDER_SET_CATEGORY_OPTIONS.filter((category) => byCategory.has(category)).map((category) => ({
+    category,
+    sets: sortEnterpriseOrderSetsByDisplayName(byCategory.get(category) ?? [], locale),
+  }));
 }
 
 export function resolveOrderSetTitle(set: EnterpriseOrderSetDefinition, locale: SupportedLanguage): string {

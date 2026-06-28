@@ -8,7 +8,7 @@ import {
   ENTERPRISE_ORDER_SET_REGISTRY,
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemRef,
-} from "./enterpriseOrderSets.js";
+} from "./orderSets/index.js";
 
 /** Reference lab codes present in Haiti seed catalog (facility may alias ER_*). */
 export const ENTERPRISE_ORDER_SET_REFERENCE_LAB_CODES = new Set([
@@ -28,17 +28,73 @@ export const ENTERPRISE_ORDER_SET_REFERENCE_LAB_CODES = new Set([
   "ER_ABG",
   "VBG",
   "ER_VBG",
+  "BNP",
+  "ER_BNP",
+  "D_DIMER",
+  "DDIMER",
+  "ER_DDM",
+  "GLU",
+  "ER_GLU",
+  "UA",
+  "LIPASE",
+  "AMYLASE",
+  "INR",
+  "PT_INR",
+  "CRP",
+  "RAPID_STREP",
+  "ETHANOL",
+  "URINE_DRUG_SCREEN",
+  "HCG_BETA",
+  "HCG_URINE",
+  "SERUM_HCG",
+  "URINE_HCG",
+  "HIV",
+  "HEP_B_RAPID",
+  "HEP_C_AB",
+  "WOUND_CULTURE",
+  "HBA1C",
+  "PROCALCITONIN",
 ]);
 
 /** Reference imaging codes present in Haiti seed catalog. */
 export const ENTERPRISE_ORDER_SET_REFERENCE_IMAGING_CODES = new Set([
   "XR_CHEST",
+  "XR_CHEST_2V",
   "CT_HEAD",
   "CT_HEAD_WO_CONTRAST",
   "CT_CERVICAL_SPINE",
   "CTA_HEAD_NECK",
   "CT_ABDOMEN_PELVIS",
   "CT_ABD",
+  "CT_CHEST",
+  "CTA_CHEST",
+  "CT_CHEST_CTA",
+  "CT_CHEST_ABDOMEN_PELVIS_TRAUMA",
+  "CT_SPINE_LUMBAR",
+  "CTA_ABDOMEN_PELVIS",
+  "US_ABD",
+  "US_ABDOMEN",
+  "US_OB",
+  "US_OB_FIRST",
+  "US_RENAL",
+  "US_PELVIS",
+  "US_FAST",
+  "US_VENOUS_DOPPLER_LE",
+  "DOPPLER_VEIN",
+  "XR_KNEE",
+  "XR_ANKLE",
+  "XR_SHOULDER",
+  "XR_WRIST",
+  "XR_HAND",
+  "XR_FOOT",
+  "XR_HIP",
+  "XR_ELBOW",
+  "XR_FOREARM",
+  "XR_HUMERUS",
+  "XR_PELVIS",
+  "XR_FEMUR",
+  "XR_TIB_FIB",
+  "XR_ABDOMEN",
 ]);
 
 export type EnterpriseOrderSetValidationIssue = {
@@ -146,7 +202,7 @@ function validateItemCatalogReference(item: EnterpriseOrderSetItemRef): Enterpri
       orderSetCode: "",
       itemKey: item.key,
       kind: "medication",
-      message: "Phase 1 order sets must not include medication items",
+      message: "Enterprise order sets must not include medication items",
     });
   }
 

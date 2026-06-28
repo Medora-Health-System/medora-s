@@ -94,6 +94,13 @@ describe("enterprise order sets foundation (web)", () => {
     expect(modalSource).toContain("enterpriseOrderSetProvenance");
   });
 
+  it("Phase 4 — registry scales with modular adapter sorting and grouping", () => {
+    expect(adapterSource).toContain("sortEnterpriseOrderSetsByDisplayName");
+    expect(adapterSource).toContain("groupEnterpriseOrderSetsByCategory");
+    expect(adapterSource).toContain("ORDER_SET_CATEGORY_OPTIONS");
+    expect(activeEnterpriseOrderSets().length).toBeGreaterThanOrEqual(40);
+  });
+
   it("Phase 2 — manual orders omit provenance unless order-set review active", () => {
     expect(modalSource).toContain("orderSetApplyContext");
     expect(modalSource).toContain("orderSetReviewActive");
