@@ -6,6 +6,7 @@ import { HAITI_IMAGING_CATALOG } from "./data/haiti-imaging-studies";
 import { US_ER_LAB_CATALOG } from "./data/er-us-lab-tests";
 import { assertNoStaleHaitiCatalogArtifacts } from "./helpers/assert-no-stale-haiti-catalog-artifacts";
 import { seedHaitiMedicationCatalog } from "./helpers/seed-haiti-medication-catalog";
+import { seedCareProcedureCatalog } from "./helpers/seed-care-procedure-catalog";
 import { seedHaitiLabImagingCatalog } from "./helpers/seed-haiti-lab-imaging-catalog";
 import { seedMrvClassifiers } from "./helpers/seed-mrv-classifiers";
 import { seedMedicationSafetyClassifiers } from "./helpers/seed-medication-safety-classifiers";
@@ -53,6 +54,11 @@ async function main() {
 
   // Medications — reuse full Haiti catalog (offline-first, stable codes, aliases, searchText)
   await seedHaitiMedicationCatalog(prisma, HAITI_MEDICATION_CATALOG_FULL);
+
+  const careProcedures = await seedCareProcedureCatalog(prisma);
+  console.log(
+    `✅ Care / Procedures catalog (${careProcedures.upserted} procedures, ${careProcedures.aliasesCreated} aliases)`
+  );
 
   await seedBillingCatalogCommonMappings(prisma);
   const medBillingRemediation = await seedMedicationBillingMappingRemediation(prisma);
@@ -244,7 +250,7 @@ async function main() {
     );
   }
 
-  console.log("✅ Catalogs seeded (lab, imaging, medications)");
+  console.log("✅ Catalogs seeded (lab, imaging, medications, care procedures)");
 }
 
 main()

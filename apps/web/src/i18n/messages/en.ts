@@ -15941,6 +15941,8 @@ export default {
     careSearchPlaceholder: "Search care or procedure…",
     careSearchMinCharsHint: "Type at least 2 characters",
     careSearchNoResults: "No matching care tasks",
+    careCategoryFilterLabel: "Category",
+    careCategoryAll: "All categories",
     careEkgReportingHelper:
       "For door-to-EKG/ECG reporting, document the EKG/ECG procedure in the Procedures workflow.",
     careOpenProcedureDocButton: "Open procedure documentation",

@@ -7,6 +7,7 @@ const CATALOG_SEARCH_EN_FALLBACK_KEYS: Record<CatalogSearchItemType, string> = {
   LAB_TEST: "patientChartUi.orderDisplayFallback.labTest",
   IMAGING_STUDY: "patientChartUi.orderDisplayFallback.imaging",
   MEDICATION: "patientChartUi.orderDisplayFallback.medication",
+  CARE_PROCEDURE: "patientChartUi.orderDisplayFallback.care",
 };
 
 /**

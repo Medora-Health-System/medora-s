@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Normalized catalog row for autocomplete + future offline index (lightweight JSON). */
-export const catalogSearchItemTypeSchema = z.enum(["MEDICATION", "LAB_TEST", "IMAGING_STUDY"]);
+export const catalogSearchItemTypeSchema = z.enum(["MEDICATION", "LAB_TEST", "IMAGING_STUDY", "CARE_PROCEDURE"]);
 export type CatalogSearchItemType = z.infer<typeof catalogSearchItemTypeSchema>;
 
 export type CatalogSearchItemDto = {
@@ -43,6 +43,13 @@ export type CatalogSearchItemDto = {
     bodyRegion?: string;
     /** LAB_TEST: suggestion CPT/HCPCS, non appliquée automatiquement. */
     billingCodeDefault?: string;
+    executionRoleCategory?: string;
+    categoryLabelEn?: string;
+    categoryLabelFr?: string;
+    documentationTemplateId?: string;
+    requiresProviderOrder?: boolean;
+    nursingProtocolAllowed?: boolean;
+    requiresClinicalNote?: boolean;
     /**
      * Phase 19C.2 — supplemental read-only canonical master hints (search/display only).
      * Never contains canonical concept/product/package UUIDs; ordering still uses `id` (CatalogMedication).
@@ -79,6 +86,17 @@ export const catalogSearchQuerySchema = z.object({
     .transform((v) => v === "true" || v === "1"),
   /** `documentation` skips order-search activation gate (triage home med / allergy history). */
   purpose: catalogSearchPurposeSchema,
+});
+
+export const procedureCatalogSearchQuerySchema = z.object({
+  q: z
+    .string()
+    .max(200)
+    .transform((s) => s.trim())
+    .optional()
+    .default(""),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+  category: z.string().trim().max(64).optional(),
 });
 
 export type CatalogSearchQuery = z.infer<typeof catalogSearchQuerySchema>;

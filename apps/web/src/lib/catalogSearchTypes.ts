@@ -1,5 +1,5 @@
 /** Aligné sur l’API GET /catalog/.../search (réponse compacte). */
-export type CatalogSearchItemType = "MEDICATION" | "LAB_TEST" | "IMAGING_STUDY";
+export type CatalogSearchItemType = "MEDICATION" | "LAB_TEST" | "IMAGING_STUDY" | "CARE_PROCEDURE";
 
 export type CatalogSearchItem = {
   id: string;
@@ -36,6 +36,13 @@ export type CatalogSearchItem = {
     modality?: string;
     bodyRegion?: string;
     billingCodeDefault?: string;
+    executionRoleCategory?: string;
+    categoryLabelEn?: string;
+    categoryLabelFr?: string;
+    documentationTemplateId?: string;
+    requiresProviderOrder?: boolean;
+    nursingProtocolAllowed?: boolean;
+    requiresClinicalNote?: boolean;
     /** Phase 19C.2 — read-only canonical hints; ordering still uses catalog `id`. */
     canonicalReadOnly?: {
       matchConfidence: "LEGACY_LINK";

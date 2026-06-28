@@ -1,3 +1,4 @@
+import { canonicalCareProcedureByCode } from "./canonicalCareProcedureCatalog.js";
 import {
   enterpriseProcedureById,
   type EnterpriseProcedureExecutionRole,
@@ -49,14 +50,48 @@ export function resolveProcedureExecutionProfile(
   if (!enterpriseProcedureId) return null;
 
   const entry = enterpriseProcedureById(enterpriseProcedureId);
-  if (!entry) return null;
+  if (entry) {
+    return {
+      executionRoleCategory: entry.executionRoleCategory,
+      acknowledgeRoles: [...entry.acknowledgeRoles],
+      completeRoles: [...entry.completeRoles],
+      ...buildProfileFlags(entry),
+    };
+  }
 
-  return {
-    executionRoleCategory: entry.executionRoleCategory,
-    acknowledgeRoles: [...entry.acknowledgeRoles],
-    completeRoles: [...entry.completeRoles],
-    ...buildProfileFlags(entry),
-  };
+  const canonical = canonicalCareProcedureByCode(enterpriseProcedureId);
+  if (canonical?.isActive) {
+    const category = canonical.executionRoleCategory;
+    const defaultRoles = defaultRolesForCategory(category);
+    return {
+      executionRoleCategory: category,
+      acknowledgeRoles: defaultRoles,
+      completeRoles: defaultRoles,
+      ...buildProfileFlags({ completeRoles: defaultRoles }),
+    };
+  }
+
+  return null;
+}
+
+function defaultRolesForCategory(
+  category: EnterpriseProcedureExecutionRoleCategory
+): EnterpriseProcedureExecutionRole[] {
+  switch (category) {
+    case "PROVIDER":
+      return ["PROVIDER"];
+    case "RESPIRATORY":
+      return ["RT"];
+    case "LAB":
+      return ["LAB_TECH", "RN"];
+    case "RADIOLOGY":
+      return ["RADIOLOGY_TECH", "RN"];
+    case "MULTI_ROLE":
+      return ["RN", "PROVIDER"];
+    case "NURSING":
+    default:
+      return ["RN"];
+  }
 }
 
 /** Legacy CARE fallback when enterpriseProcedureId is absent. */

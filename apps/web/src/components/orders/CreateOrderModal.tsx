@@ -13,12 +13,19 @@ import {
   resolveEnterpriseProcedureDisplayName,
   resolveMedicationOrderItemFrequencyCode,
   enterpriseProcedureCategoryLabel,
+  mapEnterpriseCategoryToCanonicalCareCategory,
   type EnterpriseProcedureDefinition,
+  type EnterpriseProcedureCategory,
 } from "@medora/shared";
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
-import { searchCatalog } from "@/lib/catalogSearchApi";
+import { searchCatalog, searchProcedureCatalog } from "@/lib/catalogSearchApi";
 import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
+import {
+  CANONICAL_CARE_PROCEDURE_CATEGORIES,
+  canonicalCareProcedureCategoryLabel,
+  type CanonicalCareProcedureCategory,
+} from "@medora/shared";
 import { catalogSearchItemFullDisplayLine } from "@/lib/catalogDisplayLabel";
 import { fetchProviderDirectory, type ProviderDirectoryItem } from "@/lib/ordersApi";
 import { OrderPriorityField } from "./createOrderModal/OrderPriorityField";
@@ -207,6 +214,14 @@ function careLabelExistsInItems(items: CreateOrderLineItem[], label: string): bo
   const n = careLabelNorm(label);
   return items.some((i) => careLabelNorm(i.manualLabel ?? i._label ?? "") === n);
 }
+
+type CareProcedurePickerRow = {
+  code: string;
+  displayNameEn: string;
+  displayNameFr: string;
+  categoryLabelEn: string;
+  categoryLabelFr: string;
+};
 
 function checkedOrderSetItemKeys(orderSet: OrderSetKey): string[] {
   return ORDER_SET_ITEMS[orderSet].map((item) => item.key);
@@ -699,14 +714,36 @@ export function CreateOrderModal({
   const { facilityTimeZone, facilityClinicalTimeZoneReady } = useFacilityAndRoles();
   const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
   const [carePickerQuery, setCarePickerQuery] = useState("");
+  const [careCategoryFilter, setCareCategoryFilter] = useState<"" | CanonicalCareProcedureCategory>("");
+  const [careApiMatches, setCareApiMatches] = useState<CareProcedurePickerRow[]>([]);
+  const [careApiSearchLoading, setCareApiSearchLoading] = useState(false);
   const carePresets = useMemo(() => t("createOrderModal.carePresets").split("\n").filter(Boolean), [t]);
-  const careCatalogMatches = useMemo(() => {
+  const careOfflineMatches = useMemo(() => {
     const q = carePickerQuery.trim();
     if (q.length < 2) return [];
     const locale = language === "fr" ? "fr" : "en";
-    return filterEnterpriseProcedures(q, locale);
-  }, [carePickerQuery, language]);
+    return filterEnterpriseProcedures(q, locale)
+      .filter((procedure) => {
+        if (!careCategoryFilter) return true;
+        const canonicalCategory = mapEnterpriseCategoryToCanonicalCareCategory(procedure.category);
+        return canonicalCategory === careCategoryFilter;
+      })
+      .map((procedure) => ({
+        code: procedure.id,
+        displayNameEn: procedure.displayNameEn,
+        displayNameFr: procedure.displayNameFr,
+        categoryLabelEn: enterpriseProcedureCategoryLabel(procedure.category, "en"),
+        categoryLabelFr: enterpriseProcedureCategoryLabel(procedure.category, "fr"),
+      }));
+  }, [carePickerQuery, language, careCategoryFilter]);
+  const careCatalogMatches = useMemo(() => {
+    if (careApiMatches.length > 0) return careApiMatches;
+    if (careApiSearchLoading) return [];
+    return careOfflineMatches;
+  }, [careApiMatches, careApiSearchLoading, careOfflineMatches]);
   const canUseMedicationCareTabs = canPrescribe || canUseRnOrderAuthority;
+  const careSearchActive =
+    carePickerQuery.trim().length >= 2 || Boolean(careCategoryFilter);
   const erAdministerOnlyMedication = medicationOrderMode === "ER_ADMINISTER_ONLY";
   const firstTab: OrderModalTab =
     !canUseMedicationCareTabs && (initialOrderTab === "MEDICATION" || initialOrderTab === "CARE")
@@ -797,6 +834,43 @@ export function CreateOrderModal({
   const [draftSavedLocallyAt, setDraftSavedLocallyAt] = useState<string | null>(null);
   const prescriberPrefilled = useRef(false);
   const lastAppliedFacilityTzRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const q = carePickerQuery.trim();
+    if (q.length < 2 && !careCategoryFilter) {
+      setCareApiMatches([]);
+      setCareApiSearchLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setCareApiSearchLoading(true);
+    void searchProcedureCatalog(facilityId, {
+      q: q.length >= 2 ? q : "",
+      limit: 25,
+      ...(careCategoryFilter ? { category: careCategoryFilter } : {}),
+    })
+      .then((items) => {
+        if (cancelled) return;
+        setCareApiMatches(
+          items.map((item) => ({
+            code: item.code,
+            displayNameEn: item.displayNameEn ?? item.name ?? item.code,
+            displayNameFr: item.displayNameFr ?? item.displayNameEn ?? item.name ?? item.code,
+            categoryLabelEn: item.metadata?.categoryLabelEn ?? item.metadata?.category ?? "",
+            categoryLabelFr: item.metadata?.categoryLabelFr ?? item.metadata?.category ?? "",
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setCareApiMatches([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCareApiSearchLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [carePickerQuery, careCategoryFilter, facilityId]);
 
   /** Re-default untouched planned administration when facility TZ loads (K.10B.3 / K.10B.4). */
   useEffect(() => {
@@ -1500,16 +1574,16 @@ export function CreateOrderModal({
     });
   };
 
-  const addCareCatalogProcedure = (procedure: EnterpriseProcedureDefinition) => {
+  const addCareCatalogProcedure = (procedure: CareProcedurePickerRow) => {
     const locale = language === "fr" ? "fr" : "en";
-    const label = resolveEnterpriseProcedureDisplayName(procedure, locale);
+    const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
     const quickKey =
-      procedure.id === "ekg_ecg"
+      procedure.code === "ekg_ecg"
         ? ("ekg_workflow" as const)
-        : procedure.id === "laceration_repair"
+        : procedure.code === "laceration_repair"
           ? ("laceration_kit" as const)
           : undefined;
-    addCareLine(label, { enterpriseProcedureId: procedure.id, quickKey });
+    addCareLine(label, { enterpriseProcedureId: procedure.code, quickKey });
     setCarePickerQuery("");
   };
 
@@ -2669,6 +2743,36 @@ export function CreateOrderModal({
                       </div>
                     ) : null}
                     <div style={{ marginBottom: 12 }}>
+                      <label
+                        htmlFor="care-category-filter"
+                        style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6 }}
+                      >
+                        {t("createOrderModal.careCategoryFilterLabel")}
+                      </label>
+                      <select
+                        id="care-category-filter"
+                        value={careCategoryFilter}
+                        onChange={(e) =>
+                          setCareCategoryFilter(e.target.value as "" | CanonicalCareProcedureCategory)
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "8px 10px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: 6,
+                          fontSize: 14,
+                          marginBottom: 8,
+                          boxSizing: "border-box",
+                          background: "#fff",
+                        }}
+                      >
+                        <option value="">{t("createOrderModal.careCategoryAll")}</option>
+                        {CANONICAL_CARE_PROCEDURE_CATEGORIES.map((category) => (
+                          <option key={category} value={category}>
+                            {canonicalCareProcedureCategoryLabel(category, language === "fr" ? "fr" : "en")}
+                          </option>
+                        ))}
+                      </select>
                       <input
                         type="search"
                         value={carePickerQuery}
@@ -2692,7 +2796,7 @@ export function CreateOrderModal({
                           {t("createOrderModal.careSearchMinCharsHint")}
                         </div>
                       ) : null}
-                      {carePickerQuery.trim().length >= 2 ? (
+                      {careSearchActive ? (
                         careCatalogMatches.length === 0 ? (
                           <div style={{ fontSize: 12, color: "#64748b", marginTop: 8 }}>
                             {t("createOrderModal.careSearchNoResults")}
@@ -2712,12 +2816,15 @@ export function CreateOrderModal({
                           >
                             {careCatalogMatches.map((procedure) => {
                               const locale = language === "fr" ? "fr" : "en";
+                              const label = locale === "fr" ? procedure.displayNameFr : procedure.displayNameEn;
+                              const categoryLabel =
+                                locale === "fr" ? procedure.categoryLabelFr : procedure.categoryLabelEn;
                               return (
-                                <li key={procedure.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                <li key={procedure.code} style={{ borderBottom: "1px solid #f1f5f9" }}>
                                   <button
                                     type="button"
                                     onClick={() => addCareCatalogProcedure(procedure)}
-                                    data-testid={`create-order-care-catalog-${procedure.id}`}
+                                    data-testid={`create-order-care-catalog-${procedure.code}`}
                                     style={{
                                       display: "block",
                                       width: "100%",
@@ -2730,12 +2837,12 @@ export function CreateOrderModal({
                                       color: "#0f172a",
                                     }}
                                   >
-                                    <span style={{ fontWeight: 600 }}>
-                                      {resolveEnterpriseProcedureDisplayName(procedure, locale)}
-                                    </span>
-                                    <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 2 }}>
-                                      {enterpriseProcedureCategoryLabel(procedure.category, locale)}
-                                    </span>
+                                    <span style={{ fontWeight: 600 }}>{label}</span>
+                                    {categoryLabel ? (
+                                      <span style={{ display: "block", fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                                        {categoryLabel}
+                                      </span>
+                                    ) : null}
                                   </button>
                                 </li>
                               );

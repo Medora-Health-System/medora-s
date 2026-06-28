@@ -1421,6 +1421,48 @@ model MedicationAlias {
   @@index([alias])
 }
 
+model CatalogProcedure {
+  id                      String                  @id @default(uuid())
+  code                    String                  @unique
+  /// Legacy internal / compat (English-primary display).
+  name                    String
+  displayNameEn           String?
+  displayNameFr           String?
+  category                String
+  executionRoleCategory   String
+  orderable               Boolean                 @default(true)
+  isActive                Boolean                 @default(true)
+  deprecatedBy            String?
+  documentationTemplateId String?
+  billingCode             String?
+  defaultInstructions     String?
+  requiresProviderOrder   Boolean                 @default(false)
+  nursingProtocolAllowed  Boolean                 @default(true)
+  requiresClinicalNote      Boolean                 @default(false)
+  searchText              String?
+  sortPriority            Int                     @default(0)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  aliases                 CatalogProcedureAlias[]
+
+  @@index([isActive])
+  @@index([category])
+  @@index([orderable])
+}
+
+model CatalogProcedureAlias {
+  id                 String           @id @default(uuid())
+  catalogProcedureId String
+  alias              String
+  language           String?
+  createdAt          DateTime         @default(now())
+  catalogProcedure   CatalogProcedure @relation(fields: [catalogProcedureId], references: [id], onDelete: Cascade)
+
+  @@unique([catalogProcedureId, alias])
+  @@index([catalogProcedureId])
+  @@index([alias])
+}
+
 model PathwaySession {
   id          String             @id @default(uuid())
   encounterId String             @unique

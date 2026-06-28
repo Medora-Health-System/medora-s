@@ -12,7 +12,9 @@ import { RoleCode } from "@prisma/client";
 import { LabCatalogService } from "./lab-catalog.service";
 import { ImagingCatalogService } from "./imaging-catalog.service";
 import { MedicationCatalogService } from "../medication-catalog/medication-catalog.service";
-import { catalogSearchQuerySchema } from "./dto/catalog-search-item.dto";
+import { ProcedureCatalogService } from "./procedure-catalog.service";
+import { catalogSearchQuerySchema, procedureCatalogSearchQuerySchema } from "./dto/catalog-search-item.dto";
+import { CANONICAL_CARE_PROCEDURE_CATEGORIES } from "@medora/shared";
 
 /** Prescription / ordres cliniques + travail laboratoire / imagerie */
 const ORDER_CATALOG_ROLES = [
@@ -49,7 +51,8 @@ export class OrderCatalogController {
   constructor(
     private readonly labCatalog: LabCatalogService,
     private readonly imagingCatalog: ImagingCatalogService,
-    private readonly medicationCatalog: MedicationCatalogService
+    private readonly medicationCatalog: MedicationCatalogService,
+    private readonly procedureCatalog: ProcedureCatalogService
   ) {}
 
   private facilityId(req: any): string {
@@ -106,5 +109,29 @@ export class OrderCatalogController {
       });
     }
     return this.imagingCatalog.search({ q: parsed.data.q, limit: parsed.data.limit });
+  }
+
+  @Get("procedures/search")
+  @RequireRoles(...ORDER_CATALOG_ROLES)
+  async searchProcedures(@Query() query: Record<string, string>, @Req() req: any) {
+    this.facilityId(req);
+    const parsed = procedureCatalogSearchQuerySchema.safeParse(query);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.issues[0]?.message ?? "Requête invalide", {
+        cause: parsed.error,
+      });
+    }
+    const category = parsed.data.category?.trim();
+    const validCategory = CANONICAL_CARE_PROCEDURE_CATEGORIES.includes(category as any)
+      ? (category as (typeof CANONICAL_CARE_PROCEDURE_CATEGORIES)[number])
+      : undefined;
+    if (parsed.data.q.trim().length > 0 && parsed.data.q.trim().length < 2) {
+      return { items: [] };
+    }
+    return this.procedureCatalog.search({
+      q: parsed.data.q,
+      limit: parsed.data.limit,
+      ...(validCategory ? { category: validCategory } : {}),
+    });
   }
 }

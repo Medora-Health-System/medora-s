@@ -4,11 +4,12 @@ import { MedicationCatalogModule } from "../medication-catalog/medication-catalo
 import { OrderCatalogController } from "./order-catalog.controller";
 import { LabCatalogService } from "./lab-catalog.service";
 import { ImagingCatalogService } from "./imaging-catalog.service";
+import { ProcedureCatalogService } from "./procedure-catalog.service";
 
 @Module({
   imports: [PrismaModule, MedicationCatalogModule],
   controllers: [OrderCatalogController],
-  providers: [LabCatalogService, ImagingCatalogService],
-  exports: [LabCatalogService, ImagingCatalogService],
+  providers: [LabCatalogService, ImagingCatalogService, ProcedureCatalogService],
+  exports: [LabCatalogService, ImagingCatalogService, ProcedureCatalogService],
 })
 export class OrderCatalogModule {}

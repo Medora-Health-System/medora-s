@@ -15978,6 +15978,8 @@ export default {
     careSearchPlaceholder: "Rechercher un soin ou une procédure…",
     careSearchMinCharsHint: "Saisissez au moins 2 caractères.",
     careSearchNoResults: "Aucun soin correspondant.",
+    careCategoryFilterLabel: "Catégorie",
+    careCategoryAll: "Toutes les catégories",
     careEkgReportingHelper:
       "Pour le suivi « door-to-EKG/ECG », documentez l’EKG/ECG dans le flux Procédures.",
     careOpenProcedureDocButton: "Ouvrir la documentation procédure",

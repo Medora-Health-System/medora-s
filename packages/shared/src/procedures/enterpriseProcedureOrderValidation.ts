@@ -1,3 +1,4 @@
+import { canonicalCareProcedureByCode } from "./canonicalCareProcedureCatalog.js";
 import { enterpriseProcedureById } from "./enterpriseProcedureCatalog.js";
 
 export const ENTERPRISE_PROCEDURE_ID_MAX_LENGTH = 128;
@@ -10,7 +11,10 @@ export function normalizeEnterpriseProcedureId(value: string | undefined | null)
 }
 
 export function isKnownEnterpriseProcedureId(value: string): boolean {
-  return enterpriseProcedureById(value.trim()) != null;
+  const code = value.trim();
+  if (enterpriseProcedureById(code) != null) return true;
+  const canonical = canonicalCareProcedureByCode(code);
+  return Boolean(canonical?.isActive && canonical.orderable);
 }
 
 /**
