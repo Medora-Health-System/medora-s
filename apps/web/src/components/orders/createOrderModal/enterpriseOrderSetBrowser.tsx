@@ -402,16 +402,14 @@ export function EnterpriseOrderSetBrowser({
                   border: `1px solid ${SHELL_BORDER}`,
                   borderRadius: 8,
                   background: checkedSet.has(item.key) ? CANVAS : "#fff",
-                  cursor: item.required ? "default" : "pointer",
+                  cursor: "pointer",
                   fontSize: 13,
                   color: "#334155",
-                  opacity: item.required ? 0.95 : 1,
                 }}
               >
                 <input
                   type="checkbox"
                   checked={checkedSet.has(item.key)}
-                  disabled={item.required}
                   onChange={() => onToggleItem(item.key)}
                   style={{ width: 14, height: 14, margin: 0 }}
                 />
@@ -432,7 +430,7 @@ export function EnterpriseOrderSetBrowser({
                   {item.displayLabel}
                   {item.required ? (
                     <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 700 }}>
-                      {t("createOrderModal.orderSetRequiredBadge")}
+                      {t("createOrderModal.orderSetRecommendedBadge")}
                     </span>
                   ) : null}
                   {!item.required ? (
@@ -493,7 +491,13 @@ export function EnterpriseOrderSetBrowser({
             type="button"
             disabled={!canApply || applying}
             onClick={onApply}
-            title={!canApply ? t("createOrderModal.orderSetsApplyDisabledHelp") : undefined}
+            title={
+              checkedCount === 0
+                ? t("createOrderModal.orderSetsNoneSelectedWarning")
+                : !canApply
+                  ? t("createOrderModal.orderSetsApplyDisabledHelp")
+                  : undefined
+            }
             data-testid="enterprise-order-set-apply"
             style={{
               width: "100%",

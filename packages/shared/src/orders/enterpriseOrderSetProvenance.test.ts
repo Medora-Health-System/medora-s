@@ -91,7 +91,7 @@ describe("enterpriseOrderSetProvenance (MEDUI.ORDERSETS.ENTERPRISE_PHASE_2)", ()
     if (!result.ok) expect(result.code).toBe("UNKNOWN_SELECTED_ITEM");
   });
 
-  it("rejects required item omission without skip reason", () => {
+  it("allows deselecting recommended items without skip reason", () => {
     const applyContext = buildEnterpriseOrderSetApplyContext({
       set: chestPain,
       selectedItemKeys: ["ekg12Lead", "continuousCardiacMonitoring", "pulseOximetry"],
@@ -109,8 +109,28 @@ describe("enterpriseOrderSetProvenance (MEDUI.ORDERSETS.ENTERPRISE_PHASE_2)", ()
       roleCodes: ["PROVIDER"],
       canPrescribe: true,
     });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe("REQUIRED_ITEM_OMITTED");
+    expect(result.ok).toBe(true);
+  });
+
+  it("allows omitting recommended items from selection entirely", () => {
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: chestPain,
+      selectedItemKeys: ["troponin"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["troponin"],
+    });
+    const result = validateEnterpriseOrderSetApplication({
+      provenance,
+      itemCount: 1,
+      roleCodes: ["PROVIDER"],
+      canPrescribe: true,
+    });
+    expect(result.ok).toBe(true);
   });
 
   it("allows structured-parameter skip for oxygen", () => {

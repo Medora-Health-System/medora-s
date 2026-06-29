@@ -64,6 +64,7 @@ export function enterpriseOrderSetItemByKey(
 }
 
 export function defaultCheckedEnterpriseOrderSetItemKeys(set: EnterpriseOrderSetDefinition): string[] {
+  // requiredItems are clinically recommended defaults; optional items follow current bundle preselect behavior.
   return [...set.requiredItems.map((item) => item.key), ...set.optionalItems.map((item) => item.key)];
 }
 
