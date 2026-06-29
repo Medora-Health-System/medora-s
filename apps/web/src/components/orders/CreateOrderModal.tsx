@@ -50,17 +50,15 @@ import { OxygenTherapyOrderForm } from "./createOrderModal/OxygenTherapyOrderFor
 import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
 import {
   checkedOrderSetItemKeys,
-  filterEnterpriseOrderSets,
+  enterpriseOrderSetBrowserCategoryForCode,
   getDefaultOrderSetKey,
-  groupEnterpriseOrderSetsByCategory,
   isRequiredOrderSetItem,
-  ORDER_SET_CATEGORY_OPTIONS,
-  orderSetWarningsForLocale,
   resolveOrderSetTitle,
   toOrderSetUiItems,
   type OrderSetKey,
   type OrderSetUiItem,
 } from "./createOrderModal/enterpriseOrderSetAdapter";
+import { EnterpriseOrderSetBrowser } from "./createOrderModal/enterpriseOrderSetBrowser";
 import {
   applyDefaultPlannedAdministrationIfNeeded,
   prepareMedicationOrderLinePlannedAdmin,
@@ -287,330 +285,6 @@ function catalogItemToOrderLine(
   }
 
   return null;
-}
-
-function OrderSetPreview({
-  selected,
-  checkedItemKeys,
-  onSelect,
-  onToggleItem,
-  onApply,
-  canApply,
-  applying,
-  onOpenEkgDocumentation,
-  locale,
-  categoryFilter,
-  onCategoryFilterChange,
-  searchQuery,
-  onSearchQueryChange,
-  t,
-}: {
-  selected: OrderSetKey;
-  checkedItemKeys: string[];
-  onSelect: (key: OrderSetKey) => void;
-  onToggleItem: (itemKey: string) => void;
-  onApply: () => void;
-  canApply: boolean;
-  applying: boolean;
-  onOpenEkgDocumentation?: () => void;
-  locale: SupportedLanguage;
-  categoryFilter: EnterpriseOrderSetCategory | "ALL";
-  onCategoryFilterChange: (value: EnterpriseOrderSetCategory | "ALL") => void;
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  t: (key: string) => string;
-}) {
-  const selectedSet = enterpriseOrderSetByCode(selected);
-  const visibleSets = useMemo(
-    () => filterEnterpriseOrderSets({ category: categoryFilter, query: searchQuery, locale }),
-    [categoryFilter, searchQuery, locale]
-  );
-  const groupedSets = useMemo(
-    () =>
-      categoryFilter === "ALL" && !searchQuery.trim()
-        ? groupEnterpriseOrderSetsByCategory(visibleSets, locale)
-        : null,
-    [categoryFilter, searchQuery, visibleSets, locale]
-  );
-  const items = useMemo(
-    () => (selectedSet ? toOrderSetUiItems(selectedSet, locale) : []),
-    [selectedSet, locale]
-  );
-  const checkedCount = checkedItemKeys.length;
-  const totalCount = items.length;
-  const checkedSet = new Set(checkedItemKeys);
-  const selectedCountLabel = t("createOrderModal.orderSetsSelectedCount")
-    .replace("{selected}", String(checkedCount))
-    .replace("{total}", String(totalCount));
-  const applyingBundleLabel = t("createOrderModal.orderSetsApplyingBundle").replace(
-    "{bundle}",
-    selectedSet ? resolveOrderSetTitle(selectedSet, locale) : selected
-  );
-  const warnings = selectedSet ? orderSetWarningsForLocale(selectedSet, locale) : [];
-
-  return (
-    <div data-testid="enterprise-order-set-preview">
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#666", marginBottom: 8, textTransform: "uppercase" }}>
-        {t("createOrderModal.orderSetsSectionTitle")}
-      </div>
-      <p style={{ margin: "0 0 10px", fontSize: 13, color: "#455a64", lineHeight: 1.4 }}>
-        {t("createOrderModal.orderSetsIntro")}
-      </p>
-      <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(event) => onSearchQueryChange(event.target.value)}
-          placeholder={t("createOrderModal.orderSetsSearchPlaceholder")}
-          data-testid="enterprise-order-set-search"
-          style={{
-            flex: "1 1 180px",
-            minWidth: 160,
-            padding: "7px 10px",
-            borderRadius: 6,
-            border: "1px solid #cbd5e1",
-            fontSize: 13,
-          }}
-        />
-        <select
-          value={categoryFilter}
-          onChange={(event) => onCategoryFilterChange(event.target.value as EnterpriseOrderSetCategory | "ALL")}
-          data-testid="enterprise-order-set-category-filter"
-          style={{
-            padding: "7px 10px",
-            borderRadius: 6,
-            border: "1px solid #cbd5e1",
-            fontSize: 13,
-            background: "#fff",
-          }}
-        >
-          <option value="ALL">{t("createOrderModal.orderSetsCategoryAll")}</option>
-          {ORDER_SET_CATEGORY_OPTIONS.map((category) => (
-            <option key={category} value={category}>
-              {t(`createOrderModal.orderSetsCategory.${category}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(160px, 0.8fr) minmax(220px, 1fr)", gap: 12 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
-          {groupedSets
-            ? groupedSets.map((group) => (
-                <div key={group.category} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 800,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      letterSpacing: 0.4,
-                      padding: "2px 2px 0",
-                    }}
-                  >
-                    {t(`createOrderModal.orderSetsCategory.${group.category}`)}
-                  </div>
-                  {group.sets.map((set) => {
-                    const active = set.code === selected;
-                    return (
-                      <button
-                        key={set.code}
-                        type="button"
-                        onClick={() => onSelect(set.code)}
-                        style={{
-                          padding: "8px 10px",
-                          border: active ? "1px solid #1a1a1a" : "1px solid #d6d6d6",
-                          borderRadius: 6,
-                          background: active ? "#fff" : "#f8fafc",
-                          color: "#1f2937",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          fontSize: 13,
-                          fontWeight: active ? 700 : 600,
-                        }}
-                      >
-                        {resolveOrderSetTitle(set, locale)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))
-            : visibleSets.map((set) => {
-            const active = set.code === selected;
-            return (
-              <button
-                key={set.code}
-                type="button"
-                onClick={() => onSelect(set.code)}
-                style={{
-                  padding: "9px 10px",
-                  border: active ? "1px solid #1a1a1a" : "1px solid #d6d6d6",
-                  borderRadius: 6,
-                  background: active ? "#fff" : "#f8fafc",
-                  color: "#1f2937",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  fontSize: 13,
-                  fontWeight: active ? 700 : 600,
-                }}
-              >
-                {resolveOrderSetTitle(set, locale)}
-              </button>
-            );
-          })}
-        </div>
-        <div
-          style={{
-            border: "1px solid #e2e8f0",
-            borderRadius: 8,
-            background: "#fff",
-            padding: 12,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", marginBottom: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>
-              {selectedSet ? resolveOrderSetTitle(selectedSet, locale) : ""}
-            </div>
-            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{selectedCountLabel}</div>
-          </div>
-          {warnings.length > 0 ? (
-            <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-              {warnings.map((warning) => (
-                <div
-                  key={warning}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 6,
-                    border: "1px solid #fde68a",
-                    background: "#fffbeb",
-                    color: "#92400e",
-                    fontSize: 12,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {warning}
-                </div>
-              ))}
-            </div>
-          ) : null}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, maxHeight: 260, overflowY: "auto" }}>
-            {items.map((item) => (
-              <label
-                key={item.key}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "18px auto 1fr",
-                  gap: 8,
-                  alignItems: "center",
-                  padding: "7px 8px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: 6,
-                  background: checkedSet.has(item.key) ? "#f8fafc" : "#fff",
-                  cursor: item.required ? "default" : "pointer",
-                  fontSize: 13,
-                  color: "#334155",
-                  opacity: item.required ? 0.95 : 1,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checkedSet.has(item.key)}
-                  disabled={item.required}
-                  onChange={() => onToggleItem(item.key)}
-                  style={{ width: 14, height: 14, margin: 0 }}
-                />
-                <span
-                  style={{
-                    padding: "2px 6px",
-                    borderRadius: 999,
-                    background: item.type === "LAB" ? "#e3f2fd" : item.type === "IMAGING" ? "#e0f7fa" : "#f3e5f5",
-                    color: item.type === "LAB" ? "#0d47a1" : item.type === "IMAGING" ? "#006064" : "#6a1b9a",
-                    fontSize: 10,
-                    fontWeight: 800,
-                    letterSpacing: 0.3,
-                  }}
-                >
-                  {t(`createOrderModal.orderSetType.${item.type}`)}
-                </span>
-                <span>
-                  {item.displayLabel}
-                  {item.required ? (
-                    <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 700 }}>
-                      {t("createOrderModal.orderSetRequiredBadge")}
-                    </span>
-                  ) : null}
-                  {item.requiresStructuredParameters ? (
-                    <span style={{ marginLeft: 6, color: "#9a3412", fontSize: 11, fontWeight: 700 }}>
-                      {t("createOrderModal.orderSetStructuredParametersBadge")}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            ))}
-          </div>
-          {selected === "ed_chest_pain_v1" && onOpenEkgDocumentation ? (
-            <div
-              style={{
-                marginBottom: 12,
-                padding: "10px 12px",
-                borderRadius: 8,
-                border: "1px dashed #93c5fd",
-                background: "#f8fafc",
-              }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#1e40af", marginBottom: 8 }}>
-                {t("createOrderModal.orderSetEcgProcedureHint")}
-              </div>
-              <button
-                type="button"
-                onClick={onOpenEkgDocumentation}
-                style={{
-                  width: "100%",
-                  padding: "9px 12px",
-                  border: "1px solid #1d4ed8",
-                  borderRadius: 6,
-                  background: "#eff6ff",
-                  color: "#1e3a8a",
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 700,
-                }}
-              >
-                {t("createOrderModal.orderSetDocumentEcgButton")}
-              </button>
-            </div>
-          ) : null}
-          {checkedCount === 0 ? (
-            <p style={{ margin: "0 0 12px", color: "#b45309", fontSize: 12, fontWeight: 600 }}>
-              {t("createOrderModal.orderSetsNoneSelectedWarning")}
-            </p>
-          ) : null}
-          <div style={{ margin: "0 0 8px", color: "#0f172a", fontSize: 12, fontWeight: 700 }}>
-            {applyingBundleLabel}
-          </div>
-          <button
-            type="button"
-            disabled={!canApply || applying}
-            onClick={onApply}
-            title={!canApply ? t("createOrderModal.orderSetsApplyDisabledHelp") : undefined}
-            style={{
-              width: "100%",
-              padding: "9px 12px",
-              border: canApply ? "1px solid #1a1a1a" : "1px solid #cbd5e1",
-              borderRadius: 6,
-              background: canApply ? "#1a1a1a" : "#eef2f7",
-              color: canApply ? "#fff" : "#64748b",
-              cursor: canApply && !applying ? "pointer" : "not-allowed",
-              fontSize: 13,
-              fontWeight: 700,
-              opacity: applying ? 0.7 : 1,
-            }}
-          >
-            {applying ? t("createOrderModal.orderSetsApplying") : t("createOrderModal.orderSetsApply")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function buildPayload(
@@ -871,7 +545,9 @@ export function CreateOrderModal({
   const [selectedOrderSetItemKeys, setSelectedOrderSetItemKeys] = useState<string[]>(() =>
     checkedOrderSetItemKeys(defaultOrderSetKey)
   );
-  const [orderSetCategoryFilter, setOrderSetCategoryFilter] = useState<EnterpriseOrderSetCategory | "ALL">("ALL");
+  const [orderSetBrowserCategory, setOrderSetBrowserCategory] = useState<EnterpriseOrderSetCategory | null>(
+    () => enterpriseOrderSetBrowserCategoryForCode(defaultOrderSetKey)
+  );
   const [orderSetSearchQuery, setOrderSetSearchQuery] = useState("");
   const [orderSetApplying, setOrderSetApplying] = useState(false);
   const [orderSetWarning, setOrderSetWarning] = useState<{ count: number } | null>(null);
@@ -1224,6 +900,8 @@ export function CreateOrderModal({
   const selectOrderSet = (key: OrderSetKey) => {
     setSelectedOrderSet(key);
     setSelectedOrderSetItemKeys(checkedOrderSetItemKeys(key));
+    const category = enterpriseOrderSetBrowserCategoryForCode(key);
+    if (category) setOrderSetBrowserCategory(category);
     setError(null);
   };
 
@@ -2881,7 +2559,7 @@ export function CreateOrderModal({
                 }}
               >
                 {activeTab === "ORDER_SET" ? (
-                  <OrderSetPreview
+                  <EnterpriseOrderSetBrowser
                     selected={selectedOrderSet}
                     checkedItemKeys={selectedOrderSetItemKeys}
                     onSelect={selectOrderSet}
@@ -2891,8 +2569,8 @@ export function CreateOrderModal({
                     applying={orderSetApplying}
                     onOpenEkgDocumentation={onOpenEkgProcedureDocumentation}
                     locale={language}
-                    categoryFilter={orderSetCategoryFilter}
-                    onCategoryFilterChange={setOrderSetCategoryFilter}
+                    browserCategory={orderSetBrowserCategory}
+                    onBrowserCategoryChange={setOrderSetBrowserCategory}
                     searchQuery={orderSetSearchQuery}
                     onSearchQueryChange={setOrderSetSearchQuery}
                     t={t}

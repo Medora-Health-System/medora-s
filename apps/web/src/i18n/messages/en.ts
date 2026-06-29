@@ -15936,6 +15936,11 @@ export default {
       "Select an enterprise ED order set, review required and optional items, then apply to stage standard orders.",
     orderSetsSearchPlaceholder: "Search order sets…",
     orderSetsCategoryAll: "All categories",
+    orderSetsBrowserCategories: "Categories",
+    orderSetsBrowserAllOrderSets: "All order sets",
+    orderSetsBrowserSearchResults: "Search results",
+    orderSetsBrowserNoResults: "No matching order sets.",
+    orderSetsBrowserSelectedCategory: "{category}",
     orderSetsCategory: {
       CARDIAC: "Cardiac",
       NEURO: "Neuro / stroke",

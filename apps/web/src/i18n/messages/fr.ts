@@ -15973,6 +15973,11 @@ export default {
       "Sélectionnez un protocole d'ordres ED, vérifiez les éléments requis et optionnels, puis appliquez pour préparer les ordres standard.",
     orderSetsSearchPlaceholder: "Rechercher un protocole…",
     orderSetsCategoryAll: "Toutes les catégories",
+    orderSetsBrowserCategories: "Catégories",
+    orderSetsBrowserAllOrderSets: "Tous les protocoles",
+    orderSetsBrowserSearchResults: "Résultats de recherche",
+    orderSetsBrowserNoResults: "Aucun protocole correspondant.",
+    orderSetsBrowserSelectedCategory: "{category}",
     orderSetsCategory: {
       CARDIAC: "Cardiaque",
       NEURO: "Neuro / AVC",
