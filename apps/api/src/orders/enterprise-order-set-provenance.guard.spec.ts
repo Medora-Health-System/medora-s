@@ -137,4 +137,28 @@ describe("enterprise-order-set-provenance.guard (MEDUI.ORDERSETS.ENTERPRISE_PHAS
       })
     ).toThrow(BadRequestException);
   });
+
+  it("accepts provenance when recommended items were deselected", () => {
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: chestPain,
+      selectedItemKeys: ["troponin"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["troponin"],
+    });
+    expect(() =>
+      assertEnterpriseOrderSetProvenanceForCreate({
+        data: {
+          type: "LAB",
+          items: [{ catalogItemType: "LAB_TEST", manualLabel: "Troponin" }],
+          enterpriseOrderSetProvenance: provenance,
+        },
+        roleCodes: ["PROVIDER"] as never,
+      })
+    ).not.toThrow();
+  });
 });

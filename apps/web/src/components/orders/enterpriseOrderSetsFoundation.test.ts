@@ -127,7 +127,15 @@ describe("enterprise order sets foundation (web)", () => {
     expect(browserSource).toContain("enterprise-order-set-search");
     expect(modalSource).toContain("buildEnterpriseOrderSetProvenance");
     expect(browserSource).toContain("enterprise-order-set-apply");
-    expect(browserSource).toContain("disabled={item.required}");
+    expect(browserSource).not.toContain("disabled={item.required}");
+  });
+
+  it("free selection — recommended items stay editable", () => {
+    expect(browserSource).not.toMatch(/disabled=\{item\.required\}/);
+    expect(browserSource).toContain("orderSetRecommendedBadge");
+    expect(modalSource).not.toContain("isRequiredOrderSetItem");
+    expect(browserSource).toContain("orderSetsNoneSelectedWarning");
+    expect(modalSource).toContain("canApplyOrderSet");
   });
 
   it("Phase 6 — browser separates provider sets and RN standing orders", () => {

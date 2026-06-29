@@ -58,7 +58,6 @@ import {
   enterpriseOrderSetBrowserCategoryForCode,
   getDefaultOrderSetKey,
   getDefaultOrderSetKeyForRole,
-  isRequiredOrderSetItem,
   resolveOrderSetTitle,
   toOrderSetUiItems,
   type OrderSetKey,
@@ -922,7 +921,6 @@ export function CreateOrderModal({
   };
 
   const toggleOrderSetItem = (itemKey: string) => {
-    if (isRequiredOrderSetItem(selectedOrderSet, itemKey)) return;
     setSelectedOrderSetItemKeys((current) =>
       current.includes(itemKey) ? current.filter((key) => key !== itemKey) : [...current, itemKey]
     );

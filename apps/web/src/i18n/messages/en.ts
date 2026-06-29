@@ -15967,15 +15967,16 @@ export default {
       GENERAL: "General medicine",
     },
     orderSetRequiredBadge: "Required",
+    orderSetRecommendedBadge: "Recommended",
     orderSetStructuredParametersBadge: "Parameters required",
     orderSetsApplyComingNext: "Order set apply coming next",
     orderSetsApplyDisabledHelp:
-      "",
+      "You do not have permission to apply this order set.",
     orderSetsApply: "Apply order set",
     orderSetsApplying: "Applying…",
     orderSetsApplyingBundle: "Applying: {bundle}",
     orderSetsSelectedCount: "Selected {selected} of {total}",
-    orderSetsNoneSelectedWarning: "Select at least one item before applying.",
+    orderSetsNoneSelectedWarning: "Select at least one order-set item.",
     orderSetComingSoonBadge: "(coming soon)",
     orderSetType: {
       LAB: "LAB",

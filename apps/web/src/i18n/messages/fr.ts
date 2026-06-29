@@ -16004,15 +16004,16 @@ export default {
       GENERAL: "Médecine générale",
     },
     orderSetRequiredBadge: "Requis",
+    orderSetRecommendedBadge: "Recommandé",
     orderSetStructuredParametersBadge: "Paramètres requis",
     orderSetsApplyComingNext: "Application du protocole à venir",
     orderSetsApplyDisabledHelp:
-      "Aperçu seulement pour l'instant. Cela évite de créer des ordres partiels ou mélangés avant une application multi-ordres sécurisée.",
+      "Vous n'avez pas l'autorisation d'appliquer ce protocole.",
     orderSetsApply: "Appliquer le protocole",
     orderSetsApplying: "Application…",
     orderSetsApplyingBundle: "Application : {bundle}",
     orderSetsSelectedCount: "{selected} sur {total} sélectionné(s)",
-    orderSetsNoneSelectedWarning: "Sélectionnez au moins un élément avant l'application.",
+    orderSetsNoneSelectedWarning: "Sélectionnez au moins un élément du protocole.",
     orderSetComingSoonBadge: "(à venir)",
     orderSetType: {
       LAB: "LAB",

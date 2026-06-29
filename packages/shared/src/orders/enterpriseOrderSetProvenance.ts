@@ -266,29 +266,6 @@ export function validateEnterpriseOrderSetApplication(input: {
     };
   }
 
-  const expectedKind = itemKindForOrderType(provenance.orderType);
-  for (const key of provenance.selectedItemKeys) {
-    const item = enterpriseOrderSetItemByKey(set, key);
-    if (!item || item.kind !== expectedKind) continue;
-    if (!item.required) continue;
-    if (provenance.placedItemKeys.includes(key)) continue;
-    const skipReason = skippedByKey.get(key);
-    if (!skipReason) {
-      return {
-        ok: false,
-        code: "REQUIRED_ITEM_OMITTED",
-        message: `Required item omitted without skip reason: ${key}.`,
-      };
-    }
-    if (item.requiresStructuredParameters && skipReason !== "structuredParametersRequired") {
-      return {
-        ok: false,
-        code: "INVALID_SKIP_REASON",
-        message: `Structured-parameters item requires structuredParametersRequired skip: ${key}.`,
-      };
-    }
-  }
-
   return { ok: true };
 }
 
