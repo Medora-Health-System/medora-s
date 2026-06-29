@@ -4,19 +4,23 @@ import {
   enterpriseOrderSetByCode,
   ENTERPRISE_ORDER_SET_REGISTRY,
   ENTERPRISE_ORDER_SET_CATEGORIES,
+  isRnStandingOrderSet,
+  resolveEnterpriseOrderSetAuthority,
 } from "./orderSets/index.js";
 import {
   validateEnterpriseOrderSetRegistry,
   validateEnterpriseOrderSetDefinition,
 } from "./enterpriseOrderSetValidation.js";
 
-describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_PHASE_4)", () => {
-  it("registry has 54 active ED order sets (Phase 1 + Phase 4 expansion)", () => {
-    expect(activeEnterpriseOrderSets()).toHaveLength(54);
+describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_PHASE_4 + PHASE_6)", () => {
+  it("registry has 66 active ED order sets (Phase 1 + Phase 4 + Phase 6 RN standing)", () => {
+    expect(activeEnterpriseOrderSets()).toHaveLength(66);
     const phase1 = activeEnterpriseOrderSets().filter((set) => set.governanceLevel === "PHASE_1_ED");
     const phase4 = activeEnterpriseOrderSets().filter((set) => set.governanceLevel === "PHASE_4_ED");
+    const phase6 = activeEnterpriseOrderSets().filter((set) => set.governanceLevel === "PHASE_6_RN_STANDING");
     expect(phase1).toHaveLength(7);
     expect(phase4).toHaveLength(47);
+    expect(phase6).toHaveLength(12);
   });
 
   it("active codes are unique", () => {
@@ -84,10 +88,17 @@ describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_PHASE_4)", () => {
     expect(ctHead?.catalogCodes).toContain("CT_HEAD");
   });
 
-  it("provider/admin role governance on all sets", () => {
+  it("authority role governance on provider vs RN standing sets", () => {
     for (const set of activeEnterpriseOrderSets()) {
-      expect(set.rolesAllowed).toContain("PROVIDER");
-      expect(set.rolesAllowed).not.toContain("RN");
+      if (isRnStandingOrderSet(set)) {
+        expect(set.rolesAllowed).toContain("RN");
+        expect(set.rolesAllowed).not.toContain("PROVIDER");
+        expect(resolveEnterpriseOrderSetAuthority(set)).toBe("RN_STANDING_ORDER");
+      } else {
+        expect(set.rolesAllowed).toContain("PROVIDER");
+        expect(set.rolesAllowed).not.toContain("RN");
+        expect(resolveEnterpriseOrderSetAuthority(set)).toBe("PROVIDER_ORDER_SET");
+      }
     }
   });
 
@@ -100,6 +111,6 @@ describe("enterpriseOrderSets (MEDUI.ORDERSETS.ENTERPRISE_PHASE_4)", () => {
   });
 
   it("registry remains modular — composed from Emergency modules", () => {
-    expect(ENTERPRISE_ORDER_SET_REGISTRY.length).toBe(54);
+    expect(ENTERPRISE_ORDER_SET_REGISTRY.length).toBe(66);
   });
 });

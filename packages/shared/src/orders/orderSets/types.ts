@@ -56,7 +56,14 @@ export type EnterpriseOrderSetWarning = {
   fr: string;
 };
 
-export type EnterpriseOrderSetGovernanceLevel = "PHASE_1_ED" | "PHASE_4_ED";
+export type EnterpriseOrderSetGovernanceLevel = "PHASE_1_ED" | "PHASE_4_ED" | "PHASE_6_RN_STANDING";
+
+export const ENTERPRISE_ORDER_SET_AUTHORITIES = [
+  "PROVIDER_ORDER_SET",
+  "RN_STANDING_ORDER",
+] as const;
+
+export type EnterpriseOrderSetAuthority = (typeof ENTERPRISE_ORDER_SET_AUTHORITIES)[number];
 
 export type EnterpriseOrderSetDefinition = {
   code: string;
@@ -73,6 +80,8 @@ export type EnterpriseOrderSetDefinition = {
   mutuallyExclusiveGroups?: readonly (readonly string[])[];
   warnings: readonly EnterpriseOrderSetWarning[];
   rolesAllowed: readonly EnterpriseOrderSetRoleCode[];
+  /** Defaults to PROVIDER_ORDER_SET when omitted (legacy provider sets). */
+  orderSetAuthority?: EnterpriseOrderSetAuthority;
   ageGroup: EnterpriseOrderSetAgeGroup;
   version: string;
   isActive: boolean;
@@ -126,6 +135,7 @@ export const care = (
 });
 
 export const providerRoles: readonly EnterpriseOrderSetRoleCode[] = ["PROVIDER", "ADMIN"];
+export const rnStandingRoles: readonly EnterpriseOrderSetRoleCode[] = ["RN"];
 
 export function resolveEnterpriseOrderSetDisplayName(
   set: EnterpriseOrderSetDefinition,

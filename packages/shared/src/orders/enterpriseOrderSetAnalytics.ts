@@ -12,6 +12,7 @@ export const enterpriseOrderSetAnalyticsFiltersSchema = z.object({
   from: z.string().trim().max(40).optional(),
   to: z.string().trim().max(40).optional(),
   orderSetCode: z.string().trim().min(1).max(128).optional(),
+  orderSetAuthority: z.enum(["PROVIDER_ORDER_SET", "RN_STANDING_ORDER"]).optional(),
   category: z.string().trim().min(1).max(64).optional(),
   clinicalDomain: z.string().trim().min(1).max(128).optional(),
   providerId: z.string().uuid().optional(),
@@ -40,6 +41,7 @@ export type EnterpriseOrderSetAuditMetadataRow = {
   orderSetVersion: string;
   orderSetCategory: string;
   orderSetClinicalDomain: string;
+  orderSetAuthority: string | null;
   orderType: string | null;
   selectedItemCount: number;
   skippedItemCount: number;
@@ -63,6 +65,7 @@ export type EnterpriseOrderSetAnalyticsSummary = {
   byOrderSetCode: Record<string, number>;
   byCategory: Record<string, number>;
   byClinicalDomain: Record<string, number>;
+  byOrderSetAuthority: Record<string, number>;
   byProviderId: Record<string, number>;
   byEncounterType: Record<string, number>;
   summaryScanCount: number;
@@ -76,6 +79,7 @@ export type EnterpriseOrderSetComplianceExportRow = {
   orderSetVersion: string;
   orderSetCategory: string;
   orderSetClinicalDomain: string;
+  orderSetAuthority: string | null;
   encounterId: string | null;
   orderId: string | null;
   providerUserId: string | null;
@@ -140,6 +144,7 @@ export function parseEnterpriseOrderSetAuditMetadata(input: {
     orderSetVersion: readString(meta, "enterpriseOrderSetVersion") ?? "",
     orderSetCategory: readString(meta, "enterpriseOrderSetCategory") ?? "",
     orderSetClinicalDomain: readString(meta, "enterpriseOrderSetClinicalDomain") ?? "",
+    orderSetAuthority: readString(meta, "enterpriseOrderSetAuthority"),
     orderType: readString(meta, "type"),
     selectedItemCount: readNumber(meta, "enterpriseOrderSetSelectedItemCount"),
     skippedItemCount: readNumber(meta, "enterpriseOrderSetSkippedItemCount"),
@@ -174,6 +179,7 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
   const byOrderSetCode: Record<string, number> = {};
   const byCategory: Record<string, number> = {};
   const byClinicalDomain: Record<string, number> = {};
+  const byOrderSetAuthority: Record<string, number> = {};
   const byProviderId: Record<string, number> = {};
   const byEncounterType: Record<string, number> = {};
 
@@ -190,6 +196,10 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
     if (row.orderSetClinicalDomain) {
       byClinicalDomain[row.orderSetClinicalDomain] =
         (byClinicalDomain[row.orderSetClinicalDomain] ?? 0) + 1;
+    }
+    if (row.orderSetAuthority) {
+      byOrderSetAuthority[row.orderSetAuthority] =
+        (byOrderSetAuthority[row.orderSetAuthority] ?? 0) + 1;
     }
     if (row.providerUserId) {
       byProviderId[row.providerUserId] = (byProviderId[row.providerUserId] ?? 0) + 1;
@@ -233,6 +243,7 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
     byOrderSetCode,
     byCategory,
     byClinicalDomain,
+    byOrderSetAuthority,
     byProviderId,
     byEncounterType,
     summaryScanCount: input.summaryScanCount,
@@ -250,6 +261,7 @@ export function toEnterpriseOrderSetComplianceExportRow(
     orderSetVersion: row.orderSetVersion,
     orderSetCategory: row.orderSetCategory,
     orderSetClinicalDomain: row.orderSetClinicalDomain,
+    orderSetAuthority: row.orderSetAuthority,
     encounterId: row.encounterId,
     orderId: row.orderId,
     providerUserId: row.providerUserId,

@@ -6,10 +6,18 @@ import {
   resolveEnterpriseOrderSetDisplayName,
 } from "./registry.js";
 import {
+  ENTERPRISE_ORDER_SET_AUTHORITIES,
   ENTERPRISE_ORDER_SET_CATEGORIES,
+  type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetCategory,
   type EnterpriseOrderSetDefinition,
 } from "./types.js";
+import {
+  filterEnterpriseOrderSetsVisibleToRole,
+  getEnterpriseOrderSetAuthorityLabel,
+  isRnStandingOrderSet,
+  resolveEnterpriseOrderSetAuthority,
+} from "./authority.js";
 
 export type EnterpriseOrderSetBrowserLocale = "en" | "fr";
 
@@ -39,8 +47,15 @@ export type EnterpriseOrderSetCategoryGroup = {
   sets: EnterpriseOrderSetDefinition[];
 };
 
+export type EnterpriseOrderSetBrowserAuthoritySection = {
+  authority: EnterpriseOrderSetAuthority;
+  groups: EnterpriseOrderSetCategoryGroup[];
+};
+
 export type EnterpriseOrderSetBrowserModel = {
   mode: "browse" | "search";
+  authoritySections: EnterpriseOrderSetBrowserAuthoritySection[];
+  activeAuthority: EnterpriseOrderSetAuthority | null;
   groups: EnterpriseOrderSetCategoryGroup[];
   activeCategory: EnterpriseOrderSetCategory | null;
   categorySets: EnterpriseOrderSetDefinition[];
@@ -131,6 +146,32 @@ export function resolveEnterpriseOrderSetBrowserCategory(
   return groups.find((group) => group.sets.length > 0)?.category ?? null;
 }
 
+export function groupEnterpriseOrderSetsByAuthorityAndCategory(
+  sets: readonly EnterpriseOrderSetDefinition[],
+  locale: EnterpriseOrderSetBrowserLocale
+): EnterpriseOrderSetBrowserAuthoritySection[] {
+  return ENTERPRISE_ORDER_SET_AUTHORITIES.map((authority) => ({
+    authority,
+    groups: groupEnterpriseOrderSetsByCategory(
+      sets.filter((set) => resolveEnterpriseOrderSetAuthority(set) === authority),
+      locale
+    ),
+  })).filter((section) => section.groups.length > 0);
+}
+
+export function resolveEnterpriseOrderSetBrowserAuthority(
+  preferred: EnterpriseOrderSetAuthority | null | undefined,
+  sections: readonly EnterpriseOrderSetBrowserAuthoritySection[]
+): EnterpriseOrderSetAuthority | null {
+  if (
+    preferred &&
+    sections.some((section) => section.authority === preferred && section.groups.length > 0)
+  ) {
+    return preferred;
+  }
+  return sections[0]?.authority ?? null;
+}
+
 export function enterpriseOrderSetBrowserCategoryForCode(
   orderSetCode: string
 ): EnterpriseOrderSetCategory | null {
@@ -138,26 +179,56 @@ export function enterpriseOrderSetBrowserCategoryForCode(
   return set?.category ?? null;
 }
 
+export function enterpriseOrderSetBrowserAuthorityForCode(
+  orderSetCode: string
+): EnterpriseOrderSetAuthority | null {
+  const set = activeEnterpriseOrderSets().find((row) => row.code === orderSetCode);
+  return set ? resolveEnterpriseOrderSetAuthority(set) : null;
+}
+
+export { getEnterpriseOrderSetAuthorityLabel, isRnStandingOrderSet };
+
 export function buildEnterpriseOrderSetBrowserModel(input: {
   query: string;
+  activeAuthority: EnterpriseOrderSetAuthority | null;
   activeCategory: EnterpriseOrderSetCategory | null;
   locale: EnterpriseOrderSetBrowserLocale;
+  canPrescribe: boolean;
+  hasRnStandingOrderAuthority: boolean;
+  roleCodes: readonly string[];
 }): EnterpriseOrderSetBrowserModel {
+  const visibleSets = filterEnterpriseOrderSetsVisibleToRole({
+    sets: activeEnterpriseOrderSets(),
+    canPrescribe: input.canPrescribe,
+    hasRnStandingOrderAuthority: input.hasRnStandingOrderAuthority,
+    roleCodes: input.roleCodes,
+  });
+
   const query = input.query.trim();
   if (query) {
     return {
       mode: "search",
+      authoritySections: [],
+      activeAuthority: null,
       groups: [],
       activeCategory: null,
       categorySets: [],
       searchResults: filterEnterpriseOrderSetsForBrowser({
         query,
         locale: input.locale,
-      }),
+      }).filter((set) => visibleSets.some((row) => row.code === set.code)),
     };
   }
 
-  const groups = groupEnterpriseOrderSetsByCategory(activeEnterpriseOrderSets(), input.locale);
+  const authoritySections = groupEnterpriseOrderSetsByAuthorityAndCategory(visibleSets, input.locale);
+  const activeAuthority = resolveEnterpriseOrderSetBrowserAuthority(
+    input.activeAuthority,
+    authoritySections
+  );
+  const groups =
+    activeAuthority != null
+      ? authoritySections.find((section) => section.authority === activeAuthority)?.groups ?? []
+      : [];
   const activeCategory = resolveEnterpriseOrderSetBrowserCategory(input.activeCategory, groups);
   const categorySets =
     activeCategory != null
@@ -166,6 +237,8 @@ export function buildEnterpriseOrderSetBrowserModel(input: {
 
   return {
     mode: "browse",
+    authoritySections,
+    activeAuthority,
     groups,
     activeCategory,
     categorySets,

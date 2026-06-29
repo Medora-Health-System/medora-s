@@ -160,6 +160,11 @@ export class EnterpriseOrderSetAnalyticsService {
         metadata: { path: ["enterpriseOrderSetClinicalDomain"], equals: filters.clinicalDomain },
       });
     }
+    if (filters.orderSetAuthority) {
+      metadataFilters.push({
+        metadata: { path: ["enterpriseOrderSetAuthority"], equals: filters.orderSetAuthority },
+      });
+    }
 
     return {
       facilityId,

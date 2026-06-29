@@ -6,6 +6,9 @@ import {
   canRolePlaceEnterpriseOrderSet,
   enterpriseOrderSetByCode,
   enterpriseOrderSetItemByKey,
+  isEnterpriseOrderSetItemRnStandingOrderSafe,
+  isRnStandingOrderSet,
+  resolveEnterpriseOrderSetAuthority,
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemKind,
 } from "./enterpriseOrderSets.js";
@@ -34,6 +37,7 @@ export const enterpriseOrderSetProvenanceSchema = z.object({
   orderSetVersion: z.string().min(1).max(32),
   orderSetCategory: z.string().min(1).max(64),
   orderSetClinicalDomain: z.string().min(1).max(128),
+  orderSetAuthority: z.enum(["PROVIDER_ORDER_SET", "RN_STANDING_ORDER"]).optional(),
   selectedItemKeys: z.array(z.string().min(1).max(128)).min(1),
   skippedItems: z.array(enterpriseOrderSetSkippedItemSchema).optional(),
   appliedAt: z.string().datetime(),
@@ -52,6 +56,7 @@ export type EnterpriseOrderSetApplyContext = {
   orderSetVersion: string;
   orderSetCategory: string;
   orderSetClinicalDomain: string;
+  orderSetAuthority: "PROVIDER_ORDER_SET" | "RN_STANDING_ORDER";
   selectedItemKeys: string[];
   skippedItems: EnterpriseOrderSetSkippedItem[];
   appliedAt: string;
@@ -87,6 +92,7 @@ export function buildEnterpriseOrderSetApplyContext(input: {
     orderSetVersion: input.set.version,
     orderSetCategory: input.set.category,
     orderSetClinicalDomain: input.set.clinicalDomain,
+    orderSetAuthority: resolveEnterpriseOrderSetAuthority(input.set),
     selectedItemKeys: [...input.selectedItemKeys],
     skippedItems: [...input.skippedItems],
     appliedAt: input.appliedAt,
@@ -105,6 +111,7 @@ export function buildEnterpriseOrderSetProvenance(input: {
     orderSetVersion: input.applyContext.orderSetVersion,
     orderSetCategory: input.applyContext.orderSetCategory,
     orderSetClinicalDomain: input.applyContext.orderSetClinicalDomain,
+    orderSetAuthority: input.applyContext.orderSetAuthority,
     selectedItemKeys: input.applyContext.selectedItemKeys,
     skippedItems:
       input.applyContext.skippedItems.length > 0 ? input.applyContext.skippedItems : undefined,
@@ -125,12 +132,14 @@ export function validateEnterpriseOrderSetApplication(input: {
   itemCount: number;
   roleCodes: readonly string[];
   canPrescribe: boolean;
+  hasRnStandingOrderAuthority?: boolean;
 }): EnterpriseOrderSetApplicationValidationResult {
   const parsed = enterpriseOrderSetProvenanceSchema.safeParse(input.provenance);
   if (!parsed.success) {
     return { ok: false, code: "INVALID_PROVENANCE", message: "Invalid enterprise order set provenance." };
   }
   const provenance = parsed.data;
+  const provenanceAuthority = provenance.orderSetAuthority ?? "PROVIDER_ORDER_SET";
 
   const set = enterpriseOrderSetByCode(provenance.orderSetCode);
   if (!set || !set.isActive) {
@@ -138,6 +147,14 @@ export function validateEnterpriseOrderSetApplication(input: {
       ok: false,
       code: "ORDER_SET_NOT_FOUND",
       message: "Enterprise order set not found or inactive.",
+    };
+  }
+  const setAuthority = resolveEnterpriseOrderSetAuthority(set);
+  if (setAuthority !== provenanceAuthority) {
+    return {
+      ok: false,
+      code: "ORDER_SET_AUTHORITY_MISMATCH",
+      message: "Enterprise order set authority mismatch.",
     };
   }
   if (set.version !== provenance.orderSetVersion) {
@@ -167,6 +184,8 @@ export function validateEnterpriseOrderSetApplication(input: {
       rolesAllowed: set.rolesAllowed,
       canPrescribe: input.canPrescribe,
       roleCodes: input.roleCodes,
+      orderSetAuthority: setAuthority,
+      hasRnStandingOrderAuthority: input.hasRnStandingOrderAuthority ?? false,
     })
   ) {
     return {
@@ -230,6 +249,13 @@ export function validateEnterpriseOrderSetApplication(input: {
         message: `Structured-parameters item cannot be auto-placed: ${key}.`,
       };
     }
+    if (isRnStandingOrderSet(setAuthority) && !isEnterpriseOrderSetItemRnStandingOrderSafe(item)) {
+      return {
+        ok: false,
+        code: "RN_STANDING_ITEM_DENIED",
+        message: `Item not allowed in RN standing order set: ${key}.`,
+      };
+    }
   }
 
   if (provenance.placedItemKeys.length !== input.itemCount) {
@@ -277,6 +303,7 @@ export function enterpriseOrderSetProvenanceAuditMetadata(
     enterpriseOrderSetVersion: provenance.orderSetVersion,
     enterpriseOrderSetCategory: provenance.orderSetCategory,
     enterpriseOrderSetClinicalDomain: provenance.orderSetClinicalDomain,
+    enterpriseOrderSetAuthority: provenance.orderSetAuthority ?? "PROVIDER_ORDER_SET",
     enterpriseOrderSetSelectedItemCount: provenance.selectedItemKeys.length,
     enterpriseOrderSetSkippedItemCount: skipped.length,
     enterpriseOrderSetStructuredParameterSkippedCount: skipped.filter(

@@ -7,14 +7,19 @@ import {
   buildEnterpriseOrderSetBrowserModel,
   defaultCheckedEnterpriseOrderSetItemKeys,
   enterpriseOrderSetByCode,
+  enterpriseOrderSetBrowserAuthorityForCode,
   enterpriseOrderSetBrowserCategoryForCode,
   enterpriseOrderSetItemByKey,
   ENTERPRISE_ORDER_SET_CATEGORIES,
   filterEnterpriseOrderSetsForBrowser,
+  filterEnterpriseOrderSetsVisibleToRole,
   groupEnterpriseOrderSetsByCategory,
+  isRnStandingOrderSet,
+  resolveEnterpriseOrderSetAuthority,
   resolveEnterpriseOrderSetDisplayName,
   resolveEnterpriseOrderSetItemDisplayName,
   sortEnterpriseOrderSetsByDisplayName,
+  type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetBrowserModel,
   type EnterpriseOrderSetCategory,
   type EnterpriseOrderSetCategoryGroup,
@@ -48,16 +53,44 @@ export const ORDER_SET_CATEGORY_OPTIONS = ENTERPRISE_ORDER_SET_CATEGORIES;
 
 export {
   buildEnterpriseOrderSetBrowserModel,
+  enterpriseOrderSetBrowserAuthorityForCode,
   enterpriseOrderSetBrowserCategoryForCode,
   filterEnterpriseOrderSetsForBrowser,
   groupEnterpriseOrderSetsByCategory,
+  isRnStandingOrderSet,
   sortEnterpriseOrderSetsByDisplayName,
+  type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetBrowserModel,
   type EnterpriseOrderSetCategoryGroup,
 };
 
+export function getDefaultOrderSetKeyForRole(input: {
+  canPrescribe: boolean;
+  hasRnStandingOrderAuthority: boolean;
+  roleCodes: readonly string[];
+}): OrderSetKey {
+  const visible = filterEnterpriseOrderSetsVisibleToRole({
+    sets: activeEnterpriseOrderSets(),
+    canPrescribe: input.canPrescribe,
+    hasRnStandingOrderAuthority: input.hasRnStandingOrderAuthority,
+    roleCodes: input.roleCodes,
+  });
+  if (input.hasRnStandingOrderAuthority && !input.canPrescribe) {
+    const rnSet = visible.find((set) => resolveEnterpriseOrderSetAuthority(set) === "RN_STANDING_ORDER");
+    if (rnSet) return rnSet.code;
+  }
+  const providerSet = visible.find(
+    (set) => resolveEnterpriseOrderSetAuthority(set) === "PROVIDER_ORDER_SET"
+  );
+  return providerSet?.code ?? visible[0]?.code ?? "ed_chest_pain_v1";
+}
+
 export function getDefaultOrderSetKey(): OrderSetKey {
-  return ORDER_SET_KEYS[0] ?? "ed_chest_pain_v1";
+  return getDefaultOrderSetKeyForRole({
+    canPrescribe: true,
+    hasRnStandingOrderAuthority: false,
+    roleCodes: ["PROVIDER"],
+  });
 }
 
 export function checkedOrderSetItemKeys(orderSetCode: OrderSetKey): string[] {
