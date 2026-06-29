@@ -4,9 +4,10 @@ import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { enterpriseOrderSetByCode } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
-import type { EnterpriseOrderSetCategory } from "@medora/shared";
+import type { EnterpriseOrderSetAuthority, EnterpriseOrderSetCategory } from "@medora/shared";
 import {
   buildEnterpriseOrderSetBrowserModel,
+  isRnStandingOrderSet,
   resolveOrderSetTitle,
   toOrderSetUiItems,
   orderSetWarningsForLocale,
@@ -42,6 +43,11 @@ export function EnterpriseOrderSetBrowser({
   applying,
   onOpenEkgDocumentation,
   locale,
+  canPrescribe,
+  hasRnStandingOrderAuthority,
+  roleCodes,
+  browserAuthority,
+  onBrowserAuthorityChange,
   browserCategory,
   onBrowserCategoryChange,
   searchQuery,
@@ -57,6 +63,11 @@ export function EnterpriseOrderSetBrowser({
   applying: boolean;
   onOpenEkgDocumentation?: () => void;
   locale: SupportedLanguage;
+  canPrescribe: boolean;
+  hasRnStandingOrderAuthority: boolean;
+  roleCodes: readonly string[];
+  browserAuthority: EnterpriseOrderSetAuthority | null;
+  onBrowserAuthorityChange: (authority: EnterpriseOrderSetAuthority) => void;
   browserCategory: EnterpriseOrderSetCategory | null;
   onBrowserCategoryChange: (category: EnterpriseOrderSetCategory) => void;
   searchQuery: string;
@@ -67,10 +78,22 @@ export function EnterpriseOrderSetBrowser({
     () =>
       buildEnterpriseOrderSetBrowserModel({
         query: searchQuery,
+        activeAuthority: browserAuthority,
         activeCategory: browserCategory,
         locale,
+        canPrescribe,
+        hasRnStandingOrderAuthority,
+        roleCodes,
       }),
-    [browserCategory, locale, searchQuery]
+    [
+      browserAuthority,
+      browserCategory,
+      canPrescribe,
+      hasRnStandingOrderAuthority,
+      locale,
+      roleCodes,
+      searchQuery,
+    ]
   );
 
   const selectedSet = enterpriseOrderSetByCode(selected);
@@ -97,9 +120,19 @@ export function EnterpriseOrderSetBrowser({
     onSelect(code);
     const set = enterpriseOrderSetByCode(code);
     if (set && browserModel.mode === "browse") {
+      if (isRnStandingOrderSet(set)) {
+        onBrowserAuthorityChange("RN_STANDING_ORDER");
+      } else {
+        onBrowserAuthorityChange("PROVIDER_ORDER_SET");
+      }
       onBrowserCategoryChange(set.category);
     }
   };
+
+  const browseGridColumns =
+    browserModel.authoritySections.length > 1
+      ? "minmax(96px, 0.5fr) minmax(108px, 0.55fr) minmax(132px, 0.65fr) minmax(200px, 1fr)"
+      : "minmax(108px, 0.55fr) minmax(132px, 0.65fr) minmax(200px, 1fr)";
 
   return (
     <div data-testid="enterprise-order-set-browser">
@@ -133,11 +166,61 @@ export function EnterpriseOrderSetBrowser({
           gridTemplateColumns:
             browserModel.mode === "search"
               ? "minmax(160px, 0.85fr) minmax(220px, 1.15fr)"
-              : "minmax(108px, 0.55fr) minmax(132px, 0.65fr) minmax(200px, 1fr)",
+              : browseGridColumns,
           gap: 10,
           alignItems: "stretch",
         }}
       >
+        {browserModel.mode === "browse" && browserModel.authoritySections.length > 1 ? (
+          <div
+            data-testid="enterprise-order-set-browser-authorities"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+              maxHeight: 340,
+              overflowY: "auto",
+              padding: "4px 2px",
+              border: `1px solid ${SHELL_BORDER}`,
+              borderRadius: 10,
+              background: CANVAS,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                color: "#64748b",
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                padding: "4px 8px 2px",
+              }}
+            >
+              {t("createOrderModal.orderSetsBrowserAuthorities")}
+            </div>
+            {browserModel.authoritySections.map((section) => {
+              const active = section.authority === browserModel.activeAuthority;
+              const setCount = section.groups.reduce((sum, group) => sum + group.sets.length, 0);
+              return (
+                <button
+                  key={section.authority}
+                  type="button"
+                  data-testid={`enterprise-order-set-browser-authority-${section.authority}`}
+                  onClick={() => onBrowserAuthorityChange(section.authority)}
+                  style={{
+                    ...listButtonStyle(active),
+                    fontSize: 12,
+                    padding: "7px 8px",
+                  }}
+                >
+                  {t(`createOrderModal.orderSetsBrowserAuthority.${section.authority}`)}
+                  <span style={{ marginLeft: 6, color: "#94a3b8", fontWeight: 600 }}>({setCount})</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         {browserModel.mode === "browse" ? (
           <div
             data-testid="enterprise-order-set-browser-categories"
@@ -263,6 +346,29 @@ export function EnterpriseOrderSetBrowser({
             </div>
             <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{selectedCountLabel}</div>
           </div>
+          {selectedSet ? (
+            <div style={{ marginBottom: 10 }}>
+              <span
+                data-testid="enterprise-order-set-authority-badge"
+                style={{
+                  display: "inline-block",
+                  padding: "3px 8px",
+                  borderRadius: 9999,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: 0.3,
+                  background: isRnStandingOrderSet(selectedSet) ? "#ede9fe" : "#e0f2fe",
+                  color: isRnStandingOrderSet(selectedSet) ? "#5b21b6" : "#0c4a6e",
+                }}
+              >
+                {t(
+                  isRnStandingOrderSet(selectedSet)
+                    ? "createOrderModal.orderSetsStandingOrderBadge"
+                    : "createOrderModal.orderSetsProviderSetBadge"
+                )}
+              </span>
+            </div>
+          ) : null}
           {warnings.length > 0 ? (
             <div style={{ marginBottom: 10, display: "flex", flexDirection: "column", gap: 6 }}>
               {warnings.map((warning) => (
@@ -327,6 +433,11 @@ export function EnterpriseOrderSetBrowser({
                   {item.required ? (
                     <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 700 }}>
                       {t("createOrderModal.orderSetRequiredBadge")}
+                    </span>
+                  ) : null}
+                  {!item.required ? (
+                    <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+                      {t("createOrderModal.orderSetOptionalBadge")}
                     </span>
                   ) : null}
                   {item.requiresStructuredParameters ? (

@@ -172,7 +172,50 @@ describe("enterpriseOrderSetProvenance (MEDUI.ORDERSETS.ENTERPRISE_PHASE_2)", ()
     });
     const meta = enterpriseOrderSetProvenanceAuditMetadata(provenance, { orderId: "ord-1" });
     expect(meta.enterpriseOrderSetCode).toBe("ed_chest_pain_v1");
+    expect(meta.enterpriseOrderSetAuthority).toBe("PROVIDER_ORDER_SET");
     expect(meta.enterpriseOrderSetStructuredParameterSkippedCount).toBe(1);
     expect(meta.orderId).toBe("ord-1");
+  });
+
+  it("accepts valid RN standing order provenance for LAB", () => {
+    const rnSet = enterpriseOrderSetByCode("ed_rn_chest_pain_v1")!;
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: rnSet,
+      selectedItemKeys: ["vitalsQ15", "pulseOximetry", "troponin"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    expect(applyContext.orderSetAuthority).toBe("RN_STANDING_ORDER");
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["troponin"],
+    });
+    const result = validateEnterpriseOrderSetApplication({
+      provenance,
+      itemCount: 1,
+      roleCodes: ["RN"],
+      canPrescribe: false,
+      hasRnStandingOrderAuthority: true,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects RN applying provider order set provenance", () => {
+    const applyContext = baseApplyContext();
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["troponin"],
+    });
+    const result = validateEnterpriseOrderSetApplication({
+      provenance,
+      itemCount: 1,
+      roleCodes: ["RN"],
+      canPrescribe: false,
+      hasRnStandingOrderAuthority: true,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.code).toBe("ORDER_SET_ROLE_DENIED");
   });
 });

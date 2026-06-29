@@ -39,8 +39,12 @@ describe("enterpriseOrderSetBrowser (MEDUI.ORDERSETS.ENTERPRISE_PHASE_5)", () =>
     expect(results.some((set) => set.code === "ed_sepsis_v1")).toBe(true);
     const model = buildEnterpriseOrderSetBrowserModel({
       query: "sepsis",
+      activeAuthority: null,
       activeCategory: null,
       locale: "en",
+      canPrescribe: true,
+      hasRnStandingOrderAuthority: false,
+      roleCodes: ["PROVIDER"],
     });
     expect(model.mode).toBe("search");
     expect(model.searchResults.length).toBeGreaterThan(0);
@@ -50,8 +54,12 @@ describe("enterpriseOrderSetBrowser (MEDUI.ORDERSETS.ENTERPRISE_PHASE_5)", () =>
   it("browse mode exposes sets only for active category", () => {
     const model = buildEnterpriseOrderSetBrowserModel({
       query: "",
+      activeAuthority: "PROVIDER_ORDER_SET",
       activeCategory: "NEURO",
       locale: "en",
+      canPrescribe: true,
+      hasRnStandingOrderAuthority: false,
+      roleCodes: ["PROVIDER"],
     });
     expect(model.mode).toBe("browse");
     expect(model.activeCategory).toBe("NEURO");
@@ -85,5 +93,21 @@ describe("enterpriseOrderSetBrowser (MEDUI.ORDERSETS.ENTERPRISE_PHASE_5)", () =>
     });
     expect(scoped.every((set) => set.category === chest.category)).toBe(true);
     expect(scoped.some((set) => set.code === chest.code)).toBe(true);
+  });
+
+  it("RN role sees RN standing orders only in browse model", () => {
+    const model = buildEnterpriseOrderSetBrowserModel({
+      query: "",
+      activeAuthority: "RN_STANDING_ORDER",
+      activeCategory: null,
+      locale: "en",
+      canPrescribe: false,
+      hasRnStandingOrderAuthority: true,
+      roleCodes: ["RN"],
+    });
+    expect(model.mode).toBe("browse");
+    expect(model.authoritySections).toHaveLength(1);
+    expect(model.authoritySections[0]?.authority).toBe("RN_STANDING_ORDER");
+    expect(model.categorySets.every((set) => set.orderSetAuthority === "RN_STANDING_ORDER")).toBe(true);
   });
 });

@@ -64,8 +64,23 @@ describe("enterprise order sets foundation (web)", () => {
         rolesAllowed: set.rolesAllowed,
         canPrescribe: false,
         roleCodes: ["RN"],
+        orderSetAuthority: "PROVIDER_ORDER_SET",
+        hasRnStandingOrderAuthority: true,
       })
     ).toBe(false);
+  });
+
+  it("RN can place RN standing order sets", () => {
+    const set = enterpriseOrderSetByCode("ed_rn_chest_pain_v1")!;
+    expect(
+      canRolePlaceEnterpriseOrderSet({
+        rolesAllowed: set.rolesAllowed,
+        canPrescribe: false,
+        roleCodes: ["RN"],
+        orderSetAuthority: "RN_STANDING_ORDER",
+        hasRnStandingOrderAuthority: true,
+      })
+    ).toBe(true);
   });
 
   it("provider can place order sets", () => {
@@ -115,11 +130,22 @@ describe("enterprise order sets foundation (web)", () => {
     expect(browserSource).toContain("disabled={item.required}");
   });
 
+  it("Phase 6 — browser separates provider sets and RN standing orders", () => {
+    expect(browserSource).toContain("enterprise-order-set-browser-authorities");
+    expect(browserSource).toContain("enterprise-order-set-authority-badge");
+    expect(browserSource).toContain("hasRnStandingOrderAuthority");
+    expect(modalSource).toContain("orderSetBrowserAuthority");
+    expect(modalSource).toContain("NURSING_PROTOCOL");
+    expect(activeEnterpriseOrderSets().some((set) => set.orderSetAuthority === "RN_STANDING_ORDER")).toBe(
+      true
+    );
+  });
+
   it("Phase 4 — registry scales with modular adapter sorting and grouping", () => {
     expect(adapterSource).toContain("sortEnterpriseOrderSetsByDisplayName");
     expect(adapterSource).toContain("groupEnterpriseOrderSetsByCategory");
     expect(adapterSource).toContain("ORDER_SET_CATEGORY_OPTIONS");
-    expect(activeEnterpriseOrderSets().length).toBeGreaterThanOrEqual(40);
+    expect(activeEnterpriseOrderSets().length).toBeGreaterThanOrEqual(60);
   });
 
   it("Phase 2 — manual orders omit provenance unless order-set review active", () => {

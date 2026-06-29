@@ -21,12 +21,15 @@ export function assertEnterpriseOrderSetProvenanceForCreate(input: {
   const normalizedRoles = input.roleCodes.map((code) => code.toUpperCase());
   const canPrescribe =
     normalizedRoles.includes(RoleCode.PROVIDER) || normalizedRoles.includes(RoleCode.ADMIN);
+  const hasRnStandingOrderAuthority =
+    normalizedRoles.includes(RoleCode.RN) && !canPrescribe;
 
   const result = validateEnterpriseOrderSetApplication({
     provenance,
     itemCount: input.data.items.length,
     roleCodes: input.roleCodes,
     canPrescribe,
+    hasRnStandingOrderAuthority,
   });
 
   if (!result.ok) {

@@ -23,9 +23,13 @@ import {
   resolveCanonicalCareProcedureDisplayName,
   canRolePlaceEnterpriseOrderSet,
   enterpriseOrderSetByCode,
+  isRnStandingOrderSet,
+  resolveEnterpriseOrderSetAuthority,
+  resolveEnterpriseOrderSetDisplayName,
   buildEnterpriseOrderSetApplyContext,
   buildEnterpriseOrderSetProvenance,
   type EnterpriseOrderSetApplyContext,
+  type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetCategory,
   type OxygenTherapyDraft,
 } from "@medora/shared";
@@ -50,8 +54,10 @@ import { OxygenTherapyOrderForm } from "./createOrderModal/OxygenTherapyOrderFor
 import type { CreateOrderLineItem, CreateOrderModalTab, MedicationRoute, OrderModalTab } from "./createOrderModal/types";
 import {
   checkedOrderSetItemKeys,
+  enterpriseOrderSetBrowserAuthorityForCode,
   enterpriseOrderSetBrowserCategoryForCode,
   getDefaultOrderSetKey,
+  getDefaultOrderSetKeyForRole,
   isRequiredOrderSetItem,
   resolveOrderSetTitle,
   toOrderSetUiItems,
@@ -486,6 +492,7 @@ export function CreateOrderModal({
 }) {
   const { language, t } = useI18n();
   const { facilityTimeZone, facilityClinicalTimeZoneReady, roles } = useFacilityAndRoles();
+  const hasRnStandingOrderAuthority = canUseRnOrderAuthority;
   const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
   const [carePickerQuery, setCarePickerQuery] = useState("");
   const [careCategoryFilter, setCareCategoryFilter] = useState<"" | CanonicalCareProcedureCategory>("");
@@ -540,10 +547,17 @@ export function CreateOrderModal({
   const [activeTab, setActiveTab] = useState<CreateOrderModalTab>(firstTab);
   const [rxSuccess, setRxSuccess] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
-  const defaultOrderSetKey = getDefaultOrderSetKey();
+  const defaultOrderSetKey = getDefaultOrderSetKeyForRole({
+    canPrescribe,
+    hasRnStandingOrderAuthority,
+    roleCodes: roles,
+  });
   const [selectedOrderSet, setSelectedOrderSet] = useState<OrderSetKey>(defaultOrderSetKey);
   const [selectedOrderSetItemKeys, setSelectedOrderSetItemKeys] = useState<string[]>(() =>
     checkedOrderSetItemKeys(defaultOrderSetKey)
+  );
+  const [orderSetBrowserAuthority, setOrderSetBrowserAuthority] = useState<EnterpriseOrderSetAuthority | null>(
+    () => enterpriseOrderSetBrowserAuthorityForCode(defaultOrderSetKey)
   );
   const [orderSetBrowserCategory, setOrderSetBrowserCategory] = useState<EnterpriseOrderSetCategory | null>(
     () => enterpriseOrderSetBrowserCategoryForCode(defaultOrderSetKey)
@@ -900,6 +914,8 @@ export function CreateOrderModal({
   const selectOrderSet = (key: OrderSetKey) => {
     setSelectedOrderSet(key);
     setSelectedOrderSetItemKeys(checkedOrderSetItemKeys(key));
+    const authority = enterpriseOrderSetBrowserAuthorityForCode(key);
+    if (authority) setOrderSetBrowserAuthority(authority);
     const category = enterpriseOrderSetBrowserCategoryForCode(key);
     if (category) setOrderSetBrowserCategory(category);
     setError(null);
@@ -928,6 +944,10 @@ export function CreateOrderModal({
       rolesAllowed: selectedOrderSetDefinition?.rolesAllowed ?? ["PROVIDER", "ADMIN"],
       canPrescribe,
       roleCodes: roles,
+      orderSetAuthority: selectedOrderSetDefinition
+        ? resolveEnterpriseOrderSetAuthority(selectedOrderSetDefinition)
+        : "PROVIDER_ORDER_SET",
+      hasRnStandingOrderAuthority,
     });
   const isRnAuthorityTab =
     canUseRnOrderAuthority && (activeTab === "MEDICATION" || activeTab === "CARE");
@@ -1374,7 +1394,19 @@ export function CreateOrderModal({
       }
 
       setActiveTab(nextTab);
-      setFormData((fd) => ({ ...fd, type: nextTab, items: nextStagedItems[nextTab] }));
+      const nursingProtocolPatch =
+        selectedOrderSetDefinition && isRnStandingOrderSet(selectedOrderSetDefinition)
+          ? {
+              orderSource: "NURSING_PROTOCOL" as const,
+              protocolName: resolveEnterpriseOrderSetDisplayName(selectedOrderSetDefinition, language),
+            }
+          : {};
+      setFormData((fd) => ({
+        ...fd,
+        type: nextTab,
+        items: nextStagedItems[nextTab],
+        ...nursingProtocolPatch,
+      }));
 
       if (resolved.skipped.length > 0) {
         const skippedLabels = resolved.skipped
@@ -2569,6 +2601,11 @@ export function CreateOrderModal({
                     applying={orderSetApplying}
                     onOpenEkgDocumentation={onOpenEkgProcedureDocumentation}
                     locale={language}
+                    canPrescribe={canPrescribe}
+                    hasRnStandingOrderAuthority={hasRnStandingOrderAuthority}
+                    roleCodes={roles}
+                    browserAuthority={orderSetBrowserAuthority}
+                    onBrowserAuthorityChange={setOrderSetBrowserAuthority}
                     browserCategory={orderSetBrowserCategory}
                     onBrowserCategoryChange={setOrderSetBrowserCategory}
                     searchQuery={orderSetSearchQuery}

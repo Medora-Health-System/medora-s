@@ -9,6 +9,7 @@ import {
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemRef,
 } from "./orderSets/index.js";
+import { validateEnterpriseOrderSetAuthorityDefinition } from "./orderSets/authority.js";
 
 /** Reference lab codes present in Haiti seed catalog (facility may alias ER_*). */
 export const ENTERPRISE_ORDER_SET_REFERENCE_LAB_CODES = new Set([
@@ -100,7 +101,7 @@ export const ENTERPRISE_ORDER_SET_REFERENCE_IMAGING_CODES = new Set([
 export type EnterpriseOrderSetValidationIssue = {
   orderSetCode: string;
   itemKey: string;
-  kind: "structure" | "duplicate" | "care" | "lab" | "imaging" | "medication" | "oxygen";
+  kind: "structure" | "duplicate" | "care" | "lab" | "imaging" | "medication" | "oxygen" | "authority";
   message: string;
 };
 
@@ -240,7 +241,28 @@ export function validateEnterpriseOrderSetDefinition(
     }
   }
 
+  for (const authorityIssue of validateEnterpriseOrderSetAuthorityDefinition(set)) {
+    issues.push({
+      orderSetCode: authorityIssue.orderSetCode,
+      itemKey: authorityIssue.itemKey,
+      kind: "authority",
+      message: authorityIssue.message,
+    });
+  }
+
   return issues;
+}
+
+/** Phase 6 — authority-only validation for a single order set definition. */
+export function validateEnterpriseOrderSetAuthority(
+  set: EnterpriseOrderSetDefinition
+): EnterpriseOrderSetValidationIssue[] {
+  return validateEnterpriseOrderSetAuthorityDefinition(set).map((issue) => ({
+    orderSetCode: issue.orderSetCode,
+    itemKey: issue.itemKey,
+    kind: "authority" as const,
+    message: issue.message,
+  }));
 }
 
 export function validateEnterpriseOrderSetRegistry(): EnterpriseOrderSetRegistryValidationReport {

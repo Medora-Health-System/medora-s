@@ -10,6 +10,12 @@ import { PHASE_1_ED_ORDER_SETS } from "./Emergency/phase1Sets.js";
 import { RESPIRATORY_ED_ORDER_SETS } from "./Emergency/respiratorySets.js";
 import { TRAUMA_MSK_ED_ORDER_SETS } from "./Emergency/traumaMskSets.js";
 import { WOUND_OB_ENT_METABOLIC_ED_ORDER_SETS } from "./Emergency/woundObEntMetabolicSets.js";
+import { RN_STANDING_ED_ORDER_SETS } from "./Emergency/rnStandingOrders.js";
+import {
+  canRoleApplyEnterpriseOrderSet,
+  canRolePlaceEnterpriseOrderSet,
+  resolveEnterpriseOrderSetAuthority,
+} from "./authority.js";
 import {
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetRoleCode,
@@ -27,6 +33,7 @@ export const ENTERPRISE_ORDER_SET_REGISTRY: readonly EnterpriseOrderSetDefinitio
   ...INFECTION_GENERAL_ED_ORDER_SETS,
   ...BEHAVIORAL_TOX_ED_ORDER_SETS,
   ...WOUND_OB_ENT_METABOLIC_ED_ORDER_SETS,
+  ...RN_STANDING_ED_ORDER_SETS,
 ];
 
 export type EnterpriseOrderSetCode = (typeof ENTERPRISE_ORDER_SET_REGISTRY)[number]["code"];
@@ -60,16 +67,11 @@ export function defaultCheckedEnterpriseOrderSetItemKeys(set: EnterpriseOrderSet
   return [...set.requiredItems.map((item) => item.key), ...set.optionalItems.map((item) => item.key)];
 }
 
-export function canRolePlaceEnterpriseOrderSet(input: {
-  rolesAllowed: readonly EnterpriseOrderSetRoleCode[];
-  canPrescribe: boolean;
-  roleCodes: readonly string[];
-}): boolean {
-  if (input.canPrescribe) return true;
-  const normalized = new Set(input.roleCodes.map((code) => code.toUpperCase()));
-  if (normalized.has("ADMIN") || normalized.has("MEDORA_SUPER_ADMIN")) return true;
-  return false;
-}
+export {
+  canRoleApplyEnterpriseOrderSet,
+  canRolePlaceEnterpriseOrderSet,
+  resolveEnterpriseOrderSetAuthority,
+};
 
 export {
   resolveEnterpriseOrderSetDisplayName,
