@@ -17,11 +17,15 @@ const adapterSource = readFileSync(
   join(webRoot, "components/orders/createOrderModal/enterpriseOrderSetAdapter.ts"),
   "utf8"
 );
+const browserSource = readFileSync(
+  join(webRoot, "components/orders/createOrderModal/enterpriseOrderSetBrowser.tsx"),
+  "utf8"
+);
 
 describe("enterprise order sets foundation (web)", () => {
   it("reuses Create Order ORDER_SET tab — no second order-set UI", () => {
     expect(modalSource).toContain('activeTab === "ORDER_SET"');
-    expect(modalSource).toContain("OrderSetPreview");
+    expect(modalSource).toContain("EnterpriseOrderSetBrowser");
     expect(modalSource).not.toMatch(/OrderSetGrid|SecondOrderSet|order-sets-page/i);
   });
 
@@ -80,8 +84,8 @@ describe("enterprise order sets foundation (web)", () => {
   });
 
   it("preview panel is compact and lazy — no full catalog render", () => {
-    expect(modalSource).toContain('data-testid="enterprise-order-set-preview"');
-    expect(modalSource).toContain("maxHeight:");
+    expect(browserSource).toContain('data-testid="enterprise-order-set-preview"');
+    expect(browserSource).toContain("maxHeight:");
     expect(modalSource).not.toContain("activeCanonicalCareProcedureCatalog");
     expect(modalSource).not.toContain("HAITI_LAB_CATALOG");
   });
@@ -92,6 +96,23 @@ describe("enterprise order sets foundation (web)", () => {
     expect(modalSource).toContain("resolveOrderSetCatalogBatch");
     expect(modalSource).toContain("_enterpriseOrderSetItemKey");
     expect(modalSource).toContain("enterpriseOrderSetProvenance");
+  });
+
+  it("Phase 5 — hierarchical browser in ORDER_SET tab", () => {
+    expect(modalSource).toContain("EnterpriseOrderSetBrowser");
+    expect(browserSource).toContain('data-testid="enterprise-order-set-browser"');
+    expect(browserSource).toContain("enterprise-order-set-browser-categories");
+    expect(browserSource).toContain("enterprise-order-set-browser-sets");
+    expect(browserSource).toContain("buildEnterpriseOrderSetBrowserModel");
+    expect(browserSource).not.toContain("enterprise-order-set-category-filter");
+    expect(modalSource).not.toContain("function OrderSetPreview");
+  });
+
+  it("Phase 5 — search and apply/provenance preserved", () => {
+    expect(browserSource).toContain("enterprise-order-set-search");
+    expect(modalSource).toContain("buildEnterpriseOrderSetProvenance");
+    expect(browserSource).toContain("enterprise-order-set-apply");
+    expect(browserSource).toContain("disabled={item.required}");
   });
 
   it("Phase 4 — registry scales with modular adapter sorting and grouping", () => {

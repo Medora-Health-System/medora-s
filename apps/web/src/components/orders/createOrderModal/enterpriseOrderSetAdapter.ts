@@ -4,13 +4,20 @@
 import type { CatalogType } from "@/lib/catalogSearchTypes";
 import {
   activeEnterpriseOrderSets,
+  buildEnterpriseOrderSetBrowserModel,
   defaultCheckedEnterpriseOrderSetItemKeys,
   enterpriseOrderSetByCode,
+  enterpriseOrderSetBrowserCategoryForCode,
   enterpriseOrderSetItemByKey,
   ENTERPRISE_ORDER_SET_CATEGORIES,
+  filterEnterpriseOrderSetsForBrowser,
+  groupEnterpriseOrderSetsByCategory,
   resolveEnterpriseOrderSetDisplayName,
   resolveEnterpriseOrderSetItemDisplayName,
+  sortEnterpriseOrderSetsByDisplayName,
+  type EnterpriseOrderSetBrowserModel,
   type EnterpriseOrderSetCategory,
+  type EnterpriseOrderSetCategoryGroup,
   type EnterpriseOrderSetCode,
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemRef,
@@ -37,6 +44,17 @@ export type OrderSetUiItem = {
 };
 
 export const ORDER_SET_KEYS: OrderSetKey[] = activeEnterpriseOrderSets().map((set) => set.code);
+export const ORDER_SET_CATEGORY_OPTIONS = ENTERPRISE_ORDER_SET_CATEGORIES;
+
+export {
+  buildEnterpriseOrderSetBrowserModel,
+  enterpriseOrderSetBrowserCategoryForCode,
+  filterEnterpriseOrderSetsForBrowser,
+  groupEnterpriseOrderSetsByCategory,
+  sortEnterpriseOrderSetsByDisplayName,
+  type EnterpriseOrderSetBrowserModel,
+  type EnterpriseOrderSetCategoryGroup,
+};
 
 export function getDefaultOrderSetKey(): OrderSetKey {
   return ORDER_SET_KEYS[0] ?? "ed_chest_pain_v1";
@@ -73,65 +91,17 @@ export function toOrderSetUiItems(
   ];
 }
 
-export const ORDER_SET_CATEGORY_OPTIONS = ENTERPRISE_ORDER_SET_CATEGORIES;
-
-export function sortEnterpriseOrderSetsByDisplayName(
-  sets: readonly EnterpriseOrderSetDefinition[],
-  locale: SupportedLanguage
-): EnterpriseOrderSetDefinition[] {
-  return [...sets].sort((a, b) =>
-    resolveEnterpriseOrderSetDisplayName(a, locale).localeCompare(
-      resolveEnterpriseOrderSetDisplayName(b, locale),
-      locale === "fr" ? "fr" : "en",
-      { sensitivity: "base" }
-    )
-  );
-}
-
+/** @deprecated Use filterEnterpriseOrderSetsForBrowser — kept for backward compatibility. */
 export function filterEnterpriseOrderSets(input: {
   category: EnterpriseOrderSetCategory | "ALL";
   query: string;
   locale: SupportedLanguage;
 }): EnterpriseOrderSetDefinition[] {
-  const q = input.query.trim().toLowerCase();
-  const filtered = activeEnterpriseOrderSets().filter((set) => {
-    if (input.category !== "ALL" && set.category !== input.category) return false;
-    if (!q) return true;
-    const haystack = [
-      set.code,
-      set.displayNameEn,
-      set.displayNameFr,
-      set.clinicalDomain,
-      set.category,
-      ...set.indicationKeywords,
-    ]
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(q);
+  return filterEnterpriseOrderSetsForBrowser({
+    query: input.query,
+    category: input.category === "ALL" ? null : input.category,
+    locale: input.locale,
   });
-  return sortEnterpriseOrderSetsByDisplayName(filtered, input.locale);
-}
-
-export type EnterpriseOrderSetCategoryGroup = {
-  category: EnterpriseOrderSetCategory;
-  sets: EnterpriseOrderSetDefinition[];
-};
-
-/** Group filtered sets by category for compact browsing when showing all categories. */
-export function groupEnterpriseOrderSetsByCategory(
-  sets: readonly EnterpriseOrderSetDefinition[],
-  locale: SupportedLanguage
-): EnterpriseOrderSetCategoryGroup[] {
-  const byCategory = new Map<EnterpriseOrderSetCategory, EnterpriseOrderSetDefinition[]>();
-  for (const set of sets) {
-    const list = byCategory.get(set.category) ?? [];
-    list.push(set);
-    byCategory.set(set.category, list);
-  }
-  return ORDER_SET_CATEGORY_OPTIONS.filter((category) => byCategory.has(category)).map((category) => ({
-    category,
-    sets: sortEnterpriseOrderSetsByDisplayName(byCategory.get(category) ?? [], locale),
-  }));
 }
 
 export function resolveOrderSetTitle(set: EnterpriseOrderSetDefinition, locale: SupportedLanguage): string {
