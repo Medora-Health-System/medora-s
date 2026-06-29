@@ -16124,6 +16124,21 @@ export default {
         protocolRequired: "Protocol name is required for a nursing protocol order.",
       },
     },
+    rnStandingVerbal: {
+      sectionTitle: "Verbal order attestation",
+      providerLabel: "Verbal order received from",
+      providerPlaceholder: "Select a provider",
+      providerDirectoryFailed: "Provider directory could not be loaded. Try again or contact support.",
+      readbackLabel:
+        "I read the order back to the provider and confirmed it is correct.",
+      submitBlockedHelp:
+        "Select the provider and confirm read-back before placing these standing orders.",
+      errors: {
+        providerRequired: "Select the provider who gave the verbal order.",
+        readbackRequired: "Read-back confirmation is required before placing RN standing orders.",
+        userRequired: "Current user identity is required to attest the verbal order.",
+      },
+    },
     continue: "Continue",
     rxAllAdministerLine:
       "Prescription saved — administer to patient (chart medication administration).",

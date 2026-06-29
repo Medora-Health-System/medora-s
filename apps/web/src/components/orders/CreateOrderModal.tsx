@@ -28,6 +28,8 @@ import {
   resolveEnterpriseOrderSetDisplayName,
   buildEnterpriseOrderSetApplyContext,
   buildEnterpriseOrderSetProvenance,
+  buildVerbalOrderAttestation,
+  requiresVerbalOrderAttestationForRole,
   type EnterpriseOrderSetApplyContext,
   type EnterpriseOrderSetAuthority,
   type EnterpriseOrderSetCategory,
@@ -490,7 +492,7 @@ export function CreateOrderModal({
   onOpenEkgProcedureDocumentation?: () => void;
 }) {
   const { language, t } = useI18n();
-  const { facilityTimeZone, facilityClinicalTimeZoneReady, roles } = useFacilityAndRoles();
+  const { facilityTimeZone, facilityClinicalTimeZoneReady, roles, userId } = useFacilityAndRoles();
   const hasRnStandingOrderAuthority = canUseRnOrderAuthority;
   const plannedAdminFacilityTimeZone = facilityClinicalTimeZoneReady ? facilityTimeZone : null;
   const [carePickerQuery, setCarePickerQuery] = useState("");
@@ -614,6 +616,7 @@ export function CreateOrderModal({
   const [providerDirectory, setProviderDirectory] = useState<ProviderDirectoryItem[]>([]);
   const [providerDirectoryLoaded, setProviderDirectoryLoaded] = useState(false);
   const [providerDirectoryFailed, setProviderDirectoryFailed] = useState(false);
+  const [rnStandingVerbalProviderId, setRnStandingVerbalProviderId] = useState("");
   const [ivRouteConfirmations, setIvRouteConfirmations] = useState<Record<string, boolean>>({});
   const [erQuantityConfirmations, setErQuantityConfirmations] = useState<Record<string, boolean>>({});
   const [medicationAllergyDocSummary, setMedicationAllergyDocSummary] = useState<string | null>(null);
@@ -947,6 +950,22 @@ export function CreateOrderModal({
         : "PROVIDER_ORDER_SET",
       hasRnStandingOrderAuthority,
     });
+  const requiresRnStandingVerbalAttestation = Boolean(
+    orderSetReviewActive &&
+      orderSetApplyContext &&
+      requiresVerbalOrderAttestationForRole({
+        orderSetAuthority: orderSetApplyContext.orderSetAuthority,
+        canPrescribe,
+        hasRnStandingOrderAuthority,
+        roleCodes: roles,
+      })
+  );
+  const rnStandingVerbalAttestationComplete =
+    Boolean(rnStandingVerbalProviderId.trim()) &&
+    formData.readbackConfirmed === true &&
+    Boolean(userId.trim());
+  const submitBlockedByRnStandingVerbal =
+    requiresRnStandingVerbalAttestation && !rnStandingVerbalAttestationComplete;
   const isRnAuthorityTab =
     canUseRnOrderAuthority && (activeTab === "MEDICATION" || activeTab === "CARE");
   const rnAuthorityModeValid =
@@ -957,7 +976,13 @@ export function CreateOrderModal({
   const providerDirectoryDatalistId = `provider-directory-${encounterId}`;
 
   useEffect(() => {
-    if (!isRnAuthorityTab || formData.orderSource !== "VERBAL_ORDER" || providerDirectoryLoaded) return;
+    if (
+      (!isRnAuthorityTab && !requiresRnStandingVerbalAttestation) ||
+      formData.orderSource !== "VERBAL_ORDER" ||
+      providerDirectoryLoaded
+    ) {
+      return;
+    }
     let cancelled = false;
     setProviderDirectoryFailed(false);
     fetchProviderDirectory(facilityId)
@@ -975,7 +1000,13 @@ export function CreateOrderModal({
     return () => {
       cancelled = true;
     };
-  }, [facilityId, formData.orderSource, isRnAuthorityTab, providerDirectoryLoaded]);
+  }, [
+    facilityId,
+    formData.orderSource,
+    isRnAuthorityTab,
+    providerDirectoryLoaded,
+    requiresRnStandingVerbalAttestation,
+  ]);
 
   useEffect(() => {
     const medStagedElsewhere = stagedItems.MEDICATION.length > 0;
@@ -1042,6 +1073,20 @@ export function CreateOrderModal({
 
   const authorityPayloadFields = (): OrderAuthorityPayloadFields | undefined =>
     authorityPayloadFieldsForType(formData.type);
+
+  const validateRnStandingVerbalAttestationForSubmit = (): string | null => {
+    if (!requiresRnStandingVerbalAttestation) return null;
+    if (!rnStandingVerbalProviderId.trim()) {
+      return t("createOrderModal.rnStandingVerbal.errors.providerRequired");
+    }
+    if (formData.readbackConfirmed !== true) {
+      return t("createOrderModal.rnStandingVerbal.errors.readbackRequired");
+    }
+    if (!userId.trim()) {
+      return t("createOrderModal.rnStandingVerbal.errors.userRequired");
+    }
+    return null;
+  };
 
   const validateRnAuthorityForSubmit = (): string | null => {
     if (!isRnAuthorityTab) return null;
@@ -1191,6 +1236,17 @@ export function CreateOrderModal({
             applyContext: orderSetApplyContext,
             orderType: type,
             placedItemKeys,
+            ...(requiresRnStandingVerbalAttestation && rnStandingVerbalAttestationComplete
+              ? {
+                  verbalOrderAttestation: buildVerbalOrderAttestation({
+                    verbalOrderReceivedFromProviderId: rnStandingVerbalProviderId,
+                    verbalOrderReceivedFromProviderName: formData.prescriberName,
+                    readBackConfirmed: true,
+                    verbalOrderAttestedAt: new Date().toISOString(),
+                    verbalOrderAttestedBy: userId,
+                  }),
+                }
+              : {}),
           })
         : undefined;
     const payload = buildPayload(
@@ -1392,18 +1448,23 @@ export function CreateOrderModal({
       }
 
       setActiveTab(nextTab);
-      const nursingProtocolPatch =
-        selectedOrderSetDefinition && isRnStandingOrderSet(selectedOrderSetDefinition)
+      const verbalOrderResetPatch =
+        selectedOrderSetDefinition &&
+        isRnStandingOrderSet(selectedOrderSetDefinition) &&
+        hasRnStandingOrderAuthority
           ? {
-              orderSource: "NURSING_PROTOCOL" as const,
-              protocolName: resolveEnterpriseOrderSetDisplayName(selectedOrderSetDefinition, language),
+              orderSource: "VERBAL_ORDER" as const,
+              protocolName: "",
+              prescriberName: "",
+              readbackConfirmed: false,
             }
           : {};
+      setRnStandingVerbalProviderId("");
       setFormData((fd) => ({
         ...fd,
         type: nextTab,
         items: nextStagedItems[nextTab],
-        ...nursingProtocolPatch,
+        ...verbalOrderResetPatch,
       }));
 
       if (resolved.skipped.length > 0) {
@@ -1697,6 +1758,7 @@ export function CreateOrderModal({
   const handleClose = () => {
     clearMedicationOrderLocalState();
     setOrderSetApplyContext(null);
+    setRnStandingVerbalProviderId("");
     onClose();
   };
 
@@ -1714,6 +1776,12 @@ export function CreateOrderModal({
     const rnAuthorityError = validateRnAuthorityForSubmit();
     if (rnAuthorityError) {
       setError(rnAuthorityError);
+      return;
+    }
+
+    const rnStandingVerbalError = validateRnStandingVerbalAttestationForSubmit();
+    if (rnStandingVerbalError) {
+      setError(rnStandingVerbalError);
       return;
     }
 
@@ -1790,6 +1858,7 @@ export function CreateOrderModal({
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
         setOrderSetApplyContext(null);
+        setRnStandingVerbalProviderId("");
         if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
@@ -1838,6 +1907,12 @@ export function CreateOrderModal({
     const rnBatchErr = validateRnAuthorityForStagedBatch(snapshot);
     if (rnBatchErr) {
       setError(rnBatchErr);
+      return;
+    }
+
+    const rnStandingVerbalError = validateRnStandingVerbalAttestationForSubmit();
+    if (rnStandingVerbalError) {
+      setError(rnStandingVerbalError);
       return;
     }
 
@@ -1960,6 +2035,7 @@ export function CreateOrderModal({
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
         setOrderSetApplyContext(null);
+        setRnStandingVerbalProviderId("");
         if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
@@ -2347,6 +2423,91 @@ export function CreateOrderModal({
                       </div>
                     ))}
                   </div>
+                  {requiresRnStandingVerbalAttestation ? (
+                    <div
+                      data-testid="rn-standing-verbal-attestation"
+                      style={{
+                        marginTop: 12,
+                        paddingTop: 12,
+                        borderTop: "1px solid #e2e8f0",
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#334155", marginBottom: 8 }}>
+                        {t("createOrderModal.rnStandingVerbal.sectionTitle")}
+                      </div>
+                      <label style={{ display: "block", marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
+                          {t("createOrderModal.rnStandingVerbal.providerLabel")}
+                        </div>
+                        <select
+                          value={rnStandingVerbalProviderId}
+                          onChange={(event) => {
+                            const providerId = event.target.value;
+                            const provider = providerDirectory.find((row) => row.id === providerId);
+                            setRnStandingVerbalProviderId(providerId);
+                            setFormData((fd) => ({
+                              ...fd,
+                              orderSource: "VERBAL_ORDER",
+                              protocolName: "",
+                              prescriberName: provider?.name ?? "",
+                            }));
+                          }}
+                          data-testid="rn-standing-verbal-provider-select"
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            padding: "8px 10px",
+                            borderRadius: 8,
+                            border: "1px solid #cbd5e1",
+                            fontSize: 13,
+                            background: "#fff",
+                          }}
+                        >
+                          <option value="">{t("createOrderModal.rnStandingVerbal.providerPlaceholder")}</option>
+                          {providerDirectory.map((provider) => (
+                            <option key={provider.id} value={provider.id}>
+                              {provider.name}
+                            </option>
+                          ))}
+                        </select>
+                        {providerDirectoryFailed ? (
+                          <div style={{ fontSize: 12, color: "#b45309", marginTop: 6 }}>
+                            {t("createOrderModal.rnStandingVerbal.providerDirectoryFailed")}
+                          </div>
+                        ) : null}
+                      </label>
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "flex-start",
+                          fontSize: 13,
+                          color: "#334155",
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.readbackConfirmed === true}
+                          onChange={(event) =>
+                            setFormData((fd) => ({
+                              ...fd,
+                              orderSource: "VERBAL_ORDER",
+                              readbackConfirmed: event.target.checked,
+                            }))
+                          }
+                          data-testid="rn-standing-verbal-readback"
+                          style={{ width: 14, height: 14, marginTop: 3 }}
+                        />
+                        <span>{t("createOrderModal.rnStandingVerbal.readbackLabel")}</span>
+                      </label>
+                      {submitBlockedByRnStandingVerbal ? (
+                        <p style={{ margin: "10px 0 0", fontSize: 12, color: "#b45309", fontWeight: 600 }}>
+                          {t("createOrderModal.rnStandingVerbal.submitBlockedHelp")}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -3133,7 +3294,7 @@ export function CreateOrderModal({
                   <button
                     type="button"
                     onClick={() => void handleSubmitAllStagedOrders()}
-                    disabled={loading}
+                    disabled={loading || submitBlockedByRnStandingVerbal}
                     style={{
                       padding: "10px 18px",
                       backgroundColor: "#1a1a1a",
@@ -3152,7 +3313,7 @@ export function CreateOrderModal({
                 {activeTab !== "ORDER_SET" && (
                   <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loading || submitBlockedByRnStandingVerbal}
                   style={{
                     padding: "10px 18px",
                     backgroundColor: showMultiStagedSubmitBar ? "#fff" : "#1a1a1a",
