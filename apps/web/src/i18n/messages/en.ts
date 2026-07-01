@@ -14056,6 +14056,13 @@ export default {
     apply: {
       skipped: "Some items could not be applied: {items}. Add them manually if still needed.",
       noMatch: "No selected order-set items could be matched safely in the catalog.",
+      partialStagingSummary: "Some selected items could not be staged:\n{items}",
+      itemReason: {
+        noMatch: "catalog reference not found",
+        ambiguous: "multiple catalog matches",
+        nonPrescriber: "requires prescriber authority",
+        structuredParametersRequired: "structured parameters required",
+      },
       ambiguous: "Some items had more than one possible catalog match and were skipped: {items}.",
       nonPrescriber: "Some prescription-only items were skipped for your role: {items}.",
       rnAuthorityRequired: "Some medication/care items require a valid RN authority mode first: {items}.",

@@ -42,9 +42,14 @@ describe("enterprise order sets foundation (web)", () => {
   });
 
   it("care resolution wires enterpriseProcedureId from registry", () => {
+    const resolverSource = readFileSync(
+      join(webRoot, "components/orders/createOrderModal/resolveEnterpriseOrderSetItems.ts"),
+      "utf8"
+    );
+    expect(resolverSource).toContain("_enterpriseProcedureId");
+    expect(resolverSource).toContain("requiresStructuredParameters");
+    expect(resolverSource).toContain("structuredParametersRequired");
     expect(modalSource).toContain("_enterpriseProcedureId");
-    expect(modalSource).toContain("requiresStructuredParameters");
-    expect(modalSource).toContain("structuredParametersRequired");
   });
 
   it("oxygen items require structured parameters in registry", () => {
@@ -108,7 +113,7 @@ describe("enterprise order sets foundation (web)", () => {
   it("Phase 2 — apply builds provenance and uses batch catalog resolver", () => {
     expect(modalSource).toContain("buildEnterpriseOrderSetApplyContext");
     expect(modalSource).toContain("buildEnterpriseOrderSetProvenance");
-    expect(modalSource).toContain("resolveOrderSetCatalogBatch");
+    expect(modalSource).toContain("resolveEnterpriseOrderSetItems");
     expect(modalSource).toContain("_enterpriseOrderSetItemKey");
     expect(modalSource).toContain("enterpriseOrderSetProvenance");
   });
@@ -136,6 +141,18 @@ describe("enterprise order sets foundation (web)", () => {
     expect(modalSource).not.toContain("isRequiredOrderSetItem");
     expect(browserSource).toContain("orderSetsNoneSelectedWarning");
     expect(modalSource).toContain("canApplyOrderSet");
+  });
+
+  it("order set apply resolves CARE locally and LAB via batch resolver", () => {
+    const resolverSource = readFileSync(
+      join(webRoot, "components/orders/createOrderModal/resolveEnterpriseOrderSetItems.ts"),
+      "utf8"
+    );
+    expect(resolverSource).toContain("allowRnStandingOrderSetApply");
+    expect(resolverSource).toContain('orderSetItem.type === "CARE"');
+    expect(resolverSource).toContain("resolveOrderSetCatalogBatch");
+    expect(resolverSource).not.toContain('orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE"');
+    expect(modalSource).toContain("formatOrderSetSkippedSummary");
   });
 
   it("Phase 6 — browser separates provider sets and RN standing orders", () => {

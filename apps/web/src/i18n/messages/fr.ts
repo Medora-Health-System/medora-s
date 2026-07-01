@@ -14088,6 +14088,13 @@ export default {
     apply: {
       skipped: "Certains éléments n'ont pas pu être appliqués : {items}. Ajoutez-les manuellement si nécessaire.",
       noMatch: "Aucun élément sélectionné du protocole n'a pu être associé au catalogue de façon sûre.",
+      partialStagingSummary: "Certains éléments sélectionnés n'ont pas pu être préparés :\n{items}",
+      itemReason: {
+        noMatch: "référence catalogue introuvable",
+        ambiguous: "plusieurs correspondances catalogue",
+        nonPrescriber: "autorité prescripteur requise",
+        structuredParametersRequired: "paramètres structurés requis",
+      },
       ambiguous: "Certains éléments avaient plusieurs correspondances possibles au catalogue et ont été ignorés : {items}.",
       nonPrescriber: "Certains éléments réservés aux prescripteurs ont été ignorés pour votre rôle : {items}.",
       rnAuthorityRequired: "Certains médicaments/soins exigent d'abord une autorisation infirmière valide : {items}.",

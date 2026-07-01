@@ -1,15 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { LabCatalogService } from "./lab-catalog.service";
 import { ImagingCatalogService } from "./imaging-catalog.service";
+import { pickOrderSetCatalogMatch } from "./order-set-catalog-match.util";
 import type {
   OrderSetCatalogResolveRequest,
   OrderSetCatalogResolveResponse,
   OrderSetCatalogResolveResultItem,
 } from "./dto/order-set-catalog-resolve.dto";
-import type { CatalogSearchItemDto } from "./dto/catalog-search-item.dto";
 
 @Injectable()
 export class OrderSetCatalogResolveService {
+  private readonly logger = new Logger(OrderSetCatalogResolveService.name);
+
   constructor(
     private readonly labCatalog: LabCatalogService,
     private readonly imagingCatalog: ImagingCatalogService
@@ -19,40 +21,38 @@ export class OrderSetCatalogResolveService {
     const results: OrderSetCatalogResolveResultItem[] = [];
 
     for (const item of request.items) {
-      const acceptableCodes = new Set(item.referenceCodes.map((code) => code.toUpperCase()));
-      let matches: CatalogSearchItemDto[] = [];
+      const referenceCodes = item.referenceCodes.map((code) => code.trim()).filter(Boolean);
+      let matches =
+        item.catalogType === "LAB_TEST"
+          ? await this.labCatalog.resolveByReferenceCodes({
+              referenceCodes,
+              fallbackSearchQuery: item.fallbackSearchQuery,
+            })
+          : await this.imagingCatalog.resolveByReferenceCodes({
+              referenceCodes,
+              fallbackSearchQuery: item.fallbackSearchQuery,
+            });
 
-      if (item.catalogType === "LAB_TEST") {
-        matches = await this.labCatalog.resolveByReferenceCodes({
-          referenceCodes: [...acceptableCodes],
-          fallbackSearchQuery: item.fallbackSearchQuery,
-        });
-      } else {
-        matches = await this.imagingCatalog.resolveByReferenceCodes({
-          referenceCodes: [...acceptableCodes],
-          fallbackSearchQuery: item.fallbackSearchQuery,
-        });
-      }
+      const picked = pickOrderSetCatalogMatch({ referenceCodes, matches });
+      results.push({
+        requestId: item.requestId,
+        item: picked.item,
+        ambiguous: picked.ambiguous,
+      });
 
-      const exactMatches = matches.filter((row) => acceptableCodes.has(row.code.toUpperCase()));
-
-      if (exactMatches.length === 1) {
-        results.push({ requestId: item.requestId, item: exactMatches[0]!, ambiguous: false });
-        continue;
+      if (process.env.NODE_ENV !== "production") {
+        this.logger.debug(
+          JSON.stringify({
+            event: "orderSetCatalogResolve.item",
+            requestId: item.requestId,
+            catalogType: item.catalogType,
+            referenceCodes,
+            matchCount: matches.length,
+            matchedCode: picked.item?.code ?? null,
+            ambiguous: picked.ambiguous,
+          })
+        );
       }
-      if (exactMatches.length > 1) {
-        results.push({ requestId: item.requestId, item: null, ambiguous: true });
-        continue;
-      }
-      if (matches.length === 1) {
-        results.push({ requestId: item.requestId, item: matches[0]!, ambiguous: false });
-        continue;
-      }
-      if (matches.length > 1) {
-        results.push({ requestId: item.requestId, item: null, ambiguous: true });
-        continue;
-      }
-      results.push({ requestId: item.requestId, item: null, ambiguous: false });
     }
 
     return { results };

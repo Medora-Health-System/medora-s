@@ -181,6 +181,48 @@ export class LabCatalogService {
       );
     }
 
+    const aliasCandidates = [
+      ...new Set([
+        ...codes.map((code) => code.toLowerCase()),
+        ...codes,
+      ]),
+    ];
+    const aliasRows = await this.prisma.labTestAlias.findMany({
+      where: {
+        alias: { in: aliasCandidates, mode: "insensitive" },
+        catalogLabTest: { isActive: true },
+      },
+      include: {
+        catalogLabTest: includeClassifiers ? { include: labClassifierInclude } : true,
+      },
+    });
+    const aliasMatches = aliasRows
+      .map((row) => row.catalogLabTest)
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+    if (aliasMatches.length > 0) {
+      const uniqueById = new Map(aliasMatches.map((row) => [row.id, row]));
+      return [...uniqueById.values()].map((row) =>
+        mapLabRowToCatalogSearchItem(
+          {
+            id: row.id,
+            code: row.code,
+            name: row.name,
+            displayNameEn: row.displayNameEn,
+            displayNameFr: row.displayNameFr,
+            description: row.description,
+            searchText: row.searchText,
+            billingCodeDefault: row.billingCodeDefault,
+            labCategoryClassifier:
+              includeClassifiers && "labCategoryClassifier" in row
+                ? (row as { labCategoryClassifier: { labels: Array<{ locale: string; displayName: string }> } | null })
+                    .labCategoryClassifier
+                : null,
+          },
+          truncateSearchText(row.searchText)
+        )
+      );
+    }
+
     if (input.fallbackSearchQuery?.trim()) {
       const search = await this.search({ q: input.fallbackSearchQuery.trim(), limit: 5 });
       return search.items;
