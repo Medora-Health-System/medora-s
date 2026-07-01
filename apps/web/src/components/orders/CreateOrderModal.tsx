@@ -19,8 +19,6 @@ import {
   enterpriseProcedureById,
   oxygenTherapyOrderPriority,
   validateOxygenTherapyDraft,
-  canonicalCareProcedureByCode,
-  resolveCanonicalCareProcedureDisplayName,
   canRolePlaceEnterpriseOrderSet,
   enterpriseOrderSetByCode,
   isRnStandingOrderSet,
@@ -38,8 +36,12 @@ import {
 import { SharedCatalogAutocomplete } from "@/components/catalog/SharedCatalogAutocomplete";
 import { printRx } from "@/components/pharmacy/RxPrintLayout";
 import { searchCatalog, searchProcedureCatalog } from "@/lib/catalogSearchApi";
-import { resolveOrderSetCatalogBatch } from "@/lib/orderSetCatalogResolveApi";
-import type { CatalogSearchItem, CatalogType } from "@/lib/catalogSearchTypes";
+import {
+  resolveEnterpriseOrderSetItems,
+  formatOrderSetSkippedSummary,
+  type ResolvedOrderSetItems,
+} from "./createOrderModal/resolveEnterpriseOrderSetItems";
+import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import {
   CANONICAL_CARE_PROCEDURE_CATEGORIES,
   canonicalCareProcedureCategoryLabel,
@@ -100,13 +102,7 @@ import {
 } from "@/lib/clinicalDraftStorage";
 import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWarning";
 
-type OrderSetItemType = OrderSetUiItem["type"];
 type OrderTypeKey = OrderModalTab;
-type OrderSetSkippedReason = "noMatch" | "ambiguous" | "nonPrescriber" | "structuredParametersRequired";
-type OrderSetSkippedItem = { key: string; reason: OrderSetSkippedReason };
-type ResolvedOrderSetItems = Record<OrderTypeKey, CreateOrderLineItem[]> & {
-  skipped: OrderSetSkippedItem[];
-};
 type OrderAuthorityFormSource = OrderSource | "";
 type OrderAuthorityPayloadFields = {
   orderSource?: OrderSource;
@@ -197,16 +193,6 @@ function isOrderTypeKey(tab: CreateOrderModalTab): tab is OrderTypeKey {
   return tab !== "ORDER_SET";
 }
 
-function emptyResolvedOrderSetItems(): ResolvedOrderSetItems {
-  return {
-    LAB: [],
-    IMAGING: [],
-    MEDICATION: [],
-    CARE: [],
-    skipped: [],
-  };
-}
-
 function mapOrderCreateError(
   err: unknown,
   t: (k: string) => string,
@@ -222,10 +208,6 @@ function catalogLineLabel(
   t: (key: string) => string
 ): string {
   return catalogSearchItemFullDisplayLine(item, language, t);
-}
-
-function isApprovedCatalogMatch(item: CatalogSearchItem, catalogType: CatalogType, approvedCodes: Set<string>): boolean {
-  return item.type === catalogType && approvedCodes.has(item.code.toUpperCase());
 }
 
 function catalogItemToOrderLine(
@@ -1272,138 +1254,21 @@ export function CreateOrderModal({
     })) as OrderCreateResponse;
   };
 
-  const resolveOrderSetItems = async (items: OrderSetUiItem[]): Promise<ResolvedOrderSetItems> => {
-    const resolved = emptyResolvedOrderSetItems();
-    const catalogBatchRows: Array<{
-      orderSetItem: OrderSetUiItem;
-      acceptableCodes: Set<string>;
-    }> = [];
-
-    for (const orderSetItem of items) {
-      if (orderSetItem.comingSoon) continue;
-
-      if (orderSetItem.requiresStructuredParameters) {
-        resolved.skipped.push({ key: orderSetItem.key, reason: "structuredParametersRequired" });
-        continue;
-      }
-
-      if (
-        (orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE") &&
-        !canPrescribe &&
-        !(canUseRnOrderAuthority && rnAuthorityModeValid)
-      ) {
-        resolved.skipped.push({ key: orderSetItem.key, reason: "nonPrescriber" });
-        continue;
-      }
-
-      if (orderSetItem.type === "CARE") {
-        const procedureCode = orderSetItem.enterpriseProcedureCode?.trim();
-        const label =
-          (procedureCode
-            ? resolveCanonicalCareProcedureDisplayName(procedureCode, language) ??
-              canonicalCareProcedureByCode(procedureCode)?.displayNameEn
-            : null) ?? orderSetItem.displayLabel;
-        if (procedureCode && !canonicalCareProcedureByCode(procedureCode)) {
-          if (orderSetItem.deferIfMissing) continue;
-          resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-          continue;
-        }
-        resolved.CARE.push({
-          _lineId: newOrderLineId(),
-          isManual: true,
-          catalogItemType: "CARE",
-          manualLabel: label,
-          _label: label,
-          _enterpriseOrderSetItemKey: orderSetItem.key,
-          ...(procedureCode ? { _enterpriseProcedureId: procedureCode } : {}),
-          ...(procedureCode === OXYGEN_THERAPY_PROCEDURE_CODE
-            ? { _careQuickKey: "oxygen_therapy" as const }
-            : {}),
-          ...(procedureCode === "ekg_ecg" ? { _careQuickKey: "ekg_workflow" as const } : {}),
-        });
-        continue;
-      }
-
-      if (!orderSetItem.catalogType || !orderSetItem.catalogCode) {
-        if (orderSetItem.deferIfMissing) continue;
-        resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-        continue;
-      }
-
-      catalogBatchRows.push({
-        orderSetItem,
-        acceptableCodes: new Set(
-          [orderSetItem.catalogCode, ...(orderSetItem.catalogCodes ?? [])].map((code) => code.toUpperCase())
-        ),
-      });
-    }
-
-    if (catalogBatchRows.length > 0) {
-      try {
-        const batchResults = await resolveOrderSetCatalogBatch(
-          facilityId,
-          catalogBatchRows.map(({ orderSetItem }) => ({
-            requestId: orderSetItem.key,
-            catalogType: orderSetItem.catalogType as "LAB_TEST" | "IMAGING_STUDY",
-            referenceCodes: [orderSetItem.catalogCode!, ...(orderSetItem.catalogCodes ?? [])],
-            fallbackSearchQuery: orderSetItem.fallbackSearchQuery,
-          }))
-        );
-
-        for (const { orderSetItem, acceptableCodes } of catalogBatchRows) {
-          const batchResult = batchResults.get(orderSetItem.key);
-          if (!batchResult) {
-            if (orderSetItem.deferIfMissing) continue;
-            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-            continue;
-          }
-          if (batchResult.ambiguous) {
-            resolved.skipped.push({ key: orderSetItem.key, reason: "ambiguous" });
-            continue;
-          }
-          const catalogItem =
-            batchResult.item &&
-            isApprovedCatalogMatch(batchResult.item, orderSetItem.catalogType!, acceptableCodes)
-              ? batchResult.item
-              : null;
-
-          if (!catalogItem) {
-            if (orderSetItem.deferIfMissing) continue;
-            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-            continue;
-          }
-
-          const line = catalogItemToOrderLine(
-            catalogItem,
-            language,
-            t,
-            medicationOrderMode,
-            plannedAdminFacilityTimeZone
-          );
-          if (!line) {
-            resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-            continue;
-          }
-
-          const taggedLine = { ...line, _enterpriseOrderSetItemKey: orderSetItem.key };
-          if (orderSetItem.type === "LAB" && taggedLine.catalogItemType === "LAB_TEST") resolved.LAB.push(taggedLine);
-          if (orderSetItem.type === "IMAGING" && taggedLine.catalogItemType === "IMAGING_STUDY") {
-            resolved.IMAGING.push(taggedLine);
-          }
-          if (orderSetItem.type === "MEDICATION" && taggedLine.catalogItemType === "MEDICATION") {
-            resolved.MEDICATION.push(taggedLine);
-          }
-        }
-      } catch {
-        for (const { orderSetItem } of catalogBatchRows) {
-          if (orderSetItem.deferIfMissing) continue;
-          resolved.skipped.push({ key: orderSetItem.key, reason: "noMatch" });
-        }
-      }
-    }
-
-    return resolved;
-  };
+  const resolveOrderSetItems = async (items: OrderSetUiItem[]): Promise<ResolvedOrderSetItems> =>
+    resolveEnterpriseOrderSetItems({
+      items,
+      facilityId,
+      language,
+      canPrescribe,
+      allowRnStandingOrderSetApply: Boolean(
+        hasRnStandingOrderAuthority &&
+          selectedOrderSetDefinition &&
+          isRnStandingOrderSet(selectedOrderSetDefinition)
+      ),
+      orderSetCode: selectedOrderSet,
+      catalogItemToOrderLine: (item, lang) =>
+        catalogItemToOrderLine(item, lang, t, medicationOrderMode, plannedAdminFacilityTimeZone),
+    });
 
   const applyOrderSet = async () => {
     if (!canApplyOrderSet || orderSetApplying) return;
@@ -1443,7 +1308,12 @@ export function CreateOrderModal({
       }
 
       if (!nextTab) {
-        setError(t("ordersets.apply.noMatch"));
+        const skippedSummary = formatOrderSetSkippedSummary({
+          skipped: resolved.skipped,
+          itemsByKey: new Map(selectedOrderSetUiItems.map((item) => [item.key, item])),
+          t,
+        });
+        setError(skippedSummary ?? t("ordersets.apply.noMatch"));
         return;
       }
 
@@ -1468,22 +1338,12 @@ export function CreateOrderModal({
       }));
 
       if (resolved.skipped.length > 0) {
-        const skippedLabels = resolved.skipped
-          .map((item) => selectedOrderSetUiItems.find((ui) => ui.key === item.key)?.displayLabel ?? item.key)
-          .join(", ");
-        const hasNonPrescriber = resolved.skipped.some((item) => item.reason === "nonPrescriber");
-        const hasStructured = resolved.skipped.some((item) => item.reason === "structuredParametersRequired");
-        const hasAmbiguous = resolved.skipped.some((item) => item.reason === "ambiguous");
-        const messageKey = hasNonPrescriber
-          ? canUseRnOrderAuthority
-            ? "ordersets.apply.rnAuthorityRequired"
-            : "ordersets.apply.nonPrescriber"
-          : hasStructured
-            ? "ordersets.apply.structuredParametersRequired"
-            : hasAmbiguous
-              ? "ordersets.apply.ambiguous"
-              : "ordersets.apply.skipped";
-        setError(t(messageKey).replace("{items}", skippedLabels));
+        const skippedSummary = formatOrderSetSkippedSummary({
+          skipped: resolved.skipped,
+          itemsByKey: new Map(selectedOrderSetUiItems.map((item) => [item.key, item])),
+          t,
+        });
+        setError(skippedSummary ?? t("ordersets.apply.skipped").replace("{items}", resolved.skipped.map((item) => selectedOrderSetUiItems.find((ui) => ui.key === item.key)?.displayLabel ?? item.key).join(", ")));
       }
     } catch {
       setError(t("ordersets.apply.noMatch"));
