@@ -84,4 +84,24 @@ describe("enterpriseOrderSetAnalytics (MEDUI.ORDERSETS.ENTERPRISE_PHASE_3)", () 
     expect(exported.orderSetCode).toBe("ed_sepsis_v1");
     expect(exported.placedItemCount).toBe(1);
   });
+
+  it("counts verbal-order attested RN standing metadata", () => {
+    const row = parseEnterpriseOrderSetAuditMetadata({
+      auditLogId: "a6",
+      createdAt: "2026-06-23T12:01:00.000Z",
+      metadata: {
+        ...baseMeta,
+        enterpriseOrderSetAuthority: "RN_STANDING_ORDER",
+        verbalOrderReadBackConfirmed: true,
+      },
+      encounterId: "enc-3",
+    })!;
+    const summary = aggregateEnterpriseOrderSetAnalytics({
+      rows: [row],
+      summaryScanCount: 1,
+      summaryIsPartial: false,
+    });
+    expect(row.verbalOrderReadBackConfirmed).toBe(true);
+    expect(summary.totalVerbalOrderAttestedOrders).toBe(1);
+  });
 });

@@ -101,6 +101,14 @@ describe("enterprise-order-set-provenance.guard (MEDUI.ORDERSETS.ENTERPRISE_PHAS
       applyContext,
       orderType: "LAB",
       placedItemKeys: ["cbc"],
+      verbalOrderAttestation: {
+        verbalOrderReceivedFromProviderId: "550e8400-e29b-41d4-a716-446655440001",
+        verbalOrderReceivedFromProviderName: "Dr. Example",
+        readBackConfirmed: true,
+        verbalOrderAttestedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+        verbalOrderAttestedBy: "550e8400-e29b-41d4-a716-446655440002",
+        attestedSurface: "CREATE_ORDER_MODAL",
+      },
     });
     expect(() =>
       assertEnterpriseOrderSetProvenanceForCreate({
@@ -110,8 +118,35 @@ describe("enterprise-order-set-provenance.guard (MEDUI.ORDERSETS.ENTERPRISE_PHAS
           enterpriseOrderSetProvenance: provenance,
         },
         roleCodes: ["RN"] as never,
+        currentUserId: "550e8400-e29b-41d4-a716-446655440002",
       })
     ).not.toThrow();
+  });
+
+  it("rejects RN standing order without verbal-order attestation", () => {
+    const rnSet = enterpriseOrderSetByCode("ed_rn_fever_pediatric_v1")!;
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: rnSet,
+      selectedItemKeys: ["cbc"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["cbc"],
+    });
+    expect(() =>
+      assertEnterpriseOrderSetProvenanceForCreate({
+        data: {
+          type: "LAB",
+          items: [{ catalogItemType: "LAB_TEST", manualLabel: "CBC" }],
+          enterpriseOrderSetProvenance: provenance,
+        },
+        roleCodes: ["RN"] as never,
+        currentUserId: "550e8400-e29b-41d4-a716-446655440002",
+      })
+    ).toThrow(BadRequestException);
   });
 
   it("rejects RN attempting provider order set", () => {

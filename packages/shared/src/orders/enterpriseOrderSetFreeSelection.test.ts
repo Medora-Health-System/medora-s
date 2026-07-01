@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEnterpriseOrderSetApplyContext,
   buildEnterpriseOrderSetProvenance,
+  buildVerbalOrderAttestation,
   validateEnterpriseOrderSetApplication,
 } from "./enterpriseOrderSetProvenance.js";
 import {
@@ -93,6 +94,7 @@ describe("enterpriseOrderSetFreeSelection (MEDUI.ORDERSETS.FIX_FREE_SELECTION)",
   });
 
   it("keeps RN standing-order governance when recommended items are omitted", () => {
+    const rnUserId = "550e8400-e29b-41d4-a716-446655440002";
     const applyContext = buildEnterpriseOrderSetApplyContext({
       set: rnChestPain,
       selectedItemKeys: ["troponin"],
@@ -103,6 +105,13 @@ describe("enterpriseOrderSetFreeSelection (MEDUI.ORDERSETS.FIX_FREE_SELECTION)",
       applyContext,
       orderType: "LAB",
       placedItemKeys: ["troponin"],
+      verbalOrderAttestation: buildVerbalOrderAttestation({
+        verbalOrderReceivedFromProviderId: "550e8400-e29b-41d4-a716-446655440001",
+        verbalOrderReceivedFromProviderName: "Dr. Example",
+        readBackConfirmed: true,
+        verbalOrderAttestedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+        verbalOrderAttestedBy: rnUserId,
+      }),
     });
     expect(
       validateEnterpriseOrderSetApplication({
@@ -111,6 +120,7 @@ describe("enterpriseOrderSetFreeSelection (MEDUI.ORDERSETS.FIX_FREE_SELECTION)",
         roleCodes: ["RN"],
         canPrescribe: false,
         hasRnStandingOrderAuthority: true,
+        currentUserId: rnUserId,
       }).ok
     ).toBe(true);
 

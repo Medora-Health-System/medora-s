@@ -1157,6 +1157,7 @@ export class OrdersService {
     assertEnterpriseOrderSetProvenanceForCreate({
       data,
       roleCodes: pilotScope?.roleCodes ?? [],
+      currentUserId: userId,
     });
 
     if (data.type === "LAB") {

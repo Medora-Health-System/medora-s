@@ -10,6 +10,7 @@ import { RoleCode } from "@prisma/client";
 export function assertEnterpriseOrderSetProvenanceForCreate(input: {
   data: OrderCreateDto;
   roleCodes: readonly string[];
+  currentUserId?: string | null;
 }): void {
   const provenance = input.data.enterpriseOrderSetProvenance;
   if (!provenance) return;
@@ -30,6 +31,7 @@ export function assertEnterpriseOrderSetProvenanceForCreate(input: {
     roleCodes: input.roleCodes,
     canPrescribe,
     hasRnStandingOrderAuthority,
+    currentUserId: input.currentUserId,
   });
 
   if (!result.ok) {

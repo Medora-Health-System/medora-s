@@ -42,6 +42,7 @@ export type EnterpriseOrderSetAuditMetadataRow = {
   orderSetCategory: string;
   orderSetClinicalDomain: string;
   orderSetAuthority: string | null;
+  verbalOrderReadBackConfirmed: boolean;
   orderType: string | null;
   selectedItemCount: number;
   skippedItemCount: number;
@@ -62,6 +63,7 @@ export type EnterpriseOrderSetAnalyticsSummary = {
   totalPlacedItems: number;
   totalSkippedItems: number;
   totalStructuredParameterSkipped: number;
+  totalVerbalOrderAttestedOrders: number;
   byOrderSetCode: Record<string, number>;
   byCategory: Record<string, number>;
   byClinicalDomain: Record<string, number>;
@@ -105,6 +107,10 @@ function readString(meta: Record<string, unknown>, key: string): string | null {
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
+function readBoolean(meta: Record<string, unknown>, key: string): boolean {
+  return meta[key] === true;
+}
+
 function readNumber(meta: Record<string, unknown>, key: string): number {
   const v = meta[key];
   return typeof v === "number" && Number.isFinite(v) ? v : 0;
@@ -145,6 +151,7 @@ export function parseEnterpriseOrderSetAuditMetadata(input: {
     orderSetCategory: readString(meta, "enterpriseOrderSetCategory") ?? "",
     orderSetClinicalDomain: readString(meta, "enterpriseOrderSetClinicalDomain") ?? "",
     orderSetAuthority: readString(meta, "enterpriseOrderSetAuthority"),
+    verbalOrderReadBackConfirmed: readBoolean(meta, "verbalOrderReadBackConfirmed"),
     orderType: readString(meta, "type"),
     selectedItemCount: readNumber(meta, "enterpriseOrderSetSelectedItemCount"),
     skippedItemCount: readNumber(meta, "enterpriseOrderSetSkippedItemCount"),
@@ -176,6 +183,7 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
   let totalPlacedItems = 0;
   let totalSkippedItems = 0;
   let totalStructuredParameterSkipped = 0;
+  let totalVerbalOrderAttestedOrders = 0;
   const byOrderSetCode: Record<string, number> = {};
   const byCategory: Record<string, number> = {};
   const byClinicalDomain: Record<string, number> = {};
@@ -206,6 +214,10 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
     }
     if (row.encounterType) {
       byEncounterType[row.encounterType] = (byEncounterType[row.encounterType] ?? 0) + 1;
+    }
+
+    if (row.verbalOrderReadBackConfirmed) {
+      totalVerbalOrderAttestedOrders += 1;
     }
 
     totalPlacedItems += row.placedItemKeys.length;
@@ -240,6 +252,7 @@ export function aggregateEnterpriseOrderSetAnalytics(input: {
     totalPlacedItems,
     totalSkippedItems,
     totalStructuredParameterSkipped,
+    totalVerbalOrderAttestedOrders,
     byOrderSetCode,
     byCategory,
     byClinicalDomain,

@@ -16161,6 +16161,23 @@ export default {
         protocolRequired: "Le nom du protocole est requis pour un ordre sous protocole infirmier.",
       },
     },
+    rnStandingVerbal: {
+      sectionTitle: "Attestation d'ordre verbal",
+      providerLabel: "Ordre verbal reçu de",
+      providerPlaceholder: "Sélectionner un médecin",
+      providerDirectoryFailed:
+        "La liste des médecins n'a pas pu être chargée. Réessayez ou contactez le support.",
+      readbackLabel:
+        "J'ai relu l'ordre au médecin et confirmé qu'il est correct.",
+      submitBlockedHelp:
+        "Sélectionnez le médecin et confirmez la relecture avant de placer ces ordres permanents.",
+      errors: {
+        providerRequired: "Sélectionnez le médecin qui a donné l'ordre verbal.",
+        readbackRequired:
+          "La confirmation de relecture est requise avant de placer des ordres permanents infirmiers.",
+        userRequired: "L'identité de l'utilisateur courant est requise pour attester l'ordre verbal.",
+      },
+    },
     continue: "Continuer",
     rxAllAdministerLine:
       "Ordonnance enregistrée — à administrer au patient (dossier de soins).",

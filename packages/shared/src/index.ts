@@ -150,6 +150,7 @@ export * from "./orders/orderItemLifecycle.js";
 export * from "./orders/enterpriseOrderSets.js";
 export * from "./orders/enterpriseOrderSetValidation.js";
 export * from "./orders/enterpriseOrderSetProvenance.js";
+export * from "./orders/enterpriseOrderSetVerbalOrderAttestation.js";
 export * from "./orders/enterpriseOrderSetAnalytics.js";
 export * from "./orders/trackboardOpenOrderCount.js";
 export * from "./orders/labResultReferenceFlag.js";

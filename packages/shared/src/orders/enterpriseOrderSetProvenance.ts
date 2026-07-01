@@ -12,6 +12,22 @@ import {
   type EnterpriseOrderSetDefinition,
   type EnterpriseOrderSetItemKind,
 } from "./enterpriseOrderSets.js";
+import {
+  enterpriseOrderSetVerbalOrderAttestationSchema,
+  enterpriseOrderSetVerbalOrderAttestationAuditMetadata,
+  requiresVerbalOrderAttestationForRole,
+  validateVerbalOrderAttestation,
+  type EnterpriseOrderSetVerbalOrderAttestation,
+} from "./enterpriseOrderSetVerbalOrderAttestation.js";
+
+export type { EnterpriseOrderSetVerbalOrderAttestation };
+export {
+  buildVerbalOrderAttestation,
+  enterpriseOrderSetVerbalOrderAttestationSchema,
+  requiresVerbalOrderAttestationForRole,
+  validateVerbalOrderAttestation,
+  enterpriseOrderSetVerbalOrderAttestationAuditMetadata,
+} from "./enterpriseOrderSetVerbalOrderAttestation.js";
 
 export const ENTERPRISE_ORDER_SET_APPLY_SURFACES = ["CREATE_ORDER_MODAL"] as const;
 export type EnterpriseOrderSetApplySurface = (typeof ENTERPRISE_ORDER_SET_APPLY_SURFACES)[number];
@@ -47,6 +63,7 @@ export const enterpriseOrderSetProvenanceSchema = z.object({
   orderType: z.enum(["LAB", "IMAGING", "MEDICATION", "CARE"]),
   /** Registry item keys placed in this order (must match items.length). */
   placedItemKeys: z.array(z.string().min(1).max(128)).min(1),
+  verbalOrderAttestation: enterpriseOrderSetVerbalOrderAttestationSchema.optional(),
 });
 
 export type EnterpriseOrderSetProvenance = z.infer<typeof enterpriseOrderSetProvenanceSchema>;
@@ -105,6 +122,7 @@ export function buildEnterpriseOrderSetProvenance(input: {
   applyContext: EnterpriseOrderSetApplyContext;
   orderType: EnterpriseOrderSetProvenance["orderType"];
   placedItemKeys: readonly string[];
+  verbalOrderAttestation?: EnterpriseOrderSetVerbalOrderAttestation;
 }): EnterpriseOrderSetProvenance {
   return {
     orderSetCode: input.applyContext.orderSetCode,
@@ -120,6 +138,7 @@ export function buildEnterpriseOrderSetProvenance(input: {
     registryValidationStatus: input.applyContext.registryValidationStatus,
     orderType: input.orderType,
     placedItemKeys: [...input.placedItemKeys],
+    ...(input.verbalOrderAttestation ? { verbalOrderAttestation: input.verbalOrderAttestation } : {}),
   };
 }
 
@@ -133,6 +152,7 @@ export function validateEnterpriseOrderSetApplication(input: {
   roleCodes: readonly string[];
   canPrescribe: boolean;
   hasRnStandingOrderAuthority?: boolean;
+  currentUserId?: string | null;
 }): EnterpriseOrderSetApplicationValidationResult {
   const parsed = enterpriseOrderSetProvenanceSchema.safeParse(input.provenance);
   if (!parsed.success) {
@@ -266,6 +286,29 @@ export function validateEnterpriseOrderSetApplication(input: {
     };
   }
 
+  const needsVerbalAttestation = requiresVerbalOrderAttestationForRole({
+    orderSetAuthority: setAuthority,
+    canPrescribe: input.canPrescribe,
+    hasRnStandingOrderAuthority: input.hasRnStandingOrderAuthority ?? false,
+    roleCodes: input.roleCodes,
+  });
+
+  if (needsVerbalAttestation) {
+    const attestationResult = validateVerbalOrderAttestation({
+      attestation: provenance.verbalOrderAttestation,
+      expectedAttestedBy: input.currentUserId,
+    });
+    if (!attestationResult.ok) {
+      return attestationResult;
+    }
+  } else if (provenance.verbalOrderAttestation) {
+    return {
+      ok: false,
+      code: "VERBAL_ORDER_ATTESTATION_NOT_ALLOWED",
+      message: "Verbal order attestation is not allowed for this order set application.",
+    };
+  }
+
   return { ok: true };
 }
 
@@ -290,6 +333,9 @@ export function enterpriseOrderSetProvenanceAuditMetadata(
     enterpriseOrderSetAppliedSurface: provenance.appliedSurface,
     enterpriseOrderSetAppliedAt: provenance.appliedAt,
     enterpriseOrderSetRegistryValidationStatus: provenance.registryValidationStatus,
+    ...(provenance.verbalOrderAttestation
+      ? enterpriseOrderSetVerbalOrderAttestationAuditMetadata(provenance.verbalOrderAttestation)
+      : {}),
     ...(extras?.orderId ? { orderId: extras.orderId } : {}),
   };
 }

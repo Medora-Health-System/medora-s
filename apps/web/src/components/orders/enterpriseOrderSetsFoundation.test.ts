@@ -143,10 +143,19 @@ describe("enterprise order sets foundation (web)", () => {
     expect(browserSource).toContain("enterprise-order-set-authority-badge");
     expect(browserSource).toContain("hasRnStandingOrderAuthority");
     expect(modalSource).toContain("orderSetBrowserAuthority");
-    expect(modalSource).toContain("NURSING_PROTOCOL");
+    expect(modalSource).toContain("VERBAL_ORDER");
     expect(activeEnterpriseOrderSets().some((set) => set.orderSetAuthority === "RN_STANDING_ORDER")).toBe(
       true
     );
+  });
+
+  it("Phase 7 — RN standing order staged review requires verbal-order attestation", () => {
+    expect(modalSource).toContain("rn-standing-verbal-attestation");
+    expect(modalSource).toContain("rn-standing-verbal-provider-select");
+    expect(modalSource).toContain("rn-standing-verbal-readback");
+    expect(modalSource).toContain("buildVerbalOrderAttestation");
+    expect(modalSource).toContain("submitBlockedByRnStandingVerbal");
+    expect(modalSource).not.toMatch(/cosign|pendingProviderSignature|providerCosign/i);
   });
 
   it("Phase 4 — registry scales with modular adapter sorting and grouping", () => {
