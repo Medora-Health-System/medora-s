@@ -3,14 +3,13 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { apiFetch, asApiObject, parseApiResponse } from "@/lib/apiClient";
-import { isEncounterMustBeOpenForOrderError, normalizeUserFacingError } from "@/lib/userFacingError";
-import type { OrderCreateDto, OrderSource } from "@medora/shared";
+import { isEncounterMustBeOpenForOrderError } from "@/lib/userFacingError";
+import type { OrderSource } from "@medora/shared";
 import {
   computeAdvancedMedicationSafetyWarnings,
   getEncounterAllergyDocumentationSummary,
   normalizeMedicationRoute,
   resolveEnterpriseProcedureDisplayName,
-  resolveMedicationOrderItemFrequencyCode,
   searchCanonicalCareProcedures,
   OXYGEN_THERAPY_PROCEDURE_CODE,
   buildOxygenTherapyManualLabel,
@@ -25,7 +24,6 @@ import {
   resolveEnterpriseOrderSetAuthority,
   resolveEnterpriseOrderSetDisplayName,
   buildEnterpriseOrderSetApplyContext,
-  buildEnterpriseOrderSetProvenance,
   buildVerbalOrderAttestation,
   requiresVerbalOrderAttestationForRole,
   type EnterpriseOrderSetApplyContext,
@@ -41,6 +39,13 @@ import {
   formatOrderSetSkippedSummary,
   type ResolvedOrderSetItems,
 } from "./createOrderModal/resolveEnterpriseOrderSetItems";
+import {
+  buildCreateOrderDomainPayload,
+  resolveOrderSetProvenanceForSubmit,
+  toEnterpriseOrderSetSkippedItems,
+  type OrderAuthorityPayloadFields,
+} from "./createOrderModal/createOrderDomainPayload";
+import { mapOrderCreateApiError } from "./createOrderModal/mapOrderCreateApiError";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import {
   CANONICAL_CARE_PROCEDURE_CATEGORIES,
@@ -104,11 +109,6 @@ import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWar
 
 type OrderTypeKey = OrderModalTab;
 type OrderAuthorityFormSource = OrderSource | "";
-type OrderAuthorityPayloadFields = {
-  orderSource?: OrderSource;
-  readbackConfirmed?: boolean;
-  protocolName?: string;
-};
 type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY";
 const ORDER_DRAFT_VERSION = "orders-drafting-v1";
 const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
@@ -193,15 +193,6 @@ function isOrderTypeKey(tab: CreateOrderModalTab): tab is OrderTypeKey {
   return tab !== "ORDER_SET";
 }
 
-function mapOrderCreateError(
-  err: unknown,
-  t: (k: string) => string,
-  language: SupportedLanguage
-): string {
-  const msg = err instanceof Error ? err.message : "";
-  return normalizeUserFacingError(msg.trim() || null, language) || t("createOrderModal.mapOrderCreateError");
-}
-
 function catalogLineLabel(
   item: CatalogSearchItem,
   language: SupportedLanguage,
@@ -274,163 +265,6 @@ function catalogItemToOrderLine(
   }
 
   return null;
-}
-
-function buildPayload(
-  type: OrderModalTab,
-  priority: "ROUTINE" | "URGENT" | "STAT",
-  notes: string,
-  prescriberName: string,
-  prescriberLicense: string,
-  prescriberContact: string,
-  items: CreateOrderLineItem[],
-  authority?: OrderAuthorityPayloadFields,
-  safetyAcknowledgedMedicationAllergies?: boolean,
-  facilityTimeZone?: string | null,
-  enterpriseOrderSetProvenance?: OrderCreateDto["enterpriseOrderSetProvenance"]
-): OrderCreateDto {
-  const rootNotes = notes.trim() || undefined;
-  const provenanceField = enterpriseOrderSetProvenance
-    ? { enterpriseOrderSetProvenance }
-    : {};
-  const authorityFields = {
-    ...(authority?.orderSource ? { orderSource: authority.orderSource } : {}),
-    ...(authority?.readbackConfirmed != null ? { readbackConfirmed: authority.readbackConfirmed } : {}),
-    ...(authority?.protocolName?.trim() ? { protocolName: authority.protocolName.trim() } : {}),
-  };
-
-  if (type === "LAB") {
-    return {
-      type: "LAB",
-      priority,
-      notes: rootNotes,
-      ...provenanceField,
-      items: items.map((it) =>
-        it.isManual || !it.catalogItemId
-          ? {
-              catalogItemId: null,
-              catalogItemType: "LAB_TEST" as const,
-              manualLabel: (it.manualLabel ?? it._label).trim(),
-              notes: it.notes?.trim() || undefined,
-            }
-          : {
-              catalogItemId: it.catalogItemId,
-              catalogItemType: "LAB_TEST" as const,
-              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
-            }
-      ),
-    };
-  }
-
-  if (type === "IMAGING") {
-    return {
-      type: "IMAGING",
-      priority,
-      notes: rootNotes,
-      ...provenanceField,
-      items: items.map((it) =>
-        it.isManual || !it.catalogItemId
-          ? {
-              catalogItemId: null,
-              catalogItemType: "IMAGING_STUDY" as const,
-              manualLabel: (it.manualLabel ?? it._label).trim(),
-              manualSecondaryText: it.manualSecondaryText?.trim() || undefined,
-              notes: it.notes?.trim() || undefined,
-            }
-          : {
-              catalogItemId: it.catalogItemId,
-              catalogItemType: "IMAGING_STUDY" as const,
-              ...(it._label?.trim() ? { displayLabelFr: it._label.trim() } : {}),
-            }
-      ),
-    };
-  }
-
-  if (type === "CARE") {
-    return {
-      type: "CARE",
-      priority,
-      notes: rootNotes,
-      ...provenanceField,
-      ...(prescriberName.trim() ? { prescriberName: prescriberName.trim() } : {}),
-      ...(prescriberLicense.trim() ? { prescriberLicense: prescriberLicense.trim() } : {}),
-      ...(prescriberContact.trim() ? { prescriberContact: prescriberContact.trim() } : {}),
-      ...authorityFields,
-      items: items.map((it) => ({
-        catalogItemId: null,
-        catalogItemType: "CARE" as const,
-        manualLabel: (it.manualLabel ?? it._label).trim(),
-        ...((): { enterpriseProcedureId?: string } => {
-          const explicit = it._enterpriseProcedureId?.trim();
-          if (explicit) return { enterpriseProcedureId: explicit };
-          const fromQuickKey =
-            it._careQuickKey === "ekg_workflow"
-              ? "ekg_ecg"
-              : it._careQuickKey === "laceration_kit"
-                ? "laceration_repair"
-                : it._careQuickKey === "oxygen_therapy"
-                  ? OXYGEN_THERAPY_PROCEDURE_CODE
-                  : null;
-          return fromQuickKey ? { enterpriseProcedureId: fromQuickKey } : {};
-        })(),
-        notes: it.notes?.trim() || undefined,
-      })),
-    };
-  }
-
-  return {
-    type: "MEDICATION",
-    priority,
-    notes: rootNotes,
-    ...provenanceField,
-    prescriberName: prescriberName.trim(),
-    prescriberLicense: prescriberLicense.trim() || undefined,
-    prescriberContact: prescriberContact.trim() || undefined,
-    ...authorityFields,
-    ...(safetyAcknowledgedMedicationAllergies === true
-      ? { safetyAcknowledgedMedicationAllergies: true }
-      : {}),
-    items: items.map((it) => {
-      const resolvedFrequencyCode = resolveMedicationOrderItemFrequencyCode({
-        directionsSig: it.notes?.trim(),
-      });
-      const intendedDate = resolveMedicationOrderItemIntendedUtcForSubmit({
-        intendedAdministrationAtLocal: it.intendedAdministrationAt,
-        plannedAdminAtTouched: it._plannedAdminAtTouched,
-        frequencyCode: resolvedFrequencyCode,
-        directionsSig: it.notes?.trim(),
-        facilityTimeZone: resolveClinicalTimeZone({ facilityTimeZone }),
-      });
-      const frequencyField =
-        resolvedFrequencyCode != null ? { frequencyCode: resolvedFrequencyCode } : {};
-      const baseManual = {
-        catalogItemId: null,
-        catalogItemType: "MEDICATION" as const,
-        manualLabel: (it.manualLabel ?? it._label).trim(),
-        quantity: it.quantity!,
-        notes: it.notes?.trim() || undefined,
-        strength: it.strength?.trim() || undefined,
-        route: it.route,
-        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
-        ...frequencyField,
-      };
-      const baseCatalog = {
-        catalogItemId: it.catalogItemId!,
-        catalogItemType: "MEDICATION" as const,
-        quantity: it.quantity!,
-        notes: it.notes?.trim() || undefined,
-        strength: it.strength?.trim() || undefined,
-        route: it.route,
-        refillCount: it.refillCount != null && it.refillCount >= 0 ? it.refillCount : undefined,
-        medicationFulfillmentIntent: it.medicationFulfillmentIntent ?? "PHARMACY_DISPENSE",
-        ...(intendedDate ? { intendedAdministrationAt: intendedDate } : {}),
-        ...frequencyField,
-      };
-      return it.isManual || !it.catalogItemId ? baseManual : baseCatalog;
-    }),
-  };
 }
 
 export function CreateOrderModal({
@@ -1206,46 +1040,43 @@ export function CreateOrderModal({
     summaryAtSubmit: string | null
   ): Promise<OrderCreateResponse> => {
     const allergyAckForApi = type === "MEDICATION" && Boolean(summaryAtSubmit) && medicationAllergySafetyAck;
-    const placedItemKeys = items
-      .map((item) => item._enterpriseOrderSetItemKey?.trim())
-      .filter((key): key is string => Boolean(key));
-    const enterpriseOrderSetProvenance =
-      orderSetApplyContext &&
-      orderSetReviewActive &&
-      placedItemKeys.length > 0 &&
-      placedItemKeys.length === items.length
-        ? buildEnterpriseOrderSetProvenance({
-            applyContext: orderSetApplyContext,
-            orderType: type,
-            placedItemKeys,
-            ...(requiresRnStandingVerbalAttestation && rnStandingVerbalAttestationComplete
-              ? {
-                  verbalOrderAttestation: buildVerbalOrderAttestation({
-                    verbalOrderReceivedFromProviderId: rnStandingVerbalProviderId,
-                    verbalOrderReceivedFromProviderName: formData.prescriberName,
-                    readBackConfirmed: true,
-                    verbalOrderAttestedAt: new Date().toISOString(),
-                    verbalOrderAttestedBy: userId,
-                  }),
-                }
-              : {}),
-          })
-        : undefined;
-    const payload = buildPayload(
+    const enterpriseOrderSetProvenance = resolveOrderSetProvenanceForSubmit({
+      applyContext: orderSetApplyContext,
+      orderSetReviewActive,
+      orderType: type,
+      items,
+      canPrescribe,
+      hasRnStandingOrderAuthority,
+      roleCodes: roles,
+      userId,
+      ...(requiresRnStandingVerbalAttestation && rnStandingVerbalAttestationComplete
+        ? {
+            verbalOrderAttestation: buildVerbalOrderAttestation({
+              verbalOrderReceivedFromProviderId: rnStandingVerbalProviderId,
+              verbalOrderReceivedFromProviderName: formData.prescriberName,
+              readBackConfirmed: true,
+              verbalOrderAttestedAt: new Date().toISOString(),
+              verbalOrderAttestedBy: userId,
+            }),
+          }
+        : {}),
+    });
+    const payload = buildCreateOrderDomainPayload({
       type,
-      formData.priority,
-      formData.notes,
-      formData.prescriberName,
-      formData.prescriberLicense,
-      formData.prescriberContact,
-      erAdministerOnlyMedication && type === "MEDICATION"
-        ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
-        : items,
-      authorityPayloadFieldsForType(type),
-      allergyAckForApi ? true : undefined,
+      priority: formData.priority,
+      notes: formData.notes,
+      prescriberName: formData.prescriberName,
+      prescriberLicense: formData.prescriberLicense,
+      prescriberContact: formData.prescriberContact,
+      items:
+        erAdministerOnlyMedication && type === "MEDICATION"
+          ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+          : items,
+      authority: authorityPayloadFieldsForType(type),
+      safetyAcknowledgedMedicationAllergies: allergyAckForApi ? true : undefined,
       facilityTimeZone,
-      enterpriseOrderSetProvenance
-    );
+      enterpriseOrderSetProvenance,
+    });
     return (await apiFetch(`/encounters/${encounterId}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1283,7 +1114,7 @@ export function CreateOrderModal({
           buildEnterpriseOrderSetApplyContext({
             set: selectedOrderSetDefinition,
             selectedItemKeys: selectedOrderSetItemKeys,
-            skippedItems: resolved.skipped,
+            skippedItems: toEnterpriseOrderSetSkippedItems(resolved.skipped, selectedOrderSetItemKeys),
             appliedAt: new Date().toISOString(),
           })
         );
@@ -1739,7 +1570,7 @@ export function CreateOrderModal({
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setError(mapOrderCreateError(err, t, language));
+      setError(mapOrderCreateApiError(err, t, language));
     } finally {
       setLoading(false);
       setBulkCreateProgress(null);
@@ -1844,7 +1675,7 @@ export function CreateOrderModal({
           if (isEncounterMustBeOpenForOrderError(raw)) {
             await onRefetchEncounter?.();
           }
-          const reason = mapOrderCreateError(err, t, language);
+          const reason = mapOrderCreateApiError(err, t, language);
           const nextStaged: Record<OrderTypeKey, CreateOrderLineItem[]> = {
             LAB: successfulTypes.includes("LAB") ? [] : [...snapshot.LAB],
             IMAGING: successfulTypes.includes("IMAGING") ? [] : [...snapshot.IMAGING],
@@ -1917,7 +1748,7 @@ export function CreateOrderModal({
       if (isEncounterMustBeOpenForOrderError(raw)) {
         await onRefetchEncounter?.();
       }
-      setError(mapOrderCreateError(err, t, language));
+      setError(mapOrderCreateApiError(err, t, language));
     } finally {
       setLoading(false);
       setBulkCreateProgress(null);
