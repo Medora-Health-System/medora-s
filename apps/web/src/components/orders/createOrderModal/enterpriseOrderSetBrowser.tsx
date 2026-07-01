@@ -30,6 +30,9 @@ function listButtonStyle(active: boolean): CSSProperties {
     fontSize: 13,
     fontWeight: active ? 700 : 600,
     width: "100%",
+    minWidth: 0,
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
   };
 }
 
@@ -131,8 +134,8 @@ export function EnterpriseOrderSetBrowser({
 
   const browseGridColumns =
     browserModel.authoritySections.length > 1
-      ? "minmax(96px, 0.5fr) minmax(108px, 0.55fr) minmax(132px, 0.65fr) minmax(200px, 1fr)"
-      : "minmax(108px, 0.55fr) minmax(132px, 0.65fr) minmax(200px, 1fr)";
+      ? "minmax(0, 0.5fr) minmax(0, 0.55fr) minmax(0, 0.65fr) minmax(0, 1fr)"
+      : "minmax(0, 0.55fr) minmax(0, 0.65fr) minmax(0, 1fr)";
 
   return (
     <div data-testid="enterprise-order-set-browser">
@@ -165,10 +168,11 @@ export function EnterpriseOrderSetBrowser({
           display: "grid",
           gridTemplateColumns:
             browserModel.mode === "search"
-              ? "minmax(160px, 0.85fr) minmax(220px, 1.15fr)"
+              ? "minmax(0, 0.85fr) minmax(0, 1.15fr)"
               : browseGridColumns,
           gap: 10,
           alignItems: "stretch",
+          minWidth: 0,
         }}
       >
         {browserModel.mode === "browse" && browserModel.authoritySections.length > 1 ? (
@@ -184,6 +188,7 @@ export function EnterpriseOrderSetBrowser({
               border: `1px solid ${SHELL_BORDER}`,
               borderRadius: 10,
               background: CANVAS,
+              minWidth: 0,
             }}
           >
             <div
@@ -234,6 +239,7 @@ export function EnterpriseOrderSetBrowser({
               border: `1px solid ${SHELL_BORDER}`,
               borderRadius: 10,
               background: CANVAS,
+              minWidth: 0,
             }}
           >
             <div
@@ -284,6 +290,7 @@ export function EnterpriseOrderSetBrowser({
             border: `1px solid ${SHELL_BORDER}`,
             borderRadius: 10,
             background: "#fff",
+            minWidth: 0,
           }}
         >
           <div
@@ -338,13 +345,41 @@ export function EnterpriseOrderSetBrowser({
             padding: 12,
             maxHeight: 340,
             overflowY: "auto",
+            minWidth: 0,
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline", marginBottom: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              alignItems: "baseline",
+              marginBottom: 8,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                minWidth: 0,
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+              }}
+            >
               {selectedSet ? resolveOrderSetTitle(selectedSet, locale) : ""}
             </div>
-            <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>{selectedCountLabel}</div>
+            <div
+              style={{
+                fontSize: 12,
+                color: "#64748b",
+                fontWeight: 700,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {selectedCountLabel}
+            </div>
           </div>
           {selectedSet ? (
             <div style={{ marginBottom: 10 }}>
@@ -395,9 +430,9 @@ export function EnterpriseOrderSetBrowser({
                 key={item.key}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "18px auto 1fr",
+                  gridTemplateColumns: "18px auto minmax(0, 1fr)",
                   gap: 8,
-                  alignItems: "center",
+                  alignItems: "start",
                   padding: "7px 8px",
                   border: `1px solid ${SHELL_BORDER}`,
                   borderRadius: 8,
@@ -405,6 +440,7 @@ export function EnterpriseOrderSetBrowser({
                   cursor: "pointer",
                   fontSize: 13,
                   color: "#334155",
+                  minWidth: 0,
                 }}
               >
                 <input
@@ -422,11 +458,19 @@ export function EnterpriseOrderSetBrowser({
                     fontSize: 10,
                     fontWeight: 800,
                     letterSpacing: 0.3,
+                    whiteSpace: "nowrap",
+                    alignSelf: "start",
                   }}
                 >
                   {t(`createOrderModal.orderSetType.${item.type}`)}
                 </span>
-                <span>
+                <span
+                  style={{
+                    minWidth: 0,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                  }}
+                >
                   {item.displayLabel}
                   {item.required ? (
                     <span style={{ marginLeft: 6, color: "#64748b", fontSize: 11, fontWeight: 700 }}>

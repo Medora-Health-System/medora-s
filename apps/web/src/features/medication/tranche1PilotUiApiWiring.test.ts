@@ -24,7 +24,10 @@ describe("MEDUI.MEDICATION.TRANCHE_1_PILOT_UI_AND_API_WIRING.1 web wiring", () =
   it("pilot blocked-order API errors are localized before display", () => {
     const modal = source("components/orders/CreateOrderModal.tsx");
     const errors = source("lib/userFacingError.ts");
-    expect(modal).toContain("normalizeUserFacingError");
+    expect(modal).toContain("mapOrderCreateApiError");
+    expect(source("components/orders/createOrderModal/mapOrderCreateApiError.ts")).toContain(
+      "extractApiErrorMeta"
+    );
     expect(errors).toContain("PILOT_MEDICATION_ORDER_BLOCKED");
     expect(errors).toContain("This pilot medication is not available for this provider or facility.");
     expect(errors).toContain("Ce médicament pilote n'est pas disponible pour ce prescripteur ou cet établissement.");

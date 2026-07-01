@@ -94,6 +94,80 @@ describe("resolveEnterpriseOrderSetItems", () => {
     expect(resolved.skipped).toEqual([]);
   });
 
+  it("stages DVT evaluation LAB, imaging, and care items", async () => {
+    vi.mocked(resolveOrderSetCatalogBatch).mockResolvedValueOnce(
+      new Map([
+        [
+          "dDimer",
+          {
+            item: {
+              id: "550e8400-e29b-41d4-a716-446655440011",
+              code: "D_DIMER",
+              type: "LAB_TEST",
+              displayNameFr: "D-dimères",
+              displayNameEn: "D-dimer",
+            },
+            ambiguous: false,
+          },
+        ],
+        [
+          "inr",
+          {
+            item: {
+              id: "550e8400-e29b-41d4-a716-446655440012",
+              code: "INR",
+              type: "LAB_TEST",
+              displayNameFr: "INR",
+              displayNameEn: "INR",
+            },
+            ambiguous: false,
+          },
+        ],
+        [
+          "venousDuplex",
+          {
+            item: {
+              id: "550e8400-e29b-41d4-a716-446655440013",
+              code: "US_VENOUS_DOPPLER_LE",
+              type: "IMAGING_STUDY",
+              displayNameFr: "Écho-Doppler veineux",
+              displayNameEn: "Venous duplex ultrasound",
+            },
+            ambiguous: false,
+          },
+        ],
+      ])
+    );
+
+    const set = enterpriseOrderSetByCode("ed_dvt_evaluation_v1")!;
+    const items = toOrderSetUiItems(set, "en").filter((item) =>
+      ["dDimer", "inr", "venousDuplex", "peripheralIv"].includes(item.key)
+    );
+
+    const resolved = await resolveEnterpriseOrderSetItems({
+      items,
+      facilityId: "fac-1",
+      language: "en",
+      canPrescribe: true,
+      catalogItemToOrderLine: (item) => ({
+        _lineId: `line-${item.code}`,
+        isManual: false,
+        catalogItemId: item.id,
+        catalogItemType:
+          item.type === "LAB_TEST" || item.type === "IMAGING_STUDY" || item.type === "MEDICATION"
+            ? item.type
+            : "LAB_TEST",
+        _label: item.displayNameEn ?? item.displayNameFr,
+      }),
+      orderSetCode: set.code,
+    });
+
+    expect(resolved.LAB.length).toBe(2);
+    expect(resolved.IMAGING.length).toBe(1);
+    expect(resolved.CARE.length).toBe(1);
+    expect(resolved.LAB.every((line) => line._enterpriseOrderSetItemKey)).toBe(true);
+  });
+
   it("formats item-level skipped diagnostics", () => {
     const summary = formatOrderSetSkippedSummary({
       skipped: [{ key: "troponin", reason: "noMatch" }],

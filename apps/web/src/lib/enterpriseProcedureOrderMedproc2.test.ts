@@ -14,11 +14,15 @@ const modalSource = readFileSync(
   join(webRoot, "src/components/orders/CreateOrderModal.tsx"),
   "utf8"
 );
+const payloadSource = readFileSync(
+  join(webRoot, "src/components/orders/createOrderModal/createOrderDomainPayload.ts"),
+  "utf8"
+);
 
 describe("MEDPROC.2 CreateOrderModal enterprise procedure wiring", () => {
   it("sends enterpriseProcedureId for catalog selection", () => {
-    expect(modalSource).toContain("_enterpriseProcedureId?.trim()");
-    expect(modalSource).toContain("if (explicit) return { enterpriseProcedureId: explicit }");
+    expect(payloadSource).toContain("_enterpriseProcedureId?.trim()");
+    expect(payloadSource).toContain("enterpriseProcedureId ? { enterpriseProcedureId }");
   });
 
   it("omits enterpriseProcedureId for custom care tasks", () => {

@@ -325,9 +325,9 @@ describe("CreateOrderModal medication draft wiring (M1.7B.6)", () => {
   });
 
   it("CreateOrderModal still infers frequencyCode from directions on submit", () => {
-    const modalSource = readFileSync(join(import.meta.dirname, "../CreateOrderModal.tsx"), "utf8");
-    expect(modalSource).toContain("resolveMedicationOrderItemFrequencyCode");
-    expect(modalSource).toContain("frequencyCode: resolvedFrequencyCode");
+    const payloadSource = readFileSync(join(import.meta.dirname, "createOrderDomainPayload.ts"), "utf8");
+    expect(payloadSource).toContain("resolveMedicationOrderItemFrequencyCode");
+    expect(payloadSource).toContain("frequencyCode: resolvedFrequencyCode");
   });
 });
 

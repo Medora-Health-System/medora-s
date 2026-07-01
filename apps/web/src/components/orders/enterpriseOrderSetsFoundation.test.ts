@@ -111,10 +111,14 @@ describe("enterprise order sets foundation (web)", () => {
   });
 
   it("Phase 2 — apply builds provenance and uses batch catalog resolver", () => {
+    const resolverSource = readFileSync(
+      join(webRoot, "components/orders/createOrderModal/resolveEnterpriseOrderSetItems.ts"),
+      "utf8"
+    );
     expect(modalSource).toContain("buildEnterpriseOrderSetApplyContext");
-    expect(modalSource).toContain("buildEnterpriseOrderSetProvenance");
+    expect(modalSource).toContain("resolveOrderSetProvenanceForSubmit");
     expect(modalSource).toContain("resolveEnterpriseOrderSetItems");
-    expect(modalSource).toContain("_enterpriseOrderSetItemKey");
+    expect(resolverSource).toContain("_enterpriseOrderSetItemKey");
     expect(modalSource).toContain("enterpriseOrderSetProvenance");
   });
 
@@ -130,7 +134,7 @@ describe("enterprise order sets foundation (web)", () => {
 
   it("Phase 5 — search and apply/provenance preserved", () => {
     expect(browserSource).toContain("enterprise-order-set-search");
-    expect(modalSource).toContain("buildEnterpriseOrderSetProvenance");
+    expect(modalSource).toContain("resolveOrderSetProvenanceForSubmit");
     expect(browserSource).toContain("enterprise-order-set-apply");
     expect(browserSource).not.toContain("disabled={item.required}");
   });
@@ -148,11 +152,25 @@ describe("enterprise order sets foundation (web)", () => {
       join(webRoot, "components/orders/createOrderModal/resolveEnterpriseOrderSetItems.ts"),
       "utf8"
     );
+    const payloadSource = readFileSync(
+      join(webRoot, "components/orders/createOrderModal/createOrderDomainPayload.ts"),
+      "utf8"
+    );
     expect(resolverSource).toContain("allowRnStandingOrderSetApply");
     expect(resolverSource).toContain('orderSetItem.type === "CARE"');
     expect(resolverSource).toContain("resolveOrderSetCatalogBatch");
     expect(resolverSource).not.toContain('orderSetItem.type === "MEDICATION" || orderSetItem.type === "CARE"');
     expect(modalSource).toContain("formatOrderSetSkippedSummary");
+    expect(modalSource).toContain("buildCreateOrderDomainPayload");
+    expect(modalSource).toContain("resolveOrderSetProvenanceForSubmit");
+    expect(payloadSource).toContain("isCatalogItemUuid");
+    expect(payloadSource).toContain("buildLabOrderItemDto");
+  });
+
+  it("order set browser uses min-width zero and wrapping guards", () => {
+    expect(browserSource).toContain("minmax(0,");
+    expect(browserSource).toContain("minWidth: 0");
+    expect(browserSource).toContain("overflowWrap: \"anywhere\"");
   });
 
   it("Phase 6 — browser separates provider sets and RN standing orders", () => {
