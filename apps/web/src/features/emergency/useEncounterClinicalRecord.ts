@@ -45,54 +45,62 @@ export type UseEncounterClinicalRecordInput = {
 export type UseEncounterClinicalRecordResult = {
   record: EncounterClinicalRecord | null;
   parity: ClinicalRecordParitySnapshot | null;
+  projectionFailed: boolean;
 };
 
 export function composeEncounterClinicalRecordFromEmergencySummary(
   input: UseEncounterClinicalRecordInput
 ): UseEncounterClinicalRecordResult {
   if (input.enabled === false) {
-    return { record: null, parity: null };
+    return { record: null, parity: null, projectionFailed: false };
   }
 
-  const adapterInput = buildEncounterClinicalRecordInputFromEmergencySummary({
-    locale: input.locale,
-    encounter: input.encounter,
-    triageSnapshot: input.triageSnapshot,
-    summaryModel: input.summaryModel,
-    orders: input.orders,
-    medicationAdministrations: input.medicationAdministrations,
-    procedures: input.procedures,
-    documentationEvents: input.documentationEvents,
-    nursingReassessmentEvents: input.nursingReassessmentEvents,
-    resultsSnapshot: input.resultsSnapshot,
-    unifiedTimelineItems: input.unifiedTimelineItems,
-  });
+  try {
+    const adapterInput = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: input.locale,
+      encounter: input.encounter,
+      triageSnapshot: input.triageSnapshot,
+      summaryModel: input.summaryModel,
+      orders: input.orders,
+      medicationAdministrations: input.medicationAdministrations,
+      procedures: input.procedures,
+      documentationEvents: input.documentationEvents,
+      nursingReassessmentEvents: input.nursingReassessmentEvents,
+      resultsSnapshot: input.resultsSnapshot,
+      unifiedTimelineItems: input.unifiedTimelineItems,
+    });
 
-  const record = buildEncounterClinicalRecord(adapterInput);
-  const sourceSummary = summarizeEmergencySummaryAdapterSources({
-    orders: input.orders,
-    medicationAdministrations: input.medicationAdministrations,
-    procedures: input.procedures,
-    documentationEvents: input.documentationEvents,
-    resultsSnapshot: input.resultsSnapshot,
-  });
+    const record = buildEncounterClinicalRecord(adapterInput);
+    const sourceSummary = summarizeEmergencySummaryAdapterSources({
+      orders: input.orders,
+      medicationAdministrations: input.medicationAdministrations,
+      procedures: input.procedures,
+      documentationEvents: input.documentationEvents,
+      resultsSnapshot: input.resultsSnapshot,
+    });
 
-  const parity = buildClinicalRecordParitySnapshot({
-    encounterId: input.encounter.id,
-    summaryModel: input.summaryModel,
-    clinicalRecord: record,
-    clinicalTimelineLegacyCount: input.clinicalTimelineLegacyCount ?? 0,
-    orderItemCount: sourceSummary.orderItemCount,
-    marCount: sourceSummary.marCount,
-    procedureCount: sourceSummary.procedureCount,
-    documentationEventCount: sourceSummary.documentationEventCount,
-    labResultPreviewCount: sourceSummary.labResultPreviewCount,
-    imagingResultPreviewCount: sourceSummary.imagingResultPreviewCount,
-  });
+    const parity = buildClinicalRecordParitySnapshot({
+      encounterId: input.encounter.id,
+      summaryModel: input.summaryModel,
+      clinicalRecord: record,
+      clinicalTimelineLegacyCount: input.clinicalTimelineLegacyCount ?? 0,
+      orderItemCount: sourceSummary.orderItemCount,
+      marCount: sourceSummary.marCount,
+      procedureCount: sourceSummary.procedureCount,
+      documentationEventCount: sourceSummary.documentationEventCount,
+      labResultPreviewCount: sourceSummary.labResultPreviewCount,
+      imagingResultPreviewCount: sourceSummary.imagingResultPreviewCount,
+    });
 
-  logEncounterClinicalRecordParityDev(parity);
+    logEncounterClinicalRecordParityDev(parity);
 
-  return { record, parity };
+    return { record, parity, projectionFailed: false };
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[EncounterClinicalRecord] projection failed — legacy Summary fallback", error);
+    }
+    return { record: null, parity: null, projectionFailed: true };
+  }
 }
 
 export function useEncounterClinicalRecord(

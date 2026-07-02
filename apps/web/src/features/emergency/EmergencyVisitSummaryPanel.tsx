@@ -39,6 +39,7 @@ import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/
 import { useEncounterClinicalRecord } from "./useEncounterClinicalRecord";
 import { EncounterClinicalRecordSummaryView } from "./EncounterClinicalRecordSummaryView";
 import { isSummaryClinicalRecordV2Enabled } from "./summaryClinicalRecordFeatureFlag";
+import { shouldUseClinicalRecordSummaryV2 } from "./summaryClinicalRecordRuntimeSafety";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -689,21 +690,26 @@ export function EmergencyVisitSummaryPanel({
     resultsSnap,
   ]);
 
-  const { record: clinicalRecord } = useEncounterClinicalRecord({
-    locale: language,
-    encounter: { ...encounter, id: encounterId },
-    triageSnapshot,
-    summaryModel: model,
-    orders: timelineOrders,
-    medicationAdministrations: timelineMarAdmins,
-    procedures: timelineProcedures,
-    documentationEvents,
-    nursingReassessmentEvents: reassessmentEvents,
-    resultsSnapshot: resultsSnap,
-    clinicalTimelineLegacyCount: clinicalTimeline.all.length,
-  });
+  const { record: clinicalRecord, projectionFailed: clinicalRecordProjectionFailed } =
+    useEncounterClinicalRecord({
+      locale: language,
+      encounter: { ...encounter, id: encounterId },
+      triageSnapshot,
+      summaryModel: model,
+      orders: timelineOrders,
+      medicationAdministrations: timelineMarAdmins,
+      procedures: timelineProcedures,
+      documentationEvents,
+      nursingReassessmentEvents: reassessmentEvents,
+      resultsSnapshot: resultsSnap,
+      clinicalTimelineLegacyCount: clinicalTimeline.all.length,
+    });
 
-  const clinicalRecordV2Enabled = isSummaryClinicalRecordV2Enabled();
+  const clinicalRecordV2Enabled = shouldUseClinicalRecordSummaryV2({
+    flagEnabled: isSummaryClinicalRecordV2Enabled(),
+    record: clinicalRecord,
+    projectionFailed: clinicalRecordProjectionFailed,
+  });
 
   const hasStructuredContent = useMemo(() => {
     return Boolean(

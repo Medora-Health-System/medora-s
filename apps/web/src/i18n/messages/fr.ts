@@ -6747,6 +6747,8 @@ export default {
       "Événements de workflow, accusés de réception et métadonnées — distincts du dossier médical.",
     auditShow: "Afficher",
     auditHide: "Masquer",
+    auditSlotError:
+      "Impossible d'afficher la chronologie opérationnelle. Le résumé clinique reste disponible — actualisez la page ou réessayez.",
     versionHistory: "Historique des versions",
     versionHistoryShow: "Historique des versions ({count})",
     versionHistoryHide: "Masquer l'historique",

@@ -51,6 +51,7 @@ describe("useEncounterClinicalRecord", () => {
     });
     expect(result.record).toBeNull();
     expect(result.parity).toBeNull();
+    expect(result.projectionFailed).toBe(false);
   });
 
   it("builds clinical record and parity metadata when enabled", () => {
@@ -76,6 +77,7 @@ describe("useEncounterClinicalRecord", () => {
     expect(result.parity?.encounterId).toBe(ENCOUNTER_ID);
     expect(result.parity?.legacy.clinicalTimelineCount).toBe(2);
     expect(result.parity?.clinicalRecord.hasProviderAssessment).toBe(false);
+    expect(result.projectionFailed).toBe(false);
     expect(info).toHaveBeenCalled();
     info.mockRestore();
   });

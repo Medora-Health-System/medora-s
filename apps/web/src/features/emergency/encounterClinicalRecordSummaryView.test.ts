@@ -177,6 +177,7 @@ describe("encounterClinicalRecordSummaryView (Phase 3B)", () => {
 
   it("panel keeps legacy summary behind feature flag", () => {
     const panel = readSrc("features/emergency/EmergencyVisitSummaryPanel.tsx");
+    expect(panel).toContain("shouldUseClinicalRecordSummaryV2");
     expect(panel).toContain("isSummaryClinicalRecordV2Enabled");
     expect(panel).toContain("EncounterClinicalRecordSummaryView");
     expect(panel).toContain("EncounterResultsTab");

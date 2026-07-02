@@ -6775,6 +6775,8 @@ export default {
       "Workflow events, acknowledgements, and metadata — separate from the medical record.",
     auditShow: "Show",
     auditHide: "Hide",
+    auditSlotError:
+      "Unable to display the operational timeline. The clinical summary remains available — refresh the page or try again.",
     versionHistory: "Version history",
     versionHistoryShow: "Version history ({count})",
     versionHistoryHide: "Hide history",

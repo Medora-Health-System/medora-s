@@ -23,6 +23,7 @@ import {
   encounterClinicalRecordHasPrimaryContent,
   providerStatusI18nKey,
 } from "./encounterClinicalRecordSummaryViewModel";
+import { SummaryAuditTimelineSlot } from "./SummaryAuditTimelineSlot";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -685,8 +686,10 @@ export function EncounterClinicalRecordSummaryView({
             <p style={{ ...lineStyle, margin: "6px 0 0 0", fontSize: 12, color: "#64748b" }}>
               {t("encounterClinicalRecordSummary.auditSubline")}
             </p>
-            {auditOpen ? (
-              <div style={{ marginTop: 12, minWidth: 0 }}>{auditTimeline}</div>
+            {auditOpen && auditTimeline ? (
+              <div style={{ marginTop: 12, minWidth: 0 }}>
+                <SummaryAuditTimelineSlot>{auditTimeline}</SummaryAuditTimelineSlot>
+              </div>
             ) : null}
           </div>
         </MedoraCardInner>
