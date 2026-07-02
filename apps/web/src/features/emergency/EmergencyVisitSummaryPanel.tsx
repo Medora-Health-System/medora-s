@@ -37,6 +37,8 @@ import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMa
 import { buildErClinicalTimeline } from "./erClinicalTimeline";
 import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/shared";
 import { useEncounterClinicalRecord } from "./useEncounterClinicalRecord";
+import { EncounterClinicalRecordSummaryView } from "./EncounterClinicalRecordSummaryView";
+import { isSummaryClinicalRecordV2Enabled } from "./summaryClinicalRecordFeatureFlag";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -687,7 +689,7 @@ export function EmergencyVisitSummaryPanel({
     resultsSnap,
   ]);
 
-  useEncounterClinicalRecord({
+  const { record: clinicalRecord } = useEncounterClinicalRecord({
     locale: language,
     encounter: { ...encounter, id: encounterId },
     triageSnapshot,
@@ -700,6 +702,8 @@ export function EmergencyVisitSummaryPanel({
     resultsSnapshot: resultsSnap,
     clinicalTimelineLegacyCount: clinicalTimeline.all.length,
   });
+
+  const clinicalRecordV2Enabled = isSummaryClinicalRecordV2Enabled();
 
   const hasStructuredContent = useMemo(() => {
     return Boolean(
@@ -725,6 +729,34 @@ export function EmergencyVisitSummaryPanel({
         (encounter.encounterNotes ?? []).length > 0
     );
   }, [model, clinicalTimeline.all.length, encounter.encounterNotes]);
+
+  if (clinicalRecordV2Enabled) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+        <EncounterClinicalRecordSummaryView
+          record={clinicalRecord}
+          resultsTabHref={resultsTabHref}
+          diagnosticsTabHref={diagnosticsTabHref}
+          summaryReadOnly={summaryReadOnly}
+          auditTimeline={
+            <EnterpriseEncounterCommandTimeline
+              encounterId={encounterId}
+              facilityId={facilityId}
+              refreshToken={resultsRefresh}
+              embedded
+              limit={40}
+            />
+          }
+        />
+        <ErIvAccessSummaryCard
+          encounterId={encounterId}
+          facilityId={facilityId}
+          refreshToken={resultsRefresh}
+          enabled={ivAccessFetchEnabled}
+        />
+      </div>
+    );
+  }
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
