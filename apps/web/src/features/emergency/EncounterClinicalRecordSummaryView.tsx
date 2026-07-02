@@ -1,28 +1,41 @@
 "use client";
 
 /**
- * Enterprise ER Summary layout driven by EncounterClinicalRecord (Phase 3B).
- * Read-only clinical record view — operational events belong in audit section.
+ * Enterprise ER clinical chart — read-only layout from EncounterClinicalRecord (Phase 4).
  */
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import type { EncounterClinicalRecord } from "@medora/shared";
 import {
   MedoraCard,
   MedoraCardActions,
+  MedoraCardBadge,
   MedoraCardIdentity,
   MedoraCardInner,
   MedoraCardTitle,
 } from "@/components/medora-card";
+import { getPriorityBadgeSoft } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
-import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import {
+  formatEncounterChromeDateTime,
+  tPatientSex,
+} from "@/lib/encounterChromeI18n";
 import {
   CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE,
   clinicalMilestoneI18nKey,
   encounterClinicalRecordHasPrimaryContent,
   providerStatusI18nKey,
 } from "./encounterClinicalRecordSummaryViewModel";
+import {
+  buildEnterpriseClinicalChartLayout,
+  extractProviderAssessmentSectionsExcludingHpi,
+  isCriticalAllergyText,
+  isCriticalMedicationOrder,
+  SEVERITY_HIGHLIGHT,
+  type EnterpriseOrderGroupKey,
+  type EnterpriseTriageFieldKey,
+} from "./enterpriseClinicalChartLayout";
 import { SummaryAuditTimelineSlot } from "./SummaryAuditTimelineSlot";
 
 const sectionTitle: React.CSSProperties = {
@@ -43,11 +56,19 @@ const lineStyle: React.CSSProperties = {
   wordBreak: "break-word",
 };
 
+const tableWrapStyle: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  overflowX: "auto",
+};
+
 const tableStyle: React.CSSProperties = {
   width: "100%",
+  minWidth: 0,
   borderCollapse: "collapse",
   fontSize: 13,
   color: "#334155",
+  tableLayout: "fixed",
 };
 
 const thStyle: React.CSSProperties = {
@@ -69,6 +90,14 @@ const tdStyle: React.CSSProperties = {
   wordBreak: "break-word",
 };
 
+const overviewGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: "8px 16px",
+  width: "100%",
+  minWidth: 0,
+};
+
 const linkPill: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -80,6 +109,24 @@ const linkPill: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 600,
   textDecoration: "none",
+};
+
+const ORDER_GROUP_I18N: Record<EnterpriseOrderGroupKey, string> = {
+  laboratory: "encounterClinicalRecordSummary.orderGroupLaboratory",
+  imaging: "encounterClinicalRecordSummary.orderGroupImaging",
+  medications: "encounterClinicalRecordSummary.orderGroupMedications",
+  treatments: "encounterClinicalRecordSummary.orderGroupTreatments",
+  procedures: "encounterClinicalRecordSummary.orderGroupProcedures",
+};
+
+const TRIAGE_FIELD_I18N: Record<EnterpriseTriageFieldKey, string> = {
+  esi: "encounterClinicalRecordSummary.triageEsi",
+  arrivalMode: "encounterClinicalRecordSummary.triageArrivalMode",
+  vitalSigns: "encounterClinicalRecordSummary.triageVitalSigns",
+  pain: "encounterClinicalRecordSummary.triagePain",
+  allergies: "encounterClinicalRecordSummary.triageAllergies",
+  isolation: "encounterClinicalRecordSummary.triageIsolation",
+  fallRisk: "encounterClinicalRecordSummary.triageFallRisk",
 };
 
 function SummarySectionCard({
@@ -117,16 +164,17 @@ function SummarySectionCard({
   );
 }
 
-function VersionHistoryCollapsible({
-  title,
+function CollapsibleBlock({
+  showLabel,
+  hideLabel,
   count,
   children,
 }: {
-  title: string;
+  showLabel: string;
+  hideLabel: string;
   count: number;
   children: React.ReactNode;
 }) {
-  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   if (count === 0) return null;
   return (
@@ -145,16 +193,31 @@ function VersionHistoryCollapsible({
           cursor: "pointer",
         }}
       >
-        {open
-          ? t("encounterClinicalRecordSummary.versionHistoryHide")
-          : t("encounterClinicalRecordSummary.versionHistoryShow").replace(
-              "{count}",
-              String(count)
-            )}
+        {open ? hideLabel : showLabel.replace("{count}", String(count))}
       </button>
       {open ? (
         <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>{children}</div>
       ) : null}
+    </div>
+  );
+}
+
+function OverviewField({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <p style={{ ...sectionTitle, marginBottom: 2 }}>{label}</p>
+      <p
+        style={{
+          ...lineStyle,
+          fontWeight: highlight ? 600 : 400,
+          color: highlight ? SEVERITY_HIGHLIGHT.critical.text : "#334155",
+          background: highlight ? SEVERITY_HIGHLIGHT.critical.bg : undefined,
+          borderRadius: highlight ? 6 : undefined,
+          padding: highlight ? "4px 6px" : 0,
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -180,7 +243,12 @@ export function EncounterClinicalRecordSummaryView({
   const [auditOpen, setAuditOpen] = useState(false);
   const [timelineExpanded, setTimelineExpanded] = useState(false);
 
-  if (!record) {
+  const layout = useMemo(
+    () => (record ? buildEnterpriseClinicalChartLayout(record) : null),
+    [record]
+  );
+
+  if (!record || !layout) {
     return (
       <MedoraCard leftAccentColor="#94a3b8" variant="default">
         <MedoraCardInner>
@@ -191,16 +259,35 @@ export function EncounterClinicalRecordSummaryView({
   }
 
   const hasContent = encounterClinicalRecordHasPrimaryContent(record);
+  const providerSections = extractProviderAssessmentSectionsExcludingHpi(layout.providerAssessment);
   const timelineVisible = timelineExpanded
-    ? record.clinicalTimeline
-    : record.clinicalTimeline.slice(0, CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE);
+    ? layout.clinicalTimeline
+    : layout.clinicalTimeline.slice(0, CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE);
   const hiddenTimelineCount = Math.max(
     0,
-    record.clinicalTimeline.length - CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE
+    layout.clinicalTimeline.length - CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE
   );
 
   const formatDt = (iso: string | null) =>
     iso ? formatEncounterChromeDateTime(iso, language) : t("common.dash");
+
+  const sexLabel = layout.overview.patientSexLabel
+    ? tPatientSex(layout.overview.patientSexLabel, null, t)
+    : t("common.dash");
+
+  const triageHasContent = Object.keys(layout.triageSummary).length > 0;
+  const ordersCount = Object.values(layout.groupedOrders).reduce((n, g) => n + g.length, 0);
+  const hasDiagnoses =
+    layout.groupedDiagnoses.primary.length > 0 ||
+    layout.groupedDiagnoses.secondary.length > 0 ||
+    layout.groupedDiagnoses.chronic.length > 0;
+
+  const overviewHasContent = Boolean(
+    layout.overview.patientDisplayName ||
+      layout.overview.patientMrn ||
+      layout.overview.arrivedAt ||
+      layout.overview.attendingProviderDisplayName
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", minWidth: 0 }}>
@@ -239,234 +326,133 @@ export function EncounterClinicalRecordSummaryView({
 
       <SummarySectionCard
         accent="#1e293b"
-        title={t("encounterClinicalRecordSummary.headerTitle")}
-        empty={!record.header.patientDisplayName && !record.header.arrivedAt ? t("encounterClinicalRecordSummary.headerEmpty") : undefined}
+        title={t("encounterClinicalRecordSummary.overviewTitle")}
+        empty={!overviewHasContent ? t("encounterClinicalRecordSummary.overviewEmpty") : undefined}
       >
-        <div style={{ display: "grid", gap: 4 }}>
-          {record.header.patientDisplayName ? (
-            <p style={lineStyle}>
-              <strong>{t("encounterClinicalRecordSummary.patientLabel")}:</strong>{" "}
-              {record.header.patientDisplayName}
-              {record.header.patientMrn ? ` · ${record.header.patientMrn}` : ""}
-            </p>
+        <div style={overviewGridStyle}>
+          {layout.overview.patientDisplayName ? (
+            <OverviewField label={t("encounterClinicalRecordSummary.patientLabel")} value={layout.overview.patientDisplayName} />
           ) : null}
-          {record.header.arrivedAt ? (
-            <p style={lineStyle}>
-              <strong>{t("encounterClinicalRecordSummary.arrivalLabel")}:</strong>{" "}
-              {formatDt(record.header.arrivedAt)}
-            </p>
+          {layout.overview.patientMrn ? (
+            <OverviewField label={t("encounterClinicalRecordSummary.mrnLabel")} value={layout.overview.patientMrn} />
           ) : null}
-          {record.header.attendingProviderDisplayName ? (
-            <p style={lineStyle}>
-              <strong>{t("encounterClinicalRecordSummary.attendingLabel")}:</strong>{" "}
-              {record.header.attendingProviderDisplayName}
-            </p>
+          {layout.overview.patientAgeLabel ? (
+            <OverviewField
+              label={t("encounterClinicalRecordSummary.ageLabel")}
+              value={`${layout.overview.patientAgeLabel} ${t("encounterChrome.ageYearsSuffix")}`}
+            />
           ) : null}
-          {record.header.roomLabel ? (
-            <p style={lineStyle}>
-              <strong>{t("encounterClinicalRecordSummary.roomLabel")}:</strong> {record.header.roomLabel}
-            </p>
+          {layout.overview.patientSexLabel ? (
+            <OverviewField label={t("encounterClinicalRecordSummary.sexLabel")} value={sexLabel} />
+          ) : null}
+          {layout.overview.arrivedAt ? (
+            <OverviewField label={t("encounterClinicalRecordSummary.arrivalLabel")} value={formatDt(layout.overview.arrivedAt)} />
+          ) : null}
+          {layout.overview.lengthOfStayLabel ? (
+            <OverviewField label={t("encounterClinicalRecordSummary.losLabel")} value={layout.overview.lengthOfStayLabel} />
+          ) : null}
+          {layout.overview.dispositionStatusLabel ? (
+            <OverviewField
+              label={t("encounterClinicalRecordSummary.dispositionStatusLabel")}
+              value={layout.overview.dispositionStatusLabel}
+            />
+          ) : null}
+          {layout.overview.attendingProviderDisplayName ? (
+            <OverviewField
+              label={t("encounterClinicalRecordSummary.attendingLabel")}
+              value={layout.overview.attendingProviderDisplayName}
+            />
+          ) : null}
+          {layout.overview.primaryNurseDisplayName ? (
+            <OverviewField
+              label={t("encounterClinicalRecordSummary.primaryNurseLabel")}
+              value={layout.overview.primaryNurseDisplayName}
+            />
           ) : null}
         </div>
       </SummarySectionCard>
 
-      {record.chiefComplaint?.lines.length ? (
-        <SummarySectionCard accent="#2563eb" title={t("encounterClinicalRecordSummary.chiefComplaintTitle")}>
-          {record.chiefComplaint.lines.map((line, i) => (
-            <p key={i} style={lineStyle}>
-              {line}
-            </p>
-          ))}
-        </SummarySectionCard>
-      ) : null}
-
-      {record.presentation?.lines.length ? (
-        <SummarySectionCard accent="#b91c1c" title={t("encounterClinicalRecordSummary.presentationTitle")}>
-          {record.presentation.lines.map((line, i) => (
-            <p key={i} style={lineStyle}>
-              {line}
-            </p>
-          ))}
-        </SummarySectionCard>
-      ) : null}
-
       <SummarySectionCard
-        accent="#d97706"
-        title={t("encounterClinicalRecordSummary.vitalsTitle")}
-        empty={record.vitals.length === 0 ? t("encounterClinicalRecordSummary.vitalsEmpty") : undefined}
+        accent="#2563eb"
+        title={t("encounterClinicalRecordSummary.chiefComplaintTitle")}
+        empty={layout.chiefComplaintLines.length === 0 ? t("encounterClinicalRecordSummary.emptyState") : undefined}
       >
-        {record.vitals.length > 0 ? (
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {record.vitals.map((v) => (
-              <li key={v.id} style={lineStyle}>
-                {formatDt(v.recordedAt)} — {v.summary}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {layout.chiefComplaintLines.map((line, i) => (
+          <p key={i} style={lineStyle}>
+            {line}
+          </p>
+        ))}
       </SummarySectionCard>
 
       <SummarySectionCard
-        accent="#0ea5e9"
-        title={t("encounterClinicalRecordSummary.nursingTitle")}
-        subline={t("encounterClinicalRecordSummary.nursingSubline")}
-        empty={!record.nursingAssessment ? t("encounterClinicalRecordSummary.nursingEmpty") : undefined}
+        accent="#1d4ed8"
+        title={t("encounterClinicalRecordSummary.hpiTitle")}
+        empty={layout.hpiLines.length === 0 ? t("encounterClinicalRecordSummary.hpiEmpty") : undefined}
       >
-        {record.nursingAssessment ? (
-          <>
-            <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
-              {formatDt(record.nursingAssessment.documentedAt ?? record.nursingAssessment.savedAt)}
-              {record.nursingAssessment.performerDisplayName
-                ? ` — ${record.nursingAssessment.performerDisplayName}`
-                : ""}
-            </p>
-            {record.nursingAssessment.structuredLines.map((line, i) => (
-              <p key={i} style={lineStyle}>
-                {line}
-              </p>
-            ))}
-            {record.nursingAssessment.narrativeSummary ? (
-              <p style={{ ...lineStyle, fontStyle: "italic", color: "#475569" }}>
-                {record.nursingAssessment.narrativeSummary}
-              </p>
-            ) : null}
-            <VersionHistoryCollapsible
-              title={t("encounterClinicalRecordSummary.versionHistory")}
-              count={record.nursingAssessmentHistory.length}
-            >
-              {record.nursingAssessmentHistory.map((entry) => (
-                <div
-                  key={entry.id}
-                  style={{
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    padding: "8px 10px",
-                    background: "#fff",
-                  }}
-                >
-                  <p style={{ ...lineStyle, fontWeight: 600 }}>
-                    {formatDt(entry.documentedAt ?? entry.savedAt)}
-                  </p>
-                  {entry.structuredLines.map((line, i) => (
-                    <p key={i} style={lineStyle}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </VersionHistoryCollapsible>
-          </>
-        ) : null}
+        {layout.hpiLines.map((line, i) => (
+          <p key={i} style={lineStyle}>
+            {line}
+          </p>
+        ))}
       </SummarySectionCard>
 
       <SummarySectionCard
-        accent="#7c3aed"
-        title={t("encounterClinicalRecordSummary.ordersTitle")}
-        empty={record.orders.length === 0 ? t("encounterClinicalRecordSummary.ordersEmpty") : undefined}
+        accent="#b91c1c"
+        title={t("encounterClinicalRecordSummary.triageSummaryTitle")}
+        empty={!triageHasContent ? t("encounterClinicalRecordSummary.triageSummaryEmpty") : undefined}
       >
-        {record.orders.length > 0 ? (
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colOrder")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colType")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colStatus")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {record.orders.map((order) => (
-                <tr key={order.orderItemId}>
-                  <td style={tdStyle}>{order.label}</td>
-                  <td style={tdStyle}>{order.orderType}</td>
-                  <td style={tdStyle}>{order.status}</td>
-                  <td style={tdStyle}>{formatDt(order.orderedAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </SummarySectionCard>
-
-      <SummarySectionCard
-        accent="#059669"
-        title={t("encounterClinicalRecordSummary.resultsTitle")}
-        subline={t("encounterClinicalRecordSummary.resultsSubline")}
-        empty={
-          record.laboratoryResults.length === 0 && record.imagingResults.length === 0
-            ? t("encounterClinicalRecordSummary.resultsEmpty")
-            : undefined
-        }
-      >
-        {record.laboratoryResults.length > 0 || record.imagingResults.length > 0 ? (
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colStudy")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colResult")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colVerified")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {record.laboratoryResults.map((lab) => (
-                <tr key={lab.orderItemId}>
-                  <td style={tdStyle}>{lab.label}</td>
-                  <td style={tdStyle}>{lab.resultText}</td>
-                  <td style={tdStyle}>{formatDt(lab.verifiedAt)}</td>
-                </tr>
-              ))}
-              {record.imagingResults.map((img) => (
-                <tr key={img.orderItemId}>
-                  <td style={tdStyle}>{img.label}</td>
-                  <td style={tdStyle}>{img.resultText}</td>
-                  <td style={tdStyle}>{formatDt(img.verifiedAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {triageHasContent ? (
+          <div style={overviewGridStyle}>
+            {(Object.keys(TRIAGE_FIELD_I18N) as EnterpriseTriageFieldKey[]).map((key) => {
+              const value = layout.triageSummary[key];
+              if (!value) return null;
+              const critical = key === "allergies" && isCriticalAllergyText(value);
+              return (
+                <OverviewField
+                  key={key}
+                  label={t(TRIAGE_FIELD_I18N[key])}
+                  value={value}
+                  highlight={critical}
+                />
+              );
+            })}
+          </div>
         ) : null}
       </SummarySectionCard>
 
       <SummarySectionCard
         accent="#4f46e5"
-        title={t("encounterClinicalRecordSummary.providerTitle")}
-        empty={!record.providerAssessment ? t("encounterClinicalRecordSummary.providerEmpty") : undefined}
+        title={t("encounterClinicalRecordSummary.providerAssessmentTitle")}
+        empty={!layout.providerAssessment ? t("encounterClinicalRecordSummary.providerEmpty") : undefined}
       >
-        {record.providerAssessment ? (
+        {layout.providerAssessment ? (
           <>
             <p style={{ ...lineStyle, fontWeight: 600, color: "#3730a3" }}>
-              {t(providerStatusI18nKey(record.providerAssessment.status))}
+              {t(providerStatusI18nKey(layout.providerAssessment.status))}
             </p>
-            {record.providerAssessment.signedAt ? (
+            {layout.providerAssessment.signedAt ? (
               <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
-                {t("encounterClinicalRecordSummary.signedAt")}: {formatDt(record.providerAssessment.signedAt)}
-                {record.providerAssessment.signedByDisplayName
-                  ? ` — ${record.providerAssessment.signedByDisplayName}`
+                {t("encounterClinicalRecordSummary.signedAt")}: {formatDt(layout.providerAssessment.signedAt)}
+                {layout.providerAssessment.signedByDisplayName
+                  ? ` — ${layout.providerAssessment.signedByDisplayName}`
                   : ""}
               </p>
             ) : null}
-            {record.providerAssessment.sections.map((sec) => (
+            {providerSections.map((sec) => (
               <div key={sec.label} style={{ marginTop: 8 }}>
                 <p style={{ ...lineStyle, fontWeight: 600 }}>{sec.label}</p>
                 <p style={lineStyle}>{sec.text}</p>
               </div>
             ))}
-            {record.providerAssessment.narrativeSummary ? (
-              <p style={{ ...lineStyle, fontStyle: "italic" }}>{record.providerAssessment.narrativeSummary}</p>
-            ) : null}
-            <VersionHistoryCollapsible
-              title={t("encounterClinicalRecordSummary.versionHistory")}
-              count={record.providerAssessmentHistory.length}
+            <CollapsibleBlock
+              showLabel={t("encounterClinicalRecordSummary.versionHistoryShow")}
+              hideLabel={t("encounterClinicalRecordSummary.versionHistoryHide")}
+              count={layout.providerAssessmentHistory.length}
             >
-              {record.providerAssessmentHistory.map((entry) => (
+              {layout.providerAssessmentHistory.map((entry) => (
                 <div
                   key={entry.id}
-                  style={{
-                    borderRadius: 10,
-                    border: "1px solid #e2e8f0",
-                    padding: "8px 10px",
-                    background: "#fff",
-                  }}
+                  style={{ borderRadius: 10, border: "1px solid #e2e8f0", padding: "8px 10px", background: "#fff" }}
                 >
                   <p style={{ ...lineStyle, fontWeight: 600 }}>
                     {formatDt(entry.documentedAt ?? entry.savedAt)}
@@ -478,19 +464,258 @@ export function EncounterClinicalRecordSummaryView({
                   ))}
                 </div>
               ))}
-            </VersionHistoryCollapsible>
+            </CollapsibleBlock>
           </>
         ) : null}
       </SummarySectionCard>
 
       <SummarySectionCard
-        accent="#0d9488"
-        title={t("encounterClinicalRecordSummary.proceduresTitle")}
-        empty={record.procedures.length === 0 ? t("encounterClinicalRecordSummary.proceduresEmpty") : undefined}
+        accent="#0ea5e9"
+        title={t("encounterClinicalRecordSummary.nursingTitle")}
+        empty={!layout.nursingAssessment ? t("encounterClinicalRecordSummary.nursingEmpty") : undefined}
       >
-        {record.procedures.length > 0 ? (
+        {layout.nursingAssessment ? (
+          <>
+            <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
+              {formatDt(layout.nursingAssessment.documentedAt ?? layout.nursingAssessment.savedAt)}
+              {layout.nursingAssessment.performerDisplayName
+                ? ` — ${layout.nursingAssessment.performerDisplayName}`
+                : ""}
+            </p>
+            {layout.nursingAssessment.structuredLines.map((line, i) => (
+              <p key={i} style={lineStyle}>
+                {line}
+              </p>
+            ))}
+            <CollapsibleBlock
+              showLabel={t("encounterClinicalRecordSummary.nursingReassessmentsShow")}
+              hideLabel={t("encounterClinicalRecordSummary.nursingReassessmentsHide")}
+              count={layout.nursingAssessmentHistory.length}
+            >
+              {layout.nursingAssessmentHistory.map((entry) => (
+                <div
+                  key={entry.id}
+                  style={{ borderRadius: 10, border: "1px solid #e2e8f0", padding: "8px 10px", background: "#fff" }}
+                >
+                  <p style={{ ...lineStyle, fontWeight: 600 }}>
+                    {formatDt(entry.documentedAt ?? entry.savedAt)}
+                  </p>
+                  {entry.structuredLines.map((line, i) => (
+                    <p key={i} style={lineStyle}>
+                      {line}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </CollapsibleBlock>
+          </>
+        ) : null}
+      </SummarySectionCard>
+
+      <SummarySectionCard
+        accent="#7c3aed"
+        title={t("encounterClinicalRecordSummary.activeOrdersTitle")}
+        empty={ordersCount === 0 ? t("encounterClinicalRecordSummary.ordersEmpty") : undefined}
+      >
+        {ordersCount > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {(Object.keys(ORDER_GROUP_I18N) as EnterpriseOrderGroupKey[]).map((groupKey) => {
+              const orders = layout.groupedOrders[groupKey];
+              if (orders.length === 0) return null;
+              return (
+                <div key={groupKey}>
+                  <p style={{ ...sectionTitle, marginBottom: 6 }}>{t(ORDER_GROUP_I18N[groupKey])}</p>
+                  <div style={tableWrapStyle}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>{t("encounterClinicalRecordSummary.colOrder")}</th>
+                          <th style={thStyle}>{t("encounterClinicalRecordSummary.colStatus")}</th>
+                          <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.map((order) => {
+                          const critical = isCriticalMedicationOrder(order);
+                          const badgeSoft = getPriorityBadgeSoft(order.priority ?? "ROUTINE");
+                          return (
+                            <tr key={order.orderItemId}>
+                              <td style={tdStyle}>
+                                {order.label}
+                                {critical ? (
+                                  <span style={{ marginLeft: 6 }}>
+                                    <MedoraCardBadge soft={SEVERITY_HIGHLIGHT.critical} compact>
+                                      {t("encounterClinicalRecordSummary.criticalBadge")}
+                                    </MedoraCardBadge>
+                                  </span>
+                                ) : null}
+                              </td>
+                              <td style={tdStyle}>
+                                <MedoraCardBadge soft={badgeSoft} compact>
+                                  {order.status}
+                                </MedoraCardBadge>
+                              </td>
+                              <td style={tdStyle}>{formatDt(order.orderedAt)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+      </SummarySectionCard>
+
+      <SummarySectionCard
+        accent="#059669"
+        title={t("encounterClinicalRecordSummary.resultsTitle")}
+        subline={t("encounterClinicalRecordSummary.resultsSubline")}
+        empty={
+          layout.laboratoryResults.length === 0 && layout.imagingResults.length === 0
+            ? t("encounterClinicalRecordSummary.resultsEmpty")
+            : undefined
+        }
+      >
+        {layout.laboratoryResults.length > 0 || layout.imagingResults.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {layout.laboratoryResults.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 6 }}>
+                  {t("encounterClinicalRecordSummary.resultsLaboratoryTitle")}
+                </p>
+                <div style={tableWrapStyle}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colStudy")}</th>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colResult")}</th>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colVerified")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {layout.laboratoryResults.map((lab) => (
+                        <tr
+                          key={lab.orderItemId}
+                          style={{
+                            background: lab.criticalValue ? SEVERITY_HIGHLIGHT.critical.bg : undefined,
+                          }}
+                        >
+                          <td style={tdStyle}>
+                            {lab.label}
+                            {lab.criticalValue ? (
+                              <span style={{ marginLeft: 6 }}>
+                                <MedoraCardBadge soft={SEVERITY_HIGHLIGHT.critical} compact>
+                                  {t("encounterClinicalRecordSummary.criticalBadge")}
+                                </MedoraCardBadge>
+                              </span>
+                            ) : null}
+                          </td>
+                          <td style={tdStyle}>{lab.resultText}</td>
+                          <td style={tdStyle}>{formatDt(lab.verifiedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+            {layout.imagingResults.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 6 }}>
+                  {t("encounterClinicalRecordSummary.resultsImagingTitle")}
+                </p>
+                <div style={tableWrapStyle}>
+                  <table style={tableStyle}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colStudy")}</th>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colResult")}</th>
+                        <th style={thStyle}>{t("encounterClinicalRecordSummary.colVerified")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {layout.imagingResults.map((img) => (
+                        <tr
+                          key={img.orderItemId}
+                          style={{
+                            background: img.criticalValue ? SEVERITY_HIGHLIGHT.critical.bg : undefined,
+                          }}
+                        >
+                          <td style={tdStyle}>
+                            {img.label}
+                            {img.criticalValue ? (
+                              <span style={{ marginLeft: 6 }}>
+                                <MedoraCardBadge soft={SEVERITY_HIGHLIGHT.critical} compact>
+                                  {t("encounterClinicalRecordSummary.criticalBadge")}
+                                </MedoraCardBadge>
+                              </span>
+                            ) : null}
+                          </td>
+                          <td style={tdStyle}>{img.resultText}</td>
+                          <td style={tdStyle}>{formatDt(img.verifiedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </SummarySectionCard>
+
+      <SummarySectionCard
+        accent="#db2777"
+        title={t("encounterClinicalRecordSummary.marTitle")}
+        empty={
+          layout.medicationAdministration.length === 0
+            ? t("encounterClinicalRecordSummary.marEmpty")
+            : undefined
+        }
+      >
+        {layout.medicationAdministration.length > 0 ? (
+          <div style={tableWrapStyle}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colMedication")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colAction")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {layout.medicationAdministration.map((mar) => (
+                  <tr key={mar.id}>
+                    <td style={tdStyle}>
+                      {mar.medicationName}
+                      {mar.dose ? ` ${mar.dose}` : ""}
+                      {mar.route ? ` (${mar.route})` : ""}
+                    </td>
+                    <td style={tdStyle}>{mar.action}</td>
+                    <td style={tdStyle}>{formatDt(mar.administeredAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </SummarySectionCard>
+
+      <SummarySectionCard
+        accent="#0d9488"
+        title={t("encounterClinicalRecordSummary.completedProceduresTitle")}
+        empty={
+          layout.completedProcedures.length === 0
+            ? t("encounterClinicalRecordSummary.proceduresEmpty")
+            : undefined
+        }
+      >
+        {layout.completedProcedures.length > 0 ? (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {record.procedures.map((proc) => (
+            {layout.completedProcedures.map((proc) => (
               <li key={proc.id} style={lineStyle}>
                 {formatDt(proc.documentedAt)} — {proc.clinicalSummary}
               </li>
@@ -500,37 +725,58 @@ export function EncounterClinicalRecordSummaryView({
       </SummarySectionCard>
 
       <SummarySectionCard
-        accent="#db2777"
-        title={t("encounterClinicalRecordSummary.marTitle")}
-        empty={
-          record.medicationAdministration.length === 0
-            ? t("encounterClinicalRecordSummary.marEmpty")
-            : undefined
-        }
+        accent="#64748b"
+        title={t("encounterClinicalRecordSummary.diagnosesTitle")}
+        empty={!hasDiagnoses ? t("encounterClinicalRecordSummary.diagnosesEmpty") : undefined}
       >
-        {record.medicationAdministration.length > 0 ? (
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colMedication")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colAction")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {record.medicationAdministration.map((mar) => (
-                <tr key={mar.id}>
-                  <td style={tdStyle}>
-                    {mar.medicationName}
-                    {mar.dose ? ` ${mar.dose}` : ""}
-                    {mar.route ? ` (${mar.route})` : ""}
-                  </td>
-                  <td style={tdStyle}>{mar.action}</td>
-                  <td style={tdStyle}>{formatDt(mar.administeredAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {hasDiagnoses ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {layout.groupedDiagnoses.primary.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 4 }}>
+                  {t("encounterClinicalRecordSummary.diagnosesPrimaryTitle")}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {layout.groupedDiagnoses.primary.map((dx) => (
+                    <li key={dx.id} style={lineStyle}>
+                      {dx.displayLabel}
+                      {dx.code ? ` (${dx.code})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {layout.groupedDiagnoses.secondary.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 4 }}>
+                  {t("encounterClinicalRecordSummary.diagnosesSecondaryTitle")}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {layout.groupedDiagnoses.secondary.map((dx) => (
+                    <li key={dx.id} style={lineStyle}>
+                      {dx.displayLabel}
+                      {dx.code ? ` (${dx.code})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {layout.groupedDiagnoses.chronic.length > 0 ? (
+              <div>
+                <p style={{ ...sectionTitle, marginBottom: 4 }}>
+                  {t("encounterClinicalRecordSummary.diagnosesChronicTitle")}
+                </p>
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {layout.groupedDiagnoses.chronic.map((dx) => (
+                    <li key={dx.id} style={lineStyle}>
+                      {dx.displayLabel}
+                      {dx.code ? ` (${dx.code})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </SummarySectionCard>
 
@@ -539,18 +785,15 @@ export function EncounterClinicalRecordSummaryView({
         title={t("encounterClinicalRecordSummary.clinicalTimelineTitle")}
         subline={t("encounterClinicalRecordSummary.clinicalTimelineSubline")}
         empty={
-          record.clinicalTimeline.length === 0
+          layout.clinicalTimeline.length === 0
             ? t("encounterClinicalRecordSummary.clinicalTimelineEmpty")
             : undefined
         }
       >
-        {record.clinicalTimeline.length > 0 ? (
+        {layout.clinicalTimeline.length > 0 ? (
           <>
             {timelineVisible.map((entry) => (
-              <div
-                key={entry.id}
-                style={{ padding: "6px 0", borderBottom: "1px solid #f1f5f9" }}
-              >
+              <div key={entry.id} style={{ padding: "6px 0", borderBottom: "1px solid #f1f5f9" }}>
                 <p style={{ ...lineStyle, fontWeight: 600, fontSize: 12 }}>
                   {formatDt(entry.timestampIso)} — {t(clinicalMilestoneI18nKey(entry.milestone))}
                 </p>
@@ -603,55 +846,39 @@ export function EncounterClinicalRecordSummaryView({
       </SummarySectionCard>
 
       <SummarySectionCard
-        accent="#64748b"
-        title={t("encounterClinicalRecordSummary.diagnosesTitle")}
-        empty={record.diagnoses.length === 0 ? t("encounterClinicalRecordSummary.diagnosesEmpty") : undefined}
-      >
-        {record.diagnoses.length > 0 ? (
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {record.diagnoses.map((dx) => (
-              <li key={dx.id} style={lineStyle}>
-                {dx.displayLabel}
-                {dx.code ? ` (${dx.code})` : ""}
-                {dx.isPrimary ? ` · ${t("encounterClinicalRecordSummary.diagnosisPrimary")}` : ""}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </SummarySectionCard>
-
-      <SummarySectionCard
         accent="#334155"
         title={t("encounterClinicalRecordSummary.dispositionTitle")}
-        empty={!record.disposition?.summaryLines.length ? t("encounterClinicalRecordSummary.dispositionEmpty") : undefined}
+        empty={!layout.disposition?.summaryLines.length ? t("encounterClinicalRecordSummary.dispositionEmpty") : undefined}
       >
-        {record.disposition?.summaryLines.map((line, i) => (
+        {layout.disposition?.summaryLines.map((line, i) => (
           <p key={i} style={lineStyle}>
             {line}
           </p>
         ))}
       </SummarySectionCard>
 
-      {record.signatures.length > 0 ? (
-        <SummarySectionCard accent="#94a3b8" title={t("encounterClinicalRecordSummary.signaturesTitle")}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colDomain")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colSigner")}</th>
-                <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {record.signatures.map((sig, i) => (
-                <tr key={`${sig.domain}-${i}`}>
-                  <td style={tdStyle}>{sig.domain}</td>
-                  <td style={tdStyle}>{sig.signerDisplayName}</td>
-                  <td style={tdStyle}>{formatDt(sig.signedAt)}</td>
+      {layout.signatures.length > 0 ? (
+        <SummarySectionCard accent="#94a3b8" title={t("encounterClinicalRecordSummary.electronicSignaturesTitle")}>
+          <div style={tableWrapStyle}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colDomain")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colSigner")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.colWhen")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {layout.signatures.map((sig, i) => (
+                  <tr key={`${sig.domain}-${i}`}>
+                    <td style={tdStyle}>{sig.domain}</td>
+                    <td style={tdStyle}>{sig.signerDisplayName}</td>
+                    <td style={tdStyle}>{formatDt(sig.signedAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SummarySectionCard>
       ) : null}
 

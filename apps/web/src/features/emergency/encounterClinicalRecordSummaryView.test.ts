@@ -151,7 +151,7 @@ describe("encounterClinicalRecordSummaryView (Phase 3B)", () => {
 
   it("summary view keeps provider version history collapsed by default", () => {
     const view = readSrc("features/emergency/EncounterClinicalRecordSummaryView.tsx");
-    expect(view).toContain("VersionHistoryCollapsible");
+    expect(view).toContain("CollapsibleBlock");
     expect(view).toContain('useState(false)');
     expect(view).toContain("versionHistoryShow");
   });
