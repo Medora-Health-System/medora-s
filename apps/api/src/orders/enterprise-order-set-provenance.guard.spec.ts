@@ -196,4 +196,38 @@ describe("enterprise-order-set-provenance.guard (MEDUI.ORDERSETS.ENTERPRISE_PHAS
       })
     ).not.toThrow();
   });
+
+  it("accepts RN nausea LAB provenance with mixed selected keys", () => {
+    const rnSet = enterpriseOrderSetByCode("ed_rn_nausea_vomiting_diarrhea_v1")!;
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: rnSet,
+      selectedItemKeys: ["vitalsQ15", "npoStatus", "cmp"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["cmp"],
+      verbalOrderAttestation: {
+        verbalOrderReceivedFromProviderId: "550e8400-e29b-41d4-a716-446655440001",
+        verbalOrderReceivedFromProviderName: "Dr. Example",
+        readBackConfirmed: true,
+        verbalOrderAttestedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+        verbalOrderAttestedBy: "550e8400-e29b-41d4-a716-446655440002",
+        attestedSurface: "CREATE_ORDER_MODAL",
+      },
+    });
+    expect(() =>
+      assertEnterpriseOrderSetProvenanceForCreate({
+        data: {
+          type: "LAB",
+          items: [{ catalogItemType: "LAB_TEST", catalogItemId: "550e8400-e29b-41d4-a716-446655440099" }],
+          enterpriseOrderSetProvenance: provenance,
+        },
+        roleCodes: ["RN"] as never,
+        currentUserId: "550e8400-e29b-41d4-a716-446655440002",
+      })
+    ).not.toThrow();
+  });
 });

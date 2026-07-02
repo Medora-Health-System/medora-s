@@ -1,4 +1,5 @@
 import type { OrderCreateDto, OrderItemCreateDto } from "@medora/shared";
+import { orderCreateDtoSchema } from "@medora/shared";
 import {
   OXYGEN_THERAPY_PROCEDURE_CODE,
   buildEnterpriseOrderSetProvenance,
@@ -36,6 +37,52 @@ export function toEnterpriseOrderSetSkippedItems(
   return skipped
     .filter((item) => selected.has(item.key))
     .map((item) => ({ key: item.key, reason: item.reason }));
+}
+
+export function formatOrderCreateValidationMessage(
+  issues: ReadonlyArray<{ message?: string; path?: ReadonlyArray<string | number> }>
+): string {
+  const issue = issues[0];
+  if (!issue?.message) return "Invalid order payload.";
+  const path = issue.path?.length ? issue.path.join(".") : null;
+  return path ? `${path}: ${issue.message}` : issue.message;
+}
+
+export function validateCreateOrderDomainPayload(
+  payload: OrderCreateDto
+): { ok: true; payload: OrderCreateDto } | { ok: false; message: string } {
+  const parsed = orderCreateDtoSchema.safeParse(payload);
+  if (parsed.success) {
+    return { ok: true, payload: parsed.data };
+  }
+  return {
+    ok: false,
+    message: formatOrderCreateValidationMessage(parsed.error.issues),
+  };
+}
+
+export function prepareCreateOrderDomainPayloadForSubmit(
+  payload: OrderCreateDto
+): { ok: true; payload: OrderCreateDto } | { ok: false; message: string } {
+  const firstPass = validateCreateOrderDomainPayload(payload);
+  if (firstPass.ok) return firstPass;
+
+  if (!payload.enterpriseOrderSetProvenance) {
+    return firstPass;
+  }
+
+  const withoutProvenance = validateCreateOrderDomainPayload({
+    ...payload,
+    enterpriseOrderSetProvenance: undefined,
+  });
+  if (withoutProvenance.ok) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[orderSetSubmit] stripped invalid provenance before submit", firstPass.message);
+    }
+    return withoutProvenance;
+  }
+
+  return firstPass;
 }
 
 export function buildLabOrderItemDto(line: CreateOrderLineItem): OrderItemCreateDto {
@@ -117,11 +164,18 @@ export function resolveOrderSetProvenanceForSubmit(input: {
     return undefined;
   }
 
+  const verbalOrderAttestation =
+    input.verbalOrderAttestation &&
+    isCatalogItemUuid(input.verbalOrderAttestation.verbalOrderReceivedFromProviderId) &&
+    isCatalogItemUuid(input.verbalOrderAttestation.verbalOrderAttestedBy)
+      ? input.verbalOrderAttestation
+      : undefined;
+
   const provenance = buildEnterpriseOrderSetProvenance({
     applyContext: input.applyContext,
     orderType: input.orderType,
     placedItemKeys,
-    ...(input.verbalOrderAttestation ? { verbalOrderAttestation: input.verbalOrderAttestation } : {}),
+    ...(verbalOrderAttestation ? { verbalOrderAttestation } : {}),
   });
 
   const validation = validateEnterpriseOrderSetApplication({

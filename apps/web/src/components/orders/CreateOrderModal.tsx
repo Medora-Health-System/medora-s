@@ -41,11 +41,19 @@ import {
 } from "./createOrderModal/resolveEnterpriseOrderSetItems";
 import {
   buildCreateOrderDomainPayload,
+  prepareCreateOrderDomainPayloadForSubmit,
   resolveOrderSetProvenanceForSubmit,
   toEnterpriseOrderSetSkippedItems,
   type OrderAuthorityPayloadFields,
 } from "./createOrderModal/createOrderDomainPayload";
 import { mapOrderCreateApiError } from "./createOrderModal/mapOrderCreateApiError";
+import {
+  buildDraftPayloadAfterDomainSubmit,
+  clearCreateOrderDraftSnapshot,
+  createOrderDraftHasContent,
+  persistCreateOrderDraftSnapshot,
+  type CreateOrderDraftPayload,
+} from "./createOrderModal/createOrderDraftSync";
 import type { CatalogSearchItem } from "@/lib/catalogSearchTypes";
 import {
   CANONICAL_CARE_PROCEDURE_CATEGORIES,
@@ -110,50 +118,11 @@ import { useClinicalBeforeUnloadWarning } from "@/lib/useClinicalBeforeUnloadWar
 type OrderTypeKey = OrderModalTab;
 type OrderAuthorityFormSource = OrderSource | "";
 type MedicationOrderMode = "DEFAULT" | "ER_ADMINISTER_ONLY";
-const ORDER_DRAFT_VERSION = "orders-drafting-v1";
+const ORDER_DRAFT_VERSION = "orders-drafting-v2";
 const UNKNOWN_CLINICAL_DRAFT_USER_ID = "unknown-user";
-
-type CreateOrderDraftPayload = {
-  activeTab: CreateOrderModalTab;
-  selectedOrderSet: OrderSetKey;
-  selectedOrderSetItemKeys: string[];
-  orderSetReviewActive: boolean;
-  stagedItems: Record<OrderTypeKey, CreateOrderLineItem[]>;
-  formData: {
-    type: OrderTypeKey;
-    priority: "ROUTINE" | "URGENT" | "STAT";
-    notes: string;
-    prescriberName: string;
-    prescriberLicense: string;
-    prescriberContact: string;
-    orderSource: OrderAuthorityFormSource;
-    readbackConfirmed: boolean;
-    protocolName: string;
-    items: CreateOrderLineItem[];
-  };
-};
 
 function createOrderDraftSignature(payload: CreateOrderDraftPayload): string {
   return clinicalDraftPayloadSignature(payload);
-}
-
-function createOrderDraftHasContent(payload: unknown): boolean {
-  if (!payload || typeof payload !== "object") return false;
-  const p = payload as Partial<CreateOrderDraftPayload>;
-  const staged = p.stagedItems ?? {};
-  const stagedHasItems = Object.values(staged).some((items) => Array.isArray(items) && items.length > 0);
-  const form = p.formData;
-  return Boolean(
-    stagedHasItems ||
-      (Array.isArray(form?.items) && form.items.length > 0) ||
-      form?.notes?.trim() ||
-      form?.prescriberName?.trim() ||
-      form?.prescriberLicense?.trim() ||
-      form?.prescriberContact?.trim() ||
-      form?.protocolName?.trim() ||
-      form?.readbackConfirmed ||
-      p.orderSetReviewActive
-  );
 }
 
 const ORDER_TYPE_REVIEW_ORDER: OrderTypeKey[] = ["LAB", "IMAGING", "MEDICATION", "CARE"];
@@ -1061,28 +1030,69 @@ export function CreateOrderModal({
           }
         : {}),
     });
-    const payload = buildCreateOrderDomainPayload({
-      type,
-      priority: formData.priority,
-      notes: formData.notes,
-      prescriberName: formData.prescriberName,
-      prescriberLicense: formData.prescriberLicense,
-      prescriberContact: formData.prescriberContact,
-      items:
-        erAdministerOnlyMedication && type === "MEDICATION"
-          ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
-          : items,
-      authority: authorityPayloadFieldsForType(type),
-      safetyAcknowledgedMedicationAllergies: allergyAckForApi ? true : undefined,
-      facilityTimeZone,
-      enterpriseOrderSetProvenance,
-    });
+    const payloadResult = prepareCreateOrderDomainPayloadForSubmit(
+      buildCreateOrderDomainPayload({
+        type,
+        priority: formData.priority,
+        notes: formData.notes,
+        prescriberName: formData.prescriberName,
+        prescriberLicense: formData.prescriberLicense,
+        prescriberContact: formData.prescriberContact,
+        items:
+          erAdministerOnlyMedication && type === "MEDICATION"
+            ? items.map((item) => ({ ...item, medicationFulfillmentIntent: "ADMINISTER_CHART" as const }))
+            : items,
+        authority: authorityPayloadFieldsForType(type),
+        safetyAcknowledgedMedicationAllergies: allergyAckForApi ? true : undefined,
+        facilityTimeZone,
+        enterpriseOrderSetProvenance,
+      })
+    );
+    if (!payloadResult.ok) {
+      throw Object.assign(new Error(payloadResult.message), { status: 400 });
+    }
     return (await apiFetch(`/encounters/${encounterId}/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payloadResult.payload),
       facilityId,
     })) as OrderCreateResponse;
+  };
+
+  const persistOrderSetDraftAfterDomainSubmit = (input: {
+    submittedType: OrderTypeKey;
+    nextStagedItems: Record<OrderTypeKey, CreateOrderLineItem[]>;
+    nextReviewTab: OrderTypeKey | null;
+    formDataSnapshot: CreateOrderDraftPayload["formData"];
+  }) => {
+    if (typeof window === "undefined") return;
+    if (!input.nextReviewTab) {
+      clearCreateOrderDraftSnapshot({ storage: window.localStorage, draftKey });
+      setDraftSavedLocallyAt(null);
+      setDraftRestoredAt(null);
+      return;
+    }
+    const persisted = persistCreateOrderDraftSnapshot({
+      storage: window.localStorage,
+      draftKey,
+      draftScope,
+      payload: buildDraftPayloadAfterDomainSubmit({
+        submittedType: input.submittedType,
+        nextStagedItems: input.nextStagedItems,
+        nextReviewTab: input.nextReviewTab,
+        activeTab: input.nextReviewTab,
+        selectedOrderSet,
+        selectedOrderSetItemKeys,
+        orderSetReviewActive: true,
+        formData: {
+          ...input.formDataSnapshot,
+          type: input.nextReviewTab,
+          items: [...input.nextStagedItems[input.nextReviewTab]],
+        },
+      }),
+    });
+    setDraftSavedLocallyAt(persisted.savedLocallyAt);
+    setDraftRestoredAt(null);
   };
 
   const resolveOrderSetItems = async (items: OrderSetUiItem[]): Promise<ResolvedOrderSetItems> =>
@@ -1193,7 +1203,10 @@ export function CreateOrderModal({
     setNextStagedTabAfterSuccess(null);
     setSubmittedOrderType(null);
     setActiveTab(tab);
-    setFormData((fd) => ({ ...fd, type: tab, items: stagedItems[tab] }));
+    setStagedItems((current) => {
+      setFormData((fd) => ({ ...fd, type: tab, items: [...current[tab]] }));
+      return current;
+    });
     setError(null);
   };
 
@@ -1542,17 +1555,32 @@ export function CreateOrderModal({
       setStagedItems(nextStagedItems);
       setSubmittedOrderType(submittedType);
       setNextStagedTabAfterSuccess(nextReviewTab);
+      if (nextReviewTab) {
+        setActiveTab(nextReviewTab);
+        setFormData((fd) => ({ ...fd, type: nextReviewTab, items: [...nextStagedItems[nextReviewTab]] }));
+      } else if (formData.type === submittedType) {
+        setFormData((fd) => ({ ...fd, items: [] }));
+      }
       if (submittedType === "MEDICATION") {
-        setFormData((fd) => (fd.type === "MEDICATION" ? { ...fd, items: [] } : fd));
         setMedicationAllergySafetyAck(false);
       }
       if (!nextReviewTab) {
         setOrderSetReviewActive(false);
         setOrderSetApplyContext(null);
         setRnStandingVerbalProviderId("");
-        if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+        setSelectedOrderSetItemKeys(checkedOrderSetItemKeys(selectedOrderSet));
+        if (typeof window !== "undefined") {
+          clearCreateOrderDraftSnapshot({ storage: window.localStorage, draftKey });
+        }
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
+      } else {
+        persistOrderSetDraftAfterDomainSubmit({
+          submittedType,
+          nextStagedItems,
+          nextReviewTab,
+          formDataSnapshot: formData,
+        });
       }
 
       setRxIntentDisplayItems(null);
@@ -1723,11 +1751,23 @@ export function CreateOrderModal({
           : null;
       setSubmittedOrderType(successfulTypes[successfulTypes.length - 1] ?? null);
       setNextStagedTabAfterSuccess(nextReviewTab);
-      if (!nextReviewTab) {
+      if (nextReviewTab) {
+        setActiveTab(nextReviewTab);
+        setFormData((fd) => ({ ...fd, type: nextReviewTab, items: [...nextStagedItems[nextReviewTab]] }));
+        persistOrderSetDraftAfterDomainSubmit({
+          submittedType: successfulTypes[successfulTypes.length - 1] ?? "LAB",
+          nextStagedItems,
+          nextReviewTab,
+          formDataSnapshot: formData,
+        });
+      } else {
         setOrderSetReviewActive(false);
         setOrderSetApplyContext(null);
         setRnStandingVerbalProviderId("");
-        if (typeof window !== "undefined") removeClinicalDraft(window.localStorage, draftKey);
+        setSelectedOrderSetItemKeys(checkedOrderSetItemKeys(selectedOrderSet));
+        if (typeof window !== "undefined") {
+          clearCreateOrderDraftSnapshot({ storage: window.localStorage, draftKey });
+        }
         setDraftRestoredAt(null);
         setDraftSavedLocallyAt(null);
       }
