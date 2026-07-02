@@ -37,7 +37,27 @@ export type EncounterClinicalRecordVitalPoint = {
   recordedAt: string;
   source: string | null;
   summary: string;
+  bloodPressure: string | null;
+  heartRate: string | null;
+  respiratoryRate: string | null;
+  spo2: string | null;
+  temperatureCelsius: string | null;
+  pain: string | null;
+  documentedBy: ClinicalRecordAttribution;
 };
+
+export type EncounterClinicalRecordTriageFieldKey =
+  | "esi"
+  | "arrivalMode"
+  | "symptomOnset"
+  | "chiefComplaint"
+  | "narrative"
+  | "pain"
+  | "vitalSigns"
+  | "allergies"
+  | "isolation"
+  | "fallRisk"
+  | "acuityAlerts";
 
 export type EncounterClinicalRecordProviderAssessment = {
   status: EncounterClinicalRecordProviderStatus;
@@ -100,6 +120,7 @@ export type EncounterClinicalRecordOrderRow = {
 
 export type EncounterClinicalRecordTriageDocumentation = {
   documentedBy: ClinicalRecordAttribution;
+  fields: Partial<Record<EncounterClinicalRecordTriageFieldKey, string>>;
 };
 
 export type EncounterClinicalRecordLaboratoryResult = {
@@ -130,7 +151,7 @@ export type EncounterClinicalRecordImagingResult = {
 
 export type EncounterClinicalRecordMedicationAdministration = {
   id: string;
-  medicationName: string;
+  medicationName: string | null;
   dose: string | null;
   route: string | null;
   action: string;
@@ -138,6 +159,7 @@ export type EncounterClinicalRecordMedicationAdministration = {
   administeredByDisplayName: string | null;
   documentedByDisplayName: string | null;
   orderItemId: string | null;
+  displayLine: string | null;
   administeredBy: ClinicalRecordAttribution;
   documentedBy: ClinicalRecordAttribution | null;
 };
@@ -304,12 +326,16 @@ export type BuildEncounterClinicalRecordInput = {
     documentedByRole?: string | null;
     documentedByInitials?: string | null;
     documentedAt?: string | null;
+    fields?: Partial<Record<EncounterClinicalRecordTriageFieldKey, string>>;
   } | null;
   vitals?: Array<{
     id?: string;
     recordedAt?: string;
     source?: string | null;
     summary?: string;
+    vitalsJson?: Record<string, unknown> | null;
+    documentedByDisplayName?: string | null;
+    documentedByRole?: string | null;
   }>;
   providerAssessment?: {
     documentationStatus?: string | null;
@@ -376,12 +402,20 @@ export type BuildEncounterClinicalRecordInput = {
   medicationAdministrations?: Array<{
     id?: string;
     medicationName?: string | null;
+    medicationLabelSnapshot?: string | null;
+    medicationDisplayName?: string | null;
+    displayLabel?: string | null;
+    manualLabel?: string | null;
     dose?: string | null;
+    doseValue?: string | null;
+    doseUnit?: string | null;
+    administeredQuantity?: string | null;
     route?: string | null;
     marAction?: string | null;
     action?: string | null;
     administeredAt?: string | null;
     administeredByDisplayName?: string | null;
+    administeredByDisplayFr?: string | null;
     documentedByDisplayName?: string | null;
     orderItemId?: string | null;
   }>;

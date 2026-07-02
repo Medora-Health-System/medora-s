@@ -42,11 +42,15 @@ export type EnterpriseOrderGroupKey =
 export type EnterpriseTriageFieldKey =
   | "esi"
   | "arrivalMode"
+  | "symptomOnset"
+  | "chiefComplaint"
+  | "narrative"
   | "vitalSigns"
   | "pain"
   | "allergies"
   | "isolation"
-  | "fallRisk";
+  | "fallRisk"
+  | "acuityAlerts";
 
 export type EnterpriseTriageSummary = Partial<Record<EnterpriseTriageFieldKey, string>>;
 
@@ -73,6 +77,8 @@ export type EnterpriseGroupedDiagnoses = {
 export type EnterpriseClinicalChartLayout = {
   overview: EnterpriseEncounterOverview;
   triageDocumentation: ClinicalRecordAttribution | null;
+  triageFields: Partial<Record<EnterpriseTriageFieldKey, string>>;
+  vitalsRows: EncounterClinicalRecord["vitals"];
   chiefComplaintLines: string[];
   hpiLines: string[];
   triageSummary: EnterpriseTriageSummary;
@@ -125,6 +131,18 @@ const TRIAGE_LINE_PATTERNS: Array<{ key: EnterpriseTriageFieldKey; patterns: Reg
     patterns: [/mode d'arrivée/i, /arrival mode/i, /mode d'arrivee/i, /transport/i],
   },
   {
+    key: "symptomOnset",
+    patterns: [/symptom onset/i, /début des symptômes/i, /debut des symptomes/i, /onset/i],
+  },
+  {
+    key: "chiefComplaint",
+    patterns: [/chief complaint/i, /motif/i, /plainte/i, /reason for visit/i],
+  },
+  {
+    key: "narrative",
+    patterns: [/triage narrative/i, /narratif/i, /histoire/i],
+  },
+  {
     key: "vitalSigns",
     patterns: [/signes vitaux/i, /vital signs/i, /constantes/i, /ta\s*[:：]/i, /fc\s*[:：]/i],
   },
@@ -135,11 +153,15 @@ const TRIAGE_LINE_PATTERNS: Array<{ key: EnterpriseTriageFieldKey; patterns: Reg
   },
   {
     key: "isolation",
-    patterns: [/isolement/i, /isolation/i, /précautions/i, /precautions/i],
+    patterns: [/isolement/i, /isolation/i, /précautions/i, /precautions/i, /ppe/i],
   },
   {
     key: "fallRisk",
     patterns: [/risque de chute/i, /fall risk/i, /chute/i],
+  },
+  {
+    key: "acuityAlerts",
+    patterns: [/alerte/i, /alert/i, /sepsis/i, /stroke/i, /avc/i],
   },
 ];
 
@@ -208,12 +230,22 @@ function parseTriageLine(line: string): { key: EnterpriseTriageFieldKey; value: 
   return null;
 }
 
-export function stripTriageDisplayValue(value: string): string {
+export function stripTriageDisplayValue(value: string): string | null {
   const trimmed = value.trim();
   const colonIdx = trimmed.indexOf(":");
-  if (colonIdx < 0) return trimmed;
-  const after = trimmed.slice(colonIdx + 1).trim();
-  return after || trimmed;
+  const raw = colonIdx < 0 ? trimmed : trimmed.slice(colonIdx + 1).trim() || trimmed;
+  if (!raw || /^[-—–]+$/.test(raw)) return null;
+  return raw;
+}
+
+export function parseTriageFieldLine(
+  line: string
+): { key: EnterpriseTriageFieldKey; value: string } | null {
+  const parsed = parseTriageLine(line);
+  if (!parsed) return null;
+  const value = stripTriageDisplayValue(parsed.value);
+  if (!value) return null;
+  return { key: parsed.key, value };
 }
 
 export function buildTriageSummaryFromPresentation(
@@ -226,17 +258,11 @@ export function buildTriageSummaryFromPresentation(
   for (const line of presentationLines) {
     const parsed = parseTriageLine(line);
     if (parsed) {
-      triageSummary[parsed.key] = stripTriageDisplayValue(parsed.value);
+      const value = stripTriageDisplayValue(parsed.value);
+      if (value) triageSummary[parsed.key] = value;
     } else if (line.trim()) {
       hpiFromPresentation.push(line.trim());
     }
-  }
-
-  if (vitals.length > 0 && !triageSummary.vitalSigns) {
-    triageSummary.vitalSigns = vitals
-      .map((v) => v.summary)
-      .filter(Boolean)
-      .join(" · ");
   }
 
   return { triageSummary, hpiFromPresentation };
@@ -355,6 +381,20 @@ export function buildEnterpriseClinicalChartLayout(
 
   const hpiLines = hpiFromProvider.length > 0 ? hpiFromProvider : hpiFromPresentation;
 
+  const triageFieldsFromDoc = record.triageDocumentation?.fields ?? {};
+  for (const [key, value] of Object.entries(triageFieldsFromDoc)) {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      triageSummary[key as EnterpriseTriageFieldKey] = trimmed;
+    }
+  }
+  if (record.vitals.length > 0) {
+    const vitalValue = triageSummary.vitalSigns?.trim();
+    if (!vitalValue || /^[-—–]+$/.test(vitalValue)) {
+      delete triageSummary.vitalSigns;
+    }
+  }
+
   const losMinutes = computeLengthOfStayMinutes(
     record.header.arrivedAt,
     record.header.closedAt
@@ -377,6 +417,8 @@ export function buildEnterpriseClinicalChartLayout(
       primaryNurseDisplayName: record.nursingAssessment?.performerDisplayName ?? null,
     },
     triageDocumentation: record.triageDocumentation?.documentedBy ?? null,
+    triageFields: triageFieldsFromDoc,
+    vitalsRows: record.vitals,
     chiefComplaintLines,
     hpiLines,
     triageSummary,

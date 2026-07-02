@@ -7,15 +7,27 @@ import {
   formatDocumentedProcedureClinicalSummary,
   type BuildEncounterClinicalRecordInput,
   type EncounterClinicalRecordLocale,
+  type EncounterClinicalRecordTriageFieldKey,
 } from "@medora/shared";
 import { buildProviderDocumentationDisplayModel } from "@/lib/providerDocumentationModel";
 import type { SupportedLanguage } from "@/i18n/config";
 import type { UnifiedTimelineApiItem } from "@/lib/unifiedEncounterTimelineUi";
 import type { EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
+import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import {
   readInitialNursingEvalSignature,
 } from "./erInitialNursingAssessmentSummary";
 import { readDispositionSignatureFromEncounter } from "./emergencyDispositionV1";
+import {
+  buildTriageDocumentationPreviewModel,
+  triagePreviewSliceFromTriageGet,
+} from "./emergencyTriageDocPreview";
+import {
+  ER_NURSING_REASSESSMENT_V1_KEY,
+  buildErNursingReassessmentPreviewModel,
+  erNursingReassessmentFormFromEncounter,
+} from "./emergencyNursingReassessmentV1";
+import { parseTriageFieldLine } from "./enterpriseClinicalChartLayout";
 import type {
   ClinicalDocumentationEventApiEntry,
   EmergencyVisitSummaryModel,
@@ -66,6 +78,7 @@ export type EmergencySummaryClinicalRecordAdapterInput = {
   nursingReassessmentEvents?: NursingReassessmentApiEntry[];
   resultsSnapshot?: EncounterResultsLabRadSnapshot | null;
   unifiedTimelineItems?: UnifiedTimelineApiItem[];
+  vitalsHistory?: VitalsHistoryEntry[];
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -154,35 +167,181 @@ function readProviderWorkspaceSavedMeta(
   };
 }
 
-function buildVitalsFromTriage(
-  triageSnapshot: Record<string, unknown> | null | undefined
-): BuildEncounterClinicalRecordInput["vitals"] {
-  if (!triageSnapshot) return [];
-  const vitalsJson = triageSnapshot.vitalsJson;
-  const vitals = asRecord(vitalsJson);
-  if (!vitals) return [];
-
-  const recordedAt =
-    asTrimmed(triageSnapshot.triageCompleteAt) ??
-    asTrimmed(triageSnapshot.updatedAt) ??
-    asTrimmed(triageSnapshot.createdAt);
-  if (!recordedAt) return [];
-
-  const parts: string[] = [];
-  for (const [key, value] of Object.entries(vitals)) {
-    if (value == null || value === "") continue;
-    parts.push(`${key}: ${String(value)}`);
+function formatMarAdministeredBy(admin: Record<string, unknown>): string | null {
+  const administeredByUser = admin.administeredBy;
+  if (administeredByUser && typeof administeredByUser === "object" && !Array.isArray(administeredByUser)) {
+    const parts = [
+      asTrimmed((administeredByUser as { firstName?: string | null }).firstName),
+      asTrimmed((administeredByUser as { lastName?: string | null }).lastName),
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.join(" ");
   }
-  if (parts.length === 0) return [];
+  return (
+    asTrimmed(admin.administeredByDisplayName) ??
+    asTrimmed(admin.administeredByDisplayFr) ??
+    (typeof admin.administeredBy === "string" ? asTrimmed(admin.administeredBy) : null)
+  );
+}
 
-  return [
-    {
-      id: "triage-vitals",
-      recordedAt,
-      source: "TRIAGE",
-      summary: parts.join(" · "),
-    },
-  ];
+function buildVitalsFromAllSources(input: {
+  triageSnapshot?: Record<string, unknown> | null;
+  vitalsHistory?: VitalsHistoryEntry[];
+  triageDocumentedByDisplayName?: string | null;
+  triageDocumentedByRole?: string | null;
+}): BuildEncounterClinicalRecordInput["vitals"] {
+  const rows: NonNullable<BuildEncounterClinicalRecordInput["vitals"]> = [];
+
+  for (const entry of input.vitalsHistory ?? []) {
+    if (!entry.recordedAt || !entry.vitals || Object.keys(entry.vitals).length === 0) continue;
+    rows.push({
+      id: `vitals-history-${entry.recordedAt}`,
+      recordedAt: entry.recordedAt,
+      source: asTrimmed(entry.source) ?? "ENCOUNTER_CHART",
+      vitalsJson: entry.vitals,
+      documentedByDisplayName: asTrimmed(entry.recordedBy?.displayName),
+    });
+  }
+
+  const triageVitals = asRecord(input.triageSnapshot?.vitalsJson);
+  if (triageVitals && Object.keys(triageVitals).length > 0) {
+    const recordedAt =
+      asTrimmed(input.triageSnapshot?.triageCompleteAt) ??
+      asTrimmed(input.triageSnapshot?.updatedAt) ??
+      asTrimmed(input.triageSnapshot?.createdAt);
+    if (recordedAt) {
+      const hasTriageRow = rows.some(
+        (row) =>
+          row.source === "TRIAGE" &&
+          row.recordedAt === recordedAt &&
+          JSON.stringify(row.vitalsJson) === JSON.stringify(triageVitals)
+      );
+      if (!hasTriageRow) {
+        rows.push({
+          id: "triage-vitals",
+          recordedAt,
+          source: "TRIAGE",
+          vitalsJson: triageVitals,
+          documentedByDisplayName: input.triageDocumentedByDisplayName,
+          documentedByRole: input.triageDocumentedByRole,
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+function setTriageField(
+  fields: Partial<Record<EncounterClinicalRecordTriageFieldKey, string>>,
+  key: EncounterClinicalRecordTriageFieldKey,
+  value: unknown
+): void {
+  const trimmed = asTrimmed(value);
+  if (trimmed) fields[key] = trimmed;
+}
+
+function buildTriageFieldsFromSources(
+  triageSnapshot: Record<string, unknown> | null | undefined,
+  summaryModel: EmergencyVisitSummaryModel,
+  locale: SupportedLanguage
+): Partial<Record<EncounterClinicalRecordTriageFieldKey, string>> {
+  const fields: Partial<Record<EncounterClinicalRecordTriageFieldKey, string>> = {};
+
+  const parsed = triagePreviewSliceFromTriageGet(triageSnapshot ?? null, locale);
+  if (parsed && triageSnapshot) {
+    const { slice, er } = parsed;
+    setTriageField(fields, "esi", slice.esi);
+    setTriageField(fields, "symptomOnset", slice.onsetAt);
+    setTriageField(fields, "chiefComplaint", slice.chiefComplaint);
+    setTriageField(fields, "narrative", er.triageNarrative);
+    setTriageField(fields, "pain", er.painScale0to10);
+    setTriageField(fields, "allergies", slice.allergyNote);
+    setTriageField(fields, "isolation", er.ppeNote || er.edCoursePpeNote);
+    setTriageField(fields, "arrivalMode", er.referralSource);
+
+    const preview = buildTriageDocumentationPreviewModel(slice, {
+      strokeScreen: triageSnapshot.strokeScreen,
+      sepsisScreen: triageSnapshot.sepsisScreen,
+      erV1: er,
+      locale,
+    });
+    const alertLines: string[] = [];
+    for (const sec of preview.sections) {
+      for (const line of sec.lines) {
+        const parsedLine = parseTriageFieldLine(line);
+        if (parsedLine) {
+          fields[parsedLine.key] = parsedLine.value;
+        }
+        if (/sepsis|stroke|avc|alerte|alert|trauma/i.test(line)) {
+          alertLines.push(line.trim());
+        }
+      }
+    }
+    if (alertLines.length > 0 && !fields.acuityAlerts) {
+      fields.acuityAlerts = alertLines.join(" · ");
+    }
+  }
+
+  for (const line of summaryModel.triageResume?.lines ?? []) {
+    const parsedLine = parseTriageFieldLine(line);
+    if (parsedLine) fields[parsedLine.key] = parsedLine.value;
+  }
+
+  for (const entry of summaryModel.triageAssessmentHistory) {
+    for (const line of entry.structuredLines) {
+      const parsedLine = parseTriageFieldLine(line);
+      if (parsedLine) fields[parsedLine.key] = parsedLine.value;
+    }
+  }
+
+  return fields;
+}
+
+function mapNursingReassessmentFromEvents(
+  events: NursingReassessmentApiEntry[],
+  locale: SupportedLanguage
+): NonNullable<BuildEncounterClinicalRecordInput["nursingReassessmentHistory"]> {
+  const mapped: NonNullable<BuildEncounterClinicalRecordInput["nursingReassessmentHistory"]> = [];
+  for (const e of events) {
+    const id = typeof e.id === "string" ? e.id : "";
+    const savedAt = typeof e.createdAt === "string" ? e.createdAt : "";
+    if (!id || !savedAt) continue;
+    const documentedAt =
+      typeof e.documentedAt === "string" && e.documentedAt.trim() ? e.documentedAt : null;
+    const performerDisplayName =
+      typeof e.performerDisplayName === "string" ? e.performerDisplayName.trim() : "";
+    const performerRoleTitle =
+      typeof e.performerRoleTitle === "string" ? e.performerRoleTitle.trim() : "";
+    const wrapped =
+      e.snapshot && typeof e.snapshot === "object" && !Array.isArray(e.snapshot)
+        ? ({ [ER_NURSING_REASSESSMENT_V1_KEY]: e.snapshot } as Record<string, unknown>)
+        : null;
+    const form = erNursingReassessmentFormFromEncounter(wrapped);
+    const preview = buildErNursingReassessmentPreviewModel(form, locale);
+    const structuredLines: string[] = [];
+    for (const sec of preview.sections) {
+      if (sec.id === "empty") continue;
+      for (const ln of sec.lines) {
+        const line = ln.trim();
+        if (line) structuredLines.push(line);
+      }
+    }
+    mapped.push({
+      id,
+      savedAt,
+      documentedAt,
+      performerDisplayName: performerDisplayName || null,
+      performerRoleTitle: performerRoleTitle || null,
+      structuredLines,
+      narrativeSummary: preview.narrative.trim() || null,
+    });
+  }
+  mapped.sort((a, b) => {
+    const aT = a.documentedAt ?? a.savedAt;
+    const bT = b.documentedAt ?? b.savedAt;
+    return Date.parse(bT) - Date.parse(aT);
+  });
+  return mapped;
 }
 
 function mapOrders(orders: unknown[]): BuildEncounterClinicalRecordInput["orders"] {
@@ -250,13 +409,22 @@ function mapMedicationAdministrations(
         asTrimmed(admin.medicationName) ??
         asTrimmed(admin.medicationDisplayName) ??
         asTrimmed(admin.displayLabel),
+      medicationLabelSnapshot: asTrimmed(admin.medicationLabelSnapshot),
+      displayLabel: asTrimmed(admin.displayLabel),
+      manualLabel: asTrimmed(admin.manualLabel),
       dose: asTrimmed(admin.dose),
+      doseValue: asTrimmed(admin.doseValue),
+      doseUnit: asTrimmed(admin.doseUnit),
+      administeredQuantity:
+        admin.administeredQuantity != null && admin.administeredQuantity !== ""
+          ? String(admin.administeredQuantity)
+          : null,
       route: asTrimmed(admin.route),
       marAction: asTrimmed(admin.marAction),
       action: asTrimmed(admin.action),
       administeredAt: asTrimmed(admin.administeredAt),
-      administeredByDisplayName:
-        asTrimmed(admin.administeredByDisplayName) ?? asTrimmed(admin.administeredBy),
+      administeredByDisplayName: formatMarAdministeredBy(admin),
+      administeredByDisplayFr: asTrimmed(admin.administeredByDisplayFr),
       documentedByDisplayName:
         asTrimmed(admin.documentedByDisplayName) ??
         asTrimmed(admin.recordedByDisplayName) ??
@@ -405,22 +573,25 @@ function buildDispositionInput(
 
 function buildTriageDocumentationInput(
   summaryModel: EmergencyVisitSummaryModel,
-  triageSnapshot: Record<string, unknown> | null | undefined
+  triageSnapshot: Record<string, unknown> | null | undefined,
+  locale: SupportedLanguage
 ): BuildEncounterClinicalRecordInput["triageDocumentation"] {
   const latest = summaryModel.triageAssessmentHistory[0];
+  const fields = buildTriageFieldsFromSources(triageSnapshot, summaryModel, locale);
   if (latest) {
     return {
       documentedByDisplayName: latest.performerDisplayName,
       documentedByRole: latest.performerRoleTitle,
       documentedAt: latest.documentedAt ?? latest.savedAt,
+      fields,
     };
   }
   const documentedAt =
     asTrimmed(triageSnapshot?.triageCompleteAt) ??
     asTrimmed(triageSnapshot?.updatedAt) ??
     asTrimmed(triageSnapshot?.createdAt);
-  if (!documentedAt) return null;
-  return { documentedAt };
+  if (!documentedAt && Object.keys(fields).length === 0) return null;
+  return { documentedAt, fields };
 }
 
 function buildInitialNursingAssessmentInput(
@@ -486,6 +657,12 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     ...mapUnifiedTimelineToAuditRows(input.unifiedTimelineItems ?? []),
   ];
 
+  const triageDocumentation = buildTriageDocumentationInput(model, input.triageSnapshot, input.locale);
+  const nursingReassessmentHistory =
+    (input.nursingReassessmentEvents?.length ?? 0) > 0
+      ? mapNursingReassessmentFromEvents(input.nursingReassessmentEvents!, input.locale)
+      : model.nursingReassessmentHistory.map(mapNursingHistoryEntry);
+
   return {
     locale,
     encounter: {
@@ -515,8 +692,13 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     roomLabel: asTrimmed(encounter.roomLabel),
     chiefComplaintLines: model.motifPresentation?.lines ?? [],
     presentationLines: model.triageResume?.lines ?? [],
-    triageDocumentation: buildTriageDocumentationInput(model, input.triageSnapshot),
-    vitals: buildVitalsFromTriage(input.triageSnapshot),
+    triageDocumentation,
+    vitals: buildVitalsFromAllSources({
+      triageSnapshot: input.triageSnapshot,
+      vitalsHistory: input.vitalsHistory,
+      triageDocumentedByDisplayName: triageDocumentation?.documentedByDisplayName,
+      triageDocumentedByRole: triageDocumentation?.documentedByRole,
+    }),
     providerAssessment: providerDoc
       ? {
           documentationStatus: encounter.providerDocumentationStatus,
@@ -531,7 +713,7 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
       : null,
     providerAssessmentSaveHistory: model.providerMseHistory.map(mapProviderHistoryEntry),
     nursingAssessmentInitial: buildInitialNursingAssessmentInput(encounter, model),
-    nursingReassessmentHistory: model.nursingReassessmentHistory.map(mapNursingHistoryEntry),
+    nursingReassessmentHistory,
     orders: mapOrders(input.orders ?? []),
     medicationAdministrations: mapMedicationAdministrations(input.medicationAdministrations ?? []),
     procedures: mapProcedures(input.procedures ?? [], locale),

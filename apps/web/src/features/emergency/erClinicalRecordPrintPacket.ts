@@ -6,6 +6,7 @@ import type { EncounterClinicalRecord } from "@medora/shared";
 import type { SupportedLanguage } from "@/i18n/config";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
+import { formatTemperatureDualLine } from "@/lib/patientVitals";
 import { printDateLocale, printPatientSexLabel, printT } from "@/lib/printI18n";
 import { nirMrnDisplay } from "@/components/patient-chart/patientChartHelpers";
 import type { DischargePrintEncounter, DischargePrintPatient } from "@/components/encounters/DischargePrintLayout";
@@ -124,12 +125,39 @@ export function getErClinicalRecordPrintPacketHtml(input: {
 
   if (layout.triageDocumentation || Object.keys(layout.triageSummary).length > 0) {
     const triageBody = [
-      ...Object.entries(layout.triageSummary).map(([, value]) => p(value)),
+      ...Object.entries(layout.triageSummary)
+        .filter(([key]) => !(key === "chiefComplaint" && layout.chiefComplaintLines.length > 0))
+        .map(([, value]) => p(value)),
       attr(
         formatClinicalRecordAttributionPart("documentedBy", layout.triageDocumentation, t, language)
       ),
     ].join("");
     sections.push(section(t("encounterClinicalRecordSummary.triageSummaryTitle"), triageBody));
+  }
+
+  if (layout.vitalsRows.length > 0) {
+    const vitalsBody = layout.vitalsRows
+      .map((row) => {
+        const temp =
+          row.temperatureCelsius && !Number.isNaN(parseFloat(row.temperatureCelsius))
+            ? formatTemperatureDualLine(parseFloat(row.temperatureCelsius), language)
+            : row.temperatureCelsius || "—";
+        const line = [
+          formatEncounterChromeDateTime(row.recordedAt, language),
+          `BP ${row.bloodPressure || "—"}`,
+          `HR ${row.heartRate || "—"}`,
+          `RR ${row.respiratoryRate || "—"}`,
+          `SpO2 ${row.spo2 || "—"}`,
+          `Temp ${temp}`,
+          `Pain ${row.pain || "—"}`,
+        ].join(" · ");
+        return (
+          p(line) +
+          attr(formatClinicalRecordAttributionPart("documentedBy", row.documentedBy, t, language))
+        );
+      })
+      .join("");
+    sections.push(section(t("encounterClinicalRecordSummary.vitalsTitle"), vitalsBody));
   }
 
   if (layout.providerAssessment) {
@@ -149,6 +177,7 @@ export function getErClinicalRecordPrintPacketHtml(input: {
   if (layout.nursingAssessment) {
     const body = [
       ...layout.nursingAssessment.structuredLines.map((line) => p(line)),
+      layout.nursingAssessment.narrativeSummary ? p(layout.nursingAssessment.narrativeSummary) : "",
       attr(
         formatClinicalRecordAttributionPart(
           "documentedBy",
@@ -164,6 +193,35 @@ export function getErClinicalRecordPrintPacketHtml(input: {
       ),
     ].join("");
     sections.push(section(t("encounterClinicalRecordSummary.nursingTitle"), body));
+  }
+
+  if (layout.nursingAssessmentHistory.length > 0) {
+    const body = layout.nursingAssessmentHistory
+      .map((entry) => {
+        const lines = [
+          p(formatEncounterChromeDateTime(entry.documentedAt ?? entry.savedAt, language)),
+          ...entry.structuredLines.map((line) => p(line)),
+          entry.narrativeSummary ? p(entry.narrativeSummary) : "",
+          attr(
+            formatClinicalRecordAttributionPart(
+              "documentedBy",
+              {
+                name: entry.performerDisplayName,
+                role: entry.performerRoleTitle,
+                at: entry.documentedAt ?? entry.savedAt,
+                initials: null,
+              },
+              t,
+              language
+            )
+          ),
+        ].join("");
+        return lines;
+      })
+      .join("");
+    sections.push(
+      section(t("encounterClinicalRecordSummary.nursingReassessmentsShow").replace("{count}", String(layout.nursingAssessmentHistory.length)), body)
+    );
   }
 
   if (layout.laboratoryResults.length > 0 || layout.imagingResults.length > 0) {
@@ -196,15 +254,21 @@ export function getErClinicalRecordPrintPacketHtml(input: {
 
   if (layout.medicationAdministration.length > 0) {
     const body = layout.medicationAdministration
-      .map(
-        (mar) =>
-          p(`${mar.medicationName} — ${mar.action}`) +
+      .map((mar) => {
+        const medicationLine =
+          mar.displayLine?.trim() ||
+          [mar.medicationName, mar.dose, mar.route].filter(Boolean).join(" ").trim() ||
+          t("encounterClinicalRecordSummary.marMedicationNameMissing");
+        return (
+          p(`${medicationLine} — ${mar.action}`) +
           attr(
             joinAttributionParts([
               formatClinicalRecordAttributionPart("administeredBy", mar.administeredBy, t, language),
+              formatClinicalRecordAttributionPart("documentedBy", mar.documentedBy, t, language),
             ])
           )
-      )
+        );
+      })
       .join("");
     sections.push(section(t("encounterClinicalRecordSummary.marTitle"), body));
   }

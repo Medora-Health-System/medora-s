@@ -15,6 +15,8 @@ export const ACTIVE_ORDER_ITEM_STATUSES_FOR_CATALOG_DEDUP = new Set([
 export type VitalsHistoryEntry = {
   recordedAt: string;
   vitals: Record<string, unknown>;
+  recordedBy?: { userId?: string | null; displayName?: string | null };
+  source?: string;
 };
 
 function numFromVitals(v: unknown): number | null {
@@ -55,10 +57,29 @@ export function parseVitalsHistoryEntries(data: unknown): VitalsHistoryEntry[] {
   const out: VitalsHistoryEntry[] = [];
   for (const e of raw) {
     if (!e || typeof e !== "object" || Array.isArray(e)) continue;
-    const row = e as { recordedAt?: unknown; vitals?: unknown };
+    const row = e as {
+      recordedAt?: unknown;
+      vitals?: unknown;
+      recordedBy?: unknown;
+      source?: unknown;
+    };
     if (typeof row.recordedAt !== "string") continue;
     if (!row.vitals || typeof row.vitals !== "object" || Array.isArray(row.vitals)) continue;
-    out.push({ recordedAt: row.recordedAt, vitals: row.vitals as Record<string, unknown> });
+    const recordedByRaw = row.recordedBy;
+    let recordedBy: VitalsHistoryEntry["recordedBy"];
+    if (recordedByRaw && typeof recordedByRaw === "object" && !Array.isArray(recordedByRaw)) {
+      const rb = recordedByRaw as { userId?: unknown; displayName?: unknown };
+      recordedBy = {
+        userId: typeof rb.userId === "string" ? rb.userId : null,
+        displayName: typeof rb.displayName === "string" ? rb.displayName : null,
+      };
+    }
+    out.push({
+      recordedAt: row.recordedAt,
+      vitals: row.vitals as Record<string, unknown>,
+      recordedBy,
+      source: typeof row.source === "string" ? row.source : undefined,
+    });
   }
   return out;
 }

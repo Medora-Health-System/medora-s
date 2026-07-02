@@ -14,6 +14,10 @@ import {
 import { useI18n } from "@/lib/i18n";
 import { formatEncounterChromeDateTime } from "@/lib/encounterChromeI18n";
 import {
+  parseVitalsHistoryEntries,
+  type VitalsHistoryEntry,
+} from "@/lib/encounterClinicalSafetyUi";
+import {
   buildEmergencyVisitSummaryModel,
   type ClinicalDocumentationEventApiEntry,
   type ClinicalDocumentationLegalChartEntry,
@@ -537,6 +541,7 @@ export function EmergencyVisitSummaryPanel({
   const [timelineOrders, setTimelineOrders] = useState<unknown[]>([]);
   const [timelineMarAdmins, setTimelineMarAdmins] = useState<unknown[]>([]);
   const [timelineProcedures, setTimelineProcedures] = useState<unknown[]>([]);
+  const [vitalsHistory, setVitalsHistory] = useState<VitalsHistoryEntry[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -585,6 +590,23 @@ export function EmergencyVisitSummaryPanel({
       } catch {
         if (cancelled) return;
         setDocumentationEvents([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId, facilityId, resultsRefresh]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await apiFetch(`/encounters/${encounterId}/vitals-history`, { facilityId });
+        if (cancelled) return;
+        setVitalsHistory(parseVitalsHistoryEntries(data));
+      } catch {
+        if (cancelled) return;
+        setVitalsHistory([]);
       }
     })();
     return () => {
@@ -703,6 +725,7 @@ export function EmergencyVisitSummaryPanel({
       nursingReassessmentEvents: reassessmentEvents,
       resultsSnapshot: resultsSnap,
       clinicalTimelineLegacyCount: clinicalTimeline.all.length,
+      vitalsHistory,
     });
 
   const clinicalRecordV2Enabled = shouldUseClinicalRecordSummaryV2({

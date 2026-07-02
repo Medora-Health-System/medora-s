@@ -676,4 +676,90 @@ describe("encounterClinicalRecord", () => {
       )
     ).toBe(true);
   });
+
+  it("projects vitals from triage and vitals history with structured columns", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      vitals: [
+        {
+          id: "triage-vitals",
+          recordedAt: "2026-06-23T08:15:00.000Z",
+          source: "TRIAGE",
+          vitalsJson: { bpSys: 120, bpDia: 80, hr: 88, rr: 18, spo2: 98, tempC: 37.0, painScore: 2 },
+          documentedByDisplayName: "Triage RN",
+          documentedByRole: "RN",
+        },
+        {
+          id: "chart-vitals",
+          recordedAt: "2026-06-23T09:00:00.000Z",
+          source: "ENCOUNTER_CHART",
+          vitalsJson: { bpSys: 118, bpDia: 76, hr: 84 },
+          documentedByDisplayName: "Bedside RN",
+        },
+      ],
+    });
+    expect(record.vitals).toHaveLength(2);
+    expect(record.vitals[0]?.bloodPressure).toBe("120/80");
+    expect(record.vitals[1]?.documentedBy.name).toBe("Bedside RN");
+  });
+
+  it("resolves MAR medication name from label snapshot and order item", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      orders: [
+        {
+          id: "order-med",
+          type: "MEDICATION",
+          items: [{ id: "item-1", displayLabel: "Morphine 2 mg IV" }],
+        },
+      ],
+      medicationAdministrations: [
+        {
+          id: MAR_ID,
+          medicationLabelSnapshot: "Morphine 2 mg",
+          doseValue: "2",
+          doseUnit: "mg",
+          route: "IV",
+          marAction: "ADMINISTERED",
+          administeredAt: "2026-06-23T10:30:00.000Z",
+          administeredByDisplayName: "RN MAR",
+          orderItemId: "item-1",
+        },
+      ],
+    });
+    const mar = record.medicationAdministration[0];
+    expect(mar?.medicationName).toBe("Morphine 2 mg");
+    expect(mar?.displayLine).toBe("Morphine 2 mg 2 mg IV");
+    expect(mar?.administeredBy.name).toBe("RN MAR");
+  });
+
+  it("preserves triage structured fields and nursing reassessment narrative", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      triageDocumentation: {
+        documentedByDisplayName: "Triage Nurse",
+        documentedByRole: "RN",
+        documentedAt: "2026-06-23T08:10:00.000Z",
+        fields: {
+          esi: "3",
+          arrivalMode: "Ambulance",
+          narrative: "Acute chest pain.",
+        },
+      },
+      nursingReassessmentHistory: [
+        {
+          id: "re-1",
+          savedAt: "2026-06-23T09:00:00.000Z",
+          documentedAt: "2026-06-23T09:00:00.000Z",
+          performerDisplayName: "RN One",
+          performerRoleTitle: "RN",
+          structuredLines: ["Pain: 4/10", "Mental status: Alert"],
+          narrativeSummary: "Patient resting comfortably.",
+        },
+      ],
+    });
+    expect(record.triageDocumentation?.fields.esi).toBe("3");
+    expect(record.nursingAssessment?.narrativeSummary).toContain("resting");
+    expect(record.nursingAssessment?.structuredLines).toHaveLength(2);
+  });
 });

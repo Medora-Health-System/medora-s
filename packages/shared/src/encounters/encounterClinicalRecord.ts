@@ -27,6 +27,7 @@ export type {
   EncounterClinicalRecordSignature,
   EncounterClinicalRecordTextBlock,
   EncounterClinicalRecordTriageDocumentation,
+  EncounterClinicalRecordTriageFieldKey,
   EncounterClinicalRecordVitalPoint,
 } from "./encounterClinicalRecordTypes.js";
 
@@ -34,6 +35,20 @@ export {
   buildClinicalRecordAttribution,
   isClinicalRecordAttributionEmpty,
 } from "./clinicalRecordAttribution.js";
+
+export {
+  buildVitalSummaryFromColumns,
+  dedupeClinicalRecordVitalRows,
+  parseVitalsJsonColumns,
+  projectClinicalRecordVitalRow,
+} from "./clinicalRecordVitalsProjection.js";
+
+export {
+  formatClinicalRecordMarDisplayLine,
+  isClinicalRecordMedicationNameMissing,
+  resolveClinicalRecordMarDose,
+  resolveClinicalRecordMedicationName,
+} from "./clinicalRecordMarResolution.js";
 
 export {
   buildProviderAssessmentHistory,

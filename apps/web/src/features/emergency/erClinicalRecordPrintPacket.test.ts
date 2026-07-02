@@ -65,6 +65,26 @@ function buildPrintRecord() {
         administeredByDisplayName: "RN MAR",
       },
     ],
+    vitals: [
+      {
+        id: "v-1",
+        recordedAt: "2026-06-23T08:30:00.000Z",
+        source: "TRIAGE",
+        vitalsJson: { bpSys: 120, bpDia: 80, hr: 88 },
+        documentedByDisplayName: "Triage RN",
+      },
+    ],
+    nursingReassessmentHistory: [
+      {
+        id: "re-1",
+        savedAt: "2026-06-23T09:30:00.000Z",
+        documentedAt: "2026-06-23T09:30:00.000Z",
+        performerDisplayName: "RN Reassess",
+        performerRoleTitle: "RN",
+        structuredLines: ["Pain: 2/10"],
+        narrativeSummary: "Improved after medication.",
+      },
+    ],
   });
 }
 
@@ -99,6 +119,21 @@ describe("erClinicalRecordPrintPacket (Phase 5)", () => {
     expect(html).toContain("Dr Reviewer");
     expect(html).toContain("Administered by");
     expect(html).toContain("RN MAR");
+  });
+
+  it("V2 print packet includes vitals table and nursing reassessments", () => {
+    const record = buildPrintRecord();
+    const html = getErClinicalRecordPrintPacketHtml({
+      patient: basePatient,
+      encounter: baseEncounter,
+      language: "en",
+      record,
+    });
+    expect(html).toContain("Vitals");
+    expect(html).toContain("BP 120/80");
+    expect(html).toContain("Triage RN");
+    expect(html).toContain("Pain: 2/10");
+    expect(html).toContain("Improved after medication.");
   });
 
   it("V2 print packet excludes duplicate provider history narrative", () => {

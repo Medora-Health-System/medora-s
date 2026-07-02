@@ -17,10 +17,12 @@ import {
 } from "@/components/medora-card";
 import { getPriorityBadgeSoft } from "@/components/medora-card/medoraCardTokens";
 import { useI18n } from "@/lib/i18n";
+import type { SupportedLanguage } from "@/i18n/config";
 import {
   formatEncounterChromeDateTime,
   tPatientSex,
 } from "@/lib/encounterChromeI18n";
+import { formatTemperatureDualLine } from "@/lib/patientVitals";
 import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
 import { emptyErDispositionSupplementForm, localizedErDischargeModeLabel } from "./emergencyDispositionV1";
 import {
@@ -129,12 +131,41 @@ const ORDER_GROUP_I18N: Record<EnterpriseOrderGroupKey, string> = {
 const TRIAGE_FIELD_I18N: Record<EnterpriseTriageFieldKey, string> = {
   esi: "encounterClinicalRecordSummary.triageEsi",
   arrivalMode: "encounterClinicalRecordSummary.triageArrivalMode",
+  symptomOnset: "encounterClinicalRecordSummary.triageSymptomOnset",
+  chiefComplaint: "encounterClinicalRecordSummary.triageChiefComplaint",
+  narrative: "encounterClinicalRecordSummary.triageNarrative",
   vitalSigns: "encounterClinicalRecordSummary.triageVitalSigns",
   pain: "encounterClinicalRecordSummary.triagePain",
   allergies: "encounterClinicalRecordSummary.triageAllergies",
   isolation: "encounterClinicalRecordSummary.triageIsolation",
   fallRisk: "encounterClinicalRecordSummary.triageFallRisk",
+  acuityAlerts: "encounterClinicalRecordSummary.triageAcuityAlerts",
 };
+
+const TRIAGE_FIELD_ORDER: EnterpriseTriageFieldKey[] = [
+  "esi",
+  "arrivalMode",
+  "symptomOnset",
+  "chiefComplaint",
+  "narrative",
+  "pain",
+  "allergies",
+  "isolation",
+  "fallRisk",
+  "acuityAlerts",
+  "vitalSigns",
+];
+
+function formatVitalCell(value: string | null): string {
+  return value?.trim() || "—";
+}
+
+function formatVitalTemp(value: string | null, language: SupportedLanguage): string {
+  if (!value?.trim()) return "—";
+  const n = parseFloat(value.trim());
+  if (!Number.isFinite(n)) return value;
+  return formatTemperatureDualLine(n, language);
+}
 
 function AttributionLine({ text }: { text: string | null }) {
   if (!text) return null;
@@ -287,7 +318,8 @@ export function EncounterClinicalRecordSummaryView({
     ? tPatientSex(layout.overview.patientSexLabel, null, t)
     : t("common.dash");
 
-  const triageHasContent = Object.keys(layout.triageSummary).length > 0;
+  const triageHasContent =
+    Object.keys(layout.triageSummary).length > 0 || layout.triageDocumentation != null;
   const ordersCount = Object.values(layout.groupedOrders).reduce((n, g) => n + g.length, 0);
   const hasDiagnoses =
     layout.groupedDiagnoses.primary.length > 0 ||
@@ -441,9 +473,10 @@ export function EncounterClinicalRecordSummaryView({
       >
         {triageHasContent ? (
           <div style={overviewGridStyle}>
-            {(Object.keys(TRIAGE_FIELD_I18N) as EnterpriseTriageFieldKey[]).map((key) => {
+            {TRIAGE_FIELD_ORDER.map((key) => {
               const value = layout.triageSummary[key];
               if (!value) return null;
+              if (key === "chiefComplaint" && layout.chiefComplaintLines.length > 0) return null;
               const critical = key === "allergies" && isCriticalAllergyText(value);
               return (
                 <OverviewField
@@ -464,6 +497,54 @@ export function EncounterClinicalRecordSummaryView({
             language
           )}
         />
+      </SummarySectionCard>
+
+      <SummarySectionCard
+        accent="#059669"
+        title={t("encounterClinicalRecordSummary.vitalsTitle")}
+        empty={layout.vitalsRows.length === 0 ? t("encounterClinicalRecordSummary.vitalsEmpty") : undefined}
+      >
+        {layout.vitalsRows.length > 0 ? (
+          <div style={tableWrapStyle}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColTime")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColBp")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColHr")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColRr")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColSpo2")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColTemp")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColPain")}</th>
+                  <th style={thStyle}>{t("encounterClinicalRecordSummary.vitalsColDocumentedBy")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {layout.vitalsRows.map((row) => (
+                  <tr key={row.id}>
+                    <td style={tdStyle}>{formatDt(row.recordedAt)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.bloodPressure)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.heartRate)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.respiratoryRate)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.spo2)}</td>
+                    <td style={tdStyle}>{formatVitalTemp(row.temperatureCelsius, language)}</td>
+                    <td style={tdStyle}>{formatVitalCell(row.pain)}</td>
+                    <td style={tdStyle}>
+                      <AttributionLine
+                        text={formatClinicalRecordAttributionPart(
+                          "documentedBy",
+                          row.documentedBy,
+                          t,
+                          language
+                        )}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </SummarySectionCard>
 
       <SummarySectionCard
@@ -569,6 +650,9 @@ export function EncounterClinicalRecordSummaryView({
                 {line}
               </p>
             ))}
+            {layout.nursingAssessment.narrativeSummary ? (
+              <p style={{ ...lineStyle, marginTop: 6 }}>{layout.nursingAssessment.narrativeSummary}</p>
+            ) : null}
             <CollapsibleBlock
               showLabel={t("encounterClinicalRecordSummary.nursingReassessmentsShow")}
               hideLabel={t("encounterClinicalRecordSummary.nursingReassessmentsHide")}
@@ -600,6 +684,9 @@ export function EncounterClinicalRecordSummaryView({
                       {line}
                     </p>
                   ))}
+                  {entry.narrativeSummary ? (
+                    <p style={{ ...lineStyle, marginTop: 4 }}>{entry.narrativeSummary}</p>
+                  ) : null}
                 </div>
               ))}
             </CollapsibleBlock>
@@ -809,12 +896,18 @@ export function EncounterClinicalRecordSummaryView({
                 </tr>
               </thead>
               <tbody>
-                {layout.medicationAdministration.map((mar) => (
+                {layout.medicationAdministration.map((mar) => {
+                  const medicationLine =
+                    mar.displayLine?.trim() ||
+                    [mar.medicationName, mar.dose, mar.route ? `(${mar.route})` : null]
+                      .filter(Boolean)
+                      .join(" ")
+                      .trim() ||
+                    t("encounterClinicalRecordSummary.marMedicationNameMissing");
+                  return (
                   <tr key={mar.id}>
                     <td style={tdStyle}>
-                      {mar.medicationName}
-                      {mar.dose ? ` ${mar.dose}` : ""}
-                      {mar.route ? ` (${mar.route})` : ""}
+                      {medicationLine}
                       <AttributionLine
                         text={joinAttributionParts([
                           formatClinicalRecordAttributionPart("administeredBy", mar.administeredBy, t, language),
@@ -825,7 +918,8 @@ export function EncounterClinicalRecordSummaryView({
                     <td style={tdStyle}>{mar.action}</td>
                     <td style={tdStyle}>{formatDt(mar.administeredAt)}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

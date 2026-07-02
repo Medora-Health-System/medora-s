@@ -35,6 +35,15 @@ import type {
   EncounterClinicalRecordVitalPoint,
 } from "./encounterClinicalRecordTypes.js";
 import { buildClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
+import {
+  dedupeClinicalRecordVitalRows,
+  projectClinicalRecordVitalRow,
+} from "./clinicalRecordVitalsProjection.js";
+import {
+  formatClinicalRecordMarDisplayLine,
+  resolveClinicalRecordMarDose,
+  resolveClinicalRecordMedicationName,
+} from "./clinicalRecordMarResolution.js";
 
 function asTrimmed(value: string | null | undefined): string | null {
   const t = (value ?? "").trim();
@@ -135,14 +144,17 @@ function buildTriageDocumentation(
     role: triage.documentedByRole,
     at: triage.documentedAt ?? input.encounter.triageCompleteAt,
   });
+  const fields = triage.fields ?? {};
+  const hasFields = Object.values(fields).some((v) => Boolean(v?.trim()));
   if (
     !documentedBy.name &&
     !documentedBy.role &&
-    !documentedBy.at
+    !documentedBy.at &&
+    !hasFields
   ) {
     return null;
   }
-  return { documentedBy };
+  return { documentedBy, fields };
 }
 
 function buildLaboratoryResults(
@@ -239,31 +251,71 @@ function normalizeOrderType(value: string | null | undefined): string {
   return (value ?? "").trim().toUpperCase();
 }
 
+function buildOrderItemLabelIndex(
+  input: BuildEncounterClinicalRecordInput
+): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const order of input.orders ?? []) {
+    for (const item of order.items ?? []) {
+      const id = asTrimmed(item.id);
+      if (!id) continue;
+      const label =
+        asTrimmed(item.displayLabel) ??
+        asTrimmed(item.manualLabel) ??
+        asTrimmed(item.catalogItemType);
+      if (label) index.set(id, label);
+    }
+  }
+  return index;
+}
+
 function buildMedicationAdministrations(
   input: BuildEncounterClinicalRecordInput
 ): EncounterClinicalRecordMedicationAdministration[] {
+  const orderItemLabels = buildOrderItemLabelIndex(input);
   const candidates: EncounterClinicalRecordMedicationAdministration[] = [];
   for (const admin of input.medicationAdministrations ?? []) {
     const id = asTrimmed(admin.id);
     if (!id) continue;
+    const orderItemId = asTrimmed(admin.orderItemId);
+    const medicationName = resolveClinicalRecordMedicationName({
+      medicationLabelSnapshot: admin.medicationLabelSnapshot,
+      medicationName: admin.medicationName,
+      medicationDisplayName: admin.medicationDisplayName,
+      displayLabel: admin.displayLabel,
+      manualLabel: admin.manualLabel,
+      orderItemLabel: orderItemId ? orderItemLabels.get(orderItemId) ?? null : null,
+    });
+    const dose = resolveClinicalRecordMarDose({
+      dose: admin.dose,
+      doseValue: admin.doseValue,
+      doseUnit: admin.doseUnit,
+      administeredQuantity: admin.administeredQuantity,
+    });
+    const route = asTrimmed(admin.route);
+    const administeredByName =
+      asTrimmed(admin.administeredByDisplayName) ?? asTrimmed(admin.administeredByDisplayFr);
+    const documentedByName = asTrimmed(admin.documentedByDisplayName);
+    const administeredAt = asTrimmed(admin.administeredAt);
     candidates.push({
       id,
-      medicationName: asTrimmed(admin.medicationName) ?? "—",
-      dose: asTrimmed(admin.dose),
-      route: asTrimmed(admin.route),
+      medicationName,
+      dose,
+      route,
       action: asTrimmed(admin.marAction) ?? asTrimmed(admin.action) ?? "ADMINISTERED",
-      administeredAt: asTrimmed(admin.administeredAt),
-      administeredByDisplayName: asTrimmed(admin.administeredByDisplayName),
-      documentedByDisplayName: asTrimmed(admin.documentedByDisplayName),
-      orderItemId: asTrimmed(admin.orderItemId),
+      administeredAt,
+      administeredByDisplayName: administeredByName,
+      documentedByDisplayName: documentedByName,
+      orderItemId,
+      displayLine: formatClinicalRecordMarDisplayLine({ medicationName, dose, route }),
       administeredBy: buildClinicalRecordAttribution({
-        name: admin.administeredByDisplayName,
-        at: admin.administeredAt,
+        name: administeredByName,
+        at: administeredAt,
       }),
-      documentedBy: asTrimmed(admin.documentedByDisplayName)
+      documentedBy: documentedByName
         ? buildClinicalRecordAttribution({
-            name: admin.documentedByDisplayName,
-            at: admin.administeredAt,
+            name: documentedByName,
+            at: administeredAt,
           })
         : null,
     });
@@ -303,20 +355,23 @@ function buildProcedures(input: BuildEncounterClinicalRecordInput): EncounterCli
 }
 
 function buildVitals(input: BuildEncounterClinicalRecordInput): EncounterClinicalRecordVitalPoint[] {
-  const out: EncounterClinicalRecordVitalPoint[] = [];
-  for (const [index, vital] of (input.vitals ?? []).entries()) {
-    const summary = asTrimmed(vital.summary);
-    const recordedAt = asTrimmed(vital.recordedAt);
-    if (!summary || !recordedAt) continue;
-    out.push({
-      id: asTrimmed(vital.id) ?? `vital-${index}`,
-      recordedAt,
-      source: asTrimmed(vital.source),
-      summary,
-    });
-  }
-  out.sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt));
-  return out;
+  const projected = (input.vitals ?? [])
+    .map((vital, index) => projectClinicalRecordVitalRow(vital, index))
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .map((row) => ({
+      id: row.id,
+      recordedAt: row.recordedAt,
+      source: row.source,
+      summary: row.summary,
+      bloodPressure: row.bloodPressure,
+      heartRate: row.heartRate,
+      respiratoryRate: row.respiratoryRate,
+      spo2: row.spo2,
+      temperatureCelsius: row.temperatureCelsius,
+      pain: row.pain,
+      documentedBy: row.documentedBy,
+    }));
+  return dedupeClinicalRecordVitalRows(projected);
 }
 
 function auditSummary(

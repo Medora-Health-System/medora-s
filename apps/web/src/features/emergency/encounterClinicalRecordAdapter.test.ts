@@ -73,6 +73,74 @@ describe("encounterClinicalRecordAdapter", () => {
     expect(record.chiefComplaint?.lines).toEqual(["Chest pain"]);
     expect(record.presentation?.lines).toEqual(["Acuity 2"]);
     expect(record.vitals).toHaveLength(1);
+    expect(record.vitals[0]?.heartRate).toBe("88");
+  });
+
+  it("maps MAR from medicationLabelSnapshot and administeredBy user object", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: emptyModel(),
+      medicationAdministrations: [
+        {
+          id: MAR_ID,
+          medicationLabelSnapshot: "Aspirin 325 mg",
+          doseValue: "325",
+          doseUnit: "mg",
+          route: "PO",
+          marAction: "ADMINISTERED",
+          administeredAt: "2026-06-23T10:30:00.000Z",
+          administeredBy: { firstName: "Martine", lastName: "Duval" },
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    const mar = record.medicationAdministration[0];
+    expect(mar?.medicationName).toBe("Aspirin 325 mg");
+    expect(mar?.displayLine).toContain("Aspirin 325 mg");
+    expect(mar?.administeredBy.name).toBe("Martine Duval");
+  });
+
+  it("projects vitals history and triage fields", () => {
+    const input = buildEncounterClinicalRecordInputFromEmergencySummary({
+      locale: "en",
+      encounter: { id: ENCOUNTER_ID },
+      summaryModel: {
+        ...emptyModel(),
+        triageAssessmentHistory: [
+          {
+            id: "triage-1",
+            eventType: "TRIAGE_ASSESSMENT_SAVED",
+            savedAt: "2026-06-23T08:10:00.000Z",
+            documentedAt: "2026-06-23T08:10:00.000Z",
+            displayWhen: "—",
+            performerDisplayName: "Triage RN",
+            performerInitials: "TR",
+            performerRoleTitle: "RN",
+            structuredLines: ["ESI: 3", "Arrival mode: Walk-in"],
+            narrativeExcerpt: "",
+          },
+        ],
+      },
+      triageSnapshot: {
+        esi: 3,
+        chiefComplaint: "Chest pain",
+        triageCompleteAt: "2026-06-23T08:15:00.000Z",
+        vitalsJson: { hr: 90, bpSys: 120, bpDia: 80 },
+      },
+      vitalsHistory: [
+        {
+          recordedAt: "2026-06-23T09:00:00.000Z",
+          vitals: { hr: 88, bpSys: 118, bpDia: 78 },
+          recordedBy: { displayName: "Chart RN" },
+          source: "ENCOUNTER_CHART",
+        },
+      ],
+    });
+    const record = buildEncounterClinicalRecord(input);
+    expect(record.vitals.length).toBeGreaterThanOrEqual(1);
+    expect(record.triageDocumentation?.fields.esi).toBe("3");
+    expect(record.triageDocumentation?.documentedBy.name).toBe("Triage RN");
   });
 
   it("maps provider assessment and duplicate saves into primary + history", () => {

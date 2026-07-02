@@ -10,6 +10,7 @@ import { buildEncounterClinicalRecord, type EncounterClinicalRecord } from "@med
 import type { SupportedLanguage } from "@/i18n/config";
 import type { UnifiedTimelineApiItem } from "@/lib/unifiedEncounterTimelineUi";
 import type { EncounterResultsLabRadSnapshot } from "@/components/encounters/EncounterResultsTab";
+import type { VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import {
   buildEncounterClinicalRecordInputFromEmergencySummary,
   summarizeEmergencySummaryAdapterSources,
@@ -40,6 +41,7 @@ export type UseEncounterClinicalRecordInput = {
   resultsSnapshot?: EncounterResultsLabRadSnapshot | null;
   unifiedTimelineItems?: UnifiedTimelineApiItem[];
   clinicalTimelineLegacyCount?: number;
+  vitalsHistory?: VitalsHistoryEntry[];
 };
 
 export type UseEncounterClinicalRecordResult = {
@@ -68,6 +70,7 @@ export function composeEncounterClinicalRecordFromEmergencySummary(
       nursingReassessmentEvents: input.nursingReassessmentEvents,
       resultsSnapshot: input.resultsSnapshot,
       unifiedTimelineItems: input.unifiedTimelineItems,
+      vitalsHistory: input.vitalsHistory,
     });
 
     const record = buildEncounterClinicalRecord(adapterInput);
@@ -122,5 +125,6 @@ export function useEncounterClinicalRecord(
     input.resultsSnapshot,
     input.unifiedTimelineItems,
     input.clinicalTimelineLegacyCount,
+    input.vitalsHistory,
   ]);
 }

@@ -21,6 +21,7 @@ import {
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
 import { composeEncounterClinicalRecordFromEmergencySummary } from "@/features/emergency/useEncounterClinicalRecord";
+import { parseVitalsHistoryEntries, type VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
 import { buildErClinicalTimeline } from "@/features/emergency/erClinicalTimeline";
 import {
@@ -320,15 +321,19 @@ export function EmergencyErSummaryClosureSurface({
     let ordersRaw: unknown[] = [];
     let adminsRaw: unknown[] = [];
     let procedureEntriesRaw: unknown[] = [];
+    let vitalsHistoryEntries: VitalsHistoryEntry[] = [];
     try {
-      const [ordersFetched, adminsFetched, orderEventsFetched, proceduresRaw] = await Promise.all([
+      const [ordersFetched, adminsFetched, orderEventsFetched, proceduresRaw, vitalsHistoryRaw] =
+        await Promise.all([
         apiFetch(`/encounters/${encounterId}/orders`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/medication-administrations`, { facilityId }),
         apiFetch(`/encounters/${encounterId}/order-events`, { facilityId }).catch(() => []),
         apiFetch(`/encounters/${encounterId}/procedures`, { facilityId }),
+        apiFetch(`/encounters/${encounterId}/vitals-history`, { facilityId }).catch(() => null),
       ]);
       ordersRaw = Array.isArray(ordersFetched) ? ordersFetched : [];
       adminsRaw = Array.isArray(adminsFetched) ? adminsFetched : [];
+      vitalsHistoryEntries = parseVitalsHistoryEntries(vitalsHistoryRaw);
       const orderEventsRaw = Array.isArray(orderEventsFetched) ? orderEventsFetched : [];
       medicationOrderRows = buildErEdSummaryMedicationOrderRows({ orders: ordersRaw, language, t });
       marEventRows = buildErEdSummaryMarEventRows({ admins: adminsRaw, language, t });
@@ -433,6 +438,7 @@ export function EmergencyErSummaryClosureSurface({
           documentationEvents: clinicalDocumentationApiEntries ?? undefined,
           nursingReassessmentEvents: nursingReassessmentApiEntries ?? undefined,
           clinicalTimelineLegacyCount: clinicalTimeline.all.length,
+          vitalsHistory: vitalsHistoryEntries,
         })
       : { record: null };
     printErPacket({
