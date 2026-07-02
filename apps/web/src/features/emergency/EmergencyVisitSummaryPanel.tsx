@@ -36,6 +36,7 @@ import type { ErProcedureLauncherStep } from "@/features/emergency/erProcedureLa
 import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMarSummaryCard";
 import { buildErClinicalTimeline } from "./erClinicalTimeline";
 import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/shared";
+import { useEncounterClinicalRecord } from "./useEncounterClinicalRecord";
 
 const sectionTitle: React.CSSProperties = {
   margin: 0,
@@ -685,6 +686,20 @@ export function EmergencyVisitSummaryPanel({
     timelineProcedures,
     resultsSnap,
   ]);
+
+  useEncounterClinicalRecord({
+    locale: language,
+    encounter: { ...encounter, id: encounterId },
+    triageSnapshot,
+    summaryModel: model,
+    orders: timelineOrders,
+    medicationAdministrations: timelineMarAdmins,
+    procedures: timelineProcedures,
+    documentationEvents,
+    nursingReassessmentEvents: reassessmentEvents,
+    resultsSnapshot: resultsSnap,
+    clinicalTimelineLegacyCount: clinicalTimeline.all.length,
+  });
 
   const hasStructuredContent = useMemo(() => {
     return Boolean(
