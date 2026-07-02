@@ -56,14 +56,33 @@ export async function GET(request: NextRequest) {
     return res;
   };
   try {
-    const apiUrl = resolveApiUrl();
+    let apiUrl: string;
+    try {
+      apiUrl = resolveApiUrl();
+    } catch (configError) {
+      console.error("[auth/me] API URL misconfigured", {
+        requestId: requestId || undefined,
+        reason: configError instanceof Error ? configError.message : String(configError),
+      });
+      return withRequestId(
+        NextResponse.json(
+          {
+            error: "Authentication service temporarily unavailable.",
+            code: "AUTH_SERVICE_UNAVAILABLE",
+          },
+          { status: 503 }
+        )
+      );
+    }
 
     const cookieStore = await cookies();
     let accessToken =
       cookieStore.get("accessToken")?.value ?? cookieStore.get("medora_session")?.value;
 
     if (!accessToken) {
-      return withRequestId(NextResponse.json({ error: "Non authentifié." }, { status: 401 }));
+      return withRequestId(
+        NextResponse.json({ error: "Not authenticated.", code: "AUTH_REQUIRED" }, { status: 401 })
+      );
     }
 
     let backendResponse = await fetchBackendMeWithRetry({
@@ -88,7 +107,10 @@ export async function GET(request: NextRequest) {
     if (!backendResponse.ok) {
       if (backendResponse.status === 401) {
         return withRequestId(
-          NextResponse.json({ error: "Session expirée. Reconnectez-vous." }, { status: 401 })
+          NextResponse.json(
+            { error: "Session expired.", code: "AUTH_SESSION_EXPIRED" },
+            { status: 401 }
+          )
         );
       }
       if (isRetryableBackendStatus(backendResponse.status)) {
@@ -99,15 +121,14 @@ export async function GET(request: NextRequest) {
         return withRequestId(
           NextResponse.json(
             {
-              error:
-                "Service d'authentification temporairement indisponible. Réessayez dans un instant.",
+              error: "Authentication service temporarily unavailable.",
               code: "AUTH_SERVICE_UNAVAILABLE",
             },
             { status: 503 }
           )
         );
       }
-      const errorData = await backendResponse.json().catch(() => ({ error: "Échec de la requête" }));
+      const errorData = await backendResponse.json().catch(() => ({ error: "Request failed." }));
       return withRequestId(
         NextResponse.json(
           {
@@ -116,7 +137,7 @@ export async function GET(request: NextRequest) {
                 ? errorData.error
                 : typeof errorData.message === "string"
                   ? errorData.message
-                  : "Échec de la requête",
+                  : "Request failed.",
           },
           { status: backendResponse.status }
         )
@@ -148,8 +169,8 @@ export async function GET(request: NextRequest) {
       NextResponse.json(
         {
           error: isAbort
-            ? "Délai dépassé lors de la vérification de session."
-            : "Service d'authentification temporairement indisponible.",
+            ? "Session verification timed out."
+            : "Authentication service temporarily unavailable.",
           code: "AUTH_SERVICE_UNAVAILABLE",
         },
         { status: 503 }

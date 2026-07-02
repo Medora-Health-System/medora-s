@@ -187,7 +187,7 @@ export async function fetchAuthMeSession(options?: { force?: boolean }): Promise
       if (result.superseded) {
         return result;
       }
-      if (epoch === fetchEpoch) {
+      if (epoch === fetchEpoch && result.ok) {
         cached = { ...result, at: Date.now() };
       }
       return result;

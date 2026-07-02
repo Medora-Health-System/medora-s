@@ -21,6 +21,8 @@ import {
   formatEncounterChromeDateTime,
   tPatientSex,
 } from "@/lib/encounterChromeI18n";
+import { getOrderItemChartLabel } from "@/constants/orderStatusLabels";
+import { emptyErDispositionSupplementForm, localizedErDischargeModeLabel } from "./emergencyDispositionV1";
 import {
   CLINICAL_RECORD_SUMMARY_TIMELINE_COLLAPSE,
   clinicalMilestoneI18nKey,
@@ -299,6 +301,26 @@ export function EncounterClinicalRecordSummaryView({
       layout.overview.attendingProviderDisplayName
   );
 
+  const dispositionStatusDisplay = layout.overview.dispositionStatusLabel
+    ? localizedErDischargeModeLabel(
+        layout.overview.dispositionStatusLabel,
+        emptyErDispositionSupplementForm(),
+        language
+      ) || layout.overview.dispositionStatusLabel
+    : null;
+
+  const providerHistoryStatusLabel = (status: string | null | undefined): string | null => {
+    const normalized = (status ?? "").trim().toUpperCase();
+    if (normalized === "SIGNED" || normalized === "SAVED" || normalized === "DRAFT") {
+      return t(
+        providerStatusI18nKey(
+          normalized as "SIGNED" | "SAVED" | "DRAFT"
+        )
+      );
+    }
+    return status?.trim() || null;
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", minWidth: 0 }}>
       <MedoraCard leftAccentColor="#0f172a" variant="default">
@@ -361,10 +383,10 @@ export function EncounterClinicalRecordSummaryView({
           {layout.overview.lengthOfStayLabel ? (
             <OverviewField label={t("encounterClinicalRecordSummary.losLabel")} value={layout.overview.lengthOfStayLabel} />
           ) : null}
-          {layout.overview.dispositionStatusLabel ? (
+          {dispositionStatusDisplay ? (
             <OverviewField
               label={t("encounterClinicalRecordSummary.dispositionStatusLabel")}
-              value={layout.overview.dispositionStatusLabel}
+              value={dispositionStatusDisplay}
             />
           ) : null}
           {record.header.closedAt ? (
@@ -503,7 +525,7 @@ export function EncounterClinicalRecordSummaryView({
                         ? `${t("encounterClinicalRecordSummary.attrDocumentedBy")} ${entry.performerDisplayName}`
                         : null,
                       entry.status
-                        ? `${t("encounterClinicalRecordSummary.attrStatus")}: ${entry.status}`
+                        ? `${t("encounterClinicalRecordSummary.attrStatus")}: ${providerHistoryStatusLabel(entry.status) ?? entry.status}`
                         : null,
                     ])}
                   />
@@ -638,7 +660,7 @@ export function EncounterClinicalRecordSummaryView({
                               </td>
                               <td style={tdStyle}>
                                 <MedoraCardBadge soft={badgeSoft} compact>
-                                  {order.status}
+                                  {getOrderItemChartLabel(order.status, language)}
                                 </MedoraCardBadge>
                               </td>
                               <td style={tdStyle}>{formatDt(order.orderedAt)}</td>

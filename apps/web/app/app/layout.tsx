@@ -42,6 +42,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isMountedRef = useRef(true);
   const loadSessionSeqRef = useRef(0);
+  const userRef = useRef(user);
+  userRef.current = user;
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -89,8 +91,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         }
         const unavailableKinds: AuthMeFailureKind[] = ["unavailable", "network", "timeout"];
         if (unavailableKinds.includes(result.failureKind)) {
+          if (userRef.current) {
+            return;
+          }
           setSessionPhase("recoverable_error");
-          setAuthRecoveryMessage(result.message);
+          setAuthRecoveryMessage(null);
           return;
         }
         redirectToLogin();
@@ -179,6 +184,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadSession();
   }, [loadSession]);
+
+  useEffect(() => {
+    if (sessionPhase !== "recoverable_error") return;
+    const retryId = window.setInterval(() => {
+      void loadSession({ force: true });
+    }, 5000);
+    return () => window.clearInterval(retryId);
+  }, [sessionPhase, loadSession]);
 
   useEffect(() => {
     const onSessionRefresh = () => {

@@ -43,5 +43,7 @@ describe("auth refresh blank screen recovery", () => {
     expect(layout).toContain('sessionPhase === "recoverable_error"');
     expect(layout).toContain("sessionContentReady");
     expect(layout).toContain('sessionPhase === "unauthenticated" && !user');
+    expect(layout).toContain("userRef.current");
+    expect(layout).toContain("setInterval");
   });
 });

@@ -1128,6 +1128,7 @@ export default {
     authRecovery: {
       title: "Impossible de vérifier la session",
       body: "Medora n'a pas pu confirmer votre session. Vos données sont en sécurité — réessayez ou reconnectez-vous.",
+      autoRetryHint: "Nouvelle tentative automatique en cours. Vous pouvez aussi utiliser les boutons ci-dessous.",
       retry: "Réessayer",
       goToLogin: "Aller à la connexion",
       reloadApp: "Recharger l'application",

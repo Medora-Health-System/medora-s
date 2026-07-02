@@ -83,7 +83,7 @@ describe("authSessionMe bootstrap recovery", () => {
 
   it("force refresh bypasses cached unavailable result after login retry", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      jsonResponse({ error: "Service indisponible." }, 503)
+      jsonResponse({ error: "Service unavailable.", code: "AUTH_SERVICE_UNAVAILABLE" }, 503)
     );
     const failed = await fetchAuthMeSession({ force: true });
     expect(failed.ok).toBe(false);
@@ -94,6 +94,22 @@ describe("authSessionMe bootstrap recovery", () => {
     const recovered = await fetchAuthMeSession({ force: true });
     expect(recovered.ok).toBe(true);
     expect(recovered.data?.id).toBe("u1");
+  });
+
+  it("does not cache transient unavailable responses", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ error: "Service unavailable.", code: "AUTH_SERVICE_UNAVAILABLE" }, 503)
+    );
+    const first = await fetchAuthMeSession({ force: true });
+    expect(first.ok).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
+
+    vi.mocked(fetch).mockResolvedValueOnce(
+      jsonResponse({ id: "u1", facilityRoles: [{ facilityId: "f1" }] }, 200)
+    );
+    const second = await fetchAuthMeSession();
+    expect(second.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("supersedes stale in-flight fetch when a newer force fetch starts", async () => {

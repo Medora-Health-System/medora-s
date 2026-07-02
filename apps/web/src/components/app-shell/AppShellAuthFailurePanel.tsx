@@ -30,6 +30,11 @@ export function AppShellAuthFailurePanel({
       <p className="mt-2 mb-0 text-sm leading-relaxed text-slate-700">
         {message?.trim() || t("appShell.authRecovery.body")}
       </p>
+      {!message?.trim() ? (
+        <p className="mt-1 mb-0 text-xs leading-relaxed text-slate-500">
+          {t("appShell.authRecovery.autoRetryHint")}
+        </p>
+      ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"

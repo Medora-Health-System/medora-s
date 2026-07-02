@@ -208,6 +208,14 @@ function parseTriageLine(line: string): { key: EnterpriseTriageFieldKey; value: 
   return null;
 }
 
+export function stripTriageDisplayValue(value: string): string {
+  const trimmed = value.trim();
+  const colonIdx = trimmed.indexOf(":");
+  if (colonIdx < 0) return trimmed;
+  const after = trimmed.slice(colonIdx + 1).trim();
+  return after || trimmed;
+}
+
 export function buildTriageSummaryFromPresentation(
   presentationLines: string[],
   vitals: EncounterClinicalRecord["vitals"]
@@ -218,7 +226,7 @@ export function buildTriageSummaryFromPresentation(
   for (const line of presentationLines) {
     const parsed = parseTriageLine(line);
     if (parsed) {
-      triageSummary[parsed.key] = parsed.value;
+      triageSummary[parsed.key] = stripTriageDisplayValue(parsed.value);
     } else if (line.trim()) {
       hpiFromPresentation.push(line.trim());
     }
