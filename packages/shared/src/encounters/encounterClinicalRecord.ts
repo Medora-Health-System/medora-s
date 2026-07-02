@@ -41,6 +41,7 @@ export {
   dedupeClinicalRecordVitalRows,
   parseVitalsJsonColumns,
   projectClinicalRecordVitalRow,
+  resolveVitalsPainScore,
 } from "./clinicalRecordVitalsProjection.js";
 
 export {

@@ -17,6 +17,14 @@ import {
   type ErTriageV1Form,
 } from "./medoraErTriageV1";
 
+function parsePainScoreForStorage(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const n = parseInt(trimmed, 10);
+  if (Number.isNaN(n)) return null;
+  return Math.min(10, Math.max(0, n));
+}
+
 /** Vitals + allergy note + ER V1 blob — same fields used by mergeVitalsJsonForSave in triage. */
 export type VitalsJsonMergeFormInput = {
   tempC: string;
@@ -27,6 +35,7 @@ export type VitalsJsonMergeFormInput = {
   spo2: string;
   weightKg: string;
   heightCm: string;
+  painScore: string;
   allergyNote: string;
   erV1: ErTriageV1Form;
   /** Entry unit for `tempC` string (defaults to °C). */
@@ -64,6 +73,7 @@ export function mergeVitalsJsonForSave(
     spo2: form.spo2 ? parseInt(form.spo2, 10) : null,
     weightKg: wCanon,
     heightCm: hCanon,
+    painScore: parsePainScoreForStorage(form.painScore),
     allergyNote: (() => {
       const t = form.allergyNote.trim();
       return t.length > 0 ? t.slice(0, 2000) : null;
@@ -78,7 +88,11 @@ export function mergeVitalsJsonForSave(
     if (v === null || v === undefined) delete base[key];
   });
 
-  const erBlob = mergeMedoraErTriageV1Blob(previous, form.erV1);
+  const erV1Synced: ErTriageV1Form = {
+    ...form.erV1,
+    painScale0to10: form.painScore.trim() || form.erV1.painScale0to10,
+  };
+  const erBlob = mergeMedoraErTriageV1Blob(previous, erV1Synced);
   if (erBlob) base[MEDORA_ER_TRIAGE_V1_KEY] = erBlob;
   else delete base[MEDORA_ER_TRIAGE_V1_KEY];
 

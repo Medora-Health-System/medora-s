@@ -3,7 +3,7 @@
 import React from "react";
 import type { SupportedLanguage } from "@/i18n/config";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
-import { formatTemperatureDualLine, snapshotKey } from "@/lib/patientVitals";
+import { formatTemperatureDualLine, formatWeightDualLine, formatHeightDualLine, snapshotKey } from "@/lib/patientVitals";
 import type { PatientTriageVitalsSnapshot } from "@/lib/patientVitals";
 import { useI18n } from "@/lib/i18n";
 
@@ -15,6 +15,9 @@ export type VitalSummaryReading = {
   rr: string;
   temp: string;
   spo2: string;
+  weight: string;
+  height: string;
+  pain: string;
   /**
    * Initials of the user who recorded vitals (e.g. "MJ"). "—" when no metadata is available
    * on the existing triage vitals readings payload.
@@ -81,6 +84,19 @@ export function snapshotsToVitalSummaryReadings(
     const hr = v.hr != null && v.hr !== "" ? `${String(v.hr).trim()}` : "";
     const rr = v.rr != null && v.rr !== "" ? `${String(v.rr).trim()}` : "";
     const spo2 = v.spo2 != null && v.spo2 !== "" ? `${String(v.spo2).trim()}` : "";
+    const wk = num(v.weightKg);
+    const hc = num(v.heightCm);
+    const painRaw = v.painScore ?? v.pain;
+    let pain = "";
+    if (painRaw != null && painRaw !== "") {
+      pain = `${String(painRaw).trim()}/10`;
+    } else {
+      const er = v.medoraErTriageV1;
+      if (er != null && typeof er === "object" && !Array.isArray(er)) {
+        const legacy = (er as { painScale0to10?: unknown }).painScale0to10;
+        if (legacy != null && legacy !== "") pain = `${String(legacy).trim()}/10`;
+      }
+    }
     /** Best-effort: if a future snapshot field carries recorder identity, surface it without backend changes. */
     const optional = snap as unknown as {
       recordedByDisplayName?: string | null;
@@ -101,6 +117,9 @@ export function snapshotsToVitalSummaryReadings(
       rr: dash(rr),
       temp: tempN != null ? formatTemperatureDualLine(tempN, language) : "—",
       spo2: dash(spo2),
+      weight: wk != null ? formatWeightDualLine(wk, language) : "—",
+      height: hc != null ? formatHeightDualLine(hc, language) : "—",
+      pain: pain || "—",
       byInitials,
     };
   });
@@ -203,7 +222,7 @@ export function VitalSummaryPanel({
         <p style={{ margin: 0, padding: "14px 12px", fontSize: 13, color: "#64748b" }}>{vs("noHistory")}</p>
       ) : (
         <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 460 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 640 }}>
             <thead>
               <tr>
                 <th style={th}>{vs("colTime")}</th>
@@ -213,6 +232,9 @@ export function VitalSummaryPanel({
                 <th style={th}>{vs("labels.rr")}</th>
                 <th style={th}>{vs("labels.temp")}</th>
                 <th style={th}>{vs("labels.spo2")}</th>
+                <th style={th}>{vs("labels.weight")}</th>
+                <th style={th}>{vs("labels.height")}</th>
+                <th style={th}>{vs("labels.pain")}</th>
                 <th style={th}>{vs("labels.by")}</th>
               </tr>
             </thead>
@@ -248,6 +270,13 @@ export function VitalSummaryPanel({
                       {r.temp}
                     </td>
                     <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.spo2}</td>
+                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 120 }}>
+                      {r.weight}
+                    </td>
+                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace", maxWidth: 120 }}>
+                      {r.height}
+                    </td>
+                    <td style={{ ...td, fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>{r.pain}</td>
                     <td style={{ ...td, fontWeight: 600, color: "#334155" }}>{r.byInitials}</td>
                   </tr>
                 );

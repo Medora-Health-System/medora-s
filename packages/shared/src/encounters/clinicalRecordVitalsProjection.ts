@@ -3,6 +3,7 @@
  */
 
 import { buildClinicalRecordAttribution, type ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
+import { MEDORA_ER_TRIAGE_V1_STORAGE_KEY } from "../encounter-allergy-safety.js";
 
 export type ClinicalRecordVitalRowInput = {
   id?: string;
@@ -40,6 +41,27 @@ function numOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Resolve pain from top-level vitals keys or legacy `medoraErTriageV1.painScale0to10`. */
+export function resolveVitalsPainScore(vitals: Record<string, unknown>): string | null {
+  for (const key of ["painScore", "pain", "painLevel"] as const) {
+    const trimmed = asTrimmed(vitals[key]);
+    if (trimmed) return trimmed;
+  }
+  const painNum = numOrNull(vitals.painScore ?? vitals.pain);
+  if (painNum != null) return String(Math.min(10, Math.max(0, Math.round(painNum))));
+
+  const erRaw = vitals[MEDORA_ER_TRIAGE_V1_STORAGE_KEY];
+  if (erRaw != null && typeof erRaw === "object" && !Array.isArray(erRaw)) {
+    const legacy = (erRaw as { painScale0to10?: unknown }).painScale0to10;
+    if (typeof legacy === "number" && Number.isFinite(legacy)) {
+      return String(Math.min(10, Math.max(0, Math.round(legacy))));
+    }
+    const legacyStr = asTrimmed(legacy);
+    if (legacyStr) return legacyStr;
+  }
+  return null;
+}
+
 export function parseVitalsJsonColumns(vitals: Record<string, unknown>): {
   bloodPressure: string | null;
   heartRate: string | null;
@@ -56,10 +78,7 @@ export function parseVitalsJsonColumns(vitals: Record<string, unknown>): {
   const spo2 = asTrimmed(vitals.spo2);
   const temp = numOrNull(vitals.tempC);
   const temperatureCelsius = temp != null ? String(temp) : null;
-  const pain =
-    asTrimmed(vitals.painScore) ??
-    asTrimmed(vitals.pain) ??
-    asTrimmed(vitals.painLevel);
+  const pain = resolveVitalsPainScore(vitals);
   return { bloodPressure, heartRate, respiratoryRate, spo2, temperatureCelsius, pain };
 }
 

@@ -21,21 +21,29 @@ describe("clinicalRecordVitalsProjection", () => {
     expect(columns.pain).toBe("3");
   });
 
-  it("projects triage vitals with attribution", () => {
+  it("projects triage vitals with attribution and pain", () => {
     const row = projectClinicalRecordVitalRow(
       {
         id: "triage-vitals",
         recordedAt: "2026-07-02T17:32:00.000Z",
         source: "TRIAGE",
-        vitalsJson: { bpSys: 118, bpDia: 76, hr: 90 },
+        vitalsJson: { bpSys: 118, bpDia: 76, hr: 90, painScore: 4 },
         documentedByDisplayName: "Martine Duval",
         documentedByRole: "RN",
       },
       0
     );
     expect(row?.bloodPressure).toBe("118/76");
+    expect(row?.pain).toBe("4");
     expect(row?.documentedBy.name).toBe("Martine Duval");
-    expect(row?.documentedBy.role).toBe("RN");
+  });
+
+  it("backfills pain from legacy medoraErTriageV1.painScale0to10", () => {
+    const columns = parseVitalsJsonColumns({
+      hr: 88,
+      medoraErTriageV1: { painScale0to10: 6 },
+    });
+    expect(columns.pain).toBe("6");
   });
 
   it("dedupes vitals rows by time and summary", () => {

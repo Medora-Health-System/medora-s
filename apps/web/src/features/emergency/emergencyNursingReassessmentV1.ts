@@ -1520,18 +1520,8 @@ export function vitalsLineFromTriageVitalsJson(
   language: SupportedLanguage
 ): string {
   if (vitalsJson == null || typeof vitalsJson !== "object" || Array.isArray(vitalsJson)) return "";
-  const v = vitalsJson as Record<string, number | string | null | undefined>;
   return formatVitalsHeaderLineForLocale(
-    {
-      tempC: v.tempC ?? "",
-      hr: v.hr ?? "",
-      rr: v.rr ?? "",
-      bpSys: v.bpSys ?? "",
-      bpDia: v.bpDia ?? "",
-      spo2: v.spo2 ?? "",
-      weightKg: v.weightKg ?? "",
-      heightCm: v.heightCm ?? "",
-    },
+    vitalsJson as Record<string, number | string | null | undefined>,
     language
   );
 }

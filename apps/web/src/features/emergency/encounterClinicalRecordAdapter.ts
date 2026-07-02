@@ -5,6 +5,7 @@
 
 import {
   formatDocumentedProcedureClinicalSummary,
+  resolveVitalsPainScore,
   type BuildEncounterClinicalRecordInput,
   type EncounterClinicalRecordLocale,
   type EncounterClinicalRecordTriageFieldKey,
@@ -254,7 +255,12 @@ function buildTriageFieldsFromSources(
     setTriageField(fields, "symptomOnset", slice.onsetAt);
     setTriageField(fields, "chiefComplaint", slice.chiefComplaint);
     setTriageField(fields, "narrative", er.triageNarrative);
-    setTriageField(fields, "pain", er.painScale0to10);
+    const triageVitals = asRecord(triageSnapshot?.vitalsJson);
+    setTriageField(
+      fields,
+      "pain",
+      (triageVitals ? resolveVitalsPainScore(triageVitals) : null) ?? er.painScale0to10
+    );
     setTriageField(fields, "allergies", slice.allergyNote);
     setTriageField(fields, "isolation", er.ppeNote || er.edCoursePpeNote);
     setTriageField(fields, "arrivalMode", er.referralSource);

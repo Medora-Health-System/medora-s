@@ -244,12 +244,6 @@ const IMMU_CHIP_I18N_KEYS = [
   "chipImmuNotUpToDate",
 ] as const;
 
-function painOptions(dash: string): { value: string; label: string }[] {
-  const o: { value: string; label: string }[] = [{ value: "", label: dash }];
-  for (let i = 0; i <= 10; i += 1) o.push({ value: String(i), label: `${i}/10` });
-  return o;
-}
-
 function gcsScoreOptions(dash: string, max: number): { value: string; label: string }[] {
   const o: { value: string; label: string }[] = [{ value: "", label: dash }];
   for (let i = 1; i <= max; i += 1) o.push({ value: String(i), label: String(i) });
@@ -659,10 +653,6 @@ export function EmergencyTriageV1Sections({
                   {t("erTriage.v1.gcsAbnormalWarning")}
                 </p>
               ) : null}
-            </div>
-            <div>
-              <label style={labelStyle}>{t("erTriage.v1.pain010")}</label>
-              {sel("painScale0to10", painOptions(dash))}
             </div>
             <div>
               <label style={labelStyle}>{t("erTriage.v1.referral")}</label>

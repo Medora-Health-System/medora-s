@@ -122,6 +122,7 @@ type TriageFormState = {
   spo2: string;
   weightKg: string;
   heightCm: string;
+  painScore: string;
   tempInputUnit: "C" | "F";
   weightInputUnit: "kg" | "lb";
   heightInputMode: "cm" | "ftin";
@@ -153,6 +154,7 @@ const emptyForm = (): TriageFormState => ({
   spo2: "",
   weightKg: "",
   heightCm: "",
+  painScore: "",
   tempInputUnit: "C",
   weightInputUnit: "kg",
   heightInputMode: "cm",
@@ -395,6 +397,13 @@ export function EmergencyTriagePanel({
         const parsed = triagePreviewSliceFromTriageGet(d, language);
         const s = parsed?.slice;
         const v = (d.vitalsJson || {}) as Record<string, number | string | null>;
+        const erV1Loaded = normalizeErTriageV1Form(erTriageV1FormFromVitalsJson(d.vitalsJson));
+        const painFromVitals =
+          v.painScore != null && v.painScore !== ""
+            ? String(v.painScore)
+            : v.pain != null && v.pain !== ""
+              ? String(v.pain)
+              : erV1Loaded.painScale0to10;
         const nextForm = {
           chiefComplaint: String(d.chiefComplaint ?? ""),
           onsetAt: d.onsetAt ? new Date(d.onsetAt as string).toISOString().slice(0, 16) : "",
@@ -407,6 +416,7 @@ export function EmergencyTriagePanel({
           spo2: v.spo2?.toString() ?? "",
           weightKg: s?.weightKg ?? v.weightKg?.toString() ?? "",
           heightCm: s?.heightCm ?? v.heightCm?.toString() ?? "",
+          painScore: painFromVitals,
           tempInputUnit: s?.tempInputUnit ?? "C",
           weightInputUnit: s?.weightInputUnit ?? "kg",
           heightInputMode: s?.heightInputMode ?? "cm",
@@ -418,7 +428,7 @@ export function EmergencyTriagePanel({
           triageCompleteAt: d.triageCompleteAt
             ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
             : "",
-          erV1: normalizeErTriageV1Form(erTriageV1FormFromVitalsJson(d.vitalsJson)),
+          erV1: { ...erV1Loaded, painScale0to10: painFromVitals },
         };
         serverFormSignatureRef.current = triageFormSignature(nextForm);
         setFormData(nextForm);
@@ -723,6 +733,7 @@ export function EmergencyTriagePanel({
       spo2: formData.spo2,
       weightKg: formData.weightKg,
       heightCm: formData.heightCm,
+      painScore: formData.painScore,
       allergyNote: formData.allergyNote,
       triageCompleteAt: formData.triageCompleteAt,
       tempInputUnit: formData.tempInputUnit,
@@ -749,6 +760,7 @@ export function EmergencyTriagePanel({
       spo2: formData.spo2,
       weightKg: formData.weightKg,
       heightCm: formData.heightCm,
+      painScore: formData.painScore,
       allergyNote: formData.allergyNote,
       erV1: formData.erV1,
       tempInputUnit: formData.tempInputUnit,
@@ -1355,6 +1367,29 @@ export function EmergencyTriagePanel({
                         </div>
                       )}
                     </div>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>{t("erTriage.v1.pain010")}</label>
+                    <select
+                      value={formData.painScore}
+                      onChange={(e) => {
+                        const painScore = e.target.value;
+                        setFormData((f) => ({
+                          ...f,
+                          painScore,
+                          erV1: { ...f.erV1, painScale0to10: painScore },
+                        }));
+                      }}
+                      disabled={formDisabled}
+                      style={{ ...inputBase, backgroundColor: formDisabled ? "#f8fafc" : "#fff" }}
+                    >
+                      <option value="">{t("common.dash")}</option>
+                      {Array.from({ length: 11 }, (_, n) => (
+                        <option key={n} value={String(n)}>
+                          {n}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

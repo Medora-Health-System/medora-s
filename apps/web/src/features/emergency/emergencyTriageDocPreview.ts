@@ -403,6 +403,7 @@ export type TriageDocPreviewFormSlice = {
   spo2: string;
   weightKg: string;
   heightCm: string;
+  painScore?: string;
   allergyNote: string;
   triageCompleteAt: string;
   /** When set, `tempC` / `weightKg` / height fields are interpreted in these units for save + abnormality checks. */
@@ -445,6 +446,11 @@ export function triagePreviewSliceFromTriageGet(
     spo2: v.spo2?.toString() ?? "",
     weightKg: v.weightKg?.toString() ?? "",
     heightCm: v.heightCm?.toString() ?? "",
+    painScore: (() => {
+      if (v.painScore != null && v.painScore !== "") return String(v.painScore);
+      if (v.pain != null && v.pain !== "") return String(v.pain);
+      return "";
+    })(),
     allergyNote: (v as { allergyNote?: string | null }).allergyNote ?? "",
     triageCompleteAt: d.triageCompleteAt
       ? new Date(d.triageCompleteAt as string).toISOString().slice(0, 16)
@@ -487,6 +493,9 @@ export function triagePreviewSliceFromTriageGet(
   }
 
   const er = erTriageV1FormFromVitalsJson(d.vitalsJson);
+  if (!slice.painScore?.trim() && er.painScale0to10.trim()) {
+    slice.painScore = er.painScale0to10;
+  }
   return { slice, er };
 }
 
@@ -581,6 +590,7 @@ export function vitalsCanonicalRecordFromTriageSlice(
     spo2: f.spo2 ? parseInt(f.spo2, 10) : "",
     weightKg: wCanon ?? "",
     heightCm: hCanon ?? "",
+    painScore: f.painScore?.trim() ? parseInt(f.painScore, 10) : "",
   };
 }
 
@@ -774,14 +784,6 @@ export function buildTriageDocumentationPreviewModel(
     etatInitial.push(...traumaActivationPreviewLines(er.traumaActivation, locale));
   }
   pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixExceptions"), er.triageExceptionsNote);
-  if (er.painScale0to10.trim()) {
-    const n = parseInt(er.painScale0to10, 10);
-    if (!Number.isNaN(n)) {
-      etatInitial.push(
-        interpolatePreview(erTriageT(locale, "erTriage.preview.linePain"), { n: String(n) })
-      );
-    }
-  }
   pushIf(etatInitial, erTriageT(locale, "erTriage.preview.prefixReferral"), er.referralSource);
   if (er.triageStartedAt) {
     const d = new Date(er.triageStartedAt);

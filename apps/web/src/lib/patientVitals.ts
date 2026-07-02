@@ -114,6 +114,7 @@ export function formatVitalsHeaderLineForLocale(
   vitals: Record<string, number | string | null | undefined>,
   language: SupportedLanguage
 ): string {
+  const painScore = resolveVitalsPainScoreFromRecord(vitals);
   if (language === "en") {
     const parts: string[] = [];
     const sys = vitals.bpSys;
@@ -130,6 +131,7 @@ export function formatVitalsHeaderLineForLocale(
     if (wk != null) parts.push(`Wt ${formatWeightDualLine(wk, language)}`);
     const hc = numOrNull(vitals.heightCm);
     if (hc != null) parts.push(`Ht ${formatHeightDualLine(hc, language)}`);
+    if (painScore != null) parts.push(`Pain ${painScore}/10`);
     return parts.length ? parts.join(" · ") : "";
   }
   const parts: string[] = [];
@@ -147,42 +149,45 @@ export function formatVitalsHeaderLineForLocale(
   if (wkFr != null) parts.push(`Poids : ${formatWeightDualLine(wkFr, language)}`);
   const hcFr = numOrNull(vitals.heightCm);
   if (hcFr != null) parts.push(`Taille : ${formatHeightDualLine(hcFr, language)}`);
+  if (painScore != null) parts.push(`Douleur : ${painScore}/10`);
   return parts.length ? parts.join(" · ") : "";
+}
+
+function resolveVitalsPainScoreFromRecord(
+  vitals: Record<string, number | string | null | undefined>
+): string | null {
+  for (const key of ["painScore", "pain", "painLevel"] as const) {
+    const raw = vitals[key];
+    if (raw == null || raw === "") continue;
+    const trimmed = String(raw).trim();
+    if (trimmed) return trimmed;
+  }
+  const nested = vitals.medoraErTriageV1;
+  if (nested != null && typeof nested === "object" && !Array.isArray(nested)) {
+    const legacy = (nested as { painScale0to10?: unknown }).painScale0to10;
+    if (typeof legacy === "number" && Number.isFinite(legacy)) {
+      return String(Math.min(10, Math.max(0, Math.round(legacy))));
+    }
+    if (typeof legacy === "string" && legacy.trim()) return legacy.trim();
+  }
+  return null;
 }
 
 export function formatVitalsHeaderLine(vitals: Record<string, number | string | null | undefined>): string {
   return formatVitalsHeaderLineForLocale(vitals, "fr");
 }
 
-const VITALS_NUMERIC_KEYS = ["tempC", "hr", "rr", "bpSys", "bpDia", "spo2", "weightKg", "heightCm"] as const;
-
 /**
- * Compact one-line vitals for timelines (coerces JSON vitals; optional pain / painScore).
+ * Compact one-line vitals for timelines (coerces JSON vitals; includes pain when recorded).
  */
 export function formatEncounterVitalsHistoryCompactLine(
   vitals: Record<string, unknown>,
   language: SupportedLanguage
 ): string {
-  const n: Record<string, number | string | null | undefined> = {};
-  for (const k of VITALS_NUMERIC_KEYS) {
-    const v = vitals[k];
-    if (v == null) continue;
-    if (typeof v === "number") n[k] = v;
-    else if (typeof v === "string" && v.trim()) {
-      const num = Number(v);
-      n[k] = Number.isFinite(num) ? num : v.trim();
-    }
-  }
-  let line = formatVitalsHeaderLineForLocale(n, language);
-  const pain = vitals.pain ?? vitals.painScore;
-  if (pain != null && pain !== "") {
-    const p = typeof pain === "number" ? String(pain) : String(pain).trim();
-    if (p) {
-      const painLabel = language === "en" ? `Pain ${p}` : `Douleur : ${p}`;
-      line = line ? `${line} · ${painLabel}` : painLabel;
-    }
-  }
-  return line;
+  return formatVitalsHeaderLineForLocale(
+    vitals as Record<string, number | string | null | undefined>,
+    language
+  );
 }
 
 /** True when the GET /patients/:id/triage payload already carries at least one row (latest ou historique). */

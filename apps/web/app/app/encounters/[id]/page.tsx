@@ -5155,6 +5155,7 @@ function TriageVitalsTab({
         heightInputMode: formData.heightInputMode,
         heightFeet: formData.heightFeet,
         heightInches: formData.heightInches,
+        painScore: erV1.painScale0to10 ?? "",
       });
 
       const lastKnownTriageUpdatedAt =

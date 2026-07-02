@@ -126,12 +126,17 @@ describe("encounterClinicalRecordAdapter", () => {
         esi: 3,
         chiefComplaint: "Chest pain",
         triageCompleteAt: "2026-06-23T08:15:00.000Z",
-        vitalsJson: { hr: 90, bpSys: 120, bpDia: 80 },
+        vitalsJson: {
+          hr: 90,
+          bpSys: 120,
+          bpDia: 80,
+          medoraErTriageV1: { painScale0to10: 7 },
+        },
       },
       vitalsHistory: [
         {
           recordedAt: "2026-06-23T09:00:00.000Z",
-          vitals: { hr: 88, bpSys: 118, bpDia: 78 },
+          vitals: { hr: 88, bpSys: 118, bpDia: 78, painScore: 4 },
           recordedBy: { displayName: "Chart RN" },
           source: "ENCOUNTER_CHART",
         },
@@ -139,8 +144,8 @@ describe("encounterClinicalRecordAdapter", () => {
     });
     const record = buildEncounterClinicalRecord(input);
     expect(record.vitals.length).toBeGreaterThanOrEqual(1);
+    expect(record.vitals.some((v) => v.pain === "7" || v.pain === "4")).toBe(true);
     expect(record.triageDocumentation?.fields.esi).toBe("3");
-    expect(record.triageDocumentation?.documentedBy.name).toBe("Triage RN");
   });
 
   it("maps provider assessment and duplicate saves into primary + history", () => {

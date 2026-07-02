@@ -53,6 +53,7 @@ type Draft = {
   heightInputMode: "cm" | "ftin";
   heightFeet: string;
   heightInches: string;
+  painScore: string;
   allergyNote: string;
 };
 
@@ -68,6 +69,7 @@ function draftFromTriage(triage: Record<string, unknown> | null, language: "en" 
       spo2: "",
       weightKg: "",
       heightCm: "",
+      painScore: "",
       tempInputUnit: "C",
       weightInputUnit: "kg",
       heightInputMode: "cm",
@@ -86,6 +88,7 @@ function draftFromTriage(triage: Record<string, unknown> | null, language: "en" 
     spo2: s.spo2,
     weightKg: s.weightKg,
     heightCm: s.heightCm,
+    painScore: s.painScore ?? "",
     tempInputUnit: s.tempInputUnit ?? "C",
     weightInputUnit: s.weightInputUnit ?? "kg",
     heightInputMode: s.heightInputMode ?? "cm",
@@ -444,6 +447,22 @@ export function EmergencyQuickVitalsEditor({
               </div>
             )}
           </div>
+        </label>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: "#475569", fontWeight: 600 }}>
+          {t("erQuickVitals.painScore")}
+          <select
+            value={draft.painScore}
+            onChange={(e) => patch({ painScore: e.target.value })}
+            disabled={saving}
+            style={{ ...inputBase, padding: "6px 8px" }}
+          >
+            <option value="">{t("common.dash")}</option>
+            {Array.from({ length: 11 }, (_, n) => (
+              <option key={n} value={String(n)}>
+                {n}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
       <label
