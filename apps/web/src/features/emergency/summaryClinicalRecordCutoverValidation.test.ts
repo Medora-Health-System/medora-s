@@ -165,10 +165,11 @@ describe("summaryClinicalRecordCutoverValidation (Phase 3C)", () => {
     expect(closure).not.toContain("EncounterClinicalRecordSummaryView");
   });
 
-  it("print packet module is unchanged by clinical record summary", () => {
+  it("print packet supports clinical record V2 branch with legacy fallback", () => {
     const printPacket = readSrc("features/emergency/erPrintPacket.ts");
-    expect(printPacket).not.toContain("EncounterClinicalRecord");
-    expect(printPacket).not.toContain("summaryClinicalRecord");
+    expect(printPacket).toContain("getErClinicalRecordPrintPacketHtml");
+    expect(printPacket).toContain("isSummaryClinicalRecordV2Enabled");
+    expect(printPacket).toContain("clinicalRecord");
     expect(printPacket).toContain("getErPrintPacketHtml");
   });
 

@@ -30,9 +30,11 @@ import type {
   EncounterClinicalRecordMedicationAdministration,
   EncounterClinicalRecordOrderRow,
   EncounterClinicalRecordProcedure,
+  EncounterClinicalRecordTriageDocumentation,
   EncounterClinicalRecordTextBlock,
   EncounterClinicalRecordVitalPoint,
 } from "./encounterClinicalRecordTypes.js";
+import { buildClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
 
 function asTrimmed(value: string | null | undefined): string | null {
   const t = (value ?? "").trim();
@@ -122,6 +124,27 @@ function buildOrders(input: BuildEncounterClinicalRecordInput): EncounterClinica
   return dedupeOrderRows(candidates);
 }
 
+function buildTriageDocumentation(
+  input: BuildEncounterClinicalRecordInput
+): EncounterClinicalRecordTriageDocumentation | null {
+  const triage = input.triageDocumentation;
+  if (!triage) return null;
+  const documentedBy = buildClinicalRecordAttribution({
+    name: triage.documentedByDisplayName,
+    initials: triage.documentedByInitials,
+    role: triage.documentedByRole,
+    at: triage.documentedAt ?? input.encounter.triageCompleteAt,
+  });
+  if (
+    !documentedBy.name &&
+    !documentedBy.role &&
+    !documentedBy.at
+  ) {
+    return null;
+  }
+  return { documentedBy };
+}
+
 function buildLaboratoryResults(
   input: BuildEncounterClinicalRecordInput,
   locale: EncounterClinicalRecordLocale
@@ -130,12 +153,18 @@ function buildLaboratoryResults(
   for (const order of input.orders ?? []) {
     const orderId = asTrimmed(order.id);
     if (!orderId || normalizeOrderType(order.type) !== "LAB") continue;
+    const orderedBy = buildClinicalRecordAttribution({
+      name: order.orderedByDisplayName,
+      at: order.createdAt,
+    });
     for (const item of order.items ?? []) {
       const orderItemId = asTrimmed(item.id);
       const result = item.result;
       const resultText = asTrimmed(result?.resultText);
       const verifiedAt = asTrimmed(result?.verifiedAt);
       if (!orderItemId || !resultText || !verifiedAt) continue;
+      const reviewedAt = asTrimmed(result?.acknowledgedByProviderAt) ?? asTrimmed(result?.acknowledgedAt);
+      const reviewedByName = asTrimmed(result?.acknowledgedByDisplayName);
       candidates.push({
         orderId,
         orderItemId,
@@ -143,7 +172,18 @@ function buildLaboratoryResults(
         resultText,
         verifiedAt,
         criticalValue: Boolean(result?.criticalValue),
-        acknowledgedAt: asTrimmed(result?.acknowledgedAt),
+        acknowledgedAt: reviewedAt,
+        orderedBy,
+        resultedBy: buildClinicalRecordAttribution({
+          name: result?.enteredByDisplayName,
+          at: verifiedAt,
+        }),
+        reviewedBy: reviewedByName
+          ? buildClinicalRecordAttribution({
+              name: reviewedByName,
+              at: reviewedAt,
+            })
+          : null,
       });
     }
   }
@@ -158,12 +198,18 @@ function buildImagingResults(
   for (const order of input.orders ?? []) {
     const orderId = asTrimmed(order.id);
     if (!orderId || normalizeOrderType(order.type) !== "IMAGING") continue;
+    const orderedBy = buildClinicalRecordAttribution({
+      name: order.orderedByDisplayName,
+      at: order.createdAt,
+    });
     for (const item of order.items ?? []) {
       const orderItemId = asTrimmed(item.id);
       const result = item.result;
       const resultText = asTrimmed(result?.resultText);
       const verifiedAt = asTrimmed(result?.verifiedAt);
       if (!orderItemId || !resultText || !verifiedAt) continue;
+      const reviewedAt = asTrimmed(result?.acknowledgedByProviderAt) ?? asTrimmed(result?.acknowledgedAt);
+      const reviewedByName = asTrimmed(result?.acknowledgedByDisplayName);
       candidates.push({
         orderId,
         orderItemId,
@@ -171,7 +217,18 @@ function buildImagingResults(
         resultText,
         verifiedAt,
         criticalValue: Boolean(result?.criticalValue),
-        acknowledgedAt: asTrimmed(result?.acknowledgedAt),
+        acknowledgedAt: reviewedAt,
+        orderedBy,
+        resultedBy: buildClinicalRecordAttribution({
+          name: result?.enteredByDisplayName,
+          at: verifiedAt,
+        }),
+        reviewedBy: reviewedByName
+          ? buildClinicalRecordAttribution({
+              name: reviewedByName,
+              at: reviewedAt,
+            })
+          : null,
       });
     }
   }
@@ -197,7 +254,18 @@ function buildMedicationAdministrations(
       action: asTrimmed(admin.marAction) ?? asTrimmed(admin.action) ?? "ADMINISTERED",
       administeredAt: asTrimmed(admin.administeredAt),
       administeredByDisplayName: asTrimmed(admin.administeredByDisplayName),
+      documentedByDisplayName: asTrimmed(admin.documentedByDisplayName),
       orderItemId: asTrimmed(admin.orderItemId),
+      administeredBy: buildClinicalRecordAttribution({
+        name: admin.administeredByDisplayName,
+        at: admin.administeredAt,
+      }),
+      documentedBy: asTrimmed(admin.documentedByDisplayName)
+        ? buildClinicalRecordAttribution({
+            name: admin.documentedByDisplayName,
+            at: admin.administeredAt,
+          })
+        : null,
     });
   }
   return dedupeMedicationAdministrations(candidates);
@@ -215,7 +283,20 @@ function buildProcedures(input: BuildEncounterClinicalRecordInput): EncounterCli
       clinicalSummary,
       documentedAt: asTrimmed(proc.documentedAt) ?? asTrimmed(proc.createdAt),
       documentedByDisplayName: asTrimmed(proc.documentedByDisplayName),
+      performedByDisplayName: asTrimmed(proc.performedByDisplayName),
       documentationRole: asTrimmed(proc.documentationRole),
+      documentedBy: buildClinicalRecordAttribution({
+        name: proc.documentedByDisplayName,
+        role: proc.documentationRole,
+        at: proc.documentedAt ?? proc.createdAt,
+      }),
+      performedBy: asTrimmed(proc.performedByDisplayName)
+        ? buildClinicalRecordAttribution({
+            name: proc.performedByDisplayName,
+            role: proc.documentationRole,
+            at: proc.documentedAt ?? proc.createdAt,
+          })
+        : null,
     });
   }
   return dedupeProcedures(candidates);
@@ -447,6 +528,11 @@ function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
         diagnosisType: asTrimmed(dx.diagnosisType),
         isPrimary: Boolean(dx.isPrimary),
         documentedAt: asTrimmed(dx.documentedAt) ?? asTrimmed(dx.createdAt),
+        documentedByDisplayName: asTrimmed(dx.documentedByDisplayName),
+        documentedBy: buildClinicalRecordAttribution({
+          name: dx.documentedByDisplayName,
+          at: dx.documentedAt ?? dx.createdAt,
+        }),
       };
     })
     .filter((dx): dx is NonNullable<typeof dx> => dx !== null);
@@ -474,6 +560,7 @@ export function buildEncounterClinicalRecord(
     header: buildHeader(input),
     chiefComplaint: textBlock(null, input.chiefComplaintLines ?? []),
     presentation: textBlock(null, input.presentationLines ?? []),
+    triageDocumentation: buildTriageDocumentation(input),
     vitals: buildVitals(input),
     providerAssessment,
     providerAssessmentHistory,
@@ -491,9 +578,34 @@ export function buildEncounterClinicalRecord(
           destination: asTrimmed(input.disposition.destination),
           summaryLines: (input.disposition.summaryLines ?? []).map((l) => l.trim()).filter(Boolean),
           dispositionAt: asTrimmed(input.disposition.dispositionAt),
+          documentedByDisplayName: asTrimmed(input.disposition.documentedByDisplayName),
+          signedByDisplayName: asTrimmed(input.disposition.signedByDisplayName),
+          documentedBy: buildClinicalRecordAttribution({
+            name: input.disposition.documentedByDisplayName,
+            at: input.disposition.dispositionAt,
+          }),
+          signedBy: asTrimmed(input.disposition.signedByDisplayName)
+            ? buildClinicalRecordAttribution({
+                name: input.disposition.signedByDisplayName,
+                at: input.disposition.signedAt ?? input.disposition.dispositionAt,
+              })
+            : null,
         }
       : null,
-    signatures: [...(input.signatures ?? [])],
+    signatures: (input.signatures ?? []).map((sig) => ({
+      domain: sig.domain,
+      signerDisplayName: sig.signerDisplayName,
+      signerRoleTitle: asTrimmed(sig.signerRoleTitle),
+      signedAt: sig.signedAt,
+      initials: asTrimmed(sig.initials),
+      meaning: asTrimmed(sig.meaning),
+      signedBy: buildClinicalRecordAttribution({
+        name: sig.signerDisplayName,
+        initials: sig.initials,
+        role: sig.signerRoleTitle,
+        at: sig.signedAt,
+      }),
+    })),
     clinicalTimeline: buildClinicalTimeline(input),
     auditTimeline: buildAuditTimeline(input, locale),
   };

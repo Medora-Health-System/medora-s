@@ -3,6 +3,10 @@
  * Pure data shapes; no UI, API, or persistence coupling.
  */
 
+import type { ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
+
+export type { ClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
+
 export type EncounterClinicalRecordLocale = "en" | "fr";
 
 export type EncounterClinicalRecordProviderStatus = "SIGNED" | "SAVED" | "DRAFT";
@@ -44,6 +48,11 @@ export type EncounterClinicalRecordProviderAssessment = {
   narrativeSummary: string | null;
   signedAt: string | null;
   signedByDisplayName: string | null;
+  savedAt: string | null;
+  savedByDisplayName: string | null;
+  documentedBy: ClinicalRecordAttribution;
+  signedBy: ClinicalRecordAttribution | null;
+  savedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordProviderAssessmentHistoryEntry = {
@@ -89,6 +98,10 @@ export type EncounterClinicalRecordOrderRow = {
   orderedByDisplayName: string | null;
 };
 
+export type EncounterClinicalRecordTriageDocumentation = {
+  documentedBy: ClinicalRecordAttribution;
+};
+
 export type EncounterClinicalRecordLaboratoryResult = {
   orderId: string;
   orderItemId: string;
@@ -97,6 +110,9 @@ export type EncounterClinicalRecordLaboratoryResult = {
   verifiedAt: string;
   criticalValue: boolean;
   acknowledgedAt: string | null;
+  orderedBy: ClinicalRecordAttribution;
+  resultedBy: ClinicalRecordAttribution;
+  reviewedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordImagingResult = {
@@ -107,6 +123,9 @@ export type EncounterClinicalRecordImagingResult = {
   verifiedAt: string;
   criticalValue: boolean;
   acknowledgedAt: string | null;
+  orderedBy: ClinicalRecordAttribution;
+  resultedBy: ClinicalRecordAttribution;
+  reviewedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordMedicationAdministration = {
@@ -117,7 +136,10 @@ export type EncounterClinicalRecordMedicationAdministration = {
   action: string;
   administeredAt: string | null;
   administeredByDisplayName: string | null;
+  documentedByDisplayName: string | null;
   orderItemId: string | null;
+  administeredBy: ClinicalRecordAttribution;
+  documentedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordProcedure = {
@@ -126,7 +148,10 @@ export type EncounterClinicalRecordProcedure = {
   clinicalSummary: string;
   documentedAt: string | null;
   documentedByDisplayName: string | null;
+  performedByDisplayName: string | null;
   documentationRole: string | null;
+  documentedBy: ClinicalRecordAttribution;
+  performedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordDiagnosis = {
@@ -136,6 +161,8 @@ export type EncounterClinicalRecordDiagnosis = {
   diagnosisType: string | null;
   isPrimary: boolean;
   documentedAt: string | null;
+  documentedByDisplayName: string | null;
+  documentedBy: ClinicalRecordAttribution;
 };
 
 export type EncounterClinicalRecordDisposition = {
@@ -143,6 +170,10 @@ export type EncounterClinicalRecordDisposition = {
   destination: string | null;
   summaryLines: string[];
   dispositionAt: string | null;
+  documentedByDisplayName: string | null;
+  signedByDisplayName: string | null;
+  documentedBy: ClinicalRecordAttribution;
+  signedBy: ClinicalRecordAttribution | null;
 };
 
 export type EncounterClinicalRecordSignature = {
@@ -150,6 +181,9 @@ export type EncounterClinicalRecordSignature = {
   signerDisplayName: string;
   signerRoleTitle: string | null;
   signedAt: string;
+  initials: string | null;
+  meaning: string | null;
+  signedBy: ClinicalRecordAttribution;
 };
 
 export type EncounterClinicalRecordClinicalMilestone =
@@ -205,6 +239,7 @@ export type EncounterClinicalRecord = {
   header: EncounterClinicalRecordHeader;
   chiefComplaint: EncounterClinicalRecordTextBlock | null;
   presentation: EncounterClinicalRecordTextBlock | null;
+  triageDocumentation: EncounterClinicalRecordTriageDocumentation | null;
   vitals: EncounterClinicalRecordVitalPoint[];
   providerAssessment: EncounterClinicalRecordProviderAssessment | null;
   providerAssessmentHistory: EncounterClinicalRecordProviderAssessmentHistoryEntry[];
@@ -251,6 +286,7 @@ export type BuildEncounterClinicalRecordInput = {
       isPrimary?: boolean;
       documentedAt?: string | null;
       createdAt?: string | null;
+      documentedByDisplayName?: string | null;
     }>;
   };
   patient?: {
@@ -263,6 +299,12 @@ export type BuildEncounterClinicalRecordInput = {
   roomLabel?: string | null;
   chiefComplaintLines?: string[];
   presentationLines?: string[];
+  triageDocumentation?: {
+    documentedByDisplayName?: string | null;
+    documentedByRole?: string | null;
+    documentedByInitials?: string | null;
+    documentedAt?: string | null;
+  } | null;
   vitals?: Array<{
     id?: string;
     recordedAt?: string;
@@ -325,6 +367,9 @@ export type BuildEncounterClinicalRecordInput = {
         verifiedAt?: string | null;
         criticalValue?: boolean;
         acknowledgedAt?: string | null;
+        enteredByDisplayName?: string | null;
+        acknowledgedByDisplayName?: string | null;
+        acknowledgedByProviderAt?: string | null;
       } | null;
     }>;
   }>;
@@ -337,6 +382,7 @@ export type BuildEncounterClinicalRecordInput = {
     action?: string | null;
     administeredAt?: string | null;
     administeredByDisplayName?: string | null;
+    documentedByDisplayName?: string | null;
     orderItemId?: string | null;
   }>;
   procedures?: Array<{
@@ -346,6 +392,7 @@ export type BuildEncounterClinicalRecordInput = {
     documentedAt?: string | null;
     createdAt?: string | null;
     documentedByDisplayName?: string | null;
+    performedByDisplayName?: string | null;
     documentationRole?: string | null;
   }>;
   disposition?: {
@@ -353,8 +400,18 @@ export type BuildEncounterClinicalRecordInput = {
     destination?: string | null;
     summaryLines?: string[];
     dispositionAt?: string | null;
+    documentedByDisplayName?: string | null;
+    signedByDisplayName?: string | null;
+    signedAt?: string | null;
   } | null;
-  signatures?: EncounterClinicalRecordSignature[];
+  signatures?: Array<{
+    domain: string;
+    signerDisplayName: string;
+    signerRoleTitle?: string | null;
+    signedAt: string;
+    initials?: string | null;
+    meaning?: string | null;
+  }>;
   auditSourceRows?: Array<{
     sourceKind: string;
     sourceId: string;

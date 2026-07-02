@@ -15,6 +15,7 @@ import type { EncounterResultsLabRadSnapshot } from "@/components/encounters/Enc
 import {
   readInitialNursingEvalSignature,
 } from "./erInitialNursingAssessmentSummary";
+import { readDispositionSignatureFromEncounter } from "./emergencyDispositionV1";
 import type {
   ClinicalDocumentationEventApiEntry,
   EmergencyVisitSummaryModel,
@@ -208,6 +209,10 @@ function mapOrders(orders: unknown[]): BuildEncounterClinicalRecordInput["orders
                 criticalValue: Boolean(result.criticalValue),
                 acknowledgedAt:
                   asTrimmed(result.acknowledgedByProviderAt) ?? asTrimmed(result.acknowledgedAt),
+                enteredByDisplayName:
+                  asTrimmed(result.enteredByDisplayFr) ?? asTrimmed(result.verifiedByDisplayFr),
+                acknowledgedByDisplayName: asTrimmed(result.acknowledgedByDisplayFr),
+                acknowledgedByProviderAt: asTrimmed(result.acknowledgedByProviderAt),
               }
             : null,
         };
@@ -252,6 +257,10 @@ function mapMedicationAdministrations(
       administeredAt: asTrimmed(admin.administeredAt),
       administeredByDisplayName:
         asTrimmed(admin.administeredByDisplayName) ?? asTrimmed(admin.administeredBy),
+      documentedByDisplayName:
+        asTrimmed(admin.documentedByDisplayName) ??
+        asTrimmed(admin.recordedByDisplayName) ??
+        asTrimmed(admin.createdByDisplayName),
       orderItemId: asTrimmed(admin.orderItemId),
     });
   }
@@ -292,6 +301,8 @@ function mapProcedures(
       clinicalSummary,
       documentedAt,
       documentedByDisplayName,
+      performedByDisplayName:
+        asTrimmed(entry.performedByDisplayName) ?? documentedByDisplayName,
       documentationRole: asTrimmed(entry.documentationRole),
     });
   }
@@ -379,13 +390,37 @@ function buildDispositionInput(
   encounter: EmergencySummaryClinicalRecordAdapterEncounter
 ): BuildEncounterClinicalRecordInput["disposition"] {
   const lines = summaryModel.disposition?.lines ?? [];
-  if (lines.length === 0 && !encounter.dischargeSummaryJson) return null;
+  const disSig = readDispositionSignatureFromEncounter(encounter.nursingAssessment);
+  if (lines.length === 0 && !encounter.dischargeSummaryJson && !disSig) return null;
   return {
     dischargeMode: null,
     destination: null,
     summaryLines: lines,
-    dispositionAt: asTrimmed(encounter.closedAt),
+    dispositionAt: asTrimmed(encounter.closedAt) ?? disSig?.savedAt ?? null,
+    documentedByDisplayName: disSig?.savedByDisplayName ?? null,
+    signedByDisplayName: disSig?.savedByDisplayName ?? null,
+    signedAt: disSig?.savedAt ?? null,
   };
+}
+
+function buildTriageDocumentationInput(
+  summaryModel: EmergencyVisitSummaryModel,
+  triageSnapshot: Record<string, unknown> | null | undefined
+): BuildEncounterClinicalRecordInput["triageDocumentation"] {
+  const latest = summaryModel.triageAssessmentHistory[0];
+  if (latest) {
+    return {
+      documentedByDisplayName: latest.performerDisplayName,
+      documentedByRole: latest.performerRoleTitle,
+      documentedAt: latest.documentedAt ?? latest.savedAt,
+    };
+  }
+  const documentedAt =
+    asTrimmed(triageSnapshot?.triageCompleteAt) ??
+    asTrimmed(triageSnapshot?.updatedAt) ??
+    asTrimmed(triageSnapshot?.createdAt);
+  if (!documentedAt) return null;
+  return { documentedAt };
 }
 
 function buildInitialNursingAssessmentInput(
@@ -480,6 +515,7 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     roomLabel: asTrimmed(encounter.roomLabel),
     chiefComplaintLines: model.motifPresentation?.lines ?? [],
     presentationLines: model.triageResume?.lines ?? [],
+    triageDocumentation: buildTriageDocumentationInput(model, input.triageSnapshot),
     vitals: buildVitalsFromTriage(input.triageSnapshot),
     providerAssessment: providerDoc
       ? {

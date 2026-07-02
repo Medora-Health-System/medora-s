@@ -5,6 +5,7 @@ import {
   dedupeClinicalTimelineEntries,
   dedupeLaboratoryResults,
   dedupeOrderRows,
+  isClinicalRecordAttributionEmpty,
   resolveProviderAssessmentPrimary,
 } from "./encounterClinicalRecord.js";
 
@@ -559,5 +560,120 @@ describe("encounterClinicalRecord", () => {
 
     expect(JSON.stringify(orders)).toBe(ordersBefore);
     expect(JSON.stringify(auditSourceRows)).toBe(auditBefore);
+  });
+
+  it("preserves provider attribution on signed assessment", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      providerAssessment: {
+        documentationStatus: "SIGNED",
+        signedAt: "2026-06-23T10:00:00.000Z",
+        signedByDisplayName: "Dr Signed",
+        savedAt: "2026-06-23T09:30:00.000Z",
+        savedByDisplayName: "Dr Saved",
+        sections: [{ label: "Assessment", text: "Signed note." }],
+      },
+    });
+    expect(record.providerAssessment?.signedBy?.name).toBe("Dr Signed");
+    expect(record.providerAssessment?.savedBy?.name).toBe("Dr Saved");
+    expect(record.providerAssessment?.documentedBy?.at).toBeTruthy();
+  });
+
+  it("preserves order attribution on deduped order rows", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      orders: [
+        {
+          id: ORDER_ID,
+          type: "LAB",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          orderedByDisplayName: "Dr Orderer",
+          items: [{ id: LAB_ITEM_ID, displayLabel: "CMP", status: "ACTIVE" }],
+        },
+      ],
+    });
+    expect(record.orders[0]?.orderedByDisplayName).toBe("Dr Orderer");
+    expect(record.orders[0]?.orderedAt).toBe("2026-06-23T09:00:00.000Z");
+  });
+
+  it("preserves lab and imaging result attribution", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      orders: [
+        {
+          id: ORDER_ID,
+          type: "LAB",
+          orderedByDisplayName: "Dr Lab",
+          createdAt: "2026-06-23T09:00:00.000Z",
+          items: [
+            {
+              id: LAB_ITEM_ID,
+              displayLabel: "CBC",
+              status: "COMPLETED",
+              result: {
+                resultText: "WNL",
+                verifiedAt: "2026-06-23T11:00:00.000Z",
+                enteredByDisplayName: "Tech Lab",
+                acknowledgedByDisplayName: "Dr Reviewer",
+                acknowledgedByProviderAt: "2026-06-23T11:30:00.000Z",
+              },
+            },
+          ],
+        },
+        {
+          id: "order-img-2",
+          type: "IMAGING",
+          orderedByDisplayName: "Dr Rad",
+          createdAt: "2026-06-23T09:15:00.000Z",
+          items: [
+            {
+              id: IMG_ITEM_ID,
+              displayLabel: "CXR",
+              result: {
+                resultText: "Clear",
+                verifiedAt: "2026-06-23T12:00:00.000Z",
+                enteredByDisplayName: "Rad Tech",
+                acknowledgedByDisplayName: "Dr Rad Review",
+                acknowledgedByProviderAt: "2026-06-23T12:30:00.000Z",
+              },
+            },
+          ],
+        },
+      ],
+    });
+    expect(record.laboratoryResults[0]?.orderedBy?.name).toBe("Dr Lab");
+    expect(record.laboratoryResults[0]?.resultedBy?.name).toBe("Tech Lab");
+    expect(record.laboratoryResults[0]?.reviewedBy?.name).toBe("Dr Reviewer");
+    expect(record.imagingResults[0]?.orderedBy?.name).toBe("Dr Rad");
+    expect(record.imagingResults[0]?.resultedBy?.name).toBe("Rad Tech");
+    expect(record.imagingResults[0]?.reviewedBy?.name).toBe("Dr Rad Review");
+  });
+
+  it("preserves MAR attribution and handles empty attribution safely", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      medicationAdministrations: [
+        {
+          id: MAR_ID,
+          medicationName: "Ketorolac",
+          marAction: "ADMINISTERED",
+          administeredAt: "2026-06-23T10:30:00.000Z",
+          administeredByDisplayName: "RN A",
+          documentedByDisplayName: "RN B",
+        },
+        {
+          id: "mar-empty",
+          medicationName: "Saline",
+          marAction: "ADMINISTERED",
+        },
+      ],
+    });
+    expect(record.medicationAdministration.find((m) => m.id === MAR_ID)?.administeredBy?.name).toBe("RN A");
+    expect(record.medicationAdministration.find((m) => m.id === MAR_ID)?.documentedBy?.name).toBe("RN B");
+    expect(
+      isClinicalRecordAttributionEmpty(
+        record.medicationAdministration.find((m) => m.id === "mar-empty")?.administeredBy
+      )
+    ).toBe(true);
   });
 });

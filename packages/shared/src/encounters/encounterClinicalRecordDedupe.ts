@@ -16,6 +16,7 @@ import type {
   EncounterClinicalRecordProviderAssessmentHistoryEntry,
   EncounterClinicalRecordProviderStatus,
 } from "./encounterClinicalRecordTypes.js";
+import { buildClinicalRecordAttribution } from "./clinicalRecordAttribution.js";
 
 const ORDER_LIFECYCLE_RANK: Record<string, number> = {
   DRAFT: 0,
@@ -93,19 +94,43 @@ export function resolveProviderAssessmentPrimary(input: {
   const status = resolveProviderDocumentationStatus(input.documentationStatus);
   const signedAt = input.signedAt?.trim() || null;
   const savedAt = input.savedAt?.trim() || null;
+  const signedByDisplayName = input.signedByDisplayName?.trim() || null;
+  const savedByDisplayName = input.savedByDisplayName?.trim() || null;
+  const performerDisplayName =
+    status === "SIGNED"
+      ? signedByDisplayName || savedByDisplayName || null
+      : savedByDisplayName || null;
 
   return {
     status,
     documentedAt: signedAt ?? savedAt,
-    performerDisplayName:
-      status === "SIGNED"
-        ? input.signedByDisplayName?.trim() || input.savedByDisplayName?.trim() || null
-        : input.savedByDisplayName?.trim() || null,
+    performerDisplayName,
     performerRoleTitle: input.performerRoleTitle?.trim() || null,
     sections,
     narrativeSummary: narrative || null,
     signedAt,
-    signedByDisplayName: input.signedByDisplayName?.trim() || null,
+    signedByDisplayName,
+    savedAt,
+    savedByDisplayName,
+    documentedBy: buildClinicalRecordAttribution({
+      name: performerDisplayName,
+      role: input.performerRoleTitle,
+      at: savedAt ?? signedAt,
+    }),
+    signedBy: signedAt
+      ? buildClinicalRecordAttribution({
+          name: signedByDisplayName,
+          role: input.performerRoleTitle,
+          at: signedAt,
+        })
+      : null,
+    savedBy: savedAt
+      ? buildClinicalRecordAttribution({
+          name: savedByDisplayName,
+          role: input.performerRoleTitle,
+          at: savedAt,
+        })
+      : null,
   };
 }
 

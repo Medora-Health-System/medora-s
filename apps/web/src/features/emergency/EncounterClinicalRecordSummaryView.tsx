@@ -36,6 +36,11 @@ import {
   type EnterpriseOrderGroupKey,
   type EnterpriseTriageFieldKey,
 } from "./enterpriseClinicalChartLayout";
+import {
+  attributionLineStyle,
+  formatClinicalRecordAttributionPart,
+  joinAttributionParts,
+} from "./clinicalRecordAttributionDisplay";
 import { SummaryAuditTimelineSlot } from "./SummaryAuditTimelineSlot";
 
 const sectionTitle: React.CSSProperties = {
@@ -128,6 +133,11 @@ const TRIAGE_FIELD_I18N: Record<EnterpriseTriageFieldKey, string> = {
   isolation: "encounterClinicalRecordSummary.triageIsolation",
   fallRisk: "encounterClinicalRecordSummary.triageFallRisk",
 };
+
+function AttributionLine({ text }: { text: string | null }) {
+  if (!text) return null;
+  return <p style={attributionLineStyle}>{text}</p>;
+}
 
 function SummarySectionCard({
   accent,
@@ -357,6 +367,12 @@ export function EncounterClinicalRecordSummaryView({
               value={layout.overview.dispositionStatusLabel}
             />
           ) : null}
+          {record.header.closedAt ? (
+            <OverviewField
+              label={t("encounterClinicalRecordSummary.dispositionTitle")}
+              value={formatDt(record.header.closedAt)}
+            />
+          ) : null}
           {layout.overview.attendingProviderDisplayName ? (
             <OverviewField
               label={t("encounterClinicalRecordSummary.attendingLabel")}
@@ -418,6 +434,14 @@ export function EncounterClinicalRecordSummaryView({
             })}
           </div>
         ) : null}
+        <AttributionLine
+          text={formatClinicalRecordAttributionPart(
+            "documentedBy",
+            layout.triageDocumentation,
+            t,
+            language
+          )}
+        />
       </SummarySectionCard>
 
       <SummarySectionCard
@@ -430,6 +454,22 @@ export function EncounterClinicalRecordSummaryView({
             <p style={{ ...lineStyle, fontWeight: 600, color: "#3730a3" }}>
               {t(providerStatusI18nKey(layout.providerAssessment.status))}
             </p>
+            <AttributionLine
+              text={joinAttributionParts([
+                formatClinicalRecordAttributionPart(
+                  "savedBy",
+                  layout.providerAssessment.savedBy,
+                  t,
+                  language
+                ),
+                formatClinicalRecordAttributionPart(
+                  "signedBy",
+                  layout.providerAssessment.signedBy,
+                  t,
+                  language
+                ),
+              ])}
+            />
             {layout.providerAssessment.signedAt ? (
               <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
                 {t("encounterClinicalRecordSummary.signedAt")}: {formatDt(layout.providerAssessment.signedAt)}
@@ -457,6 +497,16 @@ export function EncounterClinicalRecordSummaryView({
                   <p style={{ ...lineStyle, fontWeight: 600 }}>
                     {formatDt(entry.documentedAt ?? entry.savedAt)}
                   </p>
+                  <AttributionLine
+                    text={joinAttributionParts([
+                      entry.performerDisplayName
+                        ? `${t("encounterClinicalRecordSummary.attrDocumentedBy")} ${entry.performerDisplayName}`
+                        : null,
+                      entry.status
+                        ? `${t("encounterClinicalRecordSummary.attrStatus")}: ${entry.status}`
+                        : null,
+                    ])}
+                  />
                   {entry.sections.map((sec) => (
                     <p key={`${entry.id}-${sec.label}`} style={lineStyle}>
                       <strong>{sec.label}:</strong> {sec.text}
@@ -478,10 +528,20 @@ export function EncounterClinicalRecordSummaryView({
           <>
             <p style={{ ...lineStyle, fontSize: 12, color: "#64748b" }}>
               {formatDt(layout.nursingAssessment.documentedAt ?? layout.nursingAssessment.savedAt)}
-              {layout.nursingAssessment.performerDisplayName
-                ? ` — ${layout.nursingAssessment.performerDisplayName}`
-                : ""}
             </p>
+            <AttributionLine
+              text={formatClinicalRecordAttributionPart(
+                "documentedBy",
+                {
+                  name: layout.nursingAssessment.performerDisplayName,
+                  role: layout.nursingAssessment.performerRoleTitle,
+                  at: layout.nursingAssessment.documentedAt ?? layout.nursingAssessment.savedAt,
+                  initials: null,
+                },
+                t,
+                language
+              )}
+            />
             {layout.nursingAssessment.structuredLines.map((line, i) => (
               <p key={i} style={lineStyle}>
                 {line}
@@ -500,6 +560,19 @@ export function EncounterClinicalRecordSummaryView({
                   <p style={{ ...lineStyle, fontWeight: 600 }}>
                     {formatDt(entry.documentedAt ?? entry.savedAt)}
                   </p>
+                  <AttributionLine
+                    text={formatClinicalRecordAttributionPart(
+                      "documentedBy",
+                      {
+                        name: entry.performerDisplayName,
+                        role: entry.performerRoleTitle,
+                        at: entry.documentedAt ?? entry.savedAt,
+                        initials: null,
+                      },
+                      t,
+                      language
+                    )}
+                  />
                   {entry.structuredLines.map((line, i) => (
                     <p key={i} style={lineStyle}>
                       {line}
@@ -549,6 +622,19 @@ export function EncounterClinicalRecordSummaryView({
                                     </MedoraCardBadge>
                                   </span>
                                 ) : null}
+                                <AttributionLine
+                                  text={formatClinicalRecordAttributionPart(
+                                    "orderedBy",
+                                    {
+                                      name: order.orderedByDisplayName,
+                                      at: order.orderedAt,
+                                      initials: null,
+                                      role: null,
+                                    },
+                                    t,
+                                    language
+                                  )}
+                                />
                               </td>
                               <td style={tdStyle}>
                                 <MedoraCardBadge soft={badgeSoft} compact>
@@ -612,6 +698,13 @@ export function EncounterClinicalRecordSummaryView({
                                 </MedoraCardBadge>
                               </span>
                             ) : null}
+                            <AttributionLine
+                              text={joinAttributionParts([
+                                formatClinicalRecordAttributionPart("orderedBy", lab.orderedBy, t, language),
+                                formatClinicalRecordAttributionPart("resultedBy", lab.resultedBy, t, language),
+                                formatClinicalRecordAttributionPart("reviewedBy", lab.reviewedBy, t, language),
+                              ])}
+                            />
                           </td>
                           <td style={tdStyle}>{lab.resultText}</td>
                           <td style={tdStyle}>{formatDt(lab.verifiedAt)}</td>
@@ -653,6 +746,13 @@ export function EncounterClinicalRecordSummaryView({
                                 </MedoraCardBadge>
                               </span>
                             ) : null}
+                            <AttributionLine
+                              text={joinAttributionParts([
+                                formatClinicalRecordAttributionPart("orderedBy", img.orderedBy, t, language),
+                                formatClinicalRecordAttributionPart("resultedBy", img.resultedBy, t, language),
+                                formatClinicalRecordAttributionPart("reviewedBy", img.reviewedBy, t, language),
+                              ])}
+                            />
                           </td>
                           <td style={tdStyle}>{img.resultText}</td>
                           <td style={tdStyle}>{formatDt(img.verifiedAt)}</td>
@@ -693,6 +793,12 @@ export function EncounterClinicalRecordSummaryView({
                       {mar.medicationName}
                       {mar.dose ? ` ${mar.dose}` : ""}
                       {mar.route ? ` (${mar.route})` : ""}
+                      <AttributionLine
+                        text={joinAttributionParts([
+                          formatClinicalRecordAttributionPart("administeredBy", mar.administeredBy, t, language),
+                          formatClinicalRecordAttributionPart("documentedBy", mar.documentedBy, t, language),
+                        ])}
+                      />
                     </td>
                     <td style={tdStyle}>{mar.action}</td>
                     <td style={tdStyle}>{formatDt(mar.administeredAt)}</td>
@@ -718,6 +824,12 @@ export function EncounterClinicalRecordSummaryView({
             {layout.completedProcedures.map((proc) => (
               <li key={proc.id} style={lineStyle}>
                 {formatDt(proc.documentedAt)} — {proc.clinicalSummary}
+                <AttributionLine
+                  text={joinAttributionParts([
+                    formatClinicalRecordAttributionPart("performedBy", proc.performedBy, t, language),
+                    formatClinicalRecordAttributionPart("documentedBy", proc.documentedBy, t, language),
+                  ])}
+                />
               </li>
             ))}
           </ul>
@@ -741,6 +853,9 @@ export function EncounterClinicalRecordSummaryView({
                     <li key={dx.id} style={lineStyle}>
                       {dx.displayLabel}
                       {dx.code ? ` (${dx.code})` : ""}
+                      <AttributionLine
+                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -756,6 +871,9 @@ export function EncounterClinicalRecordSummaryView({
                     <li key={dx.id} style={lineStyle}>
                       {dx.displayLabel}
                       {dx.code ? ` (${dx.code})` : ""}
+                      <AttributionLine
+                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -771,6 +889,9 @@ export function EncounterClinicalRecordSummaryView({
                     <li key={dx.id} style={lineStyle}>
                       {dx.displayLabel}
                       {dx.code ? ` (${dx.code})` : ""}
+                      <AttributionLine
+                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -855,6 +976,22 @@ export function EncounterClinicalRecordSummaryView({
             {line}
           </p>
         ))}
+        <AttributionLine
+          text={joinAttributionParts([
+            formatClinicalRecordAttributionPart(
+              "documentedBy",
+              layout.disposition?.documentedBy ?? null,
+              t,
+              language
+            ),
+            formatClinicalRecordAttributionPart(
+              "signedBy",
+              layout.disposition?.signedBy ?? null,
+              t,
+              language
+            ),
+          ])}
+        />
       </SummarySectionCard>
 
       {layout.signatures.length > 0 ? (
@@ -871,8 +1008,15 @@ export function EncounterClinicalRecordSummaryView({
               <tbody>
                 {layout.signatures.map((sig, i) => (
                   <tr key={`${sig.domain}-${i}`}>
-                    <td style={tdStyle}>{sig.domain}</td>
-                    <td style={tdStyle}>{sig.signerDisplayName}</td>
+                    <td style={tdStyle}>
+                      {sig.domain}
+                      {sig.meaning ? ` — ${sig.meaning}` : ""}
+                    </td>
+                    <td style={tdStyle}>
+                      {sig.signerDisplayName}
+                      {sig.initials ? ` (${sig.initials})` : ""}
+                      {sig.signerRoleTitle ? ` · ${sig.signerRoleTitle}` : ""}
+                    </td>
                     <td style={tdStyle}>{formatDt(sig.signedAt)}</td>
                   </tr>
                 ))}

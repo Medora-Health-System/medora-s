@@ -4,6 +4,7 @@
 
 export type {
   BuildEncounterClinicalRecordInput,
+  ClinicalRecordAttribution,
   EncounterClinicalRecord,
   EncounterClinicalRecordAuditClassification,
   EncounterClinicalRecordAuditTimelineEntry,
@@ -25,8 +26,14 @@ export type {
   EncounterClinicalRecordProviderStatus,
   EncounterClinicalRecordSignature,
   EncounterClinicalRecordTextBlock,
+  EncounterClinicalRecordTriageDocumentation,
   EncounterClinicalRecordVitalPoint,
 } from "./encounterClinicalRecordTypes.js";
+
+export {
+  buildClinicalRecordAttribution,
+  isClinicalRecordAttributionEmpty,
+} from "./clinicalRecordAttribution.js";
 
 export {
   buildProviderAssessmentHistory,

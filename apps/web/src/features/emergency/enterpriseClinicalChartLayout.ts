@@ -1,3 +1,4 @@
+import type { ClinicalRecordAttribution } from "@medora/shared";
 import type {
   EncounterClinicalRecord,
   EncounterClinicalRecordClinicalMilestone,
@@ -71,6 +72,7 @@ export type EnterpriseGroupedDiagnoses = {
 
 export type EnterpriseClinicalChartLayout = {
   overview: EnterpriseEncounterOverview;
+  triageDocumentation: ClinicalRecordAttribution | null;
   chiefComplaintLines: string[];
   hpiLines: string[];
   triageSummary: EnterpriseTriageSummary;
@@ -366,6 +368,7 @@ export function buildEnterpriseClinicalChartLayout(
       attendingProviderDisplayName: record.header.attendingProviderDisplayName,
       primaryNurseDisplayName: record.nursingAssessment?.performerDisplayName ?? null,
     },
+    triageDocumentation: record.triageDocumentation?.documentedBy ?? null,
     chiefComplaintLines,
     hpiLines,
     triageSummary,

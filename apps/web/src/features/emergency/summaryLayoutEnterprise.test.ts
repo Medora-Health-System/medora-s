@@ -236,21 +236,23 @@ describe("summaryLayoutEnterprise (Phase 4)", () => {
 
   it("view renders enterprise section i18n keys in correct order", () => {
     const view = readSrc("features/emergency/EncounterClinicalRecordSummaryView.tsx");
-    const overviewIdx = view.indexOf("overviewTitle");
-    const chiefIdx = view.indexOf("chiefComplaintTitle");
-    const hpiIdx = view.indexOf("hpiTitle");
-    const triageIdx = view.indexOf("triageSummaryTitle");
-    const providerIdx = view.indexOf("providerAssessmentTitle");
-    const nursingIdx = view.indexOf("nursingTitle");
-    const ordersIdx = view.indexOf("activeOrdersTitle");
-    const resultsIdx = view.indexOf("resultsTitle");
-    const marIdx = view.indexOf("marTitle");
-    const procIdx = view.indexOf("completedProceduresTitle");
-    const dxIdx = view.indexOf("diagnosesTitle");
-    const timelineIdx = view.indexOf("clinicalTimelineTitle");
-    const dispIdx = view.indexOf("dispositionTitle");
-    const sigIdx = view.indexOf("electronicSignaturesTitle");
-    const auditIdx = view.indexOf("auditTitle");
+    const sectionIdx = (key: string) =>
+      view.indexOf(`title={t("encounterClinicalRecordSummary.${key}")}`);
+    const overviewIdx = sectionIdx("overviewTitle");
+    const chiefIdx = sectionIdx("chiefComplaintTitle");
+    const hpiIdx = sectionIdx("hpiTitle");
+    const triageIdx = sectionIdx("triageSummaryTitle");
+    const providerIdx = sectionIdx("providerAssessmentTitle");
+    const nursingIdx = sectionIdx("nursingTitle");
+    const ordersIdx = sectionIdx("activeOrdersTitle");
+    const resultsIdx = sectionIdx("resultsTitle");
+    const marIdx = sectionIdx("marTitle");
+    const procIdx = sectionIdx("completedProceduresTitle");
+    const dxIdx = sectionIdx("diagnosesTitle");
+    const timelineIdx = sectionIdx("clinicalTimelineTitle");
+    const dispIdx = sectionIdx("dispositionTitle");
+    const sigIdx = view.indexOf('title={t("encounterClinicalRecordSummary.electronicSignaturesTitle")}');
+    const auditIdx = view.indexOf('t("encounterClinicalRecordSummary.auditTitle")');
 
     expect(overviewIdx).toBeLessThan(chiefIdx);
     expect(chiefIdx).toBeLessThan(hpiIdx);
@@ -280,5 +282,12 @@ describe("summaryLayoutEnterprise (Phase 4)", () => {
     expect(view).toContain("tableWrapStyle");
     expect(view).toContain("minWidth: 0");
     expect(view).toContain("tableLayout: \"fixed\"");
+  });
+
+  it("includes attribution display helpers in enterprise summary view", () => {
+    const view = readSrc("features/emergency/EncounterClinicalRecordSummaryView.tsx");
+    expect(view).toContain("AttributionLine");
+    expect(view).toContain("formatClinicalRecordAttributionPart");
+    expect(view).toContain("joinAttributionParts");
   });
 });

@@ -5,6 +5,9 @@
  */
 
 import type { SupportedLanguage } from "@/i18n/config";
+import type { EncounterClinicalRecord } from "@medora/shared";
+import { getErClinicalRecordPrintPacketHtml } from "@/features/emergency/erClinicalRecordPrintPacket";
+import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
 import { calculateAge } from "@/lib/patientDisplay";
 import { formatEncounterProviderAssigned } from "@/lib/encounterDisplay";
 import {
@@ -261,6 +264,8 @@ export function getErPrintPacketHtml(params: {
   clinicalTimelineEntries?: EdClinicalTimelineEntry[] | null;
   /** Persisted EDOC legal chart rows — same source as Summary dashboard `clinicalDocumentationEntries`. */
   clinicalDocumentationEntries?: ErPrintClinicalDocumentationEntry[] | null;
+  clinicalRecord?: EncounterClinicalRecord | null;
+  useClinicalRecordV2?: boolean;
 }): string {
   const {
     patient,
@@ -285,7 +290,21 @@ export function getErPrintPacketHtml(params: {
     providerDocumentationSection: providerDocumentationSectionParam,
     clinicalTimelineEntries,
     clinicalDocumentationEntries,
+    clinicalRecord,
+    useClinicalRecordV2,
   } = params;
+
+  const v2Enabled = useClinicalRecordV2 ?? isSummaryClinicalRecordV2Enabled();
+  if (v2Enabled && clinicalRecord) {
+    return getErClinicalRecordPrintPacketHtml({
+      patient,
+      encounter,
+      facilityName,
+      language,
+      record: clinicalRecord,
+    });
+  }
+
   const loc = printDateLocale(language);
   const name = [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() || "—";
   const ageYears =

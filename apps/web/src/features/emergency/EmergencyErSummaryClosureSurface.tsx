@@ -20,6 +20,8 @@ import {
   type ErPrintDocumentationHistoryEntry,
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
+import { composeEncounterClinicalRecordFromEmergencySummary } from "@/features/emergency/useEncounterClinicalRecord";
+import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
 import { buildErClinicalTimeline } from "@/features/emergency/erClinicalTimeline";
 import {
   edDispositionTouchButtonStyle,
@@ -78,6 +80,15 @@ type ErClosureEncounter = ComponentProps<typeof EmergencyVisitSummaryPanel>["enc
   providerDocumentationSignedAt?: string | null;
   providerDocumentationSignedByDisplayFr?: string | null;
   providerAddenda?: Array<{ id: string; text: string; createdAt: string }>;
+  closedAt?: string | null;
+  diagnoses?: Array<{
+    id?: string;
+    displayLabel?: string | null;
+    isPrimary?: boolean;
+    diagnosisType?: string | null;
+    documentedByDisplayName?: string | null;
+    documentedAt?: string | null;
+  }> | null;
 };
 
 function dischargePayloadForClose(encounter: ErClosureEncounter, canEditNursing: boolean, canEditMedical: boolean) {
@@ -213,6 +224,7 @@ export function EmergencyErSummaryClosureSurface({
     let dispositionSupplementEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     let triageAssessmentEntries: ErPrintDocumentationHistoryEntry[] | null = null;
     let nursingReassessmentApiEntries: NursingReassessmentApiEntry[] | null = null;
+    let clinicalDocumentationApiEntries: ClinicalDocumentationEventApiEntry[] | null = null;
     try {
       const data = await apiFetch(`/encounters/${encounterId}/nursing-reassessment-events`, {
         facilityId,
@@ -260,13 +272,14 @@ export function EmergencyErSummaryClosureSurface({
           ? (data as { entries?: unknown }).entries
           : null;
       if (Array.isArray(entries) && entries.length > 0) {
+        clinicalDocumentationApiEntries = entries as ClinicalDocumentationEventApiEntry[];
         const model = buildEmergencyVisitSummaryModel(
           encounter,
           triageSnapshot,
           null,
           language,
           null,
-          entries as ClinicalDocumentationEventApiEntry[]
+          clinicalDocumentationApiEntries
         );
         const toPrintEntries = (history: typeof model.providerMseHistory): ErPrintDocumentationHistoryEntry[] =>
           history.map((e) => ({
@@ -367,7 +380,7 @@ export function EmergencyErSummaryClosureSurface({
       null,
       language,
       nursingReassessmentApiEntries,
-      null
+      clinicalDocumentationApiEntries
     );
     const clinicalTimeline = buildErClinicalTimeline({
       locale: language,
@@ -387,6 +400,41 @@ export function EmergencyErSummaryClosureSurface({
       providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr,
       providerAddenda: encounter.providerAddenda,
     });
+    const useClinicalRecordV2 = isSummaryClinicalRecordV2Enabled();
+    const { record: clinicalRecord } = useClinicalRecordV2
+      ? composeEncounterClinicalRecordFromEmergencySummary({
+          enabled: true,
+          locale: language,
+          encounter: {
+            id: encounterId,
+            facilityId,
+            patientId: p.id ?? null,
+            type: encounter.type ?? "EMERGENCY",
+            status: encounter.status ?? null,
+            createdAt: encounter.createdAt,
+            closedAt: encounter.closedAt ?? null,
+            chiefComplaint: encounter.chiefComplaint ?? null,
+            visitReason: encounter.visitReason ?? null,
+            nursingAssessment: encounter.nursingAssessment,
+            dischargeSummaryJson: encounter.dischargeSummaryJson,
+            admissionSummaryJson: encounter.admissionSummaryJson,
+            providerDocumentationStatus: encounter.providerDocumentationStatus ?? null,
+            providerDocumentationSignedAt: encounter.providerDocumentationSignedAt ?? null,
+            providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr ?? null,
+            physicianAssigned: encounter.physicianAssigned ?? null,
+            patient: p,
+            diagnoses: encounter.diagnoses ?? undefined,
+          },
+          triageSnapshot,
+          summaryModel: printSummaryModel,
+          orders: ordersRaw,
+          medicationAdministrations: adminsRaw,
+          procedures: procedureEntriesRaw,
+          documentationEvents: clinicalDocumentationApiEntries ?? undefined,
+          nursingReassessmentEvents: nursingReassessmentApiEntries ?? undefined,
+          clinicalTimelineLegacyCount: clinicalTimeline.all.length,
+        })
+      : { record: null };
     printErPacket({
       patient: p,
       encounter: {
@@ -420,6 +468,8 @@ export function EmergencyErSummaryClosureSurface({
         : null,
       clinicalTimelineEntries: clinicalTimeline.all,
       clinicalDocumentationEntries: encounter.clinicalDocumentationEntries ?? null,
+      clinicalRecord,
+      useClinicalRecordV2,
     });
   }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t]);
 
