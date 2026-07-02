@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEnterpriseOrderSetApplyContext,
   buildEnterpriseOrderSetProvenance,
+  buildVerbalOrderAttestation,
   enterpriseOrderSetProvenanceAuditMetadata,
   validateEnterpriseOrderSetApplication,
 } from "./enterpriseOrderSetProvenance.js";
@@ -271,5 +272,36 @@ describe("enterpriseOrderSetProvenance (MEDUI.ORDERSETS.ENTERPRISE_PHASE_2)", ()
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.code).toBe("ORDER_SET_ROLE_DENIED");
+  });
+
+  it("accepts LAB-domain provenance when selected keys include other domains", () => {
+    const rnSet = enterpriseOrderSetByCode("ed_rn_nausea_vomiting_diarrhea_v1")!;
+    const applyContext = buildEnterpriseOrderSetApplyContext({
+      set: rnSet,
+      selectedItemKeys: ["vitalsQ15", "npoStatus", "cmp"],
+      skippedItems: [],
+      appliedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+    });
+    const provenance = buildEnterpriseOrderSetProvenance({
+      applyContext,
+      orderType: "LAB",
+      placedItemKeys: ["cmp"],
+      verbalOrderAttestation: buildVerbalOrderAttestation({
+        verbalOrderReceivedFromProviderId: "550e8400-e29b-41d4-a716-446655440001",
+        verbalOrderReceivedFromProviderName: "Dr. Example",
+        readBackConfirmed: true,
+        verbalOrderAttestedAt: new Date("2026-06-23T12:00:00.000Z").toISOString(),
+        verbalOrderAttestedBy: "550e8400-e29b-41d4-a716-446655440002",
+      }),
+    });
+    const result = validateEnterpriseOrderSetApplication({
+      provenance,
+      itemCount: 1,
+      roleCodes: ["RN"],
+      canPrescribe: false,
+      hasRnStandingOrderAuthority: true,
+      currentUserId: "550e8400-e29b-41d4-a716-446655440002",
+    });
+    expect(result.ok).toBe(true);
   });
 });
