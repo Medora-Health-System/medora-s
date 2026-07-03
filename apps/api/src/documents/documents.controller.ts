@@ -115,14 +115,20 @@ export class DocumentsController {
     @Res() res: Response,
   ) {
     const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
-    const { storagePath, fileName, mimeType } =
-      await this.documentsService.getFilePath(documentId, facilityId);
+    const result = await this.documentsService.getFilePath(documentId, facilityId);
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${encodeURIComponent(fileName)}"`,
+      `attachment; filename="${encodeURIComponent(result.fileName)}"`,
     );
-    if (mimeType) res.setHeader("Content-Type", mimeType);
-    res.sendFile(storagePath);
+    if (result.mimeType) res.setHeader("Content-Type", result.mimeType);
+
+    if (result.storagePath) {
+      res.sendFile(result.storagePath);
+    } else if (result.buffer) {
+      res.end(result.buffer);
+    } else {
+      res.status(404).json({ message: "Document file is unavailable." });
+    }
   }
 
   @Delete(":documentId")

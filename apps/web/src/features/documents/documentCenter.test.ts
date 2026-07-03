@@ -349,4 +349,96 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(svc).toContain("Failed to write file to storage");
     });
   });
+
+  describe("Durable storage (DB blob fallback)", () => {
+    const svc = readApi("src/documents/documents.service.ts");
+    const ctrl = readApi("src/documents/documents.controller.ts");
+
+    it("EnterpriseDocumentBlob model exists in schema", () => {
+      expect(schema).toContain("model EnterpriseDocumentBlob {");
+    });
+
+    it("EnterpriseDocumentBlob has documentId unique constraint", () => {
+      expect(schema).toContain("documentId String   @unique");
+    });
+
+    it("EnterpriseDocumentBlob has data Bytes field", () => {
+      expect(schema).toContain("data       Bytes");
+    });
+
+    it("EnterpriseDocument has blob relation", () => {
+      expect(schema).toContain("blob       EnterpriseDocumentBlob?");
+    });
+
+    it("upload writes blob to DB after disk write", () => {
+      expect(svc).toContain("enterpriseDocumentBlob.create");
+    });
+
+    it("upload has DB_BLOB_MAX_SIZE limit", () => {
+      expect(svc).toContain("DB_BLOB_MAX_SIZE");
+    });
+
+    it("blob save failure is non-fatal", () => {
+      expect(svc).toContain("document blob save failed (non-fatal)");
+    });
+
+    it("download falls back to DB blob when file missing on disk", () => {
+      expect(svc).toContain("enterpriseDocumentBlob.findUnique");
+      expect(svc).toContain("document served from DB blob");
+    });
+
+    it("download returns user-friendly error when file unavailable from both sources", () => {
+      expect(svc).toContain("Document file is unavailable. Please re-upload or contact administrator.");
+    });
+
+    it("download controller handles buffer response", () => {
+      expect(ctrl).toContain("result.buffer");
+      expect(ctrl).toContain("res.end(result.buffer)");
+    });
+
+    it("download controller handles disk file response", () => {
+      expect(ctrl).toContain("result.storagePath");
+      expect(ctrl).toContain("res.sendFile(result.storagePath)");
+    });
+
+    it("upload stores checksumSha256", () => {
+      expect(svc).toContain("checksumSha256");
+      expect(svc).toContain('createHash("sha256")');
+    });
+
+    it("migration file exists for blob table", () => {
+      const migrationExists = existsSync(
+        join(repoRoot, "apps/api/prisma/migrations/20260926110000_enterprise_document_blob_storage/migration.sql")
+      );
+      expect(migrationExists).toBe(true);
+    });
+  });
+
+  describe("Download error UX (no black JSON page)", () => {
+    it("download uses programmatic fetch instead of direct <a href>", () => {
+      expect(docComponent).toContain("handleDownload");
+      expect(docComponent).toContain("URL.createObjectURL");
+    });
+
+    it("download does NOT use <a href> to download endpoint", () => {
+      expect(docComponent).not.toContain('href={`${API_BASE}/documents/${');
+    });
+
+    it("download shows user-friendly error banner", () => {
+      expect(docComponent).toContain("downloadError");
+      expect(docComponent).toContain("documentCenter.downloadUnavailable");
+    });
+
+    it("download error can be dismissed", () => {
+      expect(docComponent).toContain("setDownloadError(null)");
+    });
+
+    it("EN has downloadUnavailable i18n key", () => {
+      expect(enMessages).toContain("downloadUnavailable");
+    });
+
+    it("FR has downloadUnavailable i18n key", () => {
+      expect(frMessages).toContain("downloadUnavailable");
+    });
+  });
 });

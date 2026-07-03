@@ -92,6 +92,39 @@ export function RegistrationDocumentCenter({
   const [packetPreview, setPacketPreview] = useState<string | null>(null);
   const [activeWizard, setActiveWizard] = useState<string | null>(null);
 
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownload = async (docId: string, fileName: string) => {
+    setDownloadError(null);
+    try {
+      const resp = await fetch(
+        `${API_BASE}/documents/${docId}/download`,
+        { headers: { "x-facility-id": facilityId }, credentials: "include" },
+      );
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        let msg = "";
+        try {
+          const j = JSON.parse(errText);
+          if (j?.message) msg = typeof j.message === "string" ? j.message : "";
+        } catch { /* ignore */ }
+        setDownloadError(msg || t("documentCenter.downloadUnavailable"));
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError(t("documentCenter.downloadUnavailable"));
+    }
+  };
+
   const loadDocs = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -331,6 +364,12 @@ export function RegistrationDocumentCenter({
           {uploadError}
         </div>
       )}
+      {downloadError && (
+        <div style={{ marginBottom: 12, padding: "8px 12px", background: "#fff3e0", color: "#e65100", borderRadius: 6, fontSize: 13 }} role="alert">
+          {downloadError}
+          <button type="button" onClick={() => setDownloadError(null)} style={{ marginLeft: 12, fontSize: 12, border: "none", background: "transparent", color: "#e65100", fontWeight: 700, cursor: "pointer" }}>✕</button>
+        </div>
+      )}
 
       {/* ── Insurance Card Section ─────────────────────────── */}
       <div style={{ marginBottom: 16 }}>
@@ -427,14 +466,13 @@ export function RegistrationDocumentCenter({
                   </button>
                   {existing && (
                     <>
-                      <a
-                        href={`${API_BASE}/documents/${existing.id}/download`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0" }}
+                      <button
+                        type="button"
+                        onClick={() => void handleDownload(existing.id, existing.fileName)}
+                        style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0", background: "none", border: "none", cursor: "pointer" }}
                       >
                         {t("documentCenter.printPacket")}
-                      </a>
+                      </button>
                       {canEdit && (
                         <button
                           type="button"
@@ -581,14 +619,13 @@ export function RegistrationDocumentCenter({
                 <td style={{ padding: "6px 8px" }}>{formatDate(d.uploadedAt)}</td>
                 <td style={{ padding: "6px 8px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <a
-                      href={`${API_BASE}/documents/${d.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: "#1565c0", fontSize: 12, fontWeight: 600 }}
+                    <button
+                      type="button"
+                      onClick={() => void handleDownload(d.id, d.fileName)}
+                      style={{ background: "transparent", border: "none", color: "#1565c0", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
                     >
                       {t("documentCenter.download")}
-                    </a>
+                    </button>
                     {canEdit && (
                       <button
                         type="button"

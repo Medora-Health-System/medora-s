@@ -1673,6 +1673,7 @@ export default {
     colUploadedAt: "Date",
     colActions: "Actions",
     download: "Télécharger",
+    downloadUnavailable: "Le fichier du document est indisponible. Veuillez le téléverser à nouveau ou contacter l'administrateur.",
     archiveConfirm: "Archiver ce document ?",
     archiveSuccess: "Document archivé.",
     archiveError: "Impossible d'archiver le document.",

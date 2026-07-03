@@ -25,6 +25,8 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const STORAGE_DIR =
   process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
 
+const DB_BLOB_MAX_SIZE = 10 * 1024 * 1024;
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
@@ -166,6 +168,17 @@ export class DocumentsService {
         uploadedAt: true,
       },
     });
+
+    if (file.size <= DB_BLOB_MAX_SIZE) {
+      try {
+        await this.prisma.enterpriseDocumentBlob.create({
+          data: { documentId: doc.id, data: Uint8Array.from(file.buffer) },
+        });
+      } catch (blobErr) {
+        this.logger.warn(`document blob save failed (non-fatal): docId=${doc.id} err=${(blobErr as Error)?.message}`);
+      }
+    }
+
     this.logger.log(`document upload saved: id=${doc.id} category=${doc.category} type=${doc.type}`);
     return doc;
   }
@@ -176,10 +189,23 @@ export class DocumentsService {
 
     const doc = await this.prisma.enterpriseDocument.findFirst({ where });
     if (!doc) throw new NotFoundException("Document not found");
-    if (!fs.existsSync(doc.storagePath)) {
-      throw new NotFoundException("File not found on disk");
+
+    if (fs.existsSync(doc.storagePath)) {
+      return { storagePath: doc.storagePath, fileName: doc.fileName, mimeType: doc.mimeType, buffer: null };
     }
-    return { storagePath: doc.storagePath, fileName: doc.fileName, mimeType: doc.mimeType };
+
+    const blob = await this.prisma.enterpriseDocumentBlob.findUnique({
+      where: { documentId },
+      select: { data: true },
+    });
+    if (blob?.data) {
+      this.logger.log(`document served from DB blob: docId=${documentId}`);
+      const buf = Buffer.from(blob.data.buffer, blob.data.byteOffset, blob.data.byteLength);
+      return { storagePath: null, fileName: doc.fileName, mimeType: doc.mimeType, buffer: buf };
+    }
+
+    this.logger.warn(`document file unavailable: docId=${documentId} path=${doc.storagePath}`);
+    throw new NotFoundException("Document file is unavailable. Please re-upload or contact administrator.");
   }
 
   async softDelete(documentId: string, facilityId?: string) {

@@ -3552,6 +3552,7 @@ model EnterpriseDocument {
   uploadedBy User?      @relation("EnterpriseDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
   lockedBy   User?      @relation("EnterpriseDocumentLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
   signatures EnterpriseDocumentSignature[]
+  blob       EnterpriseDocumentBlob?
 
   @@index([patientId])
   @@index([encounterId])
@@ -3584,6 +3585,15 @@ model EnterpriseDocumentSignature {
   @@index([documentId])
   @@index([signerType])
   @@index([signedAt])
+}
+
+model EnterpriseDocumentBlob {
+  id         String   @id @default(uuid())
+  documentId String   @unique
+  data       Bytes
+  createdAt  DateTime @default(now())
+
+  document EnterpriseDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
 }
 
 enum MsppDiseaseReportFeedbackSeverity {

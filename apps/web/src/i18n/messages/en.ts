@@ -1724,6 +1724,7 @@ export default {
     colUploadedAt: "Uploaded at",
     colActions: "Actions",
     download: "Download",
+    downloadUnavailable: "Document file is unavailable. Please re-upload or contact administrator.",
     archiveConfirm: "Archive this document?",
     archiveSuccess: "Document archived.",
     archiveError: "Could not archive the document.",
