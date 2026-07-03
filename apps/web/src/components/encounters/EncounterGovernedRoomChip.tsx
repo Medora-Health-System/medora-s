@@ -47,7 +47,7 @@ export function EncounterGovernedRoomChip({
   encounter,
   clickable = false,
   onClick,
-  labelKey = "encounterChrome.room",
+  labelKey = "encounterChrome.labelRoom",
   compact = false,
   alignSelf = "flex-end",
 }: EncounterGovernedRoomChipProps) {
