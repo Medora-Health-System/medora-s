@@ -5,6 +5,7 @@
 import type {
   EncounterClinicalRecordClinicalMilestone,
   EncounterClinicalRecordClinicalTimelineEntry,
+  EncounterClinicalRecordDiagnosis,
   EncounterClinicalRecordImagingResult,
   EncounterClinicalRecordLaboratoryResult,
   EncounterClinicalRecordMedicationAdministration,
@@ -317,6 +318,37 @@ export function dedupeMedicationAdministrations(
     if (!byId.has(row.id)) byId.set(row.id, row);
   }
   return [...byId.values()].sort((a, b) => parseTime(a.administeredAt) - parseTime(b.administeredAt));
+}
+
+export function dedupeEncounterClinicalRecordDiagnoses(
+  candidates: EncounterClinicalRecordDiagnosis[]
+): EncounterClinicalRecordDiagnosis[] {
+  const byKey = new Map<string, EncounterClinicalRecordDiagnosis>();
+  for (const row of candidates) {
+    const code = (row.code ?? "").trim().toUpperCase();
+    const label = row.displayLabel.trim().toLowerCase();
+    const status = (row.status ?? "").trim().toUpperCase();
+    const key = `${code}|${label}|${status}`;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, row);
+      continue;
+    }
+    const existingSynthetic = existing.id.startsWith("dx-");
+    const rowSynthetic = row.id.startsWith("dx-");
+    if (existingSynthetic && !rowSynthetic) {
+      byKey.set(key, row);
+      continue;
+    }
+    if (!existingSynthetic && rowSynthetic) continue;
+    if (parseTime(row.documentedAt) >= parseTime(existing.documentedAt)) {
+      byKey.set(key, row);
+    }
+  }
+  return [...byKey.values()].sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) return a.isPrimary ? -1 : 1;
+    return parseTime(a.documentedAt) - parseTime(b.documentedAt);
+  });
 }
 
 export function dedupeProcedures(

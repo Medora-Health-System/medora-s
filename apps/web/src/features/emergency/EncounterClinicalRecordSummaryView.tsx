@@ -33,7 +33,9 @@ import {
 } from "./encounterClinicalRecordSummaryViewModel";
 import {
   buildEnterpriseClinicalChartLayout,
+  diagnosisAttributionFallback,
   extractProviderAssessmentSectionsExcludingHpi,
+  formatEncounterClinicalRecordDiagnosisLine,
   isCriticalAllergyText,
   isCriticalMedicationOrder,
   SEVERITY_HIGHLIGHT,
@@ -986,10 +988,12 @@ export function EncounterClinicalRecordSummaryView({
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {layout.groupedDiagnoses.primary.map((dx) => (
                     <li key={dx.id} style={lineStyle}>
-                      {dx.displayLabel}
-                      {dx.code ? ` (${dx.code})` : ""}
+                      {formatEncounterClinicalRecordDiagnosisLine(dx)}
                       <AttributionLine
-                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                        text={
+                          formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language) ??
+                          diagnosisAttributionFallback(dx.documentedBy, t)
+                        }
                       />
                     </li>
                   ))}
@@ -1004,10 +1008,12 @@ export function EncounterClinicalRecordSummaryView({
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {layout.groupedDiagnoses.secondary.map((dx) => (
                     <li key={dx.id} style={lineStyle}>
-                      {dx.displayLabel}
-                      {dx.code ? ` (${dx.code})` : ""}
+                      {formatEncounterClinicalRecordDiagnosisLine(dx)}
                       <AttributionLine
-                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                        text={
+                          formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language) ??
+                          diagnosisAttributionFallback(dx.documentedBy, t)
+                        }
                       />
                     </li>
                   ))}
@@ -1022,10 +1028,12 @@ export function EncounterClinicalRecordSummaryView({
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {layout.groupedDiagnoses.chronic.map((dx) => (
                     <li key={dx.id} style={lineStyle}>
-                      {dx.displayLabel}
-                      {dx.code ? ` (${dx.code})` : ""}
+                      {formatEncounterClinicalRecordDiagnosisLine(dx)}
                       <AttributionLine
-                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                        text={
+                          formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language) ??
+                          diagnosisAttributionFallback(dx.documentedBy, t)
+                        }
                       />
                     </li>
                   ))}
@@ -1040,10 +1048,12 @@ export function EncounterClinicalRecordSummaryView({
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {layout.groupedDiagnoses.resolved.map((dx) => (
                     <li key={dx.id} style={lineStyle}>
-                      {dx.displayLabel}
-                      {dx.code ? ` (${dx.code})` : ""}
+                      {formatEncounterClinicalRecordDiagnosisLine(dx)}
                       <AttributionLine
-                        text={formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language)}
+                        text={
+                          formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language) ??
+                          diagnosisAttributionFallback(dx.documentedBy, t)
+                        }
                       />
                     </li>
                   ))}

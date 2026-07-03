@@ -358,6 +358,19 @@ export function groupDiagnoses(
   return { primary, secondary, chronic, resolved };
 }
 
+export function formatEncounterClinicalRecordDiagnosisLine(dx: EncounterClinicalRecordDiagnosis): string {
+  const label = dx.displayLabel.trim();
+  if (label) return label;
+  return dx.code?.trim() || "";
+}
+
+export function diagnosisAttributionFallback(
+  documentedBy: ClinicalRecordAttribution | null | undefined,
+  t: (key: string) => string
+): string {
+  return `${t("encounterClinicalRecordSummary.attrDocumentedBy")} ${t("encounterClinicalRecordSummary.attrNotRecorded")}`;
+}
+
 export function filterPhysicianClinicalTimeline(
   entries: EncounterClinicalRecordClinicalTimelineEntry[]
 ): EncounterClinicalRecordClinicalTimelineEntry[] {

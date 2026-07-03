@@ -54,6 +54,7 @@ export {
 export {
   buildProviderAssessmentHistory,
   dedupeClinicalTimelineEntries,
+  dedupeEncounterClinicalRecordDiagnoses,
   dedupeImagingResults,
   dedupeLaboratoryResults,
   dedupeMedicationAdministrations,

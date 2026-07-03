@@ -312,6 +312,7 @@ export type BuildEncounterClinicalRecordInput = {
       code?: string | null;
       displayLabel?: string | null;
       label?: string | null;
+      description?: string | null;
       diagnosisType?: string | null;
       status?: string | null;
       isPrimary?: boolean;

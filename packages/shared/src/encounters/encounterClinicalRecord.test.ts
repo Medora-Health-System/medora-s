@@ -3,6 +3,7 @@ import {
   buildEncounterClinicalRecord,
   buildProviderAssessmentHistory,
   dedupeClinicalTimelineEntries,
+  dedupeEncounterClinicalRecordDiagnoses,
   dedupeLaboratoryResults,
   dedupeOrderRows,
   isClinicalRecordAttributionEmpty,
@@ -797,5 +798,108 @@ describe("encounterClinicalRecord", () => {
     expect(record.triageDocumentation?.fields.esi).toBe("3");
     expect(record.nursingAssessment?.narrativeSummary).toContain("resting");
     expect(record.nursingAssessment?.structuredLines).toHaveLength(2);
+  });
+
+  it("includes encounter diagnosis from ICD code and description", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      encounter: {
+        ...baseInput().encounter,
+        diagnoses: [
+          {
+            id: "dx-1",
+            code: "R07.9",
+            description: "Chest pain, unspecified",
+            isPrimary: true,
+            status: "ACTIVE",
+            createdAt: "2026-06-23T09:00:00.000Z",
+          },
+        ],
+      },
+    });
+    expect(record.diagnoses).toHaveLength(1);
+    expect(record.diagnoses[0]?.displayLabel).toBe("R07.9 — Chest pain, unspecified");
+    expect(record.diagnoses[0]?.isPrimary).toBe(true);
+  });
+
+  it("buckets primary, secondary, chronic, and resolved diagnoses", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      encounter: {
+        ...baseInput().encounter,
+        diagnoses: [
+          { id: "dx-primary", code: "R07.9", displayLabel: "Primary dx", isPrimary: true, status: "ACTIVE" },
+          { id: "dx-secondary", code: "I10", displayLabel: "Secondary dx", isPrimary: false, status: "ACTIVE" },
+          {
+            id: "dx-chronic",
+            code: "E11.9",
+            displayLabel: "Chronic dx",
+            diagnosisType: "CHRONIC_PROBLEM",
+            isPrimary: false,
+            status: "ACTIVE",
+          },
+          {
+            id: "dx-resolved",
+            code: "J06.9",
+            displayLabel: "Resolved dx",
+            isPrimary: false,
+            status: "RESOLVED",
+          },
+        ],
+      },
+    });
+    expect(record.diagnoses.map((d) => d.id)).toEqual(
+      expect.arrayContaining(["dx-primary", "dx-secondary", "dx-chronic", "dx-resolved"])
+    );
+  });
+
+  it("renders diagnosis without author attribution when only documentedAt exists", () => {
+    const record = buildEncounterClinicalRecord({
+      ...baseInput(),
+      encounter: {
+        ...baseInput().encounter,
+        diagnoses: [
+          {
+            id: "dx-1",
+            code: "R07.9",
+            description: "Chest pain, unspecified",
+            isPrimary: true,
+            createdAt: "2026-06-23T09:00:00.000Z",
+          },
+        ],
+      },
+    });
+    expect(record.diagnoses[0]?.documentedByDisplayName).toBeNull();
+    expect(record.diagnoses[0]?.documentedAt).toBe("2026-06-23T09:00:00.000Z");
+    expect(isClinicalRecordAttributionEmpty(record.diagnoses[0]?.documentedBy)).toBe(false);
+  });
+
+  it("dedupes duplicate encounter diagnoses by code and label", () => {
+    const deduped = dedupeEncounterClinicalRecordDiagnoses([
+      {
+        id: "dx-synthetic",
+        code: "R07.9",
+        displayLabel: "R07.9 — Chest pain, unspecified",
+        diagnosisType: "ENCOUNTER",
+        status: "ACTIVE",
+        isPrimary: true,
+        documentedAt: null,
+        documentedByDisplayName: null,
+        documentedBy: { name: null, initials: null, role: null, at: null },
+      },
+      {
+        id: "dx-real",
+        code: "R07.9",
+        displayLabel: "R07.9 — Chest pain, unspecified",
+        diagnosisType: "ENCOUNTER",
+        status: "ACTIVE",
+        isPrimary: true,
+        documentedAt: "2026-06-23T09:00:00.000Z",
+        documentedByDisplayName: null,
+        documentedBy: { name: null, initials: null, role: null, at: "2026-06-23T09:00:00.000Z" },
+      },
+    ]);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0]?.id).toBe("dx-real");
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 import { buildEncounterClinicalRecord } from "@medora/shared";
 import {
   buildEncounterClinicalRecordInputFromEmergencySummary,
+  mapEncounterDiagnosisApiRowsToClinicalRecordInput,
   summarizeEmergencySummaryAdapterSources,
 } from "./encounterClinicalRecordAdapter";
 import type { EmergencyVisitSummaryModel } from "./emergencyVisitSummaryModel";
@@ -536,6 +537,34 @@ describe("encounterClinicalRecordAdapter", () => {
     expect(record.laboratoryResults[0]?.orderedBy?.name).toBe("Rajnil Shah");
     expect(record.laboratoryResults[0]?.resultedBy?.name).toBe("Hamza Farid");
     expect(record.laboratoryResults[0]?.reviewedBy?.name).toBe("Rajnil Shah");
+  });
+
+  it("maps saved encounter diagnoses from Diagnostics tab API rows", () => {
+    const mapped = mapEncounterDiagnosisApiRowsToClinicalRecordInput(
+      [
+        {
+          id: "dx-1",
+          code: "R07.9",
+          description: "Chest pain, unspecified",
+          sortOrder: 0,
+          createdAt: "2026-06-23T09:00:00.000Z",
+          status: "ACTIVE",
+        },
+      ],
+      "en"
+    );
+    expect(mapped[0]?.displayLabel).toBe("R07.9 — Chest pain, unspecified");
+    expect(mapped[0]?.isPrimary).toBe(true);
+
+    const record = buildEncounterClinicalRecord(
+      buildEncounterClinicalRecordInputFromEmergencySummary({
+        locale: "en",
+        encounter: { id: ENCOUNTER_ID, diagnoses: mapped },
+        summaryModel: emptyModel(),
+      })
+    );
+    expect(record.diagnoses[0]?.displayLabel).toBe("R07.9 — Chest pain, unspecified");
+    expect(record.diagnoses[0]?.isPrimary).toBe(true);
   });
 });
 

@@ -32,6 +32,7 @@ import {
   erNursingReassessmentFormFromEncounter,
 } from "./emergencyNursingReassessmentV1";
 import { parseTriageFieldLine } from "./enterpriseClinicalChartLayout";
+import { getLocalizedDiagnosisDisplayLabel } from "./diagnosisFrenchDisplayLabels";
 import type {
   ClinicalDocumentationEventApiEntry,
   EmergencyVisitSummaryModel,
@@ -833,6 +834,90 @@ export function buildEncounterClinicalRecordInputFromEmergencySummary(
     signatures: buildSignaturesInput(encounter, disposition),
     auditSourceRows,
   };
+}
+
+export type EncounterDiagnosisApiRow = {
+  id: string;
+  code: string;
+  description?: string | null;
+  status?: string | null;
+  sortOrder?: number;
+  createdAt?: string | null;
+  onsetDate?: string | null;
+  diagnosisType?: string | null;
+};
+
+export function formatEncounterDiagnosisDisplayLabel(
+  code: string,
+  description: string | null | undefined,
+  locale: EncounterClinicalRecordLocale
+): string {
+  const trimmedCode = code.trim();
+  const localizedDescription = getLocalizedDiagnosisDisplayLabel(
+    { code: trimmedCode, description },
+    locale
+  );
+  if (trimmedCode && localizedDescription) return `${trimmedCode} — ${localizedDescription}`;
+  return localizedDescription || trimmedCode;
+}
+
+/** Map Diagnostics tab API rows into clinical-record builder input (same source as EncounterDiagnosticsPanel). */
+export function mapEncounterDiagnosisApiRowsToClinicalRecordInput(
+  rows: EncounterDiagnosisApiRow[],
+  locale: EncounterClinicalRecordLocale
+): NonNullable<BuildEncounterClinicalRecordInput["encounter"]["diagnoses"]> {
+  const sorted = [...rows].sort((a, b) => {
+    const sa = typeof a.sortOrder === "number" ? a.sortOrder : 0;
+    const sb = typeof b.sortOrder === "number" ? b.sortOrder : 0;
+    if (sa !== sb) return sa - sb;
+    return String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+  });
+
+  return sorted.map((row, index) => {
+    const code = row.code.trim();
+    const description = row.description?.trim() || null;
+    const displayLabel = formatEncounterDiagnosisDisplayLabel(code, description, locale);
+    return {
+      id: row.id,
+      code,
+      displayLabel,
+      label: displayLabel,
+      description,
+      diagnosisType: row.diagnosisType ?? "ENCOUNTER",
+      status: row.status ?? "ACTIVE",
+      isPrimary: index === 0,
+      documentedAt: row.createdAt ?? null,
+      createdAt: row.createdAt ?? null,
+      documentedByDisplayName: null,
+    };
+  });
+}
+
+export function parseEncounterDiagnosisApiItems(
+  data: unknown,
+  encounterId: string
+): EncounterDiagnosisApiRow[] {
+  const items = Array.isArray((data as { items?: unknown }).items)
+    ? (data as { items: Record<string, unknown>[] }).items
+    : [];
+  return items
+    .filter((d) => d.encounterId === encounterId)
+    .map((d) => ({
+      id: String(d.id),
+      code: String(d.code ?? ""),
+      description: (d.description as string | null) ?? null,
+      status: typeof d.status === "string" ? d.status : undefined,
+      sortOrder: typeof d.sortOrder === "number" ? d.sortOrder : 0,
+      createdAt: typeof d.createdAt === "string" ? d.createdAt : null,
+      onsetDate: typeof d.onsetDate === "string" ? d.onsetDate : null,
+      diagnosisType: typeof d.diagnosisType === "string" ? d.diagnosisType : undefined,
+    }))
+    .sort((a, b) => {
+      const sa = a.sortOrder ?? 0;
+      const sb = b.sortOrder ?? 0;
+      if (sa !== sb) return sa - sb;
+      return String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? ""));
+    });
 }
 
 export function summarizeEmergencySummaryAdapterSources(input: {

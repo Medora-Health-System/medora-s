@@ -5,6 +5,7 @@
 import {
   buildProviderAssessmentHistory,
   dedupeClinicalTimelineEntries,
+  dedupeEncounterClinicalRecordDiagnoses,
   dedupeImagingResults,
   dedupeLaboratoryResults,
   dedupeMedicationAdministrations,
@@ -598,12 +599,27 @@ function buildClinicalTimeline(input: BuildEncounterClinicalRecordInput): Encoun
   return dedupeClinicalTimelineEntries(candidates);
 }
 
+function formatDiagnosisDisplayLabel(dx: {
+  code?: string | null;
+  displayLabel?: string | null;
+  label?: string | null;
+  description?: string | null;
+}): string | null {
+  const displayLabel = asTrimmed(dx.displayLabel) ?? asTrimmed(dx.label);
+  if (displayLabel) return displayLabel;
+  const code = asTrimmed(dx.code);
+  const description = asTrimmed(dx.description);
+  if (code && description) return `${code} — ${description}`;
+  return description ?? code;
+}
+
 function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
-  return (input.encounter.diagnoses ?? [])
+  const built = (input.encounter.diagnoses ?? [])
     .map((dx, index) => {
       const id = asTrimmed(dx.id) ?? `dx-${index}`;
-      const displayLabel = asTrimmed(dx.displayLabel) ?? asTrimmed(dx.label);
+      const displayLabel = formatDiagnosisDisplayLabel(dx);
       if (!displayLabel) return null;
+      const documentedAt = asTrimmed(dx.documentedAt) ?? asTrimmed(dx.createdAt);
       return {
         id,
         code: asTrimmed(dx.code),
@@ -611,15 +627,16 @@ function buildDiagnoses(input: BuildEncounterClinicalRecordInput) {
         diagnosisType: asTrimmed(dx.diagnosisType),
         status: asTrimmed(dx.status),
         isPrimary: Boolean(dx.isPrimary),
-        documentedAt: asTrimmed(dx.documentedAt) ?? asTrimmed(dx.createdAt),
+        documentedAt,
         documentedByDisplayName: asTrimmed(dx.documentedByDisplayName),
         documentedBy: buildClinicalRecordAttribution({
           name: dx.documentedByDisplayName,
-          at: dx.documentedAt ?? dx.createdAt,
+          at: documentedAt,
         }),
       };
     })
     .filter((dx): dx is NonNullable<typeof dx> => dx !== null);
+  return dedupeEncounterClinicalRecordDiagnoses(built);
 }
 
 /**

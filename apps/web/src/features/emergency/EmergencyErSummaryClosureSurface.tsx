@@ -21,6 +21,8 @@ import {
   type ErPrintReassessmentEntry,
 } from "@/features/emergency/erPrintPacket";
 import { composeEncounterClinicalRecordFromEmergencySummary } from "@/features/emergency/useEncounterClinicalRecord";
+import { useEncounterDiagnosisRows } from "@/features/emergency/useEncounterDiagnosisRows";
+import { mapEncounterDiagnosisApiRowsToClinicalRecordInput } from "@/features/emergency/encounterClinicalRecordAdapter";
 import { parseVitalsHistoryEntries, type VitalsHistoryEntry } from "@/lib/encounterClinicalSafetyUi";
 import { isSummaryClinicalRecordV2Enabled } from "@/features/emergency/summaryClinicalRecordFeatureFlag";
 import { buildErClinicalTimeline } from "@/features/emergency/erClinicalTimeline";
@@ -179,12 +181,24 @@ export function EmergencyErSummaryClosureSurface({
     setDispositionReadiness(r);
   }, []);
 
+  const diagnosisApiRows = useEncounterDiagnosisRows({
+    encounterId,
+    patientId: encounter.patient?.id ?? null,
+    facilityId,
+    refreshKey: resultsRefresh,
+  });
+  const mappedEncounterDiagnoses = useMemo(
+    () => mapEncounterDiagnosisApiRowsToClinicalRecordInput(diagnosisApiRows, language),
+    [diagnosisApiRows, language]
+  );
+
   const closureCertification = useMemo(
     () =>
       buildEdClosedEncounterCertificationFromEncounter(encounter as EdClosureCertificationEncounter, {
         dispositionReadiness,
+        diagnosisCount: diagnosisApiRows.length > 0 ? diagnosisApiRows.length : null,
       }),
-    [encounter, dispositionReadiness]
+    [encounter, dispositionReadiness, diagnosisApiRows.length]
   );
 
   const patient = encounter.patient;
@@ -428,7 +442,10 @@ export function EmergencyErSummaryClosureSurface({
             providerDocumentationSignedByDisplayFr: encounter.providerDocumentationSignedByDisplayFr ?? null,
             physicianAssigned: encounter.physicianAssigned ?? null,
             patient: p,
-            diagnoses: encounter.diagnoses ?? undefined,
+            diagnoses:
+              mappedEncounterDiagnoses.length > 0
+                ? mappedEncounterDiagnoses
+                : encounter.diagnoses ?? undefined,
           },
           triageSnapshot,
           summaryModel: printSummaryModel,
@@ -477,7 +494,7 @@ export function EmergencyErSummaryClosureSurface({
       clinicalRecord,
       useClinicalRecordV2,
     });
-  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t]);
+  }, [encounter, encounterId, facilityId, facilityName, language, triageSnapshot, t, mappedEncounterDiagnoses]);
 
   const executeClose = useCallback(
     async (acknowledgeDeficiencies: boolean, acknowledgeDispositionSafetyOverride?: boolean) => {

@@ -18,7 +18,9 @@ import { nirMrnDisplay } from "@/components/patient-chart/patientChartHelpers";
 import type { DischargePrintEncounter, DischargePrintPatient } from "@/components/encounters/DischargePrintLayout";
 import {
   buildEnterpriseClinicalChartLayout,
+  diagnosisAttributionFallback,
   extractProviderAssessmentSectionsExcludingHpi,
+  formatEncounterClinicalRecordDiagnosisLine,
   type EnterpriseOrderGroupKey,
 } from "./enterpriseClinicalChartLayout";
 import {
@@ -391,8 +393,11 @@ export function getErClinicalRecordPrintPacketHtml(input: {
       dxSections.push(p(t(titleKey)));
       for (const dx of items) {
         dxSections.push(
-          p(`${dx.displayLabel}${dx.code ? ` (${dx.code})` : ""}`) +
-            attr(formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language))
+          p(formatEncounterClinicalRecordDiagnosisLine(dx)) +
+            attr(
+              formatClinicalRecordAttributionPart("documentedBy", dx.documentedBy, t, language) ??
+                diagnosisAttributionFallback(dx.documentedBy, t)
+            )
         );
       }
     };

@@ -41,6 +41,11 @@ import { ErMedicationMarSummaryCard } from "@/components/clinical/ErMedicationMa
 import { buildErClinicalTimeline } from "./erClinicalTimeline";
 import type { EdClinicalTimelineEntry, EdClinicalTimelineResult } from "@medora/shared";
 import { useEncounterClinicalRecord } from "./useEncounterClinicalRecord";
+import { useEncounterDiagnosisRows } from "./useEncounterDiagnosisRows";
+import {
+  mapEncounterDiagnosisApiRowsToClinicalRecordInput,
+  type EmergencySummaryClinicalRecordAdapterEncounter,
+} from "./encounterClinicalRecordAdapter";
 import { EncounterClinicalRecordSummaryView } from "./EncounterClinicalRecordSummaryView";
 import { isSummaryClinicalRecordV2Enabled } from "./summaryClinicalRecordFeatureFlag";
 import { shouldUseClinicalRecordSummaryV2 } from "./summaryClinicalRecordRuntimeSafety";
@@ -543,6 +548,27 @@ export function EmergencyVisitSummaryPanel({
   const [timelineProcedures, setTimelineProcedures] = useState<unknown[]>([]);
   const [vitalsHistory, setVitalsHistory] = useState<VitalsHistoryEntry[]>([]);
 
+  const patientId = (encounter as { patient?: { id?: string } }).patient?.id ?? null;
+  const diagnosisApiRows = useEncounterDiagnosisRows({
+    encounterId,
+    patientId,
+    facilityId,
+    refreshKey: resultsRefresh,
+  });
+  const mappedEncounterDiagnoses = useMemo(
+    () => mapEncounterDiagnosisApiRowsToClinicalRecordInput(diagnosisApiRows, language),
+    [diagnosisApiRows, language]
+  );
+  const clinicalRecordEncounter = useMemo((): EmergencySummaryClinicalRecordAdapterEncounter => {
+    const encounterDiagnoses =
+      (encounter as EmergencySummaryClinicalRecordAdapterEncounter).diagnoses;
+    return {
+      ...encounter,
+      id: encounterId,
+      diagnoses: mappedEncounterDiagnoses.length > 0 ? mappedEncounterDiagnoses : encounterDiagnoses,
+    };
+  }, [encounter, encounterId, mappedEncounterDiagnoses]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -715,7 +741,7 @@ export function EmergencyVisitSummaryPanel({
   const { record: clinicalRecord, projectionFailed: clinicalRecordProjectionFailed } =
     useEncounterClinicalRecord({
       locale: language,
-      encounter: { ...encounter, id: encounterId },
+      encounter: clinicalRecordEncounter,
       triageSnapshot,
       summaryModel: model,
       orders: timelineOrders,
