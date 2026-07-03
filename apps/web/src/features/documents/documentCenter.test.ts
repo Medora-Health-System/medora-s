@@ -151,7 +151,7 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
 
     it("has generate packet button", () => {
       expect(docComponent).toContain("documentCenter.generatePacket");
-      expect(docComponent).toContain("handleGeneratePacket");
+      expect(docComponent).toContain("handleOpenWizard");
     });
 
     it("has preview button", () => {
@@ -168,8 +168,9 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(docComponent).toContain("documentCenter.badgeGenerated");
     });
 
-    it("shows e-sign note", () => {
-      expect(docComponent).toContain("documentCenter.packetEsignNote");
+    it("shows packet wizard integration", () => {
+      expect(docComponent).toContain("RegistrationPacketWizard");
+      expect(docComponent).toContain("activeWizard");
     });
   });
 

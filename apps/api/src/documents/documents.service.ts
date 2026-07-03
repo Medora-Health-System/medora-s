@@ -18,7 +18,7 @@ const VALID_CATEGORIES = [
   "OTHER",
 ] as const;
 
-const ALLOWED_MIME_PREFIXES = ["image/", "application/pdf", "application/msword", "application/vnd.openxmlformats"];
+const ALLOWED_MIME_PREFIXES = ["image/", "application/pdf", "application/msword", "application/vnd.openxmlformats", "text/"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const STORAGE_DIR =

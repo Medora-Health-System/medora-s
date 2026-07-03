@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
+import { RegistrationPacketWizard } from "./RegistrationPacketWizard";
 
 type DocumentRow = {
   id: string;
@@ -84,8 +85,8 @@ export function RegistrationDocumentCenter({
   const [otherTitle, setOtherTitle] = useState("");
   const [otherNotes, setOtherNotes] = useState("");
 
-  const [generatingPacket, setGeneratingPacket] = useState(false);
   const [packetPreview, setPacketPreview] = useState<string | null>(null);
+  const [activeWizard, setActiveWizard] = useState<string | null>(null);
 
   const loadDocs = useCallback(async () => {
     setLoading(true);
@@ -172,63 +173,45 @@ export function RegistrationDocumentCenter({
     }
   };
 
-  const handleGeneratePacket = async (template: string) => {
-    setGeneratingPacket(true);
-    setUploadError(null);
-    try {
-      const sections =
-        template === "FREESTANDING_ER" ? FREESTANDING_ER_SECTIONS : STANDARD_PACKET_SECTIONS;
+  const handleOpenWizard = (template: string) => {
+    setActiveWizard(template);
+  };
 
-      const sectionLabels = sections.map((s) => t(`documentCenter.${s}`)).join("\n• ");
-      const packetName = t(`documentCenter.packetTemplate${template.charAt(0)}${template.slice(1).toLowerCase().replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())}`);
-
-      const blob = new Blob(
-        [
-          `${packetName}\n${"=".repeat(packetName.length)}\n\n`,
-          `${t("documentCenter.packetGeneratedFor")}: ${patientId}\n`,
-          `${t("documentCenter.packetDate")}: ${new Date().toLocaleDateString(dateLocale)}\n\n`,
-          `${t("documentCenter.packetSections")}:\n• ${sectionLabels}\n\n`,
-          template === "FREESTANDING_ER"
-            ? `⚠ ${t("documentCenter.packetMedicareMedicaidWarning")}\n\n`
-            : "",
-          `${t("documentCenter.packetSignatureLine")}\n\n`,
-          `__________________________          __________\n`,
-          `${t("documentCenter.packetSignatureLabel")}          ${t("documentCenter.packetDateLabel")}\n`,
-        ],
-        { type: "text/plain" },
-      );
-
-      const form = new FormData();
-      form.append("file", blob, `${template.toLowerCase()}_registration_packet.txt`);
-      form.append("category", "REGISTRATION");
-      form.append("type", "REGISTRATION_PACKET");
-      form.append("patientId", patientId);
-      form.append("title", packetName);
-      form.append("source", "SYSTEM");
-      form.append("notes", `${t("documentCenter.packetGeneratedNote")} — ${template}`);
-
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/upload`,
-        {
-          method: "POST",
-          body: form,
-          headers: { "x-facility-id": facilityId },
-          credentials: "include",
-        },
-      );
-      if (!resp.ok) throw new Error();
-      setUploadSuccess("REGISTRATION_PACKET");
-      window.setTimeout(() => setUploadSuccess(null), 3500);
-      await loadDocs();
-    } catch {
-      setUploadError(t("documentCenter.packetGenerateError"));
-    } finally {
-      setGeneratingPacket(false);
-    }
+  const handleWizardComplete = () => {
+    setActiveWizard(null);
+    setUploadSuccess("REGISTRATION_PACKET");
+    window.setTimeout(() => setUploadSuccess(null), 3500);
+    void loadDocs();
   };
 
   const handlePreview = (template: string) => {
     setPacketPreview(packetPreview === template ? null : template);
+  };
+
+  const getPacketStatus = (doc: DocumentRow): string => {
+    try {
+      const meta = JSON.parse(doc.notes || "{}");
+      if (meta.completedAt) {
+        if (meta.signatures?.refusalReason) return t("documentCenter.packetStatusRefused");
+        return t("documentCenter.packetStatusSigned");
+      }
+      return t("documentCenter.packetStatusInProgress");
+    } catch {
+      return t("documentCenter.packetGenerated");
+    }
+  };
+
+  const getPacketStatusColor = (doc: DocumentRow): string => {
+    try {
+      const meta = JSON.parse(doc.notes || "{}");
+      if (meta.completedAt) {
+        if (meta.signatures?.refusalReason) return "#e65100";
+        return "#1b5e20";
+      }
+      return "#0277bd";
+    } catch {
+      return "#64748b";
+    }
   };
 
   const formatDate = (d: string) =>
@@ -372,18 +355,18 @@ export function RegistrationDocumentCenter({
                   background: existing ? "#f0fdf4" : "#fafafa",
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, color: "#0f172a" }}>{label}</div>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, color: "#0f172a" }}>{label}</div>
                 {existing && (
-                  <div style={{ fontSize: 11, color: "#16a34a", marginBottom: 6 }}>
-                    ✓ {t("documentCenter.packetGenerated")} — {formatDate(existing.uploadedAt)}
+                  <div style={{ fontSize: 11, marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontWeight: 700, color: getPacketStatusColor(existing) }}>{getPacketStatus(existing)}</span>
+                    <span style={{ color: "#64748b" }}>— {formatDate(existing.uploadedAt)}</span>
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                   {canEdit && (
                     <button
                       type="button"
-                      onClick={() => void handleGeneratePacket(tmpl)}
-                      disabled={generatingPacket}
+                      onClick={() => handleOpenWizard(tmpl)}
                       style={{
                         padding: "4px 10px",
                         fontSize: 11,
@@ -391,10 +374,10 @@ export function RegistrationDocumentCenter({
                         border: "1px solid #cbd5e1",
                         borderRadius: 4,
                         background: "#fff",
-                        cursor: generatingPacket ? "not-allowed" : "pointer",
+                        cursor: "pointer",
                       }}
                     >
-                      {t("documentCenter.generatePacket")}
+                      {existing ? t("documentCenter.newPacketVersion") : t("documentCenter.generatePacket")}
                     </button>
                   )}
                   <button
@@ -413,32 +396,34 @@ export function RegistrationDocumentCenter({
                     {t("documentCenter.previewPacket")}
                   </button>
                   {existing && (
-                    <a
-                      href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${existing.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0" }}
-                    >
-                      {t("documentCenter.printPacket")}
-                    </a>
-                  )}
-                  {canEdit && existing && (
-                    <button
-                      type="button"
-                      onClick={() => void handleArchive(existing.id)}
-                      style={{
-                        padding: "4px 10px",
-                        fontSize: 11,
-                        fontWeight: 600,
-                        border: "none",
-                        borderRadius: 4,
-                        background: "transparent",
-                        color: "#b91c1c",
-                        cursor: "pointer",
-                      }}
-                    >
-                      ✕
-                    </button>
+                    <>
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${existing.id}/download`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0" }}
+                      >
+                        {t("documentCenter.printPacket")}
+                      </a>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => void handleArchive(existing.id)}
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            border: "none",
+                            borderRadius: 4,
+                            background: "transparent",
+                            color: "#b91c1c",
+                            cursor: "pointer",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
                 {packetPreview === tmpl && (
@@ -459,9 +444,6 @@ export function RegistrationDocumentCenter({
               </div>
             );
           })}
-        </div>
-        <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
-          {t("documentCenter.packetEsignNote")}
         </div>
       </div>
 
@@ -592,6 +574,16 @@ export function RegistrationDocumentCenter({
             ))}
           </tbody>
         </table>
+      )}
+
+      {activeWizard && (
+        <RegistrationPacketWizard
+          patientId={patientId}
+          facilityId={facilityId}
+          template={activeWizard}
+          onClose={() => setActiveWizard(null)}
+          onComplete={handleWizardComplete}
+        />
       )}
     </div>
   );
