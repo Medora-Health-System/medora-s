@@ -343,10 +343,10 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(svc).toContain("document upload rejected");
     });
 
-    it("API service has storage error handling", () => {
-      const svc = readApi("src/documents/documents.service.ts");
-      expect(svc).toContain("Storage directory unavailable");
-      expect(svc).toContain("Failed to write file to storage");
+    it("API storage has error handling in local provider", () => {
+      const localProvider = readApi("src/documents/storage/local-document-storage.provider.ts");
+      expect(localProvider).toContain("fs.mkdirSync");
+      expect(localProvider).toContain("fs.writeFileSync");
     });
   });
 
@@ -370,21 +370,13 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(schema).toContain("blob       EnterpriseDocumentBlob?");
     });
 
-    it("upload writes blob to DB after disk write", () => {
-      expect(svc).toContain("enterpriseDocumentBlob.create");
+    it("service uses DocumentStorageService for upload", () => {
+      expect(svc).toContain("storageService.save");
+      expect(svc).toContain("DocumentStorageService");
     });
 
-    it("upload has DB_BLOB_MAX_SIZE limit", () => {
-      expect(svc).toContain("DB_BLOB_MAX_SIZE");
-    });
-
-    it("blob save failure is non-fatal", () => {
-      expect(svc).toContain("document blob save failed (non-fatal)");
-    });
-
-    it("download falls back to DB blob when file missing on disk", () => {
-      expect(svc).toContain("enterpriseDocumentBlob.findUnique");
-      expect(svc).toContain("document served from DB blob");
+    it("service uses DocumentStorageService for download", () => {
+      expect(svc).toContain("storageService.read");
     });
 
     it("download returns user-friendly error when file unavailable from both sources", () => {
@@ -414,6 +406,112 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
     });
   });
 
+  describe("Storage provider abstraction", () => {
+    const storageInterface = readApi("src/documents/storage/document-storage.provider.ts");
+    const localProvider = readApi("src/documents/storage/local-document-storage.provider.ts");
+    const blobProvider = readApi("src/documents/storage/blob-document-storage.provider.ts");
+    const storageService = readApi("src/documents/storage/document-storage.service.ts");
+    const indexFile = readApi("src/documents/storage/index.ts");
+
+    it("storage interface exports DocumentStorageProvider", () => {
+      expect(storageInterface).toContain("export interface DocumentStorageProvider");
+    });
+
+    it("interface defines save method", () => {
+      expect(storageInterface).toContain("save(input: DocumentStorageSaveInput): Promise<DocumentStorageSaveResult>");
+    });
+
+    it("interface defines read method", () => {
+      expect(storageInterface).toContain("read(storagePath: string, documentId: string): Promise<DocumentStorageReadResult | null>");
+    });
+
+    it("interface defines exists method", () => {
+      expect(storageInterface).toContain("exists(storagePath: string, documentId: string): Promise<boolean>");
+    });
+
+    it("interface defines delete method", () => {
+      expect(storageInterface).toContain("delete(storagePath: string, documentId: string): Promise<void>");
+    });
+
+    it("interface exports StorageProviderType union", () => {
+      expect(storageInterface).toContain('"local" | "blob" | "s3" | "r2" | "azure"');
+    });
+
+    it("LocalDocumentStorageProvider implements save with fs", () => {
+      expect(localProvider).toContain("fs.writeFileSync");
+      expect(localProvider).toContain("fs.mkdirSync");
+    });
+
+    it("LocalDocumentStorageProvider verifies write", () => {
+      expect(localProvider).toContain("verified");
+      expect(localProvider).toContain("fs.existsSync(storagePath)");
+    });
+
+    it("LocalDocumentStorageProvider uses MEDORA_DOCUMENT_STORAGE_DIR", () => {
+      expect(localProvider).toContain("MEDORA_DOCUMENT_STORAGE_DIR");
+    });
+
+    it("BlobDocumentStorageProvider uses enterpriseDocumentBlob", () => {
+      expect(blobProvider).toContain("enterpriseDocumentBlob.upsert");
+      expect(blobProvider).toContain("enterpriseDocumentBlob.findUnique");
+    });
+
+    it("BlobDocumentStorageProvider enforces size limit", () => {
+      expect(blobProvider).toContain("DB_BLOB_MAX_SIZE");
+    });
+
+    it("DocumentStorageService has primary and backup providers", () => {
+      expect(storageService).toContain("private readonly primary: DocumentStorageProvider");
+      expect(storageService).toContain("private readonly backup: DocumentStorageProvider | null");
+    });
+
+    it("DocumentStorageService reads MEDORA_DOCUMENT_STORAGE_PROVIDER env", () => {
+      expect(storageService).toContain("MEDORA_DOCUMENT_STORAGE_PROVIDER");
+    });
+
+    it("DocumentStorageService falls back to backup on primary read failure", () => {
+      expect(storageService).toContain("backup.read");
+      expect(storageService).toContain("served from backup");
+    });
+
+    it("DocumentStorageService saves to backup when configured", () => {
+      expect(storageService).toContain("backup.save");
+    });
+
+    it("DocumentStorageService has getAvailability for storage health", () => {
+      expect(storageService).toContain("async getAvailability");
+      expect(storageService).toContain("sources");
+    });
+
+    it("DocumentStorageService logs provider configuration on startup", () => {
+      expect(storageService).toContain("Storage initialized: primary=");
+    });
+
+    it("DocumentStorageService warns for unimplemented cloud providers", () => {
+      expect(storageService).toContain("not yet implemented");
+    });
+
+    it("index.ts re-exports all storage components", () => {
+      expect(indexFile).toContain("DocumentStorageProvider");
+      expect(indexFile).toContain("LocalDocumentStorageProvider");
+      expect(indexFile).toContain("BlobDocumentStorageProvider");
+      expect(indexFile).toContain("DocumentStorageService");
+    });
+
+    it("documents.module.ts registers storage providers", () => {
+      const mod = readApi("src/documents/documents.module.ts");
+      expect(mod).toContain("LocalDocumentStorageProvider");
+      expect(mod).toContain("BlobDocumentStorageProvider");
+      expect(mod).toContain("DocumentStorageService");
+    });
+
+    it("controller has storage-health endpoint", () => {
+      const ctrl = readApi("src/documents/documents.controller.ts");
+      expect(ctrl).toContain("storage-health");
+      expect(ctrl).toContain("getStorageHealth");
+    });
+  });
+
   describe("Download error UX (no black JSON page)", () => {
     it("download uses programmatic fetch instead of direct <a href>", () => {
       expect(docComponent).toContain("handleDownload");
@@ -439,6 +537,38 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
 
     it("FR has downloadUnavailable i18n key", () => {
       expect(frMessages).toContain("downloadUnavailable");
+    });
+  });
+
+  describe("Storage health UI", () => {
+    it("tracks missing documents for display", () => {
+      expect(docComponent).toContain("missingDocs");
+      expect(docComponent).toContain("setMissingDocs");
+    });
+
+    it("marks document as missing on 404 download", () => {
+      expect(docComponent).toContain("resp.status === 404");
+      expect(docComponent).toContain("missingDocs");
+    });
+
+    it("has getStorageLabel helper", () => {
+      expect(docComponent).toContain("getStorageLabel");
+    });
+
+    it("displays storageMissing label for missing docs", () => {
+      expect(docComponent).toContain("documentCenter.storageMissing");
+    });
+
+    it("EN has storageMissing i18n key", () => {
+      expect(enMessages).toContain("storageMissing");
+    });
+
+    it("FR has storageMissing i18n key", () => {
+      expect(frMessages).toContain("storageMissing");
+    });
+
+    it("clears missing status on successful download", () => {
+      expect(docComponent).toContain("next.delete(docId)");
     });
   });
 });

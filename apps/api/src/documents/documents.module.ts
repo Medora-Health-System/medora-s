@@ -3,11 +3,20 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { DocumentsController } from "./documents.controller";
 import { DocumentsService } from "./documents.service";
 import { DocumentSignatureService } from "./document-signature.service";
+import { LocalDocumentStorageProvider } from "./storage/local-document-storage.provider";
+import { BlobDocumentStorageProvider } from "./storage/blob-document-storage.provider";
+import { DocumentStorageService } from "./storage/document-storage.service";
 
 @Module({
   imports: [PrismaModule],
   controllers: [DocumentsController],
-  providers: [DocumentsService, DocumentSignatureService],
-  exports: [DocumentsService, DocumentSignatureService],
+  providers: [
+    LocalDocumentStorageProvider,
+    BlobDocumentStorageProvider,
+    DocumentStorageService,
+    DocumentsService,
+    DocumentSignatureService,
+  ],
+  exports: [DocumentsService, DocumentSignatureService, DocumentStorageService],
 })
 export class DocumentsModule {}

@@ -101,6 +101,22 @@ export class DocumentsController {
     });
   }
 
+  @Get(":documentId/storage-health")
+  @RequireRoles(
+    RoleCode.RN,
+    RoleCode.PROVIDER,
+    RoleCode.ADMIN,
+    RoleCode.FRONT_DESK,
+    RoleCode.BILLING
+  )
+  async storageHealth(
+    @Param("documentId") documentId: string,
+    @Req() req: any,
+  ) {
+    const facilityId = req.user?.facilityId || req.headers["x-facility-id"];
+    return this.documentsService.getStorageHealth(documentId, facilityId);
+  }
+
   @Get(":documentId/download")
   @RequireRoles(
     RoleCode.RN,

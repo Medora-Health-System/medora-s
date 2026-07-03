@@ -93,6 +93,7 @@ export function RegistrationDocumentCenter({
   const [activeWizard, setActiveWizard] = useState<string | null>(null);
 
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [missingDocs, setMissingDocs] = useState<Set<string>>(new Set());
 
   const handleDownload = async (docId: string, fileName: string) => {
     setDownloadError(null);
@@ -108,9 +109,13 @@ export function RegistrationDocumentCenter({
           const j = JSON.parse(errText);
           if (j?.message) msg = typeof j.message === "string" ? j.message : "";
         } catch { /* ignore */ }
+        if (resp.status === 404) {
+          setMissingDocs((prev) => new Set(prev).add(docId));
+        }
         setDownloadError(msg || t("documentCenter.downloadUnavailable"));
         return;
       }
+      setMissingDocs((prev) => { const next = new Set(prev); next.delete(docId); return next; });
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -123,6 +128,13 @@ export function RegistrationDocumentCenter({
     } catch {
       setDownloadError(t("documentCenter.downloadUnavailable"));
     }
+  };
+
+  const getStorageLabel = (docId: string): { label: string; color: string } | null => {
+    if (missingDocs.has(docId)) {
+      return { label: t("documentCenter.storageMissing"), color: "#e65100" };
+    }
+    return null;
   };
 
   const loadDocs = useCallback(async () => {
@@ -619,10 +631,19 @@ export function RegistrationDocumentCenter({
                 <td style={{ padding: "6px 8px" }}>{formatDate(d.uploadedAt)}</td>
                 <td style={{ padding: "6px 8px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    {(() => {
+                      const status = getStorageLabel(d.id);
+                      if (status) return (
+                        <span style={{ fontSize: 10, fontWeight: 600, color: status.color, whiteSpace: "nowrap" }}>
+                          {status.label}
+                        </span>
+                      );
+                      return null;
+                    })()}
                     <button
                       type="button"
                       onClick={() => void handleDownload(d.id, d.fileName)}
-                      style={{ background: "transparent", border: "none", color: "#1565c0", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
+                      style={{ background: "transparent", border: "none", color: missingDocs.has(d.id) ? "#9e9e9e" : "#1565c0", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}
                     >
                       {t("documentCenter.download")}
                     </button>

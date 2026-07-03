@@ -5,9 +5,8 @@ import {
   Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import * as path from "path";
-import * as fs from "fs";
 import * as crypto from "crypto";
+import { DocumentStorageService } from "./storage";
 
 const VALID_CATEGORIES = [
   "REGISTRATION",
@@ -22,15 +21,13 @@ const VALID_CATEGORIES = [
 const ALLOWED_MIME_PREFIXES = ["image/", "application/pdf", "application/msword", "application/vnd.openxmlformats", "text/"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const STORAGE_DIR =
-  process.env.MEDORA_DOCUMENT_STORAGE_DIR || "/tmp/medora-documents";
-
-const DB_BLOB_MAX_SIZE = 10 * 1024 * 1024;
-
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: DocumentStorageService,
+  ) {}
 
   async list(filters: {
     patientId?: string;
@@ -115,27 +112,6 @@ export class DocumentsService {
       if (!patient) throw new BadRequestException("Patient not found");
     }
 
-    const subDir = params.facilityId || "global";
-    const targetDir = path.join(STORAGE_DIR, subDir);
-    try {
-      fs.mkdirSync(targetDir, { recursive: true });
-    } catch (dirErr) {
-      this.logger.error(`document upload failed: cannot create storage dir ${targetDir}`, (dirErr as Error)?.message);
-      throw new BadRequestException("Storage directory unavailable");
-    }
-
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const ext = path.extname(sanitizedName) || "";
-    const storedName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
-    const storagePath = path.join(targetDir, storedName);
-
-    try {
-      fs.writeFileSync(storagePath, file.buffer);
-    } catch (writeErr) {
-      this.logger.error(`document upload failed: cannot write file ${storagePath}`, (writeErr as Error)?.message);
-      throw new BadRequestException("Failed to write file to storage");
-    }
-
     const checksumSha256 = crypto.createHash("sha256").update(file.buffer).digest("hex");
 
     const doc = await this.prisma.enterpriseDocument.create({
@@ -149,7 +125,7 @@ export class DocumentsService {
         fileName: file.originalname,
         mimeType: file.mimetype,
         fileSize: file.size,
-        storagePath,
+        storagePath: "",
         checksumSha256,
         source: params.source || "UPLOAD",
         notes: params.notes?.trim() || null,
@@ -169,14 +145,23 @@ export class DocumentsService {
       },
     });
 
-    if (file.size <= DB_BLOB_MAX_SIZE) {
-      try {
-        await this.prisma.enterpriseDocumentBlob.create({
-          data: { documentId: doc.id, data: Uint8Array.from(file.buffer) },
-        });
-      } catch (blobErr) {
-        this.logger.warn(`document blob save failed (non-fatal): docId=${doc.id} err=${(blobErr as Error)?.message}`);
-      }
+    try {
+      const saveResult = await this.storageService.save({
+        documentId: doc.id,
+        facilityId: params.facilityId || null,
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        buffer: file.buffer,
+      });
+
+      await this.prisma.enterpriseDocument.update({
+        where: { id: doc.id },
+        data: { storagePath: saveResult.storagePath },
+      });
+    } catch (storageErr) {
+      this.logger.error(`document storage failed: docId=${doc.id} err=${(storageErr as Error)?.message}`);
+      await this.prisma.enterpriseDocument.delete({ where: { id: doc.id } });
+      throw new BadRequestException("Failed to store document file");
     }
 
     this.logger.log(`document upload saved: id=${doc.id} category=${doc.category} type=${doc.type}`);
@@ -190,22 +175,29 @@ export class DocumentsService {
     const doc = await this.prisma.enterpriseDocument.findFirst({ where });
     if (!doc) throw new NotFoundException("Document not found");
 
-    if (fs.existsSync(doc.storagePath)) {
-      return { storagePath: doc.storagePath, fileName: doc.fileName, mimeType: doc.mimeType, buffer: null };
+    const result = await this.storageService.read(doc.storagePath, documentId);
+    if (result) {
+      if (result.provider === "local" && doc.storagePath) {
+        return { storagePath: doc.storagePath, fileName: doc.fileName, mimeType: doc.mimeType, buffer: null };
+      }
+      return { storagePath: null, fileName: doc.fileName, mimeType: doc.mimeType, buffer: result.buffer };
     }
 
-    const blob = await this.prisma.enterpriseDocumentBlob.findUnique({
-      where: { documentId },
-      select: { data: true },
-    });
-    if (blob?.data) {
-      this.logger.log(`document served from DB blob: docId=${documentId}`);
-      const buf = Buffer.from(blob.data.buffer, blob.data.byteOffset, blob.data.byteLength);
-      return { storagePath: null, fileName: doc.fileName, mimeType: doc.mimeType, buffer: buf };
-    }
-
-    this.logger.warn(`document file unavailable: docId=${documentId} path=${doc.storagePath}`);
+    this.logger.warn(`document file unavailable: docId=${documentId} storagePath=${doc.storagePath}`);
     throw new NotFoundException("Document file is unavailable. Please re-upload or contact administrator.");
+  }
+
+  async getStorageHealth(documentId: string, facilityId?: string) {
+    const where: Record<string, unknown> = { id: documentId, status: "ACTIVE" };
+    if (facilityId) where.facilityId = facilityId;
+
+    const doc = await this.prisma.enterpriseDocument.findFirst({
+      where,
+      select: { id: true, storagePath: true },
+    });
+    if (!doc) return null;
+
+    return this.storageService.getAvailability(doc.storagePath, doc.id);
   }
 
   async softDelete(documentId: string, facilityId?: string) {
