@@ -27,6 +27,11 @@ import {
   formatClinicalRecordAttributionPart,
   joinAttributionParts,
 } from "./clinicalRecordAttributionDisplay";
+import {
+  formatClinicalRecordProcedureSectionLabel,
+  formatClinicalRecordProcedureStatusLine,
+  formatClinicalRecordProcedureTitle,
+} from "./clinicalRecordProcedureDisplay";
 
 function esc(s: string): string {
   return String(s)
@@ -332,11 +337,17 @@ export function getErClinicalRecordPrintPacketHtml(input: {
     const body = layout.completedProcedures
       .map(
         (proc) =>
-          p(proc.clinicalSummary) +
+          p(formatClinicalRecordProcedureTitle(proc)) +
           attr(
             joinAttributionParts([
               formatClinicalRecordAttributionPart("performedBy", proc.performedBy, t, language),
               formatClinicalRecordAttributionPart("documentedBy", proc.documentedBy, t, language),
+            ])
+          ) +
+          attr(
+            joinAttributionParts([
+              formatClinicalRecordProcedureSectionLabel(proc.documentationRole, t),
+              formatClinicalRecordProcedureStatusLine(proc, t),
             ])
           )
       )

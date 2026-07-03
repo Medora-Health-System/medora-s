@@ -179,6 +179,7 @@ export type EncounterClinicalRecordProcedure = {
   documentedByDisplayName: string | null;
   performedByDisplayName: string | null;
   documentationRole: string | null;
+  status: string | null;
   documentedBy: ClinicalRecordAttribution;
   performedBy: ClinicalRecordAttribution | null;
 };
@@ -446,11 +447,20 @@ export type BuildEncounterClinicalRecordInput = {
     id?: string;
     label?: string | null;
     clinicalSummary?: string | null;
+    clinicalSummaryEn?: string | null;
+    clinicalSummaryFr?: string | null;
+    procedureNameEn?: string | null;
+    procedureNameFr?: string | null;
+    displayLabelEn?: string | null;
+    displayLabelFr?: string | null;
     documentedAt?: string | null;
     createdAt?: string | null;
+    performedAt?: string | null;
     documentedByDisplayName?: string | null;
     performedByDisplayName?: string | null;
+    performerTitle?: string | null;
     documentationRole?: string | null;
+    status?: string | null;
   }>;
   disposition?: {
     dischargeMode?: string | null;

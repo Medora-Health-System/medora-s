@@ -306,6 +306,11 @@ describe("encounterClinicalRecordAdapter", () => {
           documentedAt: "2026-06-23T11:00:00.000Z",
           documentedByDisplayName: "Dr Proc",
           clinicalSummaryFr: "Suture complétée.",
+          payload: {
+            procedureType: "LACERATION_REPAIR",
+            performedAt: "2026-06-23T11:00:00.000Z",
+            performedByDisplayName: "Dr Proc",
+          },
         },
       ],
       documentationEvents: [

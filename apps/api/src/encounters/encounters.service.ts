@@ -3448,6 +3448,9 @@ export class EncountersService {
           performedByDisplayName: performedByFromPayload || documentedByDisplayName,
           documentedByDisplayName,
           status: summaryMeta?.status ?? "COMPLETED",
+          procedureNameEn: summaryMeta?.procedureNameEn ?? null,
+          procedureNameFr: summaryMeta?.procedureNameFr ?? null,
+          clinicalSummaryEn: summaryMeta?.clinicalSummaryEn ?? null,
           clinicalSummaryFr: summaryMeta?.clinicalSummaryFr ?? null,
           performerTitle:
             typeof p.performerTitle === "string" && p.performerTitle.trim() ? p.performerTitle.trim() : null,

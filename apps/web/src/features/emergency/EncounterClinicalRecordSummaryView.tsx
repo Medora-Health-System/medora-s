@@ -47,6 +47,11 @@ import {
   formatClinicalRecordAttributionPart,
   joinAttributionParts,
 } from "./clinicalRecordAttributionDisplay";
+import {
+  formatClinicalRecordProcedureSectionLabel,
+  formatClinicalRecordProcedureStatusLine,
+  formatClinicalRecordProcedureTitle,
+} from "./clinicalRecordProcedureDisplay";
 import { SummaryAuditTimelineSlot } from "./SummaryAuditTimelineSlot";
 
 const sectionTitle: React.CSSProperties = {
@@ -960,11 +965,17 @@ export function EncounterClinicalRecordSummaryView({
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {layout.completedProcedures.map((proc) => (
               <li key={proc.id} style={lineStyle}>
-                {formatDt(proc.documentedAt)} — {proc.clinicalSummary}
+                {formatClinicalRecordProcedureTitle(proc)}
                 <AttributionLine
                   text={joinAttributionParts([
                     formatClinicalRecordAttributionPart("performedBy", proc.performedBy, t, language),
                     formatClinicalRecordAttributionPart("documentedBy", proc.documentedBy, t, language),
+                  ])}
+                />
+                <AttributionLine
+                  text={joinAttributionParts([
+                    formatClinicalRecordProcedureSectionLabel(proc.documentationRole, t),
+                    formatClinicalRecordProcedureStatusLine(proc, t),
                   ])}
                 />
               </li>

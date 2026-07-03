@@ -341,6 +341,7 @@ function buildProcedures(input: BuildEncounterClinicalRecordInput): EncounterCli
       documentedByDisplayName: asTrimmed(proc.documentedByDisplayName),
       performedByDisplayName: asTrimmed(proc.performedByDisplayName),
       documentationRole: asTrimmed(proc.documentationRole),
+      status: asTrimmed(proc.status) ?? "COMPLETED",
       documentedBy: buildClinicalRecordAttribution({
         name: proc.documentedByDisplayName,
         role: proc.documentationRole,
@@ -349,8 +350,8 @@ function buildProcedures(input: BuildEncounterClinicalRecordInput): EncounterCli
       performedBy: asTrimmed(proc.performedByDisplayName)
         ? buildClinicalRecordAttribution({
             name: proc.performedByDisplayName,
-            role: proc.documentationRole,
-            at: proc.documentedAt ?? proc.createdAt,
+            role: proc.performerTitle ?? proc.documentationRole,
+            at: proc.performedAt ?? proc.documentedAt ?? proc.createdAt,
           })
         : null,
     });

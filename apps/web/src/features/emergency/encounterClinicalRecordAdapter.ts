@@ -4,6 +4,7 @@
  */
 
 import {
+  buildDocumentedProcedureSummaryMeta,
   formatDocumentedProcedureClinicalSummary,
   resolveVitalsPainScore,
   type BuildEncounterClinicalRecordInput,
@@ -578,28 +579,70 @@ function mapProcedures(
       asTrimmed(entry.documentedAt) ?? asTrimmed(entry.createdAt) ?? asTrimmed(entry.performedAt);
     const documentedByDisplayName =
       asTrimmed(entry.documentedByDisplayName) ?? asTrimmed(entry.performedByDisplayName);
-    const clinicalSummary =
-      asTrimmed(entry.clinicalSummaryFr) ??
-      asTrimmed(entry.clinicalSummaryEn) ??
-      asTrimmed(entry.clinicalSummary) ??
-      (documentedAt
-        ? formatDocumentedProcedureClinicalSummary({
+    const performedByDisplayName =
+      asTrimmed(entry.performedByDisplayName) ??
+      asTrimmed(entry.performerDisplayName) ??
+      documentedByDisplayName;
+    const performedAt = asTrimmed(entry.performedAt) ?? documentedAt;
+    const performerTitle = asTrimmed(entry.performerTitle);
+    const documentationRole = asTrimmed(entry.documentationRole);
+    const summaryMeta =
+      documentedAt != null
+        ? buildDocumentedProcedureSummaryMeta({
             payloadJson: payload,
             documentedAtIso: documentedAt,
             documentedByDisplayName,
-            locale,
           })
-        : null);
-    if (!clinicalSummary) continue;
+        : null;
+    const label =
+      locale === "en"
+        ? asTrimmed(entry.procedureNameEn) ??
+          asTrimmed(entry.displayLabelEn) ??
+          asTrimmed(entry.nameEn) ??
+          summaryMeta?.procedureNameEn ??
+          asTrimmed(entry.label) ??
+          asTrimmed(entry.procedureType)
+        : asTrimmed(entry.procedureNameFr) ??
+          asTrimmed(entry.displayLabelFr) ??
+          asTrimmed(entry.nameFr) ??
+          summaryMeta?.procedureNameFr ??
+          asTrimmed(entry.label) ??
+          asTrimmed(entry.procedureType);
+    const clinicalSummary =
+      locale === "en"
+        ? asTrimmed(entry.clinicalSummaryEn) ??
+          summaryMeta?.clinicalSummaryEn ??
+          (documentedAt
+            ? formatDocumentedProcedureClinicalSummary({
+                payloadJson: payload,
+                documentedAtIso: documentedAt,
+                documentedByDisplayName,
+                locale: "en",
+              })
+            : null)
+        : asTrimmed(entry.clinicalSummaryFr) ??
+          summaryMeta?.clinicalSummaryFr ??
+          (documentedAt
+            ? formatDocumentedProcedureClinicalSummary({
+                payloadJson: payload,
+                documentedAtIso: documentedAt,
+                documentedByDisplayName,
+                locale,
+              })
+            : null);
+    const displayLabel = label ?? clinicalSummary?.split(" — ")[0]?.trim();
+    if (!displayLabel) continue;
     mapped.push({
       id,
-      label: asTrimmed(entry.label) ?? asTrimmed(entry.procedureType) ?? clinicalSummary,
-      clinicalSummary,
+      label: displayLabel,
+      clinicalSummary: clinicalSummary ?? displayLabel,
       documentedAt,
+      performedAt,
       documentedByDisplayName,
-      performedByDisplayName:
-        asTrimmed(entry.performedByDisplayName) ?? documentedByDisplayName,
-      documentationRole: asTrimmed(entry.documentationRole),
+      performedByDisplayName,
+      performerTitle,
+      documentationRole,
+      status: asTrimmed(entry.status) ?? summaryMeta?.status ?? "COMPLETED",
     });
   }
   return mapped;
