@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { apiFetch } from "@/lib/apiClient";
 
+const API_BASE = "/api/backend";
+
 /* ── types ──────────────────────────────────────────────── */
 
 type PatientData = {
@@ -194,7 +196,7 @@ export function RegistrationPacketWizard({
       form.append("notes", JSON.stringify(packetMeta));
 
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/upload`,
+        `${API_BASE}/documents/upload`,
         {
           method: "POST",
           body: form,
@@ -202,10 +204,22 @@ export function RegistrationPacketWizard({
           credentials: "include",
         },
       );
-      if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        let msg = `${resp.status}`;
+        try {
+          const j = JSON.parse(errText);
+          if (j?.message) msg = typeof j.message === "string" ? j.message : JSON.stringify(j.message);
+        } catch { if (errText) msg = errText.slice(0, 200); }
+        throw new Error(msg);
+      }
       onComplete();
-    } catch {
-      setSaveError(t("packetWizard.saveError"));
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : "";
+      setSaveError(detail ? `${t("packetWizard.saveError")} — ${detail}` : t("packetWizard.saveError"));
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[PacketWizard] finalize failed:", detail);
+      }
     } finally {
       setSaving(false);
     }

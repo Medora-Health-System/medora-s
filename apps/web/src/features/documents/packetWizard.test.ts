@@ -148,10 +148,15 @@ describe("MEDUI.REGISTRATION.PHASE_3_ELECTRONIC_PACKET_E_SIGNATURE", () => {
   });
 
   describe("Signed packet storage", () => {
-    it("saves signed packet as EnterpriseDocument", () => {
+    it("saves signed packet as EnterpriseDocument via proxy path", () => {
+      expect(wizardComponent).toContain("/api/backend");
       expect(wizardComponent).toContain("/documents/upload");
       expect(wizardComponent).toContain('"REGISTRATION"');
       expect(wizardComponent).toContain('"REGISTRATION_PACKET"');
+    });
+
+    it("does NOT use NEXT_PUBLIC_API_URL", () => {
+      expect(wizardComponent).not.toContain("NEXT_PUBLIC_API_URL");
     });
 
     it("sets source to SYSTEM", () => {

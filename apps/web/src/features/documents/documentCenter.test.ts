@@ -300,4 +300,53 @@ describe("MEDUI.DOCUMENTS.ENTERPRISE_DOCUMENT_CENTER (Phase 2)", () => {
       expect(registrationPage).toContain("followUps");
     });
   });
+
+  describe("Upload path correctness (hotfix)", () => {
+    it("Document Center uses /api/backend proxy path for uploads", () => {
+      expect(docComponent).toContain('"/api/backend"');
+      expect(docComponent).toContain("API_BASE");
+    });
+
+    it("Document Center does NOT use NEXT_PUBLIC_API_URL", () => {
+      expect(docComponent).not.toContain("NEXT_PUBLIC_API_URL");
+      expect(docComponent).not.toContain("process.env.NEXT_PUBLIC_API_URL");
+    });
+
+    it("Packet Wizard uses /api/backend proxy path", () => {
+      const wizard = readSrc("components/documents/RegistrationPacketWizard.tsx");
+      expect(wizard).toContain('"/api/backend"');
+      expect(wizard).not.toContain("NEXT_PUBLIC_API_URL");
+    });
+
+    it("upload includes credentials: include", () => {
+      expect(docComponent).toContain('credentials: "include"');
+    });
+
+    it("upload sends patientId in FormData", () => {
+      expect(docComponent).toContain('"patientId", patientId');
+    });
+
+    it("upload sends category and type in FormData", () => {
+      expect(docComponent).toContain('"category", "REGISTRATION"');
+      expect(docComponent).toContain('"type", type');
+    });
+
+    it("upload error shows API message detail", () => {
+      expect(docComponent).toContain("documentCenter.uploadError");
+      expect(docComponent).toContain("detail");
+    });
+
+    it("API service has upload logging", () => {
+      const svc = readApi("src/documents/documents.service.ts");
+      expect(svc).toContain("document upload received");
+      expect(svc).toContain("document upload saved");
+      expect(svc).toContain("document upload rejected");
+    });
+
+    it("API service has storage error handling", () => {
+      const svc = readApi("src/documents/documents.service.ts");
+      expect(svc).toContain("Storage directory unavailable");
+      expect(svc).toContain("Failed to write file to storage");
+    });
+  });
 });

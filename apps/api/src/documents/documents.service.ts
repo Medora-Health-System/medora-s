@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import * as path from "path";
@@ -26,6 +27,7 @@ const STORAGE_DIR =
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
   constructor(private readonly prisma: PrismaService) {}
 
   async list(filters: {
@@ -80,18 +82,24 @@ export class DocumentsService {
     uploadedById?: string;
     file: { originalname: string; mimetype: string; size: number; buffer: Buffer };
   }) {
+    this.logger.log(`document upload received: category=${params.category} type=${params.type} mime=${params.file?.mimetype} size=${params.file?.size}`);
+
     if (!VALID_CATEGORIES.includes(params.category as typeof VALID_CATEGORIES[number])) {
+      this.logger.warn(`document upload rejected: invalid category ${params.category}`);
       throw new BadRequestException(`Invalid category: ${params.category}`);
     }
     if (!params.type?.trim()) {
+      this.logger.warn("document upload rejected: missing type");
       throw new BadRequestException("Document type is required");
     }
 
     const { file } = params;
     if (file.size > MAX_FILE_SIZE) {
+      this.logger.warn(`document upload rejected: file too large (${file.size} bytes)`);
       throw new BadRequestException(`File exceeds maximum size of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
     }
     if (!ALLOWED_MIME_PREFIXES.some((p) => file.mimetype.startsWith(p))) {
+      this.logger.warn(`document upload rejected: unsupported mime ${file.mimetype}`);
       throw new BadRequestException(`Unsupported file type: ${file.mimetype}`);
     }
 
@@ -105,18 +113,28 @@ export class DocumentsService {
 
     const subDir = params.facilityId || "global";
     const targetDir = path.join(STORAGE_DIR, subDir);
-    fs.mkdirSync(targetDir, { recursive: true });
+    try {
+      fs.mkdirSync(targetDir, { recursive: true });
+    } catch (dirErr) {
+      this.logger.error(`document upload failed: cannot create storage dir ${targetDir}`, (dirErr as Error)?.message);
+      throw new BadRequestException("Storage directory unavailable");
+    }
 
     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
     const ext = path.extname(sanitizedName) || "";
     const storedName = `${Date.now()}_${crypto.randomBytes(4).toString("hex")}${ext}`;
     const storagePath = path.join(targetDir, storedName);
 
-    fs.writeFileSync(storagePath, file.buffer);
+    try {
+      fs.writeFileSync(storagePath, file.buffer);
+    } catch (writeErr) {
+      this.logger.error(`document upload failed: cannot write file ${storagePath}`, (writeErr as Error)?.message);
+      throw new BadRequestException("Failed to write file to storage");
+    }
 
     const checksumSha256 = crypto.createHash("sha256").update(file.buffer).digest("hex");
 
-    return this.prisma.enterpriseDocument.create({
+    const doc = await this.prisma.enterpriseDocument.create({
       data: {
         patientId: params.patientId || null,
         encounterId: params.encounterId || null,
@@ -146,6 +164,8 @@ export class DocumentsService {
         uploadedAt: true,
       },
     });
+    this.logger.log(`document upload saved: id=${doc.id} category=${doc.category} type=${doc.type}`);
+    return doc;
   }
 
   async getFilePath(documentId: string, facilityId?: string) {

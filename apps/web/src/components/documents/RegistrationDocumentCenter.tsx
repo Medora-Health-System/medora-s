@@ -5,6 +5,8 @@ import { useI18n } from "@/lib/i18n";
 import { encounterBcp47 } from "@/lib/encounterChromeI18n";
 import { RegistrationPacketWizard } from "./RegistrationPacketWizard";
 
+const API_BASE = "/api/backend";
+
 type DocumentRow = {
   id: string;
   category: string;
@@ -93,7 +95,7 @@ export function RegistrationDocumentCenter({
     setLoadError(null);
     try {
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents?patientId=${patientId}&category=REGISTRATION`,
+        `${API_BASE}/documents?patientId=${patientId}&category=REGISTRATION`,
         { headers: { "x-facility-id": facilityId }, credentials: "include" },
       );
       if (!resp.ok) throw new Error(await resp.text());
@@ -131,7 +133,7 @@ export function RegistrationDocumentCenter({
       if (notes?.trim()) form.append("notes", notes.trim());
 
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/upload`,
+        `${API_BASE}/documents/upload`,
         {
           method: "POST",
           body: form,
@@ -139,7 +141,15 @@ export function RegistrationDocumentCenter({
           credentials: "include",
         },
       );
-      if (!resp.ok) throw new Error(await resp.text());
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => "");
+        let msg = `${resp.status}`;
+        try {
+          const j = JSON.parse(errText);
+          if (j?.message) msg = typeof j.message === "string" ? j.message : JSON.stringify(j.message);
+        } catch { if (errText) msg = errText.slice(0, 200); }
+        throw new Error(msg);
+      }
       setUploadSuccess(type);
       if (ref.current) ref.current.value = "";
       if (type === "OTHER_REGISTRATION_DOCUMENT") {
@@ -148,8 +158,12 @@ export function RegistrationDocumentCenter({
       }
       window.setTimeout(() => setUploadSuccess(null), 3500);
       await loadDocs();
-    } catch {
-      setUploadError(t("documentCenter.uploadError"));
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : "";
+      setUploadError(detail ? `${t("documentCenter.uploadError")} — ${detail}` : t("documentCenter.uploadError"));
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[DocumentCenter] upload failed:", detail);
+      }
     } finally {
       setUploading(null);
     }
@@ -159,7 +173,7 @@ export function RegistrationDocumentCenter({
     if (!window.confirm(t("documentCenter.archiveConfirm"))) return;
     try {
       const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${docId}`,
+        `${API_BASE}/documents/${docId}`,
         {
           method: "DELETE",
           headers: { "x-facility-id": facilityId },
@@ -398,7 +412,7 @@ export function RegistrationDocumentCenter({
                   {existing && (
                     <>
                       <a
-                        href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${existing.id}/download`}
+                        href={`${API_BASE}/documents/${existing.id}/download`}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#1565c0" }}
@@ -552,7 +566,7 @@ export function RegistrationDocumentCenter({
                 <td style={{ padding: "6px 8px" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     <a
-                      href={`${process.env.NEXT_PUBLIC_API_URL || ""}/documents/${d.id}/download`}
+                      href={`${API_BASE}/documents/${d.id}/download`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: "#1565c0", fontSize: 12, fontWeight: 600 }}
